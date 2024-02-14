@@ -1563,7 +1563,7 @@ func (c *conjCollector) add(f *iScanLeaf) error {
 func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error {
 	// make constant
 	ord := c.ordinals[col]
-	if c.constant.Contains(ord) {
+	if c.constant.Contains(ord + 1) {
 		if c.eqVals[ord] != val {
 			// FALSE filter
 			c.isFalse = true

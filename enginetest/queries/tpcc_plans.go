@@ -51,7 +51,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=7.900 rows=3)\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -65,7 +65,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=7.900 rows=3) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -181,28 +181,36 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 		Query: `SELECT s_quantity, s_data, s_dist_09 s_dist FROM stock2 WHERE s_i_id = 2532 AND s_w_id= 1 FOR UPDATE`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3 as s_dist]\n" +
-			" └─ IndexedTableAccess(stock2)\n" +
-			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
-			"     ├─ colSet: (1-17)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: stock2\n" +
-			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ stock2.s_w_id:1!null\n" +
+			"     │   └─ 1 (tinyint)\n" +
+			"     └─ IndexedTableAccess(stock2)\n" +
+			"         ├─ index: [stock2.s_i_id]\n" +
+			"         ├─ static: [{[2532, 2532]}]\n" +
+			"         ├─ colSet: (1-17)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: stock2\n" +
+			"             └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ IndexedTableAccess(stock2)\n" +
-			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
-			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ Filter\n" +
+			"     ├─ (stock2.s_w_id = 1)\n" +
+			"     └─ IndexedTableAccess(stock2)\n" +
+			"         ├─ index: [stock2.s_i_id]\n" +
+			"         ├─ filters: [{[2532, 2532]}]\n" +
+			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ IndexedTableAccess(stock2)\n" +
-			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
-			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ Filter\n" +
+			"     ├─ (stock2.s_w_id = 1)\n" +
+			"     └─ IndexedTableAccess(stock2)\n" +
+			"         ├─ index: [stock2.s_i_id]\n" +
+			"         ├─ filters: [{[2532, 2532]}]\n" +
+			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 	},
 	{
@@ -210,14 +218,18 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET stock2.s_quantity:2 = 39 (tinyint))\n" +
-			"         └─ IndexedTableAccess(stock2)\n" +
-			"             ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"             ├─ static: [{[1, 1], [2532, 2532]}]\n" +
-			"             ├─ colSet: (1-17)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: stock2\n" +
-			"                 └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
+			"         └─ Filter\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ stock2.s_w_id:1!null\n" +
+			"             │   └─ 1 (tinyint)\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
+			"                 ├─ static: [{[2532, 2532]}]\n" +
+			"                 ├─ colSet: (1-17)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: stock2\n" +
+			"                     └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
 			"",
 	},
 	{
@@ -269,28 +281,36 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 		Query: `SELECT s_quantity, s_data, s_dist_09 s_dist FROM stock2 WHERE s_i_id = 2532 AND s_w_id= 1 FOR UPDATE`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3 as s_dist]\n" +
-			" └─ IndexedTableAccess(stock2)\n" +
-			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
-			"     ├─ colSet: (1-17)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: stock2\n" +
-			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ stock2.s_w_id:1!null\n" +
+			"     │   └─ 1 (tinyint)\n" +
+			"     └─ IndexedTableAccess(stock2)\n" +
+			"         ├─ index: [stock2.s_i_id]\n" +
+			"         ├─ static: [{[2532, 2532]}]\n" +
+			"         ├─ colSet: (1-17)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: stock2\n" +
+			"             └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ IndexedTableAccess(stock2)\n" +
-			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
-			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ Filter\n" +
+			"     ├─ (stock2.s_w_id = 1)\n" +
+			"     └─ IndexedTableAccess(stock2)\n" +
+			"         ├─ index: [stock2.s_i_id]\n" +
+			"         ├─ filters: [{[2532, 2532]}]\n" +
+			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ IndexedTableAccess(stock2)\n" +
-			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
-			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ Filter\n" +
+			"     ├─ (stock2.s_w_id = 1)\n" +
+			"     └─ IndexedTableAccess(stock2)\n" +
+			"         ├─ index: [stock2.s_i_id]\n" +
+			"         ├─ filters: [{[2532, 2532]}]\n" +
+			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 	},
 	{
@@ -298,14 +318,18 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET stock2.s_quantity:2 = 5 (tinyint))\n" +
-			"         └─ IndexedTableAccess(stock2)\n" +
-			"             ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"             ├─ static: [{[1, 1], [64568, 64568]}]\n" +
-			"             ├─ colSet: (1-17)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: stock2\n" +
-			"                 └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
+			"         └─ Filter\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ stock2.s_w_id:1!null\n" +
+			"             │   └─ 1 (tinyint)\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
+			"                 ├─ static: [{[64568, 64568]}]\n" +
+			"                 ├─ colSet: (1-17)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: stock2\n" +
+			"                     └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
 			"",
 	},
 	{
@@ -423,8 +447,8 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"         │   ├─ customer2.c_last:3\n" +
 			"         │   └─ ESEEINGABLE (longtext)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ static: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             ├─ colSet: (1-21)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -439,8 +463,8 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -451,8 +475,8 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 	},
@@ -466,8 +490,8 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"         │   ├─ customer2.c_last:5\n" +
 			"         │   └─ ESEEINGABLE (longtext)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ static: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             ├─ colSet: (1-21)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -480,8 +504,8 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -490,8 +514,8 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
 			"",
 	},
@@ -566,8 +590,8 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"         │   ├─ customer2.c_last:3\n" +
 			"         │   └─ PRIESEPRES (longtext)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             ├─ colSet: (1-21)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -582,8 +606,8 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -594,8 +618,8 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 	},
@@ -609,8 +633,8 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"         │   ├─ customer2.c_last:5\n" +
 			"         │   └─ PRIESEPRES (longtext)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             ├─ colSet: (1-21)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -623,8 +647,8 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -633,8 +657,8 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     └─ Filter\n" +
 			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
 			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
 			"",
 	},
@@ -643,38 +667,30 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [orders2.o_id:0!null, orders2.o_carrier_id:5, orders2.o_entry_d:4]\n" +
 			" └─ Sort(orders2.o_id:0!null DESC nullsFirst)\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ orders2.o_c_id:3\n" +
-			"         │   └─ 355 (smallint)\n" +
-			"         └─ IndexedTableAccess(orders2)\n" +
-			"             ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-8)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: orders2\n" +
-			"                 └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"     └─ IndexedTableAccess(orders2)\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"         ├─ static: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-8)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: orders2\n" +
+			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_carrier_id, orders2.o_entry_d]\n" +
 			" └─ Sort(orders2.o_id DESC)\n" +
-			"     └─ Filter\n" +
-			"         ├─ (orders2.o_c_id = 355)\n" +
-			"         └─ IndexedTableAccess(orders2)\n" +
-			"             ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
-			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"     └─ IndexedTableAccess(orders2)\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
+			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_carrier_id, orders2.o_entry_d]\n" +
 			" └─ Sort(orders2.o_id DESC)\n" +
-			"     └─ Filter\n" +
-			"         ├─ (orders2.o_c_id = 355)\n" +
-			"         └─ IndexedTableAccess(orders2)\n" +
-			"             ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
-			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"     └─ IndexedTableAccess(orders2)\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
+			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
 			"",
 	},
 	{
@@ -742,10 +758,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ stock2.s_i_id:4!null\n" +
-			"         │   └─ order_line2.ol_i_id:3\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"         │   ├─ static: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
@@ -754,63 +767,56 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"         │   └─ Table\n" +
 			"         │       ├─ name: order_line2\n" +
 			"         │       └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(order_line2.ol_i_id:3)\n" +
-			"             ├─ right-key: TUPLE(stock2.s_i_id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ LessThan\n" +
-			"                 │   ├─ stock2.s_quantity:2\n" +
-			"                 │   └─ 18 (tinyint)\n" +
-			"                 └─ IndexedTableAccess(stock2)\n" +
-			"                     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"                     ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (11-27)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: stock2\n" +
-			"                         └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ Filter\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ Eq\n" +
+			"             │   │   ├─ stock2.s_w_id:1!null\n" +
+			"             │   │   └─ 1 (tinyint)\n" +
+			"             │   └─ LessThan\n" +
+			"             │       ├─ stock2.s_quantity:2\n" +
+			"             │       └─ 18 (tinyint)\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ keys: [1 (tinyint) order_line2.ol_i_id:3]\n" +
+			"                 ├─ colSet: (11-27)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: stock2\n" +
+			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNTDISTINCT([stock2.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ HashJoin\n" +
-			"         ├─ (stock2.s_i_id = order_line2.ol_i_id)\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
 			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (order_line2.ol_i_id)\n" +
-			"             ├─ right-key: (stock2.s_i_id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (stock2.s_quantity < 18)\n" +
-			"                 └─ IndexedTableAccess(stock2)\n" +
-			"                     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"                     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"                 └─ keys: 1, order_line2.ol_i_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNTDISTINCT([stock2.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ HashJoin\n" +
-			"         ├─ (stock2.s_i_id = order_line2.ol_i_id)\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
 			"         │   ├─ index: [order_line2.ol_w_id,order_line2.ol_d_id,order_line2.ol_o_id,order_line2.ol_number]\n" +
 			"         │   ├─ filters: [{[1, 1], [5, 5], [2983, 3003), [NULL, ∞)}]\n" +
 			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (order_line2.ol_i_id)\n" +
-			"             ├─ right-key: (stock2.s_i_id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (stock2.s_quantity < 18)\n" +
-			"                 └─ IndexedTableAccess(stock2)\n" +
-			"                     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"                     ├─ filters: [{[1, 1], [NULL, ∞)}]\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
+			"             └─ IndexedTableAccess(stock2)\n" +
+			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"                 └─ keys: 1, order_line2.ol_i_id\n" +
 			"",
 	},
 	{
@@ -826,35 +832,27 @@ WHERE
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [orders2.o_id:0!null, orders2.o_entry_d:4, coalesce(orders2.o_carrier_id:5,0 (tinyint)) as COALESCE(o_carrier_id,0)]\n" +
 			" └─ Filter\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ orders2.o_id:0!null\n" +
-			"     │   │   └─ Subquery\n" +
-			"     │   │       ├─ cacheable: true\n" +
-			"     │   │       ├─ alias-string: select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001\n" +
-			"     │   │       └─ Project\n" +
-			"     │   │           ├─ columns: [max(orders2.o_id):8!null as MAX(o_id)]\n" +
-			"     │   │           └─ GroupBy\n" +
-			"     │   │               ├─ select: MAX(orders2.o_id:8!null)\n" +
-			"     │   │               ├─ group: \n" +
-			"     │   │               └─ Filter\n" +
-			"     │   │                   ├─ Eq\n" +
-			"     │   │                   │   ├─ orders2.o_c_id:11\n" +
-			"     │   │                   │   └─ 20001 (smallint)\n" +
-			"     │   │                   └─ IndexedTableAccess(orders2)\n" +
-			"     │   │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"     │   │                       ├─ static: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
-			"     │   │                       ├─ colSet: (9-16)\n" +
-			"     │   │                       ├─ tableId: 2\n" +
-			"     │   │                       └─ Table\n" +
-			"     │   │                           ├─ name: orders2\n" +
-			"     │   │                           └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ orders2.o_c_id:3\n" +
-			"     │       └─ 20001 (smallint)\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ orders2.o_id:0!null\n" +
+			"     │   └─ Subquery\n" +
+			"     │       ├─ cacheable: true\n" +
+			"     │       ├─ alias-string: select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [max(orders2.o_id):8!null as MAX(o_id)]\n" +
+			"     │           └─ GroupBy\n" +
+			"     │               ├─ select: MAX(orders2.o_id:8!null)\n" +
+			"     │               ├─ group: \n" +
+			"     │               └─ IndexedTableAccess(orders2)\n" +
+			"     │                   ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"     │                   ├─ static: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
+			"     │                   ├─ colSet: (9-16)\n" +
+			"     │                   ├─ tableId: 2\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: orders2\n" +
+			"     │                       └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
-			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         ├─ static: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"         ├─ static: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
 			"         ├─ colSet: (1-8)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
@@ -864,44 +862,40 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_entry_d, coalesce(orders2.o_carrier_id,0) as COALESCE(o_carrier_id,0)]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((orders2.o_id = Subquery\n" +
+			"     ├─ (orders2.o_id = Subquery\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [max(orders2.o_id) as MAX(o_id)]\n" +
 			"     │       └─ GroupBy\n" +
 			"     │           ├─ SelectedExprs(MAX(orders2.o_id))\n" +
 			"     │           ├─ Grouping()\n" +
-			"     │           └─ Filter\n" +
-			"     │               ├─ (orders2.o_c_id = 20001)\n" +
-			"     │               └─ IndexedTableAccess(orders2)\n" +
-			"     │                   ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"     │                   ├─ filters: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
-			"     │                   └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"     │  ) AND (orders2.o_c_id = 20001))\n" +
+			"     │           └─ IndexedTableAccess(orders2)\n" +
+			"     │               ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"     │               ├─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
+			"     │               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     │  )\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
-			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         └─ filters: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_entry_d, coalesce(orders2.o_carrier_id,0) as COALESCE(o_carrier_id,0)]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((orders2.o_id = Subquery\n" +
+			"     ├─ (orders2.o_id = Subquery\n" +
 			"     │   ├─ cacheable: true\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [max(orders2.o_id) as MAX(o_id)]\n" +
 			"     │       └─ GroupBy\n" +
 			"     │           ├─ SelectedExprs(MAX(orders2.o_id))\n" +
 			"     │           ├─ Grouping()\n" +
-			"     │           └─ Filter\n" +
-			"     │               ├─ (orders2.o_c_id = 20001)\n" +
-			"     │               └─ IndexedTableAccess(orders2)\n" +
-			"     │                   ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"     │                   ├─ filters: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
-			"     │                   └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"     │  ) AND (orders2.o_c_id = 20001))\n" +
+			"     │           └─ IndexedTableAccess(orders2)\n" +
+			"     │               ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"     │               ├─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
+			"     │               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
+			"     │  )\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
-			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
-			"         └─ filters: [{[1, 1], [3, 3], [NULL, ∞)}]\n" +
+			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
+			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
 			"",
 	},
 	{

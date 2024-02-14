@@ -331,6 +331,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		right := jp.Right.RelProps.GetStats()
 
 		var injective bool
+		var smallestLeft sql.Statistic
 		var mergeStats sql.Statistic
 		var n RelExpr = rel
 		var done bool
@@ -339,7 +340,9 @@ func statsForRel(rel RelExpr) sql.Statistic {
 			case *LookupJoin:
 				if n.Injective {
 					injective = true
-					done = true
+					if smallestLeft == nil || n.Left.RelProps.GetStats().RowCount() < smallestLeft.RowCount() {
+						smallestLeft = n.Left.RelProps.GetStats()
+					}
 				}
 			case *MergeJoin:
 				// If the children have filtered index scan execution options, we can
@@ -375,10 +378,10 @@ func statsForRel(rel RelExpr) sql.Statistic {
 
 		emptyStats := stats.Empty(mergeStats)
 		if emptyStats && injective {
-			return left
+			return smallestLeft
 		} else if !emptyStats && injective {
-			if left.RowCount() <= mergeStats.RowCount() {
-				return left
+			if smallestLeft.RowCount() <= mergeStats.RowCount() {
+				return smallestLeft
 			} else {
 				return mergeStats
 			}
