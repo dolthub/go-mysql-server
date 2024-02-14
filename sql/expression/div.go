@@ -348,51 +348,6 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 	return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecInc)
 }
 
-// TODO: this is unused now, consider deleting
-// floatOrDecimalTypeForDiv returns either Float64 or Decimal type depending on column reference,
-// left and right expression types and left and right evaluated types.
-// If |treatIntsAsFloats| is true, then integers are treated as floats instead of Decimals. This
-// is a performance optimization for division operations, since float division can be several orders
-// of magnitude faster than division with Decimals.
-// Otherwise, the return type is always decimal. The expression and evaluated types
-// are used to determine appropriate Decimal type to return that will not result in
-// precision loss.
-func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool) sql.Type {
-	t := getFloatOrMaxDecimalType(e, treatIntsAsFloats)
-
-	if t == types.Float64 {
-		return types.Float64
-	}
-
-	// if not float, it must be decimal type
-	if treatIntsAsFloats {
-		//return t
-	}
-
-	// for Div expression, if it's the outermostResult, then add the additional scales for the final result
-	prec, scale := t.(types.DecimalType_).Precision(), t.(types.DecimalType_).Scale()
-	maxWhole := prec - scale
-	maxScale := scale
-
-	div := e.(*Div)
-	finalScale := div.leftmostScale.Load() + div.divScale*int32(divPrecInc)
-
-	if uint8(finalScale) > maxScale {
-		maxScale = uint8(finalScale)
-	}
-
-	if maxScale > types.DecimalTypeMaxScale {
-		maxScale = types.DecimalTypeMaxScale
-	}
-
-	prec = maxWhole + maxScale
-	if prec > types.DecimalTypeMaxPrecision {
-		prec = types.DecimalTypeMaxPrecision
-	}
-
-	return types.MustCreateDecimalType(prec, maxScale)
-}
-
 // getFloatOrMaxDecimalType returns either Float64 or Decimal type with max precision and scale
 // depending on column reference, expression types and evaluated value types. Otherwise, the return
 // type is always max decimal type. |treatIntsAsFloats| is used for division operation optimization.
@@ -698,59 +653,6 @@ func GetPrecisionAndScale(val interface{}) (uint8, uint8) {
 		str = fmt.Sprintf("%v", v)
 	}
 	return GetDecimalPrecisionAndScale(str)
-}
-
-// isIntOr1 checks whether the decimal number is equal to 1
-// or it is an integer value even though the value can be
-// given as decimal. This function returns true if val is
-// 1 or 1.000 or 2.00 or 13. These all are int numbers.
-func isIntOr1(val decimal.Decimal) bool {
-	if val.Equal(decimal.NewFromInt(1)) {
-		return true
-	}
-	if val.Equal(decimal.NewFromInt(-1)) {
-		return true
-	}
-	if val.Equal(decimal.NewFromInt(val.IntPart())) {
-		return true
-	}
-	return false
-}
-
-// getPrecInc returns the max curIntermediatePrecisionInc by searching the children
-// of the expression given. This allows us to keep track of the appropriate value
-// of curIntermediatePrecisionInc that is used to storing scale number for the decimal value.
-func getPrecInc(e sql.Expression, cur int) int {
-	if e == nil {
-		return 0
-	}
-
-	if d, ok := e.(*Div); ok {
-		if d.curIntermediatePrecisionInc > cur {
-			return d.curIntermediatePrecisionInc
-		}
-		l := getPrecInc(d.LeftChild, cur)
-		if l > cur {
-			cur = l
-		}
-		r := getPrecInc(d.RightChild, cur)
-		if r > cur {
-			cur = r
-		}
-		return cur
-	} else if d, ok := e.(ArithmeticOp); ok {
-		l := getPrecInc(d.Left(), cur)
-		if l > cur {
-			cur = l
-		}
-		r := getPrecInc(d.Right(), cur)
-		if r > cur {
-			cur = r
-		}
-		return cur
-	} else {
-		return cur
-	}
 }
 
 var _ ArithmeticOp = (*IntDiv)(nil)
