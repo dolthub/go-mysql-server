@@ -305,7 +305,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		prec, scale := lTyp.(sql.DecimalType).Precision(), lTyp.(sql.DecimalType).Scale()
 		scale = scale + divPrecInc
 		if d.ops == -1 {
-			scale = (scale / divIntPrecInc + 1) * divIntPrecInc
+			scale = (scale/divIntPrecInc + 1) * divIntPrecInc
 			prec = prec + scale
 		} else {
 			prec = prec + divPrecInc
