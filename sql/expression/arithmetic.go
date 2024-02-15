@@ -135,7 +135,7 @@ func (a *Arithmetic) Type() sql.Type {
 	// applies for + and - ops
 	if isInterval(a.LeftChild) || isInterval(a.RightChild) {
 		// TODO: need to use the precision stored in datetimeType; something like
-		// return MustCreateDatetimeType(sqltypes.Datetime, ...)
+		//   return types.MustCreateDatetimeType(sqltypes.Datetime, 0)
 		return types.Datetime
 	}
 
