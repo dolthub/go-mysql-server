@@ -19,7 +19,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
-		"time"
+	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"

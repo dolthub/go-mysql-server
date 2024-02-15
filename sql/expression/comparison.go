@@ -74,7 +74,6 @@ func disableRounding(expr sql.Expression) {
 }
 
 func newComparison(left, right sql.Expression) comparison {
-	// TODO: somewhat hacky way to disable rounding for comparisons
 	disableRounding(left)
 	disableRounding(right)
 	return comparison{BinaryExpressionStub{left, right}}
