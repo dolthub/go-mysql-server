@@ -6432,7 +6432,7 @@ Select * from (
 		Expected: []sql.Row{{1}},
 	},
 	{
-		// TODO: this is invalid...
+		// TODO: Neither MySQL or MariaDB have a function called DATETIME; remove this function.
 		Query:    `SELECT DATETIME(NOW()) - NOW()`,
 		Expected: []sql.Row{{int64(0)}},
 	},

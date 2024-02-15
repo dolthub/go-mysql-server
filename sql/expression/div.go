@@ -288,11 +288,6 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		return types.Float64
 	}
 
-	// TODO: see if we can actually do this
-	//if !outermostResult {
-	//	return types.Float64
-	//}
-
 	// Decimal only results from here on
 
 	if types.IsDatetimeType(lTyp) {
@@ -307,10 +302,10 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 	}
 
 	if types.IsDecimal(lTyp) {
-		prec, scale := lTyp.(types.DecimalType_).Precision(), lTyp.(types.DecimalType_).Scale()
+		prec, scale := lTyp.(sql.DecimalType).Precision(), lTyp.(sql.DecimalType).Scale()
 		scale = scale + divPrecInc
 		if d.ops == -1 {
-			scale = (scale/9 + 1) * 9
+			scale = (scale / divIntPrecInc + 1) * divIntPrecInc
 			prec = prec + scale
 		} else {
 			prec = prec + divPrecInc
@@ -327,7 +322,7 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 
 	// All other types are treated as if they were integers
 	if d.ops == -1 {
-		return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 9)
+		return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divIntPrecInc)
 	}
 	return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecInc)
 }
