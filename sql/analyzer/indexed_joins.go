@@ -176,8 +176,6 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
-	log.Println(m.String())
-
 	if a.Verbose && a.Debug {
 		a.Log(m.String())
 	}

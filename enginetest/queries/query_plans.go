@@ -172,31 +172,31 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x:0!null]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy_1.x:1!null, xy_1.y:2]\n" +
+			"     │           ├─ columns: [xy_1.x:0!null, xy_1.y:1]\n" +
 			"     │           └─ MergeJoin\n" +
 			"     │               ├─ cmp: Eq\n" +
-			"     │               │   ├─ xy_2.y:0\n" +
-			"     │               │   └─ xy_1.x:1!null\n" +
-			"     │               ├─ Project\n" +
-			"     │               │   ├─ columns: [xy_2.y:1]\n" +
-			"     │               │   └─ TableAlias(xy_2)\n" +
-			"     │               │       └─ IndexedTableAccess(xy)\n" +
-			"     │               │           ├─ index: [xy.y]\n" +
-			"     │               │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               │           ├─ colSet: (5,6)\n" +
-			"     │               │           ├─ tableId: 3\n" +
-			"     │               │           └─ Table\n" +
-			"     │               │               ├─ name: xy\n" +
-			"     │               │               └─ columns: [x y]\n" +
-			"     │               └─ TableAlias(xy_1)\n" +
-			"     │                   └─ IndexedTableAccess(xy)\n" +
-			"     │                       ├─ index: [xy.x]\n" +
-			"     │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                       ├─ colSet: (3,4)\n" +
-			"     │                       ├─ tableId: 2\n" +
-			"     │                       └─ Table\n" +
-			"     │                           ├─ name: xy\n" +
-			"     │                           └─ columns: [x y]\n" +
+			"     │               │   ├─ xy_1.x:0!null\n" +
+			"     │               │   └─ xy_2.y:2\n" +
+			"     │               ├─ TableAlias(xy_1)\n" +
+			"     │               │   └─ IndexedTableAccess(xy)\n" +
+			"     │               │       ├─ index: [xy.x]\n" +
+			"     │               │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               │       ├─ colSet: (3,4)\n" +
+			"     │               │       ├─ tableId: 2\n" +
+			"     │               │       └─ Table\n" +
+			"     │               │           ├─ name: xy\n" +
+			"     │               │           └─ columns: [x y]\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [xy_2.y:1]\n" +
+			"     │                   └─ TableAlias(xy_2)\n" +
+			"     │                       └─ IndexedTableAccess(xy)\n" +
+			"     │                           ├─ index: [xy.y]\n" +
+			"     │                           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │                           ├─ colSet: (5,6)\n" +
+			"     │                           ├─ tableId: 3\n" +
+			"     │                           └─ Table\n" +
+			"     │                               ├─ name: xy\n" +
+			"     │                               └─ columns: [x y]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         ├─ keys: [xy_1.x:0!null]\n" +
@@ -216,17 +216,17 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [xy_1.x, xy_1.y]\n" +
 			"     │           └─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
-			"     │               ├─ cmp: (xy_2.y = xy_1.x)\n" +
-			"     │               ├─ Project\n" +
-			"     │               │   ├─ columns: [xy_2.y]\n" +
-			"     │               │   └─ TableAlias(xy_2)\n" +
-			"     │               │       └─ IndexedTableAccess(xy)\n" +
-			"     │               │           ├─ index: [xy.y]\n" +
-			"     │               │           └─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ TableAlias(xy_1)\n" +
-			"     │                   └─ IndexedTableAccess(xy)\n" +
-			"     │                       ├─ index: [xy.x]\n" +
-			"     │                       └─ filters: [{[NULL, ∞)}]\n" +
+			"     │               ├─ cmp: (xy_1.x = xy_2.y)\n" +
+			"     │               ├─ TableAlias(xy_1)\n" +
+			"     │               │   └─ IndexedTableAccess(xy)\n" +
+			"     │               │       ├─ index: [xy.x]\n" +
+			"     │               │       └─ filters: [{[NULL, ∞)}]\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [xy_2.y]\n" +
+			"     │                   └─ TableAlias(xy_2)\n" +
+			"     │                       └─ IndexedTableAccess(xy)\n" +
+			"     │                           ├─ index: [xy.y]\n" +
+			"     │                           └─ filters: [{[NULL, ∞)}]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         └─ keys: xy_1.x\n" +
@@ -241,17 +241,17 @@ var PlanTests = []QueryPlanTest{
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [xy_1.x, xy_1.y]\n" +
 			"     │           └─ MergeJoin (estimated cost=2030.000 rows=1000) (actual rows=4 loops=1)\n" +
-			"     │               ├─ cmp: (xy_2.y = xy_1.x)\n" +
-			"     │               ├─ Project\n" +
-			"     │               │   ├─ columns: [xy_2.y]\n" +
-			"     │               │   └─ TableAlias(xy_2)\n" +
-			"     │               │       └─ IndexedTableAccess(xy)\n" +
-			"     │               │           ├─ index: [xy.y]\n" +
-			"     │               │           └─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ TableAlias(xy_1)\n" +
-			"     │                   └─ IndexedTableAccess(xy)\n" +
-			"     │                       ├─ index: [xy.x]\n" +
-			"     │                       └─ filters: [{[NULL, ∞)}]\n" +
+			"     │               ├─ cmp: (xy_1.x = xy_2.y)\n" +
+			"     │               ├─ TableAlias(xy_1)\n" +
+			"     │               │   └─ IndexedTableAccess(xy)\n" +
+			"     │               │       ├─ index: [xy.x]\n" +
+			"     │               │       └─ filters: [{[NULL, ∞)}]\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [xy_2.y]\n" +
+			"     │                   └─ TableAlias(xy_2)\n" +
+			"     │                       └─ IndexedTableAccess(xy)\n" +
+			"     │                           ├─ index: [xy.y]\n" +
+			"     │                           └─ filters: [{[NULL, ∞)}]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         └─ keys: xy_1.x\n" +
@@ -1144,60 +1144,54 @@ WHERE
 	},
 	{
 		Query: `select * from asset am join asset am2 on (am.orgId = am2.orgId and am.name = am2.name and am.val = am2.val);`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [am.id:5!null, am.orgId:6, am.assetId:7, am.name:8, am.val:9, am2.id:0!null, am2.orgId:1, am2.assetId:2, am2.name:3, am2.val:4]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ TUPLE(am2.orgId:1, am2.name:3, am2.val:4)\n" +
-			"     │   └─ TUPLE(am.orgId:6, am.name:8, am.val:9)\n" +
-			"     ├─ TableAlias(am2)\n" +
-			"     │   └─ IndexedTableAccess(asset)\n" +
-			"     │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (6-10)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: asset\n" +
-			"     │           └─ columns: [id orgid assetid name val]\n" +
-			"     └─ TableAlias(am)\n" +
-			"         └─ IndexedTableAccess(asset)\n" +
-			"             ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"             ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-5)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: asset\n" +
-			"                 └─ columns: [id orgid assetid name val]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [am.id, am.orgId, am.assetId, am.name, am.val, am2.id, am2.orgId, am2.assetId, am2.name, am2.val]\n" +
-			" └─ MergeJoin (estimated cost=24.390 rows=14)\n" +
-			"     ├─ cmp: ((am2.orgId, am2.name, am2.val) = (am.orgId, am.name, am.val))\n" +
-			"     ├─ TableAlias(am2)\n" +
-			"     │   └─ IndexedTableAccess(asset)\n" +
-			"     │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [id orgid assetid name val]\n" +
-			"     └─ TableAlias(am)\n" +
-			"         └─ IndexedTableAccess(asset)\n" +
-			"             ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"             ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ TUPLE(am.orgId:1, am.name:3, am.val:4)\n" +
+			" │   └─ TUPLE(am2.orgId:6, am2.name:8, am2.val:9)\n" +
+			" ├─ TableAlias(am)\n" +
+			" │   └─ IndexedTableAccess(asset)\n" +
+			" │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			" │       ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1-5)\n" +
+			" │       ├─ tableId: 1\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: asset\n" +
+			" │           └─ columns: [id orgid assetid name val]\n" +
+			" └─ TableAlias(am2)\n" +
+			"     └─ IndexedTableAccess(asset)\n" +
+			"         ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (6-10)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: asset\n" +
 			"             └─ columns: [id orgid assetid name val]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [am.id, am.orgId, am.assetId, am.name, am.val, am2.id, am2.orgId, am2.assetId, am2.name, am2.val]\n" +
-			" └─ MergeJoin (estimated cost=24.390 rows=14) (actual rows=12 loops=1)\n" +
-			"     ├─ cmp: ((am2.orgId, am2.name, am2.val) = (am.orgId, am.name, am.val))\n" +
-			"     ├─ TableAlias(am2)\n" +
-			"     │   └─ IndexedTableAccess(asset)\n" +
-			"     │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [id orgid assetid name val]\n" +
-			"     └─ TableAlias(am)\n" +
-			"         └─ IndexedTableAccess(asset)\n" +
-			"             ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"             ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
-			"             └─ columns: [id orgid assetid name val]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=24.390 rows=14)\n" +
+			" ├─ cmp: ((am.orgId, am.name, am.val) = (am2.orgId, am2.name, am2.val))\n" +
+			" ├─ TableAlias(am)\n" +
+			" │   └─ IndexedTableAccess(asset)\n" +
+			" │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" │       └─ columns: [id orgid assetid name val]\n" +
+			" └─ TableAlias(am2)\n" +
+			"     └─ IndexedTableAccess(asset)\n" +
+			"         ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [id orgid assetid name val]\n" +
+			"",
+		ExpectedAnalysis: "MergeJoin (estimated cost=24.390 rows=14) (actual rows=12 loops=1)\n" +
+			" ├─ cmp: ((am.orgId, am.name, am.val) = (am2.orgId, am2.name, am2.val))\n" +
+			" ├─ TableAlias(am)\n" +
+			" │   └─ IndexedTableAccess(asset)\n" +
+			" │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			" │       └─ columns: [id orgid assetid name val]\n" +
+			" └─ TableAlias(am2)\n" +
+			"     └─ IndexedTableAccess(asset)\n" +
+			"         ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [id orgid assetid name val]\n" +
 			"",
 	},
 	{
@@ -1220,30 +1214,27 @@ where
   color.orgId = 'org1';
 `,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [style.assetId:5]\n" +
+			" ├─ columns: [style.assetId:1]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ dimension.assetId:9\n" +
-			"     │   └─ color.assetId:1\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ Filter\n" +
 			"     │   │   ├─ AND\n" +
 			"     │   │   │   ├─ AND\n" +
 			"     │   │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   │   ├─ color.val:3\n" +
-			"     │   │   │   │   │   └─ blue (longtext)\n" +
+			"     │   │   │   │   │   ├─ style.val:3\n" +
+			"     │   │   │   │   │   └─ curve (longtext)\n" +
 			"     │   │   │   │   └─ Eq\n" +
-			"     │   │   │   │       ├─ color.name:2\n" +
-			"     │   │   │   │       └─ color (longtext)\n" +
+			"     │   │   │   │       ├─ style.name:2\n" +
+			"     │   │   │   │       └─ style (longtext)\n" +
 			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ color.orgId:0\n" +
+			"     │   │   │       ├─ style.orgId:0\n" +
 			"     │   │   │       └─ org1 (longtext)\n" +
-			"     │   │   └─ TableAlias(color)\n" +
+			"     │   │   └─ TableAlias(style)\n" +
 			"     │   │       └─ IndexedTableAccess(asset)\n" +
 			"     │   │           ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"     │   │           ├─ static: [{[org1, org1], [color, color], [NULL, ∞)}]\n" +
-			"     │   │           ├─ colSet: (11-15)\n" +
-			"     │   │           ├─ tableId: 3\n" +
+			"     │   │           ├─ static: [{[org1, org1], [style, style], [NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (1-5)\n" +
+			"     │   │           ├─ tableId: 1\n" +
 			"     │   │           └─ Table\n" +
 			"     │   │               ├─ name: asset\n" +
 			"     │   │               └─ columns: [orgid assetid name val]\n" +
@@ -1251,20 +1242,20 @@ where
 			"     │       ├─ AND\n" +
 			"     │       │   ├─ AND\n" +
 			"     │       │   │   ├─ Eq\n" +
-			"     │       │   │   │   ├─ style.val:3\n" +
-			"     │       │   │   │   └─ curve (longtext)\n" +
+			"     │       │   │   │   ├─ dimension.val:3\n" +
+			"     │       │   │   │   └─ wide (longtext)\n" +
 			"     │       │   │   └─ Eq\n" +
-			"     │       │   │       ├─ style.name:2\n" +
-			"     │       │   │       └─ style (longtext)\n" +
+			"     │       │   │       ├─ dimension.name:2\n" +
+			"     │       │   │       └─ dimension (longtext)\n" +
 			"     │       │   └─ Eq\n" +
-			"     │       │       ├─ style.orgId:0\n" +
+			"     │       │       ├─ dimension.orgId:0\n" +
 			"     │       │       └─ org1 (longtext)\n" +
-			"     │       └─ TableAlias(style)\n" +
+			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
 			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"     │               ├─ keys: [org1 (longtext) style (longtext) color.assetId:1]\n" +
-			"     │               ├─ colSet: (1-5)\n" +
-			"     │               ├─ tableId: 1\n" +
+			"     │               ├─ keys: [org1 (longtext) dimension (longtext) style.assetId:1]\n" +
+			"     │               ├─ colSet: (6-10)\n" +
+			"     │               ├─ tableId: 2\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: asset\n" +
 			"     │                   └─ columns: [orgid assetid name val]\n" +
@@ -1272,20 +1263,20 @@ where
 			"         ├─ AND\n" +
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
-			"         │   │   │   ├─ dimension.val:3\n" +
-			"         │   │   │   └─ wide (longtext)\n" +
+			"         │   │   │   ├─ color.val:3\n" +
+			"         │   │   │   └─ blue (longtext)\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ dimension.name:2\n" +
-			"         │   │       └─ dimension (longtext)\n" +
+			"         │   │       ├─ color.name:2\n" +
+			"         │   │       └─ color (longtext)\n" +
 			"         │   └─ Eq\n" +
-			"         │       ├─ dimension.orgId:0\n" +
+			"         │       ├─ color.orgId:0\n" +
 			"         │       └─ org1 (longtext)\n" +
-			"         └─ TableAlias(dimension)\n" +
+			"         └─ TableAlias(color)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
 			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"                 ├─ keys: [org1 (longtext) dimension (longtext) style.assetId:5]\n" +
-			"                 ├─ colSet: (6-10)\n" +
-			"                 ├─ tableId: 2\n" +
+			"                 ├─ keys: [org1 (longtext) color (longtext) style.assetId:1]\n" +
+			"                 ├─ colSet: (11-15)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: asset\n" +
 			"                     └─ columns: [orgid assetid name val]\n" +
@@ -1293,56 +1284,54 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
-			"     ├─ (dimension.assetId = color.assetId)\n" +
 			"     ├─ LookupJoin (estimated cost=13.200 rows=4)\n" +
 			"     │   ├─ Filter\n" +
-			"     │   │   ├─ (((color.val = 'blue') AND (color.name = 'color')) AND (color.orgId = 'org1'))\n" +
-			"     │   │   └─ TableAlias(color)\n" +
+			"     │   │   ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
+			"     │   │   └─ TableAlias(style)\n" +
 			"     │   │       └─ IndexedTableAccess(asset)\n" +
 			"     │   │           ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"     │   │           ├─ filters: [{[org1, org1], [color, color], [NULL, ∞)}]\n" +
+			"     │   │           ├─ filters: [{[org1, org1], [style, style], [NULL, ∞)}]\n" +
 			"     │   │           └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
-			"     │       ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
-			"     │       └─ TableAlias(style)\n" +
+			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
+			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
 			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"     │               ├─ columns: [orgid assetid name val]\n" +
-			"     │               └─ keys: 'org1', 'style', color.assetId\n" +
+			"     │               └─ keys: 'org1', 'dimension', style.assetId\n" +
 			"     └─ Filter\n" +
-			"         ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
-			"         └─ TableAlias(dimension)\n" +
+			"         ├─ (((color.val = 'blue') AND (color.name = 'color')) AND (color.orgId = 'org1'))\n" +
+			"         └─ TableAlias(color)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
 			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"                 ├─ columns: [orgid assetid name val]\n" +
-			"                 └─ keys: 'org1', 'dimension', style.assetId\n" +
+			"                 └─ keys: 'org1', 'color', style.assetId\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=1 loops=1)\n" +
-			"     ├─ (dimension.assetId = color.assetId)\n" +
 			"     ├─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=1 loops=1)\n" +
 			"     │   ├─ Filter\n" +
-			"     │   │   ├─ (((color.val = 'blue') AND (color.name = 'color')) AND (color.orgId = 'org1'))\n" +
-			"     │   │   └─ TableAlias(color)\n" +
+			"     │   │   ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
+			"     │   │   └─ TableAlias(style)\n" +
 			"     │   │       └─ IndexedTableAccess(asset)\n" +
 			"     │   │           ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"     │   │           ├─ filters: [{[org1, org1], [color, color], [NULL, ∞)}]\n" +
+			"     │   │           ├─ filters: [{[org1, org1], [style, style], [NULL, ∞)}]\n" +
 			"     │   │           └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
-			"     │       ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
-			"     │       └─ TableAlias(style)\n" +
+			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
+			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
 			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"     │               ├─ columns: [orgid assetid name val]\n" +
-			"     │               └─ keys: 'org1', 'style', color.assetId\n" +
+			"     │               └─ keys: 'org1', 'dimension', style.assetId\n" +
 			"     └─ Filter\n" +
-			"         ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
-			"         └─ TableAlias(dimension)\n" +
+			"         ├─ (((color.val = 'blue') AND (color.name = 'color')) AND (color.orgId = 'org1'))\n" +
+			"         └─ TableAlias(color)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
 			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
 			"                 ├─ columns: [orgid assetid name val]\n" +
-			"                 └─ keys: 'org1', 'dimension', style.assetId\n" +
+			"                 └─ keys: 'org1', 'color', style.assetId\n" +
 			"",
 	},
 	{
@@ -2144,55 +2133,55 @@ Select * from (
 	{
 		Query: `select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select a from ab);`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x:1!null, xy.y:2]\n" +
+			" ├─ columns: [xy.x:0!null, xy.y:1]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ ab.a:0!null\n" +
-			"     │   └─ xy.x:1!null\n" +
-			"     ├─ Project\n" +
-			"     │   ├─ columns: [ab.a:0!null]\n" +
-			"     │   └─ IndexedTableAccess(ab)\n" +
-			"     │       ├─ index: [ab.a]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: ab\n" +
-			"     │           └─ columns: [a b]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x y]\n" +
+			"     │   ├─ xy.x:0!null\n" +
+			"     │   └─ ab.a:2!null\n" +
+			"     ├─ IndexedTableAccess(xy)\n" +
+			"     │   ├─ index: [xy.x]\n" +
+			"     │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: xy\n" +
+			"     │       └─ columns: [x y]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ab.a:0!null]\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: ab\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
 			" └─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
-			"     ├─ cmp: (ab.a = xy.x)\n" +
-			"     ├─ Project\n" +
-			"     │   ├─ columns: [ab.a]\n" +
-			"     │   └─ IndexedTableAccess(ab)\n" +
-			"     │       ├─ index: [ab.a]\n" +
-			"     │       └─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         └─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ cmp: (xy.x = ab.a)\n" +
+			"     ├─ IndexedTableAccess(xy)\n" +
+			"     │   ├─ index: [xy.x]\n" +
+			"     │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ab.a]\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             └─ filters: [{[NULL, ∞)}]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
 			" └─ MergeJoin (estimated cost=2030.000 rows=1000) (actual rows=4 loops=1)\n" +
-			"     ├─ cmp: (ab.a = xy.x)\n" +
-			"     ├─ Project\n" +
-			"     │   ├─ columns: [ab.a]\n" +
-			"     │   └─ IndexedTableAccess(ab)\n" +
-			"     │       ├─ index: [ab.a]\n" +
-			"     │       └─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ IndexedTableAccess(xy)\n" +
-			"         ├─ index: [xy.x]\n" +
-			"         └─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ cmp: (xy.x = ab.a)\n" +
+			"     ├─ IndexedTableAccess(xy)\n" +
+			"     │   ├─ index: [xy.x]\n" +
+			"     │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ab.a]\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             └─ filters: [{[NULL, ∞)}]\n" +
 			"",
 	},
 	{
@@ -2435,67 +2424,66 @@ Select * from (
 	{
 		Query: `SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second')`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.s:1!null]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [mytable.i:1!null, mytable.s:2!null]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [othertable.i2:1!null]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ Eq\n" +
-			"         │           │   ├─ othertable.s2:0!null\n" +
-			"         │           │   └─ second (longtext)\n" +
-			"         │           └─ IndexedTableAccess(othertable)\n" +
-			"         │               ├─ index: [othertable.s2]\n" +
-			"         │               ├─ static: [{[second, second]}]\n" +
-			"         │               ├─ colSet: (3,4)\n" +
-			"         │               ├─ tableId: 2\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: othertable\n" +
-			"         │                   └─ columns: [s2 i2]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [othertable.i2:0!null]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			" ├─ columns: [mytable.s:2!null]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:1!null\n" +
+			"     │   └─ othertable.i2:0!null\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [othertable.i2:1!null]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ Eq\n" +
+			"     │           │   ├─ othertable.s2:0!null\n" +
+			"     │           │   └─ second (longtext)\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.s2]\n" +
+			"     │               ├─ static: [{[second, second]}]\n" +
+			"     │               ├─ colSet: (3,4)\n" +
+			"     │               ├─ tableId: 2\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: othertable\n" +
+			"     │                   └─ columns: [s2 i2]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ keys: [othertable.i2:0!null]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [mytable.i, mytable.s]\n" +
-			"     └─ LookupJoin (estimated cost=3.300 rows=0)\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [othertable.i2]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ (othertable.s2 = 'second')\n" +
-			"         │           └─ IndexedTableAccess(othertable)\n" +
-			"         │               ├─ index: [othertable.s2]\n" +
-			"         │               └─ filters: [{[second, second]}]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             └─ keys: othertable.i2\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=0)\n" +
+			"     ├─ (mytable.i = othertable.i2)\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [othertable.i2]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (othertable.s2 = 'second')\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.s2]\n" +
+			"     │               └─ filters: [{[second, second]}]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         └─ keys: othertable.i2\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [mytable.i, mytable.s]\n" +
-			"     └─ LookupJoin (estimated cost=3.300 rows=0) (actual rows=1 loops=1)\n" +
-			"         ├─ Distinct\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [othertable.i2]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ (othertable.s2 = 'second')\n" +
-			"         │           └─ IndexedTableAccess(othertable)\n" +
-			"         │               ├─ index: [othertable.s2]\n" +
-			"         │               └─ filters: [{[second, second]}]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             └─ keys: othertable.i2\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=0) (actual rows=1 loops=1)\n" +
+			"     ├─ (mytable.i = othertable.i2)\n" +
+			"     ├─ Distinct\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [othertable.i2]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ (othertable.s2 = 'second')\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.s2]\n" +
+			"     │               └─ filters: [{[second, second]}]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         └─ keys: othertable.i2\n" +
 			"",
 	},
 	{
@@ -4093,226 +4081,216 @@ Select * from (
 	},
 	{
 		Query: `select * from (select a,v from ab join uv on a=u) av join (select x,q from xy join pq on x = p) xq on av.v = xq.x`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [av.a:2!null, av.v:3, xq.x:0!null, xq.q:1]\n" +
-			" └─ HashJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ av.v:3\n" +
-			"     │   └─ xq.x:0!null\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: xq\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (11,12)\n" +
-			"     │   ├─ tableId: 6\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [xy.x:2!null, pq.q:1]\n" +
-			"     │       └─ LookupJoin\n" +
-			"     │           ├─ Table\n" +
-			"     │           │   ├─ name: pq\n" +
-			"     │           │   ├─ columns: [p q]\n" +
-			"     │           │   ├─ colSet: (9,10)\n" +
-			"     │           │   └─ tableId: 5\n" +
-			"     │           └─ IndexedTableAccess(xy)\n" +
-			"     │               ├─ index: [xy.x]\n" +
-			"     │               ├─ keys: [pq.p:0!null]\n" +
-			"     │               ├─ colSet: (7,8)\n" +
-			"     │               ├─ tableId: 4\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: xy\n" +
-			"     │                   └─ columns: [x]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(xq.x:0!null)\n" +
-			"         ├─ right-key: TUPLE(av.v:1)\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: av\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             ├─ colSet: (5,6)\n" +
-			"             ├─ tableId: 3\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [ab.a:2!null, uv.v:1]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ Table\n" +
-			"                     │   ├─ name: uv\n" +
-			"                     │   ├─ columns: [u v]\n" +
-			"                     │   ├─ colSet: (3,4)\n" +
-			"                     │   └─ tableId: 2\n" +
-			"                     └─ IndexedTableAccess(ab)\n" +
-			"                         ├─ index: [ab.a]\n" +
-			"                         ├─ keys: [uv.u:0!null]\n" +
-			"                         ├─ colSet: (1,2)\n" +
-			"                         ├─ tableId: 1\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: ab\n" +
-			"                             └─ columns: [a]\n" +
+		ExpectedPlan: "HashJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ av.v:1\n" +
+			" │   └─ xq.x:2!null\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: av\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (5,6)\n" +
+			" │   ├─ tableId: 3\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [ab.a:2!null, uv.v:1]\n" +
+			" │       └─ LookupJoin\n" +
+			" │           ├─ Table\n" +
+			" │           │   ├─ name: uv\n" +
+			" │           │   ├─ columns: [u v]\n" +
+			" │           │   ├─ colSet: (3,4)\n" +
+			" │           │   └─ tableId: 2\n" +
+			" │           └─ IndexedTableAccess(ab)\n" +
+			" │               ├─ index: [ab.a]\n" +
+			" │               ├─ keys: [uv.u:0!null]\n" +
+			" │               ├─ colSet: (1,2)\n" +
+			" │               ├─ tableId: 1\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: ab\n" +
+			" │                   └─ columns: [a]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: TUPLE(av.v:1)\n" +
+			"     ├─ right-key: TUPLE(xq.x:0!null)\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: xq\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (11,12)\n" +
+			"         ├─ tableId: 6\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [xy.x:2!null, pq.q:1]\n" +
+			"             └─ LookupJoin\n" +
+			"                 ├─ Table\n" +
+			"                 │   ├─ name: pq\n" +
+			"                 │   ├─ columns: [p q]\n" +
+			"                 │   ├─ colSet: (9,10)\n" +
+			"                 │   └─ tableId: 5\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ keys: [pq.p:0!null]\n" +
+			"                     ├─ colSet: (7,8)\n" +
+			"                     ├─ tableId: 4\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: xy\n" +
+			"                         └─ columns: [x]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [av.a, av.v, xq.x, xq.q]\n" +
-			" └─ HashJoin (estimated cost=402.250 rows=125)\n" +
-			"     ├─ (av.v = xq.x)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: xq\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [xy.x, pq.q]\n" +
-			"     │       └─ LookupJoin\n" +
-			"     │           ├─ Table\n" +
-			"     │           │   ├─ name: pq\n" +
-			"     │           │   └─ columns: [p q]\n" +
-			"     │           └─ IndexedTableAccess(xy)\n" +
-			"     │               ├─ index: [xy.x]\n" +
-			"     │               ├─ columns: [x]\n" +
-			"     │               └─ keys: pq.p\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (xq.x)\n" +
-			"         ├─ right-key: (av.v)\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: av\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [ab.a, uv.v]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ Table\n" +
-			"                     │   ├─ name: uv\n" +
-			"                     │   └─ columns: [u v]\n" +
-			"                     └─ IndexedTableAccess(ab)\n" +
-			"                         ├─ index: [ab.a]\n" +
-			"                         ├─ columns: [a]\n" +
-			"                         └─ keys: uv.u\n" +
+		ExpectedEstimates: "HashJoin (estimated cost=402.250 rows=125)\n" +
+			" ├─ (av.v = xq.x)\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: av\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [ab.a, uv.v]\n" +
+			" │       └─ LookupJoin\n" +
+			" │           ├─ Table\n" +
+			" │           │   ├─ name: uv\n" +
+			" │           │   └─ columns: [u v]\n" +
+			" │           └─ IndexedTableAccess(ab)\n" +
+			" │               ├─ index: [ab.a]\n" +
+			" │               ├─ columns: [a]\n" +
+			" │               └─ keys: uv.u\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: (av.v)\n" +
+			"     ├─ right-key: (xq.x)\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: xq\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [xy.x, pq.q]\n" +
+			"             └─ LookupJoin\n" +
+			"                 ├─ Table\n" +
+			"                 │   ├─ name: pq\n" +
+			"                 │   └─ columns: [p q]\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ columns: [x]\n" +
+			"                     └─ keys: pq.p\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [av.a, av.v, xq.x, xq.q]\n" +
-			" └─ HashJoin (estimated cost=402.250 rows=125) (actual rows=4 loops=1)\n" +
-			"     ├─ (av.v = xq.x)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: xq\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [xy.x, pq.q]\n" +
-			"     │       └─ LookupJoin\n" +
-			"     │           ├─ Table\n" +
-			"     │           │   ├─ name: pq\n" +
-			"     │           │   └─ columns: [p q]\n" +
-			"     │           └─ IndexedTableAccess(xy)\n" +
-			"     │               ├─ index: [xy.x]\n" +
-			"     │               ├─ columns: [x]\n" +
-			"     │               └─ keys: pq.p\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (xq.x)\n" +
-			"         ├─ right-key: (av.v)\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: av\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [ab.a, uv.v]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ Table\n" +
-			"                     │   ├─ name: uv\n" +
-			"                     │   └─ columns: [u v]\n" +
-			"                     └─ IndexedTableAccess(ab)\n" +
-			"                         ├─ index: [ab.a]\n" +
-			"                         ├─ columns: [a]\n" +
-			"                         └─ keys: uv.u\n" +
+		ExpectedAnalysis: "HashJoin (estimated cost=402.250 rows=125) (actual rows=4 loops=1)\n" +
+			" ├─ (av.v = xq.x)\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: av\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [ab.a, uv.v]\n" +
+			" │       └─ LookupJoin\n" +
+			" │           ├─ Table\n" +
+			" │           │   ├─ name: uv\n" +
+			" │           │   └─ columns: [u v]\n" +
+			" │           └─ IndexedTableAccess(ab)\n" +
+			" │               ├─ index: [ab.a]\n" +
+			" │               ├─ columns: [a]\n" +
+			" │               └─ keys: uv.u\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: (av.v)\n" +
+			"     ├─ right-key: (xq.x)\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: xq\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [xy.x, pq.q]\n" +
+			"             └─ LookupJoin\n" +
+			"                 ├─ Table\n" +
+			"                 │   ├─ name: pq\n" +
+			"                 │   └─ columns: [p q]\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ columns: [x]\n" +
+			"                     └─ keys: pq.p\n" +
 			"",
 	},
 	{
 		Query: `select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [t1.i:2!null, t1.s:3!null, t3.s2:0!null, t3.i2:1!null]\n" +
+			" ├─ columns: [t1.i:0!null, t1.s:1!null, t3.s2:4!null, t3.i2:5!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ t1.s:3!null\n" +
-			"     │   │   └─ t2.s:5!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ t2.i:4!null\n" +
-			"     │       └─ t3.i2:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ t3.i2:1!null\n" +
-			"     │   │   └─ t1.i:2!null\n" +
-			"     │   ├─ TableAlias(t3)\n" +
-			"     │   │   └─ IndexedTableAccess(othertable)\n" +
-			"     │   │       ├─ index: [othertable.i2]\n" +
+			"     │   │   ├─ t1.s:1!null\n" +
+			"     │   │   └─ t2.s:3!null\n" +
+			"     │   ├─ sel: Eq\n" +
+			"     │   │   ├─ t1.i:0!null\n" +
+			"     │   │   └─ t2.i:2!null\n" +
+			"     │   ├─ TableAlias(t1)\n" +
+			"     │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │       ├─ index: [mytable.s]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (5,6)\n" +
-			"     │   │       ├─ tableId: 3\n" +
+			"     │   │       ├─ colSet: (1,2)\n" +
+			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: othertable\n" +
-			"     │   │           └─ columns: [s2 i2]\n" +
-			"     │   └─ TableAlias(t1)\n" +
+			"     │   │           ├─ name: mytable\n" +
+			"     │   │           └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(t2)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ index: [mytable.s]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
+			"     │           ├─ colSet: (3,4)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
 			"     │               └─ columns: [i s]\n" +
-			"     └─ TableAlias(t2)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [t1.i:2!null]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             ├─ tableId: 2\n" +
+			"     └─ TableAlias(t3)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ keys: [t2.i:2!null]\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i, t1.s, t3.s2, t3.i2]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
-			"     ├─ ((t1.s = t2.s) AND (t2.i = t3.i2))\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     │   ├─ cmp: (t3.i2 = t1.i)\n" +
-			"     │   ├─ TableAlias(t3)\n" +
-			"     │   │   └─ IndexedTableAccess(othertable)\n" +
-			"     │   │       ├─ index: [othertable.i2]\n" +
+			"     │   ├─ cmp: (t1.s = t2.s)\n" +
+			"     │   ├─ sel: (t1.i = t2.i)\n" +
+			"     │   ├─ TableAlias(t1)\n" +
+			"     │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │       ├─ index: [mytable.s]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [s2 i2]\n" +
-			"     │   └─ TableAlias(t1)\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(t2)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ index: [mytable.s]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(t2)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ columns: [i s]\n" +
-			"             └─ keys: t1.i\n" +
+			"     └─ TableAlias(t3)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ columns: [s2 i2]\n" +
+			"             └─ keys: t2.i\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i, t1.s, t3.s2, t3.i2]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ ((t1.s = t2.s) AND (t2.i = t3.i2))\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   ├─ cmp: (t3.i2 = t1.i)\n" +
-			"     │   ├─ TableAlias(t3)\n" +
-			"     │   │   └─ IndexedTableAccess(othertable)\n" +
-			"     │   │       ├─ index: [othertable.i2]\n" +
+			"     │   ├─ cmp: (t1.s = t2.s)\n" +
+			"     │   ├─ sel: (t1.i = t2.i)\n" +
+			"     │   ├─ TableAlias(t1)\n" +
+			"     │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │       ├─ index: [mytable.s]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [s2 i2]\n" +
-			"     │   └─ TableAlias(t1)\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(t2)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
+			"     │           ├─ index: [mytable.s]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(t2)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ columns: [i s]\n" +
-			"             └─ keys: t1.i\n" +
+			"     └─ TableAlias(t3)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ columns: [s2 i2]\n" +
+			"             └─ keys: t2.i\n" +
 			"",
 	},
 	{
@@ -4830,29 +4808,29 @@ Select * from (
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: ab.a:0!null\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [ab.a:1!null, ab.b:2]\n" +
+			"         ├─ columns: [ab.a:0!null, ab.b:1]\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: Eq\n" +
-			"             │   ├─ xy.x:0!null\n" +
-			"             │   └─ ab.a:1!null\n" +
-			"             ├─ Project\n" +
-			"             │   ├─ columns: [xy.x:0!null]\n" +
-			"             │   └─ IndexedTableAccess(xy)\n" +
-			"             │       ├─ index: [xy.x]\n" +
-			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (3,4)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: xy\n" +
-			"             │           └─ columns: [x y]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: ab\n" +
-			"                     └─ columns: [a b]\n" +
+			"             │   ├─ ab.a:0!null\n" +
+			"             │   └─ xy.x:2!null\n" +
+			"             ├─ IndexedTableAccess(ab)\n" +
+			"             │   ├─ index: [ab.a]\n" +
+			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: ab\n" +
+			"             │       └─ columns: [a b]\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [xy.x:0!null]\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: xy\n" +
+			"                         └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
@@ -4862,16 +4840,16 @@ Select * from (
 			"     └─ Project\n" +
 			"         ├─ columns: [ab.a, ab.b]\n" +
 			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (xy.x = ab.a)\n" +
-			"             ├─ Project\n" +
-			"             │   ├─ columns: [xy.x]\n" +
-			"             │   └─ IndexedTableAccess(xy)\n" +
-			"             │       ├─ index: [xy.x]\n" +
-			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [x y]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 └─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ cmp: (ab.a = xy.x)\n" +
+			"             ├─ IndexedTableAccess(ab)\n" +
+			"             │   ├─ index: [ab.a]\n" +
+			"             │   └─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [xy.x]\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     └─ columns: [x y]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
@@ -4881,16 +4859,16 @@ Select * from (
 			"     └─ Project\n" +
 			"         ├─ columns: [ab.a, ab.b]\n" +
 			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (xy.x = ab.a)\n" +
-			"             ├─ Project\n" +
-			"             │   ├─ columns: [xy.x]\n" +
-			"             │   └─ IndexedTableAccess(xy)\n" +
-			"             │       ├─ index: [xy.x]\n" +
-			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [x y]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 └─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ cmp: (ab.a = xy.x)\n" +
+			"             ├─ IndexedTableAccess(ab)\n" +
+			"             │   ├─ index: [ab.a]\n" +
+			"             │   └─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [xy.x]\n" +
+			"                 └─ IndexedTableAccess(xy)\n" +
+			"                     ├─ index: [xy.x]\n" +
+			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     └─ columns: [x y]\n" +
 			"",
 	},
 	{
@@ -5346,59 +5324,59 @@ Select * from (
 		Query: `select * from xy where exists (select * from ab where a = x) order by x`,
 		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [xy.x:1!null, xy.y:2]\n" +
+			"     ├─ columns: [xy.x:0!null, xy.y:1]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ ab.a:0!null\n" +
-			"         │   └─ xy.x:1!null\n" +
-			"         ├─ Project\n" +
-			"         │   ├─ columns: [ab.a:0!null]\n" +
-			"         │   └─ IndexedTableAccess(ab)\n" +
-			"         │       ├─ index: [ab.a]\n" +
-			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (3,4)\n" +
-			"         │       ├─ tableId: 2\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: ab\n" +
-			"         │           └─ columns: [a b]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: xy\n" +
-			"                 └─ columns: [x y]\n" +
+			"         │   ├─ xy.x:0!null\n" +
+			"         │   └─ ab.a:2!null\n" +
+			"         ├─ IndexedTableAccess(xy)\n" +
+			"         │   ├─ index: [xy.x]\n" +
+			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1,2)\n" +
+			"         │   ├─ tableId: 1\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ columns: [x y]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [ab.a:0!null]\n" +
+			"             └─ IndexedTableAccess(ab)\n" +
+			"                 ├─ index: [ab.a]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: ab\n" +
+			"                     └─ columns: [a b]\n" +
 			"",
 		ExpectedEstimates: "Sort(xy.x ASC)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (ab.a = xy.x)\n" +
-			"         ├─ Project\n" +
-			"         │   ├─ columns: [ab.a]\n" +
-			"         │   └─ IndexedTableAccess(ab)\n" +
-			"         │       ├─ index: [ab.a]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [a b]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             └─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ cmp: (xy.x = ab.a)\n" +
+			"         ├─ IndexedTableAccess(xy)\n" +
+			"         │   ├─ index: [xy.x]\n" +
+			"         │   └─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [ab.a]\n" +
+			"             └─ IndexedTableAccess(ab)\n" +
+			"                 ├─ index: [ab.a]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
 		ExpectedAnalysis: "Sort(xy.x ASC)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (ab.a = xy.x)\n" +
-			"         ├─ Project\n" +
-			"         │   ├─ columns: [ab.a]\n" +
-			"         │   └─ IndexedTableAccess(ab)\n" +
-			"         │       ├─ index: [ab.a]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [a b]\n" +
-			"         └─ IndexedTableAccess(xy)\n" +
-			"             ├─ index: [xy.x]\n" +
-			"             └─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ cmp: (xy.x = ab.a)\n" +
+			"         ├─ IndexedTableAccess(xy)\n" +
+			"         │   ├─ index: [xy.x]\n" +
+			"         │   └─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [ab.a]\n" +
+			"             └─ IndexedTableAccess(ab)\n" +
+			"                 ├─ index: [ab.a]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -5406,61 +5384,61 @@ Select * from (
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ TopN(Limit: [5 (bigint)]; xy.x:0!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [xy.x:1!null, xy.y:2]\n" +
+			"         ├─ columns: [xy.x:0!null, xy.y:1]\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: Eq\n" +
-			"             │   ├─ ab.a:0!null\n" +
-			"             │   └─ xy.x:1!null\n" +
-			"             ├─ Project\n" +
-			"             │   ├─ columns: [ab.a:0!null]\n" +
-			"             │   └─ IndexedTableAccess(ab)\n" +
-			"             │       ├─ index: [ab.a]\n" +
-			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (3,4)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: ab\n" +
-			"             │           └─ columns: [a b]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.x]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: xy\n" +
-			"                     └─ columns: [x y]\n" +
+			"             │   ├─ xy.x:0!null\n" +
+			"             │   └─ ab.a:2!null\n" +
+			"             ├─ IndexedTableAccess(xy)\n" +
+			"             │   ├─ index: [xy.x]\n" +
+			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: xy\n" +
+			"             │       └─ columns: [x y]\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [ab.a:0!null]\n" +
+			"                 └─ IndexedTableAccess(ab)\n" +
+			"                     ├─ index: [ab.a]\n" +
+			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: ab\n" +
+			"                         └─ columns: [a b]\n" +
 			"",
 		ExpectedEstimates: "Limit(5)\n" +
 			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [xy.x, xy.y]\n" +
 			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (ab.a = xy.x)\n" +
-			"             ├─ Project\n" +
-			"             │   ├─ columns: [ab.a]\n" +
-			"             │   └─ IndexedTableAccess(ab)\n" +
-			"             │       ├─ index: [ab.a]\n" +
-			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [a b]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.x]\n" +
-			"                 └─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ cmp: (xy.x = ab.a)\n" +
+			"             ├─ IndexedTableAccess(xy)\n" +
+			"             │   ├─ index: [xy.x]\n" +
+			"             │   └─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [ab.a]\n" +
+			"                 └─ IndexedTableAccess(ab)\n" +
+			"                     ├─ index: [ab.a]\n" +
+			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     └─ columns: [a b]\n" +
 			"",
 		ExpectedAnalysis: "Limit(5)\n" +
 			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [xy.x, xy.y]\n" +
 			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (ab.a = xy.x)\n" +
-			"             ├─ Project\n" +
-			"             │   ├─ columns: [ab.a]\n" +
-			"             │   └─ IndexedTableAccess(ab)\n" +
-			"             │       ├─ index: [ab.a]\n" +
-			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [a b]\n" +
-			"             └─ IndexedTableAccess(xy)\n" +
-			"                 ├─ index: [xy.x]\n" +
-			"                 └─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ cmp: (xy.x = ab.a)\n" +
+			"             ├─ IndexedTableAccess(xy)\n" +
+			"             │   ├─ index: [xy.x]\n" +
+			"             │   └─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [ab.a]\n" +
+			"                 └─ IndexedTableAccess(ab)\n" +
+			"                     ├─ index: [ab.a]\n" +
+			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     └─ columns: [a b]\n" +
 			"",
 	},
 	{
@@ -5873,22 +5851,20 @@ inner join pq on true
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   ├─ colSet: (5-8)\n" +
 			" │   │   ├─ tableId: 3\n" +
-			" │   │   └─ Project\n" +
-			" │   │       ├─ columns: [ab.a:2!null, ab.b:3, xy.x:0!null, xy.y:1]\n" +
-			" │   │       └─ CrossHashJoin\n" +
-			" │   │           ├─ Table\n" +
-			" │   │           │   ├─ name: xy\n" +
-			" │   │           │   ├─ columns: [x y]\n" +
-			" │   │           │   ├─ colSet: (3,4)\n" +
-			" │   │           │   └─ tableId: 2\n" +
-			" │   │           └─ HashLookup\n" +
-			" │   │               ├─ left-key: TUPLE()\n" +
-			" │   │               ├─ right-key: TUPLE()\n" +
-			" │   │               └─ Table\n" +
-			" │   │                   ├─ name: ab\n" +
-			" │   │                   ├─ columns: [a b]\n" +
-			" │   │                   ├─ colSet: (1,2)\n" +
-			" │   │                   └─ tableId: 1\n" +
+			" │   │   └─ CrossHashJoin\n" +
+			" │   │       ├─ Table\n" +
+			" │   │       │   ├─ name: ab\n" +
+			" │   │       │   ├─ columns: [a b]\n" +
+			" │   │       │   ├─ colSet: (1,2)\n" +
+			" │   │       │   └─ tableId: 1\n" +
+			" │   │       └─ HashLookup\n" +
+			" │   │           ├─ left-key: TUPLE()\n" +
+			" │   │           ├─ right-key: TUPLE()\n" +
+			" │   │           └─ Table\n" +
+			" │   │               ├─ name: xy\n" +
+			" │   │               ├─ columns: [x y]\n" +
+			" │   │               ├─ colSet: (3,4)\n" +
+			" │   │               └─ tableId: 2\n" +
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: TUPLE()\n" +
 			" │       ├─ right-key: TUPLE()\n" +
@@ -5911,18 +5887,16 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
-			" │   │   └─ Project\n" +
-			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
-			" │   │       └─ CrossHashJoin\n" +
-			" │   │           ├─ Table\n" +
-			" │   │           │   ├─ name: xy\n" +
-			" │   │           │   └─ columns: [x y]\n" +
-			" │   │           └─ HashLookup\n" +
-			" │   │               ├─ left-key: ()\n" +
-			" │   │               ├─ right-key: ()\n" +
-			" │   │               └─ Table\n" +
-			" │   │                   ├─ name: ab\n" +
-			" │   │                   └─ columns: [a b]\n" +
+			" │   │   └─ CrossHashJoin\n" +
+			" │   │       ├─ Table\n" +
+			" │   │       │   ├─ name: ab\n" +
+			" │   │       │   └─ columns: [a b]\n" +
+			" │   │       └─ HashLookup\n" +
+			" │   │           ├─ left-key: ()\n" +
+			" │   │           ├─ right-key: ()\n" +
+			" │   │           └─ Table\n" +
+			" │   │               ├─ name: xy\n" +
+			" │   │               └─ columns: [x y]\n" +
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: ()\n" +
 			" │       ├─ right-key: ()\n" +
@@ -5943,18 +5917,16 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
-			" │   │   └─ Project\n" +
-			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
-			" │   │       └─ CrossHashJoin\n" +
-			" │   │           ├─ Table\n" +
-			" │   │           │   ├─ name: xy\n" +
-			" │   │           │   └─ columns: [x y]\n" +
-			" │   │           └─ HashLookup\n" +
-			" │   │               ├─ left-key: ()\n" +
-			" │   │               ├─ right-key: ()\n" +
-			" │   │               └─ Table\n" +
-			" │   │                   ├─ name: ab\n" +
-			" │   │                   └─ columns: [a b]\n" +
+			" │   │   └─ CrossHashJoin\n" +
+			" │   │       ├─ Table\n" +
+			" │   │       │   ├─ name: ab\n" +
+			" │   │       │   └─ columns: [a b]\n" +
+			" │   │       └─ HashLookup\n" +
+			" │   │           ├─ left-key: ()\n" +
+			" │   │           ├─ right-key: ()\n" +
+			" │   │           └─ Table\n" +
+			" │   │               ├─ name: xy\n" +
+			" │   │               └─ columns: [x y]\n" +
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: ()\n" +
 			" │       ├─ right-key: ()\n" +
@@ -6110,61 +6082,61 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			"     ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ b.i:0!null\n" +
-			"         │   └─ a.i:1!null\n" +
-			"         ├─ TableAlias(b)\n" +
+			"         │   ├─ a.i:0!null\n" +
+			"         │   └─ b.i:2!null\n" +
+			"         ├─ TableAlias(a)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (3,4)\n" +
-			"         │       ├─ tableId: 2\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1,2)\n" +
+			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: mytable\n" +
-			"         │           └─ columns: [i]\n" +
-			"         └─ TableAlias(a)\n" +
+			"         │           └─ columns: [i s]\n" +
+			"         └─ TableAlias(b)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i s]\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [a.i, a.s]\n" +
 			"     └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"         ├─ cmp: (b.i = a.i)\n" +
-			"         ├─ TableAlias(b)\n" +
+			"         ├─ cmp: (a.i = b.i)\n" +
+			"         ├─ TableAlias(a)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [i]\n" +
-			"         └─ TableAlias(a)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ TableAlias(b)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ filters: [{[NULL, ∞)}]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [a.i, a.s]\n" +
 			"     └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"         ├─ cmp: (b.i = a.i)\n" +
-			"         ├─ TableAlias(b)\n" +
+			"         ├─ cmp: (a.i = b.i)\n" +
+			"         ├─ TableAlias(a)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [i]\n" +
-			"         └─ TableAlias(a)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ TableAlias(b)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 └─ filters: [{[NULL, ∞)}]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -6181,8 +6153,8 @@ inner join pq on true
 			"             │   └─ b.i:2!null\n" +
 			"             ├─ TableAlias(a)\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
-			"             │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │       ├─ index: [mytable.i,mytable.s]\n" +
+			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"             │       ├─ colSet: (1,2)\n" +
 			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
@@ -6190,8 +6162,8 @@ inner join pq on true
 			"             │           └─ columns: [i s]\n" +
 			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
+			"                     ├─ index: [mytable.i,mytable.s]\n" +
+			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"                     ├─ colSet: (3,4)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
@@ -6208,12 +6180,12 @@ inner join pq on true
 			"             ├─ cmp: (a.i = b.i)\n" +
 			"             ├─ TableAlias(a)\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
-			"             │       └─ filters: [{[NULL, ∞)}]\n" +
+			"             │       ├─ index: [mytable.i,mytable.s]\n" +
+			"             │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     ├─ index: [mytable.i,mytable.s]\n" +
+			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"                     └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -6226,12 +6198,12 @@ inner join pq on true
 			"             ├─ cmp: (a.i = b.i)\n" +
 			"             ├─ TableAlias(a)\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
-			"             │       └─ filters: [{[NULL, ∞)}]\n" +
+			"             │       ├─ index: [mytable.i,mytable.s]\n" +
+			"             │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
+			"                     ├─ index: [mytable.i,mytable.s]\n" +
+			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"                     └─ columns: [i]\n" +
 			"",
 	},
@@ -6281,31 +6253,31 @@ inner join pq on true
 			" ├─ columns: [mytable.i:0!null]\n" +
 			" └─ Sort(othertable.i2:3!null ASC nullsFirst, t4.s2:4!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null, t4.s2:4!null, t4.i2:5!null]\n" +
+			"         ├─ columns: [mytable.i:0!null, mytable.s:1!null, othertable.s2:2!null, othertable.i2:3!null, t4.s2:4!null, t4.i2:5!null]\n" +
 			"         └─ LeftOuterJoin\n" +
 			"             ├─ Eq\n" +
-			"             │   ├─ mytable.i:2!null\n" +
+			"             │   ├─ mytable.i:0!null\n" +
 			"             │   └─ t4.i2:5!null\n" +
 			"             ├─ MergeJoin\n" +
 			"             │   ├─ cmp: Eq\n" +
-			"             │   │   ├─ othertable.i2:1!null\n" +
-			"             │   │   └─ mytable.i:2!null\n" +
-			"             │   ├─ IndexedTableAccess(othertable)\n" +
-			"             │   │   ├─ index: [othertable.i2]\n" +
-			"             │   │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │   ├─ colSet: (3,4)\n" +
-			"             │   │   ├─ tableId: 2\n" +
+			"             │   │   ├─ mytable.i:0!null\n" +
+			"             │   │   └─ othertable.i2:3!null\n" +
+			"             │   ├─ IndexedTableAccess(mytable)\n" +
+			"             │   │   ├─ index: [mytable.i,mytable.s]\n" +
+			"             │   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │   ├─ colSet: (1,2)\n" +
+			"             │   │   ├─ tableId: 1\n" +
 			"             │   │   └─ Table\n" +
-			"             │   │       ├─ name: othertable\n" +
-			"             │   │       └─ columns: [s2 i2]\n" +
-			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
+			"             │   │       ├─ name: mytable\n" +
+			"             │   │       └─ columns: [i s]\n" +
+			"             │   └─ IndexedTableAccess(othertable)\n" +
+			"             │       ├─ index: [othertable.i2]\n" +
 			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (1,2)\n" +
-			"             │       ├─ tableId: 1\n" +
+			"             │       ├─ colSet: (3,4)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
-			"             │           ├─ name: mytable\n" +
-			"             │           └─ columns: [i s]\n" +
+			"             │           ├─ name: othertable\n" +
+			"             │           └─ columns: [s2 i2]\n" +
 			"             └─ TableAlias(t4)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
@@ -6320,15 +6292,15 @@ inner join pq on true
 			"         └─ LeftOuterJoin\n" +
 			"             ├─ (mytable.i = t4.i2)\n" +
 			"             ├─ MergeJoin\n" +
-			"             │   ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"             │   ├─ IndexedTableAccess(othertable)\n" +
-			"             │   │   ├─ index: [othertable.i2]\n" +
-			"             │   │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │   │   └─ columns: [s2 i2]\n" +
-			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
+			"             │   ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"             │   ├─ IndexedTableAccess(mytable)\n" +
+			"             │   │   ├─ index: [mytable.i,mytable.s]\n" +
+			"             │   │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │   └─ columns: [i s]\n" +
+			"             │   └─ IndexedTableAccess(othertable)\n" +
+			"             │       ├─ index: [othertable.i2]\n" +
 			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [i s]\n" +
+			"             │       └─ columns: [s2 i2]\n" +
 			"             └─ TableAlias(t4)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
@@ -6342,15 +6314,15 @@ inner join pq on true
 			"         └─ LeftOuterJoin\n" +
 			"             ├─ (mytable.i = t4.i2)\n" +
 			"             ├─ MergeJoin\n" +
-			"             │   ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"             │   ├─ IndexedTableAccess(othertable)\n" +
-			"             │   │   ├─ index: [othertable.i2]\n" +
-			"             │   │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │   │   └─ columns: [s2 i2]\n" +
-			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
+			"             │   ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"             │   ├─ IndexedTableAccess(mytable)\n" +
+			"             │   │   ├─ index: [mytable.i,mytable.s]\n" +
+			"             │   │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │   └─ columns: [i s]\n" +
+			"             │   └─ IndexedTableAccess(othertable)\n" +
+			"             │       ├─ index: [othertable.i2]\n" +
 			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [i s]\n" +
+			"             │       └─ columns: [s2 i2]\n" +
 			"             └─ TableAlias(t4)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: othertable\n" +
@@ -6494,27 +6466,30 @@ inner join pq on true
 	{
 		Query: `SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [t1.i:1!null]\n" +
+			" ├─ columns: [t1.i:0!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ t1.i:0!null\n" +
+			"     │   └─ (t2.i:1!null + 1 (tinyint))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
+			"     │       ├─ static: [{[2, 2]}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ t1.i:0!null\n" +
-			"         │   └─ 2 (tinyint)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         │   ├─ t2.i:0!null\n" +
+			"         │   └─ 1 (tinyint)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
+			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -6522,34 +6497,36 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ (t1.i = (t2.i + 1))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
+			"     │       ├─ filters: [{[2, 2]}]\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (t1.i = 2)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         ├─ (t2.i = 1)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ columns: [i]\n" +
-			"                 └─ keys: (t2.i + 1)\n" +
+			"                 └─ keys: 1\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ (t1.i = (t2.i + 1))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
+			"     │       ├─ filters: [{[2, 2]}]\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (t1.i = 2)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         ├─ (t2.i = 1)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ columns: [i]\n" +
-			"                 └─ keys: (t2.i + 1)\n" +
+			"                 └─ keys: 1\n" +
 			"",
 	},
 	{
@@ -6562,27 +6539,27 @@ inner join pq on true
 			"         ├─ columns: [row_number() over ( order by mytable.i desc):0!null, mytable.i:1!null, mytable.i:1!null as i2]\n" +
 			"         └─ Window\n" +
 			"             ├─ row_number() over ( order by mytable.i DESC)\n" +
-			"             ├─ mytable.i:1!null\n" +
+			"             ├─ mytable.i:0!null\n" +
 			"             └─ MergeJoin\n" +
 			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ othertable.i2:0!null\n" +
-			"                 │   └─ mytable.i:1!null\n" +
-			"                 ├─ IndexedTableAccess(othertable)\n" +
-			"                 │   ├─ index: [othertable.i2]\n" +
-			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   ├─ colSet: (3,4)\n" +
-			"                 │   ├─ tableId: 2\n" +
+			"                 │   ├─ mytable.i:0!null\n" +
+			"                 │   └─ othertable.i2:1!null\n" +
+			"                 ├─ IndexedTableAccess(mytable)\n" +
+			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
+			"                 │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   ├─ colSet: (1,2)\n" +
+			"                 │   ├─ tableId: 1\n" +
 			"                 │   └─ Table\n" +
-			"                 │       ├─ name: othertable\n" +
-			"                 │       └─ columns: [i2]\n" +
-			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
+			"                 │       ├─ name: mytable\n" +
+			"                 │       └─ columns: [i]\n" +
+			"                 └─ IndexedTableAccess(othertable)\n" +
+			"                     ├─ index: [othertable.i2]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1,2)\n" +
-			"                     ├─ tableId: 1\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         └─ columns: [i]\n" +
+			"                         ├─ name: othertable\n" +
+			"                         └─ columns: [i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
@@ -6591,15 +6568,15 @@ inner join pq on true
 			"         ├─ columns: [row_number() over ( order by mytable.i desc), mytable.i, mytable.i as i2]\n" +
 			"         └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
 			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"                 ├─ IndexedTableAccess(othertable)\n" +
-			"                 │   ├─ index: [othertable.i2]\n" +
-			"                 │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i2]\n" +
-			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
+			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"                 ├─ IndexedTableAccess(mytable)\n" +
+			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
+			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   └─ columns: [i]\n" +
+			"                 └─ IndexedTableAccess(othertable)\n" +
+			"                     ├─ index: [othertable.i2]\n" +
 			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i]\n" +
+			"                     └─ columns: [i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
@@ -6608,15 +6585,15 @@ inner join pq on true
 			"         ├─ columns: [row_number() over ( order by mytable.i desc), mytable.i, mytable.i as i2]\n" +
 			"         └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
 			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"                 ├─ IndexedTableAccess(othertable)\n" +
-			"                 │   ├─ index: [othertable.i2]\n" +
-			"                 │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i2]\n" +
-			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
+			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"                 ├─ IndexedTableAccess(mytable)\n" +
+			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
+			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   └─ columns: [i]\n" +
+			"                 └─ IndexedTableAccess(othertable)\n" +
+			"                     ├─ index: [othertable.i2]\n" +
 			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i]\n" +
+			"                     └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -6756,8 +6733,8 @@ inner join pq on true
 			"                     │   ├─ mytable.i:0!null\n" +
 			"                     │   └─ 2 (tinyint)\n" +
 			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ static: [{[2, 2]}]\n" +
+			"                         ├─ index: [mytable.i,mytable.s]\n" +
+			"                         ├─ static: [{[2, 2], [NULL, ∞)}]\n" +
 			"                         ├─ colSet: (1,2)\n" +
 			"                         ├─ tableId: 1\n" +
 			"                         └─ Table\n" +
@@ -6779,8 +6756,8 @@ inner join pq on true
 			"                 └─ Filter\n" +
 			"                     ├─ (mytable.i = 2)\n" +
 			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ filters: [{[2, 2]}]\n" +
+			"                         ├─ index: [mytable.i,mytable.s]\n" +
+			"                         ├─ filters: [{[2, 2], [NULL, ∞)}]\n" +
 			"                         └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -6798,8 +6775,8 @@ inner join pq on true
 			"                 └─ Filter\n" +
 			"                     ├─ (mytable.i = 2)\n" +
 			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ filters: [{[2, 2]}]\n" +
+			"                         ├─ index: [mytable.i,mytable.s]\n" +
+			"                         ├─ filters: [{[2, 2], [NULL, ∞)}]\n" +
 			"                         └─ columns: [i]\n" +
 			"",
 	},
@@ -6815,27 +6792,30 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [i:0!null, s:1!null]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [t1.i:1!null, hello (longtext)]\n" +
+			"             ├─ columns: [t1.i:0!null, hello (longtext)]\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ TableAlias(t2)\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ t1.i:0!null\n" +
+			"                 │   └─ (t2.i:1!null + 1 (tinyint))\n" +
+			"                 ├─ TableAlias(t1)\n" +
 			"                 │   └─ IndexedTableAccess(mytable)\n" +
 			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ static: [{[1, 1]}]\n" +
-			"                 │       ├─ colSet: (5,6)\n" +
-			"                 │       ├─ tableId: 3\n" +
+			"                 │       ├─ static: [{[2, 2]}]\n" +
+			"                 │       ├─ colSet: (3,4)\n" +
+			"                 │       ├─ tableId: 2\n" +
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: mytable\n" +
 			"                 │           └─ columns: [i]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ Eq\n" +
-			"                     │   ├─ t1.i:0!null\n" +
-			"                     │   └─ 2 (tinyint)\n" +
-			"                     └─ TableAlias(t1)\n" +
+			"                     │   ├─ t2.i:0!null\n" +
+			"                     │   └─ 1 (tinyint)\n" +
+			"                     └─ TableAlias(t2)\n" +
 			"                         └─ IndexedTableAccess(mytable)\n" +
 			"                             ├─ index: [mytable.i]\n" +
-			"                             ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
-			"                             ├─ colSet: (3,4)\n" +
-			"                             ├─ tableId: 2\n" +
+			"                             ├─ keys: [1 (tinyint)]\n" +
+			"                             ├─ colSet: (5,6)\n" +
+			"                             ├─ tableId: 3\n" +
 			"                             └─ Table\n" +
 			"                                 ├─ name: mytable\n" +
 			"                                 └─ columns: [i]\n" +
@@ -6910,27 +6890,30 @@ inner join pq on true
 	{
 		Query: `SELECT /*+ JOIN_ORDER(t1, mytable) */ t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [t1.i:1!null]\n" +
+			" ├─ columns: [t1.i:0!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ t1.i:0!null\n" +
+			"     │   └─ (t2.i:1!null + 1 (tinyint))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
+			"     │       ├─ static: [{[2, 2]}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ t1.i:0!null\n" +
-			"         │   └─ 2 (tinyint)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         │   ├─ t2.i:0!null\n" +
+			"         │   └─ 1 (tinyint)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
+			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -6938,34 +6921,36 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ (t1.i = (t2.i + 1))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
+			"     │       ├─ filters: [{[2, 2]}]\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (t1.i = 2)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         ├─ (t2.i = 1)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ columns: [i]\n" +
-			"                 └─ keys: (t2.i + 1)\n" +
+			"                 └─ keys: 1\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ (t1.i = (t2.i + 1))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
+			"     │       ├─ filters: [{[2, 2]}]\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (t1.i = 2)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         ├─ (t2.i = 1)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ columns: [i]\n" +
-			"                 └─ keys: (t2.i + 1)\n" +
+			"                 └─ keys: 1\n" +
 			"",
 	},
 	{
@@ -7037,27 +7022,30 @@ inner join pq on true
 	{
 		Query: `SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [t1.i:1!null]\n" +
+			" ├─ columns: [t1.i:0!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ t1.i:0!null\n" +
+			"     │   └─ (t2.i:1!null + 1 (tinyint))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
+			"     │       ├─ static: [{[2, 2]}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i]\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ t1.i:0!null\n" +
-			"         │   └─ 2 (tinyint)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         │   ├─ t2.i:0!null\n" +
+			"         │   └─ 1 (tinyint)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [(t2.i:0!null + 1 (tinyint))]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
+			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
 			"                     └─ columns: [i]\n" +
@@ -7065,227 +7053,235 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ (t1.i = (t2.i + 1))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
+			"     │       ├─ filters: [{[2, 2]}]\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (t1.i = 2)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         ├─ (t2.i = 1)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ columns: [i]\n" +
-			"                 └─ keys: (t2.i + 1)\n" +
+			"                 └─ keys: 1\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
 			" └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ TableAlias(t2)\n" +
+			"     ├─ (t1.i = (t2.i + 1))\n" +
+			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
+			"     │       ├─ filters: [{[2, 2]}]\n" +
 			"     │       └─ columns: [i]\n" +
 			"     └─ Filter\n" +
-			"         ├─ (t1.i = 2)\n" +
-			"         └─ TableAlias(t1)\n" +
+			"         ├─ (t2.i = 1)\n" +
+			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
 			"                 ├─ columns: [i]\n" +
-			"                 └─ keys: (t2.i + 1)\n" +
+			"                 └─ keys: 1\n" +
 			"",
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			" ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ othertable.i2:1!null\n" +
-			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ othertable.i2:2!null\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i]\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i]\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR s = s2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			" ├─ columns: [mytable.i:0!null, othertable.i2:3!null, othertable.s2:2!null]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ mytable.i:2!null\n" +
-			"     │   │   └─ othertable.i2:1!null\n" +
+			"     │   │   ├─ mytable.i:0!null\n" +
+			"     │   │   └─ othertable.i2:3!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ mytable.s:3!null\n" +
-			"     │       └─ othertable.s2:0!null\n" +
+			"     │       ├─ mytable.s:1!null\n" +
+			"     │       └─ othertable.s2:2!null\n" +
 			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ Concat\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ keys: [othertable.s2:0!null]\n" +
-			"         │   ├─ colSet: (1,2)\n" +
-			"         │   ├─ tableId: 1\n" +
+			"         ├─ IndexedTableAccess(othertable)\n" +
+			"         │   ├─ index: [othertable.s2]\n" +
+			"         │   ├─ keys: [mytable.s:1!null]\n" +
+			"         │   ├─ colSet: (3,4)\n" +
+			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [i s]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [othertable.i2:1!null]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
+			"         │       ├─ name: othertable\n" +
+			"         │       └─ columns: [s2 i2]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ keys: [mytable.i:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ LookupJoin (estimated cost=-2.705 rows=3)\n" +
 			"     ├─ ((mytable.i = othertable.i2) OR (mytable.s = othertable.s2))\n" +
 			"     ├─ Table\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
 			"     └─ Concat\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ columns: [i s]\n" +
-			"         │   └─ keys: othertable.s2\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ columns: [i s]\n" +
-			"             └─ keys: othertable.i2\n" +
+			"         ├─ IndexedTableAccess(othertable)\n" +
+			"         │   ├─ index: [othertable.s2]\n" +
+			"         │   ├─ columns: [s2 i2]\n" +
+			"         │   └─ keys: mytable.s\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ columns: [s2 i2]\n" +
+			"             └─ keys: mytable.i\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ LookupJoin (estimated cost=-2.705 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ ((mytable.i = othertable.i2) OR (mytable.s = othertable.s2))\n" +
 			"     ├─ Table\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   └─ columns: [s2 i2]\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
 			"     └─ Concat\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ columns: [i s]\n" +
-			"         │   └─ keys: othertable.s2\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ columns: [i s]\n" +
-			"             └─ keys: othertable.i2\n" +
+			"         ├─ IndexedTableAccess(othertable)\n" +
+			"         │   ├─ index: [othertable.s2]\n" +
+			"         │   ├─ columns: [s2 i2]\n" +
+			"         │   └─ keys: mytable.s\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ columns: [s2 i2]\n" +
+			"             └─ keys: mytable.i\n" +
 			"",
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ot ON i = i2 OR s = s2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, ot.i2:1!null, ot.s2:0!null]\n" +
+			" ├─ columns: [mytable.i:0!null, ot.i2:3!null, ot.s2:2!null]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ mytable.i:2!null\n" +
-			"     │   │   └─ ot.i2:1!null\n" +
+			"     │   │   ├─ mytable.i:0!null\n" +
+			"     │   │   └─ ot.i2:3!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ mytable.s:3!null\n" +
-			"     │       └─ ot.s2:0!null\n" +
-			"     ├─ TableAlias(ot)\n" +
-			"     │   └─ ProcessTable\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: othertable\n" +
-			"     │           └─ columns: [s2 i2]\n" +
-			"     └─ Concat\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ keys: [ot.s2:0!null]\n" +
-			"         │   ├─ colSet: (1,2)\n" +
-			"         │   ├─ tableId: 1\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [i s]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ keys: [ot.i2:1!null]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"     │       ├─ mytable.s:1!null\n" +
+			"     │       └─ ot.s2:2!null\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ TableAlias(ot)\n" +
+			"         └─ Concat\n" +
+			"             ├─ TableAlias(ot)\n" +
+			"             │   └─ IndexedTableAccess(othertable)\n" +
+			"             │       ├─ index: [othertable.s2]\n" +
+			"             │       ├─ keys: [mytable.s:1!null]\n" +
+			"             │       ├─ colSet: (3,4)\n" +
+			"             │       ├─ tableId: 2\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: othertable\n" +
+			"             │           └─ columns: [s2 i2]\n" +
+			"             └─ TableAlias(ot)\n" +
+			"                 └─ IndexedTableAccess(othertable)\n" +
+			"                     ├─ index: [othertable.i2]\n" +
+			"                     ├─ keys: [mytable.i:0!null]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: othertable\n" +
+			"                         └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i, ot.i2, ot.s2]\n" +
 			" └─ LookupJoin (estimated cost=-2.705 rows=3)\n" +
 			"     ├─ ((mytable.i = ot.i2) OR (mytable.s = ot.s2))\n" +
-			"     ├─ TableAlias(ot)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ Concat\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ columns: [i s]\n" +
-			"         │   └─ keys: ot.s2\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ columns: [i s]\n" +
-			"             └─ keys: ot.i2\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ TableAlias(ot)\n" +
+			"         └─ Concat\n" +
+			"             ├─ TableAlias(ot)\n" +
+			"             │   └─ IndexedTableAccess(othertable)\n" +
+			"             │       ├─ index: [othertable.s2]\n" +
+			"             │       ├─ columns: [s2 i2]\n" +
+			"             │       └─ keys: mytable.s\n" +
+			"             └─ TableAlias(ot)\n" +
+			"                 └─ IndexedTableAccess(othertable)\n" +
+			"                     ├─ index: [othertable.i2]\n" +
+			"                     ├─ columns: [s2 i2]\n" +
+			"                     └─ keys: mytable.i\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i, ot.i2, ot.s2]\n" +
 			" └─ LookupJoin (estimated cost=-2.705 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ ((mytable.i = ot.i2) OR (mytable.s = ot.s2))\n" +
-			"     ├─ TableAlias(ot)\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ Concat\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.s,mytable.i]\n" +
-			"         │   ├─ columns: [i s]\n" +
-			"         │   └─ keys: ot.s2\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ columns: [i s]\n" +
-			"             └─ keys: ot.i2\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ TableAlias(ot)\n" +
+			"         └─ Concat\n" +
+			"             ├─ TableAlias(ot)\n" +
+			"             │   └─ IndexedTableAccess(othertable)\n" +
+			"             │       ├─ index: [othertable.s2]\n" +
+			"             │       ├─ columns: [s2 i2]\n" +
+			"             │       └─ keys: mytable.s\n" +
+			"             └─ TableAlias(ot)\n" +
+			"                 └─ IndexedTableAccess(othertable)\n" +
+			"                     ├─ index: [othertable.i2]\n" +
+			"                     ├─ columns: [s2 i2]\n" +
+			"                     └─ keys: mytable.i\n" +
 			"",
 	},
 	{
@@ -7453,101 +7449,101 @@ inner join pq on true
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 UNION SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2`,
 		ExpectedPlan: "Union distinct\n" +
 			" ├─ Project\n" +
-			" │   ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			" │   ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
 			" │   └─ MergeJoin\n" +
 			" │       ├─ cmp: Eq\n" +
-			" │       │   ├─ othertable.i2:1!null\n" +
-			" │       │   └─ mytable.i:2!null\n" +
-			" │       ├─ IndexedTableAccess(othertable)\n" +
-			" │       │   ├─ index: [othertable.i2]\n" +
-			" │       │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │       │   ├─ colSet: (3,4)\n" +
-			" │       │   ├─ tableId: 2\n" +
+			" │       │   ├─ mytable.i:0!null\n" +
+			" │       │   └─ othertable.i2:2!null\n" +
+			" │       ├─ IndexedTableAccess(mytable)\n" +
+			" │       │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │       │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       │   ├─ colSet: (1,2)\n" +
+			" │       │   ├─ tableId: 1\n" +
 			" │       │   └─ Table\n" +
-			" │       │       ├─ name: othertable\n" +
-			" │       │       └─ columns: [s2 i2]\n" +
-			" │       └─ IndexedTableAccess(mytable)\n" +
-			" │           ├─ index: [mytable.i]\n" +
+			" │       │       ├─ name: mytable\n" +
+			" │       │       └─ columns: [i]\n" +
+			" │       └─ IndexedTableAccess(othertable)\n" +
+			" │           ├─ index: [othertable.i2]\n" +
 			" │           ├─ static: [{[NULL, ∞)}]\n" +
-			" │           ├─ colSet: (1,2)\n" +
-			" │           ├─ tableId: 1\n" +
+			" │           ├─ colSet: (3,4)\n" +
+			" │           ├─ tableId: 2\n" +
 			" │           └─ Table\n" +
-			" │               ├─ name: mytable\n" +
-			" │               └─ columns: [i]\n" +
+			" │               ├─ name: othertable\n" +
+			" │               └─ columns: [s2 i2]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			"     ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ othertable.i2:1!null\n" +
-			"         │   └─ mytable.i:2!null\n" +
-			"         ├─ IndexedTableAccess(othertable)\n" +
-			"         │   ├─ index: [othertable.i2]\n" +
-			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (7,8)\n" +
-			"         │   ├─ tableId: 4\n" +
+			"         │   ├─ mytable.i:0!null\n" +
+			"         │   └─ othertable.i2:2!null\n" +
+			"         ├─ IndexedTableAccess(mytable)\n" +
+			"         │   ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (5,6)\n" +
+			"         │   ├─ tableId: 3\n" +
 			"         │   └─ Table\n" +
-			"         │       ├─ name: othertable\n" +
-			"         │       └─ columns: [s2 i2]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       └─ columns: [i]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (5,6)\n" +
-			"             ├─ tableId: 3\n" +
+			"             ├─ colSet: (7,8)\n" +
+			"             ├─ tableId: 4\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Union distinct\n" +
 			" ├─ Project\n" +
 			" │   ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" │   └─ MergeJoin\n" +
-			" │       ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			" │       ├─ IndexedTableAccess(othertable)\n" +
-			" │       │   ├─ index: [othertable.i2]\n" +
-			" │       │   ├─ filters: [{[NULL, ∞)}]\n" +
-			" │       │   └─ columns: [s2 i2]\n" +
-			" │       └─ IndexedTableAccess(mytable)\n" +
-			" │           ├─ index: [mytable.i]\n" +
+			" │       ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" │       ├─ IndexedTableAccess(mytable)\n" +
+			" │       │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │       │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       │   └─ columns: [i]\n" +
+			" │       └─ IndexedTableAccess(othertable)\n" +
+			" │           ├─ index: [othertable.i2]\n" +
 			" │           ├─ filters: [{[NULL, ∞)}]\n" +
-			" │           └─ columns: [i]\n" +
+			" │           └─ columns: [s2 i2]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"         ├─ IndexedTableAccess(othertable)\n" +
-			"         │   ├─ index: [othertable.i2]\n" +
-			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [s2 i2]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
+			"         ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"         ├─ IndexedTableAccess(mytable)\n" +
+			"         │   ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   └─ columns: [i]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Union distinct\n" +
 			" ├─ Project\n" +
 			" │   ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" │   └─ MergeJoin\n" +
-			" │       ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			" │       ├─ IndexedTableAccess(othertable)\n" +
-			" │       │   ├─ index: [othertable.i2]\n" +
-			" │       │   ├─ filters: [{[NULL, ∞)}]\n" +
-			" │       │   └─ columns: [s2 i2]\n" +
-			" │       └─ IndexedTableAccess(mytable)\n" +
-			" │           ├─ index: [mytable.i]\n" +
+			" │       ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" │       ├─ IndexedTableAccess(mytable)\n" +
+			" │       │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │       │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       │   └─ columns: [i]\n" +
+			" │       └─ IndexedTableAccess(othertable)\n" +
+			" │           ├─ index: [othertable.i2]\n" +
 			" │           ├─ filters: [{[NULL, ∞)}]\n" +
-			" │           └─ columns: [i]\n" +
+			" │           └─ columns: [s2 i2]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"         ├─ IndexedTableAccess(othertable)\n" +
-			"         │   ├─ index: [othertable.i2]\n" +
-			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [s2 i2]\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
+			"         ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"         ├─ IndexedTableAccess(mytable)\n" +
+			"         │   ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   └─ columns: [i]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -7566,27 +7562,27 @@ inner join pq on true
 			"     │   ├─ colSet: (5-7)\n" +
 			"     │   ├─ tableId: 3\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			"     │       ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
 			"     │       └─ MergeJoin\n" +
 			"     │           ├─ cmp: Eq\n" +
-			"     │           │   ├─ othertable.i2:1!null\n" +
-			"     │           │   └─ mytable.i:2!null\n" +
-			"     │           ├─ IndexedTableAccess(othertable)\n" +
-			"     │           │   ├─ index: [othertable.i2]\n" +
-			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   ├─ colSet: (3,4)\n" +
-			"     │           │   ├─ tableId: 2\n" +
+			"     │           │   ├─ mytable.i:0!null\n" +
+			"     │           │   └─ othertable.i2:2!null\n" +
+			"     │           ├─ IndexedTableAccess(mytable)\n" +
+			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           │   ├─ colSet: (1,2)\n" +
+			"     │           │   ├─ tableId: 1\n" +
 			"     │           │   └─ Table\n" +
-			"     │           │       ├─ name: othertable\n" +
-			"     │           │       └─ columns: [s2 i2]\n" +
-			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ name: mytable\n" +
+			"     │           │       └─ columns: [i]\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               ├─ colSet: (1,2)\n" +
-			"     │               ├─ tableId: 1\n" +
+			"     │               ├─ colSet: (3,4)\n" +
+			"     │               ├─ tableId: 2\n" +
 			"     │               └─ Table\n" +
-			"     │                   ├─ name: mytable\n" +
-			"     │                   └─ columns: [i]\n" +
+			"     │                   ├─ name: othertable\n" +
+			"     │                   └─ columns: [s2 i2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(ot.i2:1!null)\n" +
@@ -7608,15 +7604,15 @@ inner join pq on true
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     │           ├─ IndexedTableAccess(othertable)\n" +
-			"     │           │   ├─ index: [othertable.i2]\n" +
-			"     │           │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [s2 i2]\n" +
-			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
+			"     │           ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     │           ├─ IndexedTableAccess(mytable)\n" +
+			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           │   └─ columns: [i]\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [i]\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (sub.i)\n" +
 			"         ├─ right-key: (ot.i2)\n" +
@@ -7637,15 +7633,15 @@ inner join pq on true
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     │           ├─ IndexedTableAccess(othertable)\n" +
-			"     │           │   ├─ index: [othertable.i2]\n" +
-			"     │           │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [s2 i2]\n" +
-			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
+			"     │           ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     │           ├─ IndexedTableAccess(mytable)\n" +
+			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           │   └─ columns: [i]\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [i]\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (sub.i)\n" +
 			"         ├─ right-key: (ot.i2)\n" +
@@ -7671,27 +7667,27 @@ inner join pq on true
 			"     │   ├─ colSet: (7-9)\n" +
 			"     │   ├─ tableId: 4\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			"     │       ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
 			"     │       └─ MergeJoin\n" +
 			"     │           ├─ cmp: Eq\n" +
-			"     │           │   ├─ othertable.i2:1!null\n" +
-			"     │           │   └─ mytable.i:2!null\n" +
-			"     │           ├─ IndexedTableAccess(othertable)\n" +
-			"     │           │   ├─ index: [othertable.i2]\n" +
-			"     │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │   ├─ colSet: (5,6)\n" +
-			"     │           │   ├─ tableId: 3\n" +
+			"     │           │   ├─ mytable.i:0!null\n" +
+			"     │           │   └─ othertable.i2:2!null\n" +
+			"     │           ├─ IndexedTableAccess(mytable)\n" +
+			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           │   ├─ colSet: (3,4)\n" +
+			"     │           │   ├─ tableId: 2\n" +
 			"     │           │   └─ Table\n" +
-			"     │           │       ├─ name: othertable\n" +
-			"     │           │       └─ columns: [s2 i2]\n" +
-			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ name: mytable\n" +
+			"     │           │       └─ columns: [i]\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               ├─ colSet: (3,4)\n" +
-			"     │               ├─ tableId: 2\n" +
+			"     │               ├─ colSet: (5,6)\n" +
+			"     │               ├─ tableId: 3\n" +
 			"     │               └─ Table\n" +
-			"     │                   ├─ name: mytable\n" +
-			"     │                   └─ columns: [i]\n" +
+			"     │                   ├─ name: othertable\n" +
+			"     │                   └─ columns: [s2 i2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"         ├─ right-key: TUPLE(ot.i2:1!null)\n" +
@@ -7713,15 +7709,15 @@ inner join pq on true
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     │           ├─ IndexedTableAccess(othertable)\n" +
-			"     │           │   ├─ index: [othertable.i2]\n" +
-			"     │           │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [s2 i2]\n" +
-			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
+			"     │           ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     │           ├─ IndexedTableAccess(mytable)\n" +
+			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           │   └─ columns: [i]\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [i]\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (sub.i)\n" +
 			"         ├─ right-key: (ot.i2)\n" +
@@ -7742,15 +7738,15 @@ inner join pq on true
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     │           ├─ IndexedTableAccess(othertable)\n" +
-			"     │           │   ├─ index: [othertable.i2]\n" +
-			"     │           │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           │   └─ columns: [s2 i2]\n" +
-			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
+			"     │           ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     │           ├─ IndexedTableAccess(mytable)\n" +
+			"     │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           │   └─ columns: [i]\n" +
+			"     │           └─ IndexedTableAccess(othertable)\n" +
+			"     │               ├─ index: [othertable.i2]\n" +
 			"     │               ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ columns: [i]\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (sub.i)\n" +
 			"         ├─ right-key: (ot.i2)\n" +
@@ -7785,34 +7781,34 @@ inner join pq on true
 			"         ├─ colSet: (7-9)\n" +
 			"         ├─ tableId: 4\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			"             ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
 			"             └─ MergeJoin\n" +
 			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ othertable.i2:1!null\n" +
-			"                 │   └─ mytable.i:2!null\n" +
-			"                 ├─ Filter\n" +
-			"                 │   ├─ NOT\n" +
-			"                 │   │   └─ Eq\n" +
-			"                 │   │       ├─ convert\n" +
-			"                 │   │       │   ├─ type: signed\n" +
-			"                 │   │       │   └─ othertable.s2:0!null\n" +
-			"                 │   │       └─ 0 (tinyint)\n" +
-			"                 │   └─ IndexedTableAccess(othertable)\n" +
-			"                 │       ├─ index: [othertable.i2]\n" +
-			"                 │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │       ├─ colSet: (5,6)\n" +
-			"                 │       ├─ tableId: 3\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: othertable\n" +
-			"                 │           └─ columns: [s2 i2]\n" +
-			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (3,4)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         └─ columns: [i]\n" +
+			"                 │   ├─ mytable.i:0!null\n" +
+			"                 │   └─ othertable.i2:2!null\n" +
+			"                 ├─ IndexedTableAccess(mytable)\n" +
+			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
+			"                 │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   ├─ colSet: (3,4)\n" +
+			"                 │   ├─ tableId: 2\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: mytable\n" +
+			"                 │       └─ columns: [i]\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ NOT\n" +
+			"                     │   └─ Eq\n" +
+			"                     │       ├─ convert\n" +
+			"                     │       │   ├─ type: signed\n" +
+			"                     │       │   └─ othertable.s2:0!null\n" +
+			"                     │       └─ 0 (tinyint)\n" +
+			"                     └─ IndexedTableAccess(othertable)\n" +
+			"                         ├─ index: [othertable.i2]\n" +
+			"                         ├─ static: [{[NULL, ∞)}]\n" +
+			"                         ├─ colSet: (5,6)\n" +
+			"                         ├─ tableId: 3\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: othertable\n" +
+			"                             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [sub.i, sub.i2, sub.s2, ot.i2, ot.s2]\n" +
@@ -7831,17 +7827,17 @@ inner join pq on true
 			"         └─ Project\n" +
 			"             ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"                 ├─ Filter\n" +
-			"                 │   ├─ (NOT((convert(othertable.s2, signed) = 0)))\n" +
-			"                 │   └─ IndexedTableAccess(othertable)\n" +
-			"                 │       ├─ index: [othertable.i2]\n" +
-			"                 │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 │       └─ columns: [s2 i2]\n" +
-			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i]\n" +
+			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"                 ├─ IndexedTableAccess(mytable)\n" +
+			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
+			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   └─ columns: [i]\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ (NOT((convert(othertable.s2, signed) = 0)))\n" +
+			"                     └─ IndexedTableAccess(othertable)\n" +
+			"                         ├─ index: [othertable.i2]\n" +
+			"                         ├─ filters: [{[NULL, ∞)}]\n" +
+			"                         └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [sub.i, sub.i2, sub.s2, ot.i2, ot.s2]\n" +
@@ -7860,17 +7856,17 @@ inner join pq on true
 			"         └─ Project\n" +
 			"             ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"                 ├─ Filter\n" +
-			"                 │   ├─ (NOT((convert(othertable.s2, signed) = 0)))\n" +
-			"                 │   └─ IndexedTableAccess(othertable)\n" +
-			"                 │       ├─ index: [othertable.i2]\n" +
-			"                 │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 │       └─ columns: [s2 i2]\n" +
-			"                 └─ IndexedTableAccess(mytable)\n" +
-			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i]\n" +
+			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"                 ├─ IndexedTableAccess(mytable)\n" +
+			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
+			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   └─ columns: [i]\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ (NOT((convert(othertable.s2, signed) = 0)))\n" +
+			"                     └─ IndexedTableAccess(othertable)\n" +
+			"                         ├─ index: [othertable.i2]\n" +
+			"                         ├─ filters: [{[NULL, ∞)}]\n" +
+			"                         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -8104,27 +8100,27 @@ inner join pq on true
 			"                 │   ├─ colSet: (9-11)\n" +
 			"                 │   ├─ tableId: 5\n" +
 			"                 │   └─ Project\n" +
-			"                 │       ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
+			"                 │       ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
 			"                 │       └─ MergeJoin\n" +
 			"                 │           ├─ cmp: Eq\n" +
-			"                 │           │   ├─ othertable.i2:1!null\n" +
-			"                 │           │   └─ mytable.i:2!null\n" +
-			"                 │           ├─ IndexedTableAccess(othertable)\n" +
-			"                 │           │   ├─ index: [othertable.i2]\n" +
-			"                 │           │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │           │   ├─ colSet: (7,8)\n" +
-			"                 │           │   ├─ tableId: 4\n" +
+			"                 │           │   ├─ mytable.i:0!null\n" +
+			"                 │           │   └─ othertable.i2:2!null\n" +
+			"                 │           ├─ IndexedTableAccess(mytable)\n" +
+			"                 │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"                 │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │           │   ├─ colSet: (5,6)\n" +
+			"                 │           │   ├─ tableId: 3\n" +
 			"                 │           │   └─ Table\n" +
-			"                 │           │       ├─ name: othertable\n" +
-			"                 │           │       └─ columns: [s2 i2]\n" +
-			"                 │           └─ IndexedTableAccess(mytable)\n" +
-			"                 │               ├─ index: [mytable.i]\n" +
+			"                 │           │       ├─ name: mytable\n" +
+			"                 │           │       └─ columns: [i]\n" +
+			"                 │           └─ IndexedTableAccess(othertable)\n" +
+			"                 │               ├─ index: [othertable.i2]\n" +
 			"                 │               ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │               ├─ colSet: (5,6)\n" +
-			"                 │               ├─ tableId: 3\n" +
+			"                 │               ├─ colSet: (7,8)\n" +
+			"                 │               ├─ tableId: 4\n" +
 			"                 │               └─ Table\n" +
-			"                 │                   ├─ name: mytable\n" +
-			"                 │                   └─ columns: [i]\n" +
+			"                 │                   ├─ name: othertable\n" +
+			"                 │                   └─ columns: [s2 i2]\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: TUPLE(sub.i:0!null)\n" +
 			"                     ├─ right-key: TUPLE(ot.i2:1!null)\n" +
@@ -8145,8 +8141,8 @@ inner join pq on true
 			"     │   │   ├─ mytable.i:0!null\n" +
 			"     │   │   └─ selfjoin.i:2!null\n" +
 			"     │   ├─ IndexedTableAccess(mytable)\n" +
-			"     │   │   ├─ index: [mytable.i]\n" +
-			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │   │   ├─ colSet: (1,2)\n" +
 			"     │   │   ├─ tableId: 1\n" +
 			"     │   │   └─ Table\n" +
@@ -8178,8 +8174,8 @@ inner join pq on true
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
 			"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 			"     │   ├─ IndexedTableAccess(mytable)\n" +
-			"     │   │   ├─ index: [mytable.i]\n" +
-			"     │   │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ (selfjoin.i = 1)\n" +
 			"     │       └─ TableAlias(selfjoin)\n" +
@@ -8197,8 +8193,8 @@ inner join pq on true
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
 			"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 			"     │   ├─ IndexedTableAccess(mytable)\n" +
-			"     │   │   ├─ index: [mytable.i]\n" +
-			"     │   │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ (selfjoin.i = 1)\n" +
 			"     │       └─ TableAlias(selfjoin)\n" +
@@ -8213,263 +8209,58 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2`,
-		ExpectedPlan: "MergeJoin\n" +
-			" ├─ cmp: Eq\n" +
-			" │   ├─ othertable.i2:1!null\n" +
-			" │   └─ mytable.i:2!null\n" +
-			" ├─ IndexedTableAccess(othertable)\n" +
-			" │   ├─ index: [othertable.i2]\n" +
-			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   ├─ colSet: (3,4)\n" +
-			" │   ├─ tableId: 2\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: othertable\n" +
-			" │       └─ columns: [s2 i2]\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i]\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2:1!null, othertable.i2:2!null, mytable.i:0!null]\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ othertable.i2:2!null\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "MergeJoin (estimated cost=6.090 rows=3)\n" +
-			" ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			" ├─ IndexedTableAccess(othertable)\n" +
-			" │   ├─ index: [othertable.i2]\n" +
-			" │   ├─ filters: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [s2 i2]\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [i]\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
+			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			" ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			" ├─ IndexedTableAccess(othertable)\n" +
-			" │   ├─ index: [othertable.i2]\n" +
-			" │   ├─ filters: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [s2 i2]\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [i]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
+			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT i, i2, s2 FROM othertable JOIN mytable ON i = i2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ othertable.i2:2!null\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: othertable\n" +
-			"             └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
-			"",
-	},
-	{
-		Query: `SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [othertable.s2:1!null, othertable.i2:2!null, mytable.i:0!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ othertable.i2:2!null\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: othertable\n" +
-			"             └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
-			"",
-	},
-	{
-		Query: `SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [othertable.s2:1!null, othertable.i2:2!null, mytable.i:0!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ othertable.i2:2!null\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: othertable\n" +
-			"             └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"     ├─ IndexedTableAccess(mytable)\n" +
-			"     │   ├─ index: [mytable.i]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [i]\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.i2]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [s2 i2]\n" +
-			"",
-	},
-	{
-		Query: `SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 LIMIT 1`,
-		ExpectedPlan: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [othertable.s2:1!null, othertable.i2:2!null, mytable.i:0!null]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ mytable.i:0!null\n" +
-			"         │   └─ othertable.i2:2!null\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.i]\n" +
-			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (3,4)\n" +
-			"         │   ├─ tableId: 2\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [i]\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedEstimates: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.i]\n" +
-			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [i]\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [s2 i2]\n" +
-			"",
-		ExpectedAnalysis: "Limit(1)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"         ├─ IndexedTableAccess(mytable)\n" +
-			"         │   ├─ index: [mytable.i]\n" +
-			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │   └─ columns: [i]\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [s2 i2]\n" +
-			"",
-	},
-	{
-		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i2 = i`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mytable.i:2!null, othertable.i2:1!null, othertable.s2:0!null]\n" +
 			" └─ MergeJoin\n" +
@@ -8479,16 +8270,16 @@ inner join pq on true
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
+			"         ├─ index: [mytable.i,mytable.s]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
@@ -8502,8 +8293,8 @@ inner join pq on true
 			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ index: [mytable.i,mytable.s]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -8515,13 +8306,13 @@ inner join pq on true
 			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │   └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         ├─ index: [mytable.i,mytable.s]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         └─ columns: [i]\n" +
 			"",
 	},
 	{
-		Query: `SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i2 = i`,
+		Query: `SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2`,
 		ExpectedPlan: "MergeJoin\n" +
 			" ├─ cmp: Eq\n" +
 			" │   ├─ othertable.i2:1!null\n" +
@@ -8529,16 +8320,16 @@ inner join pq on true
 			" ├─ IndexedTableAccess(othertable)\n" +
 			" │   ├─ index: [othertable.i2]\n" +
 			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   ├─ colSet: (3,4)\n" +
-			" │   ├─ tableId: 2\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: othertable\n" +
 			" │       └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
+			"     ├─ index: [mytable.i,mytable.s]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i]\n" +
@@ -8550,8 +8341,8 @@ inner join pq on true
 			" │   ├─ filters: [{[NULL, ∞)}]\n" +
 			" │   └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ index: [mytable.i,mytable.s]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
@@ -8561,293 +8352,462 @@ inner join pq on true
 			" │   ├─ filters: [{[NULL, ∞)}]\n" +
 			" │   └─ columns: [s2 i2]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     ├─ index: [mytable.i,mytable.s]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     └─ columns: [i]\n" +
 			"",
 	},
 	{
-		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
+		Query: `SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2`,
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ othertable.i2:1!null\n" +
+			" │   └─ mytable.i:2!null\n" +
+			" ├─ IndexedTableAccess(othertable)\n" +
+			" │   ├─ index: [othertable.i2]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: othertable\n" +
+			" │       └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i,mytable.s]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i]\n" +
+			"",
+		ExpectedEstimates: "MergeJoin (estimated cost=6.090 rows=3)\n" +
+			" ├─ cmp: (othertable.i2 = mytable.i)\n" +
+			" ├─ IndexedTableAccess(othertable)\n" +
+			" │   ├─ index: [othertable.i2]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i,mytable.s]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [i]\n" +
+			"",
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
+			" ├─ cmp: (othertable.i2 = mytable.i)\n" +
+			" ├─ IndexedTableAccess(othertable)\n" +
+			" │   ├─ index: [othertable.i2]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i,mytable.s]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT s2, i2, i FROM othertable JOIN mytable ON i = i2 LIMIT 1`,
+		ExpectedPlan: "Limit(1)\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
 			"     │   ├─ othertable.i2:1!null\n" +
 			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ sel: NOT\n" +
-			"     │   └─ (othertable.s2:0!null <=> mytable.s:3!null)\n" +
 			"     ├─ IndexedTableAccess(othertable)\n" +
 			"     │   ├─ index: [othertable.i2]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
+			"         ├─ index: [mytable.i,mytable.s]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ columns: [i]\n" +
+			"",
+		ExpectedEstimates: "Limit(1)\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
+			"     ├─ IndexedTableAccess(othertable)\n" +
+			"     │   ├─ index: [othertable.i2]\n" +
+			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i,mytable.s]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [i]\n" +
+			"",
+		ExpectedAnalysis: "Limit(1)\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
+			"     ├─ IndexedTableAccess(othertable)\n" +
+			"     │   ├─ index: [othertable.i2]\n" +
+			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i,mytable.s]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [i]\n" +
+			"",
+	},
+	{
+		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i2 = i`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ othertable.i2:2!null\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (NOT((othertable.s2 <=> mytable.s)))\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (NOT((othertable.s2 <=> mytable.s)))\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
 			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i2 = i`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [othertable.s2:1!null, othertable.i2:2!null, mytable.i:0!null]\n" +
+			" └─ MergeJoin\n" +
+			"     ├─ cmp: Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ othertable.i2:2!null\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   ├─ colSet: (1,2)\n" +
+			"     │   ├─ tableId: 1\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
+			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
+			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"     ├─ IndexedTableAccess(mytable)\n" +
+			"     │   ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(othertable)\n" +
+			"         ├─ index: [othertable.i2]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ mytable.i:0!null\n" +
+			" │   └─ othertable.i2:3!null\n" +
+			" ├─ sel: NOT\n" +
+			" │   └─ (othertable.s2:2!null <=> mytable.s:1!null)\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedEstimates: "MergeJoin (estimated cost=6.090 rows=3)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (NOT((othertable.s2 <=> mytable.s)))\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (NOT((othertable.s2 <=> mytable.s)))\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ othertable.i2:1!null\n" +
-			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ sel: NOT\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ othertable.s2:0!null\n" +
-			"     │       └─ mytable.s:3!null\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ mytable.i:0!null\n" +
+			" │   └─ othertable.i2:3!null\n" +
+			" ├─ sel: NOT\n" +
+			" │   └─ Eq\n" +
+			" │       ├─ othertable.s2:2!null\n" +
+			" │       └─ mytable.s:1!null\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (NOT((othertable.s2 = mytable.s)))\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=6.090 rows=3)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (NOT((othertable.s2 = mytable.s)))\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (NOT((othertable.s2 = mytable.s)))\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (NOT((othertable.s2 = mytable.s)))\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ othertable.i2:1!null\n" +
-			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ sel: NOT\n" +
-			"     │   └─ concat(mytable.s:3!null,othertable.s2:0!null) IS NULL\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ mytable.i:0!null\n" +
+			" │   └─ othertable.i2:3!null\n" +
+			" ├─ sel: NOT\n" +
+			" │   └─ concat(mytable.s:1!null,othertable.s2:2!null) IS NULL\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (NOT(concat(mytable.s,othertable.s2) IS NULL))\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=6.090 rows=3)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (NOT(concat(mytable.s,othertable.s2) IS NULL))\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (NOT(concat(mytable.s,othertable.s2) IS NULL))\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (NOT(concat(mytable.s,othertable.s2) IS NULL))\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND s > s2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ othertable.i2:1!null\n" +
-			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ sel: GreaterThan\n" +
-			"     │   ├─ mytable.s:3!null\n" +
-			"     │   └─ othertable.s2:0!null\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ mytable.i:0!null\n" +
+			" │   └─ othertable.i2:3!null\n" +
+			" ├─ sel: GreaterThan\n" +
+			" │   ├─ mytable.s:1!null\n" +
+			" │   └─ othertable.s2:2!null\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (mytable.s > othertable.s2)\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=6.090 rows=3)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (mytable.s > othertable.s2)\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=2 loops=1)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (mytable.s > othertable.s2)\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=2 loops=1)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (mytable.s > othertable.s2)\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT(s > s2)`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ othertable.i2:1!null\n" +
-			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ sel: LessThanOrEqual\n" +
-			"     │   ├─ mytable.s:3!null\n" +
-			"     │   └─ othertable.s2:0!null\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (3,4)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ mytable.i:0!null\n" +
+			" │   └─ othertable.i2:3!null\n" +
+			" ├─ sel: LessThanOrEqual\n" +
+			" │   ├─ mytable.s:1!null\n" +
+			" │   └─ othertable.s2:2!null\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (mytable.s <= othertable.s2)\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=6.090 rows=3)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (mytable.s <= othertable.s2)\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
-			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ cmp: (othertable.i2 = mytable.i)\n" +
-			"     ├─ sel: (mytable.s <= othertable.s2)\n" +
-			"     ├─ IndexedTableAccess(othertable)\n" +
-			"     │   ├─ index: [othertable.i2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   └─ columns: [s2 i2]\n" +
-			"     └─ IndexedTableAccess(mytable)\n" +
-			"         ├─ index: [mytable.i]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [i s]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
+			" ├─ cmp: (mytable.i = othertable.i2)\n" +
+			" ├─ sel: (mytable.s <= othertable.s2)\n" +
+			" ├─ IndexedTableAccess(mytable)\n" +
+			" │   ├─ index: [mytable.i,mytable.s]\n" +
+			" │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │   └─ columns: [i s]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.i2]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -9246,67 +9206,67 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.s:0!null\n" +
-			"     │   └─ a.i:1!null\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.s,mytable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ HashIn\n" +
-			"         │   ├─ a.i:0!null\n" +
-			"         │   └─ TUPLE(1 (tinyint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i s]\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ b.s:2!null\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ HashIn\n" +
+			"     │   │   ├─ a.i:0!null\n" +
+			"     │   │   └─ TUPLE(1 (tinyint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (1,2)\n" +
+			"     │           ├─ tableId: 1\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=5.070 rows=2)\n" +
-			"     ├─ cmp: (b.s = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.s,mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (a.i HASH IN (1, 2, 3, 4))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"     ├─ cmp: (a.i = b.s)\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (a.i HASH IN (1, 2, 3, 4))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ columns: [s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=5.070 rows=2) (actual rows=0 loops=1)\n" +
-			"     ├─ cmp: (b.s = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.s,mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [s]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (a.i HASH IN (1, 2, 3, 4))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"     ├─ cmp: (a.i = b.s)\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (a.i HASH IN (1, 2, 3, 4))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.s]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ columns: [s]\n" +
 			"",
 	},
 	{
@@ -9785,59 +9745,59 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.i:0!null\n" +
-			"     │   └─ a.i:1!null\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ b.i:2!null\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     ├─ cmp: (a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     ├─ cmp: (a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -9924,38 +9884,38 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where NOT(a.i = b.s OR a.s = b.i)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ NOT\n" +
 			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ a.i:0!null\n" +
-			"     │   │       └─ b.s:3!null\n" +
+			"     │   │       ├─ a.i:2!null\n" +
+			"     │   │       └─ b.s:1!null\n" +
 			"     │   └─ NOT\n" +
 			"     │       └─ Eq\n" +
-			"     │           ├─ a.s:1!null\n" +
-			"     │           └─ b.i:2!null\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     │           ├─ a.s:3!null\n" +
+			"     │           └─ b.i:0!null\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ columns: [i s]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ ((NOT((a.i = b.s))) AND (NOT((a.s = b.i))))\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -9964,11 +9924,11 @@ inner join pq on true
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
 			"     ├─ ((NOT((a.i = b.s))) AND (NOT((a.s = b.i))))\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -9977,34 +9937,34 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ a.i:0!null\n" +
-			"     │   │   └─ b.s:3!null\n" +
+			"     │   │   ├─ a.i:2!null\n" +
+			"     │   │   └─ b.s:1!null\n" +
 			"     │   └─ (a.s = b.i) IS FALSE\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ columns: [i s]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ ((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -10013,11 +9973,11 @@ inner join pq on true
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
 			"     ├─ ((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -10026,195 +9986,195 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i >= b.i`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ GreaterThanOrEqual\n" +
-			"     │   ├─ a.i:0!null\n" +
-			"     │   └─ b.i:2!null\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     │   ├─ a.i:1!null\n" +
+			"     │   └─ b.i:0!null\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │           └─ columns: [i]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             ├─ columns: [i]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ (a.i >= b.i)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=6 loops=1)\n" +
 			"     ├─ (a.i >= b.i)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
 		ExpectedPlan: "CrossJoin\n" +
-			" ├─ Filter\n" +
-			" │   ├─ Eq\n" +
-			" │   │   ├─ a.i:0!null\n" +
-			" │   │   └─ a.s:1!null\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ ProcessTable\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: mytable\n" +
-			" │               └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         ├─ columns: []\n" +
-			"         ├─ colSet: (3,4)\n" +
-			"         └─ tableId: 2\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ a.s:1!null\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "CrossJoin (estimated cost=7.060 rows=2)\n" +
-			" ├─ Filter\n" +
-			" │   ├─ (a.i = a.s)\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: mytable\n" +
-			" │           └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: []\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ (a.i = a.s)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "CrossJoin (estimated cost=7.060 rows=2) (actual rows=0 loops=1)\n" +
-			" ├─ Filter\n" +
-			" │   ├─ (a.i = a.s)\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: mytable\n" +
-			" │           └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: []\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ (a.i = a.s)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
 		ExpectedPlan: "CrossJoin\n" +
-			" ├─ Filter\n" +
-			" │   ├─ HashIn\n" +
-			" │   │   ├─ a.i:0!null\n" +
-			" │   │   └─ TUPLE(2 (tinyint), 432 (smallint), 7 (tinyint))\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ IndexedTableAccess(mytable)\n" +
-			" │           ├─ index: [mytable.i]\n" +
-			" │           ├─ static: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
-			" │           ├─ colSet: (1,2)\n" +
-			" │           ├─ tableId: 1\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: mytable\n" +
-			" │               └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: []\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ HashIn\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ TUPLE(2 (tinyint), 432 (smallint), 7 (tinyint))\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "CrossJoin (estimated cost=7.060 rows=2)\n" +
-			" ├─ Filter\n" +
-			" │   ├─ (a.i HASH IN (2, 432, 7))\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ IndexedTableAccess(mytable)\n" +
-			" │           ├─ index: [mytable.i]\n" +
-			" │           ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
-			" │           └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: []\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ (a.i HASH IN (2, 432, 7))\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "CrossJoin (estimated cost=7.060 rows=2) (actual rows=3 loops=1)\n" +
-			" ├─ Filter\n" +
-			" │   ├─ (a.i HASH IN (2, 432, 7))\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ IndexedTableAccess(mytable)\n" +
-			" │           ├─ index: [mytable.i]\n" +
-			" │           ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
-			" │           └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: []\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ (a.i HASH IN (2, 432, 7))\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ AND\n" +
 			"     │   │   ├─ AND\n" +
 			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ b.i:0!null\n" +
-			"     │   │   │   │   └─ c.i:4!null\n" +
+			"     │   │   │   │   ├─ a.i:0!null\n" +
+			"     │   │   │   │   └─ b.i:3!null\n" +
 			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ a.i:1!null\n" +
-			"     │   │   │       └─ c.i:4!null\n" +
+			"     │   │   │       ├─ c.i:4!null\n" +
+			"     │   │   │       └─ d.i:2!null\n" +
 			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ a.i:1!null\n" +
-			"     │   │       └─ d.i:3!null\n" +
+			"     │   │       ├─ a.i:0!null\n" +
+			"     │   │       └─ c.i:4!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ b.i:0!null\n" +
-			"     │       └─ d.i:3!null\n" +
+			"     │       ├─ b.i:3!null\n" +
+			"     │       └─ d.i:2!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ a.i:1!null\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   │   ├─ a.i:0!null\n" +
+			"     │   │   └─ d.i:2!null\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (3,4)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (1,2)\n" +
+			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: mytable\n" +
-			"     │   │           └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   │           └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
+			"     │           ├─ colSet: (7,8)\n" +
+			"     │           ├─ tableId: 4\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ d.i:3!null\n" +
+			"         │   ├─ b.i:3!null\n" +
 			"         │   └─ c.i:4!null\n" +
-			"         ├─ TableAlias(d)\n" +
+			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (7,8)\n" +
-			"         │       ├─ tableId: 4\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (3,4)\n" +
+			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: mytable\n" +
 			"         │           └─ columns: [i]\n" +
@@ -10235,25 +10195,25 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
-			"     ├─ ((((b.i = c.i) AND (a.i = c.i)) AND (a.i = d.i)) AND (b.i = d.i))\n" +
+			"     ├─ ((((a.i = b.i) AND (c.i = d.i)) AND (a.i = c.i)) AND (b.i = d.i))\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   ├─ cmp: (a.i = d.i)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"         ├─ cmp: (d.i = c.i)\n" +
-			"         ├─ TableAlias(d)\n" +
+			"         ├─ cmp: (b.i = c.i)\n" +
+			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ Filter\n" +
 			"             ├─ (c.i = 2)\n" +
@@ -10266,25 +10226,25 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ ((((b.i = c.i) AND (a.i = c.i)) AND (a.i = d.i)) AND (b.i = d.i))\n" +
+			"     ├─ ((((a.i = b.i) AND (c.i = d.i)) AND (a.i = c.i)) AND (b.i = d.i))\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   ├─ cmp: (a.i = d.i)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=3)\n" +
-			"         ├─ cmp: (d.i = c.i)\n" +
-			"         ├─ TableAlias(d)\n" +
+			"         ├─ cmp: (b.i = c.i)\n" +
+			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ Filter\n" +
 			"             ├─ (c.i = 2)\n" +
@@ -10298,335 +10258,330 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ c.i:4!null\n" +
+			"     │   │   ├─ b.i:4!null\n" +
+			"     │   │   └─ c.i:1!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ a.i:1!null\n" +
-			"     │       └─ c.i:4!null\n" +
-			"     ├─ MergeJoin\n" +
-			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ a.i:1!null\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (3,4)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │       ├─ a.i:2!null\n" +
+			"     │       └─ c.i:1!null\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ Or\n" +
+			"     │   │   ├─ Eq\n" +
+			"     │   │   │   ├─ c.i:1!null\n" +
+			"     │   │   │   └─ d.s:0!null\n" +
+			"     │   │   └─ Eq\n" +
+			"     │   │       ├─ c.i:1!null\n" +
+			"     │   │       └─ 2 (tinyint)\n" +
+			"     │   ├─ TableAlias(d)\n" +
+			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: mytable\n" +
-			"     │   │           └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ Or\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ c.i:4!null\n" +
-			"         │   │   └─ d.s:3!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ c.i:4!null\n" +
-			"         │       └─ 2 (tinyint)\n" +
-			"         ├─ TableAlias(d)\n" +
-			"         │   └─ ProcessTable\n" +
+			"     │   │           └─ columns: [s]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Concat\n" +
+			"     │           ├─ TableAlias(c)\n" +
+			"     │           │   └─ IndexedTableAccess(mytable)\n" +
+			"     │           │       ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ keys: [2 (tinyint)]\n" +
+			"     │           │       ├─ colSet: (5,6)\n" +
+			"     │           │       ├─ tableId: 3\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: mytable\n" +
+			"     │           │           └─ columns: [i]\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(mytable)\n" +
+			"     │                   ├─ index: [mytable.i]\n" +
+			"     │                   ├─ keys: [d.s:0!null]\n" +
+			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ tableId: 3\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: mytable\n" +
+			"     │                       └─ columns: [i]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ a.i:2!null\n" +
+			"         │   └─ b.i:4!null\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1,2)\n" +
+			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: mytable\n" +
-			"         │           └─ columns: [s]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Concat\n" +
-			"                 ├─ TableAlias(c)\n" +
-			"                 │   └─ IndexedTableAccess(mytable)\n" +
-			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ keys: [2 (tinyint)]\n" +
-			"                 │       ├─ colSet: (5,6)\n" +
-			"                 │       ├─ tableId: 3\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: mytable\n" +
-			"                 │           └─ columns: [i]\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ keys: [d.s:3!null]\n" +
-			"                         ├─ colSet: (5,6)\n" +
-			"                         ├─ tableId: 3\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i]\n" +
+			"         │           └─ columns: [i s]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ ((b.i = c.i) AND (a.i = c.i))\n" +
-			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ LookupJoin (estimated cost=-2.705 rows=3)\n" +
-			"         ├─ ((c.i = d.s) OR (c.i = 2))\n" +
-			"         ├─ TableAlias(d)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [s]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Concat\n" +
-			"                 ├─ TableAlias(c)\n" +
-			"                 │   └─ IndexedTableAccess(mytable)\n" +
-			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ columns: [i]\n" +
-			"                 │       └─ keys: 2\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ columns: [i]\n" +
-			"                         └─ keys: d.s\n" +
+			"     ├─ LookupJoin (estimated cost=-2.705 rows=3)\n" +
+			"     │   ├─ ((c.i = d.s) OR (c.i = 2))\n" +
+			"     │   ├─ TableAlias(d)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: mytable\n" +
+			"     │   │       └─ columns: [s]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Concat\n" +
+			"     │           ├─ TableAlias(c)\n" +
+			"     │           │   └─ IndexedTableAccess(mytable)\n" +
+			"     │           │       ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ columns: [i]\n" +
+			"     │           │       └─ keys: 2\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(mytable)\n" +
+			"     │                   ├─ index: [mytable.i]\n" +
+			"     │                   ├─ columns: [i]\n" +
+			"     │                   └─ keys: d.s\n" +
+			"     └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+			"         ├─ cmp: (a.i = b.i)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ ((b.i = c.i) AND (a.i = c.i))\n" +
-			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ LookupJoin (estimated cost=-2.705 rows=3) (actual rows=3 loops=3)\n" +
-			"         ├─ ((c.i = d.s) OR (c.i = 2))\n" +
-			"         ├─ TableAlias(d)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [s]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Concat\n" +
-			"                 ├─ TableAlias(c)\n" +
-			"                 │   └─ IndexedTableAccess(mytable)\n" +
-			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ columns: [i]\n" +
-			"                 │       └─ keys: 2\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ columns: [i]\n" +
-			"                         └─ keys: d.s\n" +
+			"     ├─ LookupJoin (estimated cost=-2.705 rows=3) (actual rows=3 loops=1)\n" +
+			"     │   ├─ ((c.i = d.s) OR (c.i = 2))\n" +
+			"     │   ├─ TableAlias(d)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: mytable\n" +
+			"     │   │       └─ columns: [s]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Concat\n" +
+			"     │           ├─ TableAlias(c)\n" +
+			"     │           │   └─ IndexedTableAccess(mytable)\n" +
+			"     │           │       ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ columns: [i]\n" +
+			"     │           │       └─ keys: 2\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(mytable)\n" +
+			"     │                   ├─ index: [mytable.i]\n" +
+			"     │                   ├─ columns: [i]\n" +
+			"     │                   └─ keys: d.s\n" +
+			"     └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=3)\n" +
+			"         ├─ cmp: (a.i = b.i)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ CrossJoin\n" +
-			"     ├─ LookupJoin\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ b.i:3!null\n" +
-			"     │   │   └─ c.i:0!null\n" +
-			"     │   ├─ MergeJoin\n" +
-			"     │   │   ├─ cmp: Eq\n" +
-			"     │   │   │   ├─ c.i:0!null\n" +
-			"     │   │   │   └─ a.i:1!null\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │   │       ├─ index: [mytable.i]\n" +
-			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       ├─ colSet: (5,6)\n" +
-			"     │   │   │       ├─ tableId: 3\n" +
-			"     │   │   │       └─ Table\n" +
-			"     │   │   │           ├─ name: mytable\n" +
-			"     │   │   │           └─ columns: [i]\n" +
-			"     │   │   └─ TableAlias(a)\n" +
-			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.i]\n" +
-			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           ├─ colSet: (1,2)\n" +
-			"     │   │           ├─ tableId: 1\n" +
-			"     │   │           └─ Table\n" +
-			"     │   │               ├─ name: mytable\n" +
-			"     │   │               └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(b)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ keys: [a.i:1!null]\n" +
-			"     │           ├─ colSet: (3,4)\n" +
-			"     │           ├─ tableId: 2\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i]\n" +
-			"     └─ TableAlias(d)\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: []\n" +
+			"     ├─ TableAlias(d)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: []\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ MergeJoin\n" +
+			"         │   ├─ cmp: Eq\n" +
+			"         │   │   ├─ a.i:0!null\n" +
+			"         │   │   └─ b.i:2!null\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   │       ├─ colSet: (1,2)\n" +
+			"         │   │       ├─ tableId: 1\n" +
+			"         │   │       └─ Table\n" +
+			"         │   │           ├─ name: mytable\n" +
+			"         │   │           └─ columns: [i s]\n" +
+			"         │   └─ TableAlias(b)\n" +
+			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │           ├─ colSet: (3,4)\n" +
+			"         │           ├─ tableId: 2\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: mytable\n" +
+			"         │               └─ columns: [i]\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ keys: [b.i:2!null]\n" +
+			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ tableId: 3\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin (estimated cost=10.090 rows=3)\n" +
-			"     ├─ LookupJoin (estimated cost=9.900 rows=3)\n" +
-			"     │   ├─ (b.i = c.i)\n" +
-			"     │   ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     │   │   ├─ cmp: (c.i = a.i)\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │   │       ├─ index: [mytable.i]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [i]\n" +
-			"     │   │   └─ TableAlias(a)\n" +
-			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.i]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(b)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ columns: [i]\n" +
-			"     │           └─ keys: a.i\n" +
-			"     └─ TableAlias(d)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: []\n" +
+			"     ├─ TableAlias(d)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: []\n" +
+			"     └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
+			"         ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+			"         │   ├─ cmp: (a.i = b.i)\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   │       └─ columns: [i s]\n" +
+			"         │   └─ TableAlias(b)\n" +
+			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           └─ columns: [i]\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ columns: [i]\n" +
+			"                 └─ keys: b.i\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   ├─ (b.i = c.i)\n" +
-			"     │   ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   │   ├─ cmp: (c.i = a.i)\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │   │       ├─ index: [mytable.i]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [i]\n" +
-			"     │   │   └─ TableAlias(a)\n" +
-			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.i]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(b)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ columns: [i]\n" +
-			"     │           └─ keys: a.i\n" +
-			"     └─ TableAlias(d)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: []\n" +
+			"     ├─ TableAlias(d)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: []\n" +
+			"     └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=3 loops=3)\n" +
+			"         ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=3)\n" +
+			"         │   ├─ cmp: (a.i = b.i)\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   │       └─ columns: [i s]\n" +
+			"         │   └─ TableAlias(b)\n" +
+			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           └─ columns: [i]\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ columns: [i]\n" +
+			"                 └─ keys: b.i\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.i:0!null\n" +
-			"     │   └─ a.i:1!null\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ b.i:2!null\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     ├─ cmp: (a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     ├─ cmp: (a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i OR a.i = b.s`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ a.i:2!null\n" +
-			"     │   │   └─ b.i:0!null\n" +
+			"     │   │   ├─ a.i:0!null\n" +
+			"     │   │   └─ b.i:2!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ a.i:2!null\n" +
-			"     │       └─ b.s:1!null\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     │       ├─ a.i:0!null\n" +
+			"     │       └─ b.s:3!null\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ Concat\n" +
-			"             ├─ TableAlias(a)\n" +
+			"             ├─ TableAlias(b)\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
-			"             │       ├─ keys: [b.s:1!null]\n" +
-			"             │       ├─ colSet: (1,2)\n" +
-			"             │       ├─ tableId: 1\n" +
+			"             │       ├─ index: [mytable.s,mytable.i]\n" +
+			"             │       ├─ keys: [a.i:0!null]\n" +
+			"             │       ├─ colSet: (3,4)\n" +
+			"             │       ├─ tableId: 2\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: mytable\n" +
 			"             │           └─ columns: [i s]\n" +
-			"             └─ TableAlias(a)\n" +
+			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
-			"                     ├─ keys: [b.i:0!null]\n" +
-			"                     ├─ colSet: (1,2)\n" +
-			"                     ├─ tableId: 1\n" +
+			"                     ├─ keys: [a.i:0!null]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: mytable\n" +
 			"                         └─ columns: [i s]\n" +
@@ -10635,80 +10590,80 @@ inner join pq on true
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ LookupJoin (estimated cost=-2.705 rows=3)\n" +
 			"     ├─ ((a.i = b.i) OR (a.i = b.s))\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ Concat\n" +
-			"             ├─ TableAlias(a)\n" +
+			"             ├─ TableAlias(b)\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
+			"             │       ├─ index: [mytable.s,mytable.i]\n" +
 			"             │       ├─ columns: [i s]\n" +
-			"             │       └─ keys: b.s\n" +
-			"             └─ TableAlias(a)\n" +
+			"             │       └─ keys: a.i\n" +
+			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ columns: [i s]\n" +
-			"                     └─ keys: b.i\n" +
+			"                     └─ keys: a.i\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ LookupJoin (estimated cost=-2.705 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ ((a.i = b.i) OR (a.i = b.s))\n" +
-			"     ├─ TableAlias(b)\n" +
+			"     ├─ TableAlias(a)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(a)\n" +
+			"     └─ TableAlias(b)\n" +
 			"         └─ Concat\n" +
-			"             ├─ TableAlias(a)\n" +
+			"             ├─ TableAlias(b)\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
-			"             │       ├─ index: [mytable.i]\n" +
+			"             │       ├─ index: [mytable.s,mytable.i]\n" +
 			"             │       ├─ columns: [i s]\n" +
-			"             │       └─ keys: b.s\n" +
-			"             └─ TableAlias(a)\n" +
+			"             │       └─ keys: a.i\n" +
+			"             └─ TableAlias(b)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
 			"                     ├─ columns: [i s]\n" +
-			"                     └─ keys: b.i\n" +
+			"                     └─ keys: a.i\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where NOT(a.i = b.s OR a.s = b.i)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ NOT\n" +
 			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ a.i:0!null\n" +
-			"     │   │       └─ b.s:3!null\n" +
+			"     │   │       ├─ a.i:2!null\n" +
+			"     │   │       └─ b.s:1!null\n" +
 			"     │   └─ NOT\n" +
 			"     │       └─ Eq\n" +
-			"     │           ├─ a.s:1!null\n" +
-			"     │           └─ b.i:2!null\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     │           ├─ a.s:3!null\n" +
+			"     │           └─ b.i:0!null\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ columns: [i s]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ ((NOT((a.i = b.s))) AND (NOT((a.s = b.i))))\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -10717,11 +10672,11 @@ inner join pq on true
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
 			"     ├─ ((NOT((a.i = b.s))) AND (NOT((a.s = b.i))))\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -10730,34 +10685,34 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ a.i:0!null\n" +
-			"     │   │   └─ b.s:3!null\n" +
+			"     │   │   ├─ a.i:2!null\n" +
+			"     │   │   └─ b.s:1!null\n" +
 			"     │   └─ (a.s = b.i) IS FALSE\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
 			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             ├─ columns: [i s]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ ((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -10766,11 +10721,11 @@ inner join pq on true
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
 			"     ├─ ((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
@@ -10779,146 +10734,146 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i >= b.i`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ GreaterThanOrEqual\n" +
-			"     │   ├─ a.i:0!null\n" +
-			"     │   └─ b.i:2!null\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     │   ├─ a.i:1!null\n" +
+			"     │   └─ b.i:0!null\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │           └─ columns: [i]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             ├─ columns: [i]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ (a.i >= b.i)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=6 loops=1)\n" +
 			"     ├─ (a.i >= b.i)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │       └─ columns: [i]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.i`,
 		ExpectedPlan: "CrossJoin\n" +
-			" ├─ Filter\n" +
-			" │   ├─ Eq\n" +
-			" │   │   ├─ a.i:0!null\n" +
-			" │   │   └─ a.i:0!null\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ ProcessTable\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: mytable\n" +
-			" │               └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         ├─ columns: []\n" +
-			"         ├─ colSet: (3,4)\n" +
-			"         └─ tableId: 2\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ a.i:0!null\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             ├─ columns: [i s]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "CrossJoin (estimated cost=7.060 rows=2)\n" +
-			" ├─ Filter\n" +
-			" │   ├─ (a.i = a.i)\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: mytable\n" +
-			" │           └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: []\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ (a.i = a.i)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "CrossJoin (estimated cost=7.060 rows=2) (actual rows=9 loops=1)\n" +
-			" ├─ Filter\n" +
-			" │   ├─ (a.i = a.i)\n" +
-			" │   └─ TableAlias(a)\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: mytable\n" +
-			" │           └─ columns: [i s]\n" +
-			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: []\n" +
+			" ├─ TableAlias(b)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: []\n" +
+			" └─ Filter\n" +
+			"     ├─ (a.i = a.i)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ AND\n" +
 			"     │   │   ├─ AND\n" +
 			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ b.i:0!null\n" +
-			"     │   │   │   │   └─ c.i:4!null\n" +
+			"     │   │   │   │   ├─ a.i:0!null\n" +
+			"     │   │   │   │   └─ b.i:3!null\n" +
 			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ a.i:1!null\n" +
-			"     │   │   │       └─ c.i:4!null\n" +
+			"     │   │   │       ├─ c.i:4!null\n" +
+			"     │   │   │       └─ d.i:2!null\n" +
 			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ a.i:1!null\n" +
-			"     │   │       └─ d.i:3!null\n" +
+			"     │   │       ├─ a.i:0!null\n" +
+			"     │   │       └─ c.i:4!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ b.i:0!null\n" +
-			"     │       └─ d.i:3!null\n" +
+			"     │       ├─ b.i:3!null\n" +
+			"     │       └─ d.i:2!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ a.i:1!null\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   │   ├─ a.i:0!null\n" +
+			"     │   │   └─ d.i:2!null\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (3,4)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (1,2)\n" +
+			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: mytable\n" +
-			"     │   │           └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   │           └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
+			"     │           ├─ colSet: (7,8)\n" +
+			"     │           ├─ tableId: 4\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
+			"     │               └─ columns: [i]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ d.i:3!null\n" +
+			"         │   ├─ b.i:3!null\n" +
 			"         │   └─ c.i:4!null\n" +
-			"         ├─ TableAlias(d)\n" +
+			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (7,8)\n" +
-			"         │       ├─ tableId: 4\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (3,4)\n" +
+			"         │       ├─ tableId: 2\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: mytable\n" +
 			"         │           └─ columns: [i]\n" +
@@ -10939,25 +10894,25 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
-			"     ├─ ((((b.i = c.i) AND (a.i = c.i)) AND (a.i = d.i)) AND (b.i = d.i))\n" +
+			"     ├─ ((((a.i = b.i) AND (c.i = d.i)) AND (a.i = c.i)) AND (b.i = d.i))\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   ├─ cmp: (a.i = d.i)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"         ├─ cmp: (d.i = c.i)\n" +
-			"         ├─ TableAlias(d)\n" +
+			"         ├─ cmp: (b.i = c.i)\n" +
+			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ Filter\n" +
 			"             ├─ (c.i = 2)\n" +
@@ -10970,25 +10925,25 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ ((((b.i = c.i) AND (a.i = c.i)) AND (a.i = d.i)) AND (b.i = d.i))\n" +
+			"     ├─ ((((a.i = b.i) AND (c.i = d.i)) AND (a.i = c.i)) AND (b.i = d.i))\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   ├─ cmp: (a.i = d.i)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(d)\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     │           └─ columns: [i]\n" +
 			"     └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=3)\n" +
-			"         ├─ cmp: (d.i = c.i)\n" +
-			"         ├─ TableAlias(d)\n" +
+			"         ├─ cmp: (b.i = c.i)\n" +
+			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │       └─ columns: [i]\n" +
 			"         └─ Filter\n" +
 			"             ├─ (c.i = 2)\n" +
@@ -11002,236 +10957,236 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:2!null, a.s:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ c.i:4!null\n" +
+			"     │   │   ├─ b.i:4!null\n" +
+			"     │   │   └─ c.i:1!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ a.i:1!null\n" +
-			"     │       └─ c.i:4!null\n" +
-			"     ├─ MergeJoin\n" +
-			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ b.i:0!null\n" +
-			"     │   │   └─ a.i:1!null\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (3,4)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │       ├─ a.i:2!null\n" +
+			"     │       └─ c.i:1!null\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ Or\n" +
+			"     │   │   ├─ Eq\n" +
+			"     │   │   │   ├─ c.i:1!null\n" +
+			"     │   │   │   └─ d.s:0!null\n" +
+			"     │   │   └─ Eq\n" +
+			"     │   │       ├─ c.i:1!null\n" +
+			"     │   │       └─ 2 (tinyint)\n" +
+			"     │   ├─ TableAlias(d)\n" +
+			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: mytable\n" +
-			"     │   │           └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ Or\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ c.i:4!null\n" +
-			"         │   │   └─ d.s:3!null\n" +
-			"         │   └─ Eq\n" +
-			"         │       ├─ c.i:4!null\n" +
-			"         │       └─ 2 (tinyint)\n" +
-			"         ├─ TableAlias(d)\n" +
-			"         │   └─ ProcessTable\n" +
+			"     │   │           └─ columns: [s]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Concat\n" +
+			"     │           ├─ TableAlias(c)\n" +
+			"     │           │   └─ IndexedTableAccess(mytable)\n" +
+			"     │           │       ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ keys: [2 (tinyint)]\n" +
+			"     │           │       ├─ colSet: (5,6)\n" +
+			"     │           │       ├─ tableId: 3\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: mytable\n" +
+			"     │           │           └─ columns: [i]\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(mytable)\n" +
+			"     │                   ├─ index: [mytable.i]\n" +
+			"     │                   ├─ keys: [d.s:0!null]\n" +
+			"     │                   ├─ colSet: (5,6)\n" +
+			"     │                   ├─ tableId: 3\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: mytable\n" +
+			"     │                       └─ columns: [i]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ a.i:2!null\n" +
+			"         │   └─ b.i:4!null\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1,2)\n" +
+			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: mytable\n" +
-			"         │           └─ columns: [s]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Concat\n" +
-			"                 ├─ TableAlias(c)\n" +
-			"                 │   └─ IndexedTableAccess(mytable)\n" +
-			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ keys: [2 (tinyint)]\n" +
-			"                 │       ├─ colSet: (5,6)\n" +
-			"                 │       ├─ tableId: 3\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: mytable\n" +
-			"                 │           └─ columns: [i]\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ keys: [d.s:3!null]\n" +
-			"                         ├─ colSet: (5,6)\n" +
-			"                         ├─ tableId: 3\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i]\n" +
+			"         │           └─ columns: [i s]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ ((b.i = c.i) AND (a.i = c.i))\n" +
-			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ LookupJoin (estimated cost=-2.705 rows=3)\n" +
-			"         ├─ ((c.i = d.s) OR (c.i = 2))\n" +
-			"         ├─ TableAlias(d)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [s]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Concat\n" +
-			"                 ├─ TableAlias(c)\n" +
-			"                 │   └─ IndexedTableAccess(mytable)\n" +
-			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ columns: [i]\n" +
-			"                 │       └─ keys: 2\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ columns: [i]\n" +
-			"                         └─ keys: d.s\n" +
+			"     ├─ LookupJoin (estimated cost=-2.705 rows=3)\n" +
+			"     │   ├─ ((c.i = d.s) OR (c.i = 2))\n" +
+			"     │   ├─ TableAlias(d)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: mytable\n" +
+			"     │   │       └─ columns: [s]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Concat\n" +
+			"     │           ├─ TableAlias(c)\n" +
+			"     │           │   └─ IndexedTableAccess(mytable)\n" +
+			"     │           │       ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ columns: [i]\n" +
+			"     │           │       └─ keys: 2\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(mytable)\n" +
+			"     │                   ├─ index: [mytable.i]\n" +
+			"     │                   ├─ columns: [i]\n" +
+			"     │                   └─ keys: d.s\n" +
+			"     └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+			"         ├─ cmp: (a.i = b.i)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ ((b.i = c.i) AND (a.i = c.i))\n" +
-			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   ├─ cmp: (b.i = a.i)\n" +
-			"     │   ├─ TableAlias(b)\n" +
-			"     │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │       ├─ index: [mytable.i]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [i]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ LookupJoin (estimated cost=-2.705 rows=3) (actual rows=3 loops=3)\n" +
-			"         ├─ ((c.i = d.s) OR (c.i = 2))\n" +
-			"         ├─ TableAlias(d)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [s]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Concat\n" +
-			"                 ├─ TableAlias(c)\n" +
-			"                 │   └─ IndexedTableAccess(mytable)\n" +
-			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ columns: [i]\n" +
-			"                 │       └─ keys: 2\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ columns: [i]\n" +
-			"                         └─ keys: d.s\n" +
+			"     ├─ LookupJoin (estimated cost=-2.705 rows=3) (actual rows=3 loops=1)\n" +
+			"     │   ├─ ((c.i = d.s) OR (c.i = 2))\n" +
+			"     │   ├─ TableAlias(d)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: mytable\n" +
+			"     │   │       └─ columns: [s]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Concat\n" +
+			"     │           ├─ TableAlias(c)\n" +
+			"     │           │   └─ IndexedTableAccess(mytable)\n" +
+			"     │           │       ├─ index: [mytable.i]\n" +
+			"     │           │       ├─ columns: [i]\n" +
+			"     │           │       └─ keys: 2\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(mytable)\n" +
+			"     │                   ├─ index: [mytable.i]\n" +
+			"     │                   ├─ columns: [i]\n" +
+			"     │                   └─ keys: d.s\n" +
+			"     └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=3)\n" +
+			"         ├─ cmp: (a.i = b.i)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(mytable)\n" +
+			"         │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:3!null, a.s:4!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ CrossJoin\n" +
-			"     ├─ LookupJoin\n" +
-			"     │   ├─ MergeJoin\n" +
-			"     │   │   ├─ cmp: Eq\n" +
-			"     │   │   │   ├─ c.s:0!null\n" +
-			"     │   │   │   └─ b.s:2!null\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │   │       ├─ index: [mytable.s,mytable.i]\n" +
-			"     │   │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │   │       ├─ colSet: (5,6)\n" +
-			"     │   │   │       ├─ tableId: 3\n" +
-			"     │   │   │       └─ Table\n" +
-			"     │   │   │           ├─ name: mytable\n" +
-			"     │   │   │           └─ columns: [s]\n" +
-			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.s]\n" +
-			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           ├─ colSet: (3,4)\n" +
-			"     │   │           ├─ tableId: 2\n" +
-			"     │   │           └─ Table\n" +
-			"     │   │               ├─ name: mytable\n" +
-			"     │   │               └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ keys: [b.i:1!null]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
-			"     └─ TableAlias(d)\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: []\n" +
+			"     ├─ TableAlias(d)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: []\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ MergeJoin\n" +
+			"         │   ├─ cmp: Eq\n" +
+			"         │   │   ├─ a.i:0!null\n" +
+			"         │   │   └─ b.i:2!null\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   │       ├─ colSet: (1,2)\n" +
+			"         │   │       ├─ tableId: 1\n" +
+			"         │   │       └─ Table\n" +
+			"         │   │           ├─ name: mytable\n" +
+			"         │   │           └─ columns: [i s]\n" +
+			"         │   └─ TableAlias(b)\n" +
+			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │           ├─ colSet: (3,4)\n" +
+			"         │           ├─ tableId: 2\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: mytable\n" +
+			"         │               └─ columns: [i s]\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.s]\n" +
+			"                 ├─ keys: [b.s:3!null]\n" +
+			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ tableId: 3\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin (estimated cost=10.090 rows=3)\n" +
-			"     ├─ LookupJoin (estimated cost=9.900 rows=3)\n" +
-			"     │   ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"     │   │   ├─ cmp: (c.s = b.s)\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │   │       ├─ index: [mytable.s,mytable.i]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [s]\n" +
-			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.s]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ columns: [i s]\n" +
-			"     │           └─ keys: b.i\n" +
-			"     └─ TableAlias(d)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: []\n" +
+			"     ├─ TableAlias(d)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: []\n" +
+			"     └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
+			"         ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+			"         │   ├─ cmp: (a.i = b.i)\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   │       └─ columns: [i s]\n" +
+			"         │   └─ TableAlias(b)\n" +
+			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           └─ columns: [i s]\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.s]\n" +
+			"                 ├─ columns: [s]\n" +
+			"                 └─ keys: b.s\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ CrossJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"     │   │   ├─ cmp: (c.s = b.s)\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
-			"     │   │   │       ├─ index: [mytable.s,mytable.i]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [s]\n" +
-			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.s]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ columns: [i s]\n" +
-			"     │           └─ keys: b.i\n" +
-			"     └─ TableAlias(d)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: []\n" +
+			"     ├─ TableAlias(d)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: []\n" +
+			"     └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=3 loops=3)\n" +
+			"         ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=3)\n" +
+			"         │   ├─ cmp: (a.i = b.i)\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ IndexedTableAccess(mytable)\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │   │       └─ columns: [i s]\n" +
+			"         │   └─ TableAlias(b)\n" +
+			"         │       └─ IndexedTableAccess(mytable)\n" +
+			"         │           ├─ index: [mytable.i]\n" +
+			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           └─ columns: [i s]\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.s]\n" +
+			"                 ├─ columns: [s]\n" +
+			"                 └─ keys: b.s\n" +
 			"",
 	},
 	{
@@ -11296,97 +11251,91 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [lefttable.i:0!null, righttable.s:3!null]\n" +
 			" └─ Sort(lefttable.i:0!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [lefttable.i:2!null, lefttable.s:3!null, righttable.i:0!null, righttable.s:1!null]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ Eq\n" +
-			"             │   │   ├─ lefttable.i:2!null\n" +
-			"             │   │   └─ righttable.i:0!null\n" +
-			"             │   └─ Eq\n" +
-			"             │       ├─ righttable.s:1!null\n" +
-			"             │       └─ lefttable.s:3!null\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: righttable\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ isLateral: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (7,8)\n" +
-			"             │   ├─ tableId: 4\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: mytable\n" +
-			"             │       ├─ columns: [i s]\n" +
-			"             │       ├─ colSet: (5,6)\n" +
-			"             │       └─ tableId: 3\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE(righttable.i:0!null, righttable.s:1!null)\n" +
-			"                 ├─ right-key: TUPLE(lefttable.i:0!null, lefttable.s:1!null)\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: lefttable\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: false\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (3,4)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         ├─ columns: [i s]\n" +
-			"                         ├─ colSet: (1,2)\n" +
-			"                         └─ tableId: 1\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ AND\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ lefttable.i:0!null\n" +
+			"         │   │   └─ righttable.i:2!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ righttable.s:3!null\n" +
+			"         │       └─ lefttable.s:1!null\n" +
+			"         ├─ SubqueryAlias\n" +
+			"         │   ├─ name: lefttable\n" +
+			"         │   ├─ outerVisibility: false\n" +
+			"         │   ├─ isLateral: false\n" +
+			"         │   ├─ cacheable: true\n" +
+			"         │   ├─ colSet: (3,4)\n" +
+			"         │   ├─ tableId: 2\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       ├─ columns: [i s]\n" +
+			"         │       ├─ colSet: (1,2)\n" +
+			"         │       └─ tableId: 1\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(lefttable.i:0!null, lefttable.s:1!null)\n" +
+			"             ├─ right-key: TUPLE(righttable.i:0!null, righttable.s:1!null)\n" +
+			"             └─ SubqueryAlias\n" +
+			"                 ├─ name: righttable\n" +
+			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
+			"                 ├─ cacheable: true\n" +
+			"                 ├─ colSet: (7,8)\n" +
+			"                 ├─ tableId: 4\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     ├─ columns: [i s]\n" +
+			"                     ├─ colSet: (5,6)\n" +
+			"                     └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [lefttable.i, righttable.s]\n" +
 			" └─ Sort(lefttable.i ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [lefttable.i, lefttable.s, righttable.i, righttable.s]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ ((lefttable.i = righttable.i) AND (righttable.s = lefttable.s))\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: righttable\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ isLateral: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: mytable\n" +
-			"             │       └─ columns: [i s]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (righttable.i, righttable.s)\n" +
-			"                 ├─ right-key: (lefttable.i, lefttable.s)\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: lefttable\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: false\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         └─ columns: [i s]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ ((lefttable.i = righttable.i) AND (righttable.s = lefttable.s))\n" +
+			"         ├─ SubqueryAlias\n" +
+			"         │   ├─ name: lefttable\n" +
+			"         │   ├─ outerVisibility: false\n" +
+			"         │   ├─ isLateral: false\n" +
+			"         │   ├─ cacheable: true\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (lefttable.i, lefttable.s)\n" +
+			"             ├─ right-key: (righttable.i, righttable.s)\n" +
+			"             └─ SubqueryAlias\n" +
+			"                 ├─ name: righttable\n" +
+			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
+			"                 ├─ cacheable: true\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [lefttable.i, righttable.s]\n" +
 			" └─ Sort(lefttable.i ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [lefttable.i, lefttable.s, righttable.i, righttable.s]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ ((lefttable.i = righttable.i) AND (righttable.s = lefttable.s))\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: righttable\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ isLateral: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: mytable\n" +
-			"             │       └─ columns: [i s]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (righttable.i, righttable.s)\n" +
-			"                 ├─ right-key: (lefttable.i, lefttable.s)\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: lefttable\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: false\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         └─ columns: [i s]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ ((lefttable.i = righttable.i) AND (righttable.s = lefttable.s))\n" +
+			"         ├─ SubqueryAlias\n" +
+			"         │   ├─ name: lefttable\n" +
+			"         │   ├─ outerVisibility: false\n" +
+			"         │   ├─ isLateral: false\n" +
+			"         │   ├─ cacheable: true\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: mytable\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (lefttable.i, lefttable.s)\n" +
+			"             ├─ right-key: (righttable.i, righttable.s)\n" +
+			"             └─ SubqueryAlias\n" +
+			"                 ├─ name: righttable\n" +
+			"                 ├─ outerVisibility: false\n" +
+			"                 ├─ isLateral: false\n" +
+			"                 ├─ cacheable: true\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -11906,8 +11855,8 @@ inner join pq on true
 			" │   └─ o.c2:4\n" +
 			" ├─ TableAlias(mt)\n" +
 			" │   └─ IndexedTableAccess(mytable)\n" +
-			" │       ├─ index: [mytable.i]\n" +
-			" │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" │       ├─ colSet: (1,2)\n" +
 			" │       ├─ tableId: 1\n" +
 			" │       └─ Table\n" +
@@ -11928,8 +11877,8 @@ inner join pq on true
 			" ├─ sel: (mt.s = o.c2)\n" +
 			" ├─ TableAlias(mt)\n" +
 			" │   └─ IndexedTableAccess(mytable)\n" +
-			" │       ├─ index: [mytable.i]\n" +
-			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" │       └─ columns: [i s]\n" +
 			" └─ TableAlias(o)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
@@ -11942,8 +11891,8 @@ inner join pq on true
 			" ├─ sel: (mt.s = o.c2)\n" +
 			" ├─ TableAlias(mt)\n" +
 			" │   └─ IndexedTableAccess(mytable)\n" +
-			" │       ├─ index: [mytable.i]\n" +
-			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" │       └─ columns: [i s]\n" +
 			" └─ TableAlias(o)\n" +
 			"     └─ IndexedTableAccess(one_pk)\n" +
@@ -11995,103 +11944,103 @@ inner join pq on true
 	{
 		Query: `SELECT * FROM tabletest, mytable mt INNER JOIN othertable ot ON mt.i = ot.i2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [tabletest.i:0!null, tabletest.s:1!null, mt.i:4!null, mt.s:5!null, ot.s2:2!null, ot.i2:3!null]\n" +
+			" ├─ columns: [tabletest.i:4!null, tabletest.s:5!null, mt.i:0!null, mt.s:1!null, ot.s2:2!null, ot.i2:3!null]\n" +
 			" └─ CrossJoin\n" +
-			"     ├─ ProcessTable\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: tabletest\n" +
-			"     │       └─ columns: [i s]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ ot.i2:3!null\n" +
-			"         │   └─ mt.i:4!null\n" +
-			"         ├─ TableAlias(ot)\n" +
-			"         │   └─ IndexedTableAccess(othertable)\n" +
-			"         │       ├─ index: [othertable.i2]\n" +
-			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (5,6)\n" +
-			"         │       ├─ tableId: 3\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: othertable\n" +
-			"         │           └─ columns: [s2 i2]\n" +
-			"         └─ TableAlias(mt)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (3,4)\n" +
-			"                 ├─ tableId: 2\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i s]\n" +
+			"     ├─ MergeJoin\n" +
+			"     │   ├─ cmp: Eq\n" +
+			"     │   │   ├─ mt.i:0!null\n" +
+			"     │   │   └─ ot.i2:3!null\n" +
+			"     │   ├─ TableAlias(mt)\n" +
+			"     │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (3,4)\n" +
+			"     │   │       ├─ tableId: 2\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: mytable\n" +
+			"     │   │           └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(ot)\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (5,6)\n" +
+			"     │           ├─ tableId: 3\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: othertable\n" +
+			"     │               └─ columns: [s2 i2]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: tabletest\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [tabletest.i, tabletest.s, mt.i, mt.s, ot.s2, ot.i2]\n" +
 			" └─ CrossJoin (estimated cost=10.090 rows=3)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: tabletest\n" +
-			"     │   └─ columns: [i s]\n" +
-			"     └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"         ├─ cmp: (ot.i2 = mt.i)\n" +
-			"         ├─ TableAlias(ot)\n" +
-			"         │   └─ IndexedTableAccess(othertable)\n" +
-			"         │       ├─ index: [othertable.i2]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [s2 i2]\n" +
-			"         └─ TableAlias(mt)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+			"     │   ├─ cmp: (mt.i = ot.i2)\n" +
+			"     │   ├─ TableAlias(mt)\n" +
+			"     │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(ot)\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │           └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: tabletest\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [tabletest.i, tabletest.s, mt.i, mt.s, ot.s2, ot.i2]\n" +
 			" └─ CrossJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: tabletest\n" +
-			"     │   └─ columns: [i s]\n" +
-			"     └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=3)\n" +
-			"         ├─ cmp: (ot.i2 = mt.i)\n" +
-			"         ├─ TableAlias(ot)\n" +
-			"         │   └─ IndexedTableAccess(othertable)\n" +
-			"         │       ├─ index: [othertable.i2]\n" +
-			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [s2 i2]\n" +
-			"         └─ TableAlias(mt)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
+			"     │   ├─ cmp: (mt.i = ot.i2)\n" +
+			"     │   ├─ TableAlias(mt)\n" +
+			"     │   │   └─ IndexedTableAccess(mytable)\n" +
+			"     │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [i s]\n" +
+			"     │   └─ TableAlias(ot)\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.i2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │           └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: tabletest\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT t1.timestamp FROM reservedWordsTable t1 JOIN reservedWordsTable t2 ON t1.TIMESTAMP = t2.tImEstamp`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [t1.timestamp:0!null]\n" +
+			" ├─ columns: [t1.timestamp:1!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ t1.TIMESTAMP:0!null\n" +
-			"     │   └─ t2.tImEstamp:1!null\n" +
-			"     ├─ TableAlias(t1)\n" +
+			"     │   ├─ t1.TIMESTAMP:1!null\n" +
+			"     │   └─ t2.tImEstamp:0!null\n" +
+			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: reservedWordsTable\n" +
 			"     │           └─ columns: [timestamp]\n" +
-			"     └─ TableAlias(t2)\n" +
+			"     └─ TableAlias(t1)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: reservedWordsTable\n" +
 			"             ├─ columns: [timestamp]\n" +
-			"             ├─ colSet: (5-8)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ colSet: (1-4)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.timestamp]\n" +
 			" └─ InnerJoin (estimated cost=2.010 rows=1)\n" +
 			"     ├─ (t1.TIMESTAMP = t2.tImEstamp)\n" +
-			"     ├─ TableAlias(t1)\n" +
+			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: reservedWordsTable\n" +
 			"     │       └─ columns: [timestamp]\n" +
-			"     └─ TableAlias(t2)\n" +
+			"     └─ TableAlias(t1)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: reservedWordsTable\n" +
 			"             └─ columns: [timestamp]\n" +
@@ -12100,11 +12049,11 @@ inner join pq on true
 			" ├─ columns: [t1.timestamp]\n" +
 			" └─ InnerJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (t1.TIMESTAMP = t2.tImEstamp)\n" +
-			"     ├─ TableAlias(t1)\n" +
+			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: reservedWordsTable\n" +
 			"     │       └─ columns: [timestamp]\n" +
-			"     └─ TableAlias(t2)\n" +
+			"     └─ TableAlias(t1)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: reservedWordsTable\n" +
 			"             └─ columns: [timestamp]\n" +
@@ -12112,212 +12061,209 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:2!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ TUPLE(two_pk.pk1:0!null, two_pk.pk2:1!null)\n" +
-			"     │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (7-13)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: two_pk\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: one_pk\n" +
-			"             └─ columns: [pk]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ one_pk.pk:0!null\n" +
+			" │   └─ two_pk.pk1:1!null\n" +
+			" ├─ sel: Eq\n" +
+			" │   ├─ one_pk.pk:0!null\n" +
+			" │   └─ two_pk.pk2:2!null\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1-6)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: one_pk\n" +
+			" │       └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (7-13)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     ├─ cmp: ((two_pk.pk1, two_pk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=8.120 rows=4)\n" +
+			" ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			" ├─ sel: (one_pk.pk = two_pk.pk2)\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
-			"     ├─ cmp: ((two_pk.pk1, two_pk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
+			" ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			" ├─ sel: (one_pk.pk = two_pk.pk2)\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 OR one_pk.c2 = two_pk.c3`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:0!null, two_pk.pk1:2!null, two_pk.pk2:3!null]\n" +
+			" ├─ columns: [one_pk.pk:3!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ AND\n" +
 			"     │   │   ├─ Eq\n" +
-			"     │   │   │   ├─ one_pk.pk:0!null\n" +
-			"     │   │   │   └─ two_pk.pk1:2!null\n" +
+			"     │   │   │   ├─ one_pk.pk:3!null\n" +
+			"     │   │   │   └─ two_pk.pk1:0!null\n" +
 			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ one_pk.pk:0!null\n" +
-			"     │   │       └─ two_pk.pk2:3!null\n" +
+			"     │   │       ├─ one_pk.pk:3!null\n" +
+			"     │   │       └─ two_pk.pk2:1!null\n" +
 			"     │   └─ Eq\n" +
-			"     │       ├─ one_pk.c2:1\n" +
-			"     │       └─ two_pk.c3:4!null\n" +
+			"     │       ├─ one_pk.c2:4\n" +
+			"     │       └─ two_pk.c3:2!null\n" +
 			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
-			"     │       ├─ name: one_pk\n" +
-			"     │       └─ columns: [pk c2]\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2 c3]\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c3]\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk c2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ InnerJoin (estimated cost=17.160 rows=5)\n" +
 			"     ├─ (((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2)) OR (one_pk.c2 = two_pk.c3))\n" +
 			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk c2]\n" +
+			"     │   ├─ name: two_pk\n" +
+			"     │   └─ columns: [pk1 pk2 c3]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2 c3]\n" +
+			"         ├─ name: one_pk\n" +
+			"         └─ columns: [pk c2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ InnerJoin (estimated cost=17.160 rows=5) (actual rows=2 loops=1)\n" +
 			"     ├─ (((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2)) OR (one_pk.c2 = two_pk.c3))\n" +
 			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk c2]\n" +
+			"     │   ├─ name: two_pk\n" +
+			"     │   └─ columns: [pk1 pk2 c3]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2 c3]\n" +
+			"         ├─ name: one_pk\n" +
+			"         └─ columns: [pk c2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk opk JOIN two_pk tpk ON opk.pk=tpk.pk1 AND opk.pk=tpk.pk2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [opk.pk:2!null, tpk.pk1:0!null, tpk.pk2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
-			"     │   └─ TUPLE(opk.pk:2!null, opk.pk:2!null)\n" +
-			"     ├─ TableAlias(tpk)\n" +
-			"     │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (7-13)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: two_pk\n" +
-			"     │           └─ columns: [pk1 pk2]\n" +
-			"     └─ TableAlias(opk)\n" +
-			"         └─ IndexedTableAccess(one_pk)\n" +
-			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-6)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: one_pk\n" +
-			"                 └─ columns: [pk]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ opk.pk:0!null\n" +
+			" │   └─ tpk.pk1:1!null\n" +
+			" ├─ sel: Eq\n" +
+			" │   ├─ opk.pk:0!null\n" +
+			" │   └─ tpk.pk2:2!null\n" +
+			" ├─ TableAlias(opk)\n" +
+			" │   └─ IndexedTableAccess(one_pk)\n" +
+			" │       ├─ index: [one_pk.pk]\n" +
+			" │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1-6)\n" +
+			" │       ├─ tableId: 1\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: one_pk\n" +
+			" │           └─ columns: [pk]\n" +
+			" └─ TableAlias(tpk)\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (7-13)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [opk.pk, tpk.pk1, tpk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     ├─ cmp: ((tpk.pk1, tpk.pk2) = (opk.pk, opk.pk))\n" +
-			"     ├─ TableAlias(tpk)\n" +
-			"     │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
-			"     └─ TableAlias(opk)\n" +
-			"         └─ IndexedTableAccess(one_pk)\n" +
-			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=8.120 rows=4)\n" +
+			" ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			" ├─ sel: (opk.pk = tpk.pk2)\n" +
+			" ├─ TableAlias(opk)\n" +
+			" │   └─ IndexedTableAccess(one_pk)\n" +
+			" │       ├─ index: [one_pk.pk]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [pk]\n" +
+			" └─ TableAlias(tpk)\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [opk.pk, tpk.pk1, tpk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
-			"     ├─ cmp: ((tpk.pk1, tpk.pk2) = (opk.pk, opk.pk))\n" +
-			"     ├─ TableAlias(tpk)\n" +
-			"     │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
-			"     └─ TableAlias(opk)\n" +
-			"         └─ IndexedTableAccess(one_pk)\n" +
-			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
+			" ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			" ├─ sel: (opk.pk = tpk.pk2)\n" +
+			" ├─ TableAlias(opk)\n" +
+			" │   └─ IndexedTableAccess(one_pk)\n" +
+			" │       ├─ index: [one_pk.pk]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [pk]\n" +
+			" └─ TableAlias(tpk)\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:2!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ TUPLE(two_pk.pk1:0!null, two_pk.pk2:1!null)\n" +
-			"     │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (7-13)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: two_pk\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: one_pk\n" +
-			"             └─ columns: [pk]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ one_pk.pk:0!null\n" +
+			" │   └─ two_pk.pk1:1!null\n" +
+			" ├─ sel: Eq\n" +
+			" │   ├─ one_pk.pk:0!null\n" +
+			" │   └─ two_pk.pk2:2!null\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1-6)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: one_pk\n" +
+			" │       └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (7-13)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     ├─ cmp: ((two_pk.pk1, two_pk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=8.120 rows=4)\n" +
+			" ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			" ├─ sel: (one_pk.pk = two_pk.pk2)\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
-			"     ├─ cmp: ((two_pk.pk1, two_pk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
+			" ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			" ├─ sel: (one_pk.pk = two_pk.pk2)\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -12840,176 +12786,158 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.timestamp_col = dt2.timestamp_col`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ dt2.timestamp_col:3\n" +
-			"     │   └─ dt1.timestamp_col:8\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (6-10)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: datetime_table\n" +
-			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.timestamp_col]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-5)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
-			" └─ MergeJoin (estimated cost=6.120 rows=3)\n" +
-			"     ├─ cmp: (dt2.timestamp_col = dt1.timestamp_col)\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.timestamp_col]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ dt1.timestamp_col:3\n" +
+			" │   └─ dt2.timestamp_col:8\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.timestamp_col]\n" +
+			" │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1-5)\n" +
+			" │       ├─ tableId: 1\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: datetime_table\n" +
+			" │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (6-10)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: datetime_table\n" +
 			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
-			" └─ MergeJoin (estimated cost=6.120 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (dt2.timestamp_col = dt1.timestamp_col)\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.timestamp_col]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=6.120 rows=3)\n" +
+			" ├─ cmp: (dt1.timestamp_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.timestamp_col]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"",
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.120 rows=3) (actual rows=3 loops=1)\n" +
+			" ├─ cmp: (dt1.timestamp_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.timestamp_col]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = dt2.timestamp_col`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ dt2.timestamp_col:3\n" +
-			"     │   └─ dt1.date_col:6\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (6-10)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: datetime_table\n" +
-			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.date_col]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-5)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
-			" └─ MergeJoin (estimated cost=6.120 rows=3)\n" +
-			"     ├─ cmp: (dt2.timestamp_col = dt1.date_col)\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.date_col]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ dt1.date_col:1\n" +
+			" │   └─ dt2.timestamp_col:8\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.date_col]\n" +
+			" │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1-5)\n" +
+			" │       ├─ tableId: 1\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: datetime_table\n" +
+			" │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (6-10)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: datetime_table\n" +
 			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
-			" └─ MergeJoin (estimated cost=6.120 rows=3) (actual rows=0 loops=1)\n" +
-			"     ├─ cmp: (dt2.timestamp_col = dt1.date_col)\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.date_col]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=6.120 rows=3)\n" +
+			" ├─ cmp: (dt1.date_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.date_col]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"",
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.120 rows=3) (actual rows=0 loops=1)\n" +
+			" ├─ cmp: (dt1.date_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.date_col]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.datetime_col = dt2.timestamp_col`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ dt2.timestamp_col:3\n" +
-			"     │   └─ dt1.datetime_col:7\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (6-10)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: datetime_table\n" +
-			"     │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.datetime_col]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-5)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
-			" └─ MergeJoin (estimated cost=6.120 rows=3)\n" +
-			"     ├─ cmp: (dt2.timestamp_col = dt1.datetime_col)\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.datetime_col]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ dt1.datetime_col:2\n" +
+			" │   └─ dt2.timestamp_col:8\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.datetime_col]\n" +
+			" │       ├─ static: [{[NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1-5)\n" +
+			" │       ├─ tableId: 1\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: datetime_table\n" +
+			" │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (6-10)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: datetime_table\n" +
 			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
-			" └─ MergeJoin (estimated cost=6.120 rows=3) (actual rows=0 loops=1)\n" +
-			"     ├─ cmp: (dt2.timestamp_col = dt1.datetime_col)\n" +
-			"     ├─ TableAlias(dt2)\n" +
-			"     │   └─ IndexedTableAccess(datetime_table)\n" +
-			"     │       ├─ index: [datetime_table.timestamp_col]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"     └─ TableAlias(dt1)\n" +
-			"         └─ IndexedTableAccess(datetime_table)\n" +
-			"             ├─ index: [datetime_table.datetime_col]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=6.120 rows=3)\n" +
+			" ├─ cmp: (dt1.datetime_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.datetime_col]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"",
+		ExpectedAnalysis: "MergeJoin (estimated cost=6.120 rows=3) (actual rows=0 loops=1)\n" +
+			" ├─ cmp: (dt1.datetime_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ IndexedTableAccess(datetime_table)\n" +
+			" │       ├─ index: [datetime_table.datetime_col]\n" +
+			" │       ├─ filters: [{[NULL, ∞)}]\n" +
+			" │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table)\n" +
+			"         ├─ index: [datetime_table.timestamp_col]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -13019,49 +12947,55 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [dt1.i:0!null]\n" +
 			" └─ Sort(dt1.i:0!null ASC nullsFirst)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ dt1.date_col:1\n" +
-			"         │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
-			"         ├─ TableAlias(dt1)\n" +
-			"         │   └─ ProcessTable\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: datetime_table\n" +
-			"         │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"         └─ TableAlias(dt2)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 ├─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"                 ├─ colSet: (6-10)\n" +
-			"                 └─ tableId: 2\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ dt1.date_col:6\n" +
+			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: datetime_table\n" +
+			"             │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     ├─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                     ├─ colSet: (1-5)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [dt1.i]\n" +
 			" └─ Sort(dt1.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"         ├─ TableAlias(dt1)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: datetime_table\n" +
-			"         │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"         └─ TableAlias(dt2)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [dt1.i]\n" +
 			" └─ Sort(dt1.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"         ├─ TableAlias(dt1)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: datetime_table\n" +
-			"         │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"         └─ TableAlias(dt2)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -13072,51 +13006,57 @@ inner join pq on true
 			" └─ Project\n" +
 			"     ├─ columns: [dt1.i:0!null]\n" +
 			"     └─ Sort(dt1.i:0!null ASC nullsFirst)\n" +
-			"         └─ InnerJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ dt1.date_col:1\n" +
-			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
-			"             ├─ TableAlias(dt1)\n" +
-			"             │   └─ ProcessTable\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: datetime_table\n" +
-			"             │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"             └─ TableAlias(dt2)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: datetime_table\n" +
-			"                     ├─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"                     ├─ colSet: (6-10)\n" +
-			"                     └─ tableId: 2\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ dt1.date_col:6\n" +
+			"                 │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: datetime_table\n" +
+			"                 │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: datetime_table\n" +
+			"                         ├─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                         ├─ colSet: (1-5)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Limit(3)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [dt1.i]\n" +
 			"     └─ Sort(dt1.i ASC)\n" +
-			"         └─ InnerJoin\n" +
-			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"             ├─ TableAlias(dt1)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: datetime_table\n" +
-			"             │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"             └─ TableAlias(dt2)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: datetime_table\n" +
-			"                     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: datetime_table\n" +
+			"                 │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: datetime_table\n" +
+			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 		ExpectedAnalysis: "Limit(3)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [dt1.i]\n" +
 			"     └─ Sort(dt1.i ASC)\n" +
-			"         └─ InnerJoin\n" +
-			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"             ├─ TableAlias(dt1)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: datetime_table\n" +
-			"             │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"             └─ TableAlias(dt2)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: datetime_table\n" +
-			"                     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: datetime_table\n" +
+			"                 │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: datetime_table\n" +
+			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -13127,51 +13067,57 @@ inner join pq on true
 			" └─ Project\n" +
 			"     ├─ columns: [dt1.i:0!null]\n" +
 			"     └─ Sort(dt1.i:0!null ASC nullsFirst)\n" +
-			"         └─ InnerJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ dt1.date_col:1\n" +
-			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
-			"             ├─ TableAlias(dt1)\n" +
-			"             │   └─ ProcessTable\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: datetime_table\n" +
-			"             │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"             └─ TableAlias(dt2)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: datetime_table\n" +
-			"                     ├─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"                     ├─ colSet: (6-10)\n" +
-			"                     └─ tableId: 2\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i:5!null, dt1.date_col:6, dt1.datetime_col:7, dt1.timestamp_col:8, dt1.time_col:9, dt2.i:0!null, dt2.date_col:1, dt2.datetime_col:2, dt2.timestamp_col:3, dt2.time_col:4]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ dt1.date_col:6\n" +
+			"                 │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: datetime_table\n" +
+			"                 │           └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: datetime_table\n" +
+			"                         ├─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                         ├─ colSet: (1-5)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Limit(3)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [dt1.i]\n" +
 			"     └─ Sort(dt1.i ASC)\n" +
-			"         └─ InnerJoin\n" +
-			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"             ├─ TableAlias(dt1)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: datetime_table\n" +
-			"             │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"             └─ TableAlias(dt2)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: datetime_table\n" +
-			"                     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: datetime_table\n" +
+			"                 │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: datetime_table\n" +
+			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 		ExpectedAnalysis: "Limit(3)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [dt1.i]\n" +
 			"     └─ Sort(dt1.i ASC)\n" +
-			"         └─ InnerJoin\n" +
-			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"             ├─ TableAlias(dt1)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: datetime_table\n" +
-			"             │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
-			"             └─ TableAlias(dt2)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: datetime_table\n" +
-			"                     └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [dt1.i, dt1.date_col, dt1.datetime_col, dt1.timestamp_col, dt1.time_col, dt2.i, dt2.date_col, dt2.datetime_col, dt2.timestamp_col, dt2.time_col]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: datetime_table\n" +
+			"                 │       └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: datetime_table\n" +
+			"                         └─ columns: [i date_col datetime_col timestamp_col time_col]\n" +
 			"",
 	},
 	{
@@ -13179,50 +13125,38 @@ inner join pq on true
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:2!null]\n" +
+			" ├─ columns: [one_pk.pk:0!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ AND\n" +
-			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ tpk2.pk1:0!null\n" +
-			"     │   │   │   │   └─ tpk.pk2:4!null\n" +
-			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ tpk2.pk2:1!null\n" +
-			"     │   │   │       └─ tpk.pk1:3!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ tpk.pk1:3!null\n" +
-			"     │   │       └─ tpk2.pk1:0!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ tpk.pk2:4!null\n" +
-			"     │       └─ tpk2.pk2:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ TUPLE(tpk2.pk1:0!null, tpk2.pk2:1!null)\n" +
-			"     │   │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
-			"     │   ├─ TableAlias(tpk2)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (14-20)\n" +
-			"     │   │       ├─ tableId: 3\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: two_pk\n" +
-			"     │   │           └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
-			"     │       ├─ tableId: 1\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk\n" +
-			"     │           └─ columns: [pk]\n" +
-			"     └─ TableAlias(tpk)\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk1:1!null\n" +
+			"     │   ├─ sel: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ tableId: 1\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: two_pk\n" +
+			"     │               └─ columns: [pk1 pk2]\n" +
+			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [one_pk.pk:2!null one_pk.pk:2!null]\n" +
-			"             ├─ colSet: (7-13)\n" +
-			"             ├─ tableId: 2\n" +
+			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
+			"             ├─ colSet: (14-20)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -13230,44 +13164,44 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
-			"     ├─ ((((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1)) AND (tpk.pk1 = tpk2.pk1)) AND (tpk.pk2 = tpk2.pk2))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   ├─ cmp: ((tpk2.pk1, tpk2.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk2)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ TableAlias(tpk)\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
+			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ columns: [pk1 pk2]\n" +
-			"             └─ keys: one_pk.pk, one_pk.pk\n" +
+			"             └─ keys: tpk.pk2, tpk.pk1\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=2 loops=1)\n" +
-			"     ├─ ((((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1)) AND (tpk.pk1 = tpk2.pk1)) AND (tpk.pk2 = tpk2.pk2))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
-			"     │   ├─ cmp: ((tpk2.pk1, tpk2.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk2)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ TableAlias(tpk)\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
+			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ columns: [pk1 pk2]\n" +
-			"             └─ keys: one_pk.pk, one_pk.pk\n" +
+			"             └─ keys: tpk.pk2, tpk.pk1\n" +
 			"",
 	},
 	{
@@ -13276,50 +13210,38 @@ inner join pq on true
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:2!null]\n" +
+			" ├─ columns: [one_pk.pk:0!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ AND\n" +
-			"     │   │   ├─ AND\n" +
-			"     │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   ├─ tpk2.pk1:0!null\n" +
-			"     │   │   │   │   └─ tpk.pk2:4!null\n" +
-			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ tpk2.pk2:1!null\n" +
-			"     │   │   │       └─ tpk.pk1:3!null\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ tpk.pk1:3!null\n" +
-			"     │   │       └─ tpk2.pk1:0!null\n" +
-			"     │   └─ Eq\n" +
-			"     │       ├─ tpk.pk2:4!null\n" +
-			"     │       └─ tpk2.pk2:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ TUPLE(tpk2.pk1:0!null, tpk2.pk2:1!null)\n" +
-			"     │   │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
-			"     │   ├─ TableAlias(tpk2)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (14-20)\n" +
-			"     │   │       ├─ tableId: 3\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: two_pk\n" +
-			"     │   │           └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
-			"     │       ├─ tableId: 1\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk\n" +
-			"     │           └─ columns: [pk]\n" +
-			"     └─ TableAlias(tpk)\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk1:1!null\n" +
+			"     │   ├─ sel: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ tableId: 1\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: two_pk\n" +
+			"     │               └─ columns: [pk1 pk2]\n" +
+			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ keys: [one_pk.pk:2!null one_pk.pk:2!null]\n" +
-			"             ├─ colSet: (7-13)\n" +
-			"             ├─ tableId: 2\n" +
+			"             ├─ keys: [tpk.pk2:2!null tpk.pk1:1!null]\n" +
+			"             ├─ colSet: (14-20)\n" +
+			"             ├─ tableId: 3\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
 			"                 └─ columns: [pk1 pk2]\n" +
@@ -13327,44 +13249,44 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
-			"     ├─ ((((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1)) AND (tpk.pk1 = tpk2.pk1)) AND (tpk.pk2 = tpk2.pk2))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   ├─ cmp: ((tpk2.pk1, tpk2.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk2)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ TableAlias(tpk)\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
+			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ columns: [pk1 pk2]\n" +
-			"             └─ keys: one_pk.pk, one_pk.pk\n" +
+			"             └─ keys: tpk.pk2, tpk.pk1\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=2 loops=1)\n" +
-			"     ├─ ((((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1)) AND (tpk.pk1 = tpk2.pk1)) AND (tpk.pk2 = tpk2.pk2))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
-			"     │   ├─ cmp: ((tpk2.pk1, tpk2.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk2)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ TableAlias(tpk)\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
+			"     └─ TableAlias(tpk2)\n" +
 			"         └─ IndexedTableAccess(two_pk)\n" +
 			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"             ├─ columns: [pk1 pk2]\n" +
-			"             └─ keys: one_pk.pk, one_pk.pk\n" +
+			"             └─ keys: tpk.pk2, tpk.pk1\n" +
 			"",
 	},
 	{
@@ -13373,36 +13295,39 @@ inner join pq on true
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:2!null]\n" +
+			" ├─ columns: [one_pk.pk:0!null]\n" +
 			" └─ LeftOuterJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ tpk2.pk1:3!null\n" +
-			"     │   │   └─ tpk.pk2:1!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ tpk2.pk2:4!null\n" +
-			"     │       └─ tpk.pk1:0!null\n" +
+			"     │       └─ tpk.pk1:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
-			"     │   │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
-			"     │   ├─ TableAlias(tpk)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (7-13)\n" +
-			"     │   │       ├─ tableId: 2\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: two_pk\n" +
-			"     │   │           └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
-			"     │       ├─ tableId: 1\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk\n" +
-			"     │           └─ columns: [pk]\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk1:1!null\n" +
+			"     │   ├─ sel: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ tableId: 1\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: two_pk\n" +
+			"     │               └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
@@ -13414,16 +13339,17 @@ inner join pq on true
 			" └─ LeftOuterJoin (estimated cost=15.160 rows=5)\n" +
 			"     ├─ ((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   ├─ cmp: ((tpk.pk1, tpk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -13434,16 +13360,17 @@ inner join pq on true
 			" └─ LeftOuterJoin (estimated cost=15.160 rows=5) (actual rows=2 loops=1)\n" +
 			"     ├─ ((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
-			"     │   ├─ cmp: ((tpk.pk1, tpk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -13458,106 +13385,96 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:0!null, tpk.pk1:6!null, tpk2.pk1:13!null, tpk.pk2:7!null, tpk2.pk2:14!null]\n" +
 			" └─ Sort(one_pk.pk:0!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:14!null, one_pk.c1:15, one_pk.c2:16, one_pk.c3:17, one_pk.c4:18, one_pk.c5:19, tpk.pk1:7!null, tpk.pk2:8!null, tpk.c1:9!null, tpk.c2:10!null, tpk.c3:11!null, tpk.c4:12!null, tpk.c5:13!null, tpk2.pk1:0!null, tpk2.pk2:1!null, tpk2.c1:2!null, tpk2.c2:3!null, tpk2.c3:4!null, tpk2.c4:5!null, tpk2.c5:6!null]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ AND\n" +
-			"             │   │   ├─ Eq\n" +
-			"             │   │   │   ├─ (one_pk.pk:14!null - 1 (tinyint))\n" +
-			"             │   │   │   └─ tpk2.pk1:0!null\n" +
-			"             │   │   └─ Eq\n" +
-			"             │   │       ├─ one_pk.pk:14!null\n" +
-			"             │   │       └─ tpk2.pk2:1!null\n" +
-			"             │   └─ Eq\n" +
-			"             │       ├─ tpk.pk1:7!null\n" +
-			"             │       └─ tpk2.pk2:1!null\n" +
-			"             ├─ TableAlias(tpk2)\n" +
-			"             │   └─ ProcessTable\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE(tpk2.pk1:0!null, tpk2.pk2:1!null, tpk2.pk2:1!null)\n" +
-			"                 ├─ right-key: TUPLE((one_pk.pk:7!null - 1 (tinyint)), one_pk.pk:7!null, tpk.pk1:0!null)\n" +
-			"                 └─ MergeJoin\n" +
-			"                     ├─ cmp: Eq\n" +
-			"                     │   ├─ tpk.pk1:7!null\n" +
-			"                     │   └─ one_pk.pk:14!null\n" +
-			"                     ├─ sel: Eq\n" +
-			"                     │   ├─ (one_pk.pk:14!null - 1 (tinyint))\n" +
-			"                     │   └─ tpk.pk2:8!null\n" +
-			"                     ├─ TableAlias(tpk)\n" +
-			"                     │   └─ IndexedTableAccess(two_pk)\n" +
-			"                     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │       ├─ colSet: (7-13)\n" +
-			"                     │       ├─ tableId: 2\n" +
-			"                     │       └─ Table\n" +
-			"                     │           ├─ name: two_pk\n" +
-			"                     │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ static: [{[NULL, ∞)}]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         ├─ tableId: 1\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ AND\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ (one_pk.pk:0!null - 1 (tinyint))\n" +
+			"         │   │   └─ tpk2.pk1:13!null\n" +
+			"         │   └─ Eq\n" +
+			"         │       ├─ one_pk.pk:0!null\n" +
+			"         │       └─ tpk2.pk2:14!null\n" +
+			"         ├─ MergeJoin\n" +
+			"         │   ├─ cmp: Eq\n" +
+			"         │   │   ├─ one_pk.pk:0!null\n" +
+			"         │   │   └─ tpk.pk1:6!null\n" +
+			"         │   ├─ sel: Eq\n" +
+			"         │   │   ├─ (one_pk.pk:0!null - 1 (tinyint))\n" +
+			"         │   │   └─ tpk.pk2:7!null\n" +
+			"         │   ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   │   ├─ index: [one_pk.pk]\n" +
+			"         │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │   ├─ colSet: (1-6)\n" +
+			"         │   │   ├─ tableId: 1\n" +
+			"         │   │   └─ Table\n" +
+			"         │   │       ├─ name: one_pk\n" +
+			"         │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         │   └─ TableAlias(tpk)\n" +
+			"         │       └─ IndexedTableAccess(two_pk)\n" +
+			"         │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │           ├─ colSet: (7-13)\n" +
+			"         │           ├─ tableId: 2\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: two_pk\n" +
+			"         │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE((one_pk.pk:0!null - 1 (tinyint)), one_pk.pk:0!null)\n" +
+			"             ├─ right-key: TUPLE(tpk2.pk1:0!null, tpk2.pk2:1!null)\n" +
+			"             └─ TableAlias(tpk2)\n" +
+			"                 └─ ProcessTable\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, tpk.pk1, tpk2.pk1, tpk.pk2, tpk2.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5, tpk2.pk1, tpk2.pk2, tpk2.c1, tpk2.c2, tpk2.c3, tpk2.c4, tpk2.c5]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ ((((one_pk.pk - 1) = tpk2.pk1) AND (one_pk.pk = tpk2.pk2)) AND (tpk.pk1 = tpk2.pk2))\n" +
-			"             ├─ TableAlias(tpk2)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (tpk2.pk1, tpk2.pk2, tpk2.pk2)\n" +
-			"                 ├─ right-key: ((one_pk.pk - 1), one_pk.pk, tpk.pk1)\n" +
-			"                 └─ MergeJoin\n" +
-			"                     ├─ cmp: (tpk.pk1 = one_pk.pk)\n" +
-			"                     ├─ sel: ((one_pk.pk - 1) = tpk.pk2)\n" +
-			"                     ├─ TableAlias(tpk)\n" +
-			"                     │   └─ IndexedTableAccess(two_pk)\n" +
-			"                     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{[NULL, ∞)}]\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (((one_pk.pk - 1) = tpk2.pk1) AND (one_pk.pk = tpk2.pk2))\n" +
+			"         ├─ MergeJoin\n" +
+			"         │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"         │   ├─ sel: ((one_pk.pk - 1) = tpk.pk2)\n" +
+			"         │   ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   │   ├─ index: [one_pk.pk]\n" +
+			"         │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         │   └─ TableAlias(tpk)\n" +
+			"         │       └─ IndexedTableAccess(two_pk)\n" +
+			"         │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ((one_pk.pk - 1), one_pk.pk)\n" +
+			"             ├─ right-key: (tpk2.pk1, tpk2.pk2)\n" +
+			"             └─ TableAlias(tpk2)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, tpk.pk1, tpk2.pk1, tpk.pk2, tpk2.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5, tpk2.pk1, tpk2.pk2, tpk2.c1, tpk2.c2, tpk2.c3, tpk2.c4, tpk2.c5]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ ((((one_pk.pk - 1) = tpk2.pk1) AND (one_pk.pk = tpk2.pk2)) AND (tpk.pk1 = tpk2.pk2))\n" +
-			"             ├─ TableAlias(tpk2)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (tpk2.pk1, tpk2.pk2, tpk2.pk2)\n" +
-			"                 ├─ right-key: ((one_pk.pk - 1), one_pk.pk, tpk.pk1)\n" +
-			"                 └─ MergeJoin\n" +
-			"                     ├─ cmp: (tpk.pk1 = one_pk.pk)\n" +
-			"                     ├─ sel: ((one_pk.pk - 1) = tpk.pk2)\n" +
-			"                     ├─ TableAlias(tpk)\n" +
-			"                     │   └─ IndexedTableAccess(two_pk)\n" +
-			"                     │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{[NULL, ∞)}]\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (((one_pk.pk - 1) = tpk2.pk1) AND (one_pk.pk = tpk2.pk2))\n" +
+			"         ├─ MergeJoin\n" +
+			"         │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"         │   ├─ sel: ((one_pk.pk - 1) = tpk.pk2)\n" +
+			"         │   ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   │   ├─ index: [one_pk.pk]\n" +
+			"         │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         │   └─ TableAlias(tpk)\n" +
+			"         │       └─ IndexedTableAccess(two_pk)\n" +
+			"         │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ((one_pk.pk - 1), one_pk.pk)\n" +
+			"             ├─ right-key: (tpk2.pk1, tpk2.pk2)\n" +
+			"             └─ TableAlias(tpk2)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -13745,36 +13662,39 @@ inner join pq on true
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:2!null]\n" +
+			" ├─ columns: [one_pk.pk:0!null]\n" +
 			" └─ LeftOuterJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ tpk2.pk1:3!null\n" +
-			"     │   │   └─ tpk.pk2:1!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ tpk2.pk2:4!null\n" +
-			"     │       └─ tpk.pk1:0!null\n" +
+			"     │       └─ tpk.pk1:1!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
-			"     │   │   └─ TUPLE(one_pk.pk:2!null, one_pk.pk:2!null)\n" +
-			"     │   ├─ TableAlias(tpk)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (7-13)\n" +
-			"     │   │       ├─ tableId: 2\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: two_pk\n" +
-			"     │   │           └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
-			"     │       ├─ tableId: 1\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk\n" +
-			"     │           └─ columns: [pk]\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk1:1!null\n" +
+			"     │   ├─ sel: Eq\n" +
+			"     │   │   ├─ one_pk.pk:0!null\n" +
+			"     │   │   └─ tpk.pk2:2!null\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   ├─ colSet: (1-6)\n" +
+			"     │   │   ├─ tableId: 1\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (7-13)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: two_pk\n" +
+			"     │               └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
@@ -13786,16 +13706,17 @@ inner join pq on true
 			" └─ LeftOuterJoin (estimated cost=15.160 rows=5)\n" +
 			"     ├─ ((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   ├─ cmp: ((tpk.pk1, tpk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -13806,16 +13727,17 @@ inner join pq on true
 			" └─ LeftOuterJoin (estimated cost=15.160 rows=5) (actual rows=2 loops=1)\n" +
 			"     ├─ ((tpk2.pk1 = tpk.pk2) AND (tpk2.pk2 = tpk.pk1))\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
-			"     │   ├─ cmp: ((tpk.pk1, tpk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"     │   ├─ TableAlias(tpk)\n" +
-			"     │   │   └─ IndexedTableAccess(two_pk)\n" +
-			"     │   │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk1 pk2]\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk]\n" +
+			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
+			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   ├─ index: [one_pk.pk]\n" +
+			"     │   │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk)\n" +
+			"     │           ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ TableAlias(tpk2)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
@@ -14685,47 +14607,53 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [l.i:0!null, r.i2:5]\n" +
 			" └─ Sort(l.i:0!null ASC nullsFirst)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (l.i2:1 <=> r.i2:5)\n" +
-			"         ├─ TableAlias(l)\n" +
-			"         │   └─ ProcessTable\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: niltable\n" +
-			"         │           └─ columns: [i i2 b f]\n" +
-			"         └─ TableAlias(r)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: niltable\n" +
-			"                 ├─ columns: [i i2 b f]\n" +
-			"                 ├─ colSet: (5-8)\n" +
-			"                 └─ tableId: 2\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [l.i:4!null, l.i2:5, l.b:6, l.f:7, r.i:0!null, r.i2:1, r.b:2, r.f:3]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (l.i2:5 <=> r.i2:1)\n" +
+			"             ├─ TableAlias(r)\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: niltable\n" +
+			"             │           └─ columns: [i i2 b f]\n" +
+			"             └─ TableAlias(l)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: niltable\n" +
+			"                     ├─ columns: [i i2 b f]\n" +
+			"                     ├─ colSet: (1-4)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [l.i, r.i2]\n" +
 			" └─ Sort(l.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (l.i2 <=> r.i2)\n" +
-			"         ├─ TableAlias(l)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: niltable\n" +
-			"         │       └─ columns: [i i2 b f]\n" +
-			"         └─ TableAlias(r)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: niltable\n" +
-			"                 └─ columns: [i i2 b f]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [l.i, l.i2, l.b, l.f, r.i, r.i2, r.b, r.f]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (l.i2 <=> r.i2)\n" +
+			"             ├─ TableAlias(r)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: niltable\n" +
+			"             │       └─ columns: [i i2 b f]\n" +
+			"             └─ TableAlias(l)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: niltable\n" +
+			"                     └─ columns: [i i2 b f]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [l.i, r.i2]\n" +
 			" └─ Sort(l.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (l.i2 <=> r.i2)\n" +
-			"         ├─ TableAlias(l)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: niltable\n" +
-			"         │       └─ columns: [i i2 b f]\n" +
-			"         └─ TableAlias(r)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: niltable\n" +
-			"                 └─ columns: [i i2 b f]\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [l.i, l.i2, l.b, l.f, r.i, r.i2, r.b, r.f]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (l.i2 <=> r.i2)\n" +
+			"             ├─ TableAlias(r)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: niltable\n" +
+			"             │       └─ columns: [i i2 b f]\n" +
+			"             └─ TableAlias(l)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: niltable\n" +
+			"                     └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
@@ -14790,54 +14718,48 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:2!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ two_pk.pk1:0!null\n" +
-			"     │   └─ one_pk.pk:2!null\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (7-13)\n" +
-			"     │   ├─ tableId: 2\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: two_pk\n" +
-			"     │       └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ static: [{[NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-6)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: one_pk\n" +
-			"             └─ columns: [pk]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ one_pk.pk:0!null\n" +
+			" │   └─ two_pk.pk1:1!null\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1-6)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: one_pk\n" +
+			" │       └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (7-13)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     ├─ cmp: (two_pk.pk1 = one_pk.pk)\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=8.120 rows=4)\n" +
+			" ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
-			" └─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
-			"     ├─ cmp: (two_pk.pk1 = one_pk.pk)\n" +
-			"     ├─ IndexedTableAccess(two_pk)\n" +
-			"     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"     │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │   └─ columns: [pk1 pk2]\n" +
-			"     └─ IndexedTableAccess(one_pk)\n" +
-			"         ├─ index: [one_pk.pk]\n" +
-			"         ├─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ columns: [pk]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
+			" ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			" ├─ IndexedTableAccess(one_pk)\n" +
+			" │   ├─ index: [one_pk.pk]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [pk]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -14897,66 +14819,60 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk1:0!null, a.pk2:1!null, b.pk1:7!null, b.pk2:8!null]\n" +
 			" └─ Sort(a.pk1:0!null ASC nullsFirst, a.pk2:1!null ASC nullsFirst, b.pk1:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1:7!null, a.pk2:8!null, a.c1:9!null, a.c2:10!null, a.c3:11!null, a.c4:12!null, a.c5:13!null, b.pk1:0!null, b.pk2:1!null, b.c1:2!null, b.c2:3!null, b.c3:4!null, b.c4:5!null, b.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
-			"             │   └─ TUPLE(a.pk1:7!null, a.pk2:8!null)\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (8-14)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-7)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ TUPLE(a.pk1:0!null, a.pk2:1!null)\n" +
+			"         │   └─ TUPLE(b.pk1:7!null, b.pk2:8!null)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-7)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (8-14)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = (a.pk1, a.pk2))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: ((a.pk1, a.pk2) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = (a.pk1, a.pk2))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: ((a.pk1, a.pk2) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -14964,55 +14880,49 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk1:0!null, a.pk2:1!null, b.pk1:7!null, b.pk2:8!null]\n" +
 			" └─ Sort(a.pk1:0!null ASC nullsFirst, a.pk2:1!null ASC nullsFirst, b.pk1:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1:7!null, a.pk2:8!null, a.c1:9!null, a.c2:10!null, a.c3:11!null, a.c4:12!null, a.c5:13!null, b.pk1:0!null, b.pk2:1!null, b.c1:2!null, b.c2:3!null, b.c3:4!null, b.c4:5!null, b.c5:6!null]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ ProcessTable\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ keys: [b.pk2:1!null b.pk1:0!null]\n" +
-			"                     ├─ colSet: (1-7)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ ProcessTable\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ keys: [a.pk2:1!null a.pk1:0!null]\n" +
+			"                 ├─ colSet: (8-14)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ keys: b.pk2, b.pk1\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: two_pk\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ keys: a.pk2, a.pk1\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ keys: b.pk2, b.pk1\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: two_pk\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ keys: a.pk2, a.pk1\n" +
 			"",
 	},
 	{
@@ -15020,66 +14930,60 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk1:0!null, a.pk2:1!null, b.pk1:7!null, b.pk2:8!null]\n" +
 			" └─ Sort(a.pk1:0!null ASC nullsFirst, a.pk2:1!null ASC nullsFirst, b.pk1:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1:7!null, a.pk2:8!null, a.c1:9!null, a.c2:10!null, a.c3:11!null, a.c4:12!null, a.c5:13!null, b.pk1:0!null, b.pk2:1!null, b.c1:2!null, b.c2:3!null, b.c3:4!null, b.c4:5!null, b.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
-			"             │   └─ TUPLE(a.pk1:7!null, a.pk2:8!null)\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (8-14)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-7)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ TUPLE(a.pk1:0!null, a.pk2:1!null)\n" +
+			"         │   └─ TUPLE(b.pk1:7!null, b.pk2:8!null)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-7)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (8-14)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = (a.pk1, a.pk2))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: ((a.pk1, a.pk2) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = (a.pk1, a.pk2))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: ((a.pk1, a.pk2) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -15087,66 +14991,60 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk1:0!null, a.pk2:1!null, b.pk1:7!null, b.pk2:8!null]\n" +
 			" └─ Sort(a.pk1:0!null ASC nullsFirst, a.pk2:1!null ASC nullsFirst, b.pk1:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1:7!null, a.pk2:8!null, a.c1:9!null, a.c2:10!null, a.c3:11!null, a.c4:12!null, a.c5:13!null, b.pk1:0!null, b.pk2:1!null, b.c1:2!null, b.c2:3!null, b.c3:4!null, b.c4:5!null, b.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
-			"             │   └─ TUPLE((a.pk1:7!null + 1 (tinyint)), (a.pk2:8!null + 1 (tinyint)))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (8-14)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-7)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ TUPLE((a.pk1:0!null + 1 (tinyint)), (a.pk2:1!null + 1 (tinyint)))\n" +
+			"         │   └─ TUPLE(b.pk1:7!null, b.pk2:8!null)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-7)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (8-14)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = ((a.pk1 + 1), (a.pk2 + 1)))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (((a.pk1 + 1), (a.pk2 + 1)) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = ((a.pk1 + 1), (a.pk2 + 1)))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (((a.pk1 + 1), (a.pk2 + 1)) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -15154,66 +15052,60 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk1:0!null, a.pk2:1!null, b.pk1:7!null, b.pk2:8!null]\n" +
 			" └─ Sort(a.pk1:0!null ASC nullsFirst, a.pk2:1!null ASC nullsFirst, b.pk1:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1:7!null, a.pk2:8!null, a.c1:9!null, a.c2:10!null, a.c3:11!null, a.c4:12!null, a.c5:13!null, b.pk1:0!null, b.pk2:1!null, b.c1:2!null, b.c2:3!null, b.c3:4!null, b.c4:5!null, b.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ TUPLE(b.pk1:0!null, b.pk2:1!null)\n" +
-			"             │   └─ TUPLE(a.pk1:7!null, a.pk2:8!null)\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (8-14)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-7)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ TUPLE(a.pk1:0!null, a.pk2:1!null)\n" +
+			"         │   └─ TUPLE(b.pk1:7!null, b.pk2:8!null)\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-7)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (8-14)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = (a.pk1, a.pk2))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: ((a.pk1, a.pk2) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((b.pk1, b.pk2) = (a.pk1, a.pk2))\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: ((a.pk1, a.pk2) = (b.pk1, b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -15221,55 +15113,49 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk1:0!null, a.pk2:1!null, b.pk1:7!null, b.pk2:8!null]\n" +
 			" └─ Sort(a.pk1:0!null ASC nullsFirst, a.pk2:1!null ASC nullsFirst, b.pk1:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1:7!null, a.pk2:8!null, a.c1:9!null, a.c2:10!null, a.c3:11!null, a.c4:12!null, a.c5:13!null, b.pk1:0!null, b.pk2:1!null, b.c1:2!null, b.c2:3!null, b.c3:4!null, b.c4:5!null, b.c5:6!null]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ ProcessTable\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ keys: [b.pk2:1!null b.pk1:0!null]\n" +
-			"                     ├─ colSet: (1-7)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ ProcessTable\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ keys: [a.pk2:1!null a.pk1:0!null]\n" +
+			"                 ├─ colSet: (8-14)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ keys: b.pk2, b.pk1\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: two_pk\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ keys: a.pk2, a.pk1\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk1, a.pk2, b.pk1, b.pk2]\n" +
 			" └─ Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk1, a.pk2, a.c1, a.c2, a.c3, a.c4, a.c5, b.pk1, b.pk2, b.c1, b.c2, b.c3, b.c4, b.c5]\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ TableAlias(b)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ keys: b.pk2, b.pk1\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: two_pk\n" +
+			"         │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ keys: a.pk2, a.pk1\n" +
 			"",
 	},
 	{
@@ -15277,60 +15163,54 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.c5:5, two_pk.pk1:6!null, two_pk.pk2:7!null]\n" +
 			" └─ Sort(one_pk.c5:5 ASC nullsFirst, two_pk.pk1:6!null ASC nullsFirst, two_pk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ two_pk.pk1:0!null\n" +
-			"             │   └─ one_pk.pk:7!null\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (7-13)\n" +
-			"             │   ├─ tableId: 2\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ one_pk.pk:0!null\n" +
+			"         │   └─ two_pk.pk1:6!null\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ tableId: 1\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ colSet: (7-13)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.c5, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (two_pk.pk1 = one_pk.pk)\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.c5, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (two_pk.pk1 = one_pk.pk)\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -15338,66 +15218,60 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [opk.c5:5, tpk.pk1:6!null, tpk.pk2:7!null]\n" +
 			" └─ Sort(opk.c5:5 ASC nullsFirst, tpk.pk1:6!null ASC nullsFirst, tpk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk:7!null, opk.c1:8, opk.c2:9, opk.c3:10, opk.c4:11, opk.c5:12, tpk.pk1:0!null, tpk.pk2:1!null, tpk.c1:2!null, tpk.c2:3!null, tpk.c3:4!null, tpk.c4:5!null, tpk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ tpk.pk1:0!null\n" +
-			"             │   └─ opk.pk:7!null\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (7-13)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-6)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ opk.pk:0!null\n" +
+			"         │   └─ tpk.pk1:6!null\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk\n" +
+			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (tpk.pk1 = opk.pk)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (tpk.pk1 = opk.pk)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -15405,66 +15279,60 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [opk.c5:5, tpk.pk1:6!null, tpk.pk2:7!null]\n" +
 			" └─ Sort(opk.c5:5 ASC nullsFirst, tpk.pk1:6!null ASC nullsFirst, tpk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk:7!null, opk.c1:8, opk.c2:9, opk.c3:10, opk.c4:11, opk.c5:12, tpk.pk1:0!null, tpk.pk2:1!null, tpk.c1:2!null, tpk.c2:3!null, tpk.c3:4!null, tpk.c4:5!null, tpk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ tpk.pk1:0!null\n" +
-			"             │   └─ opk.pk:7!null\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (7-13)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-6)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ opk.pk:0!null\n" +
+			"         │   └─ tpk.pk1:6!null\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk\n" +
+			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (tpk.pk1 = opk.pk)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (tpk.pk1 = opk.pk)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -15472,66 +15340,60 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [opk.c5:5, tpk.pk1:6!null, tpk.pk2:7!null]\n" +
 			" └─ Sort(opk.c5:5 ASC nullsFirst, tpk.pk1:6!null ASC nullsFirst, tpk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk:7!null, opk.c1:8, opk.c2:9, opk.c3:10, opk.c4:11, opk.c5:12, tpk.pk1:0!null, tpk.pk2:1!null, tpk.c1:2!null, tpk.c2:3!null, tpk.c3:4!null, tpk.c4:5!null, tpk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ tpk.pk1:0!null\n" +
-			"             │   └─ opk.pk:7!null\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (7-13)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-6)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ opk.pk:0!null\n" +
+			"         │   └─ tpk.pk1:6!null\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk\n" +
+			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (tpk.pk1 = opk.pk)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [opk.c5, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (tpk.pk1 = opk.pk)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -15539,60 +15401,54 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.c5:5, two_pk.pk1:6!null, two_pk.pk2:7!null]\n" +
 			" └─ Sort(one_pk.c5:5 ASC nullsFirst, two_pk.pk1:6!null ASC nullsFirst, two_pk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ two_pk.pk1:0!null\n" +
-			"             │   └─ one_pk.pk:7!null\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (7-13)\n" +
-			"             │   ├─ tableId: 2\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ one_pk.pk:0!null\n" +
+			"         │   └─ two_pk.pk1:6!null\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ tableId: 1\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ colSet: (7-13)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.c5, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (two_pk.pk1 = one_pk.pk)\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.c5, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (two_pk.pk1 = one_pk.pk)\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -16181,102 +16037,107 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:0!null, two_pk.pk1:6!null, two_pk.pk2:7!null]\n" +
 			" └─ Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:6!null ASC nullsFirst, two_pk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ TUPLE(two_pk.pk1:0!null, two_pk.pk2:1!null)\n" +
-			"             │   └─ TUPLE(one_pk.pk:7!null, one_pk.pk:7!null)\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (7-13)\n" +
-			"             │   ├─ tableId: 2\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-6)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ one_pk.pk:0!null\n" +
+			"         │   └─ two_pk.pk1:6!null\n" +
+			"         ├─ sel: Eq\n" +
+			"         │   ├─ one_pk.pk:0!null\n" +
+			"         │   └─ two_pk.pk2:7!null\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   ├─ colSet: (1-6)\n" +
+			"         │   ├─ tableId: 1\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             ├─ colSet: (7-13)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((two_pk.pk1, two_pk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ sel: (one_pk.pk = two_pk.pk2)\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((two_pk.pk1, two_pk.pk2) = (one_pk.pk, one_pk.pk))\n" +
-			"             ├─ IndexedTableAccess(two_pk)\n" +
-			"             │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ IndexedTableAccess(one_pk)\n" +
-			"                 ├─ index: [one_pk.pk]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ sel: (one_pk.pk = two_pk.pk2)\n" +
+			"         ├─ IndexedTableAccess(one_pk)\n" +
+			"         │   ├─ index: [one_pk.pk]\n" +
+			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ IndexedTableAccess(two_pk)\n" +
+			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk1-pk>0 AND pk2<1`,
-		ExpectedPlan: "InnerJoin\n" +
-			" ├─ GreaterThan\n" +
-			" │   ├─ (two_pk.pk1:1!null - one_pk.pk:0!null)\n" +
-			" │   └─ 0 (tinyint)\n" +
-			" ├─ ProcessTable\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: one_pk\n" +
-			" │       └─ columns: [pk]\n" +
-			" └─ Filter\n" +
-			"     ├─ LessThan\n" +
-			"     │   ├─ two_pk.pk2:1!null\n" +
-			"     │   └─ 1 (tinyint)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk:2!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
+			" └─ InnerJoin\n" +
+			"     ├─ GreaterThan\n" +
+			"     │   ├─ (two_pk.pk1:0!null - one_pk.pk:2!null)\n" +
+			"     │   └─ 0 (tinyint)\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ LessThan\n" +
+			"     │   │   ├─ two_pk.pk2:1!null\n" +
+			"     │   │   └─ 1 (tinyint)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: two_pk\n" +
+			"     │           └─ columns: [pk1 pk2]\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
-		ExpectedEstimates: "InnerJoin (estimated cost=13.120 rows=3)\n" +
-			" ├─ ((two_pk.pk1 - one_pk.pk) > 0)\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: one_pk\n" +
-			" │   └─ columns: [pk]\n" +
-			" └─ Filter\n" +
-			"     ├─ (two_pk.pk2 < 1)\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
+			" └─ InnerJoin (estimated cost=13.120 rows=3)\n" +
+			"     ├─ ((two_pk.pk1 - one_pk.pk) > 0)\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (two_pk.pk2 < 1)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"         ├─ name: one_pk\n" +
+			"         └─ columns: [pk]\n" +
 			"",
-		ExpectedAnalysis: "InnerJoin (estimated cost=13.120 rows=3) (actual rows=1 loops=1)\n" +
-			" ├─ ((two_pk.pk1 - one_pk.pk) > 0)\n" +
-			" ├─ Table\n" +
-			" │   ├─ name: one_pk\n" +
-			" │   └─ columns: [pk]\n" +
-			" └─ Filter\n" +
-			"     ├─ (two_pk.pk2 < 1)\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
+			" └─ InnerJoin (estimated cost=13.120 rows=3) (actual rows=1 loops=1)\n" +
+			"     ├─ ((two_pk.pk1 - one_pk.pk) > 0)\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (two_pk.pk2 < 1)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: two_pk\n" +
+			"     │       └─ columns: [pk1 pk2]\n" +
 			"     └─ Table\n" +
-			"         ├─ name: two_pk\n" +
-			"         └─ columns: [pk1 pk2]\n" +
+			"         ├─ name: one_pk\n" +
+			"         └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -16284,52 +16145,46 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:0!null, two_pk.pk1:6!null, two_pk.pk2:7!null]\n" +
 			" └─ Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:6!null ASC nullsFirst, two_pk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ ProcessTable\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE()\n" +
-			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE()\n" +
+			"             ├─ right-key: TUPLE()\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: one_pk\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ()\n" +
+			"             ├─ right-key: ()\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: one_pk\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ()\n" +
+			"             ├─ right-key: ()\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -16525,66 +16380,65 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [opk.pk:0!null, tpk.pk1:6!null, tpk.pk2:7!null]\n" +
 			" └─ Sort(opk.pk:0!null ASC nullsFirst, tpk.pk1:6!null ASC nullsFirst, tpk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk:7!null, opk.c1:8, opk.c2:9, opk.c3:10, opk.c4:11, opk.c5:12, tpk.pk1:0!null, tpk.pk2:1!null, tpk.c1:2!null, tpk.c2:3!null, tpk.c3:4!null, tpk.c4:5!null, tpk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
-			"             │   └─ TUPLE(opk.pk:7!null, opk.pk:7!null)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (7-13)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-6)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ opk.pk:0!null\n" +
+			"         │   └─ tpk.pk1:6!null\n" +
+			"         ├─ sel: Eq\n" +
+			"         │   ├─ opk.pk:0!null\n" +
+			"         │   └─ tpk.pk2:7!null\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk\n" +
+			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [opk.pk, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((tpk.pk1, tpk.pk2) = (opk.pk, opk.pk))\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ sel: (opk.pk = tpk.pk2)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [opk.pk, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((tpk.pk1, tpk.pk2) = (opk.pk, opk.pk))\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ sel: (opk.pk = tpk.pk2)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -16592,66 +16446,65 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [opk.pk:0!null, tpk.pk1:6!null, tpk.pk2:7!null]\n" +
 			" └─ Sort(opk.pk:0!null ASC nullsFirst, tpk.pk1:6!null ASC nullsFirst, tpk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk:7!null, opk.c1:8, opk.c2:9, opk.c3:10, opk.c4:11, opk.c5:12, tpk.pk1:0!null, tpk.pk2:1!null, tpk.c1:2!null, tpk.c2:3!null, tpk.c3:4!null, tpk.c4:5!null, tpk.c5:6!null]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ TUPLE(tpk.pk1:0!null, tpk.pk2:1!null)\n" +
-			"             │   └─ TUPLE(opk.pk:7!null, opk.pk:7!null)\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (7-13)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (1-6)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: Eq\n" +
+			"         │   ├─ opk.pk:0!null\n" +
+			"         │   └─ tpk.pk1:6!null\n" +
+			"         ├─ sel: Eq\n" +
+			"         │   ├─ opk.pk:0!null\n" +
+			"         │   └─ tpk.pk2:7!null\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk\n" +
+			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [opk.pk, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((tpk.pk1, tpk.pk2) = (opk.pk, opk.pk))\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ sel: (opk.pk = tpk.pk2)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [opk.pk, tpk.pk1, tpk.pk2]\n" +
 			" └─ Sort(opk.pk ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [opk.pk, opk.c1, opk.c2, opk.c3, opk.c4, opk.c5, tpk.pk1, tpk.pk2, tpk.c1, tpk.c2, tpk.c3, tpk.c4, tpk.c5]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: ((tpk.pk1, tpk.pk2) = (opk.pk, opk.pk))\n" +
-			"             ├─ TableAlias(tpk)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ TableAlias(opk)\n" +
-			"                 └─ IndexedTableAccess(one_pk)\n" +
-			"                     ├─ index: [one_pk.pk]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ MergeJoin\n" +
+			"         ├─ cmp: (opk.pk = tpk.pk1)\n" +
+			"         ├─ sel: (opk.pk = tpk.pk2)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -16659,57 +16512,51 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [one_pk.pk:0!null, two_pk.pk1:6!null, two_pk.pk2:7!null]\n" +
 			" └─ Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:6!null ASC nullsFirst, two_pk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ one_pk.c1:8\n" +
-			"             │   └─ two_pk.c1:2!null\n" +
-			"             ├─ ProcessTable\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE(two_pk.c1:2!null)\n" +
-			"                 ├─ right-key: TUPLE(one_pk.c1:1)\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ one_pk.c1:1\n" +
+			"         │   └─ two_pk.c1:8!null\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(one_pk.c1:1)\n" +
+			"             ├─ right-key: TUPLE(two_pk.c1:2!null)\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ (one_pk.c1 = two_pk.c1)\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (two_pk.c1)\n" +
-			"                 ├─ right-key: (one_pk.c1)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (one_pk.c1 = two_pk.c1)\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: one_pk\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (one_pk.c1)\n" +
+			"             ├─ right-key: (two_pk.c1)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ (one_pk.c1 = two_pk.c1)\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (two_pk.c1)\n" +
-			"                 ├─ right-key: (one_pk.c1)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (one_pk.c1 = two_pk.c1)\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: one_pk\n" +
+			"         │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (one_pk.c1)\n" +
+			"             ├─ right-key: (two_pk.c1)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -16718,22 +16565,22 @@ inner join pq on true
 			" ├─ columns: [one_pk.pk:0!null, two_pk.pk1:6!null, two_pk.pk2:7!null, one_pk.c1:1 as foo, two_pk.c1:8!null as bar]\n" +
 			" └─ Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:6!null ASC nullsFirst, two_pk.pk2:7!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, one_pk.c1:8 as foo, two_pk.c1:2!null as bar]\n" +
+			"         ├─ columns: [one_pk.pk:0!null, one_pk.c1:1, one_pk.c2:2, one_pk.c3:3, one_pk.c4:4, one_pk.c5:5, two_pk.pk1:6!null, two_pk.pk2:7!null, two_pk.c1:8!null, two_pk.c2:9!null, two_pk.c3:10!null, two_pk.c4:11!null, two_pk.c5:12!null, one_pk.c1:1 as foo, two_pk.c1:8!null as bar]\n" +
 			"         └─ HashJoin\n" +
 			"             ├─ Eq\n" +
-			"             │   ├─ one_pk.c1:8\n" +
-			"             │   └─ two_pk.c1:2!null\n" +
+			"             │   ├─ one_pk.c1:1\n" +
+			"             │   └─ two_pk.c1:8!null\n" +
 			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
-			"             │       ├─ name: two_pk\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │       ├─ name: one_pk\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE(two_pk.c1:2!null)\n" +
-			"                 ├─ right-key: TUPLE(one_pk.c1:1)\n" +
+			"                 ├─ left-key: TUPLE(one_pk.c1:1)\n" +
+			"                 ├─ right-key: TUPLE(two_pk.c1:2!null)\n" +
 			"                 └─ ProcessTable\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
@@ -16743,14 +16590,14 @@ inner join pq on true
 			"         └─ HashJoin\n" +
 			"             ├─ (one_pk.c1 = two_pk.c1)\n" +
 			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   ├─ name: one_pk\n" +
+			"             │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (two_pk.c1)\n" +
-			"                 ├─ right-key: (one_pk.c1)\n" +
+			"                 ├─ left-key: (one_pk.c1)\n" +
+			"                 ├─ right-key: (two_pk.c1)\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
@@ -16760,14 +16607,14 @@ inner join pq on true
 			"         └─ HashJoin\n" +
 			"             ├─ (one_pk.c1 = two_pk.c1)\n" +
 			"             ├─ Table\n" +
-			"             │   ├─ name: two_pk\n" +
-			"             │   └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             │   ├─ name: one_pk\n" +
+			"             │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (two_pk.c1)\n" +
-			"                 ├─ right-key: (one_pk.c1)\n" +
+			"                 ├─ left-key: (one_pk.c1)\n" +
+			"                 ├─ right-key: (two_pk.c1)\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -16899,70 +16746,64 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [t1.pk:0!null, t2.pk1:6!null, t2.pk2:7!null]\n" +
 			" └─ Sort(t1.pk:0!null ASC nullsFirst, t2.pk1:6!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [t1.pk:7!null, t1.c1:8, t1.c2:9, t1.c3:10, t1.c4:11, t1.c5:12, t2.pk1:0!null, t2.pk2:1!null, t2.c1:2!null, t2.c2:3!null, t2.c3:4!null, t2.c4:5!null, t2.c5:6!null]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(t2)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"             │       ├─ colSet: (7-13)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE()\n" +
-			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ TableAlias(t1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ static: [{[1, 1]}]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         ├─ tableId: 1\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ TableAlias(t1)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[1, 1]}]\n" +
+			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk\n" +
+			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE()\n" +
+			"             ├─ right-key: TUPLE()\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ static: [{[1, 1], [1, 1]}]\n" +
+			"                     ├─ colSet: (7-13)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [t1.pk, t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t2.pk1, t2.pk2, t2.c1, t2.c2, t2.c3, t2.c4, t2.c5]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(t2)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(t1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{[1, 1]}]\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ TableAlias(t1)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[1, 1]}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ()\n" +
+			"             ├─ right-key: ()\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [t1.pk, t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t2.pk1, t2.pk2, t2.c1, t2.c2, t2.c3, t2.c4, t2.c5]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(t2)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(t1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{[1, 1]}]\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ TableAlias(t1)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[1, 1]}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ()\n" +
+			"             ├─ right-key: ()\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -17624,28 +17465,26 @@ inner join pq on true
 			" └─ Update\n" +
 			"     └─ Update Join\n" +
 			"         └─ UpdateSource(SET two_pk.c1:8!null = (two_pk.c1:8!null + 1 (tinyint)))\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null]\n" +
-			"                 └─ MergeJoin\n" +
-			"                     ├─ cmp: Eq\n" +
-			"                     │   ├─ two_pk.pk1:0!null\n" +
-			"                     │   └─ one_pk.pk:7!null\n" +
-			"                     ├─ IndexedTableAccess(two_pk)\n" +
-			"                     │   ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │   ├─ colSet: (7-13)\n" +
-			"                     │   ├─ tableId: 2\n" +
-			"                     │   └─ Table\n" +
-			"                     │       ├─ name: two_pk\n" +
-			"                     │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ static: [{[NULL, ∞)}]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         ├─ tableId: 1\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             └─ MergeJoin\n" +
+			"                 ├─ cmp: Eq\n" +
+			"                 │   ├─ one_pk.pk:0!null\n" +
+			"                 │   └─ two_pk.pk1:6!null\n" +
+			"                 ├─ IndexedTableAccess(one_pk)\n" +
+			"                 │   ├─ index: [one_pk.pk]\n" +
+			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
+			"                 │   ├─ colSet: (1-6)\n" +
+			"                 │   ├─ tableId: 1\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: one_pk\n" +
+			"                 │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                     ├─ colSet: (7-13)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -17684,103 +17523,103 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.x:0!null, a.y:1!null, a.z:2!null]\n" +
+			" ├─ columns: [a.x:1!null, a.y:2!null, a.z:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ a.y:1!null\n" +
-			"     │   └─ b.z:3!null\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     │   ├─ a.y:2!null\n" +
+			"     │   └─ b.z:0!null\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
 			"     │           ├─ name: invert_pk\n" +
-			"     │           └─ columns: [x y z]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │           └─ columns: [z]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: invert_pk\n" +
-			"             ├─ columns: [z]\n" +
-			"             ├─ colSet: (4-6)\n" +
-			"             └─ tableId: 2\n" +
+			"             ├─ columns: [x y z]\n" +
+			"             ├─ colSet: (1-3)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.x, a.y, a.z]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ (a.y = b.z)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: invert_pk\n" +
-			"     │       └─ columns: [x y z]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │       └─ columns: [z]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: invert_pk\n" +
-			"             └─ columns: [z]\n" +
+			"             └─ columns: [x y z]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.x, a.y, a.z]\n" +
 			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (a.y = b.z)\n" +
-			"     ├─ TableAlias(a)\n" +
+			"     ├─ TableAlias(b)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: invert_pk\n" +
-			"     │       └─ columns: [x y z]\n" +
-			"     └─ TableAlias(b)\n" +
+			"     │       └─ columns: [z]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: invert_pk\n" +
-			"             └─ columns: [z]\n" +
+			"             └─ columns: [x y z]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.x:0!null, a.y:1!null, a.z:2!null]\n" +
+			" ├─ columns: [a.x:1!null, a.y:2!null, a.z:3!null]\n" +
 			" └─ InnerJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ a.y:1!null\n" +
-			"     │   └─ b.z:3!null\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ a.z:2!null\n" +
-			"     │   │   └─ 2 (tinyint)\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ ProcessTable\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: invert_pk\n" +
-			"     │               └─ columns: [x y z]\n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: invert_pk\n" +
-			"             ├─ columns: [z]\n" +
-			"             ├─ colSet: (4-6)\n" +
-			"             └─ tableId: 2\n" +
+			"     │   ├─ a.y:2!null\n" +
+			"     │   └─ b.z:0!null\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: invert_pk\n" +
+			"     │           └─ columns: [z]\n" +
+			"     └─ Filter\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ a.z:2!null\n" +
+			"         │   └─ 2 (tinyint)\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: invert_pk\n" +
+			"                 ├─ columns: [x y z]\n" +
+			"                 ├─ colSet: (1-3)\n" +
+			"                 └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.x, a.y, a.z]\n" +
 			" └─ InnerJoin (estimated cost=7.060 rows=2)\n" +
 			"     ├─ (a.y = b.z)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (a.z = 2)\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: invert_pk\n" +
-			"     │           └─ columns: [x y z]\n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: invert_pk\n" +
-			"             └─ columns: [z]\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: invert_pk\n" +
+			"     │       └─ columns: [z]\n" +
+			"     └─ Filter\n" +
+			"         ├─ (a.z = 2)\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: invert_pk\n" +
+			"                 └─ columns: [x y z]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.x, a.y, a.z]\n" +
 			" └─ InnerJoin (estimated cost=7.060 rows=2) (actual rows=1 loops=1)\n" +
 			"     ├─ (a.y = b.z)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (a.z = 2)\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: invert_pk\n" +
-			"     │           └─ columns: [x y z]\n" +
-			"     └─ TableAlias(b)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: invert_pk\n" +
-			"             └─ columns: [z]\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: invert_pk\n" +
+			"     │       └─ columns: [z]\n" +
+			"     └─ Filter\n" +
+			"         ├─ (a.z = 2)\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: invert_pk\n" +
+			"                 └─ columns: [x y z]\n" +
 			"",
 	},
 	{
@@ -17874,32 +17713,32 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c LEFT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:1!null, a.c1:2, a.c2:3, a.c3:4, a.c4:5, a.c5:6]\n" +
+			" ├─ columns: [a.pk:0!null, a.c1:1, a.c2:2, a.c3:3, a.c4:4, a.c5:5]\n" +
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ b.pk:7!null\n" +
-			"     │   │   └─ c.pk:0!null\n" +
+			"     │   │   └─ c.pk:6!null\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.pk:7!null\n" +
-			"     │       └─ a.pk:1!null\n" +
+			"     │       └─ a.pk:0!null\n" +
 			"     ├─ CrossHashJoin\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
-			"     │   │           └─ columns: [pk]\n" +
+			"     │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: TUPLE()\n" +
 			"     │       ├─ right-key: TUPLE()\n" +
-			"     │       └─ TableAlias(a)\n" +
+			"     │       └─ TableAlias(c)\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
-			"     │               ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │               ├─ colSet: (1-6)\n" +
-			"     │               └─ tableId: 1\n" +
+			"     │               ├─ columns: [pk]\n" +
+			"     │               ├─ colSet: (7-12)\n" +
+			"     │               └─ tableId: 2\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(c.pk:0!null, a.pk:1!null)\n" +
+			"         ├─ left-key: TUPLE(c.pk:6!null, a.pk:0!null)\n" +
 			"         ├─ right-key: TUPLE(b.pk:0!null, b.pk:0!null)\n" +
 			"         └─ TableAlias(b)\n" +
 			"             └─ Table\n" +
@@ -17913,17 +17752,17 @@ inner join pq on true
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5)\n" +
 			"     ├─ ((b.pk = c.pk) AND (b.pk = a.pk))\n" +
 			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5)\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk]\n" +
+			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: ()\n" +
 			"     │       ├─ right-key: ()\n" +
-			"     │       └─ TableAlias(a)\n" +
+			"     │       └─ TableAlias(c)\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │               └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk, a.pk)\n" +
 			"         ├─ right-key: (b.pk, b.pk)\n" +
@@ -17937,17 +17776,17 @@ inner join pq on true
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5) (actual rows=16 loops=1)\n" +
 			"     ├─ ((b.pk = c.pk) AND (b.pk = a.pk))\n" +
 			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5) (actual rows=16 loops=1)\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   ├─ TableAlias(a)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk]\n" +
+			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: ()\n" +
 			"     │       ├─ right-key: ()\n" +
-			"     │       └─ TableAlias(a)\n" +
+			"     │       └─ TableAlias(c)\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │               └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk, a.pk)\n" +
 			"         ├─ right-key: (b.pk, b.pk)\n" +
@@ -17960,15 +17799,15 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c RIGHT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
+			" ├─ columns: [a.pk:1!null, a.c1:2, a.c2:3, a.c3:4, a.c4:5, a.c5:6]\n" +
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ b.pk:0!null\n" +
-			"     │   │   └─ c.pk:1!null\n" +
+			"     │   │   └─ c.pk:7!null\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.pk:0!null\n" +
-			"     │       └─ a.pk:2!null\n" +
+			"     │       └─ a.pk:1!null\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
@@ -17976,23 +17815,23 @@ inner join pq on true
 			"     │           └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(b.pk:0!null, b.pk:0!null)\n" +
-			"         ├─ right-key: TUPLE(c.pk:0!null, a.pk:1!null)\n" +
+			"         ├─ right-key: TUPLE(c.pk:6!null, a.pk:0!null)\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(c)\n" +
+			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       ├─ columns: [pk]\n" +
-			"             │       ├─ colSet: (7-12)\n" +
-			"             │       └─ tableId: 2\n" +
+			"             │       ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             │       ├─ colSet: (1-6)\n" +
+			"             │       └─ tableId: 1\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ TableAlias(a)\n" +
+			"                 └─ TableAlias(c)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         └─ tableId: 1\n" +
+			"                         ├─ columns: [pk]\n" +
+			"                         ├─ colSet: (7-12)\n" +
+			"                         └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -18006,17 +17845,17 @@ inner join pq on true
 			"         ├─ left-key: (b.pk, b.pk)\n" +
 			"         ├─ right-key: (c.pk, a.pk)\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(c)\n" +
+			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: ()\n" +
 			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(a)\n" +
+			"                 └─ TableAlias(c)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -18030,140 +17869,145 @@ inner join pq on true
 			"         ├─ left-key: (b.pk, b.pk)\n" +
 			"         ├─ right-key: (c.pk, a.pk)\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(c)\n" +
+			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: ()\n" +
 			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(a)\n" +
+			"                 └─ TableAlias(c)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         └─ columns: [pk]\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c INNER JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:1!null, a.c1:2, a.c2:3, a.c3:4, a.c4:5, a.c5:6]\n" +
+			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
 			" └─ LookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ a.pk:2!null\n" +
+			"     │   └─ c.pk:0!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ b.pk:0!null\n" +
-			"     │   │   └─ a.pk:1!null\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   │   ├─ c.pk:0!null\n" +
+			"     │   │   └─ b.pk:1!null\n" +
+			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (13-18)\n" +
-			"     │   │       ├─ tableId: 3\n" +
+			"     │   │       ├─ colSet: (7-12)\n" +
+			"     │   │       ├─ tableId: 2\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
 			"     │   │           └─ columns: [pk]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   └─ TableAlias(b)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1-6)\n" +
-			"     │           ├─ tableId: 1\n" +
+			"     │           ├─ colSet: (13-18)\n" +
+			"     │           ├─ tableId: 3\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     └─ TableAlias(c)\n" +
+			"     │               └─ columns: [pk]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [b.pk:0!null]\n" +
-			"             ├─ colSet: (7-12)\n" +
-			"             ├─ tableId: 2\n" +
+			"             ├─ keys: [b.pk:1!null]\n" +
+			"             ├─ colSet: (1-6)\n" +
+			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: one_pk\n" +
-			"                 └─ columns: [pk]\n" +
+			"                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   ├─ cmp: (b.pk = a.pk)\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   ├─ cmp: (c.pk = b.pk)\n" +
+			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   └─ TableAlias(b)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     └─ TableAlias(c)\n" +
+			"     │           └─ columns: [pk]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ columns: [pk]\n" +
+			"             ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ keys: b.pk\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
+			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
-			"     │   ├─ cmp: (b.pk = a.pk)\n" +
-			"     │   ├─ TableAlias(b)\n" +
+			"     │   ├─ cmp: (c.pk = b.pk)\n" +
+			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ TableAlias(a)\n" +
+			"     │   └─ TableAlias(b)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     └─ TableAlias(c)\n" +
+			"     │           └─ columns: [pk]\n" +
+			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ columns: [pk]\n" +
+			"             ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ keys: b.pk\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk b INNER JOIN one_pk c ON b.pk = c.pk LEFT JOIN one_pk d ON c.pk = d.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
+			" ├─ columns: [a.pk:0!null, a.c1:1, a.c2:2, a.c3:3, a.c4:4, a.c5:5]\n" +
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ c.pk:0!null\n" +
+			"     │   ├─ c.pk:7!null\n" +
 			"     │   └─ d.pk:8!null\n" +
 			"     ├─ CrossHashJoin\n" +
-			"     │   ├─ MergeJoin\n" +
-			"     │   │   ├─ cmp: Eq\n" +
-			"     │   │   │   ├─ c.pk:0!null\n" +
-			"     │   │   │   └─ b.pk:1!null\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │   │   │       ├─ index: [one_pk.pk]\n" +
-			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       ├─ colSet: (13-18)\n" +
-			"     │   │   │       ├─ tableId: 3\n" +
-			"     │   │   │       └─ Table\n" +
-			"     │   │   │           ├─ name: one_pk\n" +
-			"     │   │   │           └─ columns: [pk]\n" +
-			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ IndexedTableAccess(one_pk)\n" +
-			"     │   │           ├─ index: [one_pk.pk]\n" +
-			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           ├─ colSet: (7-12)\n" +
-			"     │   │           ├─ tableId: 2\n" +
-			"     │   │           └─ Table\n" +
-			"     │   │               ├─ name: one_pk\n" +
-			"     │   │               └─ columns: [pk]\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk\n" +
+			"     │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: TUPLE()\n" +
 			"     │       ├─ right-key: TUPLE()\n" +
-			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ ProcessTable\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: one_pk\n" +
-			"     │                   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ MergeJoin\n" +
+			"     │           ├─ cmp: Eq\n" +
+			"     │           │   ├─ b.pk:6!null\n" +
+			"     │           │   └─ c.pk:7!null\n" +
+			"     │           ├─ TableAlias(b)\n" +
+			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │           │       ├─ index: [one_pk.pk]\n" +
+			"     │           │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │           │       ├─ colSet: (7-12)\n" +
+			"     │           │       ├─ tableId: 2\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: one_pk\n" +
+			"     │           │           └─ columns: [pk]\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │                   ├─ colSet: (13-18)\n" +
+			"     │                   ├─ tableId: 3\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: one_pk\n" +
+			"     │                       └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(c.pk:0!null)\n" +
+			"         ├─ left-key: TUPLE(c.pk:7!null)\n" +
 			"         ├─ right-key: TUPLE(d.pk:0!null)\n" +
 			"         └─ TableAlias(d)\n" +
 			"             └─ Table\n" +
@@ -18177,25 +18021,25 @@ inner join pq on true
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5)\n" +
 			"     ├─ (c.pk = d.pk)\n" +
 			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5)\n" +
-			"     │   ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   │   ├─ cmp: (c.pk = b.pk)\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │   │   │       ├─ index: [one_pk.pk]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [pk]\n" +
-			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ IndexedTableAccess(one_pk)\n" +
-			"     │   │           ├─ index: [one_pk.pk]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [pk]\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: ()\n" +
 			"     │       ├─ right-key: ()\n" +
-			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ MergeJoin\n" +
+			"     │           ├─ cmp: (b.pk = c.pk)\n" +
+			"     │           ├─ TableAlias(b)\n" +
+			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │           │       ├─ index: [one_pk.pk]\n" +
+			"     │           │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │           │       └─ columns: [pk]\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │                   └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk)\n" +
 			"         ├─ right-key: (d.pk)\n" +
@@ -18209,25 +18053,25 @@ inner join pq on true
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5) (actual rows=16 loops=1)\n" +
 			"     ├─ (c.pk = d.pk)\n" +
 			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5) (actual rows=16 loops=1)\n" +
-			"     │   ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
-			"     │   │   ├─ cmp: (c.pk = b.pk)\n" +
-			"     │   │   ├─ TableAlias(c)\n" +
-			"     │   │   │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │   │   │       ├─ index: [one_pk.pk]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [pk]\n" +
-			"     │   │   └─ TableAlias(b)\n" +
-			"     │   │       └─ IndexedTableAccess(one_pk)\n" +
-			"     │   │           ├─ index: [one_pk.pk]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [pk]\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: ()\n" +
 			"     │       ├─ right-key: ()\n" +
-			"     │       └─ TableAlias(a)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │       └─ MergeJoin\n" +
+			"     │           ├─ cmp: (b.pk = c.pk)\n" +
+			"     │           ├─ TableAlias(b)\n" +
+			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │           │       ├─ index: [one_pk.pk]\n" +
+			"     │           │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │           │       └─ columns: [pk]\n" +
+			"     │           └─ TableAlias(c)\n" +
+			"     │               └─ IndexedTableAccess(one_pk)\n" +
+			"     │                   ├─ index: [one_pk.pk]\n" +
+			"     │                   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │                   └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk)\n" +
 			"         ├─ right-key: (d.pk)\n" +
@@ -18240,11 +18084,11 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c INNER JOIN (select * from one_pk) b ON b.pk = c.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:7!null, a.c1:8, a.c2:9, a.c3:10, a.c4:11, a.c5:12]\n" +
+			" ├─ columns: [a.pk:6!null, a.c1:7, a.c2:8, a.c3:9, a.c4:10, a.c5:11]\n" +
 			" └─ HashJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ b.pk:0!null\n" +
-			"     │   └─ c.pk:6!null\n" +
+			"     │   └─ c.pk:12!null\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: b\n" +
 			"     │   ├─ outerVisibility: false\n" +
@@ -18259,22 +18103,22 @@ inner join pq on true
 			"     │       └─ tableId: 3\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(b.pk:0!null)\n" +
-			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
+			"         ├─ right-key: TUPLE(c.pk:6!null)\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(c)\n" +
+			"             ├─ TableAlias(a)\n" +
 			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: one_pk\n" +
-			"             │           └─ columns: [pk]\n" +
+			"             │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: TUPLE()\n" +
 			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ TableAlias(a)\n" +
+			"                 └─ TableAlias(c)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         └─ tableId: 1\n" +
+			"                         ├─ columns: [pk]\n" +
+			"                         ├─ colSet: (7-12)\n" +
+			"                         └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -18292,17 +18136,17 @@ inner join pq on true
 			"         ├─ left-key: (b.pk)\n" +
 			"         ├─ right-key: (c.pk)\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(c)\n" +
+			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: ()\n" +
 			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(a)\n" +
+			"                 └─ TableAlias(c)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -18320,87 +18164,93 @@ inner join pq on true
 			"         ├─ left-key: (b.pk)\n" +
 			"         ├─ right-key: (c.pk)\n" +
 			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(c)\n" +
+			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"             └─ HashLookup\n" +
 			"                 ├─ left-key: ()\n" +
 			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(a)\n" +
+			"                 └─ TableAlias(c)\n" +
 			"                     └─ Table\n" +
 			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                         └─ columns: [pk]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM tabletest join mytable mt INNER JOIN othertable ot ON tabletest.i = ot.i2 order by 1,3,6`,
 		ExpectedPlan: "Sort(tabletest.i:0!null ASC nullsFirst, mt.i:2!null ASC nullsFirst, ot.i2:5!null ASC nullsFirst)\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ CrossJoin\n" +
-			"     │   ├─ ProcessTable\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: tabletest\n" +
-			"     │   │       └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(mt)\n" +
-			"     │       └─ ProcessTable\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
-			"     └─ TableAlias(ot)\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ keys: [tabletest.i:0!null]\n" +
-			"             ├─ colSet: (5,6)\n" +
-			"             ├─ tableId: 3\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [tabletest.i:2!null, tabletest.s:3!null, mt.i:0!null, mt.s:1!null, ot.s2:4!null, ot.i2:5!null]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ CrossJoin\n" +
+			"         │   ├─ TableAlias(mt)\n" +
+			"         │   │   └─ ProcessTable\n" +
+			"         │   │       └─ Table\n" +
+			"         │   │           ├─ name: mytable\n" +
+			"         │   │           └─ columns: [i s]\n" +
+			"         │   └─ ProcessTable\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: tabletest\n" +
+			"         │           └─ columns: [i s]\n" +
+			"         └─ TableAlias(ot)\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ keys: [tabletest.i:2!null]\n" +
+			"                 ├─ colSet: (5,6)\n" +
+			"                 ├─ tableId: 3\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Sort(tabletest.i ASC, mt.i ASC, ot.i2 ASC)\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ CrossJoin\n" +
-			"     │   ├─ Table\n" +
-			"     │   │   ├─ name: tabletest\n" +
-			"     │   │   └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(mt)\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(ot)\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ columns: [s2 i2]\n" +
-			"             └─ keys: tabletest.i\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [tabletest.i, tabletest.s, mt.i, mt.s, ot.s2, ot.i2]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ CrossJoin\n" +
+			"         │   ├─ TableAlias(mt)\n" +
+			"         │   │   └─ Table\n" +
+			"         │   │       ├─ name: mytable\n" +
+			"         │   │       └─ columns: [i s]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: tabletest\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ TableAlias(ot)\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ columns: [s2 i2]\n" +
+			"                 └─ keys: tabletest.i\n" +
 			"",
 		ExpectedAnalysis: "Sort(tabletest.i ASC, mt.i ASC, ot.i2 ASC)\n" +
-			" └─ LookupJoin\n" +
-			"     ├─ CrossJoin\n" +
-			"     │   ├─ Table\n" +
-			"     │   │   ├─ name: tabletest\n" +
-			"     │   │   └─ columns: [i s]\n" +
-			"     │   └─ TableAlias(mt)\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i s]\n" +
-			"     └─ TableAlias(ot)\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.i2]\n" +
-			"             ├─ columns: [s2 i2]\n" +
-			"             └─ keys: tabletest.i\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [tabletest.i, tabletest.s, mt.i, mt.s, ot.s2, ot.i2]\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ CrossJoin\n" +
+			"         │   ├─ TableAlias(mt)\n" +
+			"         │   │   └─ Table\n" +
+			"         │   │       ├─ name: mytable\n" +
+			"         │   │       └─ columns: [i s]\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: tabletest\n" +
+			"         │       └─ columns: [i s]\n" +
+			"         └─ TableAlias(ot)\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ columns: [s2 i2]\n" +
+			"                 └─ keys: tabletest.i\n" +
 			"",
 	},
 	{
 		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and c.v2 = 0;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:3!null, c.v2:1]\n" +
+			" ├─ columns: [a.pk:2!null, c.v2:1]\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ b.pk:2!null\n" +
+			"     │   ├─ b.pk:3!null\n" +
 			"     │   └─ 0 (tinyint)\n" +
 			"     └─ LeftOuterHashJoin\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ b.pk:2!null\n" +
+			"         │   ├─ b.pk:3!null\n" +
 			"         │   └─ c.v1:0\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ Eq\n" +
@@ -18413,23 +18263,23 @@ inner join pq on true
 			"         │               └─ columns: [v1 v2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(c.v1:0)\n" +
-			"             ├─ right-key: TUPLE(b.pk:0!null)\n" +
+			"             ├─ right-key: TUPLE(b.pk:1!null)\n" +
 			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
+			"                 ├─ TableAlias(a)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
 			"                 │       ├─ columns: [pk]\n" +
-			"                 │       ├─ colSet: (5-8)\n" +
-			"                 │       └─ tableId: 2\n" +
+			"                 │       ├─ colSet: (1-4)\n" +
+			"                 │       └─ tableId: 1\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: TUPLE()\n" +
 			"                     ├─ right-key: TUPLE()\n" +
-			"                     └─ TableAlias(a)\n" +
+			"                     └─ TableAlias(b)\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk_three_idx\n" +
 			"                             ├─ columns: [pk]\n" +
-			"                             ├─ colSet: (1-4)\n" +
-			"                             └─ tableId: 1\n" +
+			"                             ├─ colSet: (5-8)\n" +
+			"                             └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, c.v2]\n" +
@@ -18447,14 +18297,14 @@ inner join pq on true
 			"             ├─ left-key: (c.v1)\n" +
 			"             ├─ right-key: (b.pk)\n" +
 			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
+			"                 ├─ TableAlias(a)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
 			"                 │       └─ columns: [pk]\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: ()\n" +
 			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(a)\n" +
+			"                     └─ TableAlias(b)\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk_three_idx\n" +
 			"                             └─ columns: [pk]\n" +
@@ -18475,14 +18325,14 @@ inner join pq on true
 			"             ├─ left-key: (c.v1)\n" +
 			"             ├─ right-key: (b.pk)\n" +
 			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
+			"                 ├─ TableAlias(a)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
 			"                 │       └─ columns: [pk]\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: ()\n" +
 			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(a)\n" +
+			"                     └─ TableAlias(b)\n" +
 			"                         └─ Table\n" +
 			"                             ├─ name: one_pk_three_idx\n" +
 			"                             └─ columns: [pk]\n" +
@@ -18604,18 +18454,18 @@ inner join pq on true
 			"         ├─ colSet: (5,6)\n" +
 			"         ├─ tableId: 3\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"             ├─ TableAlias(b)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
-			"             │       ├─ columns: [i s]\n" +
-			"             │       ├─ colSet: (1,2)\n" +
-			"             │       └─ tableId: 1\n" +
-			"             └─ TableAlias(b)\n" +
+			"             │       ├─ columns: []\n" +
+			"             │       ├─ colSet: (3,4)\n" +
+			"             │       └─ tableId: 2\n" +
+			"             └─ TableAlias(a)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
-			"                     ├─ columns: []\n" +
-			"                     ├─ colSet: (3,4)\n" +
-			"                     └─ tableId: 2\n" +
+			"                     ├─ columns: [i s]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s, c.i, c.s]\n" +
@@ -18631,14 +18481,14 @@ inner join pq on true
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"             ├─ TableAlias(b)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
-			"             │       └─ columns: [i s]\n" +
-			"             └─ TableAlias(b)\n" +
+			"             │       └─ columns: []\n" +
+			"             └─ TableAlias(a)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
-			"                     └─ columns: []\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s, c.i, c.s]\n" +
@@ -18654,14 +18504,14 @@ inner join pq on true
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"             ├─ TableAlias(b)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: mytable\n" +
-			"             │       └─ columns: [i s]\n" +
-			"             └─ TableAlias(b)\n" +
+			"             │       └─ columns: []\n" +
+			"             └─ TableAlias(a)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
-			"                     └─ columns: []\n" +
+			"                     └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -18687,8 +18537,8 @@ inner join pq on true
 			"         │   │   └─ a.i:2!null\n" +
 			"         │   ├─ TableAlias(b)\n" +
 			"         │   │   └─ IndexedTableAccess(mytable)\n" +
-			"         │   │       ├─ index: [mytable.i]\n" +
-			"         │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │   │       ├─ colSet: (3,4)\n" +
 			"         │   │       ├─ tableId: 2\n" +
 			"         │   │       └─ Table\n" +
@@ -18696,8 +18546,8 @@ inner join pq on true
 			"         │   │           └─ columns: [i]\n" +
 			"         │   └─ TableAlias(a)\n" +
 			"         │       └─ IndexedTableAccess(mytable)\n" +
-			"         │           ├─ index: [mytable.i]\n" +
-			"         │           ├─ static: [{[NULL, ∞)}]\n" +
+			"         │           ├─ index: [mytable.i,mytable.s]\n" +
+			"         │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │           ├─ colSet: (1,2)\n" +
 			"         │           ├─ tableId: 1\n" +
 			"         │           └─ Table\n" +
@@ -18724,13 +18574,13 @@ inner join pq on true
 			"         │   ├─ cmp: ((b.i + 1) = a.i)\n" +
 			"         │   ├─ TableAlias(b)\n" +
 			"         │   │   └─ IndexedTableAccess(mytable)\n" +
-			"         │   │       ├─ index: [mytable.i]\n" +
-			"         │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │   │       └─ columns: [i]\n" +
 			"         │   └─ TableAlias(a)\n" +
 			"         │       └─ IndexedTableAccess(mytable)\n" +
-			"         │           ├─ index: [mytable.i]\n" +
-			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           ├─ index: [mytable.i,mytable.s]\n" +
+			"         │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │           └─ columns: [i s]\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ Table\n" +
@@ -18751,13 +18601,13 @@ inner join pq on true
 			"         │   ├─ cmp: ((b.i + 1) = a.i)\n" +
 			"         │   ├─ TableAlias(b)\n" +
 			"         │   │   └─ IndexedTableAccess(mytable)\n" +
-			"         │   │       ├─ index: [mytable.i]\n" +
-			"         │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │       ├─ index: [mytable.i,mytable.s]\n" +
+			"         │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │   │       └─ columns: [i]\n" +
 			"         │   └─ TableAlias(a)\n" +
 			"         │       └─ IndexedTableAccess(mytable)\n" +
-			"         │           ├─ index: [mytable.i]\n" +
-			"         │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"         │           ├─ index: [mytable.i,mytable.s]\n" +
+			"         │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"         │           └─ columns: [i s]\n" +
 			"         └─ TableAlias(c)\n" +
 			"             └─ Table\n" +
@@ -18792,8 +18642,8 @@ inner join pq on true
 			"     │   │   │           └─ columns: [s2 i2]\n" +
 			"     │   │   └─ TableAlias(a)\n" +
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.i]\n" +
-			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │   │           ├─ colSet: (1,2)\n" +
 			"     │   │           ├─ tableId: 1\n" +
 			"     │   │           └─ Table\n" +
@@ -18825,8 +18675,8 @@ inner join pq on true
 			"     │   │   │       └─ columns: [s2 i2]\n" +
 			"     │   │   └─ TableAlias(a)\n" +
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.i]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │   │           └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ Table\n" +
@@ -18852,8 +18702,8 @@ inner join pq on true
 			"     │   │   │       └─ columns: [s2 i2]\n" +
 			"     │   │   └─ TableAlias(a)\n" +
 			"     │   │       └─ IndexedTableAccess(mytable)\n" +
-			"     │   │           ├─ index: [mytable.i]\n" +
-			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │   │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │   │           └─ columns: [i s]\n" +
 			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ Table\n" +
@@ -18897,8 +18747,8 @@ inner join pq on true
 			"     │       │           └─ columns: [s2 i2]\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
-			"     │               ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               ├─ index: [mytable.i,mytable.s]\n" +
+			"     │               ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │               ├─ colSet: (1,2)\n" +
 			"     │               ├─ tableId: 1\n" +
 			"     │               └─ Table\n" +
@@ -18929,8 +18779,8 @@ inner join pq on true
 			"     │       │       └─ columns: [s2 i2]\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
-			"     │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │               ├─ index: [mytable.i,mytable.s]\n" +
+			"     │               ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ Table\n" +
@@ -18956,8 +18806,8 @@ inner join pq on true
 			"     │       │       └─ columns: [s2 i2]\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ IndexedTableAccess(mytable)\n" +
-			"     │               ├─ index: [mytable.i]\n" +
-			"     │               ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │               ├─ index: [mytable.i,mytable.s]\n" +
+			"     │               ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			"     │               └─ columns: [i s]\n" +
 			"     └─ TableAlias(d)\n" +
 			"         └─ Table\n" +
@@ -18968,93 +18818,93 @@ inner join pq on true
 	{
 		Query: `select i.pk, j.v3 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [i.pk:2!null, j.v3:1]\n" +
+			" ├─ columns: [i.pk:0!null, j.v3:3]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ j.pk:0!null\n" +
-			"     │   └─ i.v1:3\n" +
-			"     ├─ TableAlias(j)\n" +
-			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (4-7)\n" +
-			"     │       ├─ tableId: 2\n" +
+			"     │   ├─ i.v1:1\n" +
+			"     │   └─ j.pk:2!null\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-3)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk_three_idx\n" +
-			"     │           └─ columns: [pk v3]\n" +
-			"     └─ TableAlias(i)\n" +
-			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"             ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │           ├─ name: one_pk_two_idx\n" +
+			"     │           └─ columns: [pk v1]\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-3)\n" +
-			"             ├─ tableId: 1\n" +
+			"             ├─ colSet: (4-7)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: one_pk_two_idx\n" +
-			"                 └─ columns: [pk v1]\n" +
+			"                 ├─ name: one_pk_three_idx\n" +
+			"                 └─ columns: [pk v3]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [i.pk, j.v3]\n" +
 			" └─ MergeJoin (estimated cost=16.240 rows=8)\n" +
-			"     ├─ cmp: (j.pk = i.v1)\n" +
-			"     ├─ TableAlias(j)\n" +
-			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk v3]\n" +
-			"     └─ TableAlias(i)\n" +
-			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"             ├─ index: [one_pk_two_idx.v1]\n" +
+			"     ├─ cmp: (i.v1 = j.pk)\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [pk v1]\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk v1]\n" +
+			"             └─ columns: [pk v3]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [i.pk, j.v3]\n" +
 			" └─ MergeJoin (estimated cost=16.240 rows=8) (actual rows=8 loops=1)\n" +
-			"     ├─ cmp: (j.pk = i.v1)\n" +
-			"     ├─ TableAlias(j)\n" +
-			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk v3]\n" +
-			"     └─ TableAlias(i)\n" +
-			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"             ├─ index: [one_pk_two_idx.v1]\n" +
+			"     ├─ cmp: (i.v1 = j.pk)\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [pk v1]\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk v1]\n" +
+			"             └─ columns: [pk v3]\n" +
 			"",
 	},
 	{
 		Query: `select i.pk, j.v3, k.c1 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk JOIN one_pk k on j.v3 = k.pk;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [i.pk:2!null, j.v3:1, k.c1:5]\n" +
+			" ├─ columns: [i.pk:0!null, j.v3:3, k.c1:5]\n" +
 			" └─ HashJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ j.v3:1\n" +
+			"     │   ├─ j.v3:3\n" +
 			"     │   └─ k.pk:4!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ j.pk:0!null\n" +
-			"     │   │   └─ i.v1:3\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (4-7)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │   │   ├─ i.v1:1\n" +
+			"     │   │   └─ j.pk:2!null\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (1-3)\n" +
+			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: one_pk_three_idx\n" +
-			"     │   │           └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   │           ├─ name: one_pk_two_idx\n" +
+			"     │   │           └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1-3)\n" +
-			"     │           ├─ tableId: 1\n" +
+			"     │           ├─ colSet: (4-7)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_two_idx\n" +
-			"     │               └─ columns: [pk v1]\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(j.v3:1)\n" +
+			"         ├─ left-key: TUPLE(j.v3:3)\n" +
 			"         ├─ right-key: TUPLE(k.pk:0!null)\n" +
 			"         └─ TableAlias(k)\n" +
 			"             └─ ProcessTable\n" +
@@ -19067,17 +18917,17 @@ inner join pq on true
 			" └─ HashJoin (estimated cost=20.160 rows=8)\n" +
 			"     ├─ (j.v3 = k.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=16.240 rows=8)\n" +
-			"     │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (j.v3)\n" +
 			"         ├─ right-key: (k.pk)\n" +
@@ -19091,17 +18941,17 @@ inner join pq on true
 			" └─ HashJoin (estimated cost=20.160 rows=8) (actual rows=7 loops=1)\n" +
 			"     ├─ (j.v3 = k.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=16.240 rows=8) (actual rows=8 loops=1)\n" +
-			"     │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (j.v3)\n" +
 			"         ├─ right-key: (k.pk)\n" +
@@ -19114,93 +18964,93 @@ inner join pq on true
 	{
 		Query: `select i.pk, j.v3 from (one_pk_two_idx i JOIN one_pk_three_idx j on((i.v1 = j.pk)));`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [i.pk:2!null, j.v3:1]\n" +
+			" ├─ columns: [i.pk:0!null, j.v3:3]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ j.pk:0!null\n" +
-			"     │   └─ i.v1:3\n" +
-			"     ├─ TableAlias(j)\n" +
-			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (4-7)\n" +
-			"     │       ├─ tableId: 2\n" +
+			"     │   ├─ i.v1:1\n" +
+			"     │   └─ j.pk:2!null\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1-3)\n" +
+			"     │       ├─ tableId: 1\n" +
 			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk_three_idx\n" +
-			"     │           └─ columns: [pk v3]\n" +
-			"     └─ TableAlias(i)\n" +
-			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"             ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │           ├─ name: one_pk_two_idx\n" +
+			"     │           └─ columns: [pk v1]\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-3)\n" +
-			"             ├─ tableId: 1\n" +
+			"             ├─ colSet: (4-7)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: one_pk_two_idx\n" +
-			"                 └─ columns: [pk v1]\n" +
+			"                 ├─ name: one_pk_three_idx\n" +
+			"                 └─ columns: [pk v3]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [i.pk, j.v3]\n" +
 			" └─ MergeJoin (estimated cost=16.240 rows=8)\n" +
-			"     ├─ cmp: (j.pk = i.v1)\n" +
-			"     ├─ TableAlias(j)\n" +
-			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk v3]\n" +
-			"     └─ TableAlias(i)\n" +
-			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"             ├─ index: [one_pk_two_idx.v1]\n" +
+			"     ├─ cmp: (i.v1 = j.pk)\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [pk v1]\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk v1]\n" +
+			"             └─ columns: [pk v3]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [i.pk, j.v3]\n" +
 			" └─ MergeJoin (estimated cost=16.240 rows=8) (actual rows=8 loops=1)\n" +
-			"     ├─ cmp: (j.pk = i.v1)\n" +
-			"     ├─ TableAlias(j)\n" +
-			"     │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [pk v3]\n" +
-			"     └─ TableAlias(i)\n" +
-			"         └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"             ├─ index: [one_pk_two_idx.v1]\n" +
+			"     ├─ cmp: (i.v1 = j.pk)\n" +
+			"     ├─ TableAlias(i)\n" +
+			"     │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [pk v1]\n" +
+			"     └─ TableAlias(j)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"             ├─ index: [one_pk_three_idx.pk]\n" +
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [pk v1]\n" +
+			"             └─ columns: [pk v3]\n" +
 			"",
 	},
 	{
 		Query: `select i.pk, j.v3, k.c1 from ((one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk))) JOIN one_pk k on((j.v3 = k.pk)));`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [i.pk:2!null, j.v3:1, k.c1:5]\n" +
+			" ├─ columns: [i.pk:0!null, j.v3:3, k.c1:5]\n" +
 			" └─ HashJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ j.v3:1\n" +
+			"     │   ├─ j.v3:3\n" +
 			"     │   └─ k.pk:4!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ j.pk:0!null\n" +
-			"     │   │   └─ i.v1:3\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (4-7)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │   │   ├─ i.v1:1\n" +
+			"     │   │   └─ j.pk:2!null\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (1-3)\n" +
+			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: one_pk_three_idx\n" +
-			"     │   │           └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   │           ├─ name: one_pk_two_idx\n" +
+			"     │   │           └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1-3)\n" +
-			"     │           ├─ tableId: 1\n" +
+			"     │           ├─ colSet: (4-7)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_two_idx\n" +
-			"     │               └─ columns: [pk v1]\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(j.v3:1)\n" +
+			"         ├─ left-key: TUPLE(j.v3:3)\n" +
 			"         ├─ right-key: TUPLE(k.pk:0!null)\n" +
 			"         └─ TableAlias(k)\n" +
 			"             └─ ProcessTable\n" +
@@ -19213,17 +19063,17 @@ inner join pq on true
 			" └─ HashJoin (estimated cost=20.160 rows=8)\n" +
 			"     ├─ (j.v3 = k.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=16.240 rows=8)\n" +
-			"     │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (j.v3)\n" +
 			"         ├─ right-key: (k.pk)\n" +
@@ -19237,17 +19087,17 @@ inner join pq on true
 			" └─ HashJoin (estimated cost=20.160 rows=8) (actual rows=7 loops=1)\n" +
 			"     ├─ (j.v3 = k.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=16.240 rows=8) (actual rows=8 loops=1)\n" +
-			"     │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (j.v3)\n" +
 			"         ├─ right-key: (k.pk)\n" +
@@ -19260,35 +19110,35 @@ inner join pq on true
 	{
 		Query: `select i.pk, j.v3, k.c1 from (one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk)) JOIN one_pk k on((j.v3 = k.pk)))`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [i.pk:2!null, j.v3:1, k.c1:5]\n" +
+			" ├─ columns: [i.pk:0!null, j.v3:3, k.c1:5]\n" +
 			" └─ HashJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ j.v3:1\n" +
+			"     │   ├─ j.v3:3\n" +
 			"     │   └─ k.pk:4!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ j.pk:0!null\n" +
-			"     │   │   └─ i.v1:3\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (4-7)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │   │   ├─ i.v1:1\n" +
+			"     │   │   └─ j.pk:2!null\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       ├─ colSet: (1-3)\n" +
+			"     │   │       ├─ tableId: 1\n" +
 			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: one_pk_three_idx\n" +
-			"     │   │           └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   │           ├─ name: one_pk_two_idx\n" +
+			"     │   │           └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1-3)\n" +
-			"     │           ├─ tableId: 1\n" +
+			"     │           ├─ colSet: (4-7)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_two_idx\n" +
-			"     │               └─ columns: [pk v1]\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(j.v3:1)\n" +
+			"         ├─ left-key: TUPLE(j.v3:3)\n" +
 			"         ├─ right-key: TUPLE(k.pk:0!null)\n" +
 			"         └─ TableAlias(k)\n" +
 			"             └─ ProcessTable\n" +
@@ -19301,17 +19151,17 @@ inner join pq on true
 			" └─ HashJoin (estimated cost=20.160 rows=8)\n" +
 			"     ├─ (j.v3 = k.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=16.240 rows=8)\n" +
-			"     │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (j.v3)\n" +
 			"         ├─ right-key: (k.pk)\n" +
@@ -19325,17 +19175,17 @@ inner join pq on true
 			" └─ HashJoin (estimated cost=20.160 rows=8) (actual rows=7 loops=1)\n" +
 			"     ├─ (j.v3 = k.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=16.240 rows=8) (actual rows=8 loops=1)\n" +
-			"     │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   ├─ TableAlias(j)\n" +
-			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │       └─ columns: [pk v3]\n" +
-			"     │   └─ TableAlias(i)\n" +
-			"     │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   ├─ TableAlias(i)\n" +
+			"     │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │       └─ columns: [pk v1]\n" +
+			"     │   └─ TableAlias(j)\n" +
+			"     │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [pk v1]\n" +
+			"     │           └─ columns: [pk v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (j.v3)\n" +
 			"         ├─ right-key: (k.pk)\n" +
@@ -19352,35 +19202,35 @@ inner join pq on true
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ a.pk:2!null\n" +
-			"     │   └─ l.v2:6\n" +
+			"     │   └─ l.v2:7\n" +
 			"     ├─ LeftOuterHashJoin\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ a.pk:2!null\n" +
-			"     │   │   └─ i.v1:1\n" +
+			"     │   │   └─ i.v1:0\n" +
 			"     │   ├─ MergeJoin\n" +
 			"     │   │   ├─ cmp: Eq\n" +
-			"     │   │   │   ├─ j.pk:0!null\n" +
-			"     │   │   │   └─ i.v1:1\n" +
-			"     │   │   ├─ TableAlias(j)\n" +
-			"     │   │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │   │       ├─ colSet: (7-10)\n" +
-			"     │   │   │       ├─ tableId: 3\n" +
+			"     │   │   │   ├─ i.v1:0\n" +
+			"     │   │   │   └─ j.pk:1!null\n" +
+			"     │   │   ├─ TableAlias(i)\n" +
+			"     │   │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │   │       ├─ colSet: (4-6)\n" +
+			"     │   │   │       ├─ tableId: 2\n" +
 			"     │   │   │       └─ Table\n" +
-			"     │   │   │           ├─ name: one_pk_three_idx\n" +
-			"     │   │   │           └─ columns: [pk]\n" +
-			"     │   │   └─ TableAlias(i)\n" +
-			"     │   │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │   │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   │   │           ├─ name: one_pk_two_idx\n" +
+			"     │   │   │           └─ columns: [v1]\n" +
+			"     │   │   └─ TableAlias(j)\n" +
+			"     │   │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │   │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │           ├─ colSet: (4-6)\n" +
-			"     │   │           ├─ tableId: 2\n" +
+			"     │   │           ├─ colSet: (7-10)\n" +
+			"     │   │           ├─ tableId: 3\n" +
 			"     │   │           └─ Table\n" +
-			"     │   │               ├─ name: one_pk_two_idx\n" +
-			"     │   │               └─ columns: [v1]\n" +
+			"     │   │               ├─ name: one_pk_three_idx\n" +
+			"     │   │               └─ columns: [pk]\n" +
 			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: TUPLE(i.v1:1)\n" +
+			"     │       ├─ left-key: TUPLE(i.v1:0)\n" +
 			"     │       ├─ right-key: TUPLE(a.pk:0!null)\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ ProcessTable\n" +
@@ -19389,29 +19239,29 @@ inner join pq on true
 			"     │                   └─ columns: [pk v1 v2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(a.pk:2!null)\n" +
-			"         ├─ right-key: TUPLE(l.v2:1)\n" +
+			"         ├─ right-key: TUPLE(l.v2:2)\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: Eq\n" +
-			"             │   ├─ l.pk:5!null\n" +
-			"             │   └─ k.v1:7\n" +
-			"             ├─ TableAlias(l)\n" +
-			"             │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"             │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"             │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │       ├─ colSet: (14-17)\n" +
-			"             │       ├─ tableId: 5\n" +
+			"             │   ├─ k.v1:5\n" +
+			"             │   └─ l.pk:6!null\n" +
+			"             ├─ TableAlias(k)\n" +
+			"             │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"             │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"             │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (11-13)\n" +
+			"             │       ├─ tableId: 4\n" +
 			"             │       └─ Table\n" +
-			"             │           ├─ name: one_pk_three_idx\n" +
-			"             │           └─ columns: [pk v2]\n" +
-			"             └─ TableAlias(k)\n" +
-			"                 └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"                     ├─ index: [one_pk_two_idx.v1]\n" +
+			"             │           ├─ name: one_pk_two_idx\n" +
+			"             │           └─ columns: [v1]\n" +
+			"             └─ TableAlias(l)\n" +
+			"                 └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                     ├─ index: [one_pk_three_idx.pk]\n" +
 			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (11-13)\n" +
-			"                     ├─ tableId: 4\n" +
+			"                     ├─ colSet: (14-17)\n" +
+			"                     ├─ tableId: 5\n" +
 			"                     └─ Table\n" +
-			"                         ├─ name: one_pk_two_idx\n" +
-			"                         └─ columns: [v1]\n" +
+			"                         ├─ name: one_pk_three_idx\n" +
+			"                         └─ columns: [pk v2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.v1, a.v2]\n" +
@@ -19420,17 +19270,17 @@ inner join pq on true
 			"     ├─ LeftOuterHashJoin (estimated cost=32.180 rows=10)\n" +
 			"     │   ├─ (a.pk = i.v1)\n" +
 			"     │   ├─ MergeJoin (estimated cost=16.240 rows=8)\n" +
-			"     │   │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   │   ├─ TableAlias(j)\n" +
-			"     │   │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [pk]\n" +
-			"     │   │   └─ TableAlias(i)\n" +
-			"     │   │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │   │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   │   ├─ TableAlias(i)\n" +
+			"     │   │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │   │       └─ columns: [v1]\n" +
+			"     │   │   └─ TableAlias(j)\n" +
+			"     │   │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │   │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [v1]\n" +
+			"     │   │           └─ columns: [pk]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: (i.v1)\n" +
 			"     │       ├─ right-key: (a.pk)\n" +
@@ -19442,17 +19292,17 @@ inner join pq on true
 			"         ├─ left-key: (a.pk)\n" +
 			"         ├─ right-key: (l.v2)\n" +
 			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (l.pk = k.v1)\n" +
-			"             ├─ TableAlias(l)\n" +
-			"             │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"             │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk v2]\n" +
-			"             └─ TableAlias(k)\n" +
-			"                 └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"                     ├─ index: [one_pk_two_idx.v1]\n" +
+			"             ├─ cmp: (k.v1 = l.pk)\n" +
+			"             ├─ TableAlias(k)\n" +
+			"             │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"             │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       └─ columns: [v1]\n" +
+			"             └─ TableAlias(l)\n" +
+			"                 └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                     ├─ index: [one_pk_three_idx.pk]\n" +
 			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [v1]\n" +
+			"                     └─ columns: [pk v2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.v1, a.v2]\n" +
@@ -19461,17 +19311,17 @@ inner join pq on true
 			"     ├─ LeftOuterHashJoin (estimated cost=32.180 rows=10) (actual rows=8 loops=1)\n" +
 			"     │   ├─ (a.pk = i.v1)\n" +
 			"     │   ├─ MergeJoin (estimated cost=16.240 rows=8) (actual rows=8 loops=1)\n" +
-			"     │   │   ├─ cmp: (j.pk = i.v1)\n" +
-			"     │   │   ├─ TableAlias(j)\n" +
-			"     │   │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"     │   │   │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │   │       └─ columns: [pk]\n" +
-			"     │   │   └─ TableAlias(i)\n" +
-			"     │   │       └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"     │   │           ├─ index: [one_pk_two_idx.v1]\n" +
+			"     │   │   ├─ cmp: (i.v1 = j.pk)\n" +
+			"     │   │   ├─ TableAlias(i)\n" +
+			"     │   │   │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"     │   │   │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"     │   │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │   │   │       └─ columns: [v1]\n" +
+			"     │   │   └─ TableAlias(j)\n" +
+			"     │   │       └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"     │   │           ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │           └─ columns: [v1]\n" +
+			"     │   │           └─ columns: [pk]\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: (i.v1)\n" +
 			"     │       ├─ right-key: (a.pk)\n" +
@@ -19483,17 +19333,17 @@ inner join pq on true
 			"         ├─ left-key: (a.pk)\n" +
 			"         ├─ right-key: (l.v2)\n" +
 			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (l.pk = k.v1)\n" +
-			"             ├─ TableAlias(l)\n" +
-			"             │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
-			"             │       ├─ index: [one_pk_three_idx.pk]\n" +
-			"             │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │       └─ columns: [pk v2]\n" +
-			"             └─ TableAlias(k)\n" +
-			"                 └─ IndexedTableAccess(one_pk_two_idx)\n" +
-			"                     ├─ index: [one_pk_two_idx.v1]\n" +
+			"             ├─ cmp: (k.v1 = l.pk)\n" +
+			"             ├─ TableAlias(k)\n" +
+			"             │   └─ IndexedTableAccess(one_pk_two_idx)\n" +
+			"             │       ├─ index: [one_pk_two_idx.v1,one_pk_two_idx.v2]\n" +
+			"             │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │       └─ columns: [v1]\n" +
+			"             └─ TableAlias(l)\n" +
+			"                 └─ IndexedTableAccess(one_pk_three_idx)\n" +
+			"                     ├─ index: [one_pk_three_idx.pk]\n" +
 			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [v1]\n" +
+			"                     └─ columns: [pk v2]\n" +
 			"",
 	},
 	{
@@ -19503,26 +19353,26 @@ inner join pq on true
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ a.v1:4\n" +
-			"     │   └─ l.v2:0\n" +
+			"     │   └─ l.v2:1\n" +
 			"     ├─ HashJoin\n" +
 			"     │   ├─ Eq\n" +
-			"     │   │   ├─ k.v2:2\n" +
-			"     │   │   └─ l.v3:1\n" +
-			"     │   ├─ TableAlias(l)\n" +
+			"     │   │   ├─ k.v2:0\n" +
+			"     │   │   └─ l.v3:2\n" +
+			"     │   ├─ TableAlias(k)\n" +
 			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: one_pk_three_idx\n" +
-			"     │   │           └─ columns: [v2 v3]\n" +
+			"     │   │           ├─ name: one_pk_two_idx\n" +
+			"     │   │           └─ columns: [v2]\n" +
 			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: TUPLE(l.v3:1)\n" +
-			"     │       ├─ right-key: TUPLE(k.v2:0)\n" +
-			"     │       └─ TableAlias(k)\n" +
+			"     │       ├─ left-key: TUPLE(k.v2:0)\n" +
+			"     │       ├─ right-key: TUPLE(l.v3:1)\n" +
+			"     │       └─ TableAlias(l)\n" +
 			"     │           └─ ProcessTable\n" +
 			"     │               └─ Table\n" +
-			"     │                   ├─ name: one_pk_two_idx\n" +
-			"     │                   └─ columns: [v2]\n" +
+			"     │                   ├─ name: one_pk_three_idx\n" +
+			"     │                   └─ columns: [v2 v3]\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(l.v2:0)\n" +
+			"         ├─ left-key: TUPLE(l.v2:1)\n" +
 			"         ├─ right-key: TUPLE(a.v1:1)\n" +
 			"         └─ LeftOuterHashJoin\n" +
 			"             ├─ Eq\n" +
@@ -19560,17 +19410,17 @@ inner join pq on true
 			"     ├─ (a.v1 = l.v2)\n" +
 			"     ├─ HashJoin (estimated cost=32.180 rows=10)\n" +
 			"     │   ├─ (k.v2 = l.v3)\n" +
-			"     │   ├─ TableAlias(l)\n" +
+			"     │   ├─ TableAlias(k)\n" +
 			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk_three_idx\n" +
-			"     │   │       └─ columns: [v2 v3]\n" +
+			"     │   │       ├─ name: one_pk_two_idx\n" +
+			"     │   │       └─ columns: [v2]\n" +
 			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: (l.v3)\n" +
-			"     │       ├─ right-key: (k.v2)\n" +
-			"     │       └─ TableAlias(k)\n" +
+			"     │       ├─ left-key: (k.v2)\n" +
+			"     │       ├─ right-key: (l.v3)\n" +
+			"     │       └─ TableAlias(l)\n" +
 			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_two_idx\n" +
-			"     │               └─ columns: [v2]\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [v2 v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (l.v2)\n" +
 			"         ├─ right-key: (a.v1)\n" +
@@ -19600,17 +19450,17 @@ inner join pq on true
 			"     ├─ (a.v1 = l.v2)\n" +
 			"     ├─ HashJoin (estimated cost=32.180 rows=10) (actual rows=8 loops=1)\n" +
 			"     │   ├─ (k.v2 = l.v3)\n" +
-			"     │   ├─ TableAlias(l)\n" +
+			"     │   ├─ TableAlias(k)\n" +
 			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk_three_idx\n" +
-			"     │   │       └─ columns: [v2 v3]\n" +
+			"     │   │       ├─ name: one_pk_two_idx\n" +
+			"     │   │       └─ columns: [v2]\n" +
 			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: (l.v3)\n" +
-			"     │       ├─ right-key: (k.v2)\n" +
-			"     │       └─ TableAlias(k)\n" +
+			"     │       ├─ left-key: (k.v2)\n" +
+			"     │       ├─ right-key: (l.v3)\n" +
+			"     │       └─ TableAlias(l)\n" +
 			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk_two_idx\n" +
-			"     │               └─ columns: [v2]\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [v2 v3]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (l.v2)\n" +
 			"         ├─ right-key: (a.v1)\n" +
@@ -19691,67 +19541,67 @@ inner join pq on true
 	{
 		Query: `select a.* from mytable a join mytable b on a.i = b.i and now() >= coalesce(NULL, NULL, now())`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:1!null, a.s:2!null]\n" +
+			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ MergeJoin\n" +
 			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.i:0!null\n" +
-			"     │   └─ a.i:1!null\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i]\n" +
-			"     └─ Filter\n" +
-			"         ├─ GreaterThanOrEqual\n" +
-			"         │   ├─ NOW()\n" +
-			"         │   └─ coalesce(NULL (null),NULL (null),NOW())\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i s]\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ b.i:2!null\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ GreaterThanOrEqual\n" +
+			"     │   │   ├─ NOW()\n" +
+			"     │   │   └─ coalesce(NULL (null),NULL (null),NOW())\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           ├─ colSet: (1,2)\n" +
+			"     │           ├─ tableId: 1\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: mytable\n" +
+			"     │               └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=5.070 rows=2)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (NOW() >= coalesce(NULL,NULL,NOW()))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"     ├─ cmp: (a.i = b.i)\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (NOW() >= coalesce(NULL,NULL,NOW()))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
 			" └─ MergeJoin (estimated cost=5.070 rows=2) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(mytable)\n" +
-			"     │       ├─ index: [mytable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i]\n" +
-			"     └─ Filter\n" +
-			"         ├─ (NOW() >= coalesce(NULL,NULL,NOW()))\n" +
-			"         └─ TableAlias(a)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i s]\n" +
+			"     ├─ cmp: (a.i = b.i)\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (NOW() >= coalesce(NULL,NULL,NOW()))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable)\n" +
+			"     │           ├─ index: [mytable.i,mytable.s]\n" +
+			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -19820,265 +19670,127 @@ inner join pq on true
 	},
 	{
 		Query: `select * from mytable a join niltable  b on a.i = b.i and b <=> NULL`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:4!null, a.s:5!null, b.i:0!null, b.i2:1, b.b:2, b.f:3]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.i:0!null\n" +
-			"     │   └─ a.i:4!null\n" +
-			"     ├─ sel: (b.b:2 <=> NULL (null))\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3-6)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: niltable\n" +
-			"     │           └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ a.i:0!null\n" +
+			" │   └─ b.i:2!null\n" +
+			" ├─ sel: (b.b:4 <=> NULL (null))\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1,2)\n" +
+			" │       ├─ tableId: 1\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (3-6)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=9.120 rows=3)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ sel: (b.b <=> NULL)\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=9.120 rows=3)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
+			" ├─ sel: (b.b <=> NULL)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=9.120 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ sel: (b.b <=> NULL)\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=9.120 rows=3) (actual rows=1 loops=1)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
+			" ├─ sel: (b.b <=> NULL)\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
 		Query: `select * from mytable a join niltable  b on a.i = b.i and b IS NOT NULL`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:4!null, a.s:5!null, b.i:0!null, b.i2:1, b.b:2, b.f:3]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.i:0!null\n" +
-			"     │   └─ a.i:4!null\n" +
-			"     ├─ sel: NOT\n" +
-			"     │   └─ b.b:2 IS NULL\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3-6)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: niltable\n" +
-			"     │           └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ a.i:0!null\n" +
+			" │   └─ b.i:2!null\n" +
+			" ├─ sel: NOT\n" +
+			" │   └─ b.b:4 IS NULL\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1,2)\n" +
+			" │       ├─ tableId: 1\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (3-6)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: niltable\n" +
+			"             └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=9.120 rows=3)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ sel: (NOT(b.b IS NULL))\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=9.120 rows=3)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
+			" ├─ sel: (NOT(b.b IS NULL))\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=9.120 rows=3) (actual rows=2 loops=1)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ sel: (NOT(b.b IS NULL))\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=9.120 rows=3) (actual rows=2 loops=1)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
+			" ├─ sel: (NOT(b.b IS NULL))\n" +
+			" ├─ TableAlias(a)\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ TableAlias(b)\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
 		Query: `select * from mytable a join niltable  b on a.i = b.i and b != 0`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:4!null, a.s:5!null, b.i:0!null, b.i2:1, b.b:2, b.f:3]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.i:0!null\n" +
-			"     │   └─ a.i:4!null\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ NOT\n" +
-			"     │   │   └─ Eq\n" +
-			"     │   │       ├─ b.b:2\n" +
-			"     │   │       └─ 0 (tinyint)\n" +
-			"     │   └─ TableAlias(b)\n" +
-			"     │       └─ IndexedTableAccess(niltable)\n" +
-			"     │           ├─ index: [niltable.i]\n" +
-			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (3-6)\n" +
-			"     │           ├─ tableId: 2\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: niltable\n" +
-			"     │               └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=7.100 rows=3)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (NOT((b.b = 0)))\n" +
-			"     │   └─ TableAlias(b)\n" +
-			"     │       └─ IndexedTableAccess(niltable)\n" +
-			"     │           ├─ index: [niltable.i]\n" +
-			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=7.100 rows=3) (actual rows=1 loops=1)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (NOT((b.b = 0)))\n" +
-			"     │   └─ TableAlias(b)\n" +
-			"     │       └─ IndexedTableAccess(niltable)\n" +
-			"     │           ├─ index: [niltable.i]\n" +
-			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
-			"",
-	},
-	{
-		Query: `select * from mytable a join niltable  b on a.i = b.i and s IS NOT NULL`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.i:4!null, a.s:5!null, b.i:0!null, b.i2:1, b.b:2, b.f:3]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ b.i:0!null\n" +
-			"     │   └─ a.i:4!null\n" +
-			"     ├─ sel: NOT\n" +
-			"     │   └─ a.s:5!null IS NULL\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │       ├─ colSet: (3-6)\n" +
-			"     │       ├─ tableId: 2\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: niltable\n" +
-			"     │           └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=9.120 rows=3)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ sel: (NOT(a.s IS NULL))\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ MergeJoin (estimated cost=9.120 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ cmp: (b.i = a.i)\n" +
-			"     ├─ sel: (NOT(a.s IS NULL))\n" +
-			"     ├─ TableAlias(b)\n" +
-			"     │   └─ IndexedTableAccess(niltable)\n" +
-			"     │       ├─ index: [niltable.i]\n" +
-			"     │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │       └─ columns: [i i2 b f]\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [i s]\n" +
-			"",
-	},
-	{
-		Query: `select * from mytable a join niltable  b on a.i <> b.i and b != 0;`,
-		ExpectedPlan: "InnerJoin\n" +
-			" ├─ NOT\n" +
-			" │   └─ Eq\n" +
-			" │       ├─ a.i:0!null\n" +
-			" │       └─ b.i:2!null\n" +
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ a.i:0!null\n" +
+			" │   └─ b.i:2!null\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ ProcessTable\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1,2)\n" +
+			" │       ├─ tableId: 1\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
@@ -20088,77 +19800,203 @@ inner join pq on true
 			"     │       ├─ b.b:2\n" +
 			"     │       └─ 0 (tinyint)\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ ProcessTable\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ colSet: (3-6)\n" +
+			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: niltable\n" +
 			"                 └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedEstimates: "InnerJoin (estimated cost=13.120 rows=3)\n" +
-			" ├─ (NOT((a.i = b.i)))\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=7.100 rows=3)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" │       └─ columns: [i s]\n" +
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.b = 0)))\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: niltable\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedAnalysis: "InnerJoin (estimated cost=13.120 rows=3) (actual rows=5 loops=1)\n" +
-			" ├─ (NOT((a.i = b.i)))\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=7.100 rows=3) (actual rows=1 loops=1)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" │       └─ columns: [i s]\n" +
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.b = 0)))\n" +
 			"     └─ TableAlias(b)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: niltable\n" +
+			"         └─ IndexedTableAccess(niltable)\n" +
+			"             ├─ index: [niltable.i]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i i2 b f]\n" +
 			"",
 	},
 	{
-		Query: `select * from mytable a join niltable b on a.i <> b.i;`,
-		ExpectedPlan: "InnerJoin\n" +
-			" ├─ NOT\n" +
-			" │   └─ Eq\n" +
-			" │       ├─ a.i:0!null\n" +
-			" │       └─ b.i:2!null\n" +
+		Query: `select * from mytable a join niltable  b on a.i = b.i and s IS NOT NULL`,
+		ExpectedPlan: "MergeJoin\n" +
+			" ├─ cmp: Eq\n" +
+			" │   ├─ a.i:0!null\n" +
+			" │   └─ b.i:2!null\n" +
+			" ├─ sel: NOT\n" +
+			" │   └─ a.s:1!null IS NULL\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ ProcessTable\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" │       ├─ colSet: (1,2)\n" +
+			" │       ├─ tableId: 1\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
-			"     └─ ProcessTable\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (3-6)\n" +
+			"         ├─ tableId: 2\n" +
 			"         └─ Table\n" +
 			"             ├─ name: niltable\n" +
 			"             └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedEstimates: "InnerJoin (estimated cost=19.180 rows=3)\n" +
-			" ├─ (NOT((a.i = b.i)))\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=9.120 rows=3)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
+			" ├─ sel: (NOT(a.s IS NULL))\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" │       └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: niltable\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedAnalysis: "InnerJoin (estimated cost=19.180 rows=3) (actual rows=15 loops=1)\n" +
-			" ├─ (NOT((a.i = b.i)))\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=9.120 rows=3) (actual rows=3 loops=1)\n" +
+			" ├─ cmp: (a.i = b.i)\n" +
+			" ├─ sel: (NOT(a.s IS NULL))\n" +
 			" ├─ TableAlias(a)\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: mytable\n" +
+			" │   └─ IndexedTableAccess(mytable)\n" +
+			" │       ├─ index: [mytable.i,mytable.s]\n" +
+			" │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
 			" │       └─ columns: [i s]\n" +
 			" └─ TableAlias(b)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: niltable\n" +
+			"     └─ IndexedTableAccess(niltable)\n" +
+			"         ├─ index: [niltable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i i2 b f]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable  b on a.i <> b.i and b != 0;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i:4!null, a.s:5!null, b.i:0!null, b.i2:1, b.b:2, b.f:3]\n" +
+			" └─ InnerJoin\n" +
+			"     ├─ NOT\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ a.i:4!null\n" +
+			"     │       └─ b.i:0!null\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ NOT\n" +
+			"     │   │   └─ Eq\n" +
+			"     │   │       ├─ b.b:2\n" +
+			"     │   │       └─ 0 (tinyint)\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ ProcessTable\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: niltable\n" +
+			"     │               └─ columns: [i i2 b f]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
+			" └─ InnerJoin (estimated cost=13.120 rows=3)\n" +
+			"     ├─ (NOT((a.i = b.i)))\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (NOT((b.b = 0)))\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: niltable\n" +
+			"     │           └─ columns: [i i2 b f]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
+			" └─ InnerJoin (estimated cost=13.120 rows=3) (actual rows=5 loops=1)\n" +
+			"     ├─ (NOT((a.i = b.i)))\n" +
+			"     ├─ Filter\n" +
+			"     │   ├─ (NOT((b.b = 0)))\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: niltable\n" +
+			"     │           └─ columns: [i i2 b f]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable a join niltable b on a.i <> b.i;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [a.i:4!null, a.s:5!null, b.i:0!null, b.i2:1, b.b:2, b.f:3]\n" +
+			" └─ InnerJoin\n" +
+			"     ├─ NOT\n" +
+			"     │   └─ Eq\n" +
+			"     │       ├─ a.i:4!null\n" +
+			"     │       └─ b.i:0!null\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: niltable\n" +
+			"     │           └─ columns: [i i2 b f]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
+			" └─ InnerJoin (estimated cost=19.180 rows=3)\n" +
+			"     ├─ (NOT((a.i = b.i)))\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: niltable\n" +
+			"     │       └─ columns: [i i2 b f]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
+			" └─ InnerJoin (estimated cost=19.180 rows=3) (actual rows=15 loops=1)\n" +
+			"     ├─ (NOT((a.i = b.i)))\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: niltable\n" +
+			"     │       └─ columns: [i i2 b f]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -20267,70 +20105,64 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [t1.pk:0!null, t2.pk1:6!null, t2.pk2:7!null]\n" +
 			" └─ Sort(t1.pk:0!null ASC nullsFirst, t2.pk1:6!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [t1.pk:7!null, t1.c1:8, t1.c2:9, t1.c3:10, t1.c4:11, t1.c5:12, t2.pk1:0!null, t2.pk2:1!null, t2.c1:2!null, t2.c2:3!null, t2.c3:4!null, t2.c4:5!null, t2.c5:6!null]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(t2)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"             │       ├─ colSet: (7-13)\n" +
-			"             │       ├─ tableId: 2\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: two_pk\n" +
-			"             │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE()\n" +
-			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ TableAlias(t1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ static: [{[1, 1]}]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         ├─ tableId: 1\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ TableAlias(t1)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ static: [{[1, 1]}]\n" +
+			"         │       ├─ colSet: (1-6)\n" +
+			"         │       ├─ tableId: 1\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: one_pk\n" +
+			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE()\n" +
+			"             ├─ right-key: TUPLE()\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ static: [{[1, 1], [1, 1]}]\n" +
+			"                     ├─ colSet: (7-13)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: two_pk\n" +
+			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [t1.pk, t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t2.pk1, t2.pk2, t2.c1, t2.c2, t2.c3, t2.c4, t2.c5]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(t2)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(t1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{[1, 1]}]\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ TableAlias(t1)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[1, 1]}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ()\n" +
+			"             ├─ right-key: ()\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [t1.pk, t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t2.pk1, t2.pk2, t2.c1, t2.c2, t2.c3, t2.c4, t2.c5]\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(t2)\n" +
-			"             │   └─ IndexedTableAccess(two_pk)\n" +
-			"             │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"             │       └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(t1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{[1, 1]}]\n" +
-			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ CrossHashJoin\n" +
+			"         ├─ TableAlias(t1)\n" +
+			"         │   └─ IndexedTableAccess(one_pk)\n" +
+			"         │       ├─ index: [one_pk.pk]\n" +
+			"         │       ├─ filters: [{[1, 1]}]\n" +
+			"         │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: ()\n" +
+			"             ├─ right-key: ()\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -21708,18 +21540,18 @@ inner join pq on true
 			" ├─ limit: 1\n" +
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
-			" │   │   ├─ columns: [t1.j:1!null as k]\n" +
+			" │   │   ├─ columns: [t1.j:0!null as k]\n" +
 			" │   │   └─ HashJoin\n" +
 			" │   │       ├─ Eq\n" +
-			" │   │       │   ├─ t1.j:1!null\n" +
-			" │   │       │   └─ t2.j:0!null\n" +
+			" │   │       │   ├─ t1.j:0!null\n" +
+			" │   │       │   └─ t2.j:1!null\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
-			" │   │       │   ├─ colSet: (6)\n" +
-			" │   │       │   ├─ tableId: 6\n" +
+			" │   │       │   ├─ colSet: (5)\n" +
+			" │   │       │   ├─ tableId: 5\n" +
 			" │   │       │   └─ Project\n" +
 			" │   │       │       ├─ columns: [1 (tinyint)]\n" +
 			" │   │       │       └─ Table\n" +
@@ -21728,15 +21560,15 @@ inner join pq on true
 			" │   │       │           ├─ colSet: ()\n" +
 			" │   │       │           └─ tableId: 0\n" +
 			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: TUPLE(t2.j:0!null)\n" +
-			" │   │           ├─ right-key: TUPLE(t1.j:0!null)\n" +
+			" │   │           ├─ left-key: TUPLE(t1.j:0!null)\n" +
+			" │   │           ├─ right-key: TUPLE(t2.j:0!null)\n" +
 			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
+			" │   │               ├─ name: t2\n" +
 			" │   │               ├─ outerVisibility: false\n" +
 			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
-			" │   │               ├─ colSet: (5)\n" +
-			" │   │               ├─ tableId: 5\n" +
+			" │   │               ├─ colSet: (6)\n" +
+			" │   │               ├─ tableId: 6\n" +
 			" │   │               └─ Project\n" +
 			" │   │                   ├─ columns: [1 (tinyint)]\n" +
 			" │   │                   └─ Table\n" +
@@ -21782,7 +21614,7 @@ inner join pq on true
 			" │   │   └─ HashJoin\n" +
 			" │   │       ├─ (t1.j = t2.j)\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
@@ -21791,10 +21623,10 @@ inner join pq on true
 			" │   │       │       └─ Table\n" +
 			" │   │       │           └─ name: \n" +
 			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: (t2.j)\n" +
-			" │   │           ├─ right-key: (t1.j)\n" +
+			" │   │           ├─ left-key: (t1.j)\n" +
+			" │   │           ├─ right-key: (t2.j)\n" +
 			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
+			" │   │               ├─ name: t2\n" +
 			" │   │               ├─ outerVisibility: false\n" +
 			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
@@ -21830,7 +21662,7 @@ inner join pq on true
 			" │   │   └─ HashJoin\n" +
 			" │   │       ├─ (t1.j = t2.j)\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
@@ -21839,10 +21671,10 @@ inner join pq on true
 			" │   │       │       └─ Table\n" +
 			" │   │       │           └─ name: \n" +
 			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: (t2.j)\n" +
-			" │   │           ├─ right-key: (t1.j)\n" +
+			" │   │           ├─ left-key: (t1.j)\n" +
+			" │   │           ├─ right-key: (t2.j)\n" +
 			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
+			" │   │               ├─ name: t2\n" +
 			" │   │               ├─ outerVisibility: false\n" +
 			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
@@ -21877,18 +21709,18 @@ inner join pq on true
 			" ├─ limit: 2\n" +
 			" ├─ Union distinct\n" +
 			" │   ├─ Project\n" +
-			" │   │   ├─ columns: [t1.j:1!null as k]\n" +
+			" │   │   ├─ columns: [t1.j:0!null as k]\n" +
 			" │   │   └─ HashJoin\n" +
 			" │   │       ├─ Eq\n" +
-			" │   │       │   ├─ t1.j:1!null\n" +
-			" │   │       │   └─ t2.j:0!null\n" +
+			" │   │       │   ├─ t1.j:0!null\n" +
+			" │   │       │   └─ t2.j:1!null\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
-			" │   │       │   ├─ colSet: (9)\n" +
-			" │   │       │   ├─ tableId: 9\n" +
+			" │   │       │   ├─ colSet: (8)\n" +
+			" │   │       │   ├─ tableId: 8\n" +
 			" │   │       │   └─ Union distinct\n" +
 			" │   │       │       ├─ Union distinct\n" +
 			" │   │       │       │   ├─ Project\n" +
@@ -21913,15 +21745,15 @@ inner join pq on true
 			" │   │       │               ├─ colSet: ()\n" +
 			" │   │       │               └─ tableId: 0\n" +
 			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: TUPLE(t2.j:0!null)\n" +
-			" │   │           ├─ right-key: TUPLE(t1.j:0!null)\n" +
+			" │   │           ├─ left-key: TUPLE(t1.j:0!null)\n" +
+			" │   │           ├─ right-key: TUPLE(t2.j:0!null)\n" +
 			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
+			" │   │               ├─ name: t2\n" +
 			" │   │               ├─ outerVisibility: false\n" +
 			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
-			" │   │               ├─ colSet: (8)\n" +
-			" │   │               ├─ tableId: 8\n" +
+			" │   │               ├─ colSet: (9)\n" +
+			" │   │               ├─ tableId: 9\n" +
 			" │   │               └─ Union distinct\n" +
 			" │   │                   ├─ Union distinct\n" +
 			" │   │                   │   ├─ Project\n" +
@@ -22007,7 +21839,7 @@ inner join pq on true
 			" │   │   └─ HashJoin\n" +
 			" │   │       ├─ (t1.j = t2.j)\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
@@ -22026,10 +21858,10 @@ inner join pq on true
 			" │   │       │           └─ Table\n" +
 			" │   │       │               └─ name: \n" +
 			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: (t2.j)\n" +
-			" │   │           ├─ right-key: (t1.j)\n" +
+			" │   │           ├─ left-key: (t1.j)\n" +
+			" │   │           ├─ right-key: (t2.j)\n" +
 			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
+			" │   │               ├─ name: t2\n" +
 			" │   │               ├─ outerVisibility: false\n" +
 			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
@@ -22090,7 +21922,7 @@ inner join pq on true
 			" │   │   └─ HashJoin\n" +
 			" │   │       ├─ (t1.j = t2.j)\n" +
 			" │   │       ├─ SubqueryAlias\n" +
-			" │   │       │   ├─ name: t2\n" +
+			" │   │       │   ├─ name: t1\n" +
 			" │   │       │   ├─ outerVisibility: false\n" +
 			" │   │       │   ├─ isLateral: false\n" +
 			" │   │       │   ├─ cacheable: true\n" +
@@ -22109,10 +21941,10 @@ inner join pq on true
 			" │   │       │           └─ Table\n" +
 			" │   │       │               └─ name: \n" +
 			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: (t2.j)\n" +
-			" │   │           ├─ right-key: (t1.j)\n" +
+			" │   │           ├─ left-key: (t1.j)\n" +
+			" │   │           ├─ right-key: (t2.j)\n" +
 			" │   │           └─ SubqueryAlias\n" +
-			" │   │               ├─ name: t1\n" +
+			" │   │               ├─ name: t2\n" +
 			" │   │               ├─ outerVisibility: false\n" +
 			" │   │               ├─ isLateral: false\n" +
 			" │   │               ├─ cacheable: true\n" +
@@ -22536,71 +22368,67 @@ With c as (
 			"     ├─ colSet: (11)\n" +
 			"     ├─ tableId: 6\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [a.s:5!null]\n" +
+			"         ├─ columns: [a.s:3!null]\n" +
 			"         └─ HashJoin\n" +
-			"             ├─ AND\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ b.I:0!null\n" +
+			"             │   └─ e.i:4!null\n" +
+			"             ├─ HashJoin\n" +
 			"             │   ├─ Eq\n" +
-			"             │   │   ├─ b.I:2!null\n" +
-			"             │   │   └─ e.i:0!null\n" +
-			"             │   └─ Eq\n" +
-			"             │       ├─ a.i:4!null\n" +
-			"             │       └─ e.i:0!null\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: e\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ isLateral: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (9,10)\n" +
-			"             │   ├─ tableId: 5\n" +
-			"             │   └─ Filter\n" +
-			"             │       ├─ HashIn\n" +
-			"             │       │   ├─ t1.I:0!null\n" +
-			"             │       │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
-			"             │       └─ TableAlias(t1)\n" +
-			"             │           └─ IndexedTableAccess(mytable)\n" +
-			"             │               ├─ index: [mytable.i]\n" +
-			"             │               ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
-			"             │               ├─ colSet: (7,8)\n" +
-			"             │               ├─ tableId: 4\n" +
-			"             │               └─ Table\n" +
-			"             │                   ├─ name: mytable\n" +
-			"             │                   └─ columns: [i s]\n" +
+			"             │   │   ├─ a.i:2!null\n" +
+			"             │   │   └─ b.i:0!null\n" +
+			"             │   ├─ SubqueryAlias\n" +
+			"             │   │   ├─ name: b\n" +
+			"             │   │   ├─ outerVisibility: false\n" +
+			"             │   │   ├─ isLateral: false\n" +
+			"             │   │   ├─ cacheable: true\n" +
+			"             │   │   ├─ colSet: (5,6)\n" +
+			"             │   │   ├─ tableId: 3\n" +
+			"             │   │   └─ Filter\n" +
+			"             │   │       ├─ HashIn\n" +
+			"             │   │       │   ├─ t2.i:0!null\n" +
+			"             │   │       │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
+			"             │   │       └─ TableAlias(t2)\n" +
+			"             │   │           └─ IndexedTableAccess(mytable)\n" +
+			"             │   │               ├─ index: [mytable.i]\n" +
+			"             │   │               ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
+			"             │   │               ├─ colSet: (3,4)\n" +
+			"             │   │               ├─ tableId: 2\n" +
+			"             │   │               └─ Table\n" +
+			"             │   │                   ├─ name: mytable\n" +
+			"             │   │                   └─ columns: [i s]\n" +
+			"             │   └─ HashLookup\n" +
+			"             │       ├─ left-key: TUPLE(b.i:0!null)\n" +
+			"             │       ├─ right-key: TUPLE(a.i:0!null)\n" +
+			"             │       └─ TableAlias(a)\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: mytable\n" +
+			"             │               ├─ columns: [i s]\n" +
+			"             │               ├─ colSet: (1,2)\n" +
+			"             │               └─ tableId: 1\n" +
 			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE(e.i:0!null, e.i:0!null)\n" +
-			"                 ├─ right-key: TUPLE(b.I:0!null, a.i:2!null)\n" +
-			"                 └─ HashJoin\n" +
-			"                     ├─ Eq\n" +
-			"                     │   ├─ a.i:4!null\n" +
-			"                     │   └─ b.i:2!null\n" +
-			"                     ├─ SubqueryAlias\n" +
-			"                     │   ├─ name: b\n" +
-			"                     │   ├─ outerVisibility: false\n" +
-			"                     │   ├─ isLateral: false\n" +
-			"                     │   ├─ cacheable: true\n" +
-			"                     │   ├─ colSet: (5,6)\n" +
-			"                     │   ├─ tableId: 3\n" +
-			"                     │   └─ Filter\n" +
-			"                     │       ├─ HashIn\n" +
-			"                     │       │   ├─ t2.i:0!null\n" +
-			"                     │       │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
-			"                     │       └─ TableAlias(t2)\n" +
-			"                     │           └─ IndexedTableAccess(mytable)\n" +
-			"                     │               ├─ index: [mytable.i]\n" +
-			"                     │               ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
-			"                     │               ├─ colSet: (3,4)\n" +
-			"                     │               ├─ tableId: 2\n" +
-			"                     │               └─ Table\n" +
-			"                     │                   ├─ name: mytable\n" +
-			"                     │                   └─ columns: [i s]\n" +
-			"                     └─ HashLookup\n" +
-			"                         ├─ left-key: TUPLE(b.i:2!null)\n" +
-			"                         ├─ right-key: TUPLE(a.i:0!null)\n" +
-			"                         └─ TableAlias(a)\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: mytable\n" +
-			"                                 ├─ columns: [i s]\n" +
-			"                                 ├─ colSet: (1,2)\n" +
-			"                                 └─ tableId: 1\n" +
+			"                 ├─ left-key: TUPLE(b.I:0!null)\n" +
+			"                 ├─ right-key: TUPLE(e.i:0!null)\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: e\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     ├─ colSet: (9,10)\n" +
+			"                     ├─ tableId: 5\n" +
+			"                     └─ Filter\n" +
+			"                         ├─ HashIn\n" +
+			"                         │   ├─ t1.I:0!null\n" +
+			"                         │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
+			"                         └─ TableAlias(t1)\n" +
+			"                             └─ IndexedTableAccess(mytable)\n" +
+			"                                 ├─ index: [mytable.i]\n" +
+			"                                 ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
+			"                                 ├─ colSet: (7,8)\n" +
+			"                                 ├─ tableId: 4\n" +
+			"                                 └─ Table\n" +
+			"                                     ├─ name: mytable\n" +
+			"                                     └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
@@ -22615,42 +22443,42 @@ With c as (
 			"     └─ Project\n" +
 			"         ├─ columns: [a.s]\n" +
 			"         └─ HashJoin\n" +
-			"             ├─ ((b.I = e.i) AND (a.i = e.i))\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: e\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ isLateral: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   └─ Filter\n" +
-			"             │       ├─ (t1.I HASH IN (2, 3))\n" +
-			"             │       └─ TableAlias(t1)\n" +
-			"             │           └─ IndexedTableAccess(mytable)\n" +
-			"             │               ├─ index: [mytable.i]\n" +
-			"             │               ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"             ├─ (b.I = e.i)\n" +
+			"             ├─ HashJoin\n" +
+			"             │   ├─ (a.i = b.i)\n" +
+			"             │   ├─ SubqueryAlias\n" +
+			"             │   │   ├─ name: b\n" +
+			"             │   │   ├─ outerVisibility: false\n" +
+			"             │   │   ├─ isLateral: false\n" +
+			"             │   │   ├─ cacheable: true\n" +
+			"             │   │   └─ Filter\n" +
+			"             │   │       ├─ (t2.i HASH IN (1, 2))\n" +
+			"             │   │       └─ TableAlias(t2)\n" +
+			"             │   │           └─ IndexedTableAccess(mytable)\n" +
+			"             │   │               ├─ index: [mytable.i]\n" +
+			"             │   │               ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
+			"             │   │               └─ columns: [i s]\n" +
+			"             │   └─ HashLookup\n" +
+			"             │       ├─ left-key: (b.i)\n" +
+			"             │       ├─ right-key: (a.i)\n" +
+			"             │       └─ TableAlias(a)\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: mytable\n" +
 			"             │               └─ columns: [i s]\n" +
 			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (e.i, e.i)\n" +
-			"                 ├─ right-key: (b.I, a.i)\n" +
-			"                 └─ HashJoin\n" +
-			"                     ├─ (a.i = b.i)\n" +
-			"                     ├─ SubqueryAlias\n" +
-			"                     │   ├─ name: b\n" +
-			"                     │   ├─ outerVisibility: false\n" +
-			"                     │   ├─ isLateral: false\n" +
-			"                     │   ├─ cacheable: true\n" +
-			"                     │   └─ Filter\n" +
-			"                     │       ├─ (t2.i HASH IN (1, 2))\n" +
-			"                     │       └─ TableAlias(t2)\n" +
-			"                     │           └─ IndexedTableAccess(mytable)\n" +
-			"                     │               ├─ index: [mytable.i]\n" +
-			"                     │               ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
-			"                     │               └─ columns: [i s]\n" +
-			"                     └─ HashLookup\n" +
-			"                         ├─ left-key: (b.i)\n" +
-			"                         ├─ right-key: (a.i)\n" +
-			"                         └─ TableAlias(a)\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: mytable\n" +
+			"                 ├─ left-key: (b.I)\n" +
+			"                 ├─ right-key: (e.i)\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: e\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     └─ Filter\n" +
+			"                         ├─ (t1.I HASH IN (2, 3))\n" +
+			"                         └─ TableAlias(t1)\n" +
+			"                             └─ IndexedTableAccess(mytable)\n" +
+			"                                 ├─ index: [mytable.i]\n" +
+			"                                 ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
 			"                                 └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
@@ -22666,42 +22494,42 @@ With c as (
 			"     └─ Project\n" +
 			"         ├─ columns: [a.s]\n" +
 			"         └─ HashJoin\n" +
-			"             ├─ ((b.I = e.i) AND (a.i = e.i))\n" +
-			"             ├─ SubqueryAlias\n" +
-			"             │   ├─ name: e\n" +
-			"             │   ├─ outerVisibility: false\n" +
-			"             │   ├─ isLateral: false\n" +
-			"             │   ├─ cacheable: true\n" +
-			"             │   └─ Filter\n" +
-			"             │       ├─ (t1.I HASH IN (2, 3))\n" +
-			"             │       └─ TableAlias(t1)\n" +
-			"             │           └─ IndexedTableAccess(mytable)\n" +
-			"             │               ├─ index: [mytable.i]\n" +
-			"             │               ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"             ├─ (b.I = e.i)\n" +
+			"             ├─ HashJoin\n" +
+			"             │   ├─ (a.i = b.i)\n" +
+			"             │   ├─ SubqueryAlias\n" +
+			"             │   │   ├─ name: b\n" +
+			"             │   │   ├─ outerVisibility: false\n" +
+			"             │   │   ├─ isLateral: false\n" +
+			"             │   │   ├─ cacheable: true\n" +
+			"             │   │   └─ Filter\n" +
+			"             │   │       ├─ (t2.i HASH IN (1, 2))\n" +
+			"             │   │       └─ TableAlias(t2)\n" +
+			"             │   │           └─ IndexedTableAccess(mytable)\n" +
+			"             │   │               ├─ index: [mytable.i]\n" +
+			"             │   │               ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
+			"             │   │               └─ columns: [i s]\n" +
+			"             │   └─ HashLookup\n" +
+			"             │       ├─ left-key: (b.i)\n" +
+			"             │       ├─ right-key: (a.i)\n" +
+			"             │       └─ TableAlias(a)\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: mytable\n" +
 			"             │               └─ columns: [i s]\n" +
 			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (e.i, e.i)\n" +
-			"                 ├─ right-key: (b.I, a.i)\n" +
-			"                 └─ HashJoin\n" +
-			"                     ├─ (a.i = b.i)\n" +
-			"                     ├─ SubqueryAlias\n" +
-			"                     │   ├─ name: b\n" +
-			"                     │   ├─ outerVisibility: false\n" +
-			"                     │   ├─ isLateral: false\n" +
-			"                     │   ├─ cacheable: true\n" +
-			"                     │   └─ Filter\n" +
-			"                     │       ├─ (t2.i HASH IN (1, 2))\n" +
-			"                     │       └─ TableAlias(t2)\n" +
-			"                     │           └─ IndexedTableAccess(mytable)\n" +
-			"                     │               ├─ index: [mytable.i]\n" +
-			"                     │               ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
-			"                     │               └─ columns: [i s]\n" +
-			"                     └─ HashLookup\n" +
-			"                         ├─ left-key: (b.i)\n" +
-			"                         ├─ right-key: (a.i)\n" +
-			"                         └─ TableAlias(a)\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: mytable\n" +
+			"                 ├─ left-key: (b.I)\n" +
+			"                 ├─ right-key: (e.i)\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: e\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     └─ Filter\n" +
+			"                         ├─ (t1.I HASH IN (2, 3))\n" +
+			"                         └─ TableAlias(t1)\n" +
+			"                             └─ IndexedTableAccess(mytable)\n" +
+			"                                 ├─ index: [mytable.i]\n" +
+			"                                 ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
 			"                                 └─ columns: [i s]\n" +
 			"",
 	},
@@ -23342,106 +23170,100 @@ With c as (
 	},
 	{
 		Query: `SELECT * FROM (SELECT pk FROM one_pk WHERE pk < 2 LIMIT 1) a JOIN (SELECT i FROM mytable WHERE i > 1 LIMIT 1) b WHERE pk >= 2;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: b\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (10)\n" +
-			"     │   ├─ tableId: 4\n" +
-			"     │   └─ Limit(1)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ static: [{(1, ∞)}]\n" +
-			"     │           ├─ colSet: (8,9)\n" +
-			"     │           ├─ tableId: 3\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE()\n" +
-			"         ├─ right-key: TUPLE()\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: a\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             ├─ colSet: (7)\n" +
-			"             ├─ tableId: 2\n" +
-			"             └─ Filter\n" +
-			"                 ├─ GreaterThanOrEqual\n" +
-			"                 │   ├─ one_pk.pk:0!null\n" +
-			"                 │   └─ 2 (tinyint)\n" +
-			"                 └─ Limit(1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ static: [{(NULL, 2)}]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         ├─ tableId: 1\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk\n" +
-			"                             └─ columns: [pk]\n" +
+		ExpectedPlan: "CrossHashJoin\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: a\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (7)\n" +
+			" │   ├─ tableId: 2\n" +
+			" │   └─ Filter\n" +
+			" │       ├─ GreaterThanOrEqual\n" +
+			" │       │   ├─ one_pk.pk:0!null\n" +
+			" │       │   └─ 2 (tinyint)\n" +
+			" │       └─ Limit(1)\n" +
+			" │           └─ IndexedTableAccess(one_pk)\n" +
+			" │               ├─ index: [one_pk.pk]\n" +
+			" │               ├─ static: [{(NULL, 2)}]\n" +
+			" │               ├─ colSet: (1-6)\n" +
+			" │               ├─ tableId: 1\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: one_pk\n" +
+			" │                   └─ columns: [pk]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: TUPLE()\n" +
+			"     ├─ right-key: TUPLE()\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: b\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (10)\n" +
+			"         ├─ tableId: 4\n" +
+			"         └─ Limit(1)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ static: [{(1, ∞)}]\n" +
+			"                 ├─ colSet: (8,9)\n" +
+			"                 ├─ tableId: 3\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: mytable\n" +
+			"                     └─ columns: [i]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [a.pk, b.i]\n" +
-			" └─ CrossHashJoin (estimated cost=402.250 rows=125)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: b\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Limit(1)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{(1, ∞)}]\n" +
-			"     │           └─ columns: [i]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: a\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (one_pk.pk >= 2)\n" +
-			"                 └─ Limit(1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{(NULL, 2)}]\n" +
-			"                         └─ columns: [pk]\n" +
+		ExpectedEstimates: "CrossHashJoin (estimated cost=402.250 rows=125)\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: a\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Filter\n" +
+			" │       ├─ (one_pk.pk >= 2)\n" +
+			" │       └─ Limit(1)\n" +
+			" │           └─ IndexedTableAccess(one_pk)\n" +
+			" │               ├─ index: [one_pk.pk]\n" +
+			" │               ├─ filters: [{(NULL, 2)}]\n" +
+			" │               └─ columns: [pk]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: ()\n" +
+			"     ├─ right-key: ()\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: b\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Limit(1)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ filters: [{(1, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [a.pk, b.i]\n" +
-			" └─ CrossHashJoin (estimated cost=402.250 rows=125) (actual rows=0 loops=1)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: b\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Limit(1)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{(1, ∞)}]\n" +
-			"     │           └─ columns: [i]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: a\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (one_pk.pk >= 2)\n" +
-			"                 └─ Limit(1)\n" +
-			"                     └─ IndexedTableAccess(one_pk)\n" +
-			"                         ├─ index: [one_pk.pk]\n" +
-			"                         ├─ filters: [{(NULL, 2)}]\n" +
-			"                         └─ columns: [pk]\n" +
+		ExpectedAnalysis: "CrossHashJoin (estimated cost=402.250 rows=125) (actual rows=0 loops=1)\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: a\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   └─ Filter\n" +
+			" │       ├─ (one_pk.pk >= 2)\n" +
+			" │       └─ Limit(1)\n" +
+			" │           └─ IndexedTableAccess(one_pk)\n" +
+			" │               ├─ index: [one_pk.pk]\n" +
+			" │               ├─ filters: [{(NULL, 2)}]\n" +
+			" │               └─ columns: [pk]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: ()\n" +
+			"     ├─ right-key: ()\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: b\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Limit(1)\n" +
+			"             └─ IndexedTableAccess(mytable)\n" +
+			"                 ├─ index: [mytable.i]\n" +
+			"                 ├─ filters: [{(1, ∞)}]\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 	},
 	{
