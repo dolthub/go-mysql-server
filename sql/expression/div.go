@@ -52,7 +52,7 @@ type Div struct {
 
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
-	d := &Div{BinaryExpressionStub:        BinaryExpressionStub{LeftChild: left, RightChild: right}}
+	d := &Div{BinaryExpressionStub: BinaryExpressionStub{LeftChild: left, RightChild: right}}
 	setDivOps(d, countDivOps(d))
 	setArithmeticOps(d, countArithmeticOps(d))
 	return d
