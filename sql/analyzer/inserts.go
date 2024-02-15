@@ -51,7 +51,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			// Analyze the source of the insert independently
 			if _, ok := insert.Source.(*plan.Values); ok {
 				scope = scope.NewScope(plan.NewProject(
-					expression.SchemaToGetFields(insert.Source.Schema()[:len(insert.ColumnNames)]),
+					expression.SchemaToGetFields(insert.Source.Schema()[:len(insert.ColumnNames)], sql.ColSet{}),
 					plan.NewSubqueryAlias("dummy", "", insert.Source),
 				))
 			}

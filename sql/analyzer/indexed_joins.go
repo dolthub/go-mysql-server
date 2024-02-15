@@ -95,10 +95,35 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
 	if isUpdate {
-		ret = plan.NewProject(expression.SchemaToGetFields(n.Schema()), ret)
+		// we pass schema separately because individual nodes do not capture
+		// left join nullability
+		ret = plan.NewProject(recSchemaToGetFields(n, n.Schema()), ret)
 	}
 	return ret, transform.NewTree, nil
 
+}
+
+// recSchemaToGetFields creates a set of projection get fields for a node
+// considering column ids and left join nullability.
+func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
+	switch n := n.(type) {
+	case *plan.JoinNode:
+		switch {
+		case n.Op.IsPartial():
+			return recSchemaToGetFields(n.Left(), sch[:len(n.Schema())])
+		default:
+			l := recSchemaToGetFields(n.Left(), sch[:len(n.Left().Schema())])
+			r := recSchemaToGetFields(n.Right(), sch[len(n.Left().Schema()):])
+			return append(l, r...)
+		}
+	case plan.TableIdNode:
+		return expression.SchemaToGetFields(sch, n.Columns())
+	default:
+		if plan.IsUnary(n) {
+			return recSchemaToGetFields(n.Children()[0], sch)
+		}
+		return nil
+	}
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (ret sql.Node, err error) {

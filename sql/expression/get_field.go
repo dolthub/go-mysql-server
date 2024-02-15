@@ -206,13 +206,23 @@ func (p *GetField) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return collation, 2
 }
 
-// SchemaToGetFields takes a schema and returns an expression array of GetFields.
-func SchemaToGetFields(s sql.Schema) []sql.Expression {
+// SchemaToGetFields takes a schema and returns an expression array of
+// GetFields. If |columns| is provided, each get field will get the
+// appropriate expression id.
+func SchemaToGetFields(s sql.Schema, columns sql.ColSet) []sql.Expression {
 	ret := make([]sql.Expression, len(s))
 
+	var offset sql.ColumnId
+	if !columns.Empty() {
+		offset, _ = columns.Next(1)
+	}
 	for i, col := range s {
 		// 0 id represents the dual table column
-		ret[i] = NewGetFieldWithTable(i+1, 0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+		id := i
+		if offset > 0 {
+			id += int(offset)
+		}
+		ret[i] = NewGetFieldWithTable(id, 0, col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 	}
 
 	return ret
