@@ -135,7 +135,7 @@ func (a *Arithmetic) Type() sql.Type {
 	// applies for + and - ops
 	if isInterval(a.LeftChild) || isInterval(a.RightChild) {
 		// TODO: need to use the precision stored in datetimeType; something like
-		// return MustCreateDatetimeType(sqltypes.Datetime, ...)
+		//   return types.MustCreateDatetimeType(sqltypes.Datetime, 0)
 		return types.Datetime
 	}
 
@@ -304,8 +304,9 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Decimals must be rounded
 	if res, ok := result.(decimal.Decimal); ok {
 		if isOutermostArithmeticOp(a, a.ops) {
-			finalScale, hasDiv := getFinalScale(a)
+			finalScale, hasDiv := getFinalScale(ctx, row, a, 0)
 			if hasDiv {
+				// TODO: should always round regardless; we have bad Decimal defaults
 				return res.Round(finalScale), nil
 			}
 		}
@@ -389,20 +390,20 @@ func countArithmeticOps(e sql.Expression) int32 {
 
 // setArithmeticOps will set ops number with number counted by countArithmeticOps. This allows
 // us to keep track of whether the expression is the last arithmetic operation.
-func setArithmeticOps(e sql.Expression, opScale int32) {
+func setArithmeticOps(e sql.Expression, ops int32) {
 	if e == nil {
 		return
 	}
 
 	if a, ok := e.(ArithmeticOp); ok {
-		a.SetOpCount(opScale)
-		setArithmeticOps(a.Left(), opScale)
-		setArithmeticOps(a.Right(), opScale)
+		a.SetOpCount(ops)
+		setArithmeticOps(a.Left(), ops)
+		setArithmeticOps(a.Right(), ops)
 	}
 
 	if tup, ok := e.(Tuple); ok {
 		for _, expr := range tup {
-			setArithmeticOps(expr, opScale)
+			setArithmeticOps(expr, ops)
 		}
 	}
 

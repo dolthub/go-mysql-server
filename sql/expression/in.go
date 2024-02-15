@@ -54,10 +54,8 @@ func (in *InTuple) Right() sql.Expression {
 
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
-	setArithmeticOps(left, -1)
-	setArithmeticOps(right, -1)
-	setDivs(left, -1)
-	setDivs(right, -1)
+	disableRounding(left)
+	disableRounding(right)
 	return &InTuple{BinaryExpressionStub{left, right}}
 }
 
