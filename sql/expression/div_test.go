@@ -373,3 +373,36 @@ func TestIntDiv(t *testing.T) {
 		})
 	}
 }
+
+
+func BenchmarkDiv(b *testing.B) {
+	require := require.New(b)
+	ctx := sql.NewEmptyContext()
+	l := NewLiteral(1, types.Int64)
+	r := NewLiteral(3, types.Int64)
+	d := NewDiv(l, r)
+	for i := 0; i < b.N; i++ {
+		res, err := d.Eval(ctx, nil)
+		require.NoError(err)
+		if dec, ok := res.(decimal.Decimal); ok {
+			res = dec.StringFixed(dec.Exponent() * -1)
+		}
+		require.Equal(res, "0.3333")
+	}
+}
+
+func BenchmarkDivFloat(b *testing.B) {
+	require := require.New(b)
+	ctx := sql.NewEmptyContext()
+	l := NewLiteral(1.0, types.Float64)
+	r := NewLiteral(3.0, types.Float64)
+	d := NewDiv(l, r)
+	for i := 0; i < b.N; i++ {
+		res, err := d.Eval(ctx, nil)
+		require.NoError(err)
+		if dec, ok := res.(decimal.Decimal); ok {
+			res = dec.StringFixed(dec.Exponent() * -1)
+		}
+		require.Equal(res, 1.0/3.0)
+	}
+}
