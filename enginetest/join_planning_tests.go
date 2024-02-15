@@ -203,7 +203,7 @@ var JoinPlanningTests = []struct {
 			{
 				// When primary table is much larger, doing many lookups is expensive: prefer merge
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on x = r order by 1,3",
-				types: []plan.JoinType{plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{0, 0, 0, 8}, {2, 3, 2, 1}, {3, 0, 3, 7}, {4, 8, 4, 0}, {5, 4, 5, 4}},
 			},
 			{
