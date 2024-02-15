@@ -49,7 +49,7 @@ type Div struct {
 	BinaryExpressionStub
 	ops int32
 	// divScale is number of continuous division operations; this value will be available of all layers
-	divScale int32
+	divScale int32 // TODO: calling this divScale is confusing
 	// leftmostScale is a length of scale of the leftmost value in continuous division operation
 	// It is accessed concurrently read in the .Type() and written in the .Eval() methods.
 	leftmostScale               atomic.Int32
@@ -121,14 +121,6 @@ func (d *Div) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 
 // Eval implements the Expression interface.
 func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// we need to get the scale of the leftmost value of all continuous division
-	// for the final result rounding precision. This only is able to happen in the
-	// outermost layer, which is where we use this value to round the final result.
-	// we do not round the value until it's the last division operation.
-	if isOutermostDiv(d, 0, d.divScale) {
-		d.leftmostScale.Store(getScaleOfLeftmostValue(ctx, row, d, 0, d.divScale))
-	}
-
 	lval, rval, err := d.evalLeftRight(ctx, row)
 	if err != nil {
 		return nil, err
@@ -145,19 +137,11 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// we do not round the value until it's the last division operation.
-	if isOutermostDiv(d, 0, d.divScale) {
-		// We prefer using floats internally for division operations, but if this expressions output type
-		// is a Decimal, make sure we convert the result and return it as a decimal.
-		if types.IsDecimal(d.Type()) {
-			result = convertValueToType(ctx, types.InternalDecimalType, result, false)
-		}
-
-		if res, ok := result.(decimal.Decimal); ok {
-			if isOutermostArithmeticOp(d, d.ops) {
-				finalScale, _ := getFinalScale(d)
-				return res.Round(finalScale), nil
-			}
+	// Decimals must be rounded
+	if res, ok := result.(decimal.Decimal); ok {
+		if isOutermostArithmeticOp(d, d.ops) {
+			finalScale, _ := getFinalScale(ctx, row, d, 0)
+			return res.Round(finalScale), nil
 		}
 	}
 
@@ -575,14 +559,37 @@ func isOutermostDiv(e sql.Expression, d, dScale int32) bool {
 }
 
 // getFinalScale returns the final scale of the result value.
-// it traverses both the left and right nodes looking for Div nodes
-func getFinalScale(e sql.Expression) (int32, bool) {
+// it traverses both the left and right nodes looking for Div, Arithmetic, and Literal nodes
+func getFinalScale(ctx *sql.Context, row sql.Row, e sql.Expression, d int32) (int32, bool) {
 	if e == nil {
 		return 0, false
 	}
 
-	if d, isDiv := e.(*Div); isDiv {
-		finalScale := d.leftmostScale.Load() + d.divScale*int32(divPrecInc)
+	if div, isDiv := e.(*Div); isDiv {
+		// TODO: there's gotta be a better way of determining if this is the leftmost div...
+		finalScale := int32(divPrecInc)
+		d = d + 1
+		if d == div.divScale {
+			// TODO: redundant call to Eval for LeftChild
+			lval, err := div.LeftChild.Eval(ctx, row)
+			if err != nil {
+				return 0, false
+			}
+			_, s := GetPrecisionAndScale(lval)
+			typ := div.LeftChild.Type()
+			if dt, dok := typ.(sql.DecimalType); dok {
+				ts := dt.Scale()
+				if ts > s {
+					s = ts
+				}
+			}
+			finalScale += int32(s)
+		} else {
+			// We only care about left scale for divs
+			leftScale, _ := getFinalScale(ctx, row, div.LeftChild, d)
+			finalScale += leftScale
+		}
+
 		if finalScale > types.DecimalTypeMaxScale {
 			finalScale = types.DecimalTypeMaxScale
 		}
@@ -590,8 +597,8 @@ func getFinalScale(e sql.Expression) (int32, bool) {
 	}
 
 	if a, isArith := e.(*Arithmetic); isArith {
-		leftScale, leftHasDiv := getFinalScale(a.Left())
-		rightScale, rightHasDiv := getFinalScale(a.Right())
+		leftScale, leftHasDiv := getFinalScale(ctx, row, a.Left(), d)
+		rightScale, rightHasDiv := getFinalScale(ctx, row, a.Right(), d)
 		var finalScale int32
 		switch a.Operator() {
 		case sqlparser.PlusStr, sqlparser.MinusStr:
@@ -608,6 +615,22 @@ func getFinalScale(e sql.Expression) (int32, bool) {
 		}
 		return finalScale, leftHasDiv || rightHasDiv
 	}
+
+	// TODO: this is just a guess of what mod should do with scale; test this
+	if m, isMod := e.(*Mod); isMod {
+		leftScale, leftHasDiv := getFinalScale(ctx, row, m.LeftChild, d)
+		rightScale, rightHasDiv := getFinalScale(ctx, row, m.RightChild, d)
+		finalScale := leftScale
+		if rightScale > finalScale {
+			finalScale = rightScale
+		}
+		if finalScale > types.DecimalTypeMaxScale {
+			finalScale = types.DecimalTypeMaxScale
+		}
+		return finalScale, leftHasDiv || rightHasDiv
+	}
+
+	// TODO: likely need a case for IntDiv
 
 	s := uint8(0)
 	if lit, isLit := e.(*Literal); isLit {
@@ -771,8 +794,7 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right inte
 	} else if (lIsTimeType && rIsTimeType) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)) {
 		typ = types.Int64
 	} else {
-		// using max precision which is 65.
-		typ = types.MustCreateDecimalType(65, 0)
+		typ = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 0)
 	}
 
 	if types.IsInteger(typ) || types.IsFloat(typ) {

@@ -211,10 +211,10 @@ func (a *Arithmetic) Type() sql.Type {
 	}
 
 	if types.IsDecimal(lTyp) && types.IsDecimal(rTyp) {
-		lPrec := lTyp.(types.DecimalType_).Precision()
-		lScale := lTyp.(types.DecimalType_).Scale()
-		rPrec := rTyp.(types.DecimalType_).Precision()
-		rScale := rTyp.(types.DecimalType_).Scale()
+		lPrec := lTyp.(sql.DecimalType).Precision()
+		lScale := lTyp.(sql.DecimalType).Scale()
+		rPrec := rTyp.(sql.DecimalType).Precision()
+		rScale := rTyp.(sql.DecimalType).Scale()
 
 		var prec, scale uint8
 		if lPrec > rPrec {
@@ -303,8 +303,9 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Decimals must be rounded
 	if res, ok := result.(decimal.Decimal); ok {
 		if isOutermostArithmeticOp(a, a.ops) {
-			finalScale, hasDiv := getFinalScale(a)
+			finalScale, hasDiv := getFinalScale(ctx, row, a,0)
 			if hasDiv {
+				// TODO: should always round regardless; we have bad Decimal defaults
 				return res.Round(finalScale), nil
 			}
 		}
