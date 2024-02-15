@@ -376,7 +376,7 @@ type joinHints struct {
 }
 
 func (h joinHints) isEmpty() bool {
-	return len(h.ops) == 0 && h.order != nil && !h.leftDeep
+	return len(h.ops) == 0 && h.order == nil && !h.leftDeep
 }
 
 // satisfiedBy returns whether a RelExpr satisfies every join hint. This
