@@ -144,21 +144,13 @@ func (m *Mod) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 
 func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	typ := m.Type()
-	lIsTimeType := types.IsTime(m.LeftChild.Type())
-	rIsTimeType := types.IsTime(m.RightChild.Type())
-
 	if types.IsFloat(typ) {
-		left = convertValueToType(ctx, typ, left, lIsTimeType)
+		left = convertValueToType(ctx, typ, left)
+		right = convertValueToType(ctx, typ, right)
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
+		left = convertToDecimalValue(left)
+		right = convertToDecimalValue(right)
 	}
-
-	if types.IsFloat(typ) {
-		right = convertValueToType(ctx, typ, right, rIsTimeType)
-	} else {
-		right = convertToDecimalValue(right, rIsTimeType)
-	}
-
 	return left, right
 }
 

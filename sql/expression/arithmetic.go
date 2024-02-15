@@ -211,10 +211,10 @@ func (a *Arithmetic) Type() sql.Type {
 	}
 
 	if types.IsDecimal(lTyp) && types.IsDecimal(rTyp) {
-		lPrec := lTyp.(types.DecimalType_).Precision()
-		lScale := lTyp.(types.DecimalType_).Scale()
-		rPrec := rTyp.(types.DecimalType_).Precision()
-		rScale := rTyp.(types.DecimalType_).Scale()
+		lPrec := lTyp.(sql.DecimalType).Precision()
+		lScale := lTyp.(sql.DecimalType).Scale()
+		rPrec := rTyp.(sql.DecimalType).Precision()
+		rScale := rTyp.(sql.DecimalType).Scale()
 
 		var prec, scale uint8
 		if lPrec > rPrec {
@@ -300,6 +300,7 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// TODO: helper method finalizeDecimalResult
 	// Decimals must be rounded
 	if res, ok := result.(decimal.Decimal); ok {
 		if isOutermostArithmeticOp(a, a.ops) {
@@ -345,33 +346,25 @@ func (a *Arithmetic) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, 
 }
 
 func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
+	// Inputs must be coerced into the same type according to the expected output type
 	typ := a.Type()
-
-	lIsTimeType := types.IsTime(a.LeftChild.Type())
-	rIsTimeType := types.IsTime(a.RightChild.Type())
-
-	if i, ok := left.(*TimeDelta); ok {
-		left = i
-	} else {
-		// these are the types we specifically want to capture from we get from Type()
-		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
-			left = convertValueToType(ctx, typ, left, lIsTimeType)
-		} else {
-			left = convertToDecimalValue(left, lIsTimeType)
+	if types.IsTime(typ) {
+		// TimeDelta type must be left unconverted, as they are meant to be combined with time types
+		if _, lIsTd := left.(*TimeDelta); !lIsTd {
+			left = convertValueToType(ctx, typ, left)
 		}
-	}
-
-	if i, ok := right.(*TimeDelta); ok {
-		right = i
-	} else {
-		// these are the types we specifically want to capture from we get from Type()
-		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
-			right = convertValueToType(ctx, typ, right, rIsTimeType)
-		} else {
-			right = convertToDecimalValue(right, rIsTimeType)
+		if _, rIsTd := right.(*TimeDelta); !rIsTd {
+			right = convertValueToType(ctx, typ, right)
 		}
+	} else if types.IsInteger(typ) || types.IsFloat(typ) {
+		left = convertValueToType(ctx, typ, left)
+		right = convertValueToType(ctx, typ, right)
+	} else {
+		// The output type may have a different precision and scale than the input types, so we need
+		//   special coercion logic for Decimal
+		left = convertToDecimalValue(left)
+		right = convertToDecimalValue(right)
 	}
-
 	return left, right, nil
 }
 
@@ -425,38 +418,16 @@ func isOutermostArithmeticOp(e sql.Expression, opScale int32) bool {
 // convertValueToType returns |val| converted into type |typ|. If the value is
 // invalid and cannot be converted to the given type, it returns nil, and it should be
 // interpreted as value of 0. For time types, all the numbers are parsed up to seconds only.
-// E.g: `2022-11-10 12:14:36` is parsed into `20221110121436` and `2022-03-24` is parsed into `20220324`.
-func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}, isTimeType bool) interface{} {
-	var cval interface{}
-	if isTimeType {
-		val = convertTimeTypeToString(val)
-	}
-
+func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}) interface{} {
 	cval, _, err := typ.Convert(val)
 	if err != nil {
 		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
 		// the value is interpreted as 0, but we need to match the type of the other valid value
 		// to avoid additional conversion, the nil value is handled in each operation
+		// TODO: implement truncation?
+		// TODO: cval = typ.Zero()
 	}
 	return cval
-}
-
-// convertTimeTypeToString returns string value parsed from either time.Time or string
-// representation. all the numbers are parsed up to seconds only. The location can be
-// different between two time.Time values, so we set it to default UTC location before
-// parsing. E.g:
-// `2022-11-10 12:14:36` is parsed into `20221110121436`
-// `2022-03-24` is parsed into `20220324`.
-func convertTimeTypeToString(val interface{}) interface{} {
-	if t, ok := val.(time.Time); ok {
-		val = t.In(time.UTC).Format("2006-01-02 15:04:05")
-	}
-	if t, ok := val.(string); ok {
-		nums := timeTypeRegex.FindAllString(t, -1)
-		val = strings.Join(nums, "")
-	}
-
-	return val
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {

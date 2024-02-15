@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -167,47 +168,47 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 
 	var res decimal.Decimal
 
-	switch value := v.(type) {
+	switch v := v.(type) {
 	case bool:
-		if value {
+		if v {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(1))
 		} else {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 		}
 	case int:
-		return t.ConvertToNullDecimal(int64(value))
+		return t.ConvertToNullDecimal(int64(v))
 	case uint:
-		return t.ConvertToNullDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(v))
 	case int8:
-		return t.ConvertToNullDecimal(int64(value))
+		return t.ConvertToNullDecimal(int64(v))
 	case uint8:
-		return t.ConvertToNullDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(v))
 	case int16:
-		return t.ConvertToNullDecimal(int64(value))
+		return t.ConvertToNullDecimal(int64(v))
 	case uint16:
-		return t.ConvertToNullDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(v))
 	case int32:
-		return t.ConvertToNullDecimal(decimal.NewFromInt32(value))
+		return t.ConvertToNullDecimal(decimal.NewFromInt32(v))
 	case uint32:
-		return t.ConvertToNullDecimal(uint64(value))
+		return t.ConvertToNullDecimal(uint64(v))
 	case int64:
-		return t.ConvertToNullDecimal(decimal.NewFromInt(value))
+		return t.ConvertToNullDecimal(decimal.NewFromInt(v))
 	case uint64:
-		return t.ConvertToNullDecimal(decimal.NewFromBigInt(new(big.Int).SetUint64(value), 0))
+		return t.ConvertToNullDecimal(decimal.NewFromBigInt(new(big.Int).SetUint64(v), 0))
 	case float32:
-		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
+		return t.ConvertToNullDecimal(decimal.NewFromFloat32(v))
 	case float64:
-		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
+		return t.ConvertToNullDecimal(decimal.NewFromFloat(v))
 	case string:
 		// TODO: implement truncation here
-		if len(value) == 0 {
+		if len(v) == 0 {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 		}
 		var err error
-		res, err = decimal.NewFromString(value)
+		res, err = decimal.NewFromString(v)
 		if err != nil {
 			// The decimal library cannot handle all of the different formats
-			bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0)
+			bf, _, err := new(big.Float).SetPrec(217).Parse(v, 0)
 			if err != nil {
 				return decimal.NullDecimal{}, err
 			}
@@ -217,32 +218,34 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 			}
 		}
 		return t.ConvertToNullDecimal(res)
+	case time.Time:
+		return t.ConvertToNullDecimal(convertTimeToString(v))
 	case *big.Float:
-		return t.ConvertToNullDecimal(value.Text('f', -1))
+		return t.ConvertToNullDecimal(v.Text('f', -1))
 	case *big.Int:
-		return t.ConvertToNullDecimal(value.Text(10))
+		return t.ConvertToNullDecimal(v.Text(10))
 	case *big.Rat:
-		return t.ConvertToNullDecimal(new(big.Float).SetRat(value))
+		return t.ConvertToNullDecimal(new(big.Float).SetRat(v))
 	case decimal.Decimal:
 		if t.definesColumn {
-			val, err := decimal.NewFromString(value.StringFixed(int32(t.scale)))
+			val, err := decimal.NewFromString(v.StringFixed(int32(t.scale)))
 			if err != nil {
 				return decimal.NullDecimal{}, err
 			}
 			res = val
 		} else {
-			res = value
+			res = v
 		}
 	case []uint8:
-		return t.ConvertToNullDecimal(string(value))
+		return t.ConvertToNullDecimal(string(v))
 	case decimal.NullDecimal:
 		// This is the equivalent of passing in a nil
-		if !value.Valid {
+		if !v.Valid {
 			return decimal.NullDecimal{}, nil
 		}
-		return t.ConvertToNullDecimal(value.Decimal)
+		return t.ConvertToNullDecimal(v.Decimal)
 	case JSONDocument:
-		return t.ConvertToNullDecimal(value.Val)
+		return t.ConvertToNullDecimal(v.Val)
 	default:
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}

@@ -169,10 +169,8 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 
 func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
 	typ := b.Type()
-
-	left = convertValueToType(ctx, typ, left, types.IsTime(b.LeftChild.Type()))
-	right = convertValueToType(ctx, typ, right, types.IsTime(b.RightChild.Type()))
-
+	left = convertValueToType(ctx, typ, left)
+	right = convertValueToType(ctx, typ, right)
 	return left, right, nil
 }
 
