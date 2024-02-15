@@ -303,7 +303,7 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Decimals must be rounded
 	if res, ok := result.(decimal.Decimal); ok {
 		if isOutermostArithmeticOp(a, a.ops) {
-			finalScale, hasDiv := getFinalScale(ctx, row, a,0)
+			finalScale, hasDiv := getFinalScale(ctx, row, a, 0)
 			if hasDiv {
 				// TODO: should always round regardless; we have bad Decimal defaults
 				return res.Round(finalScale), nil
