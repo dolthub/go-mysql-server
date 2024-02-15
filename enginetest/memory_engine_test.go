@@ -206,9 +206,8 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
-			SetUpScript: []string{
-			},
+			Name:        "physical columns added after virtual one",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') & STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",

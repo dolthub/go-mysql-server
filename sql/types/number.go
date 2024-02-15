@@ -22,7 +22,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-"time"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -979,10 +979,10 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case bool:
-    		if v {
-    			return 1, sql.InRange, nil
-    		}
-return 0, sql.InRange, nil
+		if v {
+			return 1, sql.InRange, nil
+		}
+		return 0, sql.InRange, nil
 	case int:
 		if v < 0 {
 			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
@@ -1256,10 +1256,10 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case bool:
-    		if v {
-    			return 1, sql.InRange, nil
-    		}
-    		return 0, sql.InRange, nil
+		if v {
+			return 1, sql.InRange, nil
+		}
+		return 0, sql.InRange, nil
 	case int:
 		if v < 0 {
 			return uint8(math.MaxUint8 - uint(-v-1)), sql.OutOfRange, nil
