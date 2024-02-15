@@ -397,20 +397,20 @@ func countArithmeticOps(e sql.Expression) int32 {
 
 // setArithmeticOps will set ops number with number counted by countArithmeticOps. This allows
 // us to keep track of whether the expression is the last arithmetic operation.
-func setArithmeticOps(e sql.Expression, opScale int32) {
+func setArithmeticOps(e sql.Expression, ops int32) {
 	if e == nil {
 		return
 	}
 
 	if a, ok := e.(ArithmeticOp); ok {
-		a.SetOpCount(opScale)
-		setArithmeticOps(a.Left(), opScale)
-		setArithmeticOps(a.Right(), opScale)
+		a.SetOpCount(ops)
+		setArithmeticOps(a.Left(), ops)
+		setArithmeticOps(a.Right(), ops)
 	}
 
 	if tup, ok := e.(Tuple); ok {
 		for _, expr := range tup {
-			setArithmeticOps(expr, opScale)
+			setArithmeticOps(expr, ops)
 		}
 	}
 

@@ -70,7 +70,7 @@ type comparison struct {
 // disableRounding disables rounding for the given expression.
 func disableRounding(expr sql.Expression) {
 	setArithmeticOps(expr, -1)
-	setDivs(expr, -1)
+	setDivOps(expr, -1)
 }
 
 func newComparison(left, right sql.Expression) comparison {

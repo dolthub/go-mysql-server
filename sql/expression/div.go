@@ -19,8 +19,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync/atomic"
-	"time"
+		"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
@@ -47,27 +46,16 @@ var _ sql.CollationCoercible = (*Div)(nil)
 // Div expression represents "/" arithmetic operation
 type Div struct {
 	BinaryExpressionStub
-	ops int32
-	// divScale is number of continuous division operations; this value will be available of all layers
-	divScale int32 // TODO: calling this divScale is confusing
-	// leftmostScale is a length of scale of the leftmost value in continuous division operation
-	// It is accessed concurrently read in the .Type() and written in the .Eval() methods.
-	leftmostScale               atomic.Int32
-	curIntermediatePrecisionInc int
+	ops    int32
+	divOps int32
 }
 
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
-	a := &Div{
-		BinaryExpressionStub:        BinaryExpressionStub{LeftChild: left, RightChild: right},
-		curIntermediatePrecisionInc: 0,
-	}
-	a.leftmostScale.Store(0)
-	divs := countDivs(a)
-	setDivs(a, divs)
-	ops := countArithmeticOps(a)
-	setArithmeticOps(a, ops)
-	return a
+	d := &Div{BinaryExpressionStub:        BinaryExpressionStub{LeftChild: left, RightChild: right}}
+	setDivOps(d, countDivOps(d))
+	setArithmeticOps(d, countArithmeticOps(d))
+	return d
 }
 
 func (d *Div) Operator() string {
@@ -96,7 +84,7 @@ func (d *Div) IsNullable() bool {
 // However, if this is the outermost division expression in an expression tree, we must return the result as a
 // Decimal type in order to match MySQL's results exactly.
 func (d *Div) Type() sql.Type {
-	return d.determineResultType(isOutermostDiv(d, 0, d.divScale))
+	return d.determineResultType(isOutermostDiv(d, 0, d.divOps))
 }
 
 // internalType returns the internal result type for this division expression. For performance reasons, we prefer
@@ -448,78 +436,39 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 //		 'div'  2
 //		 /   \
 //	    24    3
-func countDivs(e sql.Expression) int32 {
+func countDivOps(e sql.Expression) int32 {
 	if e == nil {
 		return 0
 	}
-
 	if a, ok := e.(*Div); ok {
-		return countDivs(a.LeftChild) + 1
+		return countDivOps(a.LeftChild) + 1
 	}
-
 	if a, ok := e.(ArithmeticOp); ok {
-		return countDivs(a.Left())
+		return countDivOps(a.Left())
 	}
-
 	return 0
 }
 
 // setDivs will set each node's DivScale to the number counted by countDivs. This allows us to
 // keep track of whether the current Div expression is the last Div operation, so the result is
 // rounded appropriately.
-func setDivs(e sql.Expression, dScale int32) {
+func setDivOps(e sql.Expression, divOps int32) {
 	if e == nil {
 		return
 	}
-
 	if a, isArithmeticOp := e.(ArithmeticOp); isArithmeticOp {
 		if d, ok := a.(*Div); ok {
-			d.divScale = dScale
+			d.divOps = divOps
 		}
-		setDivs(a.Left(), dScale)
-		setDivs(a.Right(), dScale)
+		setDivOps(a.Left(), divOps)
+		setDivOps(a.Right(), divOps)
 	}
-
 	if tup, ok := e.(Tuple); ok {
 		for _, expr := range tup {
-			setDivs(expr, dScale)
+			setDivOps(expr, divOps)
 		}
 	}
-
 	return
-}
-
-// getScaleOfLeftmostValue find the leftmost/first value of all continuous divisions.
-// E.g. 24/50/3.2/2/1 will return 2 for len('50') of number '24.50'.
-func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d, dScale int32) int32 {
-	if e == nil {
-		return 0
-	}
-
-	if a, ok := e.(*Div); ok {
-		d = d + 1
-		if d == dScale {
-			lval, err := a.LeftChild.Eval(ctx, row)
-			if err != nil {
-				return 0
-			}
-			_, s := GetPrecisionAndScale(lval)
-			// the leftmost value can be row value of decimal type column
-			// the evaluated value does not always match the scale of column type definition
-			typ := a.LeftChild.Type()
-			if dt, dok := typ.(sql.DecimalType); dok {
-				ts := dt.Scale()
-				if ts > s {
-					s = ts
-				}
-			}
-			return int32(s)
-		} else {
-			return getScaleOfLeftmostValue(ctx, row, a.LeftChild, d, dScale)
-		}
-	}
-
-	return 0
 }
 
 // isOutermostDiv returns whether the expression we're currently evaluating is
@@ -555,16 +504,16 @@ func isOutermostDiv(e sql.Expression, d, dScale int32) bool {
 
 // getFinalScale returns the final scale of the result value.
 // it traverses both the left and right nodes looking for Div, Arithmetic, and Literal nodes
-func getFinalScale(ctx *sql.Context, row sql.Row, e sql.Expression, d int32) (int32, bool) {
-	if e == nil {
+func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt int32) (int32, bool) {
+	if expr == nil {
 		return 0, false
 	}
 
-	if div, isDiv := e.(*Div); isDiv {
+	if div, isDiv := expr.(*Div); isDiv {
 		// TODO: there's gotta be a better way of determining if this is the leftmost div...
-		finalScale := int32(divPrecInc)
-		d = d + 1
-		if d == div.divScale {
+		fScale := int32(divPrecInc)
+		divOpCnt = divOpCnt + 1
+		if divOpCnt == div.divOps {
 			// TODO: redundant call to Eval for LeftChild
 			lval, err := div.LeftChild.Eval(ctx, row)
 			if err != nil {
@@ -578,68 +527,67 @@ func getFinalScale(ctx *sql.Context, row sql.Row, e sql.Expression, d int32) (in
 					s = ts
 				}
 			}
-			finalScale += int32(s)
+			fScale += int32(s)
 		} else {
 			// We only care about left scale for divs
-			leftScale, _ := getFinalScale(ctx, row, div.LeftChild, d)
-			finalScale += leftScale
+			lScale, _ := getFinalScale(ctx, row, div.LeftChild, divOpCnt)
+			fScale += lScale
 		}
 
-		if finalScale > types.DecimalTypeMaxScale {
-			finalScale = types.DecimalTypeMaxScale
+		if fScale > types.DecimalTypeMaxScale {
+			fScale = types.DecimalTypeMaxScale
 		}
-		return finalScale, true
+		return fScale, true
 	}
 
-	if a, isArith := e.(*Arithmetic); isArith {
-		leftScale, leftHasDiv := getFinalScale(ctx, row, a.Left(), d)
-		rightScale, rightHasDiv := getFinalScale(ctx, row, a.Right(), d)
-		var finalScale int32
+	if a, isArith := expr.(*Arithmetic); isArith {
+		lScale, lHasDiv := getFinalScale(ctx, row, a.Left(), divOpCnt)
+		rScale, rHasDiv := getFinalScale(ctx, row, a.Right(), divOpCnt)
+		var fScale int32
 		switch a.Operator() {
 		case sqlparser.PlusStr, sqlparser.MinusStr:
-			if leftScale > rightScale {
-				finalScale = leftScale
+			if lScale > rScale {
+				fScale = lScale
 			} else {
-				finalScale = rightScale
+				fScale = rScale
 			}
 		case sqlparser.MultStr:
-			finalScale = leftScale + rightScale
+			fScale = lScale + rScale
 		}
-		if finalScale > types.DecimalTypeMaxScale {
-			finalScale = types.DecimalTypeMaxScale
+		if fScale > types.DecimalTypeMaxScale {
+			fScale = types.DecimalTypeMaxScale
 		}
-		return finalScale, leftHasDiv || rightHasDiv
+		return fScale, lHasDiv || rHasDiv
 	}
 
 	// TODO: this is just a guess of what mod should do with scale; test this
-	if m, isMod := e.(*Mod); isMod {
-		leftScale, leftHasDiv := getFinalScale(ctx, row, m.LeftChild, d)
-		rightScale, rightHasDiv := getFinalScale(ctx, row, m.RightChild, d)
-		finalScale := leftScale
-		if rightScale > finalScale {
-			finalScale = rightScale
+	if m, isMod := expr.(*Mod); isMod {
+		fScale, leftHasDiv := getFinalScale(ctx, row, m.LeftChild, divOpCnt)
+		rScale, rightHasDiv := getFinalScale(ctx, row, m.RightChild, divOpCnt)
+		if rScale > fScale {
+			fScale = rScale
 		}
-		if finalScale > types.DecimalTypeMaxScale {
-			finalScale = types.DecimalTypeMaxScale
+		if fScale > types.DecimalTypeMaxScale {
+			fScale = types.DecimalTypeMaxScale
 		}
-		return finalScale, leftHasDiv || rightHasDiv
+		return fScale, leftHasDiv || rightHasDiv
 	}
 
 	// TODO: likely need a case for IntDiv
 
-	s := uint8(0)
-	if lit, isLit := e.(*Literal); isLit {
-		_, s = GetPrecisionAndScale(lit.value)
+	var fScale uint8
+	if lit, isLit := expr.(*Literal); isLit {
+		_, fScale = GetPrecisionAndScale(lit.value)
 	}
-	typ := e.Type()
+	typ := expr.Type()
 	if dt, dok := typ.(sql.DecimalType); dok {
 		ts := dt.Scale()
-		if ts > s {
-			s = ts
+		if ts > fScale {
+			fScale = ts
 		}
 	}
 
-	return int32(s), false
+	return int32(fScale), false
 }
 
 // GetDecimalPrecisionAndScale returns precision and scale for given string formatted float/double number.
