@@ -4368,6 +4368,20 @@ Select * from (
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query: "SELECT DISTINCT CAST(i AS DECIMAL) from mytable;",
+		Expected: []sql.Row{
+			{"1"},
+			{"2"},
+			{"3"},
+		},
+	},
+	{
+		Query: "SELECT SUM( DISTINCT CAST(i AS DECIMAL)) from mytable;",
+		Expected: []sql.Row{
+			{"6"},
+		},
+	},
+	{
 		Query: "SELECT DISTINCT * FROM (values row(7,31,27), row(79,17,38), row(78,59,26)) a (col0, col1, col2) WHERE ( + col1 + + col2 ) NOT BETWEEN NULL AND col1",
 		Expected: []sql.Row{{7, 31, 27},
 			{79, 17, 38},
