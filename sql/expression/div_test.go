@@ -238,7 +238,10 @@ func BenchmarkDivHighScaleDecimals(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	exp := "0.124999998860937500014238281000"
+	if dec, ok := res.(decimal.Decimal); ok {
+		res = dec.StringFixed(dec.Exponent() * -1)
+	}
+	exp := "0.124999998860937500014238281250"
 	if res != exp {
 		b.Logf("Expected %v, got %v", exp, res)
 	}
@@ -283,7 +286,7 @@ func BenchmarkManyFloats(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	exp := 1.0/3.0
+	exp := 1.0/2.0/3.0/4.0/5.0/6.0/7.0/8.0/9.0
 	if res != exp {
 		b.Logf("Expected %v, got %v", exp, res)
 	}
@@ -307,7 +310,7 @@ func BenchmarkDivManyDecimals(b *testing.B) {
 	if dec, ok := res.(decimal.Decimal); ok {
 		res = dec.StringFixed(dec.Exponent() * -1)
 	}
-	exp := "0.000002755731922398589065255732"
+	exp := "0.000002755731922398589054232804"
 	if res != exp {
 		b.Logf("Expected %v, got %v", exp, res)
 	}
