@@ -192,3 +192,9 @@ func IsUnsigned(t sql.Type) bool {
 
 	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
 }
+
+// IsYear checks if t is a year type.
+func IsYear(t sql.Type) bool {
+	_, ok := t.(YearType_)
+	return ok
+}

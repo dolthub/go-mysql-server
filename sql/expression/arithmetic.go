@@ -134,34 +134,120 @@ func (a *Arithmetic) Type() sql.Type {
 
 	// applies for + and - ops
 	if isInterval(a.LeftChild) || isInterval(a.RightChild) {
-		// TODO: we might need to truncate precision here
-		return types.DatetimeMaxPrecision
+		// TODO: need to use the precision stored in datetimeType; something like
+		//   return types.MustCreateDatetimeType(sqltypes.Datetime, 0)
+		return types.Datetime
 	}
 
-	if types.IsTime(lTyp) && types.IsTime(rTyp) {
-		return types.Int64
-	}
-
-	if !types.IsNumber(lTyp) || !types.IsNumber(rTyp) {
+	if types.IsText(lTyp) || types.IsText(rTyp) {
 		return types.Float64
+	}
+
+	if types.IsJSON(lTyp) || types.IsJSON(rTyp) {
+		return types.Float64
+	}
+
+	if types.IsFloat(lTyp) || types.IsFloat(rTyp) {
+		return types.Float64
+	}
+
+	if types.IsYear(lTyp) && types.IsYear(rTyp) {
+		// MySQL just returns the largest int that fits
+		return types.Uint64
+	}
+
+	// Bit types are integers
+	if types.IsBit(lTyp) {
+		lTyp = types.Int64
+	}
+	if types.IsBit(rTyp) {
+		rTyp = types.Int64
+	}
+
+	// Dates are Integers
+	if types.IsDateType(lTyp) {
+		lTyp = types.Int64
+	}
+	if types.IsDateType(rTyp) {
+		rTyp = types.Int64
+	}
+
+	// Datetime(0) is treated as Int64, otherwise as Decimal
+	if types.IsDatetimeType(lTyp) {
+		if dtType, ok := lTyp.(sql.DatetimeType); ok {
+			scale := uint8(dtType.Precision())
+			if scale == 0 {
+				lTyp = types.Int64
+			} else {
+				lTyp = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, scale)
+			}
+		}
+	}
+	if types.IsDatetimeType(rTyp) {
+		if dtType, ok := rTyp.(sql.DatetimeType); ok {
+			scale := uint8(dtType.Precision())
+			if scale == 0 {
+				rTyp = types.Int64
+			} else {
+				rTyp = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, scale)
+			}
+		}
 	}
 
 	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
 		return types.Uint64
-	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-		return types.Int64
 	}
 
-	// if one is uint and the other is int of any size, then use int64
 	if types.IsInteger(lTyp) && types.IsInteger(rTyp) {
 		return types.Int64
 	}
 
-	if a.Op == sqlparser.MultStr {
-		return floatOrDecimalTypeForMult(a.LeftChild, a.RightChild)
-	} else {
-		return getFloatOrMaxDecimalType(a, false)
+	if types.IsDecimal(lTyp) && !types.IsDecimal(rTyp) {
+		return lTyp
 	}
+
+	if types.IsDecimal(rTyp) && !types.IsDecimal(lTyp) {
+		return rTyp
+	}
+
+	if types.IsDecimal(lTyp) && types.IsDecimal(rTyp) {
+		lPrec := lTyp.(sql.DecimalType).Precision()
+		lScale := lTyp.(sql.DecimalType).Scale()
+		rPrec := rTyp.(sql.DecimalType).Precision()
+		rScale := rTyp.(sql.DecimalType).Scale()
+
+		var prec, scale uint8
+		if lPrec > rPrec {
+			prec = lPrec
+		} else {
+			prec = rPrec
+		}
+
+		switch a.Op {
+		case sqlparser.PlusStr, sqlparser.MinusStr:
+			if lScale > rScale {
+				scale = lScale
+			} else {
+				scale = rScale
+			}
+			prec = prec + scale
+		case sqlparser.MultStr:
+			scale = lScale + rScale
+			prec = prec + scale
+		}
+
+		if prec > types.DecimalTypeMaxPrecision {
+			prec = types.DecimalTypeMaxPrecision
+		}
+		if scale > types.DecimalTypeMaxScale {
+			scale = types.DecimalTypeMaxScale
+		}
+
+		return types.MustCreateDecimalType(prec, scale)
+	}
+
+	// When in doubt return float64
+	return types.Float64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -215,10 +301,13 @@ func (a *Arithmetic) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Decimals must be rounded
-	if res, ok := result.(decimal.Decimal); ok && isOutermostArithmeticOp(a, a.ops) {
-		finalScale, hasDiv := getFinalScale(a)
-		if hasDiv {
-			return res.Round(finalScale), nil
+	if res, ok := result.(decimal.Decimal); ok {
+		if isOutermostArithmeticOp(a, a.ops) {
+			finalScale, hasDiv := getFinalScale(ctx, row, a, 0)
+			if hasDiv {
+				// TODO: should always round regardless; we have bad Decimal defaults
+				return res.Round(finalScale), nil
+			}
 		}
 	}
 
@@ -308,15 +397,21 @@ func countArithmeticOps(e sql.Expression) int32 {
 
 // setArithmeticOps will set ops number with number counted by countArithmeticOps. This allows
 // us to keep track of whether the expression is the last arithmetic operation.
-func setArithmeticOps(e sql.Expression, opScale int32) {
+func setArithmeticOps(e sql.Expression, ops int32) {
 	if e == nil {
 		return
 	}
 
 	if a, ok := e.(ArithmeticOp); ok {
-		a.SetOpCount(opScale)
-		setArithmeticOps(a.Left(), opScale)
-		setArithmeticOps(a.Right(), opScale)
+		a.SetOpCount(ops)
+		setArithmeticOps(a.Left(), ops)
+		setArithmeticOps(a.Right(), ops)
+	}
+
+	if tup, ok := e.(Tuple); ok {
+		for _, expr := range tup {
+			setArithmeticOps(expr, ops)
+		}
 	}
 
 	return
@@ -506,32 +601,6 @@ func minus(lval, rval interface{}) (interface{}, error) {
 	}
 
 	return nil, errUnableToCast.New(lval, rval)
-}
-
-// floatOrDecimalTypeForMult returns Float64 type if either left or right side is of type int or float.
-// Otherwise, it returns decimal type of sum of left and right sides' precisions and scales. E.g. `1.40 * 1.0 = 1.400`
-func floatOrDecimalTypeForMult(l, r sql.Expression) sql.Type {
-	lType := getFloatOrMaxDecimalType(l, false)
-	rType := getFloatOrMaxDecimalType(r, false)
-
-	if lType == types.Float64 || rType == types.Float64 {
-		return types.Float64
-	}
-
-	lPrec := lType.(types.DecimalType_).Precision()
-	lScale := lType.(types.DecimalType_).Scale()
-	rPrec := rType.(types.DecimalType_).Precision()
-	rScale := rType.(types.DecimalType_).Scale()
-
-	maxWhole := (lPrec - lScale) + (rPrec - rScale)
-	maxScale := lScale + rScale
-	if maxWhole > types.DecimalTypeMaxPrecision-types.DecimalTypeMaxScale {
-		maxWhole = types.DecimalTypeMaxPrecision - types.DecimalTypeMaxScale
-	}
-	if maxScale > types.DecimalTypeMaxScale {
-		maxScale = types.DecimalTypeMaxScale
-	}
-	return types.MustCreateDecimalType(maxWhole+maxScale, maxScale)
 }
 
 func mult(lval, rval interface{}) (interface{}, error) {

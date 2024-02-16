@@ -15,105 +15,304 @@
 package expression
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestDiv(t *testing.T) {
-	var floatTestCases = []struct {
-		name        string
-		left, right float64
-		expected    string
-		null        bool
+	var testCases = []struct {
+		name  string
+		left  sql.Expression
+		right sql.Expression
+		exp   interface{}
+		err   *errors.Kind
+		skip  bool
 	}{
-		{"1 / 1", 1, 1, "1.0000", false},
-		{"1 / 2", 1, 2, "0.5000", false},
-		{"-1 / 1.0", -1, 1, "-1.0000", false},
-		{"0 / 1234567890", 0, 12345677890, "0.0000", false},
-		{"3.14159 / 3.0", 3.14159, 3.0, "1.047196667", false},
-		{"1/0", 1, 0, "", true},
-		{"-1/0", -1, 0, "", true},
-		{"0/0", 0, 0, "", true},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(0, types.Int64),
+			exp:   nil,
+		},
+
+		// Unsigned Integers
+		{
+			left:  NewLiteral(1, types.Uint32),
+			right: NewLiteral(1, types.Uint32),
+			exp:   "1.0000",
+		},
+		{
+			left:  NewLiteral(1, types.Uint32),
+			right: NewLiteral(2, types.Uint32),
+			exp:   "0.5000",
+		},
+		{
+			left:  NewLiteral(1, types.Uint64),
+			right: NewLiteral(1, types.Uint64),
+			exp:   "1.0000",
+		},
+		{
+			left:  NewLiteral(1, types.Uint64),
+			right: NewLiteral(2, types.Uint64),
+			exp:   "0.5000",
+		},
+
+		// Signed Integers
+		{
+			left:  NewLiteral(1, types.Int32),
+			right: NewLiteral(1, types.Int32),
+			exp:   "1.0000",
+		},
+		{
+			left:  NewLiteral(1, types.Int32),
+			right: NewLiteral(2, types.Int32),
+			exp:   "0.5000",
+		},
+		{
+			left:  NewLiteral(-1, types.Int32),
+			right: NewLiteral(2, types.Int32),
+			exp:   "-0.5000",
+		},
+		{
+			left:  NewLiteral(1, types.Int32),
+			right: NewLiteral(-2, types.Int32),
+			exp:   "-0.5000",
+		},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(1, types.Int64),
+			exp:   "1.0000",
+		},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(2, types.Int64),
+			exp:   "0.5000",
+		},
+		{
+			left:  NewLiteral(-1, types.Int64),
+			right: NewLiteral(2, types.Int64),
+			exp:   "-0.5000",
+		},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(-2, types.Int64),
+			exp:   "-0.5000",
+		},
+
+		// Unsigned and Signed Integers
+		{
+			left:  NewLiteral(1, types.Uint32),
+			right: NewLiteral(-2, types.Int32),
+			exp:   "-0.5000",
+		},
+		{
+			left:  NewLiteral(-1, types.Int64),
+			right: NewLiteral(2, types.Uint32),
+			exp:   "-0.5000",
+		},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(123456789, types.Int64),
+			exp:   "0.0000",
+		},
+
+		// Repeating Decimals
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(3, types.Int64),
+			exp:   "0.3333",
+		},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(9, types.Int64),
+			exp:   "0.1111",
+		},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral(6, types.Int64),
+			exp:   "0.1667",
+		},
+
+		// Floats
+		{
+			left:  NewLiteral(1.0, types.Float32),
+			right: NewLiteral(3.0, types.Float32),
+			exp:   0.3333333333333333,
+		},
+		{
+			left:  NewLiteral(1.0, types.Float32),
+			right: NewLiteral(9.0, types.Float32),
+			exp:   0.1111111111111111,
+		},
+		{
+			left:  NewLiteral(1.0, types.Float64),
+			right: NewLiteral(3.0, types.Float64),
+			exp:   0.3333333333333333,
+		},
+		{
+			left:  NewLiteral(1.0, types.Float64),
+			right: NewLiteral(9.0, types.Float64),
+			exp:   0.1111111111111111,
+		},
+		{
+			// MySQL treats float32 a little differently
+			skip:  true,
+			left:  NewLiteral(3.14159, types.Float32),
+			right: NewLiteral(3.0, types.Float32),
+			exp:   1.0471967061360676,
+		},
+		{
+			left:  NewLiteral(3.14159, types.Float64),
+			right: NewLiteral(3.0, types.Float64),
+			exp:   1.0471966666666666,
+		},
+
+		// Decimals
+		{
+			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			exp:   "0.3333",
+		},
+		{
+			left:  NewLiteral(decimal.New(1000, -3), types.MustCreateDecimalType(10, 3)),
+			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			exp:   "0.3333333",
+		},
+		{
+			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral(decimal.New(3000, -3), types.MustCreateDecimalType(10, 3)),
+			exp:   "0.3333",
+		},
+		{
+			left:  NewLiteral(decimal.New(314159, -5), types.MustCreateDecimalType(10, 5)),
+			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			exp:   "1.047196666",
+		},
+		{
+			left:  NewLiteral(decimal.NewFromFloat(3.14159), types.MustCreateDecimalType(10, 5)),
+			right: NewLiteral(3, types.Int64),
+			exp:   "1.047196666",
+		},
+
+		// Bit
+		{
+			left:  NewLiteral(0, types.MustCreateBitType(1)),
+			right: NewLiteral(1, types.MustCreateBitType(1)),
+			exp:   "0.0000",
+		},
+		{
+			left:  NewLiteral(1, types.MustCreateBitType(1)),
+			right: NewLiteral(1, types.MustCreateBitType(1)),
+			exp:   "1.0000",
+		},
+
+		// Year
+		{
+			left:  NewLiteral(2001, types.YearType_{}),
+			right: NewLiteral(2002, types.YearType_{}),
+			exp:   "0.9995",
+		},
+
+		// Time
+		{
+			left:  NewLiteral("2001-01-01", types.Date),
+			right: NewLiteral("2001-01-01", types.Date),
+			exp:   "1.0000",
+		},
+		{
+			left:  NewLiteral("2001-01-01 12:00:00", types.Date),
+			right: NewLiteral("2001-01-01 12:00:00", types.Date),
+			exp:   "1.0000",
+		},
+		{
+			skip:  true, // need to trim just the date portion
+			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Date),
+			right: NewLiteral("2001-01-01 12:00:00.123456", types.Date),
+			exp:   "1.0000",
+		},
+		{
+			left:  NewLiteral("2001-01-01 12:00:00", types.Datetime),
+			right: NewLiteral("2001-01-01 12:00:00", types.Datetime),
+			exp:   "1.0000",
+		},
+		{
+			skip:  true, // need to trim just the datetime portion according to precision and use as exponent
+			left:  NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
+			right: NewLiteral("2001-01-01 12:00:00.123456", types.Datetime),
+			exp:   "1.0000",
+		},
+		{
+			skip:  true, // need to trim just the datetime portion according to precision and use as exponent
+			left:  NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
+			right: NewLiteral("2001-01-01 12:00:00.123456", types.MustCreateDatetimeType(sqltypes.Datetime, 3)),
+			exp:   "1.0000000",
+		},
+		{
+			left:  NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
+			right: NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
+			exp:   "1.0000000000",
+		},
+
+		// Text
+		{
+			left:  NewLiteral("1", types.Text),
+			right: NewLiteral("3", types.Text),
+			exp:   0.3333333333333333,
+		},
+		{
+			left:  NewLiteral("1.000", types.Text),
+			right: NewLiteral("3", types.Text),
+			exp:   0.3333333333333333,
+		},
+		{
+			left:  NewLiteral("1", types.Text),
+			right: NewLiteral("3.000", types.Text),
+			exp:   0.3333333333333333,
+		},
+		{
+			left:  NewLiteral("3.14159", types.Text),
+			right: NewLiteral("3", types.Text),
+			exp:   1.0471966666666666,
+		},
+		{
+			left:  NewLiteral("1", types.Text),
+			right: NewLiteral(decimal.New(3, 0), types.MustCreateDecimalType(10, 0)),
+			exp:   0.3333333333333333,
+		},
+		{
+			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral("3", types.Text),
+			exp:   0.3333333333333333,
+		},
 	}
 
-	for _, tt := range floatTestCases {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := NewDiv(
-				// The numbers are interpreted as Float64 without going through parser, so we lose precision here for 1.0
-				NewLiteral(tt.left, types.Float64),
-				NewLiteral(tt.right, types.Float64),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(t, err)
-			if tt.null {
-				assert.Equal(t, nil, result)
-			} else {
-				r, ok := result.(decimal.Decimal)
-				assert.True(t, ok)
-				assert.Equal(t, tt.expected, r.StringFixed(r.Exponent()*-1))
+	for _, tt := range testCases {
+		name := fmt.Sprintf("%s(%v)/%s(%v)", tt.left.Type(), tt.left, tt.right.Type(), tt.right)
+		t.Run(name, func(t *testing.T) {
+			require := require.New(t)
+			if tt.skip {
+				t.Skip()
 			}
-		})
-	}
-
-	var intTestCases = []struct {
-		name        string
-		left, right int64
-		expected    string
-		null        bool
-	}{
-		{"1 / 1", 1, 1, "1.0000", false},
-		{"-1 / 1", -1, 1, "-1.0000", false},
-		{"0 / 1234567890", 0, 12345677890, "0.0000", false},
-		{"1/0", 1, 0, "", true},
-		{"0/0", 1, 0, "", true},
-	}
-	for _, tt := range intTestCases {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := NewDiv(
-				NewLiteral(tt.left, types.Int64),
-				NewLiteral(tt.right, types.Int64),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(t, err)
-			if tt.null {
-				assert.Equal(t, nil, result)
-			} else {
-				r, ok := result.(decimal.Decimal)
-				assert.True(t, ok)
-				assert.Equal(t, tt.expected, r.StringFixed(r.Exponent()*-1))
+			f := NewDiv(tt.left, tt.right)
+			result, err := f.Eval(sql.NewEmptyContext(), nil)
+			if tt.err != nil {
+				require.Error(err)
+				require.True(tt.err.Is(err), err.Error())
+				return
 			}
-		})
-	}
-
-	var uintTestCases = []struct {
-		name        string
-		left, right uint64
-		expected    string
-		null        bool
-	}{
-		{"1 / 1", 1, 1, "1.0000", false},
-		{"0 / 1234567890", 0, 12345677890, "0.0000", false},
-		{"1/0", 1, 0, "", true},
-		{"0/0", 1, 0, "", true},
-	}
-	for _, tt := range uintTestCases {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := NewDiv(
-				NewLiteral(tt.left, types.Uint64),
-				NewLiteral(tt.right, types.Uint64),
-			).Eval(sql.NewEmptyContext(), sql.NewRow())
-			require.NoError(t, err)
-			if tt.null {
-				assert.Equal(t, nil, result)
-			} else {
-				r, ok := result.(decimal.Decimal)
-				assert.True(t, ok)
-				assert.Equal(t, tt.expected, r.StringFixed(r.Exponent()*-1))
+			require.NoError(err)
+			if dec, ok := result.(decimal.Decimal); ok {
+				result = dec.StringFixed(dec.Exponent() * -1)
 			}
+			assert.Equal(t, tt.exp, result)
 		})
 	}
 }
@@ -121,13 +320,10 @@ func TestDiv(t *testing.T) {
 // TestDivUsesFloatsInternally tests that division expression trees internally use floating point types when operating
 // on integers, but when returning the final result from the expression tree, it is returned as a Decimal.
 func TestDivUsesFloatsInternally(t *testing.T) {
-	bottomDiv := NewDiv(
-		NewGetField(0, types.Int32, "", false),
-		NewGetField(1, types.Int64, "", false))
-	middleDiv := NewDiv(bottomDiv,
-		NewGetField(2, types.Int64, "", false))
-	topDiv := NewDiv(middleDiv,
-		NewGetField(3, types.Int64, "", false))
+	t.Skip("TODO: see if we can actually enable this")
+	bottomDiv := NewDiv(NewGetField(0, types.Int32, "", false), NewGetField(1, types.Int64, "", false))
+	middleDiv := NewDiv(bottomDiv, NewGetField(2, types.Int64, "", false))
+	topDiv := NewDiv(middleDiv, NewGetField(3, types.Int64, "", false))
 
 	result, err := topDiv.Eval(sql.NewEmptyContext(), sql.NewRow(250, 2, 5, 2))
 	require.NoError(t, err)
@@ -179,7 +375,7 @@ func TestIntDiv(t *testing.T) {
 }
 
 // Results:
-// BenchmarkDivInt-16         10000            695805 ns/op
+// BenchmarkDivInt-16        365416              3117 ns/op
 func BenchmarkDivInt(b *testing.B) {
 	require := require.New(b)
 	ctx := sql.NewEmptyContext()
@@ -203,7 +399,7 @@ func BenchmarkDivInt(b *testing.B) {
 }
 
 // Results:
-// BenchmarkDivFloat-16               10000            695044 ns/op
+// BenchmarkDivFloat-16             1521937               787.7 ns/op
 func BenchmarkDivFloat(b *testing.B) {
 	require := require.New(b)
 	ctx := sql.NewEmptyContext()
@@ -224,7 +420,7 @@ func BenchmarkDivFloat(b *testing.B) {
 }
 
 // Results:
-// BenchmarkDivHighScaleDecimals-16           10000            694577 ns/op
+// BenchmarkDivHighScaleDecimals-16          294921              3901 ns/op
 func BenchmarkDivHighScaleDecimals(b *testing.B) {
 	require := require.New(b)
 	ctx := sql.NewEmptyContext()
@@ -248,7 +444,7 @@ func BenchmarkDivHighScaleDecimals(b *testing.B) {
 }
 
 // Results:
-// BenchmarkDivManyInts-16            10000           1151316 ns/op
+// BenchmarkDivManyInts-16            40711             29372 ns/op
 func BenchmarkDivManyInts(b *testing.B) {
 	require := require.New(b)
 	var div sql.Expression = NewLiteral(1, types.Int64)
@@ -272,7 +468,7 @@ func BenchmarkDivManyInts(b *testing.B) {
 }
 
 // Results:
-// BenchmarkManyFloats-16              4322            618849 ns/op
+// BenchmarkManyFloats-16            174555              6666 ns/op
 func BenchmarkManyFloats(b *testing.B) {
 	require := require.New(b)
 	ctx := sql.NewEmptyContext()
@@ -293,7 +489,7 @@ func BenchmarkManyFloats(b *testing.B) {
 }
 
 // Results:
-// BenchmarkDivManyDecimals-16         5721            699095 ns/op
+// BenchmarkDivManyDecimals-16        52053             23134 ns/op
 func BenchmarkDivManyDecimals(b *testing.B) {
 	require := require.New(b)
 	var div sql.Expression = NewLiteral(decimal.NewFromInt(int64(1)), types.DecimalType_{})

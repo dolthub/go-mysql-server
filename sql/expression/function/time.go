@@ -948,6 +948,10 @@ func (n *Now) Description() string {
 
 // Type implements the sql.Expression interface.
 func (n *Now) Type() sql.Type {
+	// TODO: precision
+	if n.prec == nil {
+		return types.Datetime
+	}
 	return types.DatetimeMaxPrecision
 }
 

@@ -5401,6 +5401,35 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "dividing has different rounding behavior",
+		SetUpScript: []string{
+			"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER);",
+			"INSERT INTO tab0 VALUES(97, 1, 99);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT col2 IN ( 98 + col0 / 99 ) from tab0;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query: "SELECT col2 IN ( 98 + 97 / 99 ) from tab0;",
+				Expected: []sql.Row{
+					{false},
+				},
+			},
+			{
+				Query:    "SELECT * FROM tab0 WHERE col2 IN ( 98 + 97 / 99 );",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT ALL * FROM tab0 AS cor0 WHERE col2 IN ( 39 + + 89, col0 + + col1 + + ( - ( - col0 ) ) / col2, + ( col0 ) + - 99, + col1, + col2 * - + col2 * - 12 + col1 + - 66 );",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
