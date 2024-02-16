@@ -33,7 +33,7 @@ func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bo
 		de.dispose = dispose
 	}
 
-	// TODO: how to handle nil?
+	// nil values can't be hashed, so we need a member variable to track them
 	if value == nil {
 		if de.seenNil {
 			return false, nil
@@ -76,6 +76,7 @@ func (de *DistinctExpression) Dispose() {
 
 	de.dispose = nil
 	de.seen = nil
+	de.seenNil = false
 }
 
 func (de *DistinctExpression) Resolved() bool {
