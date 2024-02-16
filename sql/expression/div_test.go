@@ -375,34 +375,140 @@ func TestIntDiv(t *testing.T) {
 }
 
 
-func BenchmarkDiv(b *testing.B) {
+// Results:
+// BenchmarkDivInt-16        365416              3117 ns/op
+func BenchmarkDivInt(b *testing.B) {
 	require := require.New(b)
 	ctx := sql.NewEmptyContext()
-	l := NewLiteral(1, types.Int64)
-	r := NewLiteral(3, types.Int64)
-	d := NewDiv(l, r)
+	div := NewDiv(
+		NewLiteral(1, types.Int64),
+		NewLiteral(3, types.Int64),
+	)
+	var res interface{}
+	var err error
 	for i := 0; i < b.N; i++ {
-		res, err := d.Eval(ctx, nil)
+		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
-		if dec, ok := res.(decimal.Decimal); ok {
-			res = dec.StringFixed(dec.Exponent() * -1)
-		}
-		require.Equal(res, "0.3333")
+	}
+	if dec, ok := res.(decimal.Decimal); ok {
+		res = dec.StringFixed(dec.Exponent() * -1)
+	}
+	exp := "0.3333"
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
 	}
 }
 
+// Results:
+// BenchmarkDivFloat-16             1521937               787.7 ns/op
 func BenchmarkDivFloat(b *testing.B) {
 	require := require.New(b)
 	ctx := sql.NewEmptyContext()
-	l := NewLiteral(1.0, types.Float64)
-	r := NewLiteral(3.0, types.Float64)
-	d := NewDiv(l, r)
+	div := NewDiv(
+		NewLiteral(1.0, types.Float64),
+		NewLiteral(3.0, types.Float64),
+	)
+	var res interface{}
+	var err error
 	for i := 0; i < b.N; i++ {
-		res, err := d.Eval(ctx, nil)
+		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
-		if dec, ok := res.(decimal.Decimal); ok {
-			res = dec.StringFixed(dec.Exponent() * -1)
-		}
-		require.Equal(res, 1.0/3.0)
+	}
+	exp := 1.0/3.0
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
+	}
+}
+
+// Results:
+// BenchmarkDivHighScaleDecimals-16          294921              3901 ns/op
+func BenchmarkDivHighScaleDecimals(b *testing.B) {
+	require := require.New(b)
+	ctx := sql.NewEmptyContext()
+	div := NewDiv(
+		NewLiteral(decimal.NewFromFloat(0.123456789), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+		NewLiteral(decimal.NewFromFloat(0.987654321), types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)),
+	)
+	var res interface{}
+	var err error
+	for i := 0; i < b.N; i++ {
+		res, err = div.Eval(ctx, nil)
+		require.NoError(err)
+	}
+	if dec, ok := res.(decimal.Decimal); ok {
+		res = dec.StringFixed(dec.Exponent() * -1)
+	}
+	exp := "0.124999998860937500014238281250"
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
+	}
+}
+
+// Results:
+// BenchmarkDivManyInts-16            40711             29372 ns/op
+func BenchmarkDivManyInts(b *testing.B) {
+	require := require.New(b)
+	var div sql.Expression = NewLiteral(1, types.Int64)
+	for i := 2; i < 10; i++ {
+		div = NewDiv(div, NewLiteral(int64(i), types.Int64))
+	}
+	ctx := sql.NewEmptyContext()
+	var res interface{}
+	var err error
+	for i := 0; i < b.N; i++ {
+		res, err = div.Eval(ctx, nil)
+		require.NoError(err)
+	}
+	if dec, ok := res.(decimal.Decimal); ok {
+		res = dec.StringFixed(dec.Exponent() * -1)
+	}
+	exp := "0.000002755731922398589054232804"
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
+	}
+}
+
+// Results:
+// BenchmarkManyFloats-16            174555              6666 ns/op
+func BenchmarkManyFloats(b *testing.B) {
+	require := require.New(b)
+	ctx := sql.NewEmptyContext()
+	var div sql.Expression = NewLiteral(1.0, types.Float64)
+	for i := 2; i < 10; i++ {
+		div = NewDiv(div, NewLiteral(float64(i), types.Float64))
+	}
+	var res interface{}
+	var err error
+	for i := 0; i < b.N; i++ {
+		res, err = div.Eval(ctx, nil)
+		require.NoError(err)
+	}
+	exp := 1.0/2.0/3.0/4.0/5.0/6.0/7.0/8.0/9.0
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
+	}
+}
+
+// Results:
+// BenchmarkDivManyDecimals-16        52053             23134 ns/op
+func BenchmarkDivManyDecimals(b *testing.B) {
+	require := require.New(b)
+	var div sql.Expression = NewLiteral(decimal.NewFromInt(int64(1)), types.DecimalType_{})
+	for i := 2; i < 10; i++ {
+		div = NewDiv(div, NewLiteral(decimal.NewFromInt(int64(i)), types.DecimalType_{}))
+	}
+	ctx := sql.NewEmptyContext()
+	var res interface{}
+	var err error
+	for i := 0; i < b.N; i++ {
+		res, err = div.Eval(ctx, nil)
+		require.NoError(err)
+	}
+	if dec, ok := res.(decimal.Decimal); ok {
+		res = dec.StringFixed(dec.Exponent() * -1)
+	}
+	exp := "0.000002755731922398589054232804"
+	if res != exp {
+		b.Logf("Expected %v, got %v", exp, res)
 	}
 }
