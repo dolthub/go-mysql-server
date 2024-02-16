@@ -7668,6 +7668,14 @@ Select * from (
 		},
 	},
 	{
+		Query: `SELECT i FROM mytable WHERE EXISTS (SELECT 1 from mytable) AND i IS NOT NULL;`,
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+	{
 		Query:    `SELECT * FROM two_pk WHERE EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
 		Expected: []sql.Row{},
 	},
