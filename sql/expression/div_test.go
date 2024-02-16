@@ -217,7 +217,7 @@ func BenchmarkDivFloat(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	exp := 1.0/3.0
+	exp := 1.0 / 3.0
 	if res != exp {
 		b.Logf("Expected %v, got %v", exp, res)
 	}
@@ -286,7 +286,7 @@ func BenchmarkManyFloats(b *testing.B) {
 		res, err = div.Eval(ctx, nil)
 		require.NoError(err)
 	}
-	exp := 1.0/2.0/3.0/4.0/5.0/6.0/7.0/8.0/9.0
+	exp := 1.0 / 2.0 / 3.0 / 4.0 / 5.0 / 6.0 / 7.0 / 8.0 / 9.0
 	if res != exp {
 		b.Logf("Expected %v, got %v", exp, res)
 	}
