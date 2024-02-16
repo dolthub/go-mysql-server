@@ -13,6 +13,7 @@ type DistinctExpression struct {
 	seen    sql.KeyValueCache
 	dispose sql.DisposeFunc
 	Child   sql.Expression
+	seenNil bool
 }
 
 var _ sql.Expression = (*DistinctExpression)(nil)
@@ -30,6 +31,15 @@ func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bo
 		cache, dispose := ctx.Memory.NewHistoryCache()
 		de.seen = cache
 		de.dispose = dispose
+	}
+
+	// TODO: how to handle nil?
+	if value == nil {
+		if de.seenNil {
+			return false, nil
+		}
+		de.seenNil = true
+		return true, nil
 	}
 
 	v, _, err := types.Text.Convert(value)
@@ -118,9 +128,5 @@ func (de *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expr
 		return nil, fmt.Errorf("DistinctExpression has an invalid number of children")
 	}
 
-	return &DistinctExpression{
-		seen:    nil,
-		dispose: nil,
-		Child:   children[0],
-	}, nil
+	return &DistinctExpression{Child: children[0]}, nil
 }

@@ -71,6 +71,11 @@ func TestSum(t *testing.T) {
 			[]sql.Row{{int32(1)}, {int32(3)}},
 			float64(4),
 		},
+		{
+			"int32 and nil values",
+			[]sql.Row{{int32(1)}, {int32(3)}, {nil}},
+			float64(4),
+		},
 	}
 
 	for _, tt := range testCases {
@@ -150,6 +155,11 @@ func TestSumWithDistinct(t *testing.T) {
 			"int32 values",
 			[]sql.Row{{int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}},
 			float64(4),
+		},
+		{
+			"int32 and nil values",
+			[]sql.Row{{nil}, {int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}, {nil}, {nil}},
+				float64(4),
 		},
 	}
 
