@@ -159,7 +159,7 @@ func TestSumWithDistinct(t *testing.T) {
 		{
 			"int32 and nil values",
 			[]sql.Row{{nil}, {int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}, {nil}, {nil}},
-				float64(4),
+			float64(4),
 		},
 	}
 
