@@ -3,9 +3,10 @@ package expression
 import (
 	"fmt"
 
-	"github.com/mitchellh/hashstructure"
+	"github.com/cespare/xxhash/v2"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type DistinctExpression struct {
@@ -31,16 +32,27 @@ func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bo
 		de.dispose = dispose
 	}
 
-	hash, err := hashstructure.Hash(value, nil)
+	v, _, err := types.Text.Convert(value)
 	if err != nil {
 		return false, err
 	}
+	str, ok := v.(string)
+	if !ok {
+		return false, fmt.Errorf("distinct unable to hash value: %s", err)
+	}
 
-	if _, err := de.seen.Get(hash); err == nil {
+	hash := xxhash.New()
+	_, err = hash.WriteString(str)
+	if err != nil {
+		return false, err
+	}
+	h := hash.Sum64()
+
+	if _, err = de.seen.Get(h); err == nil {
 		return false, nil
 	}
 
-	if err := de.seen.Put(hash, struct{}{}); err != nil {
+	if err = de.seen.Put(h, struct{}{}); err != nil {
 		return false, err
 	}
 
