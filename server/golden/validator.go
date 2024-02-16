@@ -38,6 +38,14 @@ type Validator struct {
 	logger  *logrus.Logger
 }
 
+func (v Validator) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+	panic("not implemented")
+}
+
+func (v Validator) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64, gtidSet mysql.GTIDSet) error {
+	panic("not implemented")
+}
+
 // NewValidatingHandler creates a new Validator wrapping a MySQL connection.
 func NewValidatingHandler(handler mysql.Handler, mySqlConn string, logger *logrus.Logger) (Validator, error) {
 	golden, err := NewMySqlProxyHandler(logger, mySqlConn)

@@ -41,6 +41,14 @@ type MySqlProxy struct {
 	conns   map[uint32]proxyConn
 }
 
+func (h MySqlProxy) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+	panic("not implemented")
+}
+
+func (h MySqlProxy) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64, gtidSet mysql.GTIDSet) error {
+	panic("not implemented")
+}
+
 func (h MySqlProxy) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
 	return sqlparser.ParserOptions{}, nil
 }

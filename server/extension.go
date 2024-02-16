@@ -135,6 +135,14 @@ type interceptorHandler struct {
 	h mysql.Handler
 }
 
+func (ih *interceptorHandler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+	panic("not implemented")
+}
+
+func (ih *interceptorHandler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64, gtidSet mysql.GTIDSet) error {
+	panic("not implemented")
+}
+
 func (ih *interceptorHandler) NewConnection(c *mysql.Conn) {
 	ih.h.NewConnection(c)
 }
