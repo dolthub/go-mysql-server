@@ -374,7 +374,6 @@ func TestIntDiv(t *testing.T) {
 	}
 }
 
-
 // Results:
 // BenchmarkDivInt-16        365416              3117 ns/op
 func BenchmarkDivInt(b *testing.B) {
