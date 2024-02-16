@@ -1232,11 +1232,7 @@ func (*Date) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 // Eval implements the Expression interface.
 func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return getDatePart(ctx, d.UnaryExpression, row, func(v interface{}) interface{} {
-		if v == nil {
-			return nil
-		}
-
-		return v.(time.Time).Format("2006-01-02")
+		return v
 	})
 }
 

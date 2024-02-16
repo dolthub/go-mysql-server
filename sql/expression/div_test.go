@@ -260,6 +260,26 @@ func TestDiv(t *testing.T) {
 			right: NewLiteral("2001-01-01 12:00:00.123456", types.DatetimeMaxPrecision),
 			exp:   "1.0000000000",
 		},
+		{
+			left:  NewLiteral("2001-01-01", types.Text),
+			right: NewLiteral("2001-01-01", types.Date),
+			exp:   0.00009999949525492151,
+		},
+		{
+			left:  NewLiteral(1, types.Int64),
+			right: NewLiteral("2001-01-01", types.Date),
+			exp:   "0.0000",
+		},
+		{
+			left:  NewLiteral(decimal.New(1, 0), types.MustCreateDecimalType(10, 0)),
+			right: NewLiteral("2001-01-01", types.Date),
+			exp:   "0.0000",
+		},
+		{
+			left:  NewLiteral(decimal.New(10_000_000_000, -10), types.MustCreateDecimalType(20, 10)),
+			right: NewLiteral("2001-01-01", types.Date),
+			exp:   "0.00000004997476",
+		},
 
 		// Text
 		{
