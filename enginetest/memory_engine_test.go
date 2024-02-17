@@ -203,46 +203,158 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
+			Name: "delete me",
 			SetUpScript: []string{
-				"create table t (pk int primary key, col1 int as (pk + 1));",
-				"insert into t (pk) values (1), (3)",
-				"alter table t add index idx1 (col1, pk);",
-				"alter table t add index idx2 (col1);",
-				"alter table t add column col2 int;",
-				"alter table t add column col3 int;",
-				"insert into t (pk, col2, col3) values (2, 4, 5);",
+				"CREATE TABLE t2(a2 INTEGER PRIMARY KEY, b2 INTEGER, x2 VARCHAR(40));",
+				"INSERT INTO t2 VALUES(1,7,'table t2 row 1');",
+				"INSERT INTO t2 VALUES(2,5,'table t2 row 2');",
+				"INSERT INTO t2 VALUES(3,9,'table t2 row 3');",
+				"INSERT INTO t2 VALUES(4,3,'table t2 row 4');",
+				"INSERT INTO t2 VALUES(5,2,'table t2 row 5');",
+				"INSERT INTO t2 VALUES(6,10,'table t2 row 6');",
+				"INSERT INTO t2 VALUES(7,8,'table t2 row 7');",
+				"INSERT INTO t2 VALUES(8,6,'table t2 row 8');",
+				"INSERT INTO t2 VALUES(9,4,'table t2 row 9');",
+				"INSERT INTO t2 VALUES(10,1,'table t2 row 10');",
+
+				"CREATE TABLE t22(a22 INTEGER PRIMARY KEY, b22 INTEGER, x22 VARCHAR(40));",
+				"INSERT INTO t22 VALUES(1,7,'table t22 row 1');",
+				"INSERT INTO t22 VALUES(2,3,'table t22 row 2');",
+				"INSERT INTO t22 VALUES(3,6,'table t22 row 3');",
+				"INSERT INTO t22 VALUES(4,4,'table t22 row 4');",
+				"INSERT INTO t22 VALUES(5,2,'table t22 row 5');",
+				"INSERT INTO t22 VALUES(6,8,'table t22 row 6');",
+				"INSERT INTO t22 VALUES(7,9,'table t22 row 7');",
+				"INSERT INTO t22 VALUES(8,10,'table t22 row 8');",
+				"INSERT INTO t22 VALUES(9,5,'table t22 row 9');",
+				"INSERT INTO t22 VALUES(10,1,'table t22 row 10');",
+
+				"CREATE TABLE t27(a27 INTEGER PRIMARY KEY, b27 INTEGER, x27 VARCHAR(40));",
+				"INSERT INTO t27 VALUES(1,8,'table t27 row 1');",
+				"INSERT INTO t27 VALUES(2,3,'table t27 row 2');",
+				"INSERT INTO t27 VALUES(3,6,'table t27 row 3');",
+				"INSERT INTO t27 VALUES(4,7,'table t27 row 4');",
+				"INSERT INTO t27 VALUES(5,4,'table t27 row 5');",
+				"INSERT INTO t27 VALUES(6,2,'table t27 row 6');",
+				"INSERT INTO t27 VALUES(7,10,'table t27 row 7');",
+				"INSERT INTO t27 VALUES(8,9,'table t27 row 8');",
+				"INSERT INTO t27 VALUES(9,5,'table t27 row 9');",
+				"INSERT INTO t27 VALUES(10,1,'table t27 row 10');",
+
+				"CREATE TABLE t30(a30 INTEGER PRIMARY KEY, b30 INTEGER, x30 VARCHAR(40));",
+				"INSERT INTO t30 VALUES(1,5,'table t30 row 1');",
+				"INSERT INTO t30 VALUES(2,6,'table t30 row 2');",
+				"INSERT INTO t30 VALUES(3,10,'table t30 row 3');",
+				"INSERT INTO t30 VALUES(4,3,'table t30 row 4');",
+				"INSERT INTO t30 VALUES(5,7,'table t30 row 5');",
+				"INSERT INTO t30 VALUES(6,4,'table t30 row 6');",
+				"INSERT INTO t30 VALUES(7,9,'table t30 row 7');",
+				"INSERT INTO t30 VALUES(8,8,'table t30 row 8');",
+				"INSERT INTO t30 VALUES(9,2,'table t30 row 9');",
+				"INSERT INTO t30 VALUES(10,1,'table t30 row 10');",
+
+				"CREATE TABLE t36(a36 INTEGER PRIMARY KEY, b36 INTEGER, x36 VARCHAR(40));",
+				"INSERT INTO t36 VALUES(1,7,'table t36 row 1');",
+				"INSERT INTO t36 VALUES(2,8,'table t36 row 2');",
+				"INSERT INTO t36 VALUES(3,6,'table t36 row 3');",
+				"INSERT INTO t36 VALUES(4,4,'table t36 row 4');",
+				"INSERT INTO t36 VALUES(5,9,'table t36 row 5');",
+				"INSERT INTO t36 VALUES(6,1,'table t36 row 6');",
+				"INSERT INTO t36 VALUES(7,2,'table t36 row 7');",
+				"INSERT INTO t36 VALUES(8,3,'table t36 row 8');",
+				"INSERT INTO t36 VALUES(9,5,'table t36 row 9');",
+				"INSERT INTO t36 VALUES(10,10,'table t36 row 10');",
+
+				"CREATE TABLE t44(a44 INTEGER PRIMARY KEY, b44 INTEGER, x44 VARCHAR(40));",
+				"INSERT INTO t44 VALUES(1,8,'table t44 row 1');",
+				"INSERT INTO t44 VALUES(2,10,'table t44 row 2');",
+				"INSERT INTO t44 VALUES(3,5,'table t44 row 3');",
+				"INSERT INTO t44 VALUES(4,3,'table t44 row 4');",
+				"INSERT INTO t44 VALUES(5,9,'table t44 row 5');",
+				"INSERT INTO t44 VALUES(6,6,'table t44 row 6');",
+				"INSERT INTO t44 VALUES(7,2,'table t44 row 7');",
+				"INSERT INTO t44 VALUES(8,7,'table t44 row 8');",
+				"INSERT INTO t44 VALUES(9,1,'table t44 row 9');",
+				"INSERT INTO t44 VALUES(10,4,'table t44 row 10');",
+
+				"CREATE TABLE t48(a48 INTEGER PRIMARY KEY, b48 INTEGER, x48 VARCHAR(40));",
+				"INSERT INTO t48 VALUES(1,5,'table t48 row 1');",
+				"INSERT INTO t48 VALUES(2,9,'table t48 row 2');",
+				"INSERT INTO t48 VALUES(3,3,'table t48 row 3');",
+				"INSERT INTO t48 VALUES(4,6,'table t48 row 4');",
+				"INSERT INTO t48 VALUES(5,2,'table t48 row 5');",
+				"INSERT INTO t48 VALUES(6,1,'table t48 row 6');",
+				"INSERT INTO t48 VALUES(7,7,'table t48 row 7');",
+				"INSERT INTO t48 VALUES(8,8,'table t48 row 8');",
+				"INSERT INTO t48 VALUES(9,10,'table t48 row 9');",
+				"INSERT INTO t48 VALUES(10,4,'table t48 row 10');",
+
+				"CREATE TABLE t57(a57 INTEGER PRIMARY KEY, b57 INTEGER, x57 VARCHAR(40));",
+				"INSERT INTO t57 VALUES(1,9,'table t57 row 1');",
+				"INSERT INTO t57 VALUES(2,5,'table t57 row 2');",
+				"INSERT INTO t57 VALUES(3,4,'table t57 row 3');",
+				"INSERT INTO t57 VALUES(4,8,'table t57 row 4');",
+				"INSERT INTO t57 VALUES(5,2,'table t57 row 5');",
+				"INSERT INTO t57 VALUES(6,3,'table t57 row 6');",
+				"INSERT INTO t57 VALUES(7,10,'table t57 row 7');",
+				"INSERT INTO t57 VALUES(8,7,'table t57 row 8');",
+				"INSERT INTO t57 VALUES(9,1,'table t57 row 9');",
+				"INSERT INTO t57 VALUES(10,6,'table t57 row 10');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
+				//{
+				//	Query: "SELECT x22,x44,x30,x36,x48,x27,x2,x57  FROM t48,t57,t27,t2,t36,t30,t44,t22 WHERE b30=a48 AND b44=a27 AND a22=b27 AND b22=a36 AND b48=a57 AND a57=7 AND a30=b36 AND a44=b2;",
+				//	Expected: []sql.Row{
+				//		{"table t22 row 7", "table t44 row 10", "table t30 row 5", "table t36 row 9", "table t48 row 7","table t27 row 4", "table t2 row 6", "table t57 row 7"},
+				//	},
+				//},
 				{
-					Query: "select * from t order by pk",
+					Query:
+`
+explain
+SELECT 
+    x57, x48, x30, x36, x22, x27, x44, x2
+FROM
+    t48, t57, t27, t2, t36, t30, t44, t22
+WHERE 
+    a57=7   AND
+    b48=a57 AND
+    b30=a48 AND
+    b36=a30 AND
+    b22=a36 AND
+    b27=a22 AND
+    b44=a27 AND
+    a44=b2
+;
+`,
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
-						{2, 3, 4, 5},
-						{3, 4, nil, nil},
+						//{"table t57 row 7", "table t48 row 7", "table t30 row 5", "table t36 row 9", "table t22 row 7", "table t27 row 4", "table t44 row 10", "table t2 row 6"},
 					},
 				},
-				{
-					Query: "select * from t where col1 = 2",
-					Expected: []sql.Row{
-						{1, 2, nil, nil},
-					},
-				},
-				{
-					Query: "select * from t where col1 = 3 and pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
-					},
-				},
-				{
-					Query: "select * from t where pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
-					},
-				},
+//				{
+//					Query:
+//`
+//SELECT
+//    x57, x48, x30, x36, x22, x27, x44, x2
+//FROM
+//    t57, t48, t30, t36, t22, t27, t44, t2
+//WHERE
+//    a57=7   AND
+//    b48=a57 AND
+//    b30=a48 AND
+//    b36=a30 AND
+//    b22=a36 AND
+//    b27=a22 AND
+//    b44=a27 AND
+//    a44=b2
+//;
+//`,
+//					Expected: []sql.Row{
+//						{"table t57 row 7", "table t48 row 7", "table t30 row 5", "table t36 row 9", "table t22 row 7", "table t27 row 4", "table t44 row 10", "table t2 row 6"},
+//					},
+//				},
 			},
 		},
 	}
@@ -254,8 +366,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

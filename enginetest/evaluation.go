@@ -93,6 +93,9 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
 
+		//e.EngineAnalyzer().Debug = true
+		//e.EngineAnalyzer().Verbose = true
+
 		assertions := script.Assertions
 		if len(assertions) == 0 {
 			assertions = []queries.ScriptTestAssertion{
