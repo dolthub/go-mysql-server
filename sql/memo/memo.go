@@ -283,6 +283,9 @@ func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexSc
 }
 
 func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expression) *ExprGroup {
+	if len(projections) == 0 {
+		print("")
+	}
 	rel := &Project{
 		relBase:     &relBase{},
 		Child:       child,

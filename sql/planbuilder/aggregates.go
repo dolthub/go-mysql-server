@@ -797,7 +797,7 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 
 	aliasCnt := len(proj)
 
-	if len(proj) == 0 && len(fromScope.cols) == 0 && fromScope.cols[0].id == 0 {
+	if len(proj) == 0 && !(len(fromScope.cols) == 1 && fromScope.cols[0].id == 0) {
 		// remove redundant projection unless it is the single dual table column
 		return outScope
 	}
