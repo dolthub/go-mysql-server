@@ -784,9 +784,6 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 	outScope := fromScope
 	var proj []sql.Expression
-	for _, c := range fromScope.cols {
-		proj = append(proj, c.scalarGf())
-	}
 
 	// eval aliases in project scope
 	for _, col := range projScope.cols {
@@ -797,6 +794,20 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 			}
 		}
 	}
+
+	aliasCnt := len(proj)
+
+	if len(proj) == 0 && len(fromScope.cols) == 0 && fromScope.cols[0].id == 0 {
+		// remove redundant projection unless it is the single dual table column
+		return outScope
+	}
+
+	for _, c := range fromScope.cols {
+		proj = append(proj, c.scalarGf())
+	}
+
+	// todo: fulltext indexes depend on match alias first
+	proj = append(proj[aliasCnt:], proj[:aliasCnt]...)
 
 	if len(proj) > 0 {
 		outScope.node = plan.NewProject(proj, outScope.node)
