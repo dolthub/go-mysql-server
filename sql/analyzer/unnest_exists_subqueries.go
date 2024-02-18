@@ -119,13 +119,8 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		var s *hoistSubquery
 		var err error
 
-		joinType := plan.JoinTypeSemi
-		if not, ok := f.(*expression.Not); ok {
-			f = not.Child
-			joinType = plan.JoinTypeAnti
-		}
-
 		// match subquery expression
+		joinType := plan.JoinTypeSemi
 		var sq *plan.Subquery
 		switch e := f.(type) {
 		case *plan.ExistsSubquery:
@@ -133,6 +128,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		case *expression.Not:
 			if esq, ok := e.Child.(*plan.ExistsSubquery); ok {
 				sq = esq.Query
+				joinType = plan.JoinTypeAnti
 			}
 		default:
 		}
