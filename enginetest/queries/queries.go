@@ -9174,6 +9174,34 @@ from typestable`,
 			{36},
 		},
 	},
+	{
+		Query: "select 1 where if('', 1, char(''));",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "select 1 where if('', char(''), 1);",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select 1 where if(char(''), 1, 2);",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select 1 where 0 = if('', 1, char(''));",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select if('', 1, char(''));",
+		Expected: []sql.Row{
+			{[]byte{0}},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

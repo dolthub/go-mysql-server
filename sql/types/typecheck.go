@@ -22,6 +22,9 @@ import (
 
 // IsBlobType checks if t is BLOB
 func IsBlobType(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
 	switch t.Type() {
 	case sqltypes.Blob:
 		return true
@@ -113,6 +116,9 @@ func IsText(t sql.Type) bool {
 
 // IsTextBlob checks if t is one of the TEXTs or BLOBs.
 func IsTextBlob(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
 	switch t.Type() {
 	case sqltypes.Text, sqltypes.Blob:
 		return true
