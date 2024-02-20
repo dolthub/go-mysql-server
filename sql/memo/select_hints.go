@@ -399,12 +399,14 @@ func (h joinHints) satisfiedBy(n RelExpr) bool {
 		return true
 	}
 
+	var foundMatch bool
 	for _, op := range h.ops {
 		if op.depsMatch(n) {
+			foundMatch = true
 			if !op.typeMatches(n) {
 				return false
 			}
 		}
 	}
-	return true
+	return foundMatch
 }

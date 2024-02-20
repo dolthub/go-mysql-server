@@ -100,7 +100,7 @@ var JoinStatTests = []struct {
 				// mid is sharp normal near high
 				// order (mid x low) x high is the easiest and expected
 				// for certain seeds, (low, high) will be smaller than mid and chosen
-				q:     "select /*+ LEFT_DEEP LOOKUP_JOIN(low, high) LOOKUP_JOIN(mid, high) */ count(*) from low join mid  on low.b = mid.b join high on low.b = high.b",
+				q:     "select /*+ LEFT_DEEP LOOKUP_JOIN(low, high) LOOKUP_JOIN(mid, low) */ count(*) from low join mid  on low.b = mid.b join high on low.b = high.b",
 				order: [][]string{{"mid", "low", "high"}, {"low", "high", "mid"}},
 			},
 		},
