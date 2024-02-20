@@ -253,7 +253,7 @@ type Lockable interface {
 func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	switch b := v.(type) {
 	case []uint8:
-		return false, nil
+		return ConvertToBool(ctx, string(b))
 	case bool:
 		return b, nil
 	case int:
