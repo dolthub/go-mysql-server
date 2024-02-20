@@ -30,6 +30,9 @@ var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)
 // the name of a timezone (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted
 // successfully, then the second return value will be true, otherwise the time was not able to be converted.
 func ConvertTimeZone(datetime time.Time, fromLocation string, toLocation string) (time.Time, bool) {
+	if fromLocation == toLocation {
+		return datetime, true
+	}
 	convertedFromTime, err := ConvertTimeToLocation(datetime, fromLocation)
 	if err != nil {
 		return time.Time{}, false
