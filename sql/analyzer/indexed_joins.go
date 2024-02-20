@@ -151,7 +151,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 
 	memo.CardMemoGroups(m.Root())
 
-	err = addCrossHashJoins(m)
+	err = addCrossHashJoins(m) // removing this works
 	if err != nil {
 		return nil, err
 	}
@@ -217,6 +217,11 @@ func addLookupJoins(m *memo.Memo) error {
 		}
 
 		tableId, indexes, extraFilters := lookupCandidates(right.First, false)
+		if len(indexes) != 0 {
+			if indexes[0].SqlIdx().Table() == "t44" {
+				print()
+			}
+		}
 
 		var rt sql.TableNode
 		var aliasName string
@@ -690,8 +695,8 @@ func addCrossHashJoins(m *memo.Memo) error {
 
 		rel := &memo.HashJoin{
 			JoinBase:   join.Copy(),
-			LeftAttrs:  nil,
-			RightAttrs: nil,
+			LeftAttrs:  nil, // why
+			RightAttrs: nil, // why
 		}
 		rel.Op = rel.Op.AsHash()
 		e.Group().Prepend(rel)

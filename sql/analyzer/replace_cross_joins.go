@@ -106,7 +106,10 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 				movedPredicates[v] = struct{}{}
 				newExprs[i] = predicates[v]
 			}
-			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), transform.NewTree, nil
+
+			// retain comment
+			nij := plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...))
+			return nij.WithComment(cj.Comment()), transform.NewTree, nil
 		})
 		if err != nil {
 			return f, transform.SameTree, err
