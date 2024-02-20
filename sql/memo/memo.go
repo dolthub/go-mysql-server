@@ -430,7 +430,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 // hint corresponds to  no valid plan. Ordering is applied as a global
 // rather than a local property.
 func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
-	if m.hints != nil {
+	if !m.hints.isEmpty() {
 		if m.hints.satisfiedBy(n) {
 			if !grp.HintOk {
 				grp.Best = n

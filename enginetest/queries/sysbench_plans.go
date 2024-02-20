@@ -21,61 +21,61 @@ var SysbenchPlanTests = []QueryPlanTest{
 		Query: `select a.id, a.small_int_col from sbtest1 a, sbtest1 b where a.id = b.id limit 500`,
 		ExpectedPlan: "Limit(500)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [a.id:1!null, a.small_int_col:2!null]\n" +
+			"     ├─ columns: [a.id:0!null, a.small_int_col:1!null]\n" +
 			"     └─ MergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
-			"         │   ├─ b.id:0!null\n" +
-			"         │   └─ a.id:1!null\n" +
-			"         ├─ TableAlias(b)\n" +
+			"         │   ├─ a.id:0!null\n" +
+			"         │   └─ b.id:2!null\n" +
+			"         ├─ TableAlias(a)\n" +
 			"         │   └─ IndexedTableAccess(sbtest1)\n" +
 			"         │       ├─ index: [sbtest1.id]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (25-48)\n" +
-			"         │       ├─ tableId: 2\n" +
+			"         │       ├─ colSet: (1-24)\n" +
+			"         │       ├─ tableId: 1\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: sbtest1\n" +
-			"         │           └─ columns: [id]\n" +
-			"         └─ TableAlias(a)\n" +
+			"         │           └─ columns: [id small_int_col]\n" +
+			"         └─ TableAlias(b)\n" +
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-24)\n" +
-			"                 ├─ tableId: 1\n" +
+			"                 ├─ colSet: (25-48)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: sbtest1\n" +
-			"                     └─ columns: [id small_int_col]\n" +
+			"                     └─ columns: [id]\n" +
 			"",
 		ExpectedEstimates: "Limit(500)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [a.id, a.small_int_col]\n" +
 			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (b.id = a.id)\n" +
-			"         ├─ TableAlias(b)\n" +
+			"         ├─ cmp: (a.id = b.id)\n" +
+			"         ├─ TableAlias(a)\n" +
 			"         │   └─ IndexedTableAccess(sbtest1)\n" +
 			"         │       ├─ index: [sbtest1.id]\n" +
 			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [id]\n" +
-			"         └─ TableAlias(a)\n" +
+			"         │       └─ columns: [id small_int_col]\n" +
+			"         └─ TableAlias(b)\n" +
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [id small_int_col]\n" +
+			"                 └─ columns: [id]\n" +
 			"",
 		ExpectedAnalysis: "Limit(500)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [a.id, a.small_int_col]\n" +
 			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (b.id = a.id)\n" +
-			"         ├─ TableAlias(b)\n" +
+			"         ├─ cmp: (a.id = b.id)\n" +
+			"         ├─ TableAlias(a)\n" +
 			"         │   └─ IndexedTableAccess(sbtest1)\n" +
 			"         │       ├─ index: [sbtest1.id]\n" +
 			"         │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"         │       └─ columns: [id]\n" +
-			"         └─ TableAlias(a)\n" +
+			"         │       └─ columns: [id small_int_col]\n" +
+			"         └─ TableAlias(b)\n" +
 			"             └─ IndexedTableAccess(sbtest1)\n" +
 			"                 ├─ index: [sbtest1.id]\n" +
 			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [id small_int_col]\n" +
+			"                 └─ columns: [id]\n" +
 			"",
 	},
 	{

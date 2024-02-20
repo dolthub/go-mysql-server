@@ -375,6 +375,10 @@ type joinHints struct {
 	leftDeep bool
 }
 
+func (h joinHints) isEmpty() bool {
+	return len(h.ops) == 0 && h.order == nil && !h.leftDeep
+}
+
 // satisfiedBy returns whether a RelExpr satisfies every join hint. This
 // is binary, an expr that satisfies most of the join hints but fails one
 // returns |false| and is subject to genpop costing.

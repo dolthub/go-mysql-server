@@ -147,7 +147,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 	if indexName == "" {
 		indexName = "primary"
 	}
-	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, indexName))
+	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, strings.ToLower(indexName)))
 	statistic.SetColumns(columns)
 	statistic.SetTypes(types)
 

@@ -82,7 +82,7 @@ func (e *ExprGroup) children() []*ExprGroup {
 // operator if the hinted plan is not found. Join operator is applied as
 // a local rather than global property.
 func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) {
-	if e.Best == nil || grpCost <= e.Cost {
+	if e.Best == nil || grpCost < e.Cost {
 		e.Best = n
 		e.Cost = grpCost
 	}
