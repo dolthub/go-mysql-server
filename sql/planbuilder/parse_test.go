@@ -150,13 +150,11 @@ Project
 Project
  ├─ columns: [xy.x:1!null, xy.x:1!null]
  └─ Sort(xy.x:1!null ASC nullsFirst)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
+     └─ Table
+         ├─ name: xy
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -245,22 +243,20 @@ Project
 		{
 			Query: "with cte(y,x) as (select x,y from xy) select * from cte",
 			ExpectedPlan: `
-Project
- ├─ columns: [cte.y:4!null, cte.x:5!null]
- └─ SubqueryAlias
-     ├─ name: cte
-     ├─ outerVisibility: false
-     ├─ isLateral: false
-     ├─ cacheable: true
-     ├─ colSet: (4,5)
-     ├─ tableId: 2
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
+SubqueryAlias
+ ├─ name: cte
+ ├─ outerVisibility: false
+ ├─ isLateral: false
+ ├─ cacheable: true
+ ├─ colSet: (4,5)
+ ├─ tableId: 2
+ └─ Project
+     ├─ columns: [xy.x:1!null, xy.y:2!null]
+     └─ Table
+         ├─ name: xy
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -460,57 +456,53 @@ Project
 		{
 			Query: "with cte as (select 1) select * from cte",
 			ExpectedPlan: `
-Project
- ├─ columns: [cte.1:2!null]
- └─ SubqueryAlias
-     ├─ name: cte
-     ├─ outerVisibility: false
-     ├─ isLateral: false
-     ├─ cacheable: true
-     ├─ colSet: (2)
-     ├─ tableId: 1
-     └─ Project
-         ├─ columns: [1 (tinyint)]
-         └─ Table
-             ├─ name: 
-             ├─ columns: []
-             ├─ colSet: ()
-             └─ tableId: 0
+SubqueryAlias
+ ├─ name: cte
+ ├─ outerVisibility: false
+ ├─ isLateral: false
+ ├─ cacheable: true
+ ├─ colSet: (2)
+ ├─ tableId: 1
+ └─ Project
+     ├─ columns: [1 (tinyint)]
+     └─ Table
+         ├─ name: 
+         ├─ columns: []
+         ├─ colSet: ()
+         └─ tableId: 0
 `,
 		},
 		{
 			Query: "with recursive cte(s) as (select x from xy union select s from cte join xy on y = s) select * from cte",
 			ExpectedPlan: `
-Project
- ├─ columns: [cte.s:4!null]
- └─ SubqueryAlias
-     ├─ name: cte
-     ├─ outerVisibility: false
-     ├─ isLateral: false
-     ├─ cacheable: true
-     ├─ colSet: (4)
-     ├─ tableId: 2
-     └─ RecursiveCTE
-         └─ Union distinct
-             ├─ Project
-             │   ├─ columns: [xy.x:1!null]
-             │   └─ Table
-             │       ├─ name: xy
-             │       ├─ columns: [x y z]
-             │       ├─ colSet: (1-3)
-             │       └─ tableId: 1
-             └─ Project
-                 ├─ columns: [cte.s:4!null]
-                 └─ InnerJoin
-                     ├─ Eq
-                     │   ├─ xy.y:6!null
-                     │   └─ cte.s:4!null
-                     ├─ RecursiveTable(cte)
-                     └─ Table
-                         ├─ name: xy
-                         ├─ columns: [x y z]
-                         ├─ colSet: (5-7)
-                         └─ tableId: 4
+SubqueryAlias
+ ├─ name: cte
+ ├─ outerVisibility: false
+ ├─ isLateral: false
+ ├─ cacheable: true
+ ├─ colSet: (4)
+ ├─ tableId: 2
+ └─ RecursiveCTE
+     └─ Union distinct
+         ├─ Project
+         │   ├─ columns: [xy.x:1!null]
+         │   └─ Table
+         │       ├─ name: xy
+         │       ├─ columns: [x y z]
+         │       ├─ colSet: (1-3)
+         │       └─ tableId: 1
+         └─ Project
+             ├─ columns: [cte.s:4!null]
+             └─ InnerJoin
+                 ├─ Eq
+                 │   ├─ xy.y:6!null
+                 │   └─ cte.s:4!null
+                 ├─ RecursiveTable(cte)
+                 └─ Table
+                     ├─ name: xy
+                     ├─ columns: [x y z]
+                     ├─ colSet: (5-7)
+                     └─ tableId: 4
 `,
 		},
 		{
@@ -644,13 +636,11 @@ Project
 Project
  ├─ columns: [xy.x:1!null]
  └─ Sort(xy.z:3!null ASC nullsFirst)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
+     └─ Table
+         ├─ name: xy
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -683,25 +673,23 @@ Project
 		{
 			Query: "select s from (select count(*) as s from xy) dt;",
 			ExpectedPlan: `
-Project
- ├─ columns: [dt.s:6!null]
- └─ SubqueryAlias
-     ├─ name: dt
-     ├─ outerVisibility: false
-     ├─ isLateral: false
-     ├─ cacheable: true
-     ├─ colSet: (6)
-     ├─ tableId: 2
-     └─ Project
-         ├─ columns: [count(1):4!null as s]
-         └─ GroupBy
-             ├─ select: COUNT(1 (bigint))
-             ├─ group: 
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
+SubqueryAlias
+ ├─ name: dt
+ ├─ outerVisibility: false
+ ├─ isLateral: false
+ ├─ cacheable: true
+ ├─ colSet: (6)
+ ├─ tableId: 2
+ └─ Project
+     ├─ columns: [count(1):4!null as s]
+     └─ GroupBy
+         ├─ select: COUNT(1 (bigint))
+         ├─ group: 
+         └─ Table
+             ├─ name: xy
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -956,26 +944,24 @@ Project
      │   └─ Subquery
      │       ├─ cacheable: false
      │       ├─ alias-string: select dt.u from (select uv.u as u from uv where uv.v = xy.x) as dt
-     │       └─ Project
-     │           ├─ columns: [dt.u:8!null]
-     │           └─ SubqueryAlias
-     │               ├─ name: dt
-     │               ├─ outerVisibility: false
-     │               ├─ isLateral: false
-     │               ├─ cacheable: false
-     │               ├─ colSet: (8)
-     │               ├─ tableId: 3
-     │               └─ Project
-     │                   ├─ columns: [uv.u:4!null as u]
-     │                   └─ Filter
-     │                       ├─ Eq
-     │                       │   ├─ uv.v:5!null
-     │                       │   └─ xy.x:1!null
-     │                       └─ Table
-     │                           ├─ name: uv
-     │                           ├─ columns: [u v w]
-     │                           ├─ colSet: (4-6)
-     │                           └─ tableId: 2
+     │       └─ SubqueryAlias
+     │           ├─ name: dt
+     │           ├─ outerVisibility: false
+     │           ├─ isLateral: false
+     │           ├─ cacheable: false
+     │           ├─ colSet: (8)
+     │           ├─ tableId: 3
+     │           └─ Project
+     │               ├─ columns: [uv.u:4!null as u]
+     │               └─ Filter
+     │                   ├─ Eq
+     │                   │   ├─ uv.v:5!null
+     │                   │   └─ xy.x:1!null
+     │                   └─ Table
+     │                       ├─ name: uv
+     │                       ├─ columns: [u v w]
+     │                       ├─ colSet: (4-6)
+     │                       └─ tableId: 2
      └─ Table
          ├─ name: xy
          ├─ columns: [x y z]
@@ -994,33 +980,29 @@ Project
      │   └─ Subquery
      │       ├─ cacheable: false
      │       ├─ alias-string: select dt.u from (select uv.u as u from uv where uv.v = xy.y) as dt
-     │       └─ Project
-     │           ├─ columns: [dt.u:8!null]
-     │           └─ SubqueryAlias
-     │               ├─ name: dt
-     │               ├─ outerVisibility: false
-     │               ├─ isLateral: false
-     │               ├─ cacheable: false
-     │               ├─ colSet: (8)
-     │               ├─ tableId: 3
-     │               └─ Project
-     │                   ├─ columns: [uv.u:4!null as u]
-     │                   └─ Filter
-     │                       ├─ Eq
-     │                       │   ├─ uv.v:5!null
-     │                       │   └─ xy.y:2!null
-     │                       └─ Table
-     │                           ├─ name: uv
-     │                           ├─ columns: [u v w]
-     │                           ├─ colSet: (4-6)
-     │                           └─ tableId: 2
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
+     │       └─ SubqueryAlias
+     │           ├─ name: dt
+     │           ├─ outerVisibility: false
+     │           ├─ isLateral: false
+     │           ├─ cacheable: false
+     │           ├─ colSet: (8)
+     │           ├─ tableId: 3
+     │           └─ Project
+     │               ├─ columns: [uv.u:4!null as u]
+     │               └─ Filter
+     │                   ├─ Eq
+     │                   │   ├─ uv.v:5!null
+     │                   │   └─ xy.y:2!null
+     │                   └─ Table
+     │                       ├─ name: uv
+     │                       ├─ columns: [u v w]
+     │                       ├─ colSet: (4-6)
+     │                       └─ tableId: 2
+     └─ Table
+         ├─ name: xy
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -1030,34 +1012,30 @@ Project
  ├─ columns: [Subquery
  │   ├─ cacheable: false
  │   ├─ alias-string: select dt.z from (select uv.u as z from uv where uv.v = xy.y) as dt
- │   └─ Project
- │       ├─ columns: [dt.z:8!null]
- │       └─ SubqueryAlias
- │           ├─ name: dt
- │           ├─ outerVisibility: false
- │           ├─ isLateral: false
- │           ├─ cacheable: false
- │           ├─ colSet: (8)
- │           ├─ tableId: 3
- │           └─ Project
- │               ├─ columns: [uv.u:4!null as z]
- │               └─ Filter
- │                   ├─ Eq
- │                   │   ├─ uv.v:5!null
- │                   │   └─ xy.y:2!null
- │                   └─ Table
- │                       ├─ name: uv
- │                       ├─ columns: [u v w]
- │                       ├─ colSet: (4-6)
- │                       └─ tableId: 2
+ │   └─ SubqueryAlias
+ │       ├─ name: dt
+ │       ├─ outerVisibility: false
+ │       ├─ isLateral: false
+ │       ├─ cacheable: false
+ │       ├─ colSet: (8)
+ │       ├─ tableId: 3
+ │       └─ Project
+ │           ├─ columns: [uv.u:4!null as z]
+ │           └─ Filter
+ │               ├─ Eq
+ │               │   ├─ uv.v:5!null
+ │               │   └─ xy.y:2!null
+ │               └─ Table
+ │                   ├─ name: uv
+ │                   ├─ columns: [u v w]
+ │                   ├─ colSet: (4-6)
+ │                   └─ tableId: 2
  │   as (SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
- └─ Project
-     ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-     └─ Table
-         ├─ name: xy
-         ├─ columns: [x y z]
-         ├─ colSet: (1-3)
-         └─ tableId: 1
+ └─ Table
+     ├─ name: xy
+     ├─ columns: [x y z]
+     ├─ colSet: (1-3)
+     └─ tableId: 1
 `,
 		},
 		{
@@ -1091,13 +1069,11 @@ Project
  │                           ├─ colSet: (4-6)
  │                           └─ tableId: 2
  │   as (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
- └─ Project
-     ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-     └─ Table
-         ├─ name: xy
-         ├─ columns: [x y z]
-         ├─ colSet: (1-3)
-         └─ tableId: 1
+ └─ Table
+     ├─ name: xy
+     ├─ columns: [x y z]
+     ├─ colSet: (1-3)
+     └─ tableId: 1
 `,
 		},
 		{
@@ -1131,13 +1107,11 @@ Project
  │                           ├─ colSet: (4-6)
  │                           └─ tableId: 2
  │   as (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
- └─ Project
-     ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
-     └─ Table
-         ├─ name: xy
-         ├─ columns: [x y z]
-         ├─ colSet: (1-3)
-         └─ tableId: 1
+ └─ Table
+     ├─ name: xy
+     ├─ columns: [x y z]
+     ├─ colSet: (1-3)
+     └─ tableId: 1
 `,
 		},
 		{
@@ -1607,73 +1581,71 @@ Project
 		)
 			SELECT * FROM ladder;`,
 			ExpectedPlan: `
-Project
- ├─ columns: [ladder.depth:6!null, ladder.foo:7]
- └─ SubqueryAlias
-     ├─ name: ladder
-     ├─ outerVisibility: false
-     ├─ isLateral: false
-     ├─ cacheable: true
-     ├─ colSet: (6,7)
-     ├─ tableId: 4
-     └─ RecursiveCTE
-         └─ Union all
-             ├─ Project
-             │   ├─ columns: [1 (tinyint) as depth, NULL (null) as foo]
-             │   └─ SubqueryAlias
-             │       ├─ name: rt
-             │       ├─ outerVisibility: false
-             │       ├─ isLateral: false
-             │       ├─ cacheable: true
-             │       ├─ colSet: (2)
-             │       ├─ tableId: 1
-             │       └─ RecursiveCTE
-             │           └─ Union all
-             │               ├─ Project
-             │               │   ├─ columns: [1 (tinyint) as foo]
-             │               │   └─ Table
-             │               │       ├─ name: 
-             │               │       ├─ columns: []
-             │               │       ├─ colSet: ()
-             │               │       └─ tableId: 0
-             │               └─ Project
-             │                   ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
-             │                   └─ Filter
-             │                       ├─ LessThan
-             │                       │   ├─ rt.foo:2!null
-             │                       │   └─ 5 (tinyint)
-             │                       └─ RecursiveTable(rt)
-             └─ Project
-                 ├─ columns: [(ladder.depth:6!null + 1 (tinyint)) as depth, rt.foo:2!null]
-                 └─ Filter
-                     ├─ Eq
-                     │   ├─ ladder.foo:7
-                     │   └─ rt.foo:2!null
-                     └─ CrossJoin
-                         ├─ RecursiveTable(ladder)
-                         └─ SubqueryAlias
-                             ├─ name: rt
-                             ├─ outerVisibility: false
-                             ├─ isLateral: false
-                             ├─ cacheable: true
-                             ├─ colSet: (2)
-                             ├─ tableId: 1
-                             └─ RecursiveCTE
-                                 └─ Union all
-                                     ├─ Project
-                                     │   ├─ columns: [1 (tinyint) as foo]
-                                     │   └─ Table
-                                     │       ├─ name: 
-                                     │       ├─ columns: []
-                                     │       ├─ colSet: ()
-                                     │       └─ tableId: 0
-                                     └─ Project
-                                         ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
-                                         └─ Filter
-                                             ├─ LessThan
-                                             │   ├─ rt.foo:2!null
-                                             │   └─ 5 (tinyint)
-                                             └─ RecursiveTable(rt)
+SubqueryAlias
+ ├─ name: ladder
+ ├─ outerVisibility: false
+ ├─ isLateral: false
+ ├─ cacheable: true
+ ├─ colSet: (6,7)
+ ├─ tableId: 4
+ └─ RecursiveCTE
+     └─ Union all
+         ├─ Project
+         │   ├─ columns: [1 (tinyint) as depth, NULL (null) as foo]
+         │   └─ SubqueryAlias
+         │       ├─ name: rt
+         │       ├─ outerVisibility: false
+         │       ├─ isLateral: false
+         │       ├─ cacheable: true
+         │       ├─ colSet: (2)
+         │       ├─ tableId: 1
+         │       └─ RecursiveCTE
+         │           └─ Union all
+         │               ├─ Project
+         │               │   ├─ columns: [1 (tinyint) as foo]
+         │               │   └─ Table
+         │               │       ├─ name: 
+         │               │       ├─ columns: []
+         │               │       ├─ colSet: ()
+         │               │       └─ tableId: 0
+         │               └─ Project
+         │                   ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
+         │                   └─ Filter
+         │                       ├─ LessThan
+         │                       │   ├─ rt.foo:2!null
+         │                       │   └─ 5 (tinyint)
+         │                       └─ RecursiveTable(rt)
+         └─ Project
+             ├─ columns: [(ladder.depth:6!null + 1 (tinyint)) as depth, rt.foo:2!null]
+             └─ Filter
+                 ├─ Eq
+                 │   ├─ ladder.foo:7
+                 │   └─ rt.foo:2!null
+                 └─ CrossJoin
+                     ├─ RecursiveTable(ladder)
+                     └─ SubqueryAlias
+                         ├─ name: rt
+                         ├─ outerVisibility: false
+                         ├─ isLateral: false
+                         ├─ cacheable: true
+                         ├─ colSet: (2)
+                         ├─ tableId: 1
+                         └─ RecursiveCTE
+                             └─ Union all
+                                 ├─ Project
+                                 │   ├─ columns: [1 (tinyint) as foo]
+                                 │   └─ Table
+                                 │       ├─ name: 
+                                 │       ├─ columns: []
+                                 │       ├─ colSet: ()
+                                 │       └─ tableId: 0
+                                 └─ Project
+                                     ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
+                                     └─ Filter
+                                         ├─ LessThan
+                                         │   ├─ rt.foo:2!null
+                                         │   └─ 5 (tinyint)
+                                         └─ RecursiveTable(rt)
 `,
 		},
 		{
@@ -2007,14 +1979,12 @@ Project
 Project
  ├─ columns: [s.x:1!null, s.y:2!null, s.z:3!null]
  └─ Sort(s.x:1!null ASC nullsFirst)
-     └─ Project
-         ├─ columns: [s.x:1!null, s.y:2!null, s.z:3!null]
-         └─ TableAlias(s)
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
+     └─ TableAlias(s)
+         └─ Table
+             ├─ name: xy
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{

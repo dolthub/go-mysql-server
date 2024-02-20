@@ -67,7 +67,15 @@ type comparison struct {
 	BinaryExpressionStub
 }
 
+// disableRounding disables rounding for the given expression.
+func disableRounding(expr sql.Expression) {
+	setArithmeticOps(expr, -1)
+	setDivOps(expr, -1)
+}
+
 func newComparison(left, right sql.Expression) comparison {
+	disableRounding(left)
+	disableRounding(right)
 	return comparison{BinaryExpressionStub{left, right}}
 }
 

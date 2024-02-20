@@ -487,7 +487,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			" └─ Sort(customer2.c_first:3 ASC nullsFirst)\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ customer2.c_last:5\n" +
+			"         │   ├─ customer2.c_last:4\n" +
 			"         │   └─ ESEEINGABLE (longtext)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
 			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
@@ -496,7 +496,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer2\n" +
-			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
+			"                 └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_id]\n" +
@@ -506,7 +506,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"         └─ IndexedTableAccess(customer2)\n" +
 			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_id]\n" +
@@ -516,7 +516,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			"         └─ IndexedTableAccess(customer2)\n" +
 			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
 			"",
 	},
 	{
@@ -626,7 +626,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 	{
 		Query: `SELECT c_balance, c_first, c_middle, c_id FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_last='PRIESEPRES' ORDER BY c_first`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [customer2.c_balance:16, customer2.c_first:3, customer2.c_middle:4, customer2.c_id:0!null]\n" +
+			" ├─ columns: [customer2.c_balance:6, customer2.c_first:3, customer2.c_middle:4, customer2.c_id:0!null]\n" +
 			" └─ Sort(customer2.c_first:3 ASC nullsFirst)\n" +
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
@@ -639,7 +639,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: customer2\n" +
-			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
+			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_balance, customer2.c_first, customer2.c_middle, customer2.c_id]\n" +
@@ -649,7 +649,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"         └─ IndexedTableAccess(customer2)\n" +
 			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_balance, customer2.c_first, customer2.c_middle, customer2.c_id]\n" +
@@ -659,7 +659,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"         └─ IndexedTableAccess(customer2)\n" +
 			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_street_1 c_street_2 c_city c_state c_zip c_phone c_since c_credit c_credit_lim c_discount c_balance c_ytd_payment c_payment_cnt c_delivery_cnt c_data]\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
 			"",
 	},
 	{
@@ -674,7 +674,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: orders2\n" +
-			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"             └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_carrier_id, orders2.o_entry_d]\n" +
@@ -682,7 +682,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
-			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_carrier_id, orders2.o_entry_d]\n" +
@@ -690,7 +690,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"         ├─ filters: [{[1, 1], [1, 1], [355, 355], [NULL, ∞)}]\n" +
-			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id o_ol_cnt o_all_local]\n" +
+			"         └─ columns: [o_id o_d_id o_w_id o_c_id o_entry_d o_carrier_id]\n" +
 			"",
 	},
 	{

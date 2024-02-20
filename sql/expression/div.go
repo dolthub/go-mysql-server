@@ -19,7 +19,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -34,10 +33,10 @@ var ErrIntDivDataOutOfRange = errors.NewKind("BIGINT value is out of range (%s D
 
 // '4 scales' are added to scale of the number on the left side of division operator at every division operation.
 // The default value is 4, and it can be set using sysvar https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_div_precision_increment
-const divPrecisionIncrement = 4
+const divPrecInc = 4
 
 // '9 scales' are added for every non-integer divider(right side).
-const divIntermediatePrecisionInc = 9
+const divIntPrecInc = 9
 
 const ERDivisionByZero = 1365
 
@@ -47,27 +46,16 @@ var _ sql.CollationCoercible = (*Div)(nil)
 // Div expression represents "/" arithmetic operation
 type Div struct {
 	BinaryExpressionStub
-	ops int32
-	// divScale is number of continuous division operations; this value will be available of all layers
-	divScale int32
-	// leftmostScale is a length of scale of the leftmost value in continuous division operation
-	// It is accessed concurrently read in the .Type() and written in the .Eval() methods.
-	leftmostScale               atomic.Int32
-	curIntermediatePrecisionInc int
+	ops    int32
+	divOps int32
 }
 
 // NewDiv creates a new Div / sql.Expression.
 func NewDiv(left, right sql.Expression) *Div {
-	a := &Div{
-		BinaryExpressionStub:        BinaryExpressionStub{LeftChild: left, RightChild: right},
-		curIntermediatePrecisionInc: 0,
-	}
-	a.leftmostScale.Store(0)
-	divs := countDivs(a)
-	setDivs(a, divs)
-	ops := countArithmeticOps(a)
-	setArithmeticOps(a, ops)
-	return a
+	d := &Div{BinaryExpressionStub: BinaryExpressionStub{LeftChild: left, RightChild: right}}
+	setDivOps(d, countDivOps(d))
+	setArithmeticOps(d, countArithmeticOps(d))
+	return d
 }
 
 func (d *Div) Operator() string {
@@ -96,7 +84,7 @@ func (d *Div) IsNullable() bool {
 // However, if this is the outermost division expression in an expression tree, we must return the result as a
 // Decimal type in order to match MySQL's results exactly.
 func (d *Div) Type() sql.Type {
-	return d.determineResultType(isOutermostDiv(d, 0, d.divScale))
+	return d.determineResultType(isOutermostDiv(d, 0, d.divOps))
 }
 
 // internalType returns the internal result type for this division expression. For performance reasons, we prefer
@@ -121,14 +109,6 @@ func (d *Div) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 
 // Eval implements the Expression interface.
 func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// we need to get the scale of the leftmost value of all continuous division
-	// for the final result rounding precision. This only is able to happen in the
-	// outermost layer, which is where we use this value to round the final result.
-	// we do not round the value until it's the last division operation.
-	if isOutermostDiv(d, 0, d.divScale) {
-		d.leftmostScale.Store(getScaleOfLeftmostValue(ctx, row, d, 0, d.divScale))
-	}
-
 	lval, rval, err := d.evalLeftRight(ctx, row)
 	if err != nil {
 		return nil, err
@@ -145,19 +125,11 @@ func (d *Div) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// we do not round the value until it's the last division operation.
-	if isOutermostDiv(d, 0, d.divScale) {
-		// We prefer using floats internally for division operations, but if this expressions output type
-		// is a Decimal, make sure we convert the result and return it as a decimal.
-		if types.IsDecimal(d.Type()) {
-			result = convertValueToType(ctx, types.InternalDecimalType, result, false)
-		}
-
-		if res, ok := result.(decimal.Decimal); ok {
-			if isOutermostArithmeticOp(d, d.ops) {
-				finalScale, _ := getFinalScale(d)
-				return res.Round(finalScale), nil
-			}
+	// Decimals must be rounded
+	if res, ok := result.(decimal.Decimal); ok {
+		if isOutermostArithmeticOp(d, d.ops) {
+			finalScale, _ := getFinalScale(ctx, row, d, 0)
+			return res.Round(finalScale), nil
 		}
 	}
 
@@ -252,32 +224,24 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 				return nil, nil
 			}
 
-			if d.curIntermediatePrecisionInc == 0 {
-				d.curIntermediatePrecisionInc = getPrecInc(d, 0)
-				// if the first dividend / the leftmost value is non int value,
-				// then curIntermediatePrecisionInc gets additional increment per every 9 scales
-				if d.curIntermediatePrecisionInc == 0 {
-					if !isIntOr1(l) {
-						d.curIntermediatePrecisionInc = int(math.Ceil(float64(l.Exponent()*-1) / float64(divIntermediatePrecisionInc)))
-					}
+			lScale, rScale := -1*l.Exponent(), -1*r.Exponent()
+			inc := int32(math.Ceil(float64(lScale+rScale+divPrecInc) / divIntPrecInc))
+			if lScale != 0 && rScale != 0 {
+				lInc := int32(math.Ceil(float64(lScale) / divIntPrecInc))
+				rInc := int32(math.Ceil(float64(rScale) / divIntPrecInc))
+				inc2 := lInc + rInc
+				if inc2 > inc {
+					inc = inc2
 				}
 			}
-
-			// for every divider we increment the curIntermediatePrecisionInc per every 9 scales
-			// for 0 scaled number, we increment 1
-			if r.Exponent() == 0 {
-				d.curIntermediatePrecisionInc += 1
-			} else {
-				d.curIntermediatePrecisionInc += int(math.Ceil(float64(r.Exponent()*-1) / float64(divIntermediatePrecisionInc)))
-			}
-
-			storedScale := d.leftmostScale.Load() + int32(d.curIntermediatePrecisionInc*divIntermediatePrecisionInc)
-			l = l.Truncate(storedScale)
-			r = r.Truncate(storedScale)
+			scale := inc * divIntPrecInc
+			l = l.Truncate(scale)
+			r = r.Truncate(scale)
 
 			// give it buffer of 2 additional scale to avoid the result to be rounded
-			divRes := l.DivRound(r, storedScale+2)
-			return divRes.Truncate(storedScale), nil
+			res := l.DivRound(r, scale+2)
+			res = res.Truncate(scale)
+			return res, nil
 		}
 	}
 
@@ -304,48 +268,51 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 		return types.Float64
 	}
 
-	// For division operations, the result type is always either a float or decimal.Decimal. When working with
-	// integers, we prefer float types internally, since the performance is orders of magnitude faster to divide
-	// floats than to divide Decimals, but if this is the outermost division operation, we need to
-	// return a decimal in order to match MySQL's results exactly.
-	return floatOrDecimalTypeForDiv(d, !outermostResult)
-}
-
-// floatOrDecimalTypeForDiv returns either Float64 or Decimal type depending on column reference,
-// left and right expression types and left and right evaluated types.
-// If |treatIntsAsFloats| is true, then integers are treated as floats instead of Decimals. This
-// is a performance optimization for division operations, since float division can be several orders
-// of magnitude faster than division with Decimals.
-// Otherwise, the return type is always decimal. The expression and evaluated types
-// are used to determine appropriate Decimal type to return that will not result in
-// precision loss.
-func floatOrDecimalTypeForDiv(e sql.Expression, treatIntsAsFloats bool) sql.Type {
-	t := getFloatOrMaxDecimalType(e, treatIntsAsFloats)
-
-	if t == types.Float64 {
+	if types.IsJSON(lTyp) || types.IsJSON(rTyp) {
 		return types.Float64
 	}
 
-	// if not float, it must be decimal type
-	if treatIntsAsFloats {
-		return t
+	if types.IsFloat(lTyp) || types.IsFloat(rTyp) {
+		return types.Float64
 	}
 
-	// for Div expression, if it's the outermostResult, then add the additional scales for the final result
-	p, s := t.(types.DecimalType_).Precision(), t.(types.DecimalType_).Scale()
-	maxWhole := p - s
-	maxFrac := s
+	// Decimal only results from here on
 
-	div := e.(*Div)
-	finalScale := div.leftmostScale.Load() + div.divScale*int32(divPrecisionIncrement)
-
-	if finalScale > types.DecimalTypeMaxScale {
-		finalScale = types.DecimalTypeMaxScale
-	} else if uint8(finalScale) > maxFrac {
-		maxFrac = uint8(finalScale)
+	if types.IsDatetimeType(lTyp) {
+		if dtType, ok := lTyp.(sql.DatetimeType); ok {
+			scale := uint8(dtType.Precision() + divPrecInc)
+			if scale > types.DecimalTypeMaxScale {
+				scale = types.DecimalTypeMaxScale
+			}
+			// TODO: determine actual precision
+			return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, scale)
+		}
 	}
 
-	return types.MustCreateDecimalType(maxWhole+maxFrac, maxFrac)
+	if types.IsDecimal(lTyp) {
+		prec, scale := lTyp.(sql.DecimalType).Precision(), lTyp.(sql.DecimalType).Scale()
+		scale = scale + divPrecInc
+		if d.ops == -1 {
+			scale = (scale/divIntPrecInc + 1) * divIntPrecInc
+			prec = prec + scale
+		} else {
+			prec = prec + divPrecInc
+		}
+
+		if prec > types.DecimalTypeMaxPrecision {
+			prec = types.DecimalTypeMaxPrecision
+		}
+		if scale > types.DecimalTypeMaxScale {
+			scale = types.DecimalTypeMaxScale
+		}
+		return types.MustCreateDecimalType(prec, scale)
+	}
+
+	// All other types are treated as if they were integers
+	if d.ops == -1 {
+		return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divIntPrecInc)
+	}
+	return types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, divPrecInc)
 }
 
 // getFloatOrMaxDecimalType returns either Float64 or Decimal type with max precision and scale
@@ -469,72 +436,39 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 //		 'div'  2
 //		 /   \
 //	    24    3
-func countDivs(e sql.Expression) int32 {
+func countDivOps(e sql.Expression) int32 {
 	if e == nil {
 		return 0
 	}
-
 	if a, ok := e.(*Div); ok {
-		return countDivs(a.LeftChild) + 1
+		return countDivOps(a.LeftChild) + 1
 	}
-
 	if a, ok := e.(ArithmeticOp); ok {
-		return countDivs(a.Left())
+		return countDivOps(a.Left())
 	}
-
 	return 0
 }
 
 // setDivs will set each node's DivScale to the number counted by countDivs. This allows us to
 // keep track of whether the current Div expression is the last Div operation, so the result is
 // rounded appropriately.
-func setDivs(e sql.Expression, dScale int32) {
+func setDivOps(e sql.Expression, divOps int32) {
 	if e == nil {
 		return
 	}
-
 	if a, isArithmeticOp := e.(ArithmeticOp); isArithmeticOp {
 		if d, ok := a.(*Div); ok {
-			d.divScale = dScale
+			d.divOps = divOps
 		}
-		setDivs(a.Left(), dScale)
-		setDivs(a.Right(), dScale)
+		setDivOps(a.Left(), divOps)
+		setDivOps(a.Right(), divOps)
 	}
-
+	if tup, ok := e.(Tuple); ok {
+		for _, expr := range tup {
+			setDivOps(expr, divOps)
+		}
+	}
 	return
-}
-
-// getScaleOfLeftmostValue find the leftmost/first value of all continuous divisions.
-// E.g. 24/50/3.2/2/1 will return 2 for len('50') of number '24.50'.
-func getScaleOfLeftmostValue(ctx *sql.Context, row sql.Row, e sql.Expression, d, dScale int32) int32 {
-	if e == nil {
-		return 0
-	}
-
-	if a, ok := e.(*Div); ok {
-		d = d + 1
-		if d == dScale {
-			lval, err := a.LeftChild.Eval(ctx, row)
-			if err != nil {
-				return 0
-			}
-			_, s := GetPrecisionAndScale(lval)
-			// the leftmost value can be row value of decimal type column
-			// the evaluated value does not always match the scale of column type definition
-			typ := a.LeftChild.Type()
-			if dt, dok := typ.(sql.DecimalType); dok {
-				ts := dt.Scale()
-				if ts > s {
-					s = ts
-				}
-			}
-			return int32(s)
-		} else {
-			return getScaleOfLeftmostValue(ctx, row, a.LeftChild, d, dScale)
-		}
-	}
-
-	return 0
 }
 
 // isOutermostDiv returns whether the expression we're currently evaluating is
@@ -569,53 +503,91 @@ func isOutermostDiv(e sql.Expression, d, dScale int32) bool {
 }
 
 // getFinalScale returns the final scale of the result value.
-// it traverses both the left and right nodes looking for Div nodes
-func getFinalScale(e sql.Expression) (int32, bool) {
-	if e == nil {
+// it traverses both the left and right nodes looking for Div, Arithmetic, and Literal nodes
+func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt int32) (int32, bool) {
+	if expr == nil {
 		return 0, false
 	}
 
-	if d, isDiv := e.(*Div); isDiv {
-		finalScale := d.leftmostScale.Load() + d.divScale*int32(divPrecisionIncrement)
-		if finalScale > types.DecimalTypeMaxScale {
-			finalScale = types.DecimalTypeMaxScale
+	if div, isDiv := expr.(*Div); isDiv {
+		// TODO: there's gotta be a better way of determining if this is the leftmost div...
+		fScale := int32(divPrecInc)
+		divOpCnt = divOpCnt + 1
+		if divOpCnt == div.divOps {
+			// TODO: redundant call to Eval for LeftChild
+			lval, err := div.LeftChild.Eval(ctx, row)
+			if err != nil {
+				return 0, false
+			}
+			_, s := GetPrecisionAndScale(lval)
+			typ := div.LeftChild.Type()
+			if dt, dok := typ.(sql.DecimalType); dok {
+				ts := dt.Scale()
+				if ts > s {
+					s = ts
+				}
+			}
+			fScale += int32(s)
+		} else {
+			// We only care about left scale for divs
+			lScale, _ := getFinalScale(ctx, row, div.LeftChild, divOpCnt)
+			fScale += lScale
 		}
-		return finalScale, true
+
+		if fScale > types.DecimalTypeMaxScale {
+			fScale = types.DecimalTypeMaxScale
+		}
+		return fScale, true
 	}
 
-	if a, isArith := e.(*Arithmetic); isArith {
-		leftScale, leftHasDiv := getFinalScale(a.Left())
-		rightScale, rightHasDiv := getFinalScale(a.Right())
-		var finalScale int32
+	if a, isArith := expr.(*Arithmetic); isArith {
+		lScale, lHasDiv := getFinalScale(ctx, row, a.Left(), divOpCnt)
+		rScale, rHasDiv := getFinalScale(ctx, row, a.Right(), divOpCnt)
+		var fScale int32
 		switch a.Operator() {
 		case sqlparser.PlusStr, sqlparser.MinusStr:
-			if leftScale > rightScale {
-				finalScale = leftScale
+			if lScale > rScale {
+				fScale = lScale
 			} else {
-				finalScale = rightScale
+				fScale = rScale
 			}
 		case sqlparser.MultStr:
-			finalScale = leftScale + rightScale
+			fScale = lScale + rScale
 		}
-		if finalScale > types.DecimalTypeMaxScale {
-			finalScale = types.DecimalTypeMaxScale
+		if fScale > types.DecimalTypeMaxScale {
+			fScale = types.DecimalTypeMaxScale
 		}
-		return finalScale, leftHasDiv || rightHasDiv
+		return fScale, lHasDiv || rHasDiv
 	}
 
-	s := uint8(0)
-	if lit, isLit := e.(*Literal); isLit {
-		_, s = GetPrecisionAndScale(lit.value)
+	// TODO: this is just a guess of what mod should do with scale; test this
+	if m, isMod := expr.(*Mod); isMod {
+		fScale, leftHasDiv := getFinalScale(ctx, row, m.LeftChild, divOpCnt)
+		rScale, rightHasDiv := getFinalScale(ctx, row, m.RightChild, divOpCnt)
+		if rScale > fScale {
+			fScale = rScale
+		}
+		if fScale > types.DecimalTypeMaxScale {
+			fScale = types.DecimalTypeMaxScale
+		}
+		return fScale, leftHasDiv || rightHasDiv
 	}
-	typ := e.Type()
+
+	// TODO: likely need a case for IntDiv
+
+	var fScale uint8
+	if lit, isLit := expr.(*Literal); isLit {
+		_, fScale = GetPrecisionAndScale(lit.value)
+	}
+	typ := expr.Type()
 	if dt, dok := typ.(sql.DecimalType); dok {
 		ts := dt.Scale()
-		if ts > s {
-			s = ts
+		if ts > fScale {
+			fScale = ts
 		}
 	}
 
-	return int32(s), false
+	return int32(fScale), false
 }
 
 // GetDecimalPrecisionAndScale returns precision and scale for given string formatted float/double number.
@@ -647,59 +619,6 @@ func GetPrecisionAndScale(val interface{}) (uint8, uint8) {
 		str = fmt.Sprintf("%v", v)
 	}
 	return GetDecimalPrecisionAndScale(str)
-}
-
-// isIntOr1 checks whether the decimal number is equal to 1
-// or it is an integer value even though the value can be
-// given as decimal. This function returns true if val is
-// 1 or 1.000 or 2.00 or 13. These all are int numbers.
-func isIntOr1(val decimal.Decimal) bool {
-	if val.Equal(decimal.NewFromInt(1)) {
-		return true
-	}
-	if val.Equal(decimal.NewFromInt(-1)) {
-		return true
-	}
-	if val.Equal(decimal.NewFromInt(val.IntPart())) {
-		return true
-	}
-	return false
-}
-
-// getPrecInc returns the max curIntermediatePrecisionInc by searching the children
-// of the expression given. This allows us to keep track of the appropriate value
-// of curIntermediatePrecisionInc that is used to storing scale number for the decimal value.
-func getPrecInc(e sql.Expression, cur int) int {
-	if e == nil {
-		return 0
-	}
-
-	if d, ok := e.(*Div); ok {
-		if d.curIntermediatePrecisionInc > cur {
-			return d.curIntermediatePrecisionInc
-		}
-		l := getPrecInc(d.LeftChild, cur)
-		if l > cur {
-			cur = l
-		}
-		r := getPrecInc(d.RightChild, cur)
-		if r > cur {
-			cur = r
-		}
-		return cur
-	} else if d, ok := e.(ArithmeticOp); ok {
-		l := getPrecInc(d.Left(), cur)
-		if l > cur {
-			cur = l
-		}
-		r := getPrecInc(d.Right(), cur)
-		if r > cur {
-			cur = r
-		}
-		return cur
-	} else {
-		return cur
-	}
 }
 
 var _ ArithmeticOp = (*IntDiv)(nil)
@@ -818,8 +737,7 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right inte
 	} else if (lIsTimeType && rIsTimeType) || (types.IsSigned(lTyp) && types.IsSigned(rTyp)) {
 		typ = types.Int64
 	} else {
-		// using max precision which is 65.
-		typ = types.MustCreateDecimalType(65, 0)
+		typ = types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 0)
 	}
 
 	if types.IsInteger(typ) || types.IsFloat(typ) {

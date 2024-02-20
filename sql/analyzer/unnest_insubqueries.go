@@ -313,7 +313,7 @@ func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
 			sch := n.Schema()
 			for id, hasNext := colset.Next(1); hasNext; id, hasNext = colset.Next(id + 1) {
 				col := sch[idx]
-				proj = append(proj, expression.NewGetFieldWithTable(int(id), int(id), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
+				proj = append(proj, expression.NewGetFieldWithTable(int(id), int(nn.Id()), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable))
 				idx++
 			}
 		default:

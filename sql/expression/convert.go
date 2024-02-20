@@ -82,6 +82,7 @@ var _ sql.CollationCoercible = (*Convert)(nil)
 // |castToType| type. All optional parameters (i.e. typeLength, typeScale, and charset) are omitted and initialized
 // to their zero values.
 func NewConvert(expr sql.Expression, castToType string) *Convert {
+	disableRounding(expr)
 	return &Convert{
 		UnaryExpression: UnaryExpression{Child: expr},
 		castToType:      strings.ToLower(castToType),
@@ -92,6 +93,7 @@ func NewConvert(expr sql.Expression, castToType string) *Convert {
 // |castToType| type, with |typeLength| specifying a length constraint of the converted type, and |typeScale| specifying
 // a scale constraint of the converted type.
 func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLength, typeScale int) *Convert {
+	disableRounding(expr)
 	return &Convert{
 		UnaryExpression: UnaryExpression{Child: expr},
 		castToType:      strings.ToLower(castToType),

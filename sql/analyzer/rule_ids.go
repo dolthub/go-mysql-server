@@ -95,7 +95,6 @@ const (
 	resolveAlterColumnId         // resolveAlterColumn
 	resolveGeneratorsId          // resolveGenerators
 	removeUnnecessaryConvertsId  // removeUnnecessaryConverts
-	pruneColumnsId               // pruneColumns
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
 	foldEmptyJoinsId             // foldEmptyJoins
 	optimizeJoinsId              // optimizeJoins
