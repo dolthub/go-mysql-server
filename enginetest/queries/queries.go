@@ -9175,7 +9175,7 @@ from typestable`,
 		},
 	},
 	{
-		Query: "select 1 where if('', 1, char(''));",
+		Query:    "select 1 where if('', 1, char(''));",
 		Expected: []sql.Row{},
 	},
 	{
