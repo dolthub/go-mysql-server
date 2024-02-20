@@ -9174,6 +9174,70 @@ from typestable`,
 			{36},
 		},
 	},
+	{
+		Query:    "select 1 where if('', 1, char(''));",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "select 1 where if('', char(''), 1);",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select 1 where if(char(''), 0, 1);",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select 1 where if(char('123'), 0, 1);",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select 1 where 0 = if('', 1, char(''));",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: "select if('', 1, char(''));",
+		Expected: []sql.Row{
+			{[]byte{0}},
+		},
+	},
+	{
+		Query: "select if(char(''), 'true', 'false');",
+		Expected: []sql.Row{
+			{"false"},
+		},
+	},
+	{
+		Query: "select if(char('0'), 'true', 'false');",
+		Expected: []sql.Row{
+			{"false"},
+		},
+	},
+	{
+		Query: "select if(char('1'), 'true', 'false');",
+		Expected: []sql.Row{
+			{"false"},
+		},
+	},
+	{
+		Query: "select if(cast(1 as binary), 'true', 'false');",
+		Expected: []sql.Row{
+			{"true"},
+		},
+	},
+	{
+		Query: "select if(cast(0 as binary), 'true', 'false');",
+		Expected: []sql.Row{
+			{"false"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
