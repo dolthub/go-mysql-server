@@ -364,7 +364,7 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 		parent := node.Parent
 		for parent != nil {
 			// upperbound of left child has no impact on parent's upperbound
-			if child == parent.Left {
+			if child != nil && child == parent.Left {
 				break
 			}
 			if child == nil {
