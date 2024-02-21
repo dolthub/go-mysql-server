@@ -5188,19 +5188,17 @@ Select * from (
 			" ├─ columns: [count(1):0!null as count(*), Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   ├─ alias-string: select i from mytable where i = 1 group by i\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [mytable.i:1!null]\n" +
-			" │       └─ GroupBy\n" +
-			" │           ├─ select: mytable.i:1!null\n" +
-			" │           ├─ group: mytable.i:1!null\n" +
-			" │           └─ IndexedTableAccess(mytable)\n" +
-			" │               ├─ index: [mytable.i]\n" +
-			" │               ├─ static: [{[1, 1]}]\n" +
-			" │               ├─ colSet: (2,3)\n" +
-			" │               ├─ tableId: 1\n" +
-			" │               └─ Table\n" +
-			" │                   ├─ name: mytable\n" +
-			" │                   └─ columns: [i]\n" +
+			" │   └─ GroupBy\n" +
+			" │       ├─ select: mytable.i:1!null\n" +
+			" │       ├─ group: mytable.i:1!null\n" +
+			" │       └─ IndexedTableAccess(mytable)\n" +
+			" │           ├─ index: [mytable.i]\n" +
+			" │           ├─ static: [{[1, 1]}]\n" +
+			" │           ├─ colSet: (2,3)\n" +
+			" │           ├─ tableId: 1\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: mytable\n" +
+			" │               └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
@@ -5213,15 +5211,13 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*), Subquery\n" +
 			" │   ├─ cacheable: true\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [mytable.i]\n" +
-			" │       └─ GroupBy\n" +
-			" │           ├─ SelectedExprs(mytable.i)\n" +
-			" │           ├─ Grouping(mytable.i)\n" +
-			" │           └─ IndexedTableAccess(mytable)\n" +
-			" │               ├─ index: [mytable.i]\n" +
-			" │               ├─ filters: [{[1, 1]}]\n" +
-			" │               └─ columns: [i]\n" +
+			" │   └─ GroupBy\n" +
+			" │       ├─ SelectedExprs(mytable.i)\n" +
+			" │       ├─ Grouping(mytable.i)\n" +
+			" │       └─ IndexedTableAccess(mytable)\n" +
+			" │           ├─ index: [mytable.i]\n" +
+			" │           ├─ filters: [{[1, 1]}]\n" +
+			" │           └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1))\n" +
@@ -5232,15 +5228,13 @@ Select * from (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*), Subquery\n" +
 			" │   ├─ cacheable: true\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [mytable.i]\n" +
-			" │       └─ GroupBy\n" +
-			" │           ├─ SelectedExprs(mytable.i)\n" +
-			" │           ├─ Grouping(mytable.i)\n" +
-			" │           └─ IndexedTableAccess(mytable)\n" +
-			" │               ├─ index: [mytable.i]\n" +
-			" │               ├─ filters: [{[1, 1]}]\n" +
-			" │               └─ columns: [i]\n" +
+			" │   └─ GroupBy\n" +
+			" │       ├─ SelectedExprs(mytable.i)\n" +
+			" │       ├─ Grouping(mytable.i)\n" +
+			" │       └─ IndexedTableAccess(mytable)\n" +
+			" │           ├─ index: [mytable.i]\n" +
+			" │           ├─ filters: [{[1, 1]}]\n" +
+			" │           └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1))\n" +
@@ -23594,70 +23588,58 @@ WHERE keyless.c0 IN (
 	},
 	{
 		Query: `SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			" └─ Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
-			"     └─ GroupBy\n" +
-			"         ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"         ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			" └─ Sort(two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
-			"         ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Sort(two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
+			"     ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			" └─ Sort(two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
-			"         ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+		ExpectedEstimates: "Sort(two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "Sort(two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			" └─ Sort(two_pk.pk1:0!null DESC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
-			"     └─ GroupBy\n" +
-			"         ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"         ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			" └─ Sort(two_pk.pk1 DESC, two_pk.pk2 DESC)\n" +
-			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
-			"         ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
+		ExpectedPlan: "Sort(two_pk.pk1:0!null DESC nullsFirst, two_pk.pk2:1!null DESC nullsFirst)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
+			"     ├─ group: two_pk.pk1:0!null, two_pk.pk2:1!null\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk1 pk2]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			" └─ Sort(two_pk.pk1 DESC, two_pk.pk2 DESC)\n" +
-			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
-			"         ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+		ExpectedEstimates: "Sort(two_pk.pk1 DESC, two_pk.pk2 DESC)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "Sort(two_pk.pk1 DESC, two_pk.pk2 DESC)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
