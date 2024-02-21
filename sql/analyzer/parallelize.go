@@ -72,10 +72,13 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope
 		return node, transform.SameTree, nil
 	}
 
-	foundOrderedDistinct := false
+	seenOrderedDistinct := false
+	seenWindow := false
 	newNode, same, err := transform.NodeWithCtx(node, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := c.Node.(*plan.OrderedDistinct); ok {
-			foundOrderedDistinct = true
+			seenOrderedDistinct = true
+		} else if _, ok := c.Node.(*plan.Window); ok {
+			seenWindow = true
 		} else if !isParallelizable(c.Node) {
 			return c.Node, transform.SameTree, nil
 		} else if _, ok := c.Parent.(*plan.Max1Row); ok {
@@ -85,7 +88,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope
 
 		return plan.NewExchange(a.Parallelism, c.Node), transform.NewTree, nil
 	})
-	if err != nil || bool(same) || foundOrderedDistinct {
+	if err != nil || bool(same) || seenOrderedDistinct || seenWindow {
 		return node, transform.SameTree, err
 	}
 
