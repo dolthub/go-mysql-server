@@ -353,18 +353,19 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 			node.color = child.nodeColor()
 			tree.removeBalance(node) // TODO: isn't this supposed to be called after?
 		}
+		// once we replace node with a nil child, we can't tell if child was from left/right
+		parent := node.Parent
+		fromLeft := parent != nil && node == parent.Left
 		tree.replaceNode(node, child)
 		if child != nil {
-			if node.Parent == nil {
+			if parent == nil {
 				child.color = black
 			}
 		}
-
 		// propagate max upperbound updates up the tree
-		parent := node.Parent
 		for parent != nil {
 			// upperbound of left child has no impact on parent's upperbound
-			if child != nil && child == parent.Left {
+			if fromLeft {
 				break
 			}
 			if child == nil {
@@ -374,6 +375,7 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 			}
 			child = parent
 			parent = parent.Parent
+			fromLeft = parent != nil && child == parent.Left
 		}
 	}
 	tree.size--
