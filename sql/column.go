@@ -68,7 +68,6 @@ func (c *Column) Check(v interface{}) bool {
 }
 
 // Equals checks whether two columns are equal.
-// todo: check |DatabaseSource|
 func (c *Column) Equals(c2 *Column) bool {
 	if c.Source != "" {
 		return strings.EqualFold(c.Name, c2.Name) &&
