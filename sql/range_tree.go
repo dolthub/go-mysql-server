@@ -357,10 +357,8 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 		parent := node.Parent
 		fromLeft := parent != nil && node == parent.Left
 		tree.replaceNode(node, child)
-		if child != nil {
-			if parent == nil {
-				child.color = black
-			}
+		if child != nil && parent == nil {
+			child.color = black
 		}
 		// propagate max upperbound updates up the tree
 		for parent != nil {
