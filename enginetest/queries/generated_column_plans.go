@@ -19,64 +19,52 @@ package queries
 var GeneratedColumnPlanTests = []QueryPlanTest{
 	{
 		Query: `select * from generated_stored_1 where b = 2 order by a`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [generated_stored_1.a:0!null, generated_stored_1.b:1]\n" +
-			" └─ Sort(generated_stored_1.a:0!null ASC nullsFirst)\n" +
-			"     └─ IndexedTableAccess(generated_stored_1)\n" +
-			"         ├─ index: [generated_stored_1.b]\n" +
-			"         ├─ static: [{[2, 2]}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: generated_stored_1\n" +
-			"             └─ columns: [a b]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [generated_stored_1.a, generated_stored_1.b]\n" +
-			" └─ Sort(generated_stored_1.a ASC)\n" +
-			"     └─ IndexedTableAccess(generated_stored_1)\n" +
-			"         ├─ index: [generated_stored_1.b]\n" +
-			"         ├─ filters: [{[2, 2]}]\n" +
+		ExpectedPlan: "Sort(generated_stored_1.a:0!null ASC nullsFirst)\n" +
+			" └─ IndexedTableAccess(generated_stored_1)\n" +
+			"     ├─ index: [generated_stored_1.b]\n" +
+			"     ├─ static: [{[2, 2]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: generated_stored_1\n" +
 			"         └─ columns: [a b]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [generated_stored_1.a, generated_stored_1.b]\n" +
-			" └─ Sort(generated_stored_1.a ASC)\n" +
-			"     └─ IndexedTableAccess(generated_stored_1)\n" +
-			"         ├─ index: [generated_stored_1.b]\n" +
-			"         ├─ filters: [{[2, 2]}]\n" +
-			"         └─ columns: [a b]\n" +
+		ExpectedEstimates: "Sort(generated_stored_1.a ASC)\n" +
+			" └─ IndexedTableAccess(generated_stored_1)\n" +
+			"     ├─ index: [generated_stored_1.b]\n" +
+			"     ├─ filters: [{[2, 2]}]\n" +
+			"     └─ columns: [a b]\n" +
+			"",
+		ExpectedAnalysis: "Sort(generated_stored_1.a ASC)\n" +
+			" └─ IndexedTableAccess(generated_stored_1)\n" +
+			"     ├─ index: [generated_stored_1.b]\n" +
+			"     ├─ filters: [{[2, 2]}]\n" +
+			"     └─ columns: [a b]\n" +
 			"",
 	},
 	{
 		Query: `select * from generated_stored_2 where b = 2 and c = 3 order by a`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [generated_stored_2.a:0!null, generated_stored_2.b:1, generated_stored_2.c:2]\n" +
-			" └─ Sort(generated_stored_2.a:0!null ASC nullsFirst)\n" +
-			"     └─ IndexedTableAccess(generated_stored_2)\n" +
-			"         ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
-			"         ├─ static: [{[2, 2], [3, 3]}]\n" +
-			"         ├─ colSet: (1-3)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: generated_stored_2\n" +
-			"             └─ columns: [a b c]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [generated_stored_2.a, generated_stored_2.b, generated_stored_2.c]\n" +
-			" └─ Sort(generated_stored_2.a ASC)\n" +
-			"     └─ IndexedTableAccess(generated_stored_2)\n" +
-			"         ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
-			"         ├─ filters: [{[2, 2], [3, 3]}]\n" +
+		ExpectedPlan: "Sort(generated_stored_2.a:0!null ASC nullsFirst)\n" +
+			" └─ IndexedTableAccess(generated_stored_2)\n" +
+			"     ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
+			"     ├─ static: [{[2, 2], [3, 3]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: generated_stored_2\n" +
 			"         └─ columns: [a b c]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [generated_stored_2.a, generated_stored_2.b, generated_stored_2.c]\n" +
-			" └─ Sort(generated_stored_2.a ASC)\n" +
-			"     └─ IndexedTableAccess(generated_stored_2)\n" +
-			"         ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
-			"         ├─ filters: [{[2, 2], [3, 3]}]\n" +
-			"         └─ columns: [a b c]\n" +
+		ExpectedEstimates: "Sort(generated_stored_2.a ASC)\n" +
+			" └─ IndexedTableAccess(generated_stored_2)\n" +
+			"     ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
+			"     ├─ filters: [{[2, 2], [3, 3]}]\n" +
+			"     └─ columns: [a b c]\n" +
+			"",
+		ExpectedAnalysis: "Sort(generated_stored_2.a ASC)\n" +
+			" └─ IndexedTableAccess(generated_stored_2)\n" +
+			"     ├─ index: [generated_stored_2.b,generated_stored_2.c]\n" +
+			"     ├─ filters: [{[2, 2], [3, 3]}]\n" +
+			"     └─ columns: [a b c]\n" +
 			"",
 	},
 	{
@@ -110,31 +98,25 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select * from generated_virtual_1 where c = 7`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [generated_virtual_1.a:0!null, generated_virtual_1.b:1, generated_virtual_1.c:2]\n" +
-			" └─ IndexedTableAccess(generated_virtual_1)\n" +
-			"     ├─ index: [generated_virtual_1.c]\n" +
-			"     ├─ static: [{[7, 7]}]\n" +
-			"     ├─ colSet: (4-6)\n" +
-			"     ├─ tableId: 2\n" +
-			"     └─ VirtualColumnTable\n" +
+		ExpectedPlan: "IndexedTableAccess(generated_virtual_1)\n" +
+			" ├─ index: [generated_virtual_1.c]\n" +
+			" ├─ static: [{[7, 7]}]\n" +
+			" ├─ colSet: (4-6)\n" +
+			" ├─ tableId: 2\n" +
+			" └─ VirtualColumnTable\n" +
+			"     ├─ name: generated_virtual_1\n" +
+			"     ├─ columns: [generated_virtual_1.a:0!null, generated_virtual_1.b:1, parenthesized((generated_virtual_1.a:0!null + generated_virtual_1.b:1))]\n" +
+			"     └─ Table\n" +
 			"         ├─ name: generated_virtual_1\n" +
-			"         ├─ columns: [generated_virtual_1.a:0!null, generated_virtual_1.b:1, parenthesized((generated_virtual_1.a:0!null + generated_virtual_1.b:1))]\n" +
-			"         └─ Table\n" +
-			"             ├─ name: generated_virtual_1\n" +
-			"             └─ columns: [a b c]\n" +
+			"         └─ columns: [a b c]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [generated_virtual_1.a, generated_virtual_1.b, generated_virtual_1.c]\n" +
-			" └─ IndexedTableAccess(generated_virtual_1)\n" +
-			"     ├─ index: [generated_virtual_1.c]\n" +
-			"     └─ filters: [{[7, 7]}]\n" +
+		ExpectedEstimates: "IndexedTableAccess(generated_virtual_1)\n" +
+			" ├─ index: [generated_virtual_1.c]\n" +
+			" └─ filters: [{[7, 7]}]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [generated_virtual_1.a, generated_virtual_1.b, generated_virtual_1.c]\n" +
-			" └─ IndexedTableAccess(generated_virtual_1)\n" +
-			"     ├─ index: [generated_virtual_1.c]\n" +
-			"     └─ filters: [{[7, 7]}]\n" +
+		ExpectedAnalysis: "IndexedTableAccess(generated_virtual_1)\n" +
+			" ├─ index: [generated_virtual_1.c]\n" +
+			" └─ filters: [{[7, 7]}]\n" +
 			"",
 	},
 	{
@@ -174,31 +156,25 @@ var GeneratedColumnPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select * from generated_virtual_keyless where v = 2`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [generated_virtual_keyless.j:0, generated_virtual_keyless.v:1]\n" +
-			" └─ IndexedTableAccess(generated_virtual_keyless)\n" +
-			"     ├─ index: [generated_virtual_keyless.v]\n" +
-			"     ├─ static: [{[2, 2]}]\n" +
-			"     ├─ colSet: (3,4)\n" +
-			"     ├─ tableId: 2\n" +
-			"     └─ VirtualColumnTable\n" +
+		ExpectedPlan: "IndexedTableAccess(generated_virtual_keyless)\n" +
+			" ├─ index: [generated_virtual_keyless.v]\n" +
+			" ├─ static: [{[2, 2]}]\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
+			" └─ VirtualColumnTable\n" +
+			"     ├─ name: generated_virtual_keyless\n" +
+			"     ├─ columns: [generated_virtual_keyless.j:0, parenthesized(json_unquote(json_extract(generated_virtual_keyless.j, '$.a')))]\n" +
+			"     └─ Table\n" +
 			"         ├─ name: generated_virtual_keyless\n" +
-			"         ├─ columns: [generated_virtual_keyless.j:0, parenthesized(json_unquote(json_extract(generated_virtual_keyless.j, '$.a')))]\n" +
-			"         └─ Table\n" +
-			"             ├─ name: generated_virtual_keyless\n" +
-			"             └─ columns: [j v]\n" +
+			"         └─ columns: [j v]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [generated_virtual_keyless.j, generated_virtual_keyless.v]\n" +
-			" └─ IndexedTableAccess(generated_virtual_keyless)\n" +
-			"     ├─ index: [generated_virtual_keyless.v]\n" +
-			"     └─ filters: [{[2, 2]}]\n" +
+		ExpectedEstimates: "IndexedTableAccess(generated_virtual_keyless)\n" +
+			" ├─ index: [generated_virtual_keyless.v]\n" +
+			" └─ filters: [{[2, 2]}]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [generated_virtual_keyless.j, generated_virtual_keyless.v]\n" +
-			" └─ IndexedTableAccess(generated_virtual_keyless)\n" +
-			"     ├─ index: [generated_virtual_keyless.v]\n" +
-			"     └─ filters: [{[2, 2]}]\n" +
+		ExpectedAnalysis: "IndexedTableAccess(generated_virtual_keyless)\n" +
+			" ├─ index: [generated_virtual_keyless.v]\n" +
+			" └─ filters: [{[2, 2]}]\n" +
 			"",
 	},
 	{
