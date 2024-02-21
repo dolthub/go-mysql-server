@@ -1663,6 +1663,15 @@ func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSysbenchPlans(t *testing.T, harness Harness) {
+	harness.Setup(setup.SysbenchSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range queries.SysbenchPlanTests {
+		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+	}
+}
+
 func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)

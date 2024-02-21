@@ -78,11 +78,17 @@ func (g *GroupBy) Schema() sql.Schema {
 			table = t.Table()
 		}
 
+		var db string
+		if t, ok := e.(sql.Databaseable); ok {
+			db = t.Database()
+		}
+
 		s[i] = &sql.Column{
-			Name:     name,
-			Type:     e.Type(),
-			Nullable: e.IsNullable(),
-			Source:   table,
+			Name:           name,
+			Type:           e.Type(),
+			Nullable:       e.IsNullable(),
+			Source:         table,
+			DatabaseSource: db,
 		}
 	}
 
