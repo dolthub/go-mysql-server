@@ -40,22 +40,6 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
 		if ok {
-			cmpExprs := recSchemaToGetFields(project.Child, project.Child.Schema())
-			if len(cmpExprs) != len(project.Projections) {
-				return node, transform.SameTree, nil
-			}
-
-			for i := range cmpExprs {
-				if gf1, ok := cmpExprs[i].(*expression.GetField); ok {
-					if gf2, ok := project.Projections[i].(*expression.GetField); ok {
-						if gf1.Id() == gf2.Id() {
-							continue
-						}
-					}
-				}
-				return node, transform.SameTree, nil
-			}
-
 			if project.Schema().CaseSensitiveEquals(project.Child.Schema()) {
 				a.Log("project erased")
 				return project.Child, transform.NewTree, nil

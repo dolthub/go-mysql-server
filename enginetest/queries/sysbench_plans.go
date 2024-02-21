@@ -207,24 +207,30 @@ var SysbenchPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM sbtest1 WHERE big_int_col > 0`,
-		ExpectedPlan: "IndexedTableAccess(sbtest1)\n" +
-			" ├─ index: [sbtest1.big_int_col]\n" +
-			" ├─ static: [{(0, ∞)}]\n" +
-			" ├─ colSet: (1-24)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: sbtest1\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [sbtest1.id:0!null, sbtest1.tiny_int_col:1!null, sbtest1.unsigned_tiny_int_col:2!null, sbtest1.small_int_col:3!null, sbtest1.unsigned_small_int_col:4!null, sbtest1.medium_int_col:5!null, sbtest1.unsigned_medium_int_col:6!null, sbtest1.int_col:7!null, sbtest1.unsigned_int_col:8!null, sbtest1.big_int_col:9!null, sbtest1.unsigned_big_int_col:10!null, sbtest1.decimal_col:11!null, sbtest1.float_col:12!null, sbtest1.double_col:13!null, sbtest1.bit_col:14!null, sbtest1.char_col:15!null, sbtest1.var_char_col:16!null, sbtest1.enum_col:17!null, sbtest1.set_col:18!null, sbtest1.date_col:19!null, sbtest1.time_col:20!null, sbtest1.datetime_col:21!null, sbtest1.timestamp_col:22!null, sbtest1.year_col:23!null]\n" +
+			" └─ IndexedTableAccess(sbtest1)\n" +
+			"     ├─ index: [sbtest1.big_int_col]\n" +
+			"     ├─ static: [{(0, ∞)}]\n" +
+			"     ├─ colSet: (1-24)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: sbtest1\n" +
+			"         └─ columns: [id tiny_int_col unsigned_tiny_int_col small_int_col unsigned_small_int_col medium_int_col unsigned_medium_int_col int_col unsigned_int_col big_int_col unsigned_big_int_col decimal_col float_col double_col bit_col char_col var_char_col enum_col set_col date_col time_col datetime_col timestamp_col year_col]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [sbtest1.id, sbtest1.tiny_int_col, sbtest1.unsigned_tiny_int_col, sbtest1.small_int_col, sbtest1.unsigned_small_int_col, sbtest1.medium_int_col, sbtest1.unsigned_medium_int_col, sbtest1.int_col, sbtest1.unsigned_int_col, sbtest1.big_int_col, sbtest1.unsigned_big_int_col, sbtest1.decimal_col, sbtest1.float_col, sbtest1.double_col, sbtest1.bit_col, sbtest1.char_col, sbtest1.var_char_col, sbtest1.enum_col, sbtest1.set_col, sbtest1.date_col, sbtest1.time_col, sbtest1.datetime_col, sbtest1.timestamp_col, sbtest1.year_col]\n" +
+			" └─ IndexedTableAccess(sbtest1)\n" +
+			"     ├─ index: [sbtest1.big_int_col]\n" +
+			"     ├─ filters: [{(0, ∞)}]\n" +
 			"     └─ columns: [id tiny_int_col unsigned_tiny_int_col small_int_col unsigned_small_int_col medium_int_col unsigned_medium_int_col int_col unsigned_int_col big_int_col unsigned_big_int_col decimal_col float_col double_col bit_col char_col var_char_col enum_col set_col date_col time_col datetime_col timestamp_col year_col]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(sbtest1)\n" +
-			" ├─ index: [sbtest1.big_int_col]\n" +
-			" ├─ filters: [{(0, ∞)}]\n" +
-			" └─ columns: [id tiny_int_col unsigned_tiny_int_col small_int_col unsigned_small_int_col medium_int_col unsigned_medium_int_col int_col unsigned_int_col big_int_col unsigned_big_int_col decimal_col float_col double_col bit_col char_col var_char_col enum_col set_col date_col time_col datetime_col timestamp_col year_col]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(sbtest1)\n" +
-			" ├─ index: [sbtest1.big_int_col]\n" +
-			" ├─ filters: [{(0, ∞)}]\n" +
-			" └─ columns: [id tiny_int_col unsigned_tiny_int_col small_int_col unsigned_small_int_col medium_int_col unsigned_medium_int_col int_col unsigned_int_col big_int_col unsigned_big_int_col decimal_col float_col double_col bit_col char_col var_char_col enum_col set_col date_col time_col datetime_col timestamp_col year_col]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [sbtest1.id, sbtest1.tiny_int_col, sbtest1.unsigned_tiny_int_col, sbtest1.small_int_col, sbtest1.unsigned_small_int_col, sbtest1.medium_int_col, sbtest1.unsigned_medium_int_col, sbtest1.int_col, sbtest1.unsigned_int_col, sbtest1.big_int_col, sbtest1.unsigned_big_int_col, sbtest1.decimal_col, sbtest1.float_col, sbtest1.double_col, sbtest1.bit_col, sbtest1.char_col, sbtest1.var_char_col, sbtest1.enum_col, sbtest1.set_col, sbtest1.date_col, sbtest1.time_col, sbtest1.datetime_col, sbtest1.timestamp_col, sbtest1.year_col]\n" +
+			" └─ IndexedTableAccess(sbtest1)\n" +
+			"     ├─ index: [sbtest1.big_int_col]\n" +
+			"     ├─ filters: [{(0, ∞)}]\n" +
+			"     └─ columns: [id tiny_int_col unsigned_tiny_int_col small_int_col unsigned_small_int_col medium_int_col unsigned_medium_int_col int_col unsigned_int_col big_int_col unsigned_big_int_col decimal_col float_col double_col bit_col char_col var_char_col enum_col set_col date_col time_col datetime_col timestamp_col year_col]\n" +
 			"",
 	},
 }
