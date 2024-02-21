@@ -1049,7 +1049,7 @@ func TestRangeTreeRemove(t *testing.T) {
 		},
 		{
 			name:      "remove largest without left child",
-			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)),r(req(13))},
+			setupRngs: []sql.Range{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
 				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
 				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
