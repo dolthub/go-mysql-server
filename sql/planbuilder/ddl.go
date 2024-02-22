@@ -16,7 +16,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"strconv"
 	"strings"
 
@@ -24,6 +23,7 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"

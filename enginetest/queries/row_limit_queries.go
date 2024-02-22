@@ -16,6 +16,7 @@ package queries
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )

@@ -15,8 +15,9 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
