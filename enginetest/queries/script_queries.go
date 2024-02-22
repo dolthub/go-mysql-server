@@ -5430,6 +5430,25 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
+	{
+		Name: "complicated range tree",
+		SetUpScript: []string{
+			"create table t1 (a1 int, b1 int, primary key(a1, b1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+SELECT *
+FROM t1
+WHERE
+    a1 in (702, 584, 607, 479, 330, 445, 513, 678, 406, 314, 880, 953, 75, 268) OR
+    b1 in (213, 55,  992, 922, 619, 972, 654, 130,  88, 141, 679, 761) OR
+    (a1=145 AND b1=818);
+`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
