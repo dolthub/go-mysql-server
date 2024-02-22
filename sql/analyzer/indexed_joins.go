@@ -106,6 +106,14 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 // recSchemaToGetFields creates a set of projection get fields for a node
 // considering column ids and left join nullability.
 func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
+	if len(n.Schema()) != len(sch) {
+		// Projector nodes can return more or fewer columns than child.
+		// In this case we will return the subset of get fields with column
+		// ids from the child. This does not matter currently for the context
+		// this function is used.
+		// todo: all projector node columns should have column ids
+		sch = n.Schema()
+	}
 	switch n := n.(type) {
 	case *plan.JoinNode:
 		switch {

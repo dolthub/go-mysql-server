@@ -252,6 +252,8 @@ type Lockable interface {
 // ConvertToBool converts a value to a boolean. nil is considered false.
 func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	switch b := v.(type) {
+	case []uint8:
+		return ConvertToBool(ctx, string(b))
 	case bool:
 		return b, nil
 	case int:

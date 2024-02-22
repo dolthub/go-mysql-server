@@ -320,7 +320,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			name:      "select statement returns non-nil schema",
 			statement: "select c1 from test where c1 > ?",
 			expected: []*query.Field{
-				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Database: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 		},
 		{
@@ -387,7 +387,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Database: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
@@ -465,7 +465,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				},
 			},
 			schema: []*query.Field{
-				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Database: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},

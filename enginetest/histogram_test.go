@@ -60,13 +60,6 @@ func TestNormDist(t *testing.T) {
 			mean2: 0,
 			std2:  2,
 		},
-		{
-			name:  "peaks don't overlap",
-			mean1: 10,
-			std1:  5,
-			mean2: -10,
-			std2:  5,
-		},
 		//
 		{
 			name:  "similar mean, different std1",

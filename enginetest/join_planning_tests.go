@@ -49,6 +49,23 @@ var JoinPlanningTests = []struct {
 	tests []JoinPlanTest
 }{
 	{
+		name: "filter pushdown through join uppercase name",
+		setup: []string{
+			"create database mydb1",
+			"create database mydb2",
+			"create table mydb1.xy (x int primary key, y int)",
+			"create table mydb2.xy (x int primary key, y int)",
+			"insert into mydb1.xy values (0,0)",
+			"insert into mydb2.xy values (1,1)",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:   "select * from mydb1.xy, mydb2.xy",
+				exp: []sql.Row{{0, 0, 1, 1}},
+			},
+		},
+	},
+	{
 		name: "info schema plans",
 		setup: []string{
 			"CREATE table xy (x int primary key, y int);",

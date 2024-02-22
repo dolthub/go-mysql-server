@@ -24,8 +24,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// eraseProjection removes redundant Project nodes from the plan. A project is redundant if it doesn't alter the schema
-// of its child.
+// eraseProjection removes redundant Project nodes from the plan. A project
+// is redundant if it doesn't alter the schema of its child. Special
+// considerations: (1) target projections casing needs
+// to be preserved in the output schema even if the projection is redundant;
+// (2) column ids are not reliable enough to maximally prune projections,
+// we still need to check column/table/database names.
+// todo: analyzer should separate target schema from plan schema
+// todo: projection columns should all have ids so that pruning is more reliable
 func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("erase_projection")
 	defer span.End()
@@ -38,10 +44,10 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 		project, ok := node.(*plan.Project)
 		if ok {
 			if project.Schema().CaseSensitiveEquals(project.Child.Schema()) {
-
 				a.Log("project erased")
 				return project.Child, transform.NewTree, nil
 			}
+
 		}
 
 		return node, transform.SameTree, nil

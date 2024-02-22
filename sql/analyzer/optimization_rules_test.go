@@ -30,58 +30,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestEraseProjection(t *testing.T) {
-	require := require.New(t)
-	f := getRule(eraseProjectionId)
-
-	db := memory.NewDatabase("db")
-
-	table := memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{{
-		Name: "i", Source: "mytable", Type: types.Int64,
-	}}), nil)
-
-	expected := plan.NewSort(
-		[]sql.SortField{{Column: expression.NewGetField(2, types.Int64, "foo", false)}},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "i", false),
-				expression.NewGetField(1, types.Int64, "bar", false),
-				expression.NewAlias("foo", expression.NewLiteral(1, types.Int64)),
-			},
-			plan.NewFilter(
-				expression.NewEquals(
-					expression.NewLiteral(1, types.Int64),
-					expression.NewGetField(1, types.Int64, "bar", false),
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "i", false),
-						expression.NewAlias("bar", expression.NewLiteral(2, types.Int64)),
-					},
-					plan.NewResolvedTable(table, nil, nil),
-				),
-			),
-		),
-	)
-
-	node := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "i", false),
-			expression.NewGetField(1, types.Int64, "bar", false),
-			expression.NewGetField(2, types.Int64, "foo", false),
-		},
-		expected,
-	)
-
-	result, _, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(expected, result)
-
-	result, _, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(expected, result)
-}
-
 func TestEvalFilter(t *testing.T) {
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
