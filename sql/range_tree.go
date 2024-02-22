@@ -244,6 +244,10 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 				}
 			}
 			if cmp < 0 {
+				node.MaxUpperbound, err = GetRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
+				if err != nil {
+					return err
+				}
 				if node.Left == nil {
 					var inner *RangeColumnExprTree
 					if len(rang)-colExprIdx > 1 {
@@ -269,6 +273,9 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 				}
 			} else if cmp > 0 {
 				node.MaxUpperbound, err = GetRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
+				if err != nil {
+					return err
+				}
 				if node.Right == nil {
 					var inner *RangeColumnExprTree
 					if len(rang)-colExprIdx > 1 {
@@ -474,6 +481,16 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 	}.DebugString())
 	sb.WriteString(fmt.Sprintf(" max: %s", node.MaxUpperbound.String()))
 	sb.WriteString(fmt.Sprintf(" color: %d", node.color))
+	// TODO: if we ever need to see one level deeper
+	//if node.Inner != nil {
+	//	innerStr := RangeColumnExpr{
+	//		LowerBound: node.Inner.root.LowerBound,
+	//		UpperBound: node.Inner.root.UpperBound,
+	//		Typ:        typ,
+	//	}.DebugString()
+	//	sb.WriteString(fmt.Sprintf(" inner: %s", innerStr))
+	//	sb.WriteString(fmt.Sprintf(" max: %s", node.Inner.root.MaxUpperbound.String()))
+	//}
 	sb.WriteRune('\n')
 	if node.Left != nil {
 		newPrefix := prefix
