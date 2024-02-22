@@ -151,7 +151,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 
 	memo.CardMemoGroups(m.Root())
 
-	err = addCrossHashJoins(m) // removing this works
+	err = addCrossHashJoins(m)
 	if err != nil {
 		return nil, err
 	}
@@ -690,6 +690,12 @@ func addCrossHashJoins(m *memo.Memo) error {
 
 		join := e.(memo.JoinRel).JoinPrivate()
 		if len(join.Filter) > 0 {
+			return nil
+		}
+
+		_, lIsSqa := join.Left.First.(*memo.SubqueryAlias)
+		_, rIsSqa := join.Right.First.(*memo.SubqueryAlias)
+		if !lIsSqa && !rIsSqa {
 			return nil
 		}
 
