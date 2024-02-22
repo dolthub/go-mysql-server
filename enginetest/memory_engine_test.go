@@ -316,8 +316,7 @@ func TestSingleScript(t *testing.T) {
 				//	},
 				//},
 				{
-					Query:
-`
+					Query: `
 SELECT
    x57, x48, x30, x36, x22, x27, x44, x2
 FROM
@@ -337,28 +336,28 @@ WHERE
 						{"table t57 row 7", "table t48 row 7", "table t30 row 5", "table t36 row 9", "table t22 row 7", "table t27 row 4", "table t44 row 10", "table t2 row 6"},
 					},
 				},
-//				{
-//					Query:
-//`
-//SELECT
-//    x57, x48, x30, x36, x22, x27, x44, x2
-//FROM
-//    t57, t48, t30, t36, t22, t27, t44, t2
-//WHERE
-//    a57=7   AND
-//    b48=a57 AND
-//    b30=a48 AND
-//    b36=a30 AND
-//    b22=a36 AND
-//    b27=a22 AND
-//    b44=a27 AND
-//    a44=b2
-//;
-//`,
-//					Expected: []sql.Row{
-//						{"table t57 row 7", "table t48 row 7", "table t30 row 5", "table t36 row 9", "table t22 row 7", "table t27 row 4", "table t44 row 10", "table t2 row 6"},
-//					},
-//				},
+				//				{
+				//					Query:
+				//`
+				//SELECT
+				//    x57, x48, x30, x36, x22, x27, x44, x2
+				//FROM
+				//    t57, t48, t30, t36, t22, t27, t44, t2
+				//WHERE
+				//    a57=7   AND
+				//    b48=a57 AND
+				//    b30=a48 AND
+				//    b36=a30 AND
+				//    b22=a36 AND
+				//    b27=a22 AND
+				//    b44=a27 AND
+				//    a44=b2
+				//;
+				//`,
+				//					Expected: []sql.Row{
+				//						{"table t57 row 7", "table t48 row 7", "table t30 row 5", "table t36 row 9", "table t22 row 7", "table t27 row 4", "table t44 row 10", "table t2 row 6"},
+				//					},
+				//				},
 
 			},
 		},
