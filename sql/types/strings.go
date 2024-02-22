@@ -36,6 +36,7 @@ import (
 const (
 	charBinaryMax       = 255
 	varcharVarbinaryMax = 65_535
+	MaxRowLength        = 65_535
 
 	TinyTextBlobMax   = charBinaryMax
 	TextBlobMax       = varcharVarbinaryMax

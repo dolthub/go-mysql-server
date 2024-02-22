@@ -157,7 +157,7 @@ func (i *WindowPartitionIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return i.output[i.pos], nil
 }
 
-// materializeInput empties the child iterator int a buffer and sorts by (WPK, WSK). Returns
+// materializeInput empties the child iterator into a buffer and sorts by (WPK, WSK). Returns
 // a sorted sql.WindowBuffer and a list of original row indices for resorting.
 func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuffer, []int, error) {
 	input := make(sql.WindowBuffer, 0)

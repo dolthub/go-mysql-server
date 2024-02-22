@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"strconv"
 	"strings"
 
@@ -1140,7 +1141,13 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 	}
 
-	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), tableCollation, tableComment
+	pkSch := sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...)
+
+	if schLen := types.SchemaAvgLength(pkSch.PhysicalSchema()); schLen > types.MaxRowLength {
+		b.handleErr(analyzererrors.ErrInvalidRowLength.New(schLen))
+	}
+
+	return pkSch, tableCollation, tableComment
 }
 
 // jsonTableSpecToSchemaHelper creates a sql.Schema from a parsed TableSpec
