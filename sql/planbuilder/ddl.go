@@ -23,7 +23,6 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -1142,11 +1141,6 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	}
 
 	pkSch := sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...)
-
-	if schLen := types.SchemaAvgLength(pkSch.PhysicalSchema()); schLen > types.MaxRowLength {
-		b.handleErr(analyzererrors.ErrInvalidRowLength.New(schLen))
-	}
-
 	return pkSch, tableCollation, tableComment
 }
 

@@ -65,5 +65,5 @@ var (
 	ErrReadOnlyDatabase = errors.NewKind("Database %s is read-only.")
 
 	// ErrInvalidRowLength is returned when a DDL table spec exceeds the row length limit
-	ErrInvalidRowLength = errors.NewKind("invalid table spec: expected size < 65535, found %d")
+	ErrInvalidRowLength = errors.NewKind("invalid table spec: expected size < %d, found %d")
 )

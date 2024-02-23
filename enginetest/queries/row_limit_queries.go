@@ -16,12 +16,11 @@ package queries
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var longChar = make([]byte, 32746)
+var longChar = make([]byte, 32700)
 
 var RowLimitTests = []ScriptTest{
 	{
@@ -30,14 +29,13 @@ var RowLimitTests = []ScriptTest{
 			{
 				// latin1 is 1 byte per char
 				// numbers are chosen to match Dolt's |MaxTupleDataSize|
-				Query: `create table two_col (pk smallint primary key, c1 VARCHAR(32747) NOT NULL, c2 VARCHAR(32746) NOT NULL) CHARACTER SET latin1;`,
+				Query: `create table two_col (pk smallint primary key, c1 VARCHAR(32700) NOT NULL, c2 VARCHAR(32700) NOT NULL) CHARACTER SET latin1;`,
 			},
 			{
 				Query: fmt.Sprintf("insert into two_col values (0, '%s', '%s')", longChar, longChar),
 			},
 			{
-				// 65535 - 16 - 20
-				Query: "create table one_col (id int primary key, c1 VARCHAR(65499) NOT NULL) CHARACTER SET latin1;",
+				Query: "create table one_col (id int primary key, c1 VARCHAR(65486) NOT NULL) CHARACTER SET latin1;",
 			},
 			{
 				Query: fmt.Sprintf("insert into one_col values (0, '%s')", longChar),

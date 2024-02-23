@@ -234,6 +234,10 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
+	if err := validateMaxRowLength(schema.PhysicalSchema()); err != nil {
+		return err
+	}
+
 	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
 	table.db = d
 	table.data.comment = comment

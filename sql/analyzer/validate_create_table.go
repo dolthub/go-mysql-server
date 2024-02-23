@@ -17,8 +17,6 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -209,9 +207,6 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			if err := validateAlterSchema(sch); err != nil {
-				return nil, transform.SameTree, err
-			}
 			return n, transform.NewTree, nil
 		case *plan.RenameColumn:
 			n, err := nn.WithTargetSchema(sch.Copy())
@@ -231,10 +226,6 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
 			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			if err := validateAlterSchema(sch); err != nil {
 				return nil, transform.SameTree, err
 			}
 
@@ -399,13 +390,6 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	return newSch, nil
-}
-
-func validateAlterSchema(schema sql.Schema) error {
-	if schLen := types.SchemaAvgLength(schema.PhysicalSchema()); schLen > types.MaxRowLength {
-		return analyzererrors.ErrInvalidRowLength.New(schLen)
-	}
-	return nil
 }
 
 // isStrictMysqlCompatibilityEnabled returns true if the strict_mysql_compatibility SQL system variable has been
