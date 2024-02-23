@@ -17,14 +17,14 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/shopspring/decimal"
-"io"
+	"io"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/dolthub/jsonpath"
+	"github.com/shopspring/decimal"
 	"golang.org/x/exp/maps"
 
 	"github.com/dolthub/go-mysql-server/sql"
