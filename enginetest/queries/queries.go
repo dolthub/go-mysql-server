@@ -9238,6 +9238,115 @@ from typestable`,
 			{"false"},
 		},
 	},
+	{
+		Query: "select cast(true as json) = true;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast(false as json) = false;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast(true as json) = 'true';",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(false as json) = 'false';",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(cast(true as json) as char) = 'true';",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast(cast(false as json) as char) = 'false';",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast(true as json) = 1;",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(true as json) = 0;",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(false as json) = 1;",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(false as json) = 0;",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(cast(true as json) as signed) = 1;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast(cast(true as json) as signed) = 0;",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(cast(false as json) as signed) = 1;",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast(cast(false as json) as signed) = 0;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+
+	{
+		Query: "select cast('true' as json) = 'true';",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query: "select cast('true' as json) = true;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast('false' as json) = false;",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "select cast('false' as json) = 'false';",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

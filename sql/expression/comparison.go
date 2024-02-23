@@ -182,6 +182,11 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return l, r, types.DatetimeMaxPrecision, nil
 	}
 
+	// Rely on types.JSON.Compare to handle JSON comparisons
+	if types.IsJSON(leftType) || types.IsJSON(rightType) {
+		return left, right, types.JSON, nil
+	}
+
 	if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {
 		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
 		if err != nil {

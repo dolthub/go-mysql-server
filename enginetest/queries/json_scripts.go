@@ -742,4 +742,20 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "json bools",
+		SetUpScript: []string{
+			"create table t (j json);",
+			"insert into t values ('{\"x\": true}'), ('{\"x\": false}');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select j->'$.x' = true from t;",
+				Expected: []sql.Row{
+					{true},
+					{false},
+				},
+			},
+		},
+	},
 }

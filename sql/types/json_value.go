@@ -17,7 +17,8 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
-	"io"
+	"github.com/shopspring/decimal"
+"io"
 	"regexp"
 	"sort"
 	"strconv"
@@ -280,6 +281,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 	}
 }
 
+// CompareJSON compares two JSON values. It returns 0 if the values are equal, -1 if a < b, and 1 if a > b.
 // JSON values can be compared using the =, <, <=, >, >=, <>, !=, and <=> operators. BETWEEN IN() GREATEST() LEAST() are
 // not yet supported with JSON values.
 //
@@ -358,8 +360,31 @@ func CompareJSON(a, b interface{}) (int, error) {
 		return compareJSONObject(a, b)
 	case string:
 		return compareJSONString(a, b)
+	case int:
+		return compareJSONNumber(float64(a), b)
+	case uint8:
+		return compareJSONNumber(float64(a), b)
+	case uint16:
+		return compareJSONNumber(float64(a), b)
+	case uint32:
+		return compareJSONNumber(float64(a), b)
+	case uint64:
+		return compareJSONNumber(float64(a), b)
+	case int8:
+		return compareJSONNumber(float64(a), b)
+	case int16:
+		return compareJSONNumber(float64(a), b)
+	case int32:
+		return compareJSONNumber(float64(a), b)
+	case int64:
+		return compareJSONNumber(float64(a), b)
+	case float32:
+		return compareJSONNumber(float64(a), b)
 	case float64:
 		return compareJSONNumber(a, b)
+	case decimal.Decimal:
+		af, _ := a.Float64()
+		return compareJSONNumber(af, b)
 	case sql.JSONWrapper:
 		if jw, ok := b.(sql.JSONWrapper); ok {
 			b = jw.ToInterface()
@@ -487,7 +512,26 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 		string:
 		// a is lower precedence
 		return -1, nil
-
+	case int:
+		return compareJSONNumber(a, float64(b))
+	case uint8:
+		return compareJSONNumber(a, float64(b))
+	case uint16:
+		return compareJSONNumber(a, float64(b))
+	case uint32:
+		return compareJSONNumber(a, float64(b))
+	case uint64:
+		return compareJSONNumber(a, float64(b))
+	case int8:
+		return compareJSONNumber(a, float64(b))
+	case int16:
+		return compareJSONNumber(a, float64(b))
+	case int32:
+		return compareJSONNumber(a, float64(b))
+	case int64:
+		return compareJSONNumber(a, float64(b))
+	case float32:
+		return compareJSONNumber(a, float64(b))
 	case float64:
 		if a > b {
 			return 1, nil
@@ -496,7 +540,9 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 			return -1, nil
 		}
 		return 0, nil
-
+	case decimal.Decimal:
+		bf, _ := b.Float64()
+		return compareJSONNumber(a, bf)
 	default:
 		// a is higher precedence
 		return 1, nil
