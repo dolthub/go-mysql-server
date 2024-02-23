@@ -41,14 +41,6 @@ func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
-	//var err error
-	//if a, _, err = t.Convert(a); err != nil {
-	//	return 0, err
-	//}
-	//if b, _, err = t.Convert(b); err != nil {
-	//	return 0, err
-	//}
-	// todo: making a context here is expensive
 	return CompareJSON(a, b)
 }
 
