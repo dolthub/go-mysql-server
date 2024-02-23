@@ -668,12 +668,6 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 		// need this to prevent cross-joins higher in tree
 		return
 	}
-	if s1 == 883 && s2 == 3084 {
-		print()
-	}
-	if s2 == 883 && s1 == 3084 {
-		print()
-	}
 
 	//TODO collect all inner join filters that can be used as select filters
 	//TODO collect functional dependencies to avoid redundant filters
@@ -687,9 +681,6 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 		// Ensure that this edge forms a valid connection between the two sets.
 		if e.applicable(s1, s2) {
 			if e.filters != nil {
-				if i == 15 {
-					print()
-				}
 				innerJoinFilters = append(innerJoinFilters, e.filters...)
 			}
 			isRedundant = isRedundant || e.joinIsRedundant(s1, s2)
@@ -718,12 +709,6 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 		// already been constructed, because doing so can lead to a case where an
 		// inner join replaces a non-inner join.
 		if innerJoinFilters == nil {
-			if s1 == 883 && s2 == 3084 {
-				print()
-			}
-			if s2 == 883 && s1 == 3084 {
-				print()
-			}
 			j.addJoin(plan.JoinTypeCross, s1, s2, nil, nil, isRedundant)
 		} else {
 			j.addJoin(plan.JoinTypeInner, s1, s2, innerJoinFilters, nil, isRedundant)
@@ -1026,9 +1011,6 @@ func (e *edge) calcTES(edges []edge) {
 			break
 		}
 		eA := &edges[idx]
-		if idx == 14 {
-			print()
-		}
 		if !assoc(eA, eB) {
 			// The edges are not associative, so add a conflict rule mapping from the
 			// right input relations of the child to its left input relations.
