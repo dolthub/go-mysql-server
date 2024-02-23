@@ -1263,6 +1263,8 @@ func maxRowStorageSize(schema sql.Schema) int64 {
 			numBytesPerRow += 16
 		case sql.YearType:
 			numBytesPerRow += 8
+		default:
+			panic(fmt.Sprintf("unknown type in create table: %s", n.String()))
 		}
 	}
 	return numBytesPerRow
