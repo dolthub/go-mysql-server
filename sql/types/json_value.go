@@ -23,11 +23,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/jsonpath"
 	"github.com/shopspring/decimal"
 	"golang.org/x/exp/maps"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/jsonpath"
 )
 
 type JSONStringer interface {
