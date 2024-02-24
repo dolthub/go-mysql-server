@@ -589,7 +589,7 @@ WHERE EXISTS (
 			},
 			{
 				q:     `select * from xy where exists (select * from uv) and x = 0`,
-				types: []plan.JoinType{plan.JoinTypeCrossHash},
+				types: []plan.JoinType{plan.JoinTypeCross},
 				exp:   []sql.Row{{0, 2}},
 			},
 			{
@@ -633,7 +633,7 @@ FROM xy
 			},
 			{
 				q:     `select * from xy where exists (select * from uv join ab on u = a)`,
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeMerge},
+				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2}, {1, 0}, {2, 1}, {3, 3}},
 			},
 		},
@@ -1278,7 +1278,7 @@ join uv d on d.u = c.x`,
 			},
 			{
 				q:     "select * from vals where exists (select * from vals join ranges on val between min and max where min >= 2 and max <= 5)",
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeInner},
+				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeInner},
 				exp: []sql.Row{
 					{nil},
 					{0},

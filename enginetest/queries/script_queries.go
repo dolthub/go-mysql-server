@@ -5449,6 +5449,86 @@ WHERE
 			},
 		},
 	},
+	{
+		Name: "many joins with chain of ANDs",
+		SetUpScript: []string{
+			"create table t1  (a1  int primary key, b1  int);",
+			"create table t2  (a2  int primary key, b2  int);",
+			"create table t3  (a3  int primary key, b3  int);",
+			"create table t4  (a4  int primary key, b4  int);",
+			"create table t5  (a5  int primary key, b5  int);",
+			"create table t6  (a6  int primary key, b6  int);",
+			"create table t7  (a7  int primary key, b7  int);",
+			"create table t8  (a8  int primary key, b8  int);",
+			"create table t9  (a9  int primary key, b9  int);",
+			"create table t10 (a10 int primary key, b10 int);",
+			"insert into t1 values  (1, 1);",
+			"insert into t2 values  (1, 1);",
+			"insert into t3 values  (1, 1);",
+			"insert into t4 values  (1, 1);",
+			"insert into t5 values  (1, 1);",
+			"insert into t6 values  (1, 1);",
+			"insert into t7 values  (1, 1);",
+			"insert into t8 values  (1, 1);",
+			"insert into t9 values  (1, 1);",
+			"insert into t10 values (1, 1);",
+			"insert into t1 values  (2, 2);",
+			"insert into t2 values  (2, 2);",
+			"insert into t3 values  (2, 2);",
+			"insert into t4 values  (2, 2);",
+			"insert into t5 values  (2, 2);",
+			"insert into t6 values  (2, 2);",
+			"insert into t7 values  (2, 2);",
+			"insert into t8 values  (2, 2);",
+			"insert into t9 values  (2, 2);",
+			"insert into t10 values (2, 2);",
+			"insert into t1 values  (3, 3);",
+			"insert into t2 values  (3, 3);",
+			"insert into t3 values  (3, 3);",
+			"insert into t4 values  (3, 3);",
+			"insert into t5 values  (3, 3);",
+			"insert into t6 values  (3, 3);",
+			"insert into t7 values  (3, 3);",
+			"insert into t8 values  (3, 3);",
+			"insert into t9 values  (3, 3);",
+			"insert into t10 values (3, 3);",
+			"insert into t1 values  (4, 4);",
+			"insert into t2 values  (4, 4);",
+			"insert into t3 values  (4, 4);",
+			"insert into t4 values  (4, 4);",
+			"insert into t5 values  (4, 4);",
+			"insert into t6 values  (4, 4);",
+			"insert into t7 values  (4, 4);",
+			"insert into t8 values  (4, 4);",
+			"insert into t9 values  (4, 4);",
+			"insert into t10 values (4, 4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+select 
+    a1, a2, a3, a4, a5, a6, a7, a8, a9, a10
+from
+    t1, t2, t3, t4, t5, t6, t7, t8, t9, t10
+where
+      1 = a3  and
+     b9 = a3  and
+     b2 = a9  and
+    b10 = a2  and
+     b5 = a10 and
+     b7 = a5  and
+     b4 = a7  and
+     b1 = a4  and
+     b8 = a1  and
+     b6 = a8
+;
+`,
+				Expected: []sql.Row{
+					{1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

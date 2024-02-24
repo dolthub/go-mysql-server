@@ -721,6 +721,18 @@ func addCrossHashJoins(m *memo.Memo) error {
 			return nil
 		}
 
+		// Only apply cross hash join if there is a subquery alias in the group.
+		hasSqa := false
+		for _, tbl := range e.Group().RelProps.TableIdNodes() {
+			if _, ok := tbl.(*plan.SubqueryAlias); ok {
+				hasSqa = true
+				break
+			}
+		}
+		if !hasSqa {
+			return nil
+		}
+
 		rel := &memo.HashJoin{
 			JoinBase:   join.Copy(),
 			LeftAttrs:  nil,

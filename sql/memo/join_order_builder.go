@@ -138,6 +138,7 @@ type joinOrderBuilder struct {
 	nonInnerEdges             edgeSet
 	newPlanCb                 func(j *joinOrderBuilder, rel RelExpr)
 	forceFastDFSLookupForTest bool
+	hasCrossJoin              bool
 }
 
 func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
@@ -169,6 +170,11 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	if j.useFastReorder() {
 		j.buildSingleLookupPlan()
 		return
+	} else if j.hasCrossJoin {
+		// Rely on FastReorder to avoid plans that drop filters with cross joins
+		if j.buildSingleLookupPlan() {
+			return
+		}
 	}
 	// TODO: consider if buildSingleLookupPlan can/should run after ensureClosure. This could allow us to use analysis
 	// from ensureClosure in buildSingleLookupPlan, but the equivalence sets could create multiple possible join orders
@@ -206,6 +212,9 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		return j.buildMax1Row(n)
 	case *plan.JoinNode:
 		group = j.buildJoinOp(n)
+		if n.Op == plan.JoinTypeCross {
+			j.hasCrossJoin = true
+		}
 	case *plan.SetOp:
 		group = j.buildJoinLeaf(n)
 	case sql.NameableNode:
@@ -222,23 +231,23 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 }
 
 // buildSingleLookupPlan attempts to build a plan consisting only of lookup joins.
-func (j *joinOrderBuilder) buildSingleLookupPlan() {
+func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 	fds := j.m.root.RelProps.FuncDeps()
 	fdKey, hasKey := fds.StrictKey()
 	// fdKey is a set of columns which constrain all other columns in the join.
 	// If a chain of lookups exist, then the columns in fdKey must be in the innermost join.
 	if !hasKey {
-		return
+		return false
 	}
 	// We need to include all of the fdKey columns in the innermost join.
 	// For now, we just handle the case where the key is exactly one column.
 	if fdKey.Len() != 1 {
-		return
+		return false
 	}
 	for _, edge := range j.edges {
 		if !edge.op.joinType.IsInner() {
 			// This optimization currently only supports inner joins.
-			return
+			return false
 		}
 	}
 	keyColumn, _ := fdKey.Next(1)
@@ -253,6 +262,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 	}
 
 	// removedEdges contains the edges that have already been incorporated into the new plan, so we don't repeat them.
+	var succ bool
 	removedEdges := edgeSet{}
 	for removedEdges.Len() < len(j.vertices)-1 {
 		type joinCandidate struct {
@@ -278,7 +288,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 			if tables.Len() != 2 {
 				// We have encountered a filter condition more complicated than a simple equality check.
 				// We probably can't optimize this, so bail out.
-				return
+				return false
 			}
 			firstTab, _ := tables.Next(1)
 			secondTab, _ := tables.Next(firstTab + 1)
@@ -298,7 +308,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 		if len(joinCandidates) > 1 {
 			// We end up here if there are multiple possible choices for the next join.
 			// This could happen if there are redundant rules. For now, we bail out if this happens.
-			return
+			return false
 		}
 
 		if len(joinCandidates) == 0 {
@@ -312,7 +322,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 
 				currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
 			}
-			return
+			return false
 		}
 
 		nextEdgeIdx := joinCandidates[0].nextEdgeIdx
@@ -334,7 +344,9 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() {
 		currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
 		currentlyJoinedTables.Add(int(nextTableId))
 		removedEdges.Add(nextEdgeIdx)
+		succ = true
 	}
+	return succ
 }
 
 // ensureClosure adds the closure of all transitive equivalency groups

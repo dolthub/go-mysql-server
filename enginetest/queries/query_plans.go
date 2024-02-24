@@ -768,50 +768,41 @@ From xy;`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (tinyint))\n" +
 			"     ├─ group: \n" +
-			"     └─ CrossHashJoin\n" +
+			"     └─ CrossJoin\n" +
 			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
-			"         │       ├─ name: xy\n" +
+			"         │       ├─ name: uv\n" +
 			"         │       └─ columns: []\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE()\n" +
-			"             ├─ right-key: TUPLE()\n" +
-			"             └─ ProcessTable\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: uv\n" +
-			"                     └─ columns: []\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: []\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ CrossHashJoin\n" +
+			"     └─ CrossJoin\n" +
 			"         ├─ Table\n" +
-			"         │   ├─ name: xy\n" +
+			"         │   ├─ name: uv\n" +
 			"         │   └─ columns: []\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: ()\n" +
-			"             ├─ right-key: ()\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: []\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: []\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ CrossHashJoin\n" +
+			"     └─ CrossJoin\n" +
 			"         ├─ Table\n" +
-			"         │   ├─ name: xy\n" +
+			"         │   ├─ name: uv\n" +
 			"         │   └─ columns: []\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: ()\n" +
-			"             ├─ right-key: ()\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: []\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: []\n" +
 			"",
 	},
 	{
@@ -4564,59 +4555,50 @@ Select * from (
 	{
 		Query: `select * from ab where exists (select * from uv where a = 1)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [ab.a:0!null, ab.b:1]\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ IndexedTableAccess(ab)\n" +
-			"     │   ├─ index: [ab.a]\n" +
-			"     │   ├─ static: [{[1, 1]}]\n" +
-			"     │   ├─ colSet: (1,2)\n" +
-			"     │   ├─ tableId: 1\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: ab\n" +
-			"     │       └─ columns: [a b]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE()\n" +
-			"         ├─ right-key: TUPLE()\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ ProcessTable\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: uv\n" +
-			"                     └─ columns: [u v]\n" +
+			" ├─ columns: [ab.a:2!null, ab.b:3]\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ Limit(1)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: uv\n" +
+			"     │           └─ columns: [u v]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ static: [{[1, 1]}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
-			" └─ CrossHashJoin (estimated cost=537.000 rows=2000)\n" +
-			"     ├─ IndexedTableAccess(ab)\n" +
-			"     │   ├─ index: [ab.a]\n" +
-			"     │   └─ filters: [{[1, 1]}]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+			" └─ CrossJoin (estimated cost=2021.000 rows=2000)\n" +
+			"     ├─ Limit(1)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: uv\n" +
+			"     │       └─ columns: [u v]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ filters: [{[1, 1]}]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
-			" └─ CrossHashJoin (estimated cost=537.000 rows=2000) (actual rows=1 loops=1)\n" +
-			"     ├─ IndexedTableAccess(ab)\n" +
-			"     │   ├─ index: [ab.a]\n" +
-			"     │   └─ filters: [{[1, 1]}]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+			" └─ CrossJoin (estimated cost=2021.000 rows=2000) (actual rows=1 loops=1)\n" +
+			"     ├─ Limit(1)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: uv\n" +
+			"     │       └─ columns: [u v]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ filters: [{[1, 1]}]\n" +
 			"",
 	},
 	{
 		Query: `select * from ab where exists (select * from ab where a = 1)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:2!null, ab.b:3]\n" +
-			" └─ CrossHashJoin\n" +
+			" └─ CrossJoin\n" +
 			"     ├─ Limit(1)\n" +
 			"     │   └─ TableAlias(ab_1)\n" +
 			"     │       └─ IndexedTableAccess(ab)\n" +
@@ -4627,43 +4609,34 @@ Select * from (
 			"     │           └─ Table\n" +
 			"     │               ├─ name: ab\n" +
 			"     │               └─ columns: [a b]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE()\n" +
-			"         ├─ right-key: TUPLE()\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: ab\n" +
-			"                 └─ columns: [a b]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
-			" └─ CrossHashJoin (estimated cost=8505.000 rows=500000)\n" +
+			" └─ CrossJoin (estimated cost=505001.000 rows=500000)\n" +
 			"     ├─ Limit(1)\n" +
 			"     │   └─ TableAlias(ab_1)\n" +
 			"     │       └─ IndexedTableAccess(ab)\n" +
 			"     │           ├─ index: [ab.a]\n" +
 			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [a b]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ Table\n" +
-			"             └─ name: ab\n" +
+			"     └─ Table\n" +
+			"         └─ name: ab\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
-			" └─ CrossHashJoin (estimated cost=8505.000 rows=500000) (actual rows=4 loops=1)\n" +
+			" └─ CrossJoin (estimated cost=505001.000 rows=500000) (actual rows=4 loops=1)\n" +
 			"     ├─ Limit(1)\n" +
 			"     │   └─ TableAlias(ab_1)\n" +
 			"     │       └─ IndexedTableAccess(ab)\n" +
 			"     │           ├─ index: [ab.a]\n" +
 			"     │           ├─ filters: [{[1, 1]}]\n" +
 			"     │           └─ columns: [a b]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ Table\n" +
-			"             └─ name: ab\n" +
+			"     └─ Table\n" +
+			"         └─ name: ab\n" +
 			"",
 	},
 	{
@@ -5845,20 +5818,19 @@ inner join pq on true
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   ├─ colSet: (5-8)\n" +
 			" │   │   ├─ tableId: 3\n" +
-			" │   │   └─ CrossHashJoin\n" +
-			" │   │       ├─ Table\n" +
-			" │   │       │   ├─ name: ab\n" +
-			" │   │       │   ├─ columns: [a b]\n" +
-			" │   │       │   ├─ colSet: (1,2)\n" +
-			" │   │       │   └─ tableId: 1\n" +
-			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: TUPLE()\n" +
-			" │   │           ├─ right-key: TUPLE()\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [ab.a:2!null, ab.b:3, xy.x:0!null, xy.y:1]\n" +
+			" │   │       └─ CrossJoin\n" +
+			" │   │           ├─ Table\n" +
+			" │   │           │   ├─ name: xy\n" +
+			" │   │           │   ├─ columns: [x y]\n" +
+			" │   │           │   ├─ colSet: (3,4)\n" +
+			" │   │           │   └─ tableId: 2\n" +
 			" │   │           └─ Table\n" +
-			" │   │               ├─ name: xy\n" +
-			" │   │               ├─ columns: [x y]\n" +
-			" │   │               ├─ colSet: (3,4)\n" +
-			" │   │               └─ tableId: 2\n" +
+			" │   │               ├─ name: ab\n" +
+			" │   │               ├─ columns: [a b]\n" +
+			" │   │               ├─ colSet: (1,2)\n" +
+			" │   │               └─ tableId: 1\n" +
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: TUPLE()\n" +
 			" │       ├─ right-key: TUPLE()\n" +
@@ -5878,19 +5850,17 @@ inner join pq on true
 			" ├─ CrossHashJoin (estimated cost=113.050 rows=5)\n" +
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: alias1\n" +
-			" │   │   ├─ outerVisibility: false\n" +
-			" │   │   ├─ isLateral: false\n" +
+			" │   │   ├─ outerVisibility: false\n │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
-			" │   │   └─ CrossHashJoin\n" +
-			" │   │       ├─ Table\n" +
-			" │   │       │   ├─ name: ab\n" +
-			" │   │       │   └─ columns: [a b]\n" +
-			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: ()\n" +
-			" │   │           ├─ right-key: ()\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
+			" │   │       └─ CrossJoin\n" +
+			" │   │           ├─ Table\n" +
+			" │   │           │   ├─ name: xy\n" +
+			" │   │           │   └─ columns: [x y]\n" +
 			" │   │           └─ Table\n" +
-			" │   │               ├─ name: xy\n" +
-			" │   │               └─ columns: [x y]\n" +
+			" │   │               ├─ name: ab\n" +
+			" │   │               └─ columns: [a b]\n" +
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: ()\n" +
 			" │       ├─ right-key: ()\n" +
@@ -5911,16 +5881,15 @@ inner join pq on true
 			" │   │   ├─ outerVisibility: false\n" +
 			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
-			" │   │   └─ CrossHashJoin\n" +
-			" │   │       ├─ Table\n" +
-			" │   │       │   ├─ name: ab\n" +
-			" │   │       │   └─ columns: [a b]\n" +
-			" │   │       └─ HashLookup\n" +
-			" │   │           ├─ left-key: ()\n" +
-			" │   │           ├─ right-key: ()\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
+			" │   │       └─ CrossJoin\n" +
+			" │   │           ├─ Table\n" +
+			" │   │           │   ├─ name: xy\n" +
+			" │   │           │   └─ columns: [x y]\n" +
 			" │   │           └─ Table\n" +
-			" │   │               ├─ name: xy\n" +
-			" │   │               └─ columns: [x y]\n" +
+			" │   │               ├─ name: ab\n" +
+			" │   │               └─ columns: [a b]\n" +
 			" │   └─ HashLookup\n" +
 			" │       ├─ left-key: ()\n" +
 			" │       ├─ right-key: ()\n" +
@@ -16022,43 +15991,40 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ORDER BY 1,2,3`,
-		ExpectedPlan: "Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:1!null ASC nullsFirst, two_pk.pk2:2!null ASC nullsFirst)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ ProcessTable\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: one_pk\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE()\n" +
-			"         ├─ right-key: TUPLE()\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk.pk:2!null, two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
+			" └─ Sort(one_pk.pk:2!null ASC nullsFirst, two_pk.pk1:0!null ASC nullsFirst, two_pk.pk2:1!null ASC nullsFirst)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: two_pk\n" +
+			"         │       └─ columns: [pk1 pk2]\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2]\n" +
+			"                 ├─ name: one_pk\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
-		ExpectedEstimates: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
+			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: two_pk\n" +
+			"         │   └─ columns: [pk1 pk2]\n" +
 			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
-		ExpectedAnalysis: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: one_pk\n" +
-			"     │   └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2]\n" +
+			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: two_pk\n" +
+			"         │   └─ columns: [pk1 pk2]\n" +
 			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2]\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -16520,122 +16486,116 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		ExpectedPlan: "Sort(t1.pk:0!null ASC nullsFirst, t2.pk2:1!null ASC nullsFirst)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
-			"     │       ├─ tableId: 1\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk\n" +
-			"     │           └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE()\n" +
-			"         ├─ right-key: TUPLE()\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ t2.pk2:0!null\n" +
-			"             │   └─ 1 (tinyint)\n" +
-			"             └─ TableAlias(t2)\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk2]\n" +
-			"",
-		ExpectedEstimates: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t2.pk2 = 1)\n" +
-			"             └─ TableAlias(t2)\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.pk:1!null, t2.pk2:0!null]\n" +
+			" └─ Sort(t1.pk:1!null ASC nullsFirst, t2.pk2:0!null ASC nullsFirst)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ t2.pk2:0!null\n" +
+			"         │   │   └─ 1 (tinyint)\n" +
+			"         │   └─ TableAlias(t2)\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: two_pk\n" +
+			"         │               └─ columns: [pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ static: [{[1, 1]}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk2]\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk]\n" +
 			"",
-		ExpectedAnalysis: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ Filter\n" +
-			"             ├─ (t2.pk2 = 1)\n" +
-			"             └─ TableAlias(t2)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk2]\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [t1.pk, t2.pk2]\n" +
+			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (t2.pk2 = 1)\n" +
+			"         │   └─ TableAlias(t2)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ filters: [{[1, 1]}]\n" +
+			"                 └─ columns: [pk]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [t1.pk, t2.pk2]\n" +
+			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (t2.pk2 = 1)\n" +
+			"         │   └─ TableAlias(t2)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ filters: [{[1, 1]}]\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 AND pk1=1 ORDER BY 1,2`,
-		ExpectedPlan: "Sort(t1.pk:0!null ASC nullsFirst, t2.pk1:1!null ASC nullsFirst)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
-			"     │       ├─ tableId: 1\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk\n" +
-			"     │           └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE()\n" +
-			"         ├─ right-key: TUPLE()\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ IndexedTableAccess(two_pk)\n" +
-			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                 ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"                 ├─ colSet: (7-13)\n" +
-			"                 ├─ tableId: 2\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.pk:2!null, t2.pk1:0!null, t2.pk2:1!null]\n" +
+			" └─ Sort(t1.pk:2!null ASC nullsFirst, t2.pk1:0!null ASC nullsFirst)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{[1, 1], [1, 1]}]\n" +
+			"         │       ├─ colSet: (7-13)\n" +
+			"         │       ├─ tableId: 2\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ static: [{[1, 1]}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk1 pk2]\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk]\n" +
 			"",
-		ExpectedEstimates: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ IndexedTableAccess(two_pk)\n" +
-			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                 ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"                 └─ columns: [pk1 pk2]\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
+			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"         │       └─ columns: [pk1 pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ filters: [{[1, 1]}]\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
-		ExpectedAnalysis: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ IndexedTableAccess(two_pk)\n" +
-			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                 ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"                 └─ columns: [pk1 pk2]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
+			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"         │       └─ columns: [pk1 pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ filters: [{[1, 1]}]\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -16839,7 +16799,7 @@ inner join pq on true
 	{
 		Query: `SELECT pk,pk2, (SELECT pk from one_pk where pk = 1 limit 1) FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [t1.pk:0!null, t2.pk2:7!null, Subquery\n" +
+			" ├─ columns: [t1.pk:7!null, t2.pk2:1!null, Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   ├─ alias-string: select pk from one_pk where pk = 1 limit 1\n" +
 			" │   └─ Limit(1)\n" +
@@ -16852,29 +16812,26 @@ inner join pq on true
 			" │               ├─ name: one_pk\n" +
 			" │               └─ columns: [pk]\n" +
 			" │   as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
-			" └─ Sort(t1.pk:0!null ASC nullsFirst, t2.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ CrossHashJoin\n" +
-			"         ├─ TableAlias(t1)\n" +
-			"         │   └─ IndexedTableAccess(one_pk)\n" +
-			"         │       ├─ index: [one_pk.pk]\n" +
-			"         │       ├─ static: [{[1, 1]}]\n" +
-			"         │       ├─ colSet: (1-6)\n" +
-			"         │       ├─ tableId: 1\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: one_pk\n" +
-			"         │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE()\n" +
-			"             ├─ right-key: TUPLE()\n" +
-			"             └─ Filter\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ t2.pk2:1!null\n" +
-			"                 │   └─ 1 (tinyint)\n" +
-			"                 └─ TableAlias(t2)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: two_pk\n" +
-			"                             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ Sort(t1.pk:7!null ASC nullsFirst, t2.pk2:1!null ASC nullsFirst)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ t2.pk2:1!null\n" +
+			"         │   │   └─ 1 (tinyint)\n" +
+			"         │   └─ TableAlias(t2)\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: two_pk\n" +
+			"         │               └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ static: [{[1, 1]}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk2, Subquery\n" +
@@ -16886,19 +16843,16 @@ inner join pq on true
 			" │           └─ columns: [pk]\n" +
 			" │   as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			"     └─ CrossHashJoin\n" +
-			"         ├─ TableAlias(t1)\n" +
-			"         │   └─ IndexedTableAccess(one_pk)\n" +
-			"         │       ├─ index: [one_pk.pk]\n" +
-			"         │       └─ filters: [{[1, 1]}]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: ()\n" +
-			"             ├─ right-key: ()\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (t2.pk2 = 1)\n" +
-			"                 └─ TableAlias(t2)\n" +
-			"                     └─ Table\n" +
-			"                         └─ name: two_pk\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (t2.pk2 = 1)\n" +
+			"         │   └─ TableAlias(t2)\n" +
+			"         │       └─ Table\n" +
+			"         │           └─ name: two_pk\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 └─ filters: [{[1, 1]}]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.pk, t2.pk2, Subquery\n" +
@@ -16910,19 +16864,16 @@ inner join pq on true
 			" │           └─ columns: [pk]\n" +
 			" │   as (SELECT pk from one_pk where pk = 1 limit 1)]\n" +
 			" └─ Sort(t1.pk ASC, t2.pk2 ASC)\n" +
-			"     └─ CrossHashJoin\n" +
-			"         ├─ TableAlias(t1)\n" +
-			"         │   └─ IndexedTableAccess(one_pk)\n" +
-			"         │       ├─ index: [one_pk.pk]\n" +
-			"         │       └─ filters: [{[1, 1]}]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: ()\n" +
-			"             ├─ right-key: ()\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (t2.pk2 = 1)\n" +
-			"                 └─ TableAlias(t2)\n" +
-			"                     └─ Table\n" +
-			"                         └─ name: two_pk\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (t2.pk2 = 1)\n" +
+			"         │   └─ TableAlias(t2)\n" +
+			"         │       └─ Table\n" +
+			"         │           └─ name: two_pk\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 └─ filters: [{[1, 1]}]\n" +
 			"",
 	},
 	{
@@ -17545,32 +17496,29 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c LEFT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:0!null, a.c1:1, a.c2:2, a.c3:3, a.c4:4, a.c5:5]\n" +
+			" ├─ columns: [a.pk:1!null, a.c1:2, a.c2:3, a.c3:4, a.c4:5, a.c5:6]\n" +
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ b.pk:7!null\n" +
-			"     │   │   └─ c.pk:6!null\n" +
+			"     │   │   └─ c.pk:0!null\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.pk:7!null\n" +
-			"     │       └─ a.pk:0!null\n" +
-			"     ├─ CrossHashJoin\n" +
-			"     │   ├─ TableAlias(a)\n" +
+			"     │       └─ a.pk:1!null\n" +
+			"     ├─ CrossJoin\n" +
+			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
-			"     │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: TUPLE()\n" +
-			"     │       ├─ right-key: TUPLE()\n" +
-			"     │       └─ TableAlias(c)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk\n" +
-			"     │               ├─ columns: [pk]\n" +
-			"     │               ├─ colSet: (7-12)\n" +
-			"     │               └─ tableId: 2\n" +
+			"     │   │           └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"     │           ├─ colSet: (1-6)\n" +
+			"     │           └─ tableId: 1\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(c.pk:6!null, a.pk:0!null)\n" +
+			"         ├─ left-key: TUPLE(c.pk:0!null, a.pk:1!null)\n" +
 			"         ├─ right-key: TUPLE(b.pk:0!null, b.pk:0!null)\n" +
 			"         └─ TableAlias(b)\n" +
 			"             └─ Table\n" +
@@ -17583,18 +17531,15 @@ inner join pq on true
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5)\n" +
 			"     ├─ ((b.pk = c.pk) AND (b.pk = a.pk))\n" +
-			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5)\n" +
-			"     │   ├─ TableAlias(a)\n" +
+			"     ├─ CrossJoin (estimated cost=17.160 rows=5)\n" +
+			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: ()\n" +
-			"     │       ├─ right-key: ()\n" +
-			"     │       └─ TableAlias(c)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk]\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk, a.pk)\n" +
 			"         ├─ right-key: (b.pk, b.pk)\n" +
@@ -17607,18 +17552,15 @@ inner join pq on true
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5) (actual rows=16 loops=1)\n" +
 			"     ├─ ((b.pk = c.pk) AND (b.pk = a.pk))\n" +
-			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5) (actual rows=16 loops=1)\n" +
-			"     │   ├─ TableAlias(a)\n" +
+			"     ├─ CrossJoin (estimated cost=17.160 rows=5) (actual rows=16 loops=1)\n" +
+			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ Table\n" +
 			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: ()\n" +
-			"     │       ├─ right-key: ()\n" +
-			"     │       └─ TableAlias(c)\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: one_pk\n" +
-			"     │               └─ columns: [pk]\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk, a.pk)\n" +
 			"         ├─ right-key: (b.pk, b.pk)\n" +
@@ -17631,15 +17573,15 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c RIGHT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:1!null, a.c1:2, a.c2:3, a.c3:4, a.c4:5, a.c5:6]\n" +
+			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ Eq\n" +
 			"     │   │   ├─ b.pk:0!null\n" +
-			"     │   │   └─ c.pk:7!null\n" +
+			"     │   │   └─ c.pk:1!null\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.pk:0!null\n" +
-			"     │       └─ a.pk:1!null\n" +
+			"     │       └─ a.pk:2!null\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
@@ -17647,23 +17589,20 @@ inner join pq on true
 			"     │           └─ columns: [pk]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(b.pk:0!null, b.pk:0!null)\n" +
-			"         ├─ right-key: TUPLE(c.pk:6!null, a.pk:0!null)\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"         ├─ right-key: TUPLE(c.pk:0!null, a.pk:1!null)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(c)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             │       ├─ colSet: (1-6)\n" +
-			"             │       └─ tableId: 1\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE()\n" +
-			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         ├─ columns: [pk]\n" +
-			"                         ├─ colSet: (7-12)\n" +
-			"                         └─ tableId: 2\n" +
+			"             │       ├─ columns: [pk]\n" +
+			"             │       ├─ colSet: (7-12)\n" +
+			"             │       └─ tableId: 2\n" +
+			"             └─ TableAlias(a)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -17676,18 +17615,15 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (b.pk, b.pk)\n" +
 			"         ├─ right-key: (c.pk, a.pk)\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(c)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk]\n" +
+			"             └─ TableAlias(a)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -17700,18 +17636,15 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (b.pk, b.pk)\n" +
 			"         ├─ right-key: (c.pk, a.pk)\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(c)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk]\n" +
+			"             └─ TableAlias(a)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -17802,44 +17735,41 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk b INNER JOIN one_pk c ON b.pk = c.pk LEFT JOIN one_pk d ON c.pk = d.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:0!null, a.c1:1, a.c2:2, a.c3:3, a.c4:4, a.c5:5]\n" +
+			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
 			" └─ LeftOuterHashJoin\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ c.pk:7!null\n" +
+			"     │   ├─ c.pk:1!null\n" +
 			"     │   └─ d.pk:8!null\n" +
-			"     ├─ CrossHashJoin\n" +
-			"     │   ├─ TableAlias(a)\n" +
-			"     │   │   └─ ProcessTable\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: one_pk\n" +
-			"     │   │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: TUPLE()\n" +
-			"     │       ├─ right-key: TUPLE()\n" +
-			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: Eq\n" +
-			"     │           │   ├─ b.pk:6!null\n" +
-			"     │           │   └─ c.pk:7!null\n" +
-			"     │           ├─ TableAlias(b)\n" +
-			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │           │       ├─ index: [one_pk.pk]\n" +
-			"     │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           │       ├─ colSet: (7-12)\n" +
-			"     │           │       ├─ tableId: 2\n" +
-			"     │           │       └─ Table\n" +
-			"     │           │           ├─ name: one_pk\n" +
-			"     │           │           └─ columns: [pk]\n" +
-			"     │           └─ TableAlias(c)\n" +
-			"     │               └─ IndexedTableAccess(one_pk)\n" +
-			"     │                   ├─ index: [one_pk.pk]\n" +
-			"     │                   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                   ├─ colSet: (13-18)\n" +
-			"     │                   ├─ tableId: 3\n" +
-			"     │                   └─ Table\n" +
-			"     │                       ├─ name: one_pk\n" +
-			"     │                       └─ columns: [pk]\n" +
+			"     ├─ CrossJoin\n" +
+			"     │   ├─ MergeJoin\n" +
+			"     │   │   ├─ cmp: Eq\n" +
+			"     │   │   │   ├─ b.pk:0!null\n" +
+			"     │   │   │   └─ c.pk:1!null\n" +
+			"     │   │   ├─ TableAlias(b)\n" +
+			"     │   │   │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   │       ├─ index: [one_pk.pk]\n" +
+			"     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │   │       ├─ colSet: (7-12)\n" +
+			"     │   │   │       ├─ tableId: 2\n" +
+			"     │   │   │       └─ Table\n" +
+			"     │   │   │           ├─ name: one_pk\n" +
+			"     │   │   │           └─ columns: [pk]\n" +
+			"     │   │   └─ TableAlias(c)\n" +
+			"     │   │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │   │           ├─ index: [one_pk.pk]\n" +
+			"     │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (13-18)\n" +
+			"     │   │           ├─ tableId: 3\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: one_pk\n" +
+			"     │   │               └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ ProcessTable\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk\n" +
+			"     │               └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(c.pk:7!null)\n" +
+			"         ├─ left-key: TUPLE(c.pk:1!null)\n" +
 			"         ├─ right-key: TUPLE(d.pk:0!null)\n" +
 			"         └─ TableAlias(d)\n" +
 			"             └─ Table\n" +
@@ -17852,26 +17782,23 @@ inner join pq on true
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5)\n" +
 			"     ├─ (c.pk = d.pk)\n" +
-			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5)\n" +
-			"     │   ├─ TableAlias(a)\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: ()\n" +
-			"     │       ├─ right-key: ()\n" +
-			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: (b.pk = c.pk)\n" +
-			"     │           ├─ TableAlias(b)\n" +
-			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │           │       ├─ index: [one_pk.pk]\n" +
-			"     │           │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           │       └─ columns: [pk]\n" +
-			"     │           └─ TableAlias(c)\n" +
-			"     │               └─ IndexedTableAccess(one_pk)\n" +
-			"     │                   ├─ index: [one_pk.pk]\n" +
-			"     │                   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │                   └─ columns: [pk]\n" +
+			"     ├─ CrossJoin (estimated cost=17.160 rows=5)\n" +
+			"     │   ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
+			"     │   │   ├─ cmp: (b.pk = c.pk)\n" +
+			"     │   │   ├─ TableAlias(b)\n" +
+			"     │   │   │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   │       ├─ index: [one_pk.pk]\n" +
+			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   │       └─ columns: [pk]\n" +
+			"     │   │   └─ TableAlias(c)\n" +
+			"     │   │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │   │           ├─ index: [one_pk.pk]\n" +
+			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │           └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk)\n" +
 			"         ├─ right-key: (d.pk)\n" +
@@ -17884,26 +17811,23 @@ inner join pq on true
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LeftOuterHashJoin (estimated cost=17.100 rows=5) (actual rows=16 loops=1)\n" +
 			"     ├─ (c.pk = d.pk)\n" +
-			"     ├─ CrossHashJoin (estimated cost=16.090 rows=5) (actual rows=16 loops=1)\n" +
-			"     │   ├─ TableAlias(a)\n" +
-			"     │   │   └─ Table\n" +
-			"     │   │       ├─ name: one_pk\n" +
-			"     │   │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: ()\n" +
-			"     │       ├─ right-key: ()\n" +
-			"     │       └─ MergeJoin\n" +
-			"     │           ├─ cmp: (b.pk = c.pk)\n" +
-			"     │           ├─ TableAlias(b)\n" +
-			"     │           │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │           │       ├─ index: [one_pk.pk]\n" +
-			"     │           │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │           │       └─ columns: [pk]\n" +
-			"     │           └─ TableAlias(c)\n" +
-			"     │               └─ IndexedTableAccess(one_pk)\n" +
-			"     │                   ├─ index: [one_pk.pk]\n" +
-			"     │                   ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │                   └─ columns: [pk]\n" +
+			"     ├─ CrossJoin (estimated cost=17.160 rows=5) (actual rows=16 loops=1)\n" +
+			"     │   ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
+			"     │   │   ├─ cmp: (b.pk = c.pk)\n" +
+			"     │   │   ├─ TableAlias(b)\n" +
+			"     │   │   │   └─ IndexedTableAccess(one_pk)\n" +
+			"     │   │   │       ├─ index: [one_pk.pk]\n" +
+			"     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │   │       └─ columns: [pk]\n" +
+			"     │   │   └─ TableAlias(c)\n" +
+			"     │   │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │   │           ├─ index: [one_pk.pk]\n" +
+			"     │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │           └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: one_pk\n" +
+			"     │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (c.pk)\n" +
 			"         ├─ right-key: (d.pk)\n" +
@@ -17916,11 +17840,11 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c INNER JOIN (select * from one_pk) b ON b.pk = c.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:6!null, a.c1:7, a.c2:8, a.c3:9, a.c4:10, a.c5:11]\n" +
+			" ├─ columns: [a.pk:7!null, a.c1:8, a.c2:9, a.c3:10, a.c4:11, a.c5:12]\n" +
 			" └─ HashJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ b.pk:0!null\n" +
-			"     │   └─ c.pk:12!null\n" +
+			"     │   └─ c.pk:6!null\n" +
 			"     ├─ SubqueryAlias\n" +
 			"     │   ├─ name: b\n" +
 			"     │   ├─ outerVisibility: false\n" +
@@ -17935,22 +17859,19 @@ inner join pq on true
 			"     │       └─ tableId: 3\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(b.pk:0!null)\n" +
-			"         ├─ right-key: TUPLE(c.pk:6!null)\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(c)\n" +
 			"             │   └─ ProcessTable\n" +
 			"             │       └─ Table\n" +
 			"             │           ├─ name: one_pk\n" +
-			"             │           └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE()\n" +
-			"                 ├─ right-key: TUPLE()\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         ├─ columns: [pk]\n" +
-			"                         ├─ colSet: (7-12)\n" +
-			"                         └─ tableId: 2\n" +
+			"             │           └─ columns: [pk]\n" +
+			"             └─ TableAlias(a)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -17967,18 +17888,15 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (b.pk)\n" +
 			"         ├─ right-key: (c.pk)\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(c)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk]\n" +
+			"             └─ TableAlias(a)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
@@ -17995,18 +17913,15 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (b.pk)\n" +
 			"         ├─ right-key: (c.pk)\n" +
-			"         └─ CrossHashJoin\n" +
-			"             ├─ TableAlias(a)\n" +
+			"         └─ CrossJoin\n" +
+			"             ├─ TableAlias(c)\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: ()\n" +
-			"                 ├─ right-key: ()\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"             │       └─ columns: [pk]\n" +
+			"             └─ TableAlias(a)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -18075,14 +17990,14 @@ inner join pq on true
 	{
 		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and c.v2 = 0;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:2!null, c.v2:1]\n" +
+			" ├─ columns: [a.pk:3!null, c.v2:1]\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
-			"     │   ├─ b.pk:3!null\n" +
+			"     │   ├─ b.pk:2!null\n" +
 			"     │   └─ 0 (tinyint)\n" +
 			"     └─ LeftOuterHashJoin\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ b.pk:3!null\n" +
+			"         │   ├─ b.pk:2!null\n" +
 			"         │   └─ c.v1:0\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ Eq\n" +
@@ -18095,23 +18010,20 @@ inner join pq on true
 			"         │               └─ columns: [v1 v2]\n" +
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: TUPLE(c.v1:0)\n" +
-			"             ├─ right-key: TUPLE(b.pk:1!null)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
+			"             ├─ right-key: TUPLE(b.pk:0!null)\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ TableAlias(b)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
 			"                 │       ├─ columns: [pk]\n" +
-			"                 │       ├─ colSet: (1-4)\n" +
-			"                 │       └─ tableId: 1\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE()\n" +
-			"                     ├─ right-key: TUPLE()\n" +
-			"                     └─ TableAlias(b)\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk_three_idx\n" +
-			"                             ├─ columns: [pk]\n" +
-			"                             ├─ colSet: (5-8)\n" +
-			"                             └─ tableId: 2\n" +
+			"                 │       ├─ colSet: (5-8)\n" +
+			"                 │       └─ tableId: 2\n" +
+			"                 └─ TableAlias(a)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk_three_idx\n" +
+			"                         ├─ columns: [pk]\n" +
+			"                         ├─ colSet: (1-4)\n" +
+			"                         └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, c.v2]\n" +
@@ -18128,18 +18040,15 @@ inner join pq on true
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (c.v1)\n" +
 			"             ├─ right-key: (b.pk)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ TableAlias(b)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
 			"                 │       └─ columns: [pk]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: ()\n" +
-			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(b)\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk_three_idx\n" +
-			"                             └─ columns: [pk]\n" +
+			"                 └─ TableAlias(a)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk_three_idx\n" +
+			"                         └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, c.v2]\n" +
@@ -18156,18 +18065,15 @@ inner join pq on true
 			"         └─ HashLookup\n" +
 			"             ├─ left-key: (c.v1)\n" +
 			"             ├─ right-key: (b.pk)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
+			"             └─ CrossJoin\n" +
+			"                 ├─ TableAlias(b)\n" +
 			"                 │   └─ Table\n" +
 			"                 │       ├─ name: one_pk_three_idx\n" +
 			"                 │       └─ columns: [pk]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: ()\n" +
-			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(b)\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk_three_idx\n" +
-			"                             └─ columns: [pk]\n" +
+			"                 └─ TableAlias(a)\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk_three_idx\n" +
+			"                         └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -18178,7 +18084,7 @@ inner join pq on true
 			"     ├─ Eq\n" +
 			"     │   ├─ b.pk:0!null\n" +
 			"     │   └─ c.v1:3\n" +
-			"     ├─ CrossHashJoin\n" +
+			"     ├─ CrossJoin\n" +
 			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
@@ -18188,18 +18094,15 @@ inner join pq on true
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk_three_idx\n" +
 			"     │   │           └─ columns: [pk]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: TUPLE()\n" +
-			"     │       ├─ right-key: TUPLE()\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ Eq\n" +
-			"     │           │   ├─ a.v2:1\n" +
-			"     │           │   └─ 1 (tinyint)\n" +
-			"     │           └─ TableAlias(a)\n" +
-			"     │               └─ ProcessTable\n" +
-			"     │                   └─ Table\n" +
-			"     │                       ├─ name: one_pk_three_idx\n" +
-			"     │                       └─ columns: [pk v2]\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ Eq\n" +
+			"     │       │   ├─ a.v2:1\n" +
+			"     │       │   └─ 1 (tinyint)\n" +
+			"     │       └─ TableAlias(a)\n" +
+			"     │           └─ ProcessTable\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: one_pk_three_idx\n" +
+			"     │                   └─ columns: [pk v2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(b.pk:0!null)\n" +
 			"         ├─ right-key: TUPLE(c.v1:0)\n" +
@@ -18214,21 +18117,18 @@ inner join pq on true
 			" ├─ columns: [a.pk, c.v2]\n" +
 			" └─ LeftOuterHashJoin (estimated cost=30.130 rows=7)\n" +
 			"     ├─ (b.pk = c.v1)\n" +
-			"     ├─ CrossHashJoin (estimated cost=26.140 rows=6)\n" +
+			"     ├─ CrossJoin (estimated cost=49.480 rows=6)\n" +
 			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ filters: [{[0, 0]}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: ()\n" +
-			"     │       ├─ right-key: ()\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (a.v2 = 1)\n" +
-			"     │           └─ TableAlias(a)\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: one_pk_three_idx\n" +
-			"     │                   └─ columns: [pk v2]\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (a.v2 = 1)\n" +
+			"     │       └─ TableAlias(a)\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [pk v2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (b.pk)\n" +
 			"         ├─ right-key: (c.v1)\n" +
@@ -18241,21 +18141,18 @@ inner join pq on true
 			" ├─ columns: [a.pk, c.v2]\n" +
 			" └─ LeftOuterHashJoin (estimated cost=30.130 rows=7) (actual rows=4 loops=1)\n" +
 			"     ├─ (b.pk = c.v1)\n" +
-			"     ├─ CrossHashJoin (estimated cost=26.140 rows=6) (actual rows=1 loops=1)\n" +
+			"     ├─ CrossJoin (estimated cost=49.480 rows=6) (actual rows=1 loops=1)\n" +
 			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     │   │       ├─ index: [one_pk_three_idx.pk]\n" +
 			"     │   │       ├─ filters: [{[0, 0]}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: ()\n" +
-			"     │       ├─ right-key: ()\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (a.v2 = 1)\n" +
-			"     │           └─ TableAlias(a)\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: one_pk_three_idx\n" +
-			"     │                   └─ columns: [pk v2]\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ (a.v2 = 1)\n" +
+			"     │       └─ TableAlias(a)\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk_three_idx\n" +
+			"     │               └─ columns: [pk v2]\n" +
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (b.pk)\n" +
 			"         ├─ right-key: (c.v1)\n" +
@@ -19934,61 +19831,58 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 AND pk1=1 ORDER BY 1,2`,
-		ExpectedPlan: "Sort(t1.pk:0!null ASC nullsFirst, t2.pk1:1!null ASC nullsFirst)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ static: [{[1, 1]}]\n" +
-			"     │       ├─ colSet: (1-6)\n" +
-			"     │       ├─ tableId: 1\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: one_pk\n" +
-			"     │           └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE()\n" +
-			"         ├─ right-key: TUPLE()\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ IndexedTableAccess(two_pk)\n" +
-			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                 ├─ static: [{[1, 1], [1, 1]}]\n" +
-			"                 ├─ colSet: (7-13)\n" +
-			"                 ├─ tableId: 2\n" +
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [t1.pk:2!null, t2.pk1:0!null, t2.pk2:1!null]\n" +
+			" └─ Sort(t1.pk:2!null ASC nullsFirst, t2.pk1:0!null ASC nullsFirst)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ static: [{[1, 1], [1, 1]}]\n" +
+			"         │       ├─ colSet: (7-13)\n" +
+			"         │       ├─ tableId: 2\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: two_pk\n" +
+			"         │           └─ columns: [pk1 pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ static: [{[1, 1]}]\n" +
+			"                 ├─ colSet: (1-6)\n" +
+			"                 ├─ tableId: 1\n" +
 			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk1 pk2]\n" +
+			"                     ├─ name: one_pk\n" +
+			"                     └─ columns: [pk]\n" +
 			"",
-		ExpectedEstimates: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ IndexedTableAccess(two_pk)\n" +
-			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                 ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"                 └─ columns: [pk1 pk2]\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
+			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"         │       └─ columns: [pk1 pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ filters: [{[1, 1]}]\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
-		ExpectedAnalysis: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
-			" └─ CrossHashJoin\n" +
-			"     ├─ TableAlias(t1)\n" +
-			"     │   └─ IndexedTableAccess(one_pk)\n" +
-			"     │       ├─ index: [one_pk.pk]\n" +
-			"     │       ├─ filters: [{[1, 1]}]\n" +
-			"     │       └─ columns: [pk]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: ()\n" +
-			"         ├─ right-key: ()\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ IndexedTableAccess(two_pk)\n" +
-			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                 ├─ filters: [{[1, 1], [1, 1]}]\n" +
-			"                 └─ columns: [pk1 pk2]\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [t1.pk, t2.pk1, t2.pk2]\n" +
+			" └─ Sort(t1.pk ASC, t2.pk1 ASC)\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(t2)\n" +
+			"         │   └─ IndexedTableAccess(two_pk)\n" +
+			"         │       ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         │       ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"         │       └─ columns: [pk1 pk2]\n" +
+			"         └─ TableAlias(t1)\n" +
+			"             └─ IndexedTableAccess(one_pk)\n" +
+			"                 ├─ index: [one_pk.pk]\n" +
+			"                 ├─ filters: [{[1, 1]}]\n" +
+			"                 └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -22829,23 +22723,22 @@ With c as (
 			"     │       ├─ b.i:1!null\n" +
 			"     │       └─ 0 (tinyint)\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ TopN(Limit: [1 (bigint)]; a.pk:0!null ASC nullsFirst, b.i:1!null ASC nullsFirst)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk\n" +
-			"                 │       ├─ columns: [pk]\n" +
-			"                 │       ├─ colSet: (1-6)\n" +
-			"                 │       └─ tableId: 1\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE()\n" +
-			"                     ├─ right-key: TUPLE()\n" +
-			"                     └─ TableAlias(b)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
+			"             └─ Sort(a.pk:1!null ASC nullsFirst, b.i:0!null ASC nullsFirst)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       ├─ columns: [i]\n" +
+			"                     │       ├─ colSet: (7,8)\n" +
+			"                     │       └─ tableId: 2\n" +
+			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             ├─ columns: [i]\n" +
-			"                             ├─ colSet: (7,8)\n" +
-			"                             └─ tableId: 2\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             ├─ columns: [pk]\n" +
+			"                             ├─ colSet: (1-6)\n" +
+			"                             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22855,19 +22748,18 @@ With c as (
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ TopN(Limit: [1]; a.pk ASC, b.i ASC)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk\n" +
-			"                 │       └─ columns: [pk]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: ()\n" +
-			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(b)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ Sort(a.pk ASC, b.i ASC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i]\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22877,19 +22769,18 @@ With c as (
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ TopN(Limit: [1]; a.pk ASC, b.i ASC)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk\n" +
-			"                 │       └─ columns: [pk]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: ()\n" +
-			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(b)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ Sort(a.pk ASC, b.i ASC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i]\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -22907,23 +22798,22 @@ With c as (
 			"     │       ├─ b.i:1!null\n" +
 			"     │       └─ 0 (tinyint)\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ TopN(Limit: [1 (bigint)]; a.pk:0!null DESC nullsFirst, b.i:1!null DESC nullsFirst)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk\n" +
-			"                 │       ├─ columns: [pk]\n" +
-			"                 │       ├─ colSet: (1-6)\n" +
-			"                 │       └─ tableId: 1\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE()\n" +
-			"                     ├─ right-key: TUPLE()\n" +
-			"                     └─ TableAlias(b)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
+			"             └─ Sort(a.pk:1!null DESC nullsFirst, b.i:0!null DESC nullsFirst)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       ├─ columns: [i]\n" +
+			"                     │       ├─ colSet: (7,8)\n" +
+			"                     │       └─ tableId: 2\n" +
+			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             ├─ columns: [i]\n" +
-			"                             ├─ colSet: (7,8)\n" +
-			"                             └─ tableId: 2\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             ├─ columns: [pk]\n" +
+			"                             ├─ colSet: (1-6)\n" +
+			"                             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22933,19 +22823,18 @@ With c as (
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ TopN(Limit: [1]; a.pk DESC, b.i DESC)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk\n" +
-			"                 │       └─ columns: [pk]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: ()\n" +
-			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(b)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ Sort(a.pk DESC, b.i DESC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i]\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22955,19 +22844,18 @@ With c as (
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
 			"     └─ Limit(1)\n" +
-			"         └─ TopN(Limit: [1]; a.pk DESC, b.i DESC)\n" +
-			"             └─ CrossHashJoin\n" +
-			"                 ├─ TableAlias(a)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk\n" +
-			"                 │       └─ columns: [pk]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: ()\n" +
-			"                     ├─ right-key: ()\n" +
-			"                     └─ TableAlias(b)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ Sort(a.pk DESC, b.i DESC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
 			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i]\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 	},
 	{
