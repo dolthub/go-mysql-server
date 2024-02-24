@@ -171,6 +171,7 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 		j.buildSingleLookupPlan()
 		return
 	} else if j.hasCrossJoin {
+		// Rely on FastReorder to avoid plans that drop filters with cross joins
 		if j.buildSingleLookupPlan() {
 			return
 		}
