@@ -5809,97 +5809,99 @@ select * from
 inner join uv on true
 inner join pq on true
 `,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [alias1.a:2!null, alias1.b:3, alias1.x:4!null, alias1.y:5, uv.u:6!null, uv.v:7, pq.p:0!null, pq.q:1]\n" +
-			" └─ CrossJoin\n" +
-			"     ├─ ProcessTable\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: pq\n" +
-			"     │       └─ columns: [p q]\n" +
-			"     └─ CrossHashJoin\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: alias1\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   ├─ colSet: (5-8)\n" +
-			"         │   ├─ tableId: 3\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [ab.a:2!null, ab.b:3, xy.x:0!null, xy.y:1]\n" +
-			"         │       └─ CrossJoin\n" +
-			"         │           ├─ Table\n" +
-			"         │           │   ├─ name: xy\n" +
-			"         │           │   ├─ columns: [x y]\n" +
-			"         │           │   ├─ colSet: (3,4)\n" +
-			"         │           │   └─ tableId: 2\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: ab\n" +
-			"         │               ├─ columns: [a b]\n" +
-			"         │               ├─ colSet: (1,2)\n" +
-			"         │               └─ tableId: 1\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE()\n" +
-			"             ├─ right-key: TUPLE()\n" +
-			"             └─ ProcessTable\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: uv\n" +
-			"                     └─ columns: [u v]\n" +
+		ExpectedPlan: "CrossHashJoin\n" +
+			" ├─ CrossHashJoin\n" +
+			" │   ├─ SubqueryAlias\n" +
+			" │   │   ├─ name: alias1\n" +
+			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
+			" │   │   ├─ cacheable: true\n" +
+			" │   │   ├─ colSet: (5-8)\n" +
+			" │   │   ├─ tableId: 3\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [ab.a:2!null, ab.b:3, xy.x:0!null, xy.y:1]\n" +
+			" │   │       └─ CrossJoin\n" +
+			" │   │           ├─ Table\n" +
+			" │   │           │   ├─ name: xy\n" +
+			" │   │           │   ├─ columns: [x y]\n" +
+			" │   │           │   ├─ colSet: (3,4)\n" +
+			" │   │           │   └─ tableId: 2\n" +
+			" │   │           └─ Table\n" +
+			" │   │               ├─ name: ab\n" +
+			" │   │               ├─ columns: [a b]\n" +
+			" │   │               ├─ colSet: (1,2)\n" +
+			" │   │               └─ tableId: 1\n" +
+			" │   └─ HashLookup\n" +
+			" │       ├─ left-key: TUPLE()\n" +
+			" │       ├─ right-key: TUPLE()\n" +
+			" │       └─ ProcessTable\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: uv\n" +
+			" │               └─ columns: [u v]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: TUPLE()\n" +
+			"     ├─ right-key: TUPLE()\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pq\n" +
+			"             └─ columns: [p q]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [alias1.a, alias1.b, alias1.x, alias1.y, uv.u, uv.v, pq.p, pq.q]\n" +
-			" └─ CrossJoin (estimated cost=21.200 rows=5)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: pq\n" +
-			"     │   └─ columns: [p q]\n" +
-			"     └─ CrossHashJoin (estimated cost=113.050 rows=5)\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: alias1\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
-			"         │       └─ CrossJoin\n" +
-			"         │           ├─ Table\n" +
-			"         │           │   ├─ name: xy\n" +
-			"         │           │   └─ columns: [x y]\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: ab\n" +
-			"         │               └─ columns: [a b]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: ()\n" +
-			"             ├─ right-key: ()\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+		ExpectedEstimates: "CrossHashJoin (estimated cost=17.100 rows=5)\n" +
+			" ├─ CrossHashJoin (estimated cost=113.050 rows=5)\n" +
+			" │   ├─ SubqueryAlias\n" +
+			" │   │   ├─ name: alias1\n" +
+			" │   │   ├─ outerVisibility: false\n │   │   ├─ isLateral: false\n" +
+			" │   │   ├─ cacheable: true\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
+			" │   │       └─ CrossJoin\n" +
+			" │   │           ├─ Table\n" +
+			" │   │           │   ├─ name: xy\n" +
+			" │   │           │   └─ columns: [x y]\n" +
+			" │   │           └─ Table\n" +
+			" │   │               ├─ name: ab\n" +
+			" │   │               └─ columns: [a b]\n" +
+			" │   └─ HashLookup\n" +
+			" │       ├─ left-key: ()\n" +
+			" │       ├─ right-key: ()\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: uv\n" +
+			" │           └─ columns: [u v]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: ()\n" +
+			"     ├─ right-key: ()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pq\n" +
+			"         └─ columns: [p q]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [alias1.a, alias1.b, alias1.x, alias1.y, uv.u, uv.v, pq.p, pq.q]\n" +
-			" └─ CrossJoin (estimated cost=21.200 rows=5) (actual rows=256 loops=1)\n" +
-			"     ├─ Table\n" +
-			"     │   ├─ name: pq\n" +
-			"     │   └─ columns: [p q]\n" +
-			"     └─ CrossHashJoin (estimated cost=113.050 rows=5) (actual rows=64 loops=4)\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: alias1\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
-			"         │       └─ CrossJoin\n" +
-			"         │           ├─ Table\n" +
-			"         │           │   ├─ name: xy\n" +
-			"         │           │   └─ columns: [x y]\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: ab\n" +
-			"         │               └─ columns: [a b]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: ()\n" +
-			"             ├─ right-key: ()\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+		ExpectedAnalysis: "CrossHashJoin (estimated cost=17.100 rows=5) (actual rows=256 loops=1)\n" +
+			" ├─ CrossHashJoin (estimated cost=113.050 rows=5) (actual rows=64 loops=1)\n" +
+			" │   ├─ SubqueryAlias\n" +
+			" │   │   ├─ name: alias1\n" +
+			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
+			" │   │   ├─ cacheable: true\n" +
+			" │   │   └─ Project\n" +
+			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
+			" │   │       └─ CrossJoin\n" +
+			" │   │           ├─ Table\n" +
+			" │   │           │   ├─ name: xy\n" +
+			" │   │           │   └─ columns: [x y]\n" +
+			" │   │           └─ Table\n" +
+			" │   │               ├─ name: ab\n" +
+			" │   │               └─ columns: [a b]\n" +
+			" │   └─ HashLookup\n" +
+			" │       ├─ left-key: ()\n" +
+			" │       ├─ right-key: ()\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: uv\n" +
+			" │           └─ columns: [u v]\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: ()\n" +
+			"     ├─ right-key: ()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pq\n" +
+			"         └─ columns: [p q]\n" +
 			"",
 	},
 	{
