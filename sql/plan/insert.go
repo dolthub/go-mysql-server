@@ -15,12 +15,12 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 

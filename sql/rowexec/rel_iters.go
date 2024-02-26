@@ -18,7 +18,6 @@ import (
 	"container/heap"
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"io"
 	"sort"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
