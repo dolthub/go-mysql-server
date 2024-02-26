@@ -4,7 +4,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -59,7 +58,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
 		resolvedTable, ok := resolvedTables[tableToBeUpdated]
 		if !ok {
-			return nil, plan_errors.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
 		var table = resolvedTable.UnderlyingTable()
@@ -67,7 +66,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 		// If there is no UpdatableTable for a table being updated, error out
 		updatable, ok := table.(sql.UpdatableTable)
 		if !ok && updatable == nil {
-			return nil, plan_errors.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
 		keyless := sql.IsKeyless(updatable.Schema())

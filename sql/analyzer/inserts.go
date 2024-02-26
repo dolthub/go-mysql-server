@@ -221,10 +221,10 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 				if _, ok := exprType.(sql.EnumType); ok && types.IsText(otherCol.Type) {
 					continue
 				}
-				return plan_errors.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
+				return plan.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
 			}
 		default:
-			return plan_errors.ErrInsertIntoUnsupportedValues.New(expr)
+			return plan.ErrInsertIntoUnsupportedValues.New(expr)
 		}
 	}
 	return nil

@@ -721,7 +721,7 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 		}
 		prev, ok = val.(sql.Row)
 		if !ok {
-			return nil, plan_errors.ErrUpdateUnexpectedSetResult.New(val)
+			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
 	return prev, nil

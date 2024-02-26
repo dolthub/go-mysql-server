@@ -17,11 +17,15 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
+
+var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")
+var ErrUpdateForTableNotSupported = errors.NewKind("The target table %s of the UPDATE is not updatable")
+var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but expression returned %T")
 
 // Update is a node for updating rows on tables.
 type Update struct {
@@ -56,7 +60,7 @@ func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
 	case *SubqueryAlias:
-		return nil, plan_errors.ErrUpdateNotSupported.New()
+		return nil, ErrUpdateNotSupported.New()
 	case *TriggerExecutor:
 		return GetUpdatable(node.Left())
 	case sql.TableWrapper:
@@ -65,7 +69,7 @@ func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return node.GetUpdatable(), nil
 	}
 	if len(node.Children()) > 1 {
-		return nil, plan_errors.ErrUpdateNotSupported.New()
+		return nil, ErrUpdateNotSupported.New()
 	}
 	for _, child := range node.Children() {
 		updater, _ := GetUpdatable(child)
@@ -73,7 +77,7 @@ func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 			return updater, nil
 		}
 	}
-	return nil, plan_errors.ErrUpdateNotSupported.New()
+	return nil, ErrUpdateNotSupported.New()
 }
 
 func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
@@ -83,7 +87,7 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	case sql.TableWrapper:
 		return getUpdatableTable(t.Underlying())
 	default:
-		return nil, plan_errors.ErrUpdateNotSupported.New()
+		return nil, ErrUpdateNotSupported.New()
 	}
 }
 

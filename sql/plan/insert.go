@@ -24,6 +24,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
+var ErrInsertIntoNotSupported = errors.NewKind("table doesn't support INSERT INTO")
+var ErrReplaceIntoNotSupported = errors.NewKind("table doesn't support REPLACE INTO")
+var ErrOnDuplicateKeyUpdateNotSupported = errors.NewKind("table doesn't support ON DUPLICATE KEY UPDATE")
+var ErrAutoIncrementNotSupported = errors.NewKind("table doesn't support AUTO_INCREMENT")
+var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
+var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
+var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
+var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %s")
+
 // cc: https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 // The INSERT IGNORE syntax applies to these ignorable errors
 // ER_BAD_NULL_ERROR - yes
@@ -376,7 +386,7 @@ func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 	case *PrependNode:
 		return GetInsertable(node.Child)
 	default:
-		return nil, plan_errors.ErrInsertIntoNotSupported.New()
+		return nil, ErrInsertIntoNotSupported.New()
 	}
 }
 
@@ -387,6 +397,6 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 	case sql.TableWrapper:
 		return getInsertableTable(t.Underlying())
 	default:
-		return nil, plan_errors.ErrInsertIntoNotSupported.New()
+		return nil, ErrInsertIntoNotSupported.New()
 	}
 }

@@ -931,7 +931,7 @@ func getIndexableTable(t sql.Table) (sql.DriverIndexableTable, error) {
 	case sql.TableWrapper:
 		return getIndexableTable(t.Underlying())
 	default:
-		return nil, plan_errors.ErrNotIndexable.New()
+		return nil, plan.ErrNotIndexable.New()
 	}
 }
 
@@ -1247,7 +1247,7 @@ func (i *addColumnIter) UpdateRowsWithDefaults(ctx *sql.Context, table sql.Table
 	rt := plan.NewResolvedTable(table, i.a.Db, nil)
 	updatable, ok := table.(sql.UpdatableTable)
 	if !ok {
-		return plan_errors.ErrUpdateNotSupported.New(rt.Name())
+		return plan.ErrUpdateNotSupported.New(rt.Name())
 	}
 
 	tableIter, err := i.b.buildNodeExec(ctx, rt, nil)
@@ -1362,7 +1362,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	if newSch.HasAutoIncrement() && !i.a.TargetSchema().HasAutoIncrement() {
 		t, ok := rwt.(sql.AutoIncrementTable)
 		if !ok {
-			return false, plan_errors.ErrAutoIncrementNotSupported.New()
+			return false, plan.ErrAutoIncrementNotSupported.New()
 		}
 
 		autoIncColIdx = newSch.IndexOf(i.a.Column().Name, i.a.Column().Source)
@@ -1814,7 +1814,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 	indexable, ok := table.(sql.IndexAlterableTable)
 	if !ok {
-		return plan_errors.ErrNotIndexable.New()
+		return plan.ErrNotIndexable.New()
 	}
 
 	if err != nil {
@@ -2183,7 +2183,7 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 
 	insertable, ok := table.(sql.InsertableTable)
 	if !ok {
-		return plan_errors.ErrInsertIntoNotSupported.New()
+		return plan.ErrInsertIntoNotSupported.New()
 	}
 	if err != nil {
 		return err
@@ -2191,7 +2191,7 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 
 	autoTbl, ok := insertable.(sql.AutoIncrementTable)
 	if !ok {
-		return plan_errors.ErrAutoIncrementNotSupported.New(insertable.Name())
+		return plan.ErrAutoIncrementNotSupported.New(insertable.Name())
 	}
 
 	// No-op if the table doesn't already have an auto increment column.

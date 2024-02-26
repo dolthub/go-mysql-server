@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var LoadDataScripts = []ScriptTest{
@@ -279,15 +279,15 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (fake_col, pk, i)",
-				ExpectedErr: plan_errors.ErrInsertIntoNonexistentColumn,
+				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
 			},
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (pk, fake_col, i)",
-				ExpectedErr: plan_errors.ErrInsertIntoNonexistentColumn,
+				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
 			},
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (pk, i, fake_col)",
-				ExpectedErr: plan_errors.ErrInsertIntoNonexistentColumn,
+				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
 			},
 		},
 	},

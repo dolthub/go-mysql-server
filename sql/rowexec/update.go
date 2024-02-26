@@ -20,7 +20,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 )
 
 type updateIter struct {
@@ -103,7 +102,7 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 		var ok bool
 		row, ok = val.(sql.Row)
 		if !ok {
-			return nil, plan_errors.ErrUpdateUnexpectedSetResult.New(val)
+			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
 
@@ -116,7 +115,7 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 		var ok bool
 		row, ok = val.(sql.Row)
 		if !ok {
-			return nil, plan_errors.ErrUpdateUnexpectedSetResult.New(val)
+			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
 
