@@ -951,7 +951,7 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = 1553 // TODO: Needs to be added to vitess
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
-	case plan_errors.ErrInsertIntoNonexistentColumn.Is(err):
+	case ErrUnknownColumn.Is(err):
 		code = mysql.ERBadFieldError
 	case ErrLockDeadlock.Is(err):
 		// ER_LOCK_DEADLOCK signals that the transaction was rolled back

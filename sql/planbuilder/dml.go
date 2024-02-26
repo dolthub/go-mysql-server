@@ -82,7 +82,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if rt != nil {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
-	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, sch)
+	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, tableName, sch)
 
 	// TODO: on duplicate expressions need to reference both VALUES and
 	//  derived columns equally in ON DUPLICATE UPDATE expressions.
@@ -121,12 +121,12 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	return
 }
 
-func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, destSchema sql.Schema) (outScope *scope) {
+func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope) {
 	switch v := ir.(type) {
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, v)
 	case ast.Values:
-		outScope = b.buildInsertValues(inScope, v, columnNames, destSchema)
+		outScope = b.buildInsertValues(inScope, v, columnNames, tableName, destSchema)
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
@@ -134,7 +134,7 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 	return
 }
 
-func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []string, destSchema sql.Schema) (outScope *scope) {
+func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope) {
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
 
 	for i, columnName := range columnNames {
@@ -143,7 +143,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 			if !b.TriggerCtx().Call && len(b.TriggerCtx().UnresolvedTables) > 0 {
 				continue
 			}
-			err := plan.ErrInsertIntoNonexistentColumn.New(columnName)
+			err := sql.ErrUnknownColumn.New(columnName, tableName)
 			b.handleErr(err)
 		}
 

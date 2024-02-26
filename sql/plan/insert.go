@@ -31,7 +31,6 @@ var ErrOnDuplicateKeyUpdateNotSupported = errors.NewKind("table doesn't support 
 var ErrAutoIncrementNotSupported = errors.NewKind("table doesn't support AUTO_INCREMENT")
 var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
 var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
-var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
 var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %s")
 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
