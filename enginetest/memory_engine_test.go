@@ -679,6 +679,10 @@ func TestCreateTable(t *testing.T) {
 	enginetest.TestCreateTable(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestRowLimit(t *testing.T) {
+	enginetest.TestRowLimit(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestDropTable(t *testing.T) {
 	enginetest.TestDropTable(t, enginetest.NewDefaultMemoryHarness())
 }

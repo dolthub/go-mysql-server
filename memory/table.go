@@ -27,6 +27,7 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -1118,9 +1119,12 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 	sess := SessionFromContext(ctx)
 	data := sess.tableData(t)
 
-	newColIdx, data := addColumnToSchema(ctx, data, column, order)
+	newColIdx, data, err := addColumnToSchema(ctx, data, column, order)
+	if err != nil {
+		return err
+	}
 
-	err := insertValueInRows(ctx, data, newColIdx, column.Default)
+	err = insertValueInRows(ctx, data, newColIdx, column.Default)
 	if err != nil {
 		return err
 	}
@@ -1130,7 +1134,7 @@ func (t *Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Colum
 }
 
 // addColumnToSchema adds the given column to the schema and returns the new index
-func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, order *sql.ColumnOrder) (int, *TableData) {
+func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, order *sql.ColumnOrder) (int, *TableData, error) {
 	// TODO: might have wrong case
 	newCol.Source = data.tableName
 	newSch := make(sql.Schema, len(data.schema.Schema)+1)
@@ -1159,6 +1163,10 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 			newColIdx = i - numPrecedingVirtuals
 			i++
 		}
+	}
+
+	if err := validateMaxRowLength(newSch.PhysicalSchema()); err != nil {
+		return 0, nil, err
 	}
 
 	for _, newSchCol := range newSch {
@@ -1215,7 +1223,51 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 
 	data.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
 
-	return newColIdx, data
+	return newColIdx, data, nil
+}
+
+func validateMaxRowLength(sch sql.Schema) error {
+	if rowLen := maxRowStorageSize(sch); rowLen > types.MaxRowLength {
+		return analyzererrors.ErrInvalidRowLength.New(types.MaxRowLength, rowLen)
+	}
+	return nil
+}
+
+// maxRowStorageSize simulates InnoDB's storage limitations,
+// which are different than Dolt's.
+func maxRowStorageSize(schema sql.Schema) int64 {
+	var numBytesPerRow int64 = 0
+	for _, col := range schema {
+		switch n := col.Type.(type) {
+		case sql.NumberType:
+			numBytesPerRow += 8
+		case sql.StringType:
+			if types.IsTextBlob(n) {
+				numBytesPerRow += 16
+			} else {
+				numBytesPerRow += n.MaxByteLength()
+			}
+		case types.BitType:
+			numBytesPerRow += 8
+		case sql.DatetimeType:
+			numBytesPerRow += 8
+		case sql.DecimalType:
+			numBytesPerRow += int64(n.MaximumScale())
+		case sql.EnumType:
+			numBytesPerRow += 2
+		case types.JsonType:
+			numBytesPerRow += 20
+		case sql.NullType:
+			numBytesPerRow += 1
+		case types.TimeType:
+			numBytesPerRow += 16
+		case sql.YearType:
+			numBytesPerRow += 8
+		default:
+			panic(fmt.Sprintf("unknown type in create table: %s", n.String()))
+		}
+	}
+	return numBytesPerRow
 }
 
 func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
@@ -1337,8 +1389,13 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		pkNameToOrdIdx[data.schema.Schema[ord].Name] = i
 	}
 
-	_, data = dropColumnFromSchema(ctx, data, columnName)
-	_, data = addColumnToSchema(ctx, data, column, order)
+	oldSch := data.schema
+	_, _ = dropColumnFromSchema(ctx, data, columnName)
+	_, _, err := addColumnToSchema(ctx, data, column, order)
+	if err != nil {
+		data.schema = oldSch
+		return err
+	}
 
 	newPkOrds := make([]int, len(data.schema.PkOrdinals))
 	for ord, col := range data.schema.Schema {
@@ -2374,9 +2431,12 @@ func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
 }
 
 func (t *TableRevision) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.ColumnOrder) error {
-	newColIdx, data := addColumnToSchema(ctx, t.data, column, order)
+	newColIdx, data, err := addColumnToSchema(ctx, t.data, column, order)
+	if err != nil {
+		return err
+	}
 
-	err := insertValueInRows(ctx, data, newColIdx, column.Default)
+	err = insertValueInRows(ctx, data, newColIdx, column.Default)
 	if err != nil {
 		return err
 	}
