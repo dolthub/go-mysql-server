@@ -885,6 +885,8 @@ var (
 	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
 
 	ErrInvalidTypeForLimit = errors.NewKind("invalid limit. expected %T, found %T")
+
+	ErrColumnSpecifiedTwice = errors.NewKind("column '%v' specified twice")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
@@ -953,6 +955,8 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERTruncatedWrongValueForField
 	case ErrUnknownColumn.Is(err):
 		code = mysql.ERBadFieldError
+	case ErrColumnSpecifiedTwice.Is(err):
+		code = mysql.ERFieldSpecifiedTwice
 	case ErrLockDeadlock.Is(err):
 		// ER_LOCK_DEADLOCK signals that the transaction was rolled back
 		// due to a deadlock between concurrent transactions.

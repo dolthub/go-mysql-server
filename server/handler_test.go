@@ -261,6 +261,14 @@ func TestHandlerErrors(t *testing.T) {
 			query:             "INSERT INTO `test`.`no_such_table` (`id`, `v`) VALUES (1, 2)",
 			expectedErrorCode: mysql.ERNoSuchTable,
 		},
+		{
+			name:              "insert into same column twice",
+			handler:           handler,
+			conn:              dummyConn,
+			setup:             []string{"CREATE TABLE `test_table` ( `id` INT NOT NULL PRIMARY KEY, `v` INT );"},
+			query:             "INSERT INTO `test`.`test_table` (`id`, `id`, `v`) VALUES (1, 2, 3)",
+			expectedErrorCode: mysql.ERFieldSpecifiedTwice,
+		},
 	}
 
 	for _, test := range tests {

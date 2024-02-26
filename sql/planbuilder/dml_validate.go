@@ -111,7 +111,7 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 		if _, exists := usedNames[columnName]; !exists {
 			usedNames[columnName] = struct{}{}
 		} else {
-			return plan.ErrInsertIntoDuplicateColumn.New(columnName)
+			return sql.ErrColumnSpecifiedTwice.New(columnName)
 		}
 	}
 	return nil
