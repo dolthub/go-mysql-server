@@ -15,15 +15,12 @@
 package plan
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
-
-var ErrAggregationMissingWindow = errors.New("aggregation missing window expression")
 
 type Window struct {
 	SelectExprs []sql.Expression

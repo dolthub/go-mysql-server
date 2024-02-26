@@ -16,13 +16,9 @@ package plan
 
 import (
 	"fmt"
-
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 )
-
-var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FROM")
 
 // DeleteFrom is a node describing a deletion from some table.
 type DeleteFrom struct {
@@ -148,7 +144,7 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 	case *TableAlias:
 		return GetDeletable(node.Child)
 	case *SubqueryAlias:
-		return nil, ErrDeleteFromNotSupported.New()
+		return nil, plan_errors.ErrDeleteFromNotSupported.New()
 	case *TriggerExecutor:
 		return GetDeletable(node.Left())
 	case sql.TableWrapper:
@@ -157,7 +153,7 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return nil, fmt.Errorf("target table %s of the DELETE is not updatable", node.Name())
 	}
 	if len(node.Children()) > 1 {
-		return nil, ErrDeleteFromNotSupported.New()
+		return nil, plan_errors.ErrDeleteFromNotSupported.New()
 	}
 	for _, child := range node.Children() {
 		deleter, _ := GetDeletable(child)
@@ -165,7 +161,7 @@ func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 			return deleter, nil
 		}
 	}
-	return nil, ErrDeleteFromNotSupported.New()
+	return nil, plan_errors.ErrDeleteFromNotSupported.New()
 }
 
 func getDeletableTable(t sql.Table) (sql.DeletableTable, error) {
@@ -175,7 +171,7 @@ func getDeletableTable(t sql.Table) (sql.DeletableTable, error) {
 	case sql.TableWrapper:
 		return getDeletableTable(t.Underlying())
 	default:
-		return nil, ErrDeleteFromNotSupported.New()
+		return nil, plan_errors.ErrDeleteFromNotSupported.New()
 	}
 }
 

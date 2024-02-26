@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -219,10 +220,10 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 				if _, ok := exprType.(sql.EnumType); ok && types.IsText(otherCol.Type) {
 					continue
 				}
-				return plan.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
+				return plan_errors.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
 			}
 		default:
-			return plan.ErrInsertIntoUnsupportedValues.New(expr)
+			return plan_errors.ErrInsertIntoUnsupportedValues.New(expr)
 		}
 	}
 	return nil

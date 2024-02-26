@@ -17,6 +17,7 @@ package queries
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -519,7 +520,7 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET t.year_built = 1903;",
-				ExpectedErr: plan.ErrUpdateForTableNotSupported,
+				ExpectedErr: plan_errors.ErrUpdateForTableNotSupported,
 			},
 			{
 				Query:       "UPDATE sales JOIN (SELECT year_built FROM sales) AS t SET sales.year_built = 2030;",
@@ -531,7 +532,7 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET t.year_built = 2030;",
-				ExpectedErr: plan.ErrUpdateForTableNotSupported,
+				ExpectedErr: plan_errors.ErrUpdateForTableNotSupported,
 			},
 		},
 	},

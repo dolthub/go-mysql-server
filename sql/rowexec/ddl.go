@@ -30,6 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -279,7 +280,7 @@ func (b *BaseBuilder) buildSingleDropView(ctx *sql.Context, n *plan.SingleDropVi
 func (b *BaseBuilder) buildCreateIndex(ctx *sql.Context, n *plan.CreateIndex, row sql.Row) (sql.RowIter, error) {
 	table, ok := n.Table.(*plan.ResolvedTable)
 	if !ok {
-		return nil, plan.ErrNotIndexable.New()
+		return nil, plan_errors.ErrNotIndexable.New()
 	}
 
 	indexable, err := getIndexableTable(table.Table)
@@ -295,7 +296,7 @@ func (b *BaseBuilder) buildCreateIndex(ctx *sql.Context, n *plan.CreateIndex, ro
 	}
 
 	if driver == nil {
-		return nil, plan.ErrInvalidIndexDriver.New(n.Driver)
+		return nil, plan_errors.ErrInvalidIndexDriver.New(n.Driver)
 	}
 
 	columns, exprs, err := GetColumnsAndPrepareExpressions(n.Exprs)
@@ -305,7 +306,7 @@ func (b *BaseBuilder) buildCreateIndex(ctx *sql.Context, n *plan.CreateIndex, ro
 
 	for _, e := range exprs {
 		if types.IsBlobType(e.Type()) || types.IsJSON(e.Type()) {
-			return nil, plan.ErrExprTypeNotIndexable.New(e, e.Type())
+			return nil, plan_errors.ErrExprTypeNotIndexable.New(e, e.Type())
 		}
 	}
 
@@ -648,7 +649,7 @@ func (b *BaseBuilder) buildDropIndex(ctx *sql.Context, n *plan.DropIndex, row sq
 
 	driver := ctx.GetIndexRegistry().IndexDriver(index.Driver())
 	if driver == nil {
-		return nil, plan.ErrInvalidIndexDriver.New(index.Driver())
+		return nil, plan_errors.ErrInvalidIndexDriver.New(index.Driver())
 	}
 
 	<-done
@@ -969,7 +970,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes []*plan.IndexDefinition) (err error) {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
-		return plan.ErrNotIndexable.New()
+		return plan_errors.ErrNotIndexable.New()
 	}
 
 	indexMap := make(map[string]struct{})

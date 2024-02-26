@@ -18,21 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
-)
-
-var (
-	// ErrNotIndexable is returned when the table is not indexable.
-	ErrNotIndexable = errors.NewKind("the table is not indexable")
-
-	// ErrInvalidIndexDriver is returned when the index driver can't be found.
-	ErrInvalidIndexDriver = errors.NewKind("invalid driver index %q")
-
-	// ErrExprTypeNotIndexable is returned when the expression type cannot be
-	// indexed, such as BLOB or JSON.
-	ErrExprTypeNotIndexable = errors.NewKind("expression %q with type %s cannot be indexed")
 )
 
 // CreateIndex is a node to create an index.

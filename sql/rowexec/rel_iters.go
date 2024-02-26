@@ -18,6 +18,7 @@ import (
 	"container/heap"
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 	"io"
 	"sort"
 	"strings"
@@ -720,7 +721,7 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 		}
 		prev, ok = val.(sql.Row)
 		if !ok {
-			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
+			return nil, plan_errors.ErrUpdateUnexpectedSetResult.New(val)
 		}
 	}
 	return prev, nil

@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/plan/plan_errors"
 )
 
 func (b *Builder) validateInsert(ins *plan.InsertInto) {
@@ -37,7 +38,7 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 		var ok bool
 		_, ok = insertable.(sql.ReplaceableTable)
 		if !ok {
-			err := plan.ErrReplaceIntoNotSupported.New()
+			err := plan_errors.ErrReplaceIntoNotSupported.New()
 			b.handleErr(err)
 		}
 	}
@@ -46,7 +47,7 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 		var ok bool
 		_, ok = insertable.(sql.UpdatableTable)
 		if !ok {
-			err := plan.ErrOnDuplicateKeyUpdateNotSupported.New()
+			err := plan_errors.ErrOnDuplicateKeyUpdateNotSupported.New()
 			b.handleErr(err)
 		}
 	}
@@ -103,7 +104,7 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 	for i, columnName := range columnNames {
 		dstCol, exists := dstColNames[columnName]
 		if !exists {
-			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
+			return plan_errors.ErrInsertIntoNonexistentColumn.New(columnName)
 		}
 		if dstCol.Generated != nil && !validGeneratedColumnValue(i, source) {
 			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
@@ -111,7 +112,7 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 		if _, exists := usedNames[columnName]; !exists {
 			usedNames[columnName] = struct{}{}
 		} else {
-			return plan.ErrInsertIntoDuplicateColumn.New(columnName)
+			return plan_errors.ErrInsertIntoDuplicateColumn.New(columnName)
 		}
 	}
 	return nil
