@@ -108,20 +108,14 @@ func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	for _, path := range j.paths {
-		path, err := path.Eval(ctx, row)
+		path, err := buildPath(ctx, path, row)
 		if err != nil {
 			return nil, err
 		}
-
 		if path == nil {
-			// MySQL documented behavior is to return null, not error, if path is null.
 			return nil, nil
 		}
 
-		// make sure path is string
-		if _, ok := path.(string); !ok {
-			return nil, fmt.Errorf("Invalid JSON path expression")
-		}
 		doc, _, err = doc.Remove(path.(string))
 		if err != nil {
 			return nil, err

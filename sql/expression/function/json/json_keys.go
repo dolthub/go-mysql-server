@@ -86,6 +86,9 @@ func (j *JSONKeys) IsNullable() bool {
 
 // Eval implements the sql.Expression interface.
 func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	defer span.End()
+
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
 	if err != nil {
 		return nil, err
@@ -94,21 +97,15 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	pathVal, err := j.Path.Eval(ctx, row)
+	path, err := buildPath(ctx, j.Path, row)
 	if err != nil {
-		return false, nil
+		return nil, err
 	}
-	if pathVal == nil {
+	if path == nil {
 		return nil, nil
 	}
-	var path string
-	if p, _, strErr := types.LongText.Convert(pathVal); strErr == nil {
-		path = p.(string)
-	} else {
-		return nil, strErr
-	}
 
-	js, err := jsonpath.JsonPathLookup(doc.Val, path)
+	js, err := jsonpath.JsonPathLookup(doc.Val, path.(string))
 	if err != nil {
 		if errors.Is(err, jsonpath.ErrKeyError) {
 			return nil, nil

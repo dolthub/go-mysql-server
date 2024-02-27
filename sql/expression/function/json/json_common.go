@@ -21,6 +21,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+var ErrInvalidPath = fmt.Errorf("Invalid JSON path expression")
+var ErrPathWildcard = fmt.Errorf("Path expressions may not contain the * and ** tokens")
+
 // getMutableJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
 // you are free to use the mutation functions on the returned value.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
@@ -80,22 +83,30 @@ type pathValPair struct {
 	val  sql.JSONWrapper
 }
 
-// buildPathValue builds a pathValPair from the given row and expressions. This is a common pattern in json methods to have
-// pairs of arguments, and this ensures they are of the right type, non-nil, and they wrapped in a struct as a unit.
-func buildPathValue(ctx *sql.Context, pathExp sql.Expression, valExp sql.Expression, row sql.Row) (*pathValPair, error) {
+// buildPath builds a path from the given row and expression
+func buildPath(ctx *sql.Context, pathExp sql.Expression, row sql.Row) (interface{}, error) {
 	path, err := pathExp.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
 	if path == nil {
-		// MySQL documented behavior is to return null, not error, if any path is null.
 		return nil, nil
 	}
-
-	// make sure path is string
 	if _, ok := path.(string); !ok {
-		return nil, fmt.Errorf("Invalid JSON path expression")
+		return "", ErrInvalidPath
+	}
+	return path.(string), nil
+}
+
+// buildPathValue builds a pathValPair from the given row and expressions. This is a common pattern in json methods to have
+// pairs of arguments, and this ensures they are of the right type, non-nil, and they wrapped in a struct as a unit.
+func buildPathValue(ctx *sql.Context, pathExp sql.Expression, valExp sql.Expression, row sql.Row) (*pathValPair, error) {
+	path, err := buildPath(ctx, pathExp, row)
+	if err != nil {
+		return nil, err
+	}
+	if path == nil {
+		return nil, nil
 	}
 
 	val, err := valExp.Eval(ctx, row)
@@ -104,7 +115,7 @@ func buildPathValue(ctx *sql.Context, pathExp sql.Expression, valExp sql.Express
 	}
 	jsonVal, ok := val.(sql.JSONWrapper)
 	if !ok {
-		jsonVal = types.JSONDocument{val}
+		jsonVal = types.JSONDocument{Val: val}
 	}
 
 	return &pathValPair{path.(string), jsonVal}, nil

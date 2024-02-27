@@ -103,7 +103,7 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 	for i, columnName := range columnNames {
 		dstCol, exists := dstColNames[columnName]
 		if !exists {
-			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
+			return sql.ErrUnknownColumn.New(columnName, tableName)
 		}
 		if dstCol.Generated != nil && !validGeneratedColumnValue(i, source) {
 			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
@@ -111,7 +111,7 @@ func validateColumns(tableName string, columnNames []string, dstSchema sql.Schem
 		if _, exists := usedNames[columnName]; !exists {
 			usedNames[columnName] = struct{}{}
 		} else {
-			return plan.ErrInsertIntoDuplicateColumn.New(columnName)
+			return sql.ErrColumnSpecifiedTwice.New(columnName)
 		}
 	}
 	return nil

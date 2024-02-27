@@ -15,7 +15,6 @@
 package json
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -41,25 +40,25 @@ func TestInsert(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f1, sql.Row{json, "$.a", 10.1}, json, nil},                                                                    // insert existing does nothing
-		{f1, sql.Row{json, "$.e", "new"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},                   // insert new
-		{f1, sql.Row{json, "$.c.d", "test"}, json, nil},                                                                // insert existing nested does nothing
-		{f2, sql.Row{json, "$.a", 10.1, "$.e", "new"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},      // insert multiple, one change.
-		{f1, sql.Row{json, "$.a.e", "test"}, json, nil},                                                                // insert nested does nothing
-		{f1, sql.Row{json, "$.c.e", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo","e":"test"}}`, nil},               // insert nested in existing struct
-		{f1, sql.Row{json, "$.c[5]", 4.1}, `{"a": 1, "b": [2, 3], "c": [{"d": "foo"}, 4.1]}`, nil},                     // insert struct with indexing out of range
-		{f1, sql.Row{json, "$.b[0]", 4.1}, json, nil},                                                                  // insert element in array does nothing
-		{f1, sql.Row{json, "$.b[5]", 4.1}, `{"a": 1, "b": [2, 3, 4.1], "c": {"d": "foo"}}`, nil},                       // insert element in array out of range
-		{f1, sql.Row{json, "$.b.c", 4}, json, nil},                                                                     // insert nested in array does nothing
-		{f1, sql.Row{json, "$.a[0]", 4.1}, json, nil},                                                                  // struct as array does nothing
-		{f1, sql.Row{json, "$[0]", 4.1}, json, nil},                                                                    // struct does nothing.
-		{f1, sql.Row{json, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression")},                             // improper struct indexing
-		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},                            // invalid path
-		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},  // path contains * wildcard
-		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")}, // path contains ** wildcard
-		{f1, sql.Row{json, "$", 10.1}, json, nil},                                                                      // whole document no opt
-		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                                        // null document returns null
-		{f1, sql.Row{json, nil, 10}, nil, nil},                                                                         // if any path is null, return null
+		{f1, sql.Row{json, "$.a", 10.1}, json, nil},                                                               // insert existing does nothing
+		{f1, sql.Row{json, "$.e", "new"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},              // insert new
+		{f1, sql.Row{json, "$.c.d", "test"}, json, nil},                                                           // insert existing nested does nothing
+		{f2, sql.Row{json, "$.a", 10.1, "$.e", "new"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil}, // insert multiple, one change.
+		{f1, sql.Row{json, "$.a.e", "test"}, json, nil},                                                           // insert nested does nothing
+		{f1, sql.Row{json, "$.c.e", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo","e":"test"}}`, nil},          // insert nested in existing struct
+		{f1, sql.Row{json, "$.c[5]", 4.1}, `{"a": 1, "b": [2, 3], "c": [{"d": "foo"}, 4.1]}`, nil},                // insert struct with indexing out of range
+		{f1, sql.Row{json, "$.b[0]", 4.1}, json, nil},                                                             // insert element in array does nothing
+		{f1, sql.Row{json, "$.b[5]", 4.1}, `{"a": 1, "b": [2, 3, 4.1], "c": {"d": "foo"}}`, nil},                  // insert element in array out of range
+		{f1, sql.Row{json, "$.b.c", 4}, json, nil},                                                                // insert nested in array does nothing
+		{f1, sql.Row{json, "$.a[0]", 4.1}, json, nil},                                                             // struct as array does nothing
+		{f1, sql.Row{json, "$[0]", 4.1}, json, nil},                                                               // struct does nothing.
+		{f1, sql.Row{json, "$.[0]", 4.1}, nil, ErrInvalidPath},                                                    // improper struct indexing
+		{f1, sql.Row{json, "foo", "test"}, nil, ErrInvalidPath},                                                   // invalid path
+		{f1, sql.Row{json, "$.c.*", "test"}, nil, ErrPathWildcard},                                                // path contains * wildcard
+		{f1, sql.Row{json, "$.c.**", "test"}, nil, ErrPathWildcard},                                               // path contains ** wildcard
+		{f1, sql.Row{json, "$", 10.1}, json, nil},                                                                 // whole document no opt
+		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                                   // null document returns null
+		{f1, sql.Row{json, nil, 10}, nil, nil},                                                                    // if any path is null, return null
 
 		// mysql> select JSON_INSERT(JSON_ARRAY(), "$[2]", 1 , "$[2]", 2 ,"$[2]", 3 ,"$[2]", 4);
 		// +------------------------------------------------------------------------+

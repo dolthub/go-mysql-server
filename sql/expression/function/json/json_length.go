@@ -15,10 +15,10 @@
 package json
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/dolthub/jsonpath"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -76,34 +76,33 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.JsonLength")
 	defer span.End()
 
-	js, err := j.JSON.Eval(ctx, row)
+	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
 	if err != nil {
 		return nil, err
 	}
-	if js == nil {
-		return nil, err
-	}
-
-	strData, _, err := types.LongBlob.Convert(js)
-	if err != nil {
-		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_length; a JSON string or JSON type is required")
-	}
-	if strData == nil {
+	if doc == nil {
 		return nil, nil
 	}
 
-	var jsonData interface{}
-	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
-		return nil, err
-	}
-
-	path, err := j.Path.Eval(ctx, row)
+	pathVal, err := j.Path.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	if pathVal == nil {
+		return nil, nil
+	}
+	var path string
+	if p, _, strErr := types.LongText.Convert(pathVal); strErr == nil {
+		path = p.(string)
+	} else {
+		return nil, strErr
+	}
 
-	res, err := jsonpath.JsonPathLookup(jsonData, path.(string))
+	res, err := jsonpath.JsonPathLookup(doc.Val, path)
 	if err != nil {
+		if errors.Is(err, jsonpath.ErrKeyError) {
+			return nil, nil
+		}
 		return nil, err
 	}
 

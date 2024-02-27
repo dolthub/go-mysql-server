@@ -212,6 +212,76 @@ func TestHandlerOutput(t *testing.T) {
 	})
 }
 
+func TestHandlerErrors(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+
+	dummyConn := newConn(1)
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+	handler.NewConnection(dummyConn)
+
+	type expectedValues struct {
+		callsToCallback  int
+		lenLastBatch     int
+		lastRowsAffected uint64
+	}
+
+	setupCommands := []string{"CREATE TABLE `test_table` ( `id` INT NOT NULL PRIMARY KEY, `v` INT );"}
+
+	tests := []struct {
+		name              string
+		query             string
+		expectedErrorCode int
+	}{
+		{
+			name:              "insert with nonexistent field name",
+			query:             "INSERT INTO `test_table` (`id`, `v_`) VALUES (1, 2)",
+			expectedErrorCode: mysql.ERBadFieldError,
+		},
+		{
+			name:              "insert into nonexistent table",
+			query:             "INSERT INTO `test`.`no_such_table` (`id`, `v`) VALUES (1, 2)",
+			expectedErrorCode: mysql.ERNoSuchTable,
+		},
+		{
+			name:              "insert into same column twice",
+			query:             "INSERT INTO `test`.`test_table` (`id`, `id`, `v`) VALUES (1, 2, 3)",
+			expectedErrorCode: mysql.ERFieldSpecifiedTwice,
+		},
+	}
+
+	handler.ComInitDB(dummyConn, "test")
+	for _, setupCommand := range setupCommands {
+		err := handler.ComQuery(dummyConn, setupCommand, func(res *sqltypes.Result, more bool) error {
+			return nil
+		})
+		require.NoError(t, err)
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := handler.ComQuery(dummyConn, test.query, func(res *sqltypes.Result, more bool) error {
+				return nil
+			})
+			require.NotNil(t, err)
+			sqlErr, isSqlError := err.(*mysql.SQLError)
+			require.True(t, isSqlError)
+			require.Equal(t, test.expectedErrorCode, sqlErr.Number())
+		})
+	}
+}
+
 // TestHandlerComReset asserts that the Handler.ComResetConnection method correctly clears all session
 // state (e.g. table locks, prepared statements, user variables, session variables), and keeps the current
 // database selected.
