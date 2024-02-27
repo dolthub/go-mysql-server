@@ -23,7 +23,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	)
+)
 
 func TestJSONDepth(t *testing.T) {
 	_, err := NewJSONDepth()

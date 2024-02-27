@@ -128,6 +128,6 @@ func (j JSONDepth) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression interface.
-func (j JSONDepth)WithChildren(children ...sql.Expression) ( sql.Expression,  error) {
+func (j JSONDepth) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewJSONDepth(children...)
 }
