@@ -15,6 +15,7 @@
 package json
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -35,31 +36,100 @@ func TestJsonLength(t *testing.T) {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
+		err bool
 	}{
-		{f1, sql.Row{`null`}, nil},
-		{f1, sql.Row{`1`}, 1},
-		{f1, sql.Row{`[1]`}, 1},
-		{f1, sql.Row{`"fjsadflkd"`}, 1},
-		{f1, sql.Row{`[1, false]`}, 2},
-		{f1, sql.Row{`[1, {"a": 1}]`}, 2},
-		{f1, sql.Row{`{"a": 1}`}, 1},
-		{f2, sql.Row{`{"a": [1, false]}`, "$.a"}, 2},
-		{f2, sql.Row{`{"a": [1, {"a": 1}]}`, "$.a"}, 2},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b"}, 2},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b[0]"}, 1},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.c.d"}, 1},
-		{f2, sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"}, nil},
+		{
+			f: f1,
+			row: sql.Row{`null`},
+			exp: nil,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`1`},
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[1]`},
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`"fjsadflkd"`},
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[1, false]`},
+			exp: 2,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[1, {"a": 1}]`},
+			exp: 2,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{"a": 1}`},
+			exp: 1,
+		},
+
+		{
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, nil},
+			exp: nil,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, 123},
+			err: true,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, "$.a"},
+			exp: 2,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": [1, {"a": 1}]}`, "$.a"},
+			exp: 2,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b"},
+			exp: 2,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b[0]"},
+			exp: 1,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.c.d"},
+			exp: 1,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
+			exp: nil,
+		},
 	}
 
 	for _, tt := range testCases {
 		var args []string
 		for _, a := range tt.row {
-			args = append(args, a.(string))
+			args = append(args, fmt.Sprintf("%v", a))
 		}
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			// any error case will result in output of 'false' value
-			result, _ := tt.f.Eval(sql.NewEmptyContext(), tt.row)
+			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+			}
 			require.Equal(tt.exp, result)
 		})
 	}
