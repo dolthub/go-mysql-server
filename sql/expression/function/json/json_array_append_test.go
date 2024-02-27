@@ -15,7 +15,6 @@
 package json
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -54,10 +53,10 @@ func TestArrayAppend(t *testing.T) {
 		{f1, sql.Row{json, "$.a[0]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
 		{f1, sql.Row{json, "$.a[last]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
 		{f1, sql.Row{json, "$[0]", 4.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 4.1]`, nil},
-		{f1, sql.Row{json, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression")},
-		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},
-		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},
-		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},
+		{f1, sql.Row{json, "$.[0]", 4.1}, nil, ErrInvalidPath},
+		{f1, sql.Row{json, "foo", "test"}, nil, ErrInvalidPath},
+		{f1, sql.Row{json, "$.c.*", "test"}, nil, ErrPathWildcard},
+		{f1, sql.Row{json, "$.c.**", "test"}, nil, ErrPathWildcard},
 		{f1, sql.Row{json, "$", 10.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 10.1]`, nil},
 		{f1, sql.Row{nil, "$", 42.7}, nil, nil},
 		{f1, sql.Row{json, nil, 10}, nil, nil},

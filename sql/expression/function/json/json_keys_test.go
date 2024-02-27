@@ -92,6 +92,16 @@ func TestJSONKeys(t *testing.T) {
 
 		{
 			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, nil},
+			exp: nil,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, 123},
+			err: true,
+		},
+		{
+			f:   f2,
 			row: sql.Row{`{"a": [1, false]}`, "$"},
 			exp: types.MustJSON(`["a"]`),
 		},

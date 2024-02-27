@@ -15,7 +15,6 @@
 package json
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -42,25 +41,25 @@ func TestReplace(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f1, sql.Row{json, "$.a", 10.1}, `{"a": 10.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                           // replace existing
-		{f1, sql.Row{json, "$.e", "new"}, json, nil},                                                                   // replace non-existing does nothing
-		{f1, sql.Row{json, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "test"}}`, nil},                         // replace nested
-		{f2, sql.Row{json, "$.a", 10.1, "$.e", "new"}, `{"a": 10.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},             // replace multiple, one change.
-		{f1, sql.Row{json, "$.a.e", "test"}, json, nil},                                                                // replace nested non-existent does nothing
-		{f1, sql.Row{json, "$.c.e", "test"}, json, nil},                                                                // replace nested in existing struct missing field does nothing
-		{f1, sql.Row{json, "$.c[5]", 4.1}, json, nil},                                                                  // replace struct with indexing out of range
-		{f1, sql.Row{json, "$.b[0]", 4.1}, `{"a": 1, "b": [4.1, 3], "c": {"d": "foo"}}`, nil},                          // replace element in array
-		{f1, sql.Row{json, "$.b[5]", 4.1}, json, nil},                                                                  // replace element in array out of range does nothing
-		{f1, sql.Row{json, "$.b.c", 4}, json, nil},                                                                     // replace nested in array does nothing
-		{f1, sql.Row{json, "$.a[0]", 4.1}, `{"a": 4.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                          // replace scalar when treated as array
-		{f1, sql.Row{json, "$[0]", 4.1}, `4.1`, nil},                                                                   // replace root element when treated as array
-		{f1, sql.Row{json, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression")},                             // improper struct indexing
-		{f1, sql.Row{json, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression")},                            // invalid path
-		{f1, sql.Row{json, "$.c.*", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")},  // path contains * wildcard
-		{f1, sql.Row{json, "$.c.**", "test"}, nil, fmt.Errorf("Path expressions may not contain the * and ** tokens")}, // path contains ** wildcard
-		{f1, sql.Row{json, "$", 10.1}, `10.1`, nil},                                                                    // replace root element
-		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                                        // null document returns null
-		{f1, sql.Row{json, nil, 10}, nil, nil},                                                                         // if any path is null, return null
+		{f1, sql.Row{json, "$.a", 10.1}, `{"a": 10.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},               // replace existing
+		{f1, sql.Row{json, "$.e", "new"}, json, nil},                                                       // replace non-existing does nothing
+		{f1, sql.Row{json, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "test"}}`, nil},             // replace nested
+		{f2, sql.Row{json, "$.a", 10.1, "$.e", "new"}, `{"a": 10.1, "b": [2, 3], "c": {"d": "foo"}}`, nil}, // replace multiple, one change.
+		{f1, sql.Row{json, "$.a.e", "test"}, json, nil},                                                    // replace nested non-existent does nothing
+		{f1, sql.Row{json, "$.c.e", "test"}, json, nil},                                                    // replace nested in existing struct missing field does nothing
+		{f1, sql.Row{json, "$.c[5]", 4.1}, json, nil},                                                      // replace struct with indexing out of range
+		{f1, sql.Row{json, "$.b[0]", 4.1}, `{"a": 1, "b": [4.1, 3], "c": {"d": "foo"}}`, nil},              // replace element in array
+		{f1, sql.Row{json, "$.b[5]", 4.1}, json, nil},                                                      // replace element in array out of range does nothing
+		{f1, sql.Row{json, "$.b.c", 4}, json, nil},                                                         // replace nested in array does nothing
+		{f1, sql.Row{json, "$.a[0]", 4.1}, `{"a": 4.1, "b": [2, 3], "c": {"d": "foo"}}`, nil},              // replace scalar when treated as array
+		{f1, sql.Row{json, "$[0]", 4.1}, `4.1`, nil},                                                       // replace root element when treated as array
+		{f1, sql.Row{json, "$.[0]", 4.1}, nil, ErrInvalidPath},                                             // improper struct indexing
+		{f1, sql.Row{json, "foo", "test"}, nil, ErrInvalidPath},                                            // invalid path
+		{f1, sql.Row{json, "$.c.*", "test"}, nil, ErrPathWildcard},                                         // path contains * wildcard
+		{f1, sql.Row{json, "$.c.**", "test"}, nil, ErrPathWildcard},                                        // path contains ** wildcard
+		{f1, sql.Row{json, "$", 10.1}, `10.1`, nil},                                                        // replace root element
+		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                            // null document returns null
+		{f1, sql.Row{json, nil, 10}, nil, nil},                                                             // if any path is null, return null
 	}
 
 	for _, tstC := range testCases {
