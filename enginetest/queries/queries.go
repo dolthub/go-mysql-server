@@ -8387,6 +8387,13 @@ SELECT * FROM ladder;`,
 		},
 	},
 	{
+		Query: `SELECT json_depth('{"a": 1, "b": {"aa": 1, "bb": {"aaa": 1, "bbb": {"aaaa": 1}}}}') FROM dual;`,
+		Expected: []sql.Row{
+			{5},
+		},
+	},
+
+	{
 		Query: "SELECT i, I, s, S FROM mytable;",
 		Expected: []sql.Row{
 			{1, 1, "first row", "first row"},
