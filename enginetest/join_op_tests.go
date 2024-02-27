@@ -539,7 +539,7 @@ SELECT SUM(x) FROM xy WHERE x IN (
 				Expected: []sql.Row{
 					{"testing", 3},
 				},
-				Skip: true,
+				//Skip: true,
 			},
 			{
 				Query: `SELECT
@@ -555,7 +555,7 @@ SELECT SUM(x) FROM xy WHERE x IN (
 				Expected: []sql.Row{
 					{"testing", 4},
 				},
-				Skip: true,
+				//Skip: true,
 			},
 			{
 				Query: "SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
