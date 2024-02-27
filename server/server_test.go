@@ -10,13 +10,13 @@ import (
 	vsql "github.com/dolthub/vitess/go/mysql"
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/test/bufconn"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	gsql "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"google.golang.org/grpc/test/bufconn"
 )
 
 // TestSeverCustomListener verifies a caller can provide their own net.Conn implementation for the server to use
