@@ -143,18 +143,21 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		cfg.MaxConnections = 0
 	}
 
+	l := cfg.Listener
 	var unixSocketInUse error
+	if l == nil {
+		if portInUse(cfg.Address) {
+			unixSocketInUse = fmt.Errorf("Port %s already in use.", cfg.Address)
+		}
 
-	if portInUse(cfg.Address) {
-		unixSocketInUse = fmt.Errorf("Port %s already in use.", cfg.Address)
-	}
-
-	l, err := NewListener(cfg.Protocol, cfg.Address, cfg.Socket)
-	if err != nil {
-		if errors.Is(err, UnixSocketInUseError) {
-			unixSocketInUse = err
-		} else {
-			return nil, err
+		var err error
+		l, err = NewListener(cfg.Protocol, cfg.Address, cfg.Socket)
+		if err != nil {
+			if errors.Is(err, UnixSocketInUseError) {
+				unixSocketInUse = err
+			} else {
+				return nil, err
+			}
 		}
 	}
 

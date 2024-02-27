@@ -769,9 +769,14 @@ func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	} else {
 		splitHost, _, err := net.SplitHostPort(addr)
 		if err != nil {
-			return "", err
+			if err.(*net.AddrError).Err == "missing port in address" {
+				host = addr
+			} else {
+				return "", err
+			}
+		} else {
+			host = splitHost
 		}
-		host = splitHost
 	}
 
 	rd := db.Reader()
@@ -801,7 +806,11 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 	} else {
 		host, _, err = net.SplitHostPort(addr.String())
 		if err != nil {
-			return nil, err
+			if err.(*net.AddrError).Err == "missing port in address" {
+				host = addr.String()
+			} else {
+				return nil, err
+			}
 		}
 	}
 
@@ -837,7 +846,11 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 	} else {
 		host, _, err = net.SplitHostPort(addr.String())
 		if err != nil {
-			return nil, err
+			if err.(*net.AddrError).Err == "missing port in address" {
+				host = addr.String()
+			} else {
+				return nil, err
+			}
 		}
 	}
 
