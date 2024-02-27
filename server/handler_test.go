@@ -237,50 +237,41 @@ func TestHandlerErrors(t *testing.T) {
 		lastRowsAffected uint64
 	}
 
+	setupCommands := []string{"CREATE TABLE `test_table` ( `id` INT NOT NULL PRIMARY KEY, `v` INT );"}
+
 	tests := []struct {
 		name              string
-		handler           *Handler
-		conn              *mysql.Conn
-		setup             []string
 		query             string
 		expectedErrorCode int
 	}{
 		{
 			name:              "insert with nonexistent field name",
-			handler:           handler,
-			conn:              dummyConn,
-			setup:             []string{"CREATE TABLE `test_table` ( `id` INT NOT NULL PRIMARY KEY, `v` INT );"},
 			query:             "INSERT INTO `test_table` (`id`, `v_`) VALUES (1, 2)",
 			expectedErrorCode: mysql.ERBadFieldError,
 		},
 		{
 			name:              "insert into nonexistent table",
-			handler:           handler,
-			conn:              dummyConn,
-			setup:             []string{},
 			query:             "INSERT INTO `test`.`no_such_table` (`id`, `v`) VALUES (1, 2)",
 			expectedErrorCode: mysql.ERNoSuchTable,
 		},
 		{
 			name:              "insert into same column twice",
-			handler:           handler,
-			conn:              dummyConn,
-			setup:             []string{"CREATE TABLE `test_table` ( `id` INT NOT NULL PRIMARY KEY, `v` INT );"},
 			query:             "INSERT INTO `test`.`test_table` (`id`, `id`, `v`) VALUES (1, 2, 3)",
 			expectedErrorCode: mysql.ERFieldSpecifiedTwice,
 		},
 	}
 
+	handler.ComInitDB(dummyConn, "test")
+	for _, setupCommand := range setupCommands {
+		err := handler.ComQuery(dummyConn, setupCommand, func(res *sqltypes.Result, more bool) error {
+			return nil
+		})
+		require.NoError(t, err)
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			handler.ComInitDB(dummyConn, "test")
-			for _, setupQuery := range test.setup {
-				err := handler.ComQuery(test.conn, setupQuery, func(res *sqltypes.Result, more bool) error {
-					return nil
-				})
-				require.NoError(t, err)
-			}
-			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result, more bool) error {
+			err := handler.ComQuery(dummyConn, test.query, func(res *sqltypes.Result, more bool) error {
 				return nil
 			})
 			require.NotNil(t, err)
