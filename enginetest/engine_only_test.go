@@ -1000,8 +1000,6 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 	})
 
 	harness.NewTableAsOf(db, "mytable", sch, nil)
-	//err = db.CreateTable(harness.NewContext(), "mytable", sch, sql.Collation_Default, "")
-	//require.NoError(t, err)
 
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
@@ -1012,9 +1010,9 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 		err  bool
 	}{
 		{
-			name: "noop modify doesn't trigger validation",
+			name: "noop modify triggers validation",
 			q:    "alter table mytable rename column a to d",
-			err:  false,
+			err:  true,
 		},
 		{
 			name: "partial update with invalid final schema fails",
@@ -1035,10 +1033,16 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := harness.NewContext()
-			_, _, err := engine.Query(ctx, tt.q)
+			_, iter, err := engine.Query(ctx, tt.q)
 			// errors should be analyze time, not execution time
-			if tt.err && err == nil {
-				t.Errorf("expected error: %s", tt.q)
+			if tt.err {
+				if err == nil {
+					t.Errorf("expected error: %s", tt.q)
+				}
+			} else {
+				require.NoError(t, err)
+				_, err = sql.RowIterToRows(ctx, iter)
+				require.NoError(t, err)
 			}
 		})
 	}
