@@ -78,6 +78,16 @@ func TestJSONDepth(t *testing.T) {
 			row: sql.Row{`true`},
 			exp: 1,
 		},
+		{
+			f:   f1,
+			row: sql.Row{`123.456`},
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`"abcdef"`},
+			exp: 1,
+		},
 
 		{
 			f:   f1,
