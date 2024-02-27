@@ -18,7 +18,6 @@ import (
 	"context"
 	sql2 "database/sql"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"io"
 	"net"
 	"runtime"
@@ -26,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
