@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -88,6 +89,13 @@ func (t *ResolvedTable) WrappedTable() sql.Table {
 }
 
 func (t *ResolvedTable) Database() sql.Database {
+	return t.SqlDatabase
+}
+
+func (t *ResolvedTable) UnwrappedDatabase() sql.Database {
+	if privDb, ok := t.SqlDatabase.(mysql_db.PrivilegedDatabase); ok {
+		return privDb.Unwrap()
+	}
 	return t.SqlDatabase
 }
 

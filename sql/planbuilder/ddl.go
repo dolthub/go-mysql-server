@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"strconv"
 	"strings"
 
@@ -212,6 +213,12 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		return b.buildCreateTableLike(inScope, c)
 	}
 
+	qualifier := c.Table.Qualifier.String()
+	if qualifier == "" {
+		qualifier = b.ctx.GetCurrentDatabase()
+	}
+	database := b.resolveDb(qualifier)
+
 	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE node.
 	// if the table spec != nil it will get parsed below.
 	if c.TableSpec == nil && c.OptSelect != nil {
@@ -219,27 +226,31 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
 
-		dbName := strings.ToLower(c.Table.Qualifier.String())
-		if dbName == "" {
-			dbName = b.ctx.GetCurrentDatabase()
-		}
-		db := b.resolveDb(dbName)
-		outScope.node = plan.NewCreateTableSelect(db, c.Table.Name.String(), selectScope.node, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary))
+		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), selectScope.node, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary))
 		return outScope
 	}
 
 	idxDefs := b.buildIndexDefs(inScope, c.TableSpec)
 
-	qualifier := c.Table.Qualifier.String()
-	if qualifier == "" {
-		qualifier = b.ctx.GetCurrentDatabase()
-	}
-	database := b.resolveDb(qualifier)
 	schema, collation, comment := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
 	schema.Schema = assignColumnIndexesInSchema(schema.Schema)
 	chDefs = assignColumnIndexesInCheckDefs(chDefs, schema.Schema)
+
+	if privDb, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		if sv, ok := privDb.Unwrap().(sql.SchemaValidator); ok {
+			if err := sv.ValidateSchema(schema.PhysicalSchema()); err != nil {
+				b.handleErr(err)
+			}
+		}
+	} else {
+		if sv, ok := database.(sql.SchemaValidator); ok {
+			if err := sv.ValidateSchema(schema.PhysicalSchema()); err != nil {
+				b.handleErr(err)
+			}
+		}
+	}
 
 	tableSpec := &plan.TableSpec{
 		Schema:    schema,

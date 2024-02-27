@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -24,6 +25,26 @@ import (
 )
 
 var AlterTableScripts = []ScriptTest{
+	{
+		Name: "multi alter with invalid schemas",
+		SetUpScript: []string{
+			"CREATE TABLE t(a int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table t add column b varchar(max)",
+				ExpectedErr: analyzererrors.ErrInvalidRowLength,
+			},
+			{
+				Query:       "alter table t add column b varchar(16000), add column c varchar(16000)",
+				ExpectedErr: analyzererrors.ErrInvalidRowLength,
+			},
+			{
+				Query:    "alter table t add column b varchar(16000), add column c varchar(10)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
 	{
 		Name: "variety of alter column statements in a single statement",
 		SetUpScript: []string{
