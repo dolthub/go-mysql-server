@@ -16,7 +16,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"strconv"
 	"strings"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
