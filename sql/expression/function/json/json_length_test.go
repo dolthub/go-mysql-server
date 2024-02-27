@@ -39,7 +39,7 @@ func TestJsonLength(t *testing.T) {
 		err bool
 	}{
 		{
-			f: f1,
+			f:   f1,
 			row: sql.Row{`null`},
 			exp: nil,
 		},
