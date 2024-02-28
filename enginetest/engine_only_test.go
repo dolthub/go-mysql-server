@@ -1020,7 +1020,7 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 			err:  true,
 		},
 		{
-			name: "update with invalid final schema succeeds",
+			name: "update with valid final schema succeeds",
 			q:    "alter table mytable modify column a varchar(100), modify column b varchar(100), modify column c varchar(100)",
 			err:  false,
 		},
@@ -1036,9 +1036,7 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 			_, iter, err := engine.Query(ctx, tt.q)
 			// errors should be analyze time, not execution time
 			if tt.err {
-				if err == nil {
-					t.Errorf("expected error: %s", tt.q)
-				}
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 				_, err = sql.RowIterToRows(ctx, iter)

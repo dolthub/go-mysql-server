@@ -31,10 +31,11 @@ var AlterTableScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "alter table t add column b varchar(max)",
+				Query:       "alter table t add column b varchar(16383)",
 				ExpectedErr: analyzererrors.ErrInvalidRowLength,
 			},
 			{
+				// 1 char = 4 bytes with default collation
 				Query:       "alter table t add column b varchar(16000), add column c varchar(16000)",
 				ExpectedErr: analyzererrors.ErrInvalidRowLength,
 			},

@@ -411,9 +411,12 @@ type AlterableTable interface {
 	ModifyColumn(ctx *Context, columnName string, column *Column, order *ColumnOrder) error
 }
 
+// SchemaValidator is a database that performs schema compatibility checks
+// for CREATE and ALTER TABLE statements.
 type SchemaValidator interface {
-	// ValidateSchema lets storage integrators validate whether they
-	// can serialize the given schema
+	Database
+	// ValidateSchema lets storage integrators validate whether they can
+	// serialize a given schema.
 	ValidateSchema(Schema) error
 }
 

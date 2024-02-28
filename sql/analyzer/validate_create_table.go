@@ -165,36 +165,38 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
-				if at, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
-					validator = at
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
 				}
 			}
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.RenameColumn:
 			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
-				if at, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
-					validator = at
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
 				}
 			}
 			return false
 		case *plan.AddColumn:
 			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
-				if at, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
-					validator = at
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
 				}
 			}
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.DropColumn:
 			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
-				validator, _ = rt.UnwrappedDatabase().(sql.SchemaValidator)
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
+				}
 			}
 			return false
 		case *plan.AlterIndex:
 			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
-				if at, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
-					validator = at
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
 				}
 			}
 			indexes, err = getTableIndexNames(ctx, a, n.Table)
