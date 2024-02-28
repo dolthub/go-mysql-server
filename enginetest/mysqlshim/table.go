@@ -46,7 +46,6 @@ var _ sql.CheckAlterableTable = Table{}
 var _ sql.CheckTable = Table{}
 var _ sql.StatisticsTable = Table{}
 var _ sql.PrimaryKeyAlterableTable = Table{}
-var _ sql.SchemaValidator = Table{}
 
 func (t Table) IndexedAccess(sql.IndexLookup) sql.IndexedTable {
 	panic("not implemented")
@@ -181,10 +180,6 @@ func (t Table) AddColumn(ctx *sql.Context, column *sql.Column, order *sql.Column
 // DropColumn implements the interface sql.AlterableTable.
 func (t Table) DropColumn(ctx *sql.Context, columnName string) error {
 	return t.db.shim.Exec(t.db.name, fmt.Sprintf("ALTER TABLE `%s` DROP COLUMN `%s`;", t.name, columnName))
-}
-
-func (t Table) ValidateSchema(sch sql.Schema) error {
-	return nil
 }
 
 // ModifyColumn implements the interface sql.AlterableTable.
