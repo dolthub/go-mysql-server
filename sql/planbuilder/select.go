@@ -157,7 +157,7 @@ func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 			if col, ok := inScope.proc.GetVar(e.String()); ok {
 				// proc param is OK
 				if pp, ok := col.scalarGf().(*expression.ProcedureParam); ok {
-					if !pp.Type().Promote().Equals(types.Int64) {
+					if !pp.Type().Promote().Equals(types.Int64) && !pp.Type().Promote().Equals(types.Uint64) {
 						err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type().String())
 						b.handleErr(err)
 					}
