@@ -9354,6 +9354,36 @@ from typestable`,
 			{false},
 		},
 	},
+	{
+		Query: `SELECT json_type('{"a": [10, true, "abc"]}');`,
+		Expected: []sql.Row{
+			{"OBJECT"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a'));`,
+		Expected: []sql.Row{
+			{"ARRAY"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[0]'));`,
+		Expected: []sql.Row{
+			{"INTEGER"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[1]'));`,
+		Expected: []sql.Row{
+			{"BOOLEAN"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[2]'));`,
+		Expected: []sql.Row{
+			{"STRING"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
