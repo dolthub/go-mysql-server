@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -979,6 +980,70 @@ func TestTimestampBindingsCanBeCompared(t *testing.T) {
 	err = db.QueryRow("SELECT COUNT(1) FROM mytable WHERE t > ?", t0).Scan(&count)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
+}
+
+// TestAlterTableWithBadSchema is a backwards compatibility test that
+// ensures tables made with old versions of the engine can be altered.
+func TestAlterTableWithBadSchema(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	pro := harness.Provider()
+	harness.NewDatabases("mydb")
+	ctx := harness.NewContext()
+	sqlDb, err := pro.Database(ctx, "mydb")
+	require.NoError(t, err)
+	db := sqlDb.(*memory.HistoryDatabase)
+
+	sch := sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "a", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 16383), Source: "mytable"},
+		{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 16383), Source: "mytable"},
+		{Name: "c", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 16383), Source: "mytable"},
+	})
+
+	harness.NewTableAsOf(db, "mytable", sch, nil)
+
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name string
+		q    string
+		err  bool
+	}{
+		{
+			name: "noop modify triggers validation",
+			q:    "alter table mytable rename column a to d",
+			err:  true,
+		},
+		{
+			name: "partial update with invalid final schema fails",
+			q:    "alter table mytable modify column a varchar(100), modify column b varchar(100)",
+			err:  true,
+		},
+		{
+			name: "update with valid final schema succeeds",
+			q:    "alter table mytable modify column a varchar(100), modify column b varchar(100), modify column c varchar(100)",
+			err:  false,
+		},
+		{
+			name: "mixed update add with invalid final schema fails",
+			q:    "alter table mytable modify column a varchar(100), modify column b varchar(100), modify column c varchar(100), add column d varchar(max)",
+			err:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := harness.NewContext()
+			_, iter, err := engine.Query(ctx, tt.q)
+			// errors should be analyze time, not execution time
+			if tt.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				_, err = sql.RowIterToRows(ctx, iter)
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func newDatabase() (*sql2.DB, func()) {
