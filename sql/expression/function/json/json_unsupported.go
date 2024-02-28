@@ -232,44 +232,6 @@ type JSONMerge struct {
 	sql.Expression
 }
 
-//////////////////////////////
-// JSON attribute functions //
-//////////////////////////////
-
-// JSON_DEPTH(json_doc)
-//
-// JSONDepth Returns the maximum depth of a JSON document. Returns NULL if the argument is NULL. An error occurs if the
-// argument is not a valid JSON document. An empty array, empty object, or scalar value has depth 1. A nonempty array
-// containing only elements of depth 1 or nonempty object containing only member values of depth 1 has depth 2.
-// Otherwise, a JSON document has depth greater than 2.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-depth
-type JSONDepth struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONDepth{}
-
-// NewJSONDepth creates a new JSONDepth function.
-func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONDepth{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONDepth) FunctionName() string {
-	return "json_depth"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONDepth) Description() string {
-	return "returns maximum depth of JSON document."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONDepth) IsUnsupported() bool {
-	return true
-}
-
 //////////////////////////
 // JSON table functions //
 //////////////////////////
