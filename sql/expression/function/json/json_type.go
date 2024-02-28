@@ -86,24 +86,24 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	switch v := doc.Val.(type) {
-		case nil:
-			return "NULL", nil
-		case bool:
-			return "BOOLEAN", nil
-		case float64:
-			if math.Floor(v) == v {
-				return "INTEGER", nil
-			}
-			return "DOUBLE", nil
-		case string:
-			// TODO: differentiate between STRING, DECIMAL, DATE, DATETIME, and TIME
-			return "STRING", nil
-		case []interface{}:
-			return "ARRAY", nil
-		case map[string]interface{}:
-			return "OBJECT", nil
-		default:
-			return "OPAQUE", nil
+	case nil:
+		return "NULL", nil
+	case bool:
+		return "BOOLEAN", nil
+	case float64:
+		if math.Floor(v) == v {
+			return "INTEGER", nil
+		}
+		return "DOUBLE", nil
+	case string:
+		// TODO: differentiate between STRING, DECIMAL, DATE, DATETIME, and TIME
+		return "STRING", nil
+	case []interface{}:
+		return "ARRAY", nil
+	case map[string]interface{}:
+		return "OBJECT", nil
+	default:
+		return "OPAQUE", nil
 	}
 }
 
@@ -116,5 +116,3 @@ func (j JSONType) Children() []sql.Expression {
 func (j JSONType) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewJSONType(children...)
 }
-
-
