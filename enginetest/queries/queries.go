@@ -9559,6 +9559,37 @@ FROM mytable;`,
 		Query:    "select TABLE_NAME, IS_UPDATABLE from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{{"myview1", "YES"}, {"myview2", "YES"}, {"myview3", "NO"}, {"myview4", "NO"}, {"myview5", "YES"}},
 	},
+	// json_type can detect mysql types
+	{
+		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as datetime) as json));",
+		Expected: []sql.Row{
+			{"DATETIME"},
+		},
+	},
+	{
+		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as date) as json));",
+		Expected: []sql.Row{
+			{"DATE"},
+		},
+	},
+	{
+		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as time) as json));",
+		Expected: []sql.Row{
+			{"TIME"},
+		},
+	},
+	{
+		Query: "SELECT json_type(cast(cast('123abc' as binary) as json));",
+		Expected: []sql.Row{
+			{"BLOB"},
+		},
+	},
+	{
+		Query: "SELECT json_type(cast(1.0 as json));",
+		Expected: []sql.Row{
+			{"DECIMAL"},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{

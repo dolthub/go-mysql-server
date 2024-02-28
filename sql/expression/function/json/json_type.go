@@ -15,8 +15,12 @@
 package json
 
 import (
-					"github.com/dolthub/go-mysql-server/sql"
-		)
+	"fmt"
+	"math"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 // JSONType (json_val)
 //
@@ -48,7 +52,6 @@ func (j JSONType) Description() string {
 	return "returns type of JSON value."
 }
 
-
 // Resolved implements the Expression interface.
 func (j JSONType) Resolved() bool {
 	return j.JSON.Resolved()
@@ -56,33 +59,62 @@ func (j JSONType) Resolved() bool {
 
 // String implements the fmt.Stringer interface.
 func (j JSONType) String() string {
-	return
-
+	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
 }
 
+// Type implements the Expression interface.
 func (j JSONType) Type() sql.Type {
-
-
+	return types.Text
 }
 
+// IsNullable implements the Expression interface.
 func (j JSONType) IsNullable() bool {
-
-
+	return j.JSON.IsNullable()
 }
 
-func (j JSONType) Eval(ctx *sql.Context, row sql.Row) ( interface{},  error) {
+// Eval implements the Expression interface.
+func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
+	defer span.End()
 
+	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
+	if err != nil {
+		return nil, err
+	}
+	if doc == nil {
+		return "NULL", nil
+	}
 
+	switch v := doc.Val.(type) {
+		case nil:
+			return "NULL", nil
+		case bool:
+			return "BOOLEAN", nil
+		case float64:
+			if math.Floor(v) == v {
+				return "INTEGER", nil
+			}
+			return "DOUBLE", nil
+		case string:
+			// TODO: differentiate between STRING, DECIMAL, DATE, DATETIME, and TIME
+			return "STRING", nil
+		case []interface{}:
+			return "ARRAY", nil
+		case map[string]interface{}:
+			return "OBJECT", nil
+		default:
+			return "OPAQUE", nil
+	}
 }
 
+// Children implements the Expression interface.
 func (j JSONType) Children() []sql.Expression {
-
-
+	return []sql.Expression{j.JSON}
 }
 
-func (j JSONType) WithChildren(children ...sql.Expression) ( sql.Expression,  error) {
-
-
+// WithChildren implements the Expression interface.
+func (j JSONType) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONType(children...)
 }
 
 
