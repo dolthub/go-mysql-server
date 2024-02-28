@@ -1,0 +1,88 @@
+// Copyright 2024 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package json
+
+import (
+					"github.com/dolthub/go-mysql-server/sql"
+		)
+
+// JSONType (json_val)
+//
+// Returns a utf8mb4 string indicating the type of a JSON value. This can be an object, an array, or a scalar type.
+// JSONType returns NULL if the argument is NULL. An error occurs if the argument is not a valid JSON value
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-type
+type JSONType struct {
+	JSON sql.Expression
+}
+
+var _ sql.FunctionExpression = &JSONType{}
+
+// NewJSONType creates a new JSONType function.
+func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 1 {
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_TYPE", "1", len(args))
+	}
+	return &JSONType{JSON: args[0]}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONType) FunctionName() string {
+	return "json_type"
+}
+
+// Description implements sql.FunctionExpression
+func (j JSONType) Description() string {
+	return "returns type of JSON value."
+}
+
+
+// Resolved implements the Expression interface.
+func (j JSONType) Resolved() bool {
+	return j.JSON.Resolved()
+}
+
+// String implements the fmt.Stringer interface.
+func (j JSONType) String() string {
+	return
+
+}
+
+func (j JSONType) Type() sql.Type {
+
+
+}
+
+func (j JSONType) IsNullable() bool {
+
+
+}
+
+func (j JSONType) Eval(ctx *sql.Context, row sql.Row) ( interface{},  error) {
+
+
+}
+
+func (j JSONType) Children() []sql.Expression {
+
+
+}
+
+func (j JSONType) WithChildren(children ...sql.Expression) ( sql.Expression,  error) {
+
+
+}
+
+
