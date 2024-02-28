@@ -9432,6 +9432,12 @@ from typestable`,
 			{"DECIMAL"},
 		},
 	},
+	{
+		Query: "select json_type(cast(cast(2001 as year) as json));",
+		Expected: []sql.Row{
+			{"UNSIGNED INTEGER"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9642,13 +9648,6 @@ FROM mytable;`,
 		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as time) as json));",
 		Expected: []sql.Row{
 			{"TIME"},
-		},
-	},
-	// missing year cast
-	{
-		Query: "select json_type(cast(cast(2001 as year) as json));",
-		Expected: []sql.Row{
-			{"UNSIGNED INTEGER"},
 		},
 	},
 	// binary to json cast is broken
