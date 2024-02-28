@@ -19,6 +19,7 @@ import (
 	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -91,12 +92,35 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case bool:
 		return "BOOLEAN", nil
 	case float64:
+		if conv, ok := j.JSON.(*expression.Convert); ok {
+			typ := conv.Child.Type()
+			if types.IsUnsigned(typ) {
+				return "UNSIGNED INTEGER", nil
+			}
+		}
 		if math.Floor(v) == v {
+			if v >= (math.MaxInt32 + 1) * 2 {
+				return "UNSIGNED INTEGER", nil
+			}
 			return "INTEGER", nil
 		}
 		return "DOUBLE", nil
 	case string:
-		// TODO: differentiate between STRING, DECIMAL, DATE, DATETIME, and TIME
+		if conv, ok := j.JSON.(*expression.Convert); ok {
+			typ := conv.Child.Type()
+			if types.IsDecimal(typ) {
+				return "DECIMAL", nil
+			}
+			if types.IsDatetimeType(typ) {
+				return "DATETIME", nil
+			}
+			if types.IsDateType(typ) {
+				return "DATE", nil
+			}
+			if types.IsTime(typ) {
+				return "TIME", nil
+			}
+		}
 		return "STRING", nil
 	case []interface{}:
 		return "ARRAY", nil
