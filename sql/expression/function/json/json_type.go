@@ -99,7 +99,7 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		}
 		if math.Floor(v) == v {
-			if v >= (math.MaxInt32 + 1) * 2 {
+			if v >= (math.MaxInt32+1)*2 {
 				return "UNSIGNED INTEGER", nil
 			}
 			return "INTEGER", nil
