@@ -122,6 +122,30 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "GMS issue 2349",
+		SetUpScript: []string{
+			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
+			`
+CREATE TABLE table2 (
+	id int NOT NULL AUTO_INCREMENT,
+	name text,
+	fk int,
+	PRIMARY KEY (id),
+	CONSTRAINT myConstraint FOREIGN KEY (fk) REFERENCES table1 (id)
+)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+		},
+	},
+	{
 		Name: "missing indexes",
 		SetUpScript: []string{
 			`
