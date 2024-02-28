@@ -1159,6 +1159,7 @@ END;`,
 			"create table t (i int primary key);",
 			"insert into t values (0), (1), (2), (3)",
 			"CREATE PROCEDURE limited(the_limit int, the_offset bigint) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
+			"CREATE PROCEDURE limited_uns(the_limit int unsigned, the_offset bigint unsigned) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1171,6 +1172,10 @@ END;`,
 			},
 			{
 				Query:    "call limited(2,2)",
+				Expected: []sql.Row{{2}, {3}},
+			},
+			{
+				Query:    "call limited_uns(2,2)",
 				Expected: []sql.Row{{2}, {3}},
 			},
 			{
