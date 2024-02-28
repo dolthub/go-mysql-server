@@ -94,7 +94,7 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case float64:
 		if conv, ok := j.JSON.(*expression.Convert); ok {
 			typ := conv.Child.Type()
-			if types.IsUnsigned(typ) {
+			if types.IsUnsigned(typ) || types.IsYear(typ) {
 				return "UNSIGNED INTEGER", nil
 			}
 		}
