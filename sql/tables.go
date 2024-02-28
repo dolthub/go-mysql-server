@@ -393,18 +393,31 @@ type RewritableTable interface {
 	RewriteInserter(ctx *Context, oldSchema, newSchema PrimaryKeySchema, oldColumn, newColumn *Column, idxCols []IndexColumn) (RowInserter, error)
 }
 
-// AlterableTable should be implemented by tables that can receive ALTER TABLE statements to modify their schemas.
+// AlterableTable should be implemented by tables that can receive
+// ALTER TABLE statements to modify their schemas.
 type AlterableTable interface {
 	Table
 	UpdatableTable
 
-	// AddColumn adds a column to this table as given. If non-nil, order specifies where in the schema to add the column.
+	// AddColumn adds a column to this table as given. If non-nil, order
+	// specifies where in the schema to add the column.
 	AddColumn(ctx *Context, column *Column, order *ColumnOrder) error
 	// DropColumn drops the column with the name given.
 	DropColumn(ctx *Context, columnName string) error
-	// ModifyColumn modifies the column with the name given, replacing with the new column definition provided (which may
-	// include a name change). If non-nil, order specifies where in the schema to move the column.
+	// ModifyColumn modifies the column with the name given, replacing
+	// with the new column definition provided (which may include a name
+	// change). If non-nil, order specifies where in the schema to move
+	// the column.
 	ModifyColumn(ctx *Context, columnName string, column *Column, order *ColumnOrder) error
+}
+
+// SchemaValidator is a database that performs schema compatibility checks
+// for CREATE and ALTER TABLE statements.
+type SchemaValidator interface {
+	Database
+	// ValidateSchema lets storage integrators validate whether they can
+	// serialize a given schema.
+	ValidateSchema(Schema) error
 }
 
 // UnresolvedTable is a Table that is either unresolved or deferred for until an asOf resolution.

@@ -1165,10 +1165,6 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 		}
 	}
 
-	if err := validateMaxRowLength(newSch.PhysicalSchema()); err != nil {
-		return 0, nil, err
-	}
-
 	for _, newSchCol := range newSch {
 		newDefault, _, _ := transform.Expr(newSchCol.Default, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := expr.(*expression.GetField); ok {

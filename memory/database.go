@@ -48,6 +48,7 @@ var _ sql.EventDatabase = (*Database)(nil)
 var _ sql.ViewDatabase = (*Database)(nil)
 var _ sql.CollatedDatabase = (*Database)(nil)
 var _ fulltext.Database = (*Database)(nil)
+var _ sql.SchemaValidator = (*BaseDatabase)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
@@ -79,6 +80,11 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 		tables: map[string]MemTable{},
 		fkColl: newForeignKeyCollection(),
 	}
+}
+
+// ValidateSchema implements sql.SchemaValidator
+func (d *BaseDatabase) ValidateSchema(schema sql.Schema) error {
+	return validateMaxRowLength(schema)
 }
 
 // EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary partitionKeys
@@ -232,10 +238,6 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 	_, ok := d.tables[name]
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
-	}
-
-	if err := validateMaxRowLength(schema.PhysicalSchema()); err != nil {
-		return err
 	}
 
 	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)

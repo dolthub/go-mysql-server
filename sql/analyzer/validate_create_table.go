@@ -155,6 +155,7 @@ func validateIdentifiers(name string, spec *plan.TableSpec) error {
 func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	var sch sql.Schema
 	var indexes []string
+	var validator sql.SchemaValidator
 	keyedColumns := make(map[string]bool)
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
@@ -163,16 +164,41 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		}
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
+			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
+				}
+			}
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.RenameColumn:
+			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
+				}
+			}
 			return false
 		case *plan.AddColumn:
+			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
+				}
+			}
 			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.DropColumn:
+			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
+				}
+			}
 			return false
 		case *plan.AlterIndex:
+			if rt, ok := n.Table.(*plan.ResolvedTable); ok {
+				if sv, ok := rt.UnwrappedDatabase().(sql.SchemaValidator); ok {
+					validator = sv
+				}
+			}
 			indexes, err = getTableIndexNames(ctx, a, n.Table)
 		default:
 		}
@@ -291,6 +317,12 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 	if err != nil {
 		return nil, transform.SameTree, err
+	}
+
+	if validator != nil {
+		if err := validator.ValidateSchema(sch); err != nil {
+			return nil, transform.SameTree, err
+		}
 	}
 
 	// We can't evaluate auto-increment until the end of the analysis, since we break adding a new auto-increment unique
