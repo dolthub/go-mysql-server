@@ -9385,6 +9385,18 @@ from typestable`,
 		},
 	},
 	{
+		Query: `SELECT json_type(json_extract('{"a": 123.456}', '$.a'));`,
+		Expected: []sql.Row{
+			{"DOUBLE"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": null}', '$.a'));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
 		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as datetime) as json));",
 		Expected: []sql.Row{
 			{"DATETIME"},
@@ -9644,6 +9656,13 @@ FROM mytable;`,
 		Query: "SELECT json_type(cast(cast('123abc' as binary) as json));",
 		Expected: []sql.Row{
 			{"BLOB"},
+		},
+	},
+	// 1e2 -> 100, so we can't tell the difference between float and integer in this case
+	{
+		Query: `SELECT json_type(json_extract('{"a": 1e2}', '$.a'));`,
+		Expected: []sql.Row{
+			{"DOUBLE"},
 		},
 	},
 }
