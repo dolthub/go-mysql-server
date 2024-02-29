@@ -153,7 +153,7 @@ var AlterTableScripts = []ScriptTest{
 		// https://github.com/dolthub/dolt/issues/6206
 		Name: "alter table containing column default value expressions",
 		SetUpScript: []string{
-			"create table t (pk int primary key, col1 timestamp(6) default current_timestamp(), col2 varchar(1000), index idx1 (pk, col1));",
+			"create table t (pk int primary key, col1 timestamp(6) default current_timestamp(6), col2 varchar(1000), index idx1 (pk, col1));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -162,7 +162,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP,\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP(6),\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
@@ -170,7 +170,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP,\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP(6),\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "alter table t drop index idx1;",
