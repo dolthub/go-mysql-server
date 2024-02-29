@@ -249,14 +249,13 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// The second query in the union subquery returns "x" instead of mytable.i
 				// https://github.com/dolthub/dolt/issues/4256
-				Skip:     true,
 				Query:    `SELECT *, (select i union select i) as a from mytable;`,
-				Expected: []sql.Row{{1, "first row", 1}, {2, "second row", 2}, {3, "third row", 3}},
+				Expected: []sql.Row{
+					{1, "first row", 1},
+					{2, "second row", 2},
+					{3, "third row", 3}},
 			},
 			{
-				// Fails with an unresolved *plan.Project node error
-				// The second Project in the union subquery doens't seem to get its alias reference resolved
-				Skip:     true,
 				Query:    `SELECT 1 as a, (select a union select a) as b;`,
 				Expected: []sql.Row{{1, 1}},
 			},
@@ -270,14 +269,12 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
 				// this query.
-				Skip:  true,
 				Query: "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
 				// column names:  a, mod1, one, two
 				Expected: []sql.Row{{1, 2, 1, 2}},
 			},
 			{
 				// GMS returns `ambiguous column or alias name "b"` on both cases of `group by b` and `group by 1` inside subquery, but MySQL executes.
-				Skip:     true,
 				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
 				Expected: []sql.Row{{1, 1}},
 			},

@@ -1680,7 +1680,6 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into a with cte as (select * from b) select * from cte on duplicate key update a.i = cte.j + 100`,
-				Skip:  true,
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 4}},
 				},
