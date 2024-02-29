@@ -9664,6 +9664,31 @@ FROM mytable;`,
 			{"DOUBLE"},
 		},
 	},
+	// MySQL seems to store initial type information in JSON, we don't
+	{
+		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as double)), "$.a"));`,
+		Expected: []sql.Row{
+			{"DOUBLE"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as unsigned)), "$.a"));`,
+		Expected: []sql.Row{
+			{"UNSIGNED INTEGER"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as signed)), "$.a"));`,
+		Expected: []sql.Row{
+			{"INTEGER"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as decimal)), "$.a"));`,
+		Expected: []sql.Row{
+			{"DECIMAL"},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
