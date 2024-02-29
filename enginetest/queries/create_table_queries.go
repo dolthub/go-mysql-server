@@ -389,15 +389,15 @@ var CreateTableScriptTests = []ScriptTest{
 				ExpectedErrStr: "DATETIME supports precision from 0 to 6",
 			},
 			{
-				Query: "CREATE TABLE tt (pk int primary key, d datetime(3) default current_timestamp(6))",
+				Query:       "CREATE TABLE tt (pk int primary key, d datetime(3) default current_timestamp(6))",
 				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 			{
-				Query: "CREATE TABLE tt (pk int primary key, d datetime(6) default current_timestamp(3))",
+				Query:       "CREATE TABLE tt (pk int primary key, d datetime(6) default current_timestamp(3))",
 				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 			{
-				Query: "CREATE TABLE tt (pk int primary key, d datetime(6) default current_timestamp(6))",
+				Query:    "CREATE TABLE tt (pk int primary key, d datetime(6) default current_timestamp(6))",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
