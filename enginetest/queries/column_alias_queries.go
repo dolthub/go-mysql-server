@@ -249,7 +249,7 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// The second query in the union subquery returns "x" instead of mytable.i
 				// https://github.com/dolthub/dolt/issues/4256
-				Query:    `SELECT *, (select i union select i) as a from mytable;`,
+				Query: `SELECT *, (select i union select i) as a from mytable;`,
 				Expected: []sql.Row{
 					{1, "first row", 1},
 					{2, "second row", 2},

@@ -69,7 +69,7 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 			{
 				// A subquery containing a derived table, used in the GROUP BY clause of a top-level query as a grouping
 				// expression, has visibility to tables and columns in the top-level query.
-				Skip: true, // memoization to fix
+				Skip:     true, // memoization to fix
 				Query:    "SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}},
 			},
@@ -95,13 +95,13 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// expression aliases are NOT visible from outer scopes to derived tables
-				Skip: true, // need to error
+				Skip:        true, // need to error
 				Query:       "select 'foo' as foo, (select dt.b from (select 1 as a, foo as b) dt);",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
 				// a derived table NOT inside a subquery expression does NOT have access to any lateral scope tables.
-				Skip: true, // different OK error
+				Skip:        true, // different OK error
 				Query:       "SELECT n1.val as a1 from numbers n1, (select n1.val, n2.val * -1 from numbers n2 where n1.val = n2.val) as dt;",
 				ExpectedErr: sql.ErrTableNotFound,
 			},
