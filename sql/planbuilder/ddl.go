@@ -1020,7 +1020,7 @@ func validatePrec(expr sql.Expression, colPrec int) (bool, error) {
 	}
 	children := now.Children()
 	if len(children) == 0 {
-		return true, nil
+		return colPrec == 0, nil
 	}
 	lit, isLit := children[0].(*expression.Literal)
 	if !isLit {
@@ -1069,7 +1069,7 @@ func validateOnUpdateExprs(col *sql.Column) error {
 	if dt, ok := col.Type.(sql.DatetimeType); ok {
 		colPrec = dt.Precision()
 	}
-	if isValid, err := validatePrec(col.Default.Expr, colPrec); err != nil {
+	if isValid, err := validatePrec(col.OnUpdate.Expr, colPrec); err != nil {
 		return err
 	} else if !isValid {
 		return sql.ErrInvalidOnUpdate.New(col.Name)
