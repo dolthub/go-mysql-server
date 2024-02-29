@@ -54,10 +54,6 @@ import (
 
 type UUIDFunc struct{}
 
-func (u UUIDFunc) IsNonDeterministic() bool {
-	return true
-}
-
 var _ sql.FunctionExpression = &UUIDFunc{}
 var _ sql.CollationCoercible = &UUIDFunc{}
 
@@ -84,7 +80,14 @@ func (UUIDFunc) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return uuid.New().String(), nil
+	uuid := uuid.New().String()
+
+	err := ctx.SetSessionVariable(ctx, "last_generated_uuid", uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	return uuid, nil
 }
 
 func (u UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -111,6 +114,11 @@ func (u UUIDFunc) Children() []sql.Expression {
 // IsNullable returns whether the expression can be null.
 func (u UUIDFunc) IsNullable() bool {
 	return false
+}
+
+// IsNonDeterministic implements the sql.NonDeterministicExpression interface
+func (u UUIDFunc) IsNonDeterministic() bool {
+	return true
 }
 
 // IS_UUID(string_uuid)
@@ -147,7 +155,7 @@ func (u IsUUID) String() string {
 }
 
 func (u IsUUID) Type() sql.Type {
-	return types.Int8
+	return types.Boolean
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -158,7 +166,7 @@ func (IsUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := u.child.Eval(ctx, row)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 
 	if str == nil {
@@ -169,19 +177,19 @@ func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case string:
 		_, err := uuid.Parse(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	case []byte:
 		_, err := uuid.ParseBytes(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	default:
-		return int8(0), nil
+		return false, nil
 	}
 }
 

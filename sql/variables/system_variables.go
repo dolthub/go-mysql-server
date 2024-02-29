@@ -27,6 +27,7 @@ import (
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // TODO: Add from the following sources because MySQL likes to not have every variable on a single page:
@@ -1151,6 +1152,14 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("large_page_size", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
+	},
+	"last_generated_uuid": {
+		Name:              "last_generated_uuid",
+		Scope:             sql.SystemVariableScope_Session,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.MustCreateStringWithDefaults(sqltypes.VarChar, 36),
+		Default:           nil,
 	},
 	"last_insert_id": {
 		Name:              "last_insert_id",

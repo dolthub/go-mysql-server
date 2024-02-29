@@ -1202,11 +1202,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT IS_UUID(UUID())`,
-				Expected: []sql.Row{{int8(1)}},
+				Expected: []sql.Row{{true}},
 			},
 			{
 				Query:    `SELECT IS_UUID(@uuid)`,
-				Expected: []sql.Row{{int8(1)}},
+				Expected: []sql.Row{{true}},
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid))`,
@@ -1351,6 +1351,62 @@ CREATE TABLE tab3 (
 			{
 				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
 				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
+		Name: "@@last_generated_uuid behavior",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y varchar(100) default (UUID()))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@last_generated_uuid",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "set @first_uuid = UUID();",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select is_uuid(@@last_generated_uuid), @first_uuid = @@last_generated_uuid",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				// Test an insert with an explicit call to UUID()
+				Query:    "insert into a (x,y) values (1, UUID())",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select @@last_generated_uuid IS NOT NULL, is_uuid(@@last_generated_uuid), @@last_generated_uuid = (select y from a where x=1);",
+				Expected: []sql.Row{{true, true, true}},
+			},
+			{
+				// When UUID() is used in a nested expression, it still updates @@last_generated_uuid
+				Query:            "select concat('foo-', UUID(), '-bar');",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select @@last_generated_uuid IS NOT NULL, is_uuid(@@last_generated_uuid), @@last_generated_uuid != (select y from a where x=1);",
+				Expected: []sql.Row{{true, true, true}},
+			},
+			{
+				// @@last_generated_uuid should hold the value of the last row that implicitly used UUID() via the column default
+				Query:    "insert into a (x) values (3), (4)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				Query:    "select @@last_generated_uuid IS NOT NULL, is_uuid(@@last_generated_uuid), @@last_generated_uuid = (select y from a where x=4);",
+				Expected: []sql.Row{{true, true, true}},
+			},
+			{
+				Query:    "insert into a values (5, 'five'), (6, 'six')",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
+			},
+			{
+				// The above query doesn't invoke the UUID explicitly (or implicitly through a default), so last_generated_uuid is unchanged
+				Query:    "select @@last_generated_uuid IS NOT NULL, is_uuid(@@last_generated_uuid), @@last_generated_uuid = (select y from a where x=4);",
+				Expected: []sql.Row{{true, true, true}},
 			},
 		},
 	},
