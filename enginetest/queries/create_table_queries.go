@@ -68,7 +68,7 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 (a INTEGER, create_time timestamp(6) NOT NULL DEFAULT NOW(6), primary key (a))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `a` int NOT NULL,\n  `create_time` timestamp(6) NOT NULL DEFAULT (NOW(6)),\n  PRIMARY KEY (`a`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{sql.Row{"t1", "CREATE TABLE `t1` (\n  `a` int NOT NULL,\n  `create_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),\n  PRIMARY KEY (`a`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 LIKE mytable`,
@@ -387,6 +387,18 @@ var CreateTableScriptTests = []ScriptTest{
 			{
 				Query:          "create table t4 (pk int primary key, d datetime(7))",
 				ExpectedErrStr: "DATETIME supports precision from 0 to 6",
+			},
+			{
+				Query: "CREATE TABLE tt (pk int primary key, d datetime(3) default current_timestamp(6))",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Query: "CREATE TABLE tt (pk int primary key, d datetime(6) default current_timestamp(3))",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Query: "CREATE TABLE tt (pk int primary key, d datetime(6) default current_timestamp(6))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
