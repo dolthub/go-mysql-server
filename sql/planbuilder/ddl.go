@@ -1012,6 +1012,51 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 	return
 }
 
+// validatePrec ensures that the Time functions used for OnUpdate for columns is correct
+func validatePrec(expr sql.Expression, colPrec int) (bool, error) {
+	now, ok := expr.(*function.Now)
+	if !ok {
+		return true, nil
+	}
+	children := now.Children()
+	if len(children) == 0 {
+		return colPrec == 0, nil
+	}
+	lit, isLit := children[0].(*expression.Literal)
+	if !isLit {
+		return true, nil
+	}
+	val, err := lit.Eval(nil, nil)
+	if err != nil {
+		return false, err
+	}
+	prec, ok := types.CoalesceInt(val)
+	if !ok {
+		return false, nil
+	}
+	return prec == colPrec, nil
+}
+
+// validateDefaultExprs ensures that the Time functions used for OnUpdate for columns is correct
+func validateDefaultExprs(col *sql.Column) error {
+	if col.Default == nil {
+		return nil
+	}
+	if !(types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type)) {
+		return nil
+	}
+	var colPrec int
+	if dt, ok := col.Type.(sql.DatetimeType); ok {
+		colPrec = dt.Precision()
+	}
+	if isValid, err := validatePrec(col.Default.Expr, colPrec); err != nil {
+		return err
+	} else if !isValid {
+		return sql.ErrInvalidColumnDefaultValue.New(col.Name)
+	}
+	return nil
+}
+
 // validateOnUpdateExprs ensures that the Time functions used for OnUpdate for columns is correct
 func validateOnUpdateExprs(col *sql.Column) error {
 	if col.OnUpdate == nil {
@@ -1020,27 +1065,13 @@ func validateOnUpdateExprs(col *sql.Column) error {
 	if !(types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type)) {
 		return sql.ErrInvalidOnUpdate.New(col.Name)
 	}
-	now, ok := col.OnUpdate.Expr.(*function.Now)
-	if !ok {
-		return nil
+	var colPrec int
+	if dt, ok := col.Type.(sql.DatetimeType); ok {
+		colPrec = dt.Precision()
 	}
-	children := now.Children()
-	if len(children) == 0 {
-		return nil
-	}
-	lit, isLit := children[0].(*expression.Literal)
-	if !isLit {
-		return nil
-	}
-	val, err := lit.Eval(nil, nil)
-	if err != nil {
+	if isValid, err := validatePrec(col.OnUpdate.Expr, colPrec); err != nil {
 		return err
-	}
-	prec, ok := types.CoalesceInt(val)
-	if !ok {
-		return sql.ErrInvalidOnUpdate.New(col.Name)
-	}
-	if prec != 0 {
+	} else if !isValid {
 		return sql.ErrInvalidOnUpdate.New(col.Name)
 	}
 	return nil
@@ -1126,6 +1157,10 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 	for i, def := range defaults {
 		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
+		err := validateDefaultExprs(schema[i])
+		if err != nil {
+			b.handleErr(err)
+		}
 		if def != nil && generated[i] != nil {
 			b.handleErr(sql.ErrGeneratedColumnWithDefault.New())
 			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""

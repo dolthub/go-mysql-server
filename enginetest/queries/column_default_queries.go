@@ -471,13 +471,13 @@ var ColumnDefaultTests = []ScriptTest{
 	{
 		Name: "Column defaults with functions",
 		SetUpScript: []string{
-			"CREATE TABLE t33(pk varchar(100) DEFAULT (replace(UUID(), '-', '')), v1 timestamp(6) DEFAULT now(), v2 varchar(100), primary key (pk))",
+			"CREATE TABLE t33(pk varchar(100) DEFAULT (replace(UUID(), '-', '')), v1 timestamp(6) DEFAULT now(6), v2 varchar(100), primary key (pk))",
 			"insert into t33 (v2) values ('abc')",
 			"alter table t33 add column name varchar(100)",
 			"alter table t33 rename column v1 to v1_new",
 			"alter table t33 rename column name to name2",
 			"alter table t33 drop column name2",
-			"alter table t33 add column v3 datetime(6) default CURRENT_TIMESTAMP()",
+			"alter table t33 add column v3 datetime(6) default CURRENT_TIMESTAMP(6)",
 		},
 
 		Assertions: []ScriptTestAssertion{
@@ -485,13 +485,13 @@ var ColumnDefaultTests = []ScriptTest{
 				Query: "desc t33",
 				Expected: []sql.Row{
 					{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
-					{"v1_new", "timestamp(6)", "YES", "", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED"},
+					{"v1_new", "timestamp(6)", "YES", "", "CURRENT_TIMESTAMP(6)", "DEFAULT_GENERATED"},
 					{"v2", "varchar(100)", "YES", "", "NULL", ""},
-					{"v3", "datetime(6)", "YES", "", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED"},
+					{"v3", "datetime(6)", "YES", "", "CURRENT_TIMESTAMP(6)", "DEFAULT_GENERATED"},
 				},
 			},
 			{
-				Query:          "alter table t33 add column v4 date default CURRENT_TIMESTAMP()",
+				Query:          "alter table t33 add column v4 date default CURRENT_TIMESTAMP(6)",
 				ExpectedErrStr: "only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses",
 			},
 		},
