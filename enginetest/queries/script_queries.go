@@ -1365,8 +1365,8 @@ CREATE TABLE tab3 (
 			"create table invalid (pk int primary key, c1 varchar(36) default (UUID()));",
 		},
 		Assertions: []ScriptTestAssertion{
+			// The initial value of last_insert_uuid() is an empty string
 			{
-				// The initial value of last_insert_uuid() is an empty string
 				Query:    "select last_insert_uuid()",
 				Expected: []sql.Row{{""}},
 			},
@@ -1403,7 +1403,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
-				// TODO: explain why i = 2
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1412,7 +1412,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				// The previous insert did not generate a UUID, so last_insert_uuid() should not have been updated
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1431,7 +1431,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
-				// TODO: explain why i = 2
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1440,7 +1440,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				// The previous insert did not generate a UUID, so last_insert_uuid() should not have been updated
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1459,7 +1459,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
-				// TODO: explain why i = 2
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1468,7 +1468,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				// The previous insert did not generate a UUID, so last_insert_uuid() should not have been updated
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1487,7 +1487,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
-				// TODO: explain why i = 2
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1496,7 +1496,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				// The previous insert did not generate a UUID, so last_insert_uuid() should not have been updated
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1515,7 +1515,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
-				// TODO: explain why i = 2
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
@@ -1524,7 +1524,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				// The previous insert did not generate a UUID, so last_insert_uuid() should not have been updated
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},

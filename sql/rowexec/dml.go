@@ -73,7 +73,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		updateExprs:         ii.OnDupExprs,
 		insertExprs:         insertExpressions,
 		insertTuples:        insertTuples,
-		insertTupleIndex:    0,
+		uuidColumnIdx:       findUuidPrimaryKey(dstSchema),
 		checks:              ii.Checks(),
 		ctx:                 ctx,
 		ignore:              ii.Ignore,

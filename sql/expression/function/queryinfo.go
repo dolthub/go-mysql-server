@@ -101,7 +101,7 @@ func NewLastInsertUuid(children ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(LastInsertUuid{}.String(), len(children), 0)
 	}
 
-	return LastInsertUuid{}, nil
+	return &LastInsertUuid{}, nil
 }
 
 func (l LastInsertUuid) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {

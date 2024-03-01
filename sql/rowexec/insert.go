@@ -44,6 +44,7 @@ type insertIter struct {
 	insertExprs           []sql.Expression
 	insertTuples          [][]sql.Expression
 	insertTupleIndex      int
+	uuidColumnIdx         int
 	updateExprs           []sql.Expression
 	checks                sql.CheckConstraints
 	tableNode             sql.Node
@@ -176,9 +177,12 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	i.updateLastInsertId(ctx, row)
-	i.updateLastInsertUuid(ctx, row)
-	i.insertTupleIndex++
+	err = i.updateLastInsertUuid(ctx, row)
+	if err != nil {
+		return nil, err
+	}
 
+	i.insertTupleIndex++
 	return row, nil
 }
 
@@ -305,17 +309,21 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
-func (i *insertIter) updateLastInsertUuid(ctx *sql.Context, row sql.Row) {
-	// If we've already captured the first inserted UUID in this statement, don't capture any more
+func (i *insertIter) updateLastInsertUuid(ctx *sql.Context, row sql.Row) error {
+	// If we've already captured the first inserted UUID in this statement, don't capture any others
 	if i.lastInsertUuidUpdated {
-		return
+		return nil
 	}
 
-	if uuidColumnIdx := i.findUuidPrimaryKey(); uuidColumnIdx != -1 {
-		uuidVal := i.getUuidVal(uuidColumnIdx, row)
+	if i.uuidColumnIdx != -1 {
+		uuidVal, err := i.getUuidVal(row)
+		if err != nil {
+			return err
+		}
 		ctx.SetLastQueryInfoString(sql.LastInsertUuid, uuidVal)
 		i.lastInsertUuidUpdated = true
 	}
+	return nil
 }
 
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
@@ -329,13 +337,13 @@ func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	return autoIncVal
 }
 
-func (i *insertIter) findUuidPrimaryKey() int {
-	// TODO: this could be computed once up front, instead of for each row (although... we would skip out early
-	//       anyway after we find the first insert UUID)
-
-	// TODO: Should we consider matching columns as long as they are PART of the PK?
-	//       Or restrict it to being the ONLY column in the PK?
-	for columnIdx, col := range i.schema {
+// findUuidPrimaryKey searches for a column in the primary key that is a UUID column. UUID columns are defined as
+// either a char(36) or varchar(36) that has a column default of UUID() or a binary(16) or varbinary(16) that has
+// a column default of UUID_to_bin(UUID()). This is meant to be similar to auto_increment rules, which allow only
+// one auto_increment column that must be part of a key. If a matching column is found, its index is returned,
+// otherwise -1 is returned to indicate that no matching column was found.
+func findUuidPrimaryKey(schema sql.Schema) int {
+	for columnIdx, col := range schema {
 		if col.PrimaryKey == false {
 			continue
 		}
@@ -343,99 +351,90 @@ func (i *insertIter) findUuidPrimaryKey() int {
 		switch col.Type.Type() {
 		case sqltypes.Char, sqltypes.VarChar:
 			stringType := col.Type.(sql.StringType)
-			if stringType.MaxCharacterLength() != 36 {
+			if stringType.MaxCharacterLength() != 36 || col.Default == nil {
 				continue
 			}
 			if _, ok := col.Default.Expr.(*function.UUIDFunc); ok {
-				// Do we need to make sure UUIDFunc doesn't have a child argument in it?
 				return columnIdx
 			}
 		case sqltypes.Binary, sqltypes.VarBinary:
 			stringType := col.Type.(sql.StringType)
-			if stringType.MaxByteLength() != 16 {
+			if stringType.MaxByteLength() != 16 || col.Default == nil {
 				continue
 			}
 			if uuidToBinFunc, ok := col.Default.Expr.(*function.UUIDToBin); ok {
 				if _, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
-					// Do we need to make sure UUIDFunc doesn't have a child argument in it?
 					return columnIdx
 				}
 			}
-		default:
-			// no-op
 		}
 	}
 
 	return -1
 }
 
-func (i *insertIter) getUuidVal(idx int, row sql.Row) string {
-	// There can only be one column that has a UUID in it that we will store as the last insert UUID
-	// We need to precompute whether the schema has one of these, and if so, what column index it is
-	// Then in this function, we can just grab that value from the row.
-	//
-	// However... something that's different from auto_increment is that we can use "DEFAULT" or we can
-	// explicitly call "UUID()" and in either case, we should capture that as the insert UUID.
-	//
-	// However... like auto_increment, if they provide a value that does NOT use auto_increment, then
-	// we should NOT capture that.
-
+// getUuidVal returns the UUID value from |row| for the column specified as the UUID primary key
+// column (i.uuidColumnIdx), or "" if no valid UUID value was found, and an error if any unexpected
+// errors were encountered while looking up the UUID value.
+func (i *insertIter) getUuidVal(row sql.Row) (string, error) {
 	// Grab the expression that generated the value for the UUID key column
-	expr := i.insertTuples[i.insertTupleIndex][idx]
+	expr := i.insertTuples[i.insertTupleIndex][i.uuidColumnIdx]
 	if wrapper, ok := expr.(*expression.Wrapper); ok {
 		expr = wrapper.Unwrap()
 	}
 
-	// If the Tuple Expression has a *sql.ColumnDefaultValue in it, then return the row value
-	foundAThing := false
+	// If the Tuple Expression has a *sql.ColumnDefaultValue in it, then return the row value, since
+	// we've already verified this column is a valid UUID column earlier.
+	foundUuid := false
 	binaryUuid := false
 	swappedBinaryUuid := false
 	transform.InspectExpr(expr, func(expr sql.Expression) bool {
 		if defaultValue, ok := expr.(*sql.ColumnDefaultValue); ok {
-			foundAThing = true
+			foundUuid = true
 			if uuidToBin, ok := defaultValue.Expr.(*function.UUIDToBin); ok {
 				binaryUuid = true
 				swappedBinaryUuid = uuidToBin.Swapped()
 			}
 		}
-		return foundAThing
+		return foundUuid
 	})
 
 	// If the expression is a function.UUIDFunc (directly, not transitively), then return the row value
 	if _, ok := expr.(*function.UUIDFunc); ok {
-		// TODO: This should probably also check that the column is a varchar(36)? i.e. prevent explicitly trying to
-		//       insert a UUID() into a varbinary(16)
-		foundAThing = true
+		switch i.schema[i.uuidColumnIdx].Type.Type() {
+		case sqltypes.Char, sqltypes.VarChar:
+			foundUuid = true
+		}
 	}
 	if uuidToBin, ok := expr.(*function.UUIDToBin); ok {
 		if _, ok := uuidToBin.Children()[0].(*function.UUIDFunc); ok {
-			// TODO: Same comment here... this should probably assert the column is varbinary(16)
-			foundAThing = true
-			binaryUuid = true
-			swappedBinaryUuid = uuidToBin.Swapped()
+			switch i.schema[i.uuidColumnIdx].Type.Type() {
+			case sqltypes.Binary, sqltypes.VarBinary:
+				foundUuid = true
+				binaryUuid = true
+				swappedBinaryUuid = uuidToBin.Swapped()
+			}
 		}
 	}
 
-	if foundAThing { // TODO: rename!
-		if binaryUuid {
-			bytes := row[idx].([]byte)
-			parsed, err := uuid.FromBytes(bytes)
-			if err != nil {
-				// TODO: Fix to return an error
-				//return nil, sql.ErrUuidUnableToParse.New(bytes, err.Error())
-				panic(sql.ErrUuidUnableToParse.New(bytes, err.Error()).Error())
-			}
-
-			if swappedBinaryUuid {
-				parsed = uuid.UUID(function.UnswapUUIDBytes(parsed))
-			}
-			return parsed.String()
-		} else {
-			return row[idx].(string)
-		}
+	if !foundUuid {
+		return "", nil
 	}
 
-	return ""
+	if binaryUuid {
+		bytes := row[i.uuidColumnIdx].([]byte)
+		parsed, err := uuid.FromBytes(bytes)
+		if err != nil {
+			return "", sql.ErrUuidUnableToParse.New(bytes, err.Error())
+		}
+
+		if swappedBinaryUuid {
+			parsed = uuid.UUID(function.UnswapUUIDBytes(parsed))
+		}
+		return parsed.String(), nil
+	} else {
+		return row[i.uuidColumnIdx].(string), nil
+	}
 }
 
 func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) error {
