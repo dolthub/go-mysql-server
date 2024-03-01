@@ -158,11 +158,11 @@ func (IsUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := u.child.Eval(ctx, row)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	if str == nil {
-		return false, nil
+		return nil, nil
 	}
 
 	switch str := str.(type) {
