@@ -1362,6 +1362,7 @@ CREATE TABLE tab3 (
 			"create table varbinary16 (pk varbinary(16) primary key default (UUID_to_bin(UUID())), i int);",
 			"create table binary16 (pk binary(16) primary key default (UUID_to_bin(UUID())), i int);",
 			"create table binary16swap (pk binary(16) primary key default (UUID_to_bin(UUID(), true)), i int);",
+			"create table invalid (pk int primary key, c1 varchar(36) default (UUID()));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1369,6 +1370,25 @@ CREATE TABLE tab3 (
 				Query:    "select last_insert_uuid()",
 				Expected: []sql.Row{{""}},
 			},
+
+			// invalid table – UUID default is not a primary key, so last_insert_uuid() doesn't get udpated
+			{
+				Query:    "insert into invalid values (1, DEFAULT);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+			{
+				Query:    "insert into invalid values (2, UUID());",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+
 			// varchar(36) test cases...
 			{
 				Query:    "insert into varchar36 values (DEFAULT, 1);",
