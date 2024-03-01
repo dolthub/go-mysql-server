@@ -4457,6 +4457,18 @@ Select * from (
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
+		Query:    "SELECT adddate(da, i32) from typestable;",
+		Expected: []sql.Row{{time.Date(2020, time.January, 4, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT adddate(da, concat(u32)) from typestable;",
+		Expected: []sql.Row{{time.Date(2020, time.January, 8, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT adddate(da, f32/10) from typestable;",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
 		Query:    "SELECT subdate(da, i32) from typestable;",
 		Expected: []sql.Row{{time.Date(2019, time.December, 27, 0, 0, 0, 0, time.UTC)}},
 	},
