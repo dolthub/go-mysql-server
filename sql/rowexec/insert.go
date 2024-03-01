@@ -18,7 +18,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/google/uuid"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -30,22 +32,23 @@ import (
 )
 
 type insertIter struct {
-	schema              sql.Schema
-	inserter            sql.RowInserter
-	replacer            sql.RowReplacer
-	updater             sql.RowUpdater
-	rowSource           sql.RowIter
-	lastInsertIdUpdated bool
-	hasAutoAutoIncValue bool
-	ctx                 *sql.Context
-	insertExprs         []sql.Expression
-	insertTuples        [][]sql.Expression
-	insertTupleIndex    int
-	updateExprs         []sql.Expression
-	checks              sql.CheckConstraints
-	tableNode           sql.Node
-	closed              bool
-	ignore              bool
+	schema                sql.Schema
+	inserter              sql.RowInserter
+	replacer              sql.RowReplacer
+	updater               sql.RowUpdater
+	rowSource             sql.RowIter
+	lastInsertIdUpdated   bool
+	lastInsertUuidUpdated bool
+	hasAutoAutoIncValue   bool
+	ctx                   *sql.Context
+	insertExprs           []sql.Expression
+	insertTuples          [][]sql.Expression
+	insertTupleIndex      int
+	updateExprs           []sql.Expression
+	checks                sql.CheckConstraints
+	tableNode             sql.Node
+	closed                bool
+	ignore                bool
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -173,6 +176,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	i.updateLastInsertId(ctx, row)
+	i.updateLastInsertUuid(ctx, row)
 	i.insertTupleIndex++
 
 	return row, nil
@@ -294,18 +298,23 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 		return
 	}
 
-	autoIncVal := i.getAutoIncVal(row)
-
 	if i.hasAutoAutoIncValue {
+		autoIncVal := i.getAutoIncVal(row)
 		ctx.SetLastQueryInfo(sql.LastInsertId, autoIncVal)
 		i.lastInsertIdUpdated = true
 	}
+}
 
-	if i.hasUuidExpr() {
-		uuidVal := i.getUuidVal(row)
+func (i *insertIter) updateLastInsertUuid(ctx *sql.Context, row sql.Row) {
+	// If we've already captured the first inserted UUID in this statement, don't capture any more
+	if i.lastInsertUuidUpdated {
+		return
+	}
+
+	if uuidColumnIdx := i.findUuidPrimaryKey(); uuidColumnIdx != -1 {
+		uuidVal := i.getUuidVal(uuidColumnIdx, row)
 		ctx.SetLastQueryInfoString(sql.LastInsertUuid, uuidVal)
-		// TODO: ?
-		//i.lastInsertIdUpdated = true
+		i.lastInsertUuidUpdated = true
 	}
 }
 
@@ -320,29 +329,109 @@ func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	return autoIncVal
 }
 
-func (i *insertIter) hasUuidExpr() bool {
-	if len(i.insertTuples) == 0 {
-		return false
-	}
+func (i *insertIter) findUuidPrimaryKey() int {
+	// TODO: this could be computed once up front, instead of for each row (although... we would skip out early
+	//       anyway after we find the first insert UUID)
 
-	for _, expr := range i.insertTuples[i.insertTupleIndex] {
-		// TODO: Why isn't function.UUIDFunc a pointer?
-		if _, ok := expr.(function.UUIDFunc); ok {
-			return true
+	// TODO: Should we consider matching columns as long as they are PART of the PK?
+	//       Or restrict it to being the ONLY column in the PK?
+	for columnIdx, col := range i.schema {
+		if col.PrimaryKey == false {
+			continue
+		}
+
+		switch col.Type.Type() {
+		case sqltypes.Char, sqltypes.VarChar:
+			stringType := col.Type.(sql.StringType)
+			if stringType.MaxCharacterLength() != 36 {
+				continue
+			}
+			// TODO: function.UUIDFunc is set as a struct, not a pointer... should probably fix that
+			if _, ok := col.Default.Expr.(function.UUIDFunc); ok {
+				// Do we need to make sure UUIDFunc doesn't have a child argument in it?
+				return columnIdx
+			}
+		case sqltypes.Binary, sqltypes.VarBinary:
+			stringType := col.Type.(sql.StringType)
+			if stringType.MaxByteLength() != 16 {
+				continue
+			}
+			// TODO: function.UUIDToBin and function.UUIDFunc should be pointers, not structs
+			if uuidToBinFunc, ok := col.Default.Expr.(function.UUIDToBin); ok {
+				if _, ok := uuidToBinFunc.Children()[0].(function.UUIDFunc); ok {
+					// Do we need to make sure UUIDFunc doesn't have a child argument in it?
+					return columnIdx
+				}
+			}
+		default:
+			// no-op
 		}
 	}
 
-	return false
+	return -1
 }
 
-func (i *insertIter) getUuidVal(row sql.Row) string {
-	for idx, expr := range i.insertTuples[i.insertTupleIndex] {
-		// TODO: function.UUIDFunc should really be a struct pointer, right?
-		if _, ok := expr.(function.UUIDFunc); ok {
-			// TODO: need to check this cast!
+func (i *insertIter) getUuidVal(idx int, row sql.Row) string {
+	// There can only be one column that has a UUID in it that we will store as the last insert UUID
+	// We need to precompute whether the schema has one of these, and if so, what column index it is
+	// Then in this function, we can just grab that value from the row.
+	//
+	// However... something that's different from auto_increment is that we can use "DEFAULT" or we can
+	// explicitly call "UUID()" and in either case, we should capture that as the insert UUID.
+	//
+	// However... like auto_increment, if they provide a value that does NOT use auto_increment, then
+	// we should NOT capture that.
+
+	// Grab the expression that generated the value for the UUID key column
+	expr := i.insertTuples[i.insertTupleIndex][idx]
+	if wrapper, ok := expr.(*expression.Wrapper); ok {
+		expr = wrapper.Unwrap()
+	}
+
+	// If the Tuple Expression has a *sql.ColumnDefaultValue in it, then return the row value
+	foundAThing := false
+	transform.InspectExpr(expr, func(expr sql.Expression) bool {
+		if _, ok := expr.(*sql.ColumnDefaultValue); ok {
+			foundAThing = true
+		}
+		return foundAThing
+	})
+
+	// If the expression is a function.UUIDFunc (directly, not transitively), then return the row value
+	if _, ok := expr.(function.UUIDFunc); ok {
+		// TODO: This should probably also check that the column is a varchar(36)? i.e. prevent explicitly trying to
+		//       insert a UUID() into a varbinary(16)
+		foundAThing = true
+	}
+	if uuidToBin, ok := expr.(function.UUIDToBin); ok {
+		if _, ok := uuidToBin.Children()[0].(function.UUIDFunc); ok {
+			// TODO: Same comment here... this should probably assert the column is varbinary(16)
+			foundAThing = true
+		}
+	}
+
+	if foundAThing {
+		// TODO: for UUID_to_bin... we need to run bin_to_uuid to convert it back to a UUID string
+		isBinary := false
+		if i.schema[idx].Type.Type() == sqltypes.Binary || i.schema[idx].Type.Type() == sqltypes.VarBinary {
+			isBinary = true
+		}
+
+		// TODO: Do we need to support the swap flag in uuid_to_bin? YES!
+		if isBinary {
+			bytes := row[idx].([]byte)
+			parsed, err := uuid.FromBytes(bytes)
+			if err != nil {
+				// TODO: Fix to return an error
+				//return nil, sql.ErrUuidUnableToParse.New(bytes, err.Error())
+				panic(sql.ErrUuidUnableToParse.New(bytes, err.Error()).Error())
+			}
+			return parsed.String()
+		} else {
 			return row[idx].(string)
 		}
 	}
+
 	return ""
 }
 
