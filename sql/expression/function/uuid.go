@@ -54,10 +54,6 @@ import (
 
 type UUIDFunc struct{}
 
-func (u UUIDFunc) IsNonDeterministic() bool {
-	return true
-}
-
 var _ sql.FunctionExpression = &UUIDFunc{}
 var _ sql.CollationCoercible = &UUIDFunc{}
 
@@ -113,6 +109,10 @@ func (u UUIDFunc) IsNullable() bool {
 	return false
 }
 
+func (u UUIDFunc) IsNonDeterministic() bool {
+	return true
+}
+
 // IS_UUID(string_uuid)
 //
 // Returns 1 if the argument is a valid string-format UUID, 0 if the argument is not a valid UUID, and NULL if the
@@ -147,7 +147,7 @@ func (u IsUUID) String() string {
 }
 
 func (u IsUUID) Type() sql.Type {
-	return types.Int8
+	return types.Boolean
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -158,30 +158,30 @@ func (IsUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := u.child.Eval(ctx, row)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 
 	if str == nil {
-		return nil, nil
+		return false, nil
 	}
 
 	switch str := str.(type) {
 	case string:
 		_, err := uuid.Parse(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	case []byte:
 		_, err := uuid.ParseBytes(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	default:
-		return int8(0), nil
+		return false, nil
 	}
 }
 

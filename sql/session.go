@@ -104,6 +104,12 @@ type Session interface {
 	SetLastQueryInfo(key string, value int64)
 	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.
 	GetLastQueryInfo(key string) int64
+
+	// SetLastQueryInfoString sets session-level query info as a string for the key given, applying to the query just executed.
+	SetLastQueryInfoString(key string, value string)
+	// GetLastQueryInfoString returns the session-level query info as a string for the key given, for the query most recently executed.
+	GetLastQueryInfoString(key string) string
+
 	// GetTransaction returns the active transaction, if any
 	GetTransaction() Transaction
 	// SetTransaction sets the session's transaction
@@ -199,9 +205,10 @@ type (
 )
 
 const (
-	RowCount     = "row_count"
-	FoundRows    = "found_rows"
-	LastInsertId = "last_insert_id"
+	RowCount       = "row_count"
+	FoundRows      = "found_rows"
+	LastInsertId   = "last_insert_id"
+	LastInsertUuid = "last_insert_uuid"
 )
 
 // Session ID 0 used as invalid SessionID
@@ -626,11 +633,12 @@ func (i *spanIter) Close(ctx *Context) error {
 	return i.iter.Close(ctx)
 }
 
-func defaultLastQueryInfo() map[string]int64 {
-	return map[string]int64{
-		RowCount:     0,
-		FoundRows:    1, // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
-		LastInsertId: 0,
+func defaultLastQueryInfo() map[string]any {
+	return map[string]any{
+		RowCount:       int64(0),
+		FoundRows:      int64(1), // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
+		LastInsertId:   int64(0),
+		LastInsertUuid: "",
 	}
 }
 

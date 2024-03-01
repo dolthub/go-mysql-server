@@ -54,6 +54,13 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		return nil, err
 	}
 
+	var insertTuples [][]sql.Expression
+	if project, ok := ii.Source.(*plan.Project); ok {
+		if values, ok := project.UnaryNode.Child.(*plan.Values); ok {
+			insertTuples = values.ExpressionTuples
+		}
+	}
+
 	insertExpressions := getInsertExpressions(ii.Source)
 	insertIter := &insertIter{
 		schema:              dstSchema,
@@ -65,6 +72,8 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		hasAutoAutoIncValue: ii.HasUnspecifiedAutoInc,
 		updateExprs:         ii.OnDupExprs,
 		insertExprs:         insertExpressions,
+		insertTuples:        insertTuples,
+		insertTupleIndex:    0,
 		checks:              ii.Checks(),
 		ctx:                 ctx,
 		ignore:              ii.Ignore,

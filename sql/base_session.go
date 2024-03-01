@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -46,7 +47,7 @@ type BaseSession struct {
 	warncnt          uint16
 	locks            map[string]bool
 	queriedDb        string
-	lastQueryInfo    map[string]int64
+	lastQueryInfo    map[string]any
 	tx               Transaction
 	ignoreAutocommit bool
 
@@ -446,7 +447,31 @@ func (s *BaseSession) SetLastQueryInfo(key string, value int64) {
 func (s *BaseSession) GetLastQueryInfo(key string) int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.lastQueryInfo[key]
+
+	value, ok := s.lastQueryInfo[key].(int64)
+	if !ok {
+		// TODO: Is this appropriate here?
+		panic(fmt.Sprintf("last query info value stored for %s is not an int64 value, but a %T", key, s.lastQueryInfo[key]))
+	}
+	return value
+}
+
+func (s *BaseSession) SetLastQueryInfoString(key string, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastQueryInfo[key] = value
+}
+
+func (s *BaseSession) GetLastQueryInfoString(key string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	value, ok := s.lastQueryInfo[key].(string)
+	if !ok {
+		// TODO: Is this appropriate here?
+		panic(fmt.Sprintf("last query info value stored for %s is not a string value, but a %T", key, s.lastQueryInfo[key]))
+	}
+	return value
 }
 
 func (s *BaseSession) GetTransaction() Transaction {

@@ -39,6 +39,8 @@ type insertIter struct {
 	hasAutoAutoIncValue bool
 	ctx                 *sql.Context
 	insertExprs         []sql.Expression
+	insertTuples        [][]sql.Expression
+	insertTupleIndex    int
 	updateExprs         []sql.Expression
 	checks              sql.CheckConstraints
 	tableNode           sql.Node
@@ -171,6 +173,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	i.updateLastInsertId(ctx, row)
+	i.insertTupleIndex++
 
 	return row, nil
 }
@@ -297,6 +300,13 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 		ctx.SetLastQueryInfo(sql.LastInsertId, autoIncVal)
 		i.lastInsertIdUpdated = true
 	}
+
+	if i.hasUuidExpr() {
+		uuidVal := i.getUuidVal(row)
+		ctx.SetLastQueryInfoString(sql.LastInsertUuid, uuidVal)
+		// TODO: ?
+		//i.lastInsertIdUpdated = true
+	}
 }
 
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
@@ -308,6 +318,32 @@ func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 		}
 	}
 	return autoIncVal
+}
+
+func (i *insertIter) hasUuidExpr() bool {
+	if len(i.insertTuples) == 0 {
+		return false
+	}
+
+	for _, expr := range i.insertTuples[i.insertTupleIndex] {
+		// TODO: Why isn't function.UUIDFunc a pointer?
+		if _, ok := expr.(function.UUIDFunc); ok {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (i *insertIter) getUuidVal(row sql.Row) string {
+	for idx, expr := range i.insertTuples[i.insertTupleIndex] {
+		// TODO: function.UUIDFunc should really be a struct pointer, right?
+		if _, ok := expr.(function.UUIDFunc); ok {
+			// TODO: need to check this cast!
+			return row[idx].(string)
+		}
+	}
+	return ""
 }
 
 func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) error {

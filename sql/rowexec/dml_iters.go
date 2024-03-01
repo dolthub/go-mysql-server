@@ -499,6 +499,11 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 		ctx.Session.SetLastQueryInfo(sql.LastInsertId, -1)
 	}
 
+	oldLastInsertUuid := ctx.Session.GetLastQueryInfoString(sql.LastInsertUuid)
+	if oldLastInsertUuid != "" {
+		ctx.Session.SetLastQueryInfoString(sql.LastInsertUuid, "")
+	}
+
 	// We close our child iterator before returning any results. In
 	// particular, the LOAD DATA source iterator needs to be closed before
 	// results are returned.
@@ -532,6 +537,11 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			newLastInsertId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
 			if newLastInsertId == -1 {
 				ctx.Session.SetLastQueryInfo(sql.LastInsertId, oldLastInsertId)
+			}
+
+			newLastInsertUuid := ctx.Session.GetLastQueryInfoString(sql.LastInsertUuid)
+			if newLastInsertUuid == "" {
+				ctx.Session.SetLastQueryInfoString(sql.LastInsertUuid, oldLastInsertUuid)
 			}
 
 			res := a.updateRowHandler.okResult() // TODO: Should add warnings here

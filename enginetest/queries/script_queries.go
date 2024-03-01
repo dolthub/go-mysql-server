@@ -1331,6 +1331,61 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "last_insert_uuid() behavior",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y varchar(100) default (UUID()))",
+			"create table b (x int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// The initial value of last_insert_uuid() is an empty string
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+			{
+				// TODO: Add a test where we insert multiple rows, but only one has a UUID() in it
+				Query:    "insert into a (x,y) values (1, UUID())",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select y from a where x=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				// last_insert_uuid() should not have been updated by the above query
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select y from a where x=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into a (x) values (3), (4)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				// last_insert_uuid() should return the insert id of the *first* value inserted in the last statement
+				// TODO: This test is still failing
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select y from a where x=3);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query: "insert into a (x, y) values (100, 'manually_entered_value')",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					InsertID:     100,
+				}}},
+			},
+			{
+				// last_insert_id() should not update for manually inserted values
+				// TODO: This test is still failing
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select y from a where x=4);",
+				Expected: []sql.Row{{true, true}},
+			},
+		},
+	},
+	{
 		Name: "last_insert_id() behavior",
 		SetUpScript: []string{
 			"create table a (x int primary key auto_increment, y int)",
