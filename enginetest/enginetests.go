@@ -426,6 +426,9 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 		TestQueryPlanWithName(t, options.String(), harness, e, query, expectedPlan, options)
 	}
 	for _, tt := range planTests {
+		if tt.Skip {
+			t.Skip()
+		}
 		t.Run(tt.Query, func(t *testing.T) {
 			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
 				Debug: true,
@@ -442,7 +445,6 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 				})
 			}
 		})
-
 	}
 }
 

@@ -31,7 +31,7 @@ var SQLLogicJoinTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// This panics somewhere in the memo
+				// get field index error
 				Skip:           true,
 				Query:          "SELECT * FROM foo JOIN bar ON max(foo.c) < 2",
 				ExpectedErrStr: "invalid use of group function",
@@ -106,15 +106,15 @@ var SQLLogicJoinTests = []ScriptTest{
 	{
 		Name: "case insensitive join with using clause",
 		SetUpScript: []string{
-			"CREATE TABLE str1 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci)",
-			"INSERT INTO str1 VALUES (1, 'a' COLLATE utf8mb4_0900_ai_ci), (2, 'A' COLLATE utf8mb4_0900_ai_ci), (3, 'c' COLLATE utf8mb4_0900_ai_ci), (4, 'D' COLLATE utf8mb4_0900_ai_ci)",
-			"CREATE TABLE str2 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci)",
-			"INSERT INTO str2 VALUES (1, 'A' COLLATE utf8mb4_0900_ai_ci), (2, 'B' COLLATE utf8mb4_0900_ai_ci), (3, 'C' COLLATE utf8mb4_0900_ai_ci), (4, 'E' COLLATE utf8mb4_0900_ai_ci)",
+			"CREATE TABLE str1 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO str1 VALUES (1, 'a' COLLATE utf8mb4_0900_ai_ci), (2, 'A' COLLATE utf8mb4_0900_ai_ci), (3, 'c' COLLATE utf8mb4_0900_ai_ci), (4, 'D' COLLATE utf8mb4_0900_ai_ci);",
+			"CREATE TABLE str2 (a INT PRIMARY KEY, s TEXT COLLATE utf8mb4_0900_ai_ci);",
+			"INSERT INTO str2 VALUES (1, 'A' COLLATE utf8mb4_0900_ai_ci), (2, 'B' COLLATE utf8mb4_0900_ai_ci), (3, 'C' COLLATE utf8mb4_0900_ai_ci), (4, 'E' COLLATE utf8mb4_0900_ai_ci);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Skip:  true,
-				Query: "SELECT s, str1.s, str2.s FROM str1 INNER JOIN str2 USING(s)",
+				Query: "SELECT s, str1.s, str2.s FROM str1 INNER JOIN str2 USING(s);",
 				Expected: []sql.Row{
 					{"A", "A", "A"},
 					{"a", "a", "A"},
@@ -122,7 +122,6 @@ var SQLLogicJoinTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "SELECT s, str1.s, str2.s FROM str1 LEFT OUTER JOIN str2 USING(s)",
 				Expected: []sql.Row{
 					{"a", "a", "A"},
@@ -132,7 +131,6 @@ var SQLLogicJoinTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true,
 				Query: "SELECT s, str1.s, str2.s FROM str1 RIGHT OUTER JOIN str2 USING(s)",
 				Expected: []sql.Row{
 					{"A", "A", "A"},

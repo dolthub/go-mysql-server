@@ -136,8 +136,7 @@ func TestJSONTableScripts(t *testing.T) {
 
 // TestBrokenJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestBrokenJSONTableScripts(t *testing.T) {
-	t.Skip("incorrect errors and unsupported json_table functionality")
-	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestBrokenJSONTableScripts(t, enginetest.NewSkippingMemoryHarness())
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -346,8 +345,6 @@ func TestQueryPlans(t *testing.T) {
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
-			// The IN expression requires mergeable indexes meaning that an unmergeable index returns a different result, so we skip this test
-			harness.QueriesToSkip("SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)")
 			enginetest.TestQueryPlans(t, harness, queries.PlanTests)
 		})
 	}
@@ -464,11 +461,6 @@ func TestColumnAliases(t *testing.T) {
 
 func TestDerivedTableOuterScopeVisibility(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.QueriesToSkip(
-		"SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",            // memoization to fix
-		"select 'foo' as foo, (select dt.b from (select 1 as a, foo as b) dt);",                                          // need to error
-		"SELECT n1.val as a1 from numbers n1, (select n1.val, n2.val * -1 from numbers n2 where n1.val = n2.val) as dt;", // different OK error
-	)
 	enginetest.TestDerivedTableOuterScopeVisibility(t, harness)
 }
 
@@ -483,11 +475,6 @@ func TestAmbiguousColumnResolution(t *testing.T) {
 
 func TestInsertInto(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.QueriesToSkip(
-		// should be column not found error
-		"insert into a (select * from b) on duplicate key update b.i = a.i",
-		"insert into a (select * from b as t) on duplicate key update a.i = b.j + 100",
-	)
 	enginetest.TestInsertInto(t, harness)
 }
 
@@ -820,7 +807,6 @@ func TestDateParse(t *testing.T) {
 }
 
 func TestJsonScripts(t *testing.T) {
-	// TODO different error messages
 	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
 }
 
