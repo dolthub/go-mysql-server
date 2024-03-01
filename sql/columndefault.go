@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"strings"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -151,11 +150,21 @@ func (e *ColumnDefaultValue) String() string {
 	}
 
 	// There's a special case for NOW()
-	if str == "NOW()" || str == "NOW(0)" {
+	switch str {
+	case "NOW()", "NOW(0)":
 		return "CURRENT_TIMESTAMP"
-	}
-	if strings.Contains(str, "NOW(") {
-		return strings.Replace(str, "NOW(", "CURRENT_TIMESTAMP(", 1)
+	case "NOW(1)":
+		return "CURRENT_TIMESTAMP(1)"
+	case "NOW(2)":
+		return "CURRENT_TIMESTAMP(2)"
+	case "NOW(3)":
+		return "CURRENT_TIMESTAMP(3)"
+	case "NOW(4)":
+		return "CURRENT_TIMESTAMP(4)"
+	case "NOW(5)":
+		return "CURRENT_TIMESTAMP(5)"
+	case "NOW(6)":
+		return "CURRENT_TIMESTAMP(6)"
 	}
 	return fmt.Sprintf("(%s)", str)
 }

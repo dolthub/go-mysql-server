@@ -5553,6 +5553,31 @@ where
 			},
 		},
 	},
+	{
+		Name: "preserve now()",
+		SetUpScript: []string{
+			"create table t1 (i int default (cast(now() as signed)));",
+			"create table t2 (i int default (cast(current_timestamp(6) as signed)));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int DEFAULT (convert(NOW(), signed))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `i` int DEFAULT (convert(NOW(6), signed))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
