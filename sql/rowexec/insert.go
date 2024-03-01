@@ -346,8 +346,7 @@ func (i *insertIter) findUuidPrimaryKey() int {
 			if stringType.MaxCharacterLength() != 36 {
 				continue
 			}
-			// TODO: function.UUIDFunc is set as a struct, not a pointer... should probably fix that
-			if _, ok := col.Default.Expr.(function.UUIDFunc); ok {
+			if _, ok := col.Default.Expr.(*function.UUIDFunc); ok {
 				// Do we need to make sure UUIDFunc doesn't have a child argument in it?
 				return columnIdx
 			}
@@ -356,9 +355,8 @@ func (i *insertIter) findUuidPrimaryKey() int {
 			if stringType.MaxByteLength() != 16 {
 				continue
 			}
-			// TODO: function.UUIDToBin and function.UUIDFunc should be pointers, not structs
-			if uuidToBinFunc, ok := col.Default.Expr.(function.UUIDToBin); ok {
-				if _, ok := uuidToBinFunc.Children()[0].(function.UUIDFunc); ok {
+			if uuidToBinFunc, ok := col.Default.Expr.(*function.UUIDToBin); ok {
+				if _, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
 					// Do we need to make sure UUIDFunc doesn't have a child argument in it?
 					return columnIdx
 				}
@@ -398,13 +396,13 @@ func (i *insertIter) getUuidVal(idx int, row sql.Row) string {
 	})
 
 	// If the expression is a function.UUIDFunc (directly, not transitively), then return the row value
-	if _, ok := expr.(function.UUIDFunc); ok {
+	if _, ok := expr.(*function.UUIDFunc); ok {
 		// TODO: This should probably also check that the column is a varchar(36)? i.e. prevent explicitly trying to
 		//       insert a UUID() into a varbinary(16)
 		foundAThing = true
 	}
-	if uuidToBin, ok := expr.(function.UUIDToBin); ok {
-		if _, ok := uuidToBin.Children()[0].(function.UUIDFunc); ok {
+	if uuidToBin, ok := expr.(*function.UUIDToBin); ok {
+		if _, ok := uuidToBin.Children()[0].(*function.UUIDFunc); ok {
 			// TODO: Same comment here... this should probably assert the column is varbinary(16)
 			foundAThing = true
 		}
@@ -418,6 +416,7 @@ func (i *insertIter) getUuidVal(idx int, row sql.Row) string {
 		}
 
 		// TODO: Do we need to support the swap flag in uuid_to_bin? YES!
+		//       can use the function swapUUIDBytes maybe? if we make it public? (or do we need unswap?)
 		if isBinary {
 			bytes := row[idx].([]byte)
 			parsed, err := uuid.FromBytes(bytes)
