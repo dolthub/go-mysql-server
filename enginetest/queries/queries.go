@@ -4429,6 +4429,14 @@ Select * from (
 		Expected: nil,
 	},
 	{
+		Query:    "SELECT id FROM typestable WHERE da < adddate('2020-01-01', INTERVAL 1 DAY)",
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
+		Query:    "SELECT id FROM typestable WHERE da < adddate('2020-01-01', 1)",
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
 		Query:    "SELECT id FROM typestable WHERE ti > date_sub('2020-01-01', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{int64(1)}},
 	},
