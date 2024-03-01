@@ -25,6 +25,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// NewAddDate returns a new function expression, or an error if one couldn't be created. The ADDDATE
+// function is a synonym for DATE_ADD, with the one exception that if the second argument is NOT an
+// explicitly declared interval, then the value is used and the interval period is assumed to be DAY.
+// In either case, this function will actually return a *DateAdd struct.
+func NewAddDate(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ADDDATE", 2, len(args))
+	}
+
+	// If the interval is explicitly specified, then we simply pass it all to DateSub
+	i, ok := args[1].(*expression.Interval)
+	if ok {
+		return &DateAdd{args[0], i}, nil
+	}
+
+	// Otherwise, the interval period is assumed to be DAY
+	i = expression.NewInterval(args[1], "DAY")
+	return &DateAdd{args[0], i}, nil
+}
+
 // DateAdd adds an interval to a date.
 type DateAdd struct {
 	Date     sql.Expression
@@ -91,12 +111,12 @@ func (d *DateAdd) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Eval implements the sql.Expression interface.
 func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := d.Date.Eval(ctx, row)
+	date, err := d.Date.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if val == nil {
+	if date == nil {
 		return nil, nil
 	}
 
@@ -109,7 +129,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err := types.DatetimeMaxPrecision.Convert(val)
+	date, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -224,18 +244,18 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.DatetimeMaxPrecision.Convert(date)
-	if err != nil {
-		ctx.Warn(1292, err.Error())
-		return nil, nil
-	}
-
 	delta, err := d.Interval.EvalDelta(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
 	if delta == nil {
+		return nil, nil
+	}
+
+	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	if err != nil {
+		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
 

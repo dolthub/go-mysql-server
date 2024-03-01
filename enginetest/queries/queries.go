@@ -4429,6 +4429,14 @@ Select * from (
 		Expected: nil,
 	},
 	{
+		Query:    "SELECT id FROM typestable WHERE da < adddate('2020-01-01', INTERVAL 1 DAY)",
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
+		Query:    "SELECT id FROM typestable WHERE da < adddate('2020-01-01', 1)",
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
 		Query:    "SELECT id FROM typestable WHERE ti > date_sub('2020-01-01', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{int64(1)}},
 	},
@@ -4455,6 +4463,18 @@ Select * from (
 	{
 		Query:    "SELECT id FROM typestable WHERE da >= subdate('2020-01-01', 1)",
 		Expected: []sql.Row{{int64(1)}},
+	},
+	{
+		Query:    "SELECT adddate(da, i32) from typestable;",
+		Expected: []sql.Row{{time.Date(2020, time.January, 4, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT adddate(da, concat(u32)) from typestable;",
+		Expected: []sql.Row{{time.Date(2020, time.January, 8, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT adddate(da, f32/10) from typestable;",
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT subdate(da, i32) from typestable;",

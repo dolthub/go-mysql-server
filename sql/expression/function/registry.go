@@ -35,6 +35,7 @@ var BuiltIns = []sql.Function{
 	// elt, find_in_set, insert, load_file, locate
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
 	sql.Function1{Name: "acos", Fn: NewAcos},
+	sql.FunctionN{Name: "adddate", Fn: NewAddDate},
 	sql.Function1{Name: "any_value", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewAnyValue(e) }},
 	sql.Function1{Name: "ascii", Fn: NewAscii},
 	sql.Function1{Name: "asin", Fn: NewAsin},
