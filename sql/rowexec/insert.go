@@ -388,9 +388,15 @@ func (i *insertIter) getUuidVal(idx int, row sql.Row) string {
 
 	// If the Tuple Expression has a *sql.ColumnDefaultValue in it, then return the row value
 	foundAThing := false
+	binaryUuid := false
+	swappedBinaryUuid := false
 	transform.InspectExpr(expr, func(expr sql.Expression) bool {
-		if _, ok := expr.(*sql.ColumnDefaultValue); ok {
+		if defaultValue, ok := expr.(*sql.ColumnDefaultValue); ok {
 			foundAThing = true
+			if uuidToBin, ok := defaultValue.Expr.(*function.UUIDToBin); ok {
+				binaryUuid = true
+				swappedBinaryUuid = uuidToBin.Swapped()
+			}
 		}
 		return foundAThing
 	})
@@ -405,25 +411,23 @@ func (i *insertIter) getUuidVal(idx int, row sql.Row) string {
 		if _, ok := uuidToBin.Children()[0].(*function.UUIDFunc); ok {
 			// TODO: Same comment here... this should probably assert the column is varbinary(16)
 			foundAThing = true
+			binaryUuid = true
+			swappedBinaryUuid = uuidToBin.Swapped()
 		}
 	}
 
-	if foundAThing {
-		// TODO: for UUID_to_bin... we need to run bin_to_uuid to convert it back to a UUID string
-		isBinary := false
-		if i.schema[idx].Type.Type() == sqltypes.Binary || i.schema[idx].Type.Type() == sqltypes.VarBinary {
-			isBinary = true
-		}
-
-		// TODO: Do we need to support the swap flag in uuid_to_bin? YES!
-		//       can use the function swapUUIDBytes maybe? if we make it public? (or do we need unswap?)
-		if isBinary {
+	if foundAThing { // TODO: rename!
+		if binaryUuid {
 			bytes := row[idx].([]byte)
 			parsed, err := uuid.FromBytes(bytes)
 			if err != nil {
 				// TODO: Fix to return an error
 				//return nil, sql.ErrUuidUnableToParse.New(bytes, err.Error())
 				panic(sql.ErrUuidUnableToParse.New(bytes, err.Error()).Error())
+			}
+
+			if swappedBinaryUuid {
+				parsed = uuid.UUID(function.UnswapUUIDBytes(parsed))
 			}
 			return parsed.String()
 		} else {

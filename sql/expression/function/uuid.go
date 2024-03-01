@@ -233,6 +233,7 @@ func (u IsUUID) IsNullable() bool {
 type UUIDToBin struct {
 	inputUUID sql.Expression
 	swapFlag  sql.Expression
+	swapped   bool
 }
 
 var _ sql.FunctionExpression = (*UUIDToBin)(nil)
@@ -247,6 +248,13 @@ func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("UUID_TO_BIN", "1 or 2", len(args))
 	}
+}
+
+// Swapped returns whether this function swapped the UUID bytes when converting a UUID to bytes. Note that this method
+// may only be called AFTER this expression has been evaluated – otherwise the swapped flag expression argument has
+// not been evaluated yet, so this function can't know for sure whether the bytes need to be swapped or not.
+func (ub UUIDToBin) Swapped() bool {
+	return ub.swapped
 }
 
 // Description implements sql.FunctionExpression
@@ -271,7 +279,7 @@ func (UUIDToBin) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 4
 }
 
-func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (ub *UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := ub.inputUUID.Eval(ctx, row)
 	if err != nil {
 		return 0, err
@@ -326,6 +334,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		return string(bt), nil
 	} else if sf.(int8) == 1 {
+		ub.swapped = true
 		encoding := swapUUIDBytes(parsed)
 		return string(encoding), nil
 	} else {
@@ -482,7 +491,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if sf.(int8) == 0 {
 		return parsed.String(), nil
 	} else if sf.(int8) == 1 {
-		encoding := unswapUUIDBytes(parsed)
+		encoding := UnswapUUIDBytes(parsed)
 		parsed, err = uuid.FromBytes(encoding)
 
 		if err != nil {
@@ -495,8 +504,8 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// unswapUUIDBytes unswaps the time-low and time-high parts (the third and first groups of hexadecimal digits, respectively)
-func unswapUUIDBytes(cur uuid.UUID) []byte {
+// UnswapUUIDBytes unswaps the time-low and time-high parts (the third and first groups of hexadecimal digits, respectively)
+func UnswapUUIDBytes(cur uuid.UUID) []byte {
 	ret := make([]byte, 16)
 
 	copy(ret[0:4], cur[4:8])

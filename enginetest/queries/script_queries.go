@@ -1361,6 +1361,7 @@ CREATE TABLE tab3 (
 			"create table char36 (pk char(36) primary key default (UUID()), i int);",
 			"create table varbinary16 (pk varbinary(16) primary key default (UUID_to_bin(UUID())), i int);",
 			"create table binary16 (pk binary(16) primary key default (UUID_to_bin(UUID())), i int);",
+			"create table binary16swap (pk binary(16) primary key default (UUID_to_bin(UUID(), true)), i int);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1477,6 +1478,34 @@ CREATE TABLE tab3 (
 			{
 				// The previous insert did not generate a UUID, so last_insert_uuid() should not have been updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// binary(16) with UUID_to_bin swap test cases...
+			{
+				Query:    "insert into binary16swap values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap values (UUID_to_bin(UUID(), true), 2), (UUID_to_bin(UUID(), true), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// TODO: explain why i = 2
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert did not generate a UUID, so last_insert_uuid() should not have been updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
 		},
