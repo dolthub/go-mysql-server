@@ -56,6 +56,8 @@ const (
 	ConvertToSigned = "signed"
 	// ConvertToTime is a conversion to time.
 	ConvertToTime = "time"
+	// ConvertToYear isa convert to year.
+	ConvertToYear = "year"
 	// ConvertToUnsigned is a conversion to unsigned.
 	ConvertToUnsigned = "unsigned"
 )
@@ -171,6 +173,8 @@ func (c *Convert) Type() sql.Type {
 		return types.Time
 	case ConvertToUnsigned:
 		return types.Uint64
+	case ConvertToYear:
+		return types.Year
 	default:
 		return types.Null
 	}
@@ -198,6 +202,8 @@ func (c *Convert) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	case ConvertToTime:
 		return sql.Collation_binary, 5
 	case ConvertToUnsigned:
+		return sql.Collation_binary, 5
+	case ConvertToYear:
 		return sql.Collation_binary, 5
 	default:
 		return sql.Collation_binary, 7
@@ -378,6 +384,20 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		}
 		return t, nil
 	case ConvertToUnsigned:
+		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		if err != nil {
+			return nil, err
+		}
+		num, _, err := types.Uint64.Convert(value)
+		if err != nil {
+			num, _, err = types.Int64.Convert(value)
+			if err != nil {
+				return types.Uint64.Zero(), nil
+			}
+			return uint64(num.(int64)), nil
+		}
+		return num, nil
+	case ConvertToYear:
 		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err

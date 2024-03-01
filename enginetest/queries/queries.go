@@ -9354,6 +9354,90 @@ from typestable`,
 			{false},
 		},
 	},
+	{
+		Query: `SELECT json_type('{"a": [10, true, "abc"]}');`,
+		Expected: []sql.Row{
+			{"OBJECT"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a'));`,
+		Expected: []sql.Row{
+			{"ARRAY"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[0]'));`,
+		Expected: []sql.Row{
+			{"INTEGER"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[1]'));`,
+		Expected: []sql.Row{
+			{"BOOLEAN"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[2]'));`,
+		Expected: []sql.Row{
+			{"STRING"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": 123.456}', '$.a'));`,
+		Expected: []sql.Row{
+			{"DOUBLE"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": null}', '$.a'));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
+		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as datetime) as json));",
+		Expected: []sql.Row{
+			{"DATETIME"},
+		},
+	},
+	{
+		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as date) as json));",
+		Expected: []sql.Row{
+			{"DATE"},
+		},
+	},
+	{
+		Query: "select json_type(cast(cast(1 as unsigned) as json));",
+		Expected: []sql.Row{
+			{"UNSIGNED INTEGER"},
+		},
+	},
+	{
+		Query: "select json_type('4294967295');",
+		Expected: []sql.Row{
+			{"INTEGER"},
+		},
+	},
+	{
+		Query: "select json_type('4294967296');",
+		Expected: []sql.Row{
+			{"UNSIGNED INTEGER"},
+		},
+	},
+	{
+		Query: "SELECT json_type(cast(1.0 as json));",
+		Expected: []sql.Row{
+			{"DECIMAL"},
+		},
+	},
+	{
+		Query: "select json_type(cast(cast(2001 as year) as json));",
+		Expected: []sql.Row{
+			{"UNSIGNED INTEGER"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9558,6 +9642,27 @@ FROM mytable;`,
 		// TODO: we do not return correct result in some cases. The method used: `GetIsUpdatableFromCreateView(cv *CreateView)`
 		Query:    "select TABLE_NAME, IS_UPDATABLE from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{{"myview1", "YES"}, {"myview2", "YES"}, {"myview3", "NO"}, {"myview4", "NO"}, {"myview5", "YES"}},
+	},
+	// time to json cast is broken
+	{
+		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as time) as json));",
+		Expected: []sql.Row{
+			{"TIME"},
+		},
+	},
+	// binary to json cast is broken
+	{
+		Query: "SELECT json_type(cast(cast('123abc' as binary) as json));",
+		Expected: []sql.Row{
+			{"BLOB"},
+		},
+	},
+	// 1e2 -> 100, so we can't tell the difference between float and integer in this case
+	{
+		Query: `SELECT json_type(json_extract('{"a": 1e2}', '$.a'));`,
+		Expected: []sql.Row{
+			{"DOUBLE"},
+		},
 	},
 }
 

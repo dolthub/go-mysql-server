@@ -785,6 +785,14 @@ var OnUpdateExprScripts = []ScriptTest{
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
 			{
+				Query:       "create table tt (i int, ts timestamp(6) on update now(3))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
+				Query:       "create table tt (i int, ts timestamp(3) on update now(6))",
+				ExpectedErr: sql.ErrInvalidOnUpdate,
+			},
+			{
 				Query:       "create table tt (i int, ts timestamp on update current_timestamp(1))",
 				ExpectedErr: sql.ErrInvalidOnUpdate,
 			},
@@ -831,6 +839,148 @@ var OnUpdateExprScripts = []ScriptTest{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
 						"  `ts` timestamp DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select * from t order by i;",
+				Expected: []sql.Row{
+					{1, ZeroTime},
+					{2, ZeroTime},
+					{3, ZeroTime},
+				},
+			},
+			{
+				Query: "update t set i = 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select * from t order by i;",
+				Expected: []sql.Row{
+					{2, ZeroTime},
+					{3, ZeroTime},
+					{10, Dec15_1_30},
+				},
+			},
+			{
+				Query: "update t set i = 100",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{100, Dec15_1_30},
+					{100, Dec15_1_30},
+					{100, Dec15_1_30},
+				},
+			},
+			{
+				// updating timestamp itself blocks on update
+				Query: "update t set ts = timestamp('2020-10-2')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{100, Oct2Midnight},
+					{100, Oct2Midnight},
+					{100, Oct2Midnight},
+				},
+			},
+		},
+	},
+	{
+		Name: "precision 3",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp(3) default 0 on update current_timestamp(3));",
+			"insert into t(i) values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp(3) DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP(3)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select * from t order by i;",
+				Expected: []sql.Row{
+					{1, ZeroTime},
+					{2, ZeroTime},
+					{3, ZeroTime},
+				},
+			},
+			{
+				Query: "update t set i = 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select * from t order by i;",
+				Expected: []sql.Row{
+					{2, ZeroTime},
+					{3, ZeroTime},
+					{10, Dec15_1_30},
+				},
+			},
+			{
+				Query: "update t set i = 100",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{100, Dec15_1_30},
+					{100, Dec15_1_30},
+					{100, Dec15_1_30},
+				},
+			},
+			{
+				// updating timestamp itself blocks on update
+				Query: "update t set ts = timestamp('2020-10-2')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{100, Oct2Midnight},
+					{100, Oct2Midnight},
+					{100, Oct2Midnight},
+				},
+			},
+		},
+	},
+	{
+		Name: "precision 6",
+		SetUpScript: []string{
+			"create table t (i int, ts timestamp(6) default 0 on update current_timestamp(6));",
+			"insert into t(i) values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `ts` timestamp(6) DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP(6)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},

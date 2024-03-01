@@ -118,6 +118,7 @@ func (s *Session) dropTable(d *TableData) {
 // Because we don't support concurrency, we store table data changes in the session, rather than the transaction itself.
 func (s *Session) StartTransaction(ctx *sql.Context, tCharacteristic sql.TransactionCharacteristic) (sql.Transaction, error) {
 	s.tables = make(map[tableKey]*TableData)
+	s.editAccumulators = make(map[tableKey]tableEditAccumulator)
 	return &Transaction{tCharacteristic == sql.ReadOnly}, nil
 }
 

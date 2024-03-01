@@ -232,42 +232,6 @@ type JSONMerge struct {
 	sql.Expression
 }
 
-//////////////////////////////
-// JSON attribute functions //
-//////////////////////////////
-
-// JSON_TYPE(json_val)
-//
-// Returns a utf8mb4 string indicating the type of a JSON value. This can be an object, an array, or a scalar type.
-// JSONType returns NULL if the argument is NULL. An error occurs if the argument is not a valid JSON value
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-type
-type JSONType struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONType{}
-
-// NewJSONType creates a new JSONType function.
-func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONType{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONType) FunctionName() string {
-	return "json_type"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONType) Description() string {
-	return "returns type of JSON value."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONType) IsUnsupported() bool {
-	return true
-}
-
 //////////////////////////
 // JSON table functions //
 //////////////////////////

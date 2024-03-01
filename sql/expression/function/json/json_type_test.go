@@ -25,11 +25,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func TestJSONDepth(t *testing.T) {
-	_, err := NewJSONDepth()
+func TestJSONType(t *testing.T) {
+	_, err := NewJSONType()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJSONDepth, 1)
+	f1 := buildGetFieldExpressions(t, NewJSONType, 1)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
@@ -60,92 +60,50 @@ func TestJSONDepth(t *testing.T) {
 		{
 			f:   f1,
 			row: sql.Row{nil},
-			exp: nil,
+			exp: "NULL",
 		},
 
 		{
 			f:   f1,
 			row: sql.Row{`null`},
-			exp: 1,
+			exp: "NULL",
 		},
 		{
 			f:   f1,
 			row: sql.Row{`1`},
-			exp: 1,
+			exp: "INTEGER",
 		},
 		{
 			f:   f1,
 			row: sql.Row{`true`},
-			exp: 1,
+			exp: "BOOLEAN",
 		},
 		{
 			f:   f1,
 			row: sql.Row{`123.456`},
-			exp: 1,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`"abcdef"`},
-			exp: 1,
+			exp: "DOUBLE",
 		},
 
 		{
 			f:   f1,
 			row: sql.Row{`[]`},
-			exp: 1,
+			exp: "ARRAY",
 		},
 		{
 			f:   f1,
 			row: sql.Row{`{}`},
-			exp: 1,
+			exp: "OBJECT",
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`[null]`},
-			exp: 2,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`{"a": null}`},
-			exp: 2,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`[1]`},
-			exp: 2,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`{"a": 1}`},
-			exp: 2,
-		},
-		{
-			f:   f1,
 			row: sql.Row{`[1, 2, 3]`},
-			exp: 2,
+			exp: "ARRAY",
 		},
 		{
 			f:   f1,
 			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
-			exp: 2,
-		},
-
-		{
-			f:   f1,
-			row: sql.Row{`{"a": 1, "b": [1, 2, 3]}`},
-			exp: 3,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`[0, {"a": 1, "b": 2}]`},
-			exp: 3,
-		},
-
-		{
-			f:   f1,
-			row: sql.Row{`{"a": 1, "b": {"aa": 1, "bb": {"aaa": 1, "bbb": {"aaaa": 1}}}}`},
-			exp: 5,
+			exp: "OBJECT",
 		},
 	}
 
