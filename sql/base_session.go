@@ -438,13 +438,13 @@ func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
 	s.viewReg = reg
 }
 
-func (s *BaseSession) SetLastQueryInfo(key string, value int64) {
+func (s *BaseSession) SetLastQueryInfoInt(key string, value int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastQueryInfo[key] = value
 }
 
-func (s *BaseSession) GetLastQueryInfo(key string) int64 {
+func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

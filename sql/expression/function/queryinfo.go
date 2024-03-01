@@ -70,7 +70,7 @@ func (r RowCount) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r RowCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return ctx.GetLastQueryInfo(sql.RowCount), nil
+	return ctx.GetLastQueryInfoInt(sql.RowCount), nil
 }
 
 // Children implements sql.Expression
@@ -207,7 +207,7 @@ func (r LastInsertId) IsNullable() bool {
 func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// With no arguments, just return the last insert id for this session
 	if len(r.Children()) == 0 {
-		lastInsertId := ctx.GetLastQueryInfo(sql.LastInsertId)
+		lastInsertId := ctx.GetLastQueryInfoInt(sql.LastInsertId)
 		unsigned, _, err := types.Uint64.Convert(lastInsertId)
 		if err != nil {
 			return nil, err
@@ -225,7 +225,7 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	ctx.SetLastQueryInfo(sql.LastInsertId, id.(int64))
+	ctx.SetLastQueryInfoInt(sql.LastInsertId, id.(int64))
 	return id, nil
 }
 
@@ -298,7 +298,7 @@ func (r FoundRows) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r FoundRows) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return ctx.GetLastQueryInfo(sql.FoundRows), nil
+	return ctx.GetLastQueryInfoInt(sql.FoundRows), nil
 }
 
 // Children implements sql.Expression

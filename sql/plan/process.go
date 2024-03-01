@@ -380,9 +380,9 @@ func (i *trackedRowIter) Close(ctx *sql.Context) error {
 func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
 	switch i.QueryType {
 	case QueryTypeSelect:
-		ctx.SetLastQueryInfo(sql.RowCount, -1)
+		ctx.SetLastQueryInfoInt(sql.RowCount, -1)
 	case QueryTypeDdl:
-		ctx.SetLastQueryInfo(sql.RowCount, 0)
+		ctx.SetLastQueryInfoInt(sql.RowCount, 0)
 	case QueryTypeUpdate:
 		// This is handled by RowUpdateAccumulator
 	default:
@@ -390,7 +390,7 @@ func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
 	}
 
 	if i.ShouldSetFoundRows {
-		ctx.SetLastQueryInfo(sql.FoundRows, i.numRows)
+		ctx.SetLastQueryInfoInt(sql.FoundRows, i.numRows)
 	}
 }
 

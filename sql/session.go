@@ -100,16 +100,14 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
-	// SetLastQueryInfo sets session-level query info for the key given, applying to the query just executed.
-	SetLastQueryInfo(key string, value int64)
-	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.
-	GetLastQueryInfo(key string) int64
-
+	// SetLastQueryInfoInt sets session-level query info for the key given, applying to the query just executed.
+	SetLastQueryInfoInt(key string, value int64)
+	// GetLastQueryInfoInt returns the session-level query info for the key given, for the query most recently executed.
+	GetLastQueryInfoInt(key string) int64
 	// SetLastQueryInfoString sets session-level query info as a string for the key given, applying to the query just executed.
 	SetLastQueryInfoString(key string, value string)
 	// GetLastQueryInfoString returns the session-level query info as a string for the key given, for the query most recently executed.
 	GetLastQueryInfoString(key string) string
-
 	// GetTransaction returns the active transaction, if any
 	GetTransaction() Transaction
 	// SetTransaction sets the session's transaction

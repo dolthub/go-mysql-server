@@ -300,7 +300,7 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 
 	if i.hasAutoAutoIncValue {
 		autoIncVal := i.getAutoIncVal(row)
-		ctx.SetLastQueryInfo(sql.LastInsertId, autoIncVal)
+		ctx.SetLastQueryInfoInt(sql.LastInsertId, autoIncVal)
 		i.lastInsertIdUpdated = true
 	}
 }
