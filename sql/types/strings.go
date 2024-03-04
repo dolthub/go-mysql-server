@@ -599,10 +599,10 @@ func (t StringType) StringWithTableCollation(tableCollation sql.CollationID) str
 	}
 
 	if t.CharacterSet() != sql.CharacterSet_binary {
-		if t.CharacterSet() != tableCollation.CharacterSet() {
+		if t.CharacterSet() != tableCollation.CharacterSet() && t.CharacterSet() != sql.CharacterSet_Unspecified {
 			s += " CHARACTER SET " + t.CharacterSet().String()
 		}
-		if t.collation != tableCollation {
+		if t.collation != tableCollation && t.collation != sql.Collation_Unspecified {
 			s += " COLLATE " + t.collation.Name()
 		}
 	}

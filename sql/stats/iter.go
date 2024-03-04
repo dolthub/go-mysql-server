@@ -86,8 +86,10 @@ const mcvCnt = 4
 func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, error) {
 	// todo calculate mcvs, mcvCountsStr
 	mcvCntB := strings.Builder{}
+	sep := ""
 	for _, cnt := range bucket.McvCounts() {
-		fmt.Fprintf(&mcvCntB, "%v", cnt)
+		fmt.Fprintf(&mcvCntB, "%s%v", sep, cnt)
+		sep = ","
 	}
 
 	mcvs := make([]string, mcvCnt)
@@ -100,9 +102,6 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 		s.qual.Db(),
 		s.qual.Table(),
 		s.qual.Index(),
-		i,
-		0,
-		"",
 		uint64(bucket.RowCount()),
 		uint64(bucket.DistinctCount()),
 		uint64(bucket.NullCount()),
