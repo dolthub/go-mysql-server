@@ -18,10 +18,11 @@ import (
 	"crypto/rand"
 	"fmt"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 const randomBytesMax = 1024
@@ -31,7 +32,6 @@ const randomBytesMax = 1024
 type RandomBytes struct {
 	expression.UnaryExpression
 }
-
 
 var _ sql.FunctionExpression = (*RandomBytes)(nil)
 var _ sql.CollationCoercible = (*RandomBytes)(nil)

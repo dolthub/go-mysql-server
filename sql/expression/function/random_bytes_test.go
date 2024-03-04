@@ -46,7 +46,7 @@ func TestRandomBytes(t *testing.T) {
 			err:  sql.ErrValueOutOfRange,
 		},
 		{
-			expr: expression.NewLiteral(int32(randomBytesMax + 1), types.Int32),
+			expr: expression.NewLiteral(int32(randomBytesMax+1), types.Int32),
 			err:  sql.ErrValueOutOfRange,
 		},
 		{
@@ -55,23 +55,23 @@ func TestRandomBytes(t *testing.T) {
 		},
 		{
 			expr: expression.NewLiteral(int32(100), types.Int32),
-			exp: make([]byte, 100),
+			exp:  make([]byte, 100),
 		},
 		{
 			expr: expression.NewLiteral(int32(randomBytesMax), types.Int32),
-			exp: make([]byte, randomBytesMax),
+			exp:  make([]byte, randomBytesMax),
 		},
 		{
 			expr: expression.NewLiteral(int32(randomBytesMax), types.Int32),
-			exp: make([]byte, randomBytesMax),
+			exp:  make([]byte, randomBytesMax),
 		},
 		{
 			expr: expression.NewLiteral(3.9, types.Float64),
-			exp: make([]byte, 4),
+			exp:  make([]byte, 4),
 		},
 		{
 			expr: expression.NewLiteral(3.4, types.Float64),
-			exp: make([]byte, 3),
+			exp:  make([]byte, 3),
 		},
 	}
 
@@ -83,7 +83,7 @@ func TestRandomBytes(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			f := NewRandomBytes(test.expr)
 			res, err := f.Eval(ctx, nil)
-			if test.err != nil{
+			if test.err != nil {
 				require.True(t, test.err.Is(err))
 				return
 			}
