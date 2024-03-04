@@ -75,7 +75,7 @@ func TestRandomBytes(t *testing.T) {
 		},
 		{
 			expr: expression.NewLiteral("a", types.Text),
-			err: sql.ErrValueOutOfRange,
+			err:  sql.ErrValueOutOfRange,
 		},
 		{
 			skip: true,
