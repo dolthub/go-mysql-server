@@ -44,32 +44,32 @@ func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // FunctionName implements sql.FunctionExpression interface.
-func (j JSONDepth) FunctionName() string {
+func (j *JSONDepth) FunctionName() string {
 	return "json_depth"
 }
 
 // Description implements sql.FunctionExpression interface.
-func (j JSONDepth) Description() string {
+func (j *JSONDepth) Description() string {
 	return "returns maximum depth of JSON document."
 }
 
 // Resolved implements sql.Expression interface.
-func (j JSONDepth) Resolved() bool {
+func (j *JSONDepth) Resolved() bool {
 	return j.JSON.Resolved()
 }
 
 // String implements sql.Expression interface.
-func (j JSONDepth) String() string {
+func (j *JSONDepth) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
 }
 
 // Type implements sql.Expression interface.
-func (j JSONDepth) Type() sql.Type {
+func (j *JSONDepth) Type() sql.Type {
 	return types.Int64
 }
 
 // IsNullable implements sql.Expression interface.
-func (j JSONDepth) IsNullable() bool {
+func (j *JSONDepth) IsNullable() bool {
 	return j.JSON.IsNullable()
 }
 
@@ -102,7 +102,7 @@ func depth(obj interface{}) (int, error) {
 }
 
 // Eval implements sql.Expression interface.
-func (j JSONDepth) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (j *JSONDepth) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
 	defer span.End()
 
@@ -123,11 +123,11 @@ func (j JSONDepth) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Children implements sql.Expression interface.
-func (j JSONDepth) Children() []sql.Expression {
+func (j *JSONDepth) Children() []sql.Expression {
 	return []sql.Expression{j.JSON}
 }
 
 // WithChildren implements sql.Expression interface.
-func (j JSONDepth) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONDepth) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewJSONDepth(children...)
 }

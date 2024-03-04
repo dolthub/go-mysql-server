@@ -27,45 +27,6 @@ var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 // JSON search functions //
 ///////////////////////////
 
-// JSON_OVERLAPS(json_doc1, json_doc2)
-//
-// JSONOverlaps Compares two JSON documents. Returns true (1) if the two document have any key-value pairs or array
-// elements in common. If both arguments are scalars, the function performs a simple equality test.
-//
-// This function serves as counterpart to JSON_CONTAINS(), which requires all elements of the array searched for to be
-// present in the array searched in. Thus, JSON_CONTAINS() performs an AND operation on search keys, while
-// JSON_OVERLAPS() performs an OR operation.
-//
-// Queries on JSON columns of InnoDB tables using JSON_OVERLAPS() in the WHERE clause can be optimized using
-// multi-valued indexes. Multi-Valued Indexes, provides detailed information and examples.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-overlaps
-type JSONOverlaps struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONOverlaps{}
-
-// NewJSONOverlaps creates a new JSONOverlaps function.
-func NewJSONOverlaps(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONOverlaps{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONOverlaps) FunctionName() string {
-	return "json_overlaps"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONOverlaps) Description() string {
-	return "compares two JSON documents, returns TRUE (1) if these have any key-value pairs or array elements in common, otherwise FALSE (0)."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONOverlaps) IsUnsupported() bool {
-	return true
-}
-
 // JSON_SEARCH(json_doc, one_or_all, search_str[, escape_char[, path] ...])
 //
 // JSONSearch Returns the path to the given string within a JSON document. Returns NULL if any of the json_doc,
