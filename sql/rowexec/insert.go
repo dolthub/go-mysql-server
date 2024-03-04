@@ -40,6 +40,7 @@ type insertIter struct {
 	lastInsertIdUpdated   bool
 	lastInsertUuidUpdated bool
 	hasAutoAutoIncValue   bool
+	hasAutoUuidValue      bool
 	ctx                   *sql.Context
 	insertExprs           []sql.Expression
 	insertTuples          [][]sql.Expression
@@ -315,26 +316,51 @@ func (i *insertIter) updateLastInsertUuid(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	if i.uuidColumnIdx != -1 {
-		uuidVal, err := i.getUuidVal(row)
+	if i.uuidColumnIdx == -1 {
+		return nil
+	}
+
+	var uuidVal string
+	var err error
+
+	if i.insertTuples != nil {
+		// If we have the insert tuples, then we can check them for us of DEFAULT or UUID() to generate the value
+		uuidVal, err = i.getUuidVal(row)
 		if err != nil {
 			return err
 		}
-		ctx.SetLastQueryInfoString(sql.LastInsertUuid, uuidVal)
-		i.lastInsertUuidUpdated = true
+	} else if i.hasAutoUuidValue {
+		// If we don't have tuple expressions to look at, we look at the projected type information instead.
+		// In this case, we can't look directly at the expressions, so we use the hasAutoUuidValue flag to
+		// determine if there are auto UUID values, which indicates we need to update last_insert_uuid().
+		typ := i.insertExprs[i.uuidColumnIdx].Type()
+		if typ.Type() == sqltypes.Char || typ.Type() == sqltypes.VarChar {
+			uuidVal = row[i.uuidColumnIdx].(string)
+		} else {
+			// It must be binary encoded value
+			bytes := row[i.uuidColumnIdx].([]byte)
+			parsed, err := uuid.FromBytes(bytes)
+			if err != nil {
+				return sql.ErrUuidUnableToParse.New(bytes, err.Error())
+			}
+			uuidVal = parsed.String()
+			// TODO: How about bit swapping? We still need to support that!
+			//       We need to look at the column default expression to determine if it's swapped or not?
+		}
 	}
+
+	ctx.SetLastQueryInfoString(sql.LastInsertUuid, uuidVal)
+	i.lastInsertUuidUpdated = true
 	return nil
 }
 
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
-	var autoIncVal int64
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
-			autoIncVal = toInt64(row[i])
-			break
+			return toInt64(row[i])
 		}
 	}
-	return autoIncVal
+	return 0
 }
 
 // findUuidPrimaryKey searches for a column in the primary key that is a UUID column. UUID columns are defined as

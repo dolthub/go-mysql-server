@@ -20,9 +20,11 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -80,12 +82,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, autoAutoIncrement, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, autoAutoIncrement, autoAutoUuid, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project).WithUnspecifiedAutoIncrement(autoAutoIncrement), transform.NewTree, nil
+		return insert.WithSource(project).WithUnspecifiedAutoIncrement(autoAutoIncrement).WithUnspecifiedAutoUuid(autoAutoUuid), transform.NewTree, nil
 	})
 }
 
@@ -105,11 +107,11 @@ func existsNonZeroValueCount(values sql.Node) bool {
 }
 
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
-// the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
-// result in an automatically generated value for an auto_increment column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, error) {
+// the underlying table, in the same order. Also returns two boolean values that indicates whether this row source will
+// result in an automatically generated value for an auto_increment column or for an auto UUID column.
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, bool, error) {
 	projExprs := make([]sql.Expression, len(schema))
-	autoAutoIncrement := false
+	autoAutoIncrement, autoAutoUuid := false, false
 
 	for i, f := range schema {
 		columnExplicitlySpecified := false
@@ -128,7 +130,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			}
 
 			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
-				return nil, false, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
+				return nil, false, false, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
 			var err error
 
@@ -149,7 +151,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				}
 			})
 			if err != nil {
-				return nil, false, err
+				return nil, false, false, err
 			}
 			projExprs[i] = def
 		}
@@ -157,7 +159,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		if f.AutoIncrement {
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
-				return nil, false, err
+				return nil, false, false, err
 			}
 			projExprs[i] = ai
 
@@ -165,14 +167,54 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				autoAutoIncrement = true
 			}
 		}
+
+		if columnIsAutoUuid(f) {
+			// For auto UUID columns, whether the column was explicitly specified in the INSERT statement is one cue
+			// about whether the value inserted should be made accessible through last_insert_id(). However, even if
+			// the column WAS explicitly listed, if a tuple in a VALUES row source uses the DEFAULT keyword, then we
+			// should still be updating the value of last_insert_id().
+			// For an example, see: https://github.com/dolthub/dolt/issues/7565
+			if !columnExplicitlySpecified {
+				autoAutoUuid = true
+			}
+		}
 	}
 
 	err := validateRowSource(insertSource, projExprs)
 	if err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 
-	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
+	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, autoAutoUuid, nil
+}
+
+func columnIsAutoUuid(col *sql.Column) bool {
+	if col.PrimaryKey == false {
+		return false
+	}
+
+	switch col.Type.Type() {
+	case sqltypes.Char, sqltypes.VarChar:
+		stringType := col.Type.(sql.StringType)
+		if stringType.MaxCharacterLength() != 36 || col.Default == nil {
+			return false
+		}
+		if _, ok := col.Default.Expr.(*function.UUIDFunc); ok {
+			return true
+		}
+	case sqltypes.Binary, sqltypes.VarBinary:
+		stringType := col.Type.(sql.StringType)
+		if stringType.MaxByteLength() != 16 || col.Default == nil {
+			return false
+		}
+		if uuidToBinFunc, ok := col.Default.Expr.(*function.UUIDToBin); ok {
+			if _, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // validGeneratedColumnValue returns true if the column is a generated column and the source node is not a values node.

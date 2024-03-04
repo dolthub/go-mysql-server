@@ -70,6 +70,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		updater:             updater,
 		rowSource:           rowIter,
 		hasAutoAutoIncValue: ii.HasUnspecifiedAutoInc,
+		hasAutoUuidValue:    ii.HasUnspecifiedAutoUuid,
 		updateExprs:         ii.OnDupExprs,
 		insertExprs:         insertExpressions,
 		insertTuples:        insertTuples,

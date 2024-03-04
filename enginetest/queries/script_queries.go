@@ -1528,6 +1528,26 @@ CREATE TABLE tab3 (
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
+
+			// INSERT INTO ... SELECT ... Tests
+			{
+				// If we populate the UUID column (pk) with its implicit default, then it updates last_insert_uuid()
+				Query:    "insert into varchar36 (i) select 42 from dual;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				// If all values come from another table, the auto_uuid value shouldn't be generated, so last_insert_uuid() doesn't change
+				Query:    "insert into varchar36 (pk, i) (select 'one', 101 from dual union all select 'two', 202);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
+				Expected: []sql.Row{{true, true}},
+			},
 		},
 	},
 	{
