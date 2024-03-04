@@ -27,8 +27,7 @@ import (
 
 const randomBytesMax = 1024
 
-// RandomBytes returns the random_bytes of a string or binary content, either in bytes
-// or characters.
+// RandomBytes returns a random binary string of the given length.
 type RandomBytes struct {
 	expression.UnaryExpression
 }
@@ -36,7 +35,7 @@ type RandomBytes struct {
 var _ sql.FunctionExpression = (*RandomBytes)(nil)
 var _ sql.CollationCoercible = (*RandomBytes)(nil)
 
-// NewRandomBytes returns a new LENGTH function.
+// NewRandomBytes returns a new RANDOM_BYTES function.
 func NewRandomBytes(e sql.Expression) sql.Expression {
 	return &RandomBytes{expression.UnaryExpression{Child: e}}
 }
@@ -93,7 +92,8 @@ func (r *RandomBytes) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	val, _, err = types.Int64.Convert(val)
 	if err != nil {
-		return nil, err
+		val = 0
+		ctx.Warn(1292, "Truncated incorrect INTEGER value")
 	}
 
 	length, ok := types.CoalesceInt(val)

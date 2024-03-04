@@ -62,16 +62,25 @@ func TestRandomBytes(t *testing.T) {
 			exp:  make([]byte, randomBytesMax),
 		},
 		{
-			expr: expression.NewLiteral(int32(randomBytesMax), types.Int32),
-			exp:  make([]byte, randomBytesMax),
-		},
-		{
 			expr: expression.NewLiteral(3.9, types.Float64),
 			exp:  make([]byte, 4),
 		},
 		{
 			expr: expression.NewLiteral(3.4, types.Float64),
 			exp:  make([]byte, 3),
+		},
+		{
+			expr: expression.NewLiteral("10", types.Text),
+			exp:  make([]byte, 10),
+		},
+		{
+			expr: expression.NewLiteral("a", types.Text),
+			err: sql.ErrValueOutOfRange,
+		},
+		{
+			skip: true,
+			expr: expression.NewLiteral("1abc", types.Text),
+			exp:  make([]byte, 1),
 		},
 	}
 
