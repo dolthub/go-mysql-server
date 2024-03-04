@@ -16,9 +16,10 @@ package stats
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func NewStatsIter(ctx *sql.Context, dStats ...sql.Statistic) (*statsIter, error) {
