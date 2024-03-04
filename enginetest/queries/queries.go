@@ -9458,6 +9458,14 @@ from typestable`,
 			{"UNSIGNED INTEGER"},
 		},
 	},
+	{
+		Query: "select length(random_bytes(i)) from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
