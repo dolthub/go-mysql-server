@@ -15,13 +15,11 @@
 package json
 
 import (
+	"fmt"
 
-"fmt"
-"github.com/dolthub/go-mysql-server/sql"
-"github.com/dolthub/go-mysql-server/sql/types"
-)"github.com/dolthub/go-mysql-server/sql/types"
-
-	)
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 // JSONOverlaps (json_doc1, json_doc2)
 //
@@ -81,78 +79,101 @@ func (j *JSONOverlaps) IsNullable() bool {
 	return j.Left.IsNullable() || j.Right.IsNullable()
 }
 
+// jsonEquals compares two JSON values.
+// It returns true if the two values are exactly equal (type and order are important).
+// It will recursively unwrap arrays and objects to compare their contents.
+func jsonEquals(left, right interface{}) bool {
+	lArr, lIsArr := left.([]interface{})
+	rArr, rIsArr := right.([]interface{})
+	if lIsArr && rIsArr {
+		if len(lArr) != len(rArr) {
+			return false
+		}
+		for i := range lArr {
+			if !jsonEquals(lArr[i], rArr[i]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	lMap, lIsMap := left.(map[string]interface{})
+	rMap, rIsMap := right.(map[string]interface{})
+	if lIsMap && rIsMap {
+		if len(lMap) != len(rMap) {
+			return false
+		}
+		for k := range lMap {
+			if _, ok := rMap[k]; !ok {
+				return false
+			}
+			if !jsonEquals(lMap[k], rMap[k]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	if (lIsArr != rIsArr) || (lIsMap != rIsMap) {
+		return false
+	}
+
+	return left == right
+}
+
 func overlaps(left, right interface{}) bool {
 	switch lVal := left.(type) {
 	case nil, bool, string, float64:
 		switch rVal := right.(type) {
+		case nil, bool, string, float64, map[string]interface{}:
+			return jsonEquals(left, right)
 		case []interface{}:
+			// scalar must be in array
 			for _, r := range rVal {
-				if r == lVal {
+				if jsonEquals(left, r) {
 					return true
 				}
 			}
-			return false
-		default:
-			return lVal == rVal
+		}
+	case map[string]interface{}:
+		switch rVal := right.(type) {
+		case nil, bool, string, float64:
+			return overlaps(right, left)
+		case map[string]interface{}:
+			// objects must have at least one key-value pair in common
+			for k := range lVal {
+				if _, ok := rVal[k]; !ok {
+					continue
+				}
+				if jsonEquals(lVal[k], rVal[k]) {
+					return true
+				}
+			}
+		case []interface{}:
+			// object must be in array
+			for _, r := range rVal {
+				if jsonEquals(lVal, r) {
+					return true
+				}
+			}
 		}
 	case []interface{}:
 		switch rVal := right.(type) {
 		case nil, bool, string, float64:
-			for _, l := range lVal {
-				if l == rVal {
-					return true
-				}
-			}
+			return overlaps(right, left)
+		case map[string]interface{}:
+			return overlaps(right, left)
 		case []interface{}:
+			// arrays must have at least one element in common
+			// TODO: use maps for improved runtime?
 			for _, l := range lVal {
 				for _, r := range rVal {
-					if l == r {
+					if jsonEquals(l, r) {
 						return true
 					}
 				}
 			}
-			return false
-		default:
-			for _, l := range lVal {
-				if l == rVal {
-					return true
-				}
-			}
-			return false
 		}
-	case map[string]interface{}:
-		switch rVal := right.(type) {
-		case []interface{}:
-			for _, r := range rVal {
-				rMap, isRMap := r.(map[string]interface{})
-				if !isRMap {
-					continue
-				}
-				// every key value pair must match
-				for lk, lv := range lVal {
-					rv, ok := rMap[lk]
-					if !ok {
-						return false
-					}
-					// TODO: handle further nesting?
-					if lv != rv {
-						return false
-					}
-				}
-				return true
-			}
-		case map[string]interface{}:
-			for lk, lv := range lVal {
-				if rv, ok := rVal[lk]; ok && lv == rv {
-					return true
-				}
-			}
-			return false
-		default:
-			return false
-		}
-	default:
-		return false
 	}
 	return false
 }
