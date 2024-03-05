@@ -126,6 +126,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "json_insert", Fn: json.NewJSONInsert},
 	sql.FunctionN{Name: "json_keys", Fn: json.NewJSONKeys},
 	sql.FunctionN{Name: "json_length", Fn: json.NewJsonLength},
+	sql.FunctionN{Name: "json_merge", Fn: json.NewJSONMergePreserve},
 	sql.FunctionN{Name: "json_merge_patch", Fn: json.NewJSONMergePatch},
 	sql.FunctionN{Name: "json_merge_preserve", Fn: json.NewJSONMergePreserve},
 	sql.FunctionN{Name: "json_object", Fn: json.NewJSONObject},
