@@ -1,4 +1,4 @@
-// Copyright 2022 Dolthub, Inc.
+// Copyright 2022=2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// JSON_MERGE_PRESERVE(json_doc, json_doc[, json_doc] ...)
+// JSONMergePreserve (json_doc, json_doc[, json_doc] ...)
 //
 // JSONMergePreserve Merges two or more JSON documents and returns the merged result. Returns NULL if any argument is
 // NULL. An error occurs if any argument is not a valid JSON document. Merging takes place according to the following
@@ -43,9 +43,8 @@ import (
 //     second value to the first value.
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-merge-preserve
-
 type JSONMergePreserve struct {
-	JSONDocs []sql.Expression
+	JSONs []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*JSONMergePreserve)(nil)
@@ -57,7 +56,7 @@ func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_MERGE_PRESERVE", 2, len(args))
 	}
 
-	return &JSONMergePreserve{JSONDocs: args}, nil
+	return &JSONMergePreserve{JSONs: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -77,7 +76,7 @@ func (j JSONMergePreserve) IsUnsupported() bool {
 
 // Resolved implements the Expression interface.
 func (j *JSONMergePreserve) Resolved() bool {
-	for _, d := range j.JSONDocs {
+	for _, d := range j.JSONs {
 		if !d.Resolved() {
 			return false
 		}
@@ -89,11 +88,9 @@ func (j *JSONMergePreserve) Resolved() bool {
 func (j *JSONMergePreserve) String() string {
 	children := j.Children()
 	var parts = make([]string, len(children))
-
 	for i, c := range children {
 		parts[i] = c.String()
 	}
-
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
@@ -109,7 +106,7 @@ func (*JSONMergePreserve) CollationCoercibility(ctx *sql.Context) (collation sql
 
 // IsNullable implements the Expression interface.
 func (j *JSONMergePreserve) IsNullable() bool {
-	for _, d := range j.JSONDocs {
+	for _, d := range j.JSONs {
 		if d.IsNullable() {
 			return true
 		}
@@ -119,41 +116,31 @@ func (j *JSONMergePreserve) IsNullable() bool {
 
 // Eval implements the Expression interface.
 func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	initialJSON, err := j.JSONDocs[0].Eval(ctx, row)
+	initDoc, err := getJSONDocumentFromRow(ctx, row, j.JSONs[0])
 	if err != nil {
 		return nil, err
 	}
-
-	initialJSON, _, err = j.Type().Convert(initialJSON)
-	if err != nil {
-		return nil, err
+	if initDoc == nil {
+		return nil, nil
 	}
 
-	mergedMap := types.DeepCopyJson(initialJSON.(types.JSONDocument).Val)
-
-	for _, json := range j.JSONDocs[1:] {
-		js, jErr := json.Eval(ctx, row)
-		if jErr != nil {
+	for _, json := range j.JSONs[1:] {
+		var doc *types.JSONDocument
+		doc, err = getJSONDocumentFromRow(ctx, row, json)
+		if err != nil {
 			return nil, err
 		}
-
-		js, _, jErr = j.Type().Convert(js)
-		if jErr != nil {
-			return nil, err
+		if doc == nil {
+			return nil, nil
 		}
-
-		jsMap := js.(types.JSONDocument).Val
-
-		mergedMap = merge(mergedMap, jsMap)
-
+		initDoc.Val = merge(initDoc.Val, doc.Val, false)
 	}
-
-	return types.JSONDocument{Val: mergedMap}, nil
+	return initDoc, nil
 }
 
 // Children implements the Expression interface.
 func (j *JSONMergePreserve) Children() []sql.Expression {
-	return j.JSONDocs
+	return j.JSONs
 }
 
 // WithChildren implements the Expression interface.
@@ -166,22 +153,33 @@ func (j *JSONMergePreserve) WithChildren(children ...sql.Expression) (sql.Expres
 }
 
 // merge returns merged json document as interface{} type
-func merge(base, add interface{}) interface{} {
-	// "base" is JSON object
-	if baseObj, baseOk := base.(map[string]interface{}); baseOk {
-		// "add" is JSON object
-		if addObj, addOk := add.(map[string]interface{}); addOk {
-			for key, val := range addObj {
-				if exists, found := baseObj[key]; found {
-					baseObj[key] = merge(exists, addObj[key])
-				} else {
-					baseObj[key] = val
-				}
-			}
-			return baseObj
+// if patch is true, it will replace the value of the first object with the value of the second object
+// otherwise, it will append the second value to the first value, creating an array if necessary
+func merge(base, add interface{}, patch bool) interface{} {
+	baseObj, baseOk := base.(map[string]interface{})
+	addObj, addOk := add.(map[string]interface{})
+	if !baseOk || !addOk {
+		if patch {
+			return add
 		}
+		return mergeIntoArrays(base, add)
 	}
-	return mergeIntoArrays(base, add)
+
+	// "base" and "add" are JSON objects
+	for key, val := range addObj {
+		if val == nil && patch {
+			delete(baseObj, key)
+			continue
+		}
+		baseVal, found := baseObj[key]
+		if !found {
+			baseObj[key] = val
+			continue
+		}
+		baseObj[key] = merge(baseVal, val, patch)
+	}
+
+	return baseObj
 }
 
 // mergeIntoArrays returns array of interface{} that takes JSON object OR JSON array OR JSON value

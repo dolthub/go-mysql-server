@@ -159,9 +159,9 @@ func TestJSONDepth(t *testing.T) {
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err {
 				require.Error(err)
-			} else {
-				require.NoError(err)
+				return
 			}
+			require.NoError(err)
 			require.Equal(tt.exp, result)
 		})
 	}
