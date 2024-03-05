@@ -130,7 +130,6 @@ func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	return *initDoc, nil
 }
 
-
 // Children implements the Expression interface.
 func (j *JSONMergePatch) Children() []sql.Expression {
 	return j.JSONs

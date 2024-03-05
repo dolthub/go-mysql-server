@@ -16,8 +16,8 @@ package json
 
 import (
 	"fmt"
-"strings"
-"testing"
+	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 
@@ -77,7 +77,7 @@ func TestJSONMergePreserve(t *testing.T) {
 			exp: types.MustJSON(`{"id": 47, "name": "x"}`),
 		},
 		{
-			f:   f2,
+			f: f2,
 			row: sql.Row{
 				`{
 					"Suspect": {
@@ -118,7 +118,7 @@ func TestJSONMergePreserve(t *testing.T) {
 			}`),
 		},
 		{
-			f:   f3,
+			f: f3,
 			row: sql.Row{
 				`{"a": 1, "b": 2}`,
 				`{"a": 3, "c": 4}`,
@@ -127,7 +127,7 @@ func TestJSONMergePreserve(t *testing.T) {
 			exp: types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`),
 		},
 		{
-			f:   f4,
+			f: f4,
 			row: sql.Row{
 				`{"a": 1, "b": 2}`,
 				`{"a": 3, "c": 4}`,
