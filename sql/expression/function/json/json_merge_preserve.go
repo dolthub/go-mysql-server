@@ -135,7 +135,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		}
 		initDoc.Val = merge(initDoc.Val, doc.Val, false)
 	}
-	return initDoc, nil
+	return *initDoc, nil
 }
 
 // Children implements the Expression interface.

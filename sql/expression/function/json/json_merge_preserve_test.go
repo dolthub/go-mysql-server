@@ -15,128 +15,148 @@
 package json
 
 import (
-	"testing"
+	"fmt"
+"strings"
+"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONMergePreserve(t *testing.T) {
-	f2, err := NewJSONMergePreserve(
-		expression.NewGetField(0, types.LongText, "arg1", false),
-		expression.NewGetField(1, types.LongText, "arg2", false),
-	)
-	require.NoError(t, err)
-
-	f3, err := NewJSONMergePreserve(
-		expression.NewGetField(0, types.LongText, "arg1", false),
-		expression.NewGetField(1, types.LongText, "arg2", false),
-		expression.NewGetField(2, types.LongText, "arg3", false),
-	)
-	require.NoError(t, err)
-
-	f4, err := NewJSONMergePreserve(
-		expression.NewGetField(0, types.LongText, "arg1", false),
-		expression.NewGetField(1, types.LongText, "arg2", false),
-		expression.NewGetField(2, types.LongText, "arg3", false),
-		expression.NewGetField(3, types.LongText, "arg4", false),
-	)
-	require.NoError(t, err)
-
-	jsonArray1 := []interface{}{1, 2}
-	jsonArray2 := []interface{}{true, false}
-	jsonValue1 := `"single Value"`
-	jsonObj1 := map[string]interface{}{"name": "x"}
-	jsonObj2 := map[string]interface{}{"id": 47}
-	jsonObj3 := map[string]interface{}{"a": 1, "b": 2}
-	jsonObj4 := map[string]interface{}{"a": 3, "c": 4}
-	jsonObj5 := map[string]interface{}{"a": 5, "d": 6}
-	jsonObj6 := map[string]interface{}{"a": 3, "e": 8}
-	jsonObj7 := map[string]interface{}{"a": map[string]interface{}{"one": false, "two": 2.55}, "e": 8}
-	json3ObjResult := map[string]interface{}{"a": []interface{}{float64(1), float64(3), float64(5)}, "b": float64(2), "c": float64(4), "d": float64(6)}
-	json4ObjResult := map[string]interface{}{"a": []interface{}{float64(1), float64(3), float64(5), float64(3)}, "b": float64(2), "c": float64(4), "d": float64(6), "e": float64(8)}
-	sData1 := map[string]interface{}{
-		"Suspect": map[string]interface{}{
-			"Name":    "Bart",
-			"Hobbies": []interface{}{"Skateboarding", "Mischief"},
-		},
-		"Victim": "Lisa",
-		"Case": map[string]interface{}{
-			"Id":     33845,
-			"Date":   "2006-01-02T15:04:05-07:00",
-			"Closed": true,
-		},
-	}
-	sData2 := map[string]interface{}{
-		"Suspect": map[string]interface{}{
-			"Age":     10,
-			"Parents": []interface{}{"Marge", "Homer"},
-			"Hobbies": []interface{}{"Trouble"},
-		},
-		"Witnesses": []interface{}{"Maggie", "Ned"},
-	}
-	resultData := map[string]interface{}{
-		"Suspect": map[string]interface{}{
-			"Age":     float64(10),
-			"Name":    "Bart",
-			"Hobbies": []interface{}{"Skateboarding", "Mischief", "Trouble"},
-			"Parents": []interface{}{"Marge", "Homer"},
-		},
-		"Victim": "Lisa",
-		"Case": map[string]interface{}{
-			"Id":     float64(33845),
-			"Date":   "2006-01-02T15:04:05-07:00",
-			"Closed": true,
-		},
-		"Witnesses": []interface{}{"Maggie", "Ned"},
-	}
-	mixedData := []interface{}{
-		map[string]interface{}{
-			"a": []interface{}{
-				float64(1),
-				map[string]interface{}{
-					"one": false,
-					"two": 2.55,
-				},
-			},
-			"b": float64(2),
-			"e": float64(8),
-		},
-		"single Value",
-	}
+	f2 := buildGetFieldExpressions(t, NewJSONMergePreserve, 2)
+	f3 := buildGetFieldExpressions(t, NewJSONMergePreserve, 3)
+	f4 := buildGetFieldExpressions(t, NewJSONMergePreserve, 4)
 
 	testCases := []struct {
-		f        sql.Expression
-		row      sql.Row
-		expected interface{}
-		err      error
+		f   sql.Expression
+		row sql.Row
+		exp interface{}
+		err bool
 	}{
-		{f2, sql.Row{nil, nil}, types.JSONDocument{Val: []interface{}{nil, nil}}, nil},
-		{f2, sql.Row{jsonArray1, nil}, types.JSONDocument{Val: []interface{}{float64(1), float64(2), nil}}, nil},
-		{f2, sql.Row{jsonArray1, jsonArray2}, types.JSONDocument{Val: []interface{}{float64(1), float64(2), true, false}}, nil},
-		{f2, sql.Row{jsonObj1, jsonObj2}, types.JSONDocument{Val: map[string]interface{}{"name": "x", "id": float64(47)}}, nil},
-		{f2, sql.Row{1, true}, types.JSONDocument{Val: []interface{}{float64(1), true}}, nil},
-		{f2, sql.Row{jsonArray1, jsonObj2}, types.JSONDocument{Val: []interface{}{float64(1), float64(2), map[string]interface{}{"id": float64(47)}}}, nil},
-		{f3, sql.Row{jsonObj3, jsonObj4, jsonObj5}, types.JSONDocument{Val: json3ObjResult}, nil},
-		{f2, sql.Row{sData1, sData2}, types.JSONDocument{Val: resultData}, nil},
-		{f4, sql.Row{jsonObj3, jsonObj4, jsonObj5, jsonObj6}, types.JSONDocument{Val: json4ObjResult}, nil},
-		{f3, sql.Row{jsonObj3, jsonObj7, jsonValue1}, types.JSONDocument{Val: mixedData}, nil},
+		{
+			f:   f2,
+			row: sql.Row{nil, nil},
+			exp: nil,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`null`, `null`},
+			exp: types.MustJSON(`[null, null]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`1`, `true`},
+			exp: types.MustJSON(`[1, true]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`"abc"`, `"def"`},
+			exp: types.MustJSON(`["abc", "def"]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`[1, 2]`, `null`},
+			exp: types.MustJSON(`[1, 2, null]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`[1, 2]`, `{"id": 47}`},
+			exp: types.MustJSON(`[1, 2, {"id": 47}]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`[1, 2]`, `[true, false]`},
+			exp: types.MustJSON(`[1, 2, true, false]`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"name": "x"}`, `{"id": 47}`},
+			exp: types.MustJSON(`{"id": 47, "name": "x"}`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{
+				`{
+					"Suspect": {
+						"Name": "Bart",
+						"Hobbies": ["Skateboarding", "Mischief"]
+					},
+					"Victim": "Lisa",
+					"Case": {
+						"Id": 33845,
+						"Date": "2006-01-02T15:04:05-07:00",
+						"Closed": true
+					}
+				}`,
+				`{
+					"Suspect": {
+						"Age": 10,
+						"Parents": ["Marge", "Homer"],
+						"Hobbies": ["Trouble"]
+					},
+					"Witnesses": ["Maggie", "Ned"]
+				}`,
+			},
+			exp: types.MustJSON(
+				`{
+					"Case": {
+						"Id": 33845, 
+						"Date": "2006-01-02T15:04:05-07:00", 
+						"Closed": true
+					}, 
+					"Victim": "Lisa", 
+					"Suspect": {
+						"Name": "Bart",
+						"Age": 10,
+						"Hobbies": ["Skateboarding", "Mischief", "Trouble"], 
+						"Parents": ["Marge", "Homer"]
+					}, 
+					"Witnesses": ["Maggie", "Ned"]
+			}`),
+		},
+		{
+			f:   f3,
+			row: sql.Row{
+				`{"a": 1, "b": 2}`,
+				`{"a": 3, "c": 4}`,
+				`{"a": 5, "d": 6}`,
+			},
+			exp: types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`),
+		},
+		{
+			f:   f4,
+			row: sql.Row{
+				`{"a": 1, "b": 2}`,
+				`{"a": 3, "c": 4}`,
+				`{"a": 5, "d": 6}`,
+				`{"a": 3, "e": 8}`,
+			},
+			exp: types.MustJSON(`{"a": [1, 3, 5, 3], "b": 2, "c": 4, "d": 6, "e": 8}`),
+		},
+		{
+			f:   f3,
+			row: sql.Row{`{"a": 1, "b": 2}`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `"single value"`},
+			exp: types.MustJSON(`[{"a": [1, {"e": 8, "one": false, "two": 2.55}], "b": 2}, "single value"]`),
+		},
 	}
 
 	for _, tt := range testCases {
-		t.Run(tt.f.String(), func(t *testing.T) {
+		var args []string
+		for _, a := range tt.row {
+			args = append(args, fmt.Sprintf("%v", a))
+		}
+		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
-			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err == nil {
-				require.NoError(err)
-			} else {
-				require.Equal(err.Error(), tt.err.Error())
+			res, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
+			if tt.err {
+				require.Error(err)
+				return
 			}
-
-			require.Equal(tt.expected, result)
+			require.NoError(err)
+			require.Equal(tt.exp, res)
 		})
 	}
 }

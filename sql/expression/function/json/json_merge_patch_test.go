@@ -28,7 +28,6 @@ import (
 func TestJSONMergePatch(t *testing.T) {
 	f2 := buildGetFieldExpressions(t, NewJSONMergePatch, 2)
 	f3 := buildGetFieldExpressions(t, NewJSONMergePatch, 3)
-	//f4 := buildGetFieldExpressions(t, NewJSONMergePatch, 4)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
@@ -75,11 +74,56 @@ func TestJSONMergePatch(t *testing.T) {
 			row: sql.Row{`{"name": "x"}`, `{"id": 47}`},
 			exp: types.MustJSON(`{"id": 47, "name": "x"}`),
 		},
-
+		{
+			f:   f2,
+			row: sql.Row{
+				`{
+					"Suspect": {
+						"Name": "Bart",
+						"Hobbies": ["Skateboarding", "Mischief"]
+					},
+					"Victim": "Lisa",
+					"Case": {
+						"Id": 33845,
+						"Date": "2006-01-02T15:04:05-07:00",
+						"Closed": true
+					}
+				}`,
+				`{
+					"Suspect": {
+						"Age": 10,
+						"Parents": ["Marge", "Homer"],
+						"Hobbies": ["Trouble"]
+					},
+					"Witnesses": ["Maggie", "Ned"]
+				}`,
+			},
+			exp: types.MustJSON(
+				`{
+					"Case": {
+						"Id": 33845, 
+						"Date": "2006-01-02T15:04:05-07:00", 
+						"Closed": true
+					}, 
+					"Victim": "Lisa", 
+					"Suspect": {
+						"Age": 10, 
+						"Name": "Bart", 
+						"Hobbies": ["Trouble"], 
+						"Parents": ["Marge", "Homer"]
+					}, 
+					"Witnesses": ["Maggie", "Ned"]
+			}`),
+		},
 		{
 			f:   f3,
 			row: sql.Row{`{"a": 1, "b": 2}`, `{"a": 3, "c": 4}`, `{"a": 5, "d": 6}`},
 			exp: types.MustJSON(`{"a": 5, "b": 2, "c": 4, "d": 6}`),
+		},
+		{
+			f:   f3,
+			row: sql.Row{`{"a": 1, "b": 2}`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `"single value"`},
+			exp: types.MustJSON(`"single value"`),
 		},
 	}
 
@@ -90,13 +134,13 @@ func TestJSONMergePatch(t *testing.T) {
 		}
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
-			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
+			res, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
-			require.Equal(tt.exp, result)
+			require.Equal(tt.exp, res)
 		})
 	}
 }
