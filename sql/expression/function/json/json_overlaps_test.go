@@ -119,6 +119,28 @@ func TestJSONOverlaps(t *testing.T) {
 			exp: false,
 		},
 
+		// objects
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": null, "d": 4}`, `{"c": 4, "a": 100, "d": 1, "b": null}`},
+			exp: true,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a":1,"b":10,"d":10}`, `{"c":1,"e":10,"f":1,"d":10}`},
+			exp: true,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a":1,"b":10,"d":10}`, `{"a":5,"e":10,"f":1,"d":20}`},
+			exp: false,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a":1, "b": {"a": 1, "b": 2, "c": 3}, "c": 3}`, `{"b": {"c": 3, "b": 2, "a": 1}}`},
+			exp: true,
+		},
+
 		// arrays
 		{
 			f:   f2,
@@ -185,7 +207,6 @@ func TestJSONOverlaps(t *testing.T) {
 			row: sql.Row{`[{}, [], {"a": "1"}, {"a": [{"b": 1, "c": 2, "d": "test"}]}]`, `{"a": [{"b": 1, "c": 2, "d": "test"}]}`},
 			exp: true,
 		},
-
 		{
 			f:   f2,
 			row: sql.Row{"[[1,2],[3,4],5]", "[1,[2,3],[4,5]]"},
@@ -194,17 +215,6 @@ func TestJSONOverlaps(t *testing.T) {
 		{
 			f:   f2,
 			row: sql.Row{`[[1, 2]]`, `[[2, 1]]`},
-			exp: false,
-		},
-
-		{
-			f:   f2,
-			row: sql.Row{`{"a":1,"b":10,"d":10}`, `{"c":1,"e":10,"f":1,"d":10}`},
-			exp: true,
-		},
-		{
-			f:   f2,
-			row: sql.Row{`{"a":1,"b":10,"d":10}`, `{"a":5,"e":10,"f":1,"d":20}`},
 			exp: false,
 		},
 	}
