@@ -1719,6 +1719,15 @@ Select * from (
 		},
 	},
 	{
+		Query: `SELECT JSON_OVERLAPS(c3, '{"a": 2, "d": 2}') FROM jsontable`,
+		Expected: []sql.Row{
+			{true},
+			{false},
+			{false},
+			{true},
+		},
+	},
+	{
 		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
 		Expected: []sql.Row{
 			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
