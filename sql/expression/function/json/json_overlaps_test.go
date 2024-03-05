@@ -38,7 +38,7 @@ func TestJSONOverlaps(t *testing.T) {
 	}{
 		// errors
 		{
-			f: f2,
+			f:   f2,
 			row: sql.Row{``},
 			err: true,
 		},

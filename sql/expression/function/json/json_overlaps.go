@@ -70,7 +70,7 @@ func (j *JSONOverlaps) String() string {
 }
 
 // Type implements sql.Expression
-func (j *JSONOverlaps)Type() sql.Type {
+func (j *JSONOverlaps) Type() sql.Type {
 	return types.Boolean
 }
 
@@ -179,7 +179,7 @@ func overlaps(left, right interface{}) bool {
 }
 
 // Eval implements sql.Expression
-func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{},  error) {
+func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
 	defer span.End()
 
@@ -208,6 +208,6 @@ func (j *JSONOverlaps) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (j *JSONOverlaps) WithChildren(children ...sql.Expression) ( sql.Expression,  error) {
+func (j *JSONOverlaps) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewJSONOverlaps(children...)
 }
