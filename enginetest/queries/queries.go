@@ -1719,6 +1719,15 @@ Select * from (
 		},
 	},
 	{
+		Query: `SELECT JSON_OVERLAPS(c3, '{"a": 2, "d": 2}') FROM jsontable`,
+		Expected: []sql.Row{
+			{true},
+			{false},
+			{false},
+			{true},
+		},
+	},
+	{
 		Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
 		Expected: []sql.Row{
 			{types.MustJSON(`{"a": [2, 1]}`)},
