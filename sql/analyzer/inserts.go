@@ -82,12 +82,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, autoAutoIncrement, autoAutoUuid, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, autoAutoIncrement, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project).WithUnspecifiedAutoIncrement(autoAutoIncrement).WithUnspecifiedAutoUuid(autoAutoUuid), transform.NewTree, nil
+		return insert.WithSource(project).WithUnspecifiedAutoIncrement(autoAutoIncrement), transform.NewTree, nil
 	})
 }
 
@@ -107,11 +107,11 @@ func existsNonZeroValueCount(values sql.Node) bool {
 }
 
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
-// the underlying table, in the same order. Also returns two boolean values that indicates whether this row source will
-// result in an automatically generated value for an auto_increment column or for an auto UUID column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, bool, error) {
+// the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
+// result in an automatically generated value for an auto_increment column.
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, error) {
 	projExprs := make([]sql.Expression, len(schema))
-	autoAutoIncrement, autoAutoUuid := false, false
+	autoAutoIncrement := false
 
 	for i, f := range schema {
 		columnExplicitlySpecified := false
@@ -130,7 +130,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			}
 
 			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
-				return nil, false, false, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
+				return nil, false, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
 			var err error
 
@@ -151,7 +151,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				}
 			})
 			if err != nil {
-				return nil, false, false, err
+				return nil, false, err
 			}
 			projExprs[i] = def
 		}
@@ -159,7 +159,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		if f.AutoIncrement {
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
-				return nil, false, false, err
+				return nil, false, err
 			}
 			projExprs[i] = ai
 
@@ -167,27 +167,127 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				autoAutoIncrement = true
 			}
 		}
+	}
 
-		if columnIsAutoUuid(f) {
-			// For auto UUID columns, whether the column was explicitly specified in the INSERT statement is one cue
-			// about whether the value inserted should be made accessible through last_insert_id(). However, even if
-			// the column WAS explicitly listed, if a tuple in a VALUES row source uses the DEFAULT keyword, then we
-			// should still be updating the value of last_insert_id().
-			// For an example, see: https://github.com/dolthub/dolt/issues/7565
-			if !columnExplicitlySpecified {
-				autoAutoUuid = true
+	// Handle auto UUID columns
+	autoUuidCol, autoUuidColIdx := findAutoUuidColumn(ctx, schema)
+	if autoUuidCol != nil {
+		if columnDefaultValue, ok := projExprs[autoUuidColIdx].(*sql.ColumnDefaultValue); ok {
+			// If the auto UUID column is being populated through the projection (i.e. it's projecting a
+			// ColumnDefaultValue to create the UUID), then update the project to include the AutoUuid expression.
+			// TODO: This should be extracted to a reusable function... make sure the AutoUUID expression is
+			//       created directly on top of the UUID function. Probably good to add a runtime check in the
+			//       constructor for that, too.
+			// TODO: Add a test case to trigger this issue (default column is projected, but values are used for non-UUID cols)
+			projExprs[autoUuidColIdx] = expression.NewAutoUuid(ctx, autoUuidCol, columnDefaultValue)
+		} else {
+			// Otherwise, if the auto UUID column is not getting populated through the projection, then we
+			// need to look through the tuples to look for the first DEFAULT or UUID() expression and apply
+			// the AutoUuid expression to it.
+			err := wrapAutoUuidInValuesTuples(ctx, autoUuidCol, insertSource, columnNames)
+			if err != nil {
+				return nil, false, err
 			}
 		}
 	}
 
 	err := validateRowSource(insertSource, projExprs)
 	if err != nil {
-		return nil, false, false, err
+		return nil, false, err
 	}
 
-	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, autoAutoUuid, nil
+	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
+func findAutoUuidColumn(ctx *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
+	for i, col := range schema {
+		if columnIsAutoUuid(col) {
+			return col, i
+		}
+	}
+
+	return nil, -1
+}
+
+func wrapAutoUuidInValuesTuples(ctx *sql.Context, autoUuidCol *sql.Column, insertSource sql.Node, columnNames []string) error {
+	// Else... if the source is a *plan.Values, then search the tuples for the first DEFAULT expression, or the
+	// first UUID() expression, or the first UUID_TO_BIN(UUID()) expression tree and wrap it in an expression.AutoUuid
+	// to capture the generated value
+	values, ok := insertSource.(*plan.Values)
+	if !ok {
+		// If the insert source isn't value tuples, then we don't need to do anything
+		return nil
+	}
+
+	// Search the column names in the Values tuples to find the right tuple index
+	autoUuidColTupleIdx := -1
+	for i, columnName := range columnNames {
+		if strings.ToLower(autoUuidCol.Name) == strings.ToLower(columnName) {
+			autoUuidColTupleIdx = i
+		}
+	}
+	if autoUuidColTupleIdx == -1 {
+		return nil
+	}
+
+	for _, tuple := range values.ExpressionTuples {
+		expr := tuple[autoUuidColTupleIdx]
+		if wrapper, ok := expr.(*expression.Wrapper); ok {
+			expr = wrapper.Unwrap()
+		}
+
+		if columnDefaultValue, ok := expr.(*sql.ColumnDefaultValue); ok {
+			switch t := columnDefaultValue.Expr.(type) {
+			case *function.UUIDFunc:
+				autoUuid := expression.NewAutoUuid(ctx, autoUuidCol, t)
+				expr, err := columnDefaultValue.WithChildren(autoUuid)
+				if err != nil {
+					return err
+				}
+				tuple[autoUuidColTupleIdx] = expr
+			case *function.UUIDToBin:
+				children := t.Children()
+				autoUuid := expression.NewAutoUuid(ctx, autoUuidCol, children[0])
+				children[0] = autoUuid
+				uuidToBin, err := t.WithChildren(children...)
+				if err != nil {
+					return err
+				}
+				expr, err := columnDefaultValue.WithChildren(uuidToBin)
+				if err != nil {
+					return err
+				}
+				tuple[autoUuidColTupleIdx] = expr
+			default:
+				return fmt.Errorf("unexpected column default expression for auto UUID column: %T", t)
+			}
+			break
+		}
+
+		if _, ok := expr.(*function.UUIDFunc); ok {
+			tuple[autoUuidColTupleIdx] = expression.NewAutoUuid(ctx, autoUuidCol, tuple[autoUuidColTupleIdx])
+			break
+		}
+
+		if uuidToBinFunc, ok := expr.(*function.UUIDToBin); ok {
+			if uuidFunc, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
+				children := uuidToBinFunc.Children()
+				autoUuid := expression.NewAutoUuid(ctx, autoUuidCol, uuidFunc)
+				children[0] = autoUuid
+				expr, err := uuidToBinFunc.WithChildren(children...)
+				if err != nil {
+					return err
+				}
+				tuple[autoUuidColTupleIdx] = expr
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// TODO: Move to AutoUuid file?
 func columnIsAutoUuid(col *sql.Column) bool {
 	if col.PrimaryKey == false {
 		return false
@@ -246,6 +346,7 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 		switch e := expr.(type) {
 		case *expression.Literal,
 			*expression.AutoIncrement,
+			*expression.AutoUuid,
 			*sql.ColumnDefaultValue:
 			continue
 		case *expression.GetField:

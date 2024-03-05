@@ -233,7 +233,6 @@ func (u IsUUID) IsNullable() bool {
 type UUIDToBin struct {
 	inputUUID sql.Expression
 	swapFlag  sql.Expression
-	swapped   bool
 }
 
 var _ sql.FunctionExpression = (*UUIDToBin)(nil)
@@ -248,13 +247,6 @@ func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("UUID_TO_BIN", "1 or 2", len(args))
 	}
-}
-
-// Swapped returns whether this function swapped the UUID bytes when converting a UUID to bytes. Note that this method
-// may only be called AFTER this expression has been evaluated – otherwise the swapped flag expression argument has
-// not been evaluated yet, so this function can't know for sure whether the bytes need to be swapped or not.
-func (ub UUIDToBin) Swapped() bool {
-	return ub.swapped
 }
 
 // Description implements sql.FunctionExpression
@@ -312,7 +304,7 @@ func (ub *UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return string(bt), nil
+		return bt, nil
 	}
 
 	sf, err := ub.swapFlag.Eval(ctx, row)
@@ -332,11 +324,10 @@ func (ub *UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		return string(bt), nil
+		return bt, nil
 	} else if sf.(int8) == 1 {
-		ub.swapped = true
 		encoding := swapUUIDBytes(parsed)
-		return string(encoding), nil
+		return encoding, nil
 	} else {
 		return nil, fmt.Errorf("UUID_TO_BIN received invalid swap flag")
 	}

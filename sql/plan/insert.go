@@ -58,16 +58,15 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
 // them into.
 type InsertInto struct {
-	db                     sql.Database
-	Destination            sql.Node
-	Source                 sql.Node
-	ColumnNames            []string
-	IsReplace              bool
-	HasUnspecifiedAutoInc  bool
-	HasUnspecifiedAutoUuid bool
-	OnDupExprs             []sql.Expression
-	checks                 sql.CheckConstraints
-	Ignore                 bool
+	db                    sql.Database
+	Destination           sql.Node
+	Source                sql.Node
+	ColumnNames           []string
+	IsReplace             bool
+	HasUnspecifiedAutoInc bool
+	OnDupExprs            []sql.Expression
+	checks                sql.CheckConstraints
+	Ignore                bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
@@ -306,17 +305,6 @@ func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
 func (ii *InsertInto) WithUnspecifiedAutoIncrement(unspecifiedAutoIncrement bool) *InsertInto {
 	np := *ii
 	np.HasUnspecifiedAutoInc = unspecifiedAutoIncrement
-	return &np
-}
-
-// WithUnspecifiedAutoUuid sets the unspecified auto UUID flag for this insert operation. This tells callers whether
-// the auto UUID column was explicitly included in the INSERT statement, or if it has been implicitly included (e.g.
-// through the use of a column default value). This is one contributing factor to whether the value for last_insert_uuid()
-// should be updated – if a value is explicitly specified for the auto UUID column, and does not use the UUID() function
-// or the DEFAULT keyword, then it should be considered an explicit, non-automatic update.
-func (ii *InsertInto) WithUnspecifiedAutoUuid(unspecifiedAutoUuid bool) *InsertInto {
-	np := *ii
-	np.HasUnspecifiedAutoUuid = unspecifiedAutoUuid
 	return &np
 }
 

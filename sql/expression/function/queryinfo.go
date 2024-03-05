@@ -104,7 +104,7 @@ func NewLastInsertUuid(children ...sql.Expression) (sql.Expression, error) {
 	return &LastInsertUuid{}, nil
 }
 
-func (l LastInsertUuid) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (l LastInsertUuid) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 

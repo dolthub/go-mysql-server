@@ -20,7 +20,6 @@ import (
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/google/uuid"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -32,25 +31,20 @@ import (
 )
 
 type insertIter struct {
-	schema                sql.Schema
-	inserter              sql.RowInserter
-	replacer              sql.RowReplacer
-	updater               sql.RowUpdater
-	rowSource             sql.RowIter
-	lastInsertIdUpdated   bool
-	lastInsertUuidUpdated bool
-	hasAutoAutoIncValue   bool
-	hasAutoUuidValue      bool
-	ctx                   *sql.Context
-	insertExprs           []sql.Expression
-	insertTuples          [][]sql.Expression
-	insertTupleIndex      int
-	uuidColumnIdx         int
-	updateExprs           []sql.Expression
-	checks                sql.CheckConstraints
-	tableNode             sql.Node
-	closed                bool
-	ignore                bool
+	schema              sql.Schema
+	inserter            sql.RowInserter
+	replacer            sql.RowReplacer
+	updater             sql.RowUpdater
+	rowSource           sql.RowIter
+	lastInsertIdUpdated bool
+	hasAutoAutoIncValue bool
+	ctx                 *sql.Context
+	insertExprs         []sql.Expression
+	updateExprs         []sql.Expression
+	checks              sql.CheckConstraints
+	tableNode           sql.Node
+	closed              bool
+	ignore              bool
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -178,12 +172,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	i.updateLastInsertId(ctx, row)
-	err = i.updateLastInsertUuid(ctx, row)
-	if err != nil {
-		return nil, err
-	}
 
-	i.insertTupleIndex++
 	return row, nil
 }
 
@@ -310,50 +299,6 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
-func (i *insertIter) updateLastInsertUuid(ctx *sql.Context, row sql.Row) error {
-	// If we've already captured the first inserted UUID in this statement, don't capture any others
-	if i.lastInsertUuidUpdated {
-		return nil
-	}
-
-	if i.uuidColumnIdx == -1 {
-		return nil
-	}
-
-	var uuidVal string
-	var err error
-
-	if i.insertTuples != nil {
-		// If we have the insert tuples, then we can check them for us of DEFAULT or UUID() to generate the value
-		uuidVal, err = i.getUuidVal(row)
-		if err != nil {
-			return err
-		}
-	} else if i.hasAutoUuidValue {
-		// If we don't have tuple expressions to look at, we look at the projected type information instead.
-		// In this case, we can't look directly at the expressions, so we use the hasAutoUuidValue flag to
-		// determine if there are auto UUID values, which indicates we need to update last_insert_uuid().
-		typ := i.insertExprs[i.uuidColumnIdx].Type()
-		if typ.Type() == sqltypes.Char || typ.Type() == sqltypes.VarChar {
-			uuidVal = row[i.uuidColumnIdx].(string)
-		} else {
-			// It must be binary encoded value
-			bytes := row[i.uuidColumnIdx].([]byte)
-			parsed, err := uuid.FromBytes(bytes)
-			if err != nil {
-				return sql.ErrUuidUnableToParse.New(bytes, err.Error())
-			}
-			uuidVal = parsed.String()
-			// TODO: How about bit swapping? We still need to support that!
-			//       We need to look at the column default expression to determine if it's swapped or not?
-		}
-	}
-
-	ctx.SetLastQueryInfoString(sql.LastInsertUuid, uuidVal)
-	i.lastInsertUuidUpdated = true
-	return nil
-}
-
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
@@ -397,70 +342,6 @@ func findUuidPrimaryKey(schema sql.Schema) int {
 	}
 
 	return -1
-}
-
-// getUuidVal returns the UUID value from |row| for the column specified as the UUID primary key
-// column (i.uuidColumnIdx), or "" if no valid UUID value was found, and an error if any unexpected
-// errors were encountered while looking up the UUID value.
-func (i *insertIter) getUuidVal(row sql.Row) (string, error) {
-	// Grab the expression that generated the value for the UUID key column
-	expr := i.insertTuples[i.insertTupleIndex][i.uuidColumnIdx]
-	if wrapper, ok := expr.(*expression.Wrapper); ok {
-		expr = wrapper.Unwrap()
-	}
-
-	// If the Tuple Expression has a *sql.ColumnDefaultValue in it, then return the row value, since
-	// we've already verified this column is a valid UUID column earlier.
-	foundUuid := false
-	binaryUuid := false
-	swappedBinaryUuid := false
-	transform.InspectExpr(expr, func(expr sql.Expression) bool {
-		if defaultValue, ok := expr.(*sql.ColumnDefaultValue); ok {
-			foundUuid = true
-			if uuidToBin, ok := defaultValue.Expr.(*function.UUIDToBin); ok {
-				binaryUuid = true
-				swappedBinaryUuid = uuidToBin.Swapped()
-			}
-		}
-		return foundUuid
-	})
-
-	// If the expression is a function.UUIDFunc (directly, not transitively), then return the row value
-	if _, ok := expr.(*function.UUIDFunc); ok {
-		switch i.schema[i.uuidColumnIdx].Type.Type() {
-		case sqltypes.Char, sqltypes.VarChar:
-			foundUuid = true
-		}
-	}
-	if uuidToBin, ok := expr.(*function.UUIDToBin); ok {
-		if _, ok := uuidToBin.Children()[0].(*function.UUIDFunc); ok {
-			switch i.schema[i.uuidColumnIdx].Type.Type() {
-			case sqltypes.Binary, sqltypes.VarBinary:
-				foundUuid = true
-				binaryUuid = true
-				swappedBinaryUuid = uuidToBin.Swapped()
-			}
-		}
-	}
-
-	if !foundUuid {
-		return "", nil
-	}
-
-	if binaryUuid {
-		bytes := row[i.uuidColumnIdx].([]byte)
-		parsed, err := uuid.FromBytes(bytes)
-		if err != nil {
-			return "", sql.ErrUuidUnableToParse.New(bytes, err.Error())
-		}
-
-		if swappedBinaryUuid {
-			parsed = uuid.UUID(function.UnswapUUIDBytes(parsed))
-		}
-		return parsed.String(), nil
-	} else {
-		return row[i.uuidColumnIdx].(string), nil
-	}
 }
 
 func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) error {
