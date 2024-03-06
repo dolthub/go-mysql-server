@@ -1728,6 +1728,33 @@ Select * from (
 		},
 	},
 	{
+		Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
+		Expected: []sql.Row{
+			{types.MustJSON(`{"a": [2, 1]}`)},
+			{types.MustJSON(`{"a": 1, "b": 2}`)},
+			{types.MustJSON(`{"a": 1, "c": 2}`)},
+			{types.MustJSON(`{"a": 1, "d": 2}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_MERGE_PRESERVE(c3, '{"a": 1}') FROM jsontable`,
+		Expected: []sql.Row{
+			{types.MustJSON(`{"a": [2, 1]}`)},
+			{types.MustJSON(`{"a": 1, "b": 2}`)},
+			{types.MustJSON(`{"a": 1, "c": 2}`)},
+			{types.MustJSON(`{"a": 1, "d": 2}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_MERGE_PATCH(c3, '{"a": 1}') FROM jsontable`,
+		Expected: []sql.Row{
+			{types.MustJSON(`{"a": 1}`)},
+			{types.MustJSON(`{"a": 1, "b": 2}`)},
+			{types.MustJSON(`{"a": 1, "c": 2}`)},
+			{types.MustJSON(`{"a": 1, "d": 2}`)},
+		},
+	},
+	{
 		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
 		Expected: []sql.Row{
 			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
@@ -10426,6 +10453,10 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "SELECT json_insert() FROM dual;",
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       "SELECT json_merge() FROM dual;",
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
 	{
