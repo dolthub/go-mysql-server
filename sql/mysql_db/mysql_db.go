@@ -306,9 +306,11 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 
 		if lockTime, isLocked := lockUserMap.GetUser(readUserEntry); isLocked {
 			if time.Since(lockTime) > time.Hour {
+				readUserEntry.Locked = false
 				lockUserMap.RemoveUser(readUserEntry)
 			} else {
-				return nil
+				readUserEntry.Locked = true
+				return readUserEntry
 			}
 		}
 		if strings.Contains(readUserEntry.Host, "/") {
@@ -317,7 +319,11 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 				hostIp := net.ParseIP(host)
 				if hostIp != nil && network.Contains(hostIp) {
 					return readUserEntry
+				} else {
+					return nil
 				}
+			} else {
+				return nil
 			}
 		}
 		return readUserEntry
@@ -333,9 +339,11 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 
 			if lockTime, isLocked := lockUserMap.GetUser(readUserEntry); isLocked {
 				if time.Since(lockTime) > time.Hour {
+					readUserEntry.Locked = false
 					lockUserMap.RemoveUser(readUserEntry)
 				} else {
-					continue
+					readUserEntry.Locked = true
+					return readUserEntry
 				}
 			}
 			if strings.Contains(readUserEntry.Host, "/") {
