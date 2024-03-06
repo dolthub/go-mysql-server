@@ -1,7 +1,23 @@
+// Copyright 2021-2024 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package function
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -54,7 +70,7 @@ func (r RowCount) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r RowCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return ctx.GetLastQueryInfo(sql.RowCount), nil
+	return ctx.GetLastQueryInfoInt(sql.RowCount), nil
 }
 
 // Children implements sql.Expression
@@ -72,7 +88,69 @@ func (r RowCount) FunctionName() string {
 	return "row_count"
 }
 
+// LastInsertUuid implements the LAST_INSERT_UUID() function. This function is
+// NOT a standard function in MySQL, but is a useful analogue to LAST_INSERT_ID()
+// if customers are inserting UUIDs into a table.
+type LastInsertUuid struct{}
+
+var _ sql.FunctionExpression = LastInsertUuid{}
+var _ sql.CollationCoercible = LastInsertUuid{}
+
+func NewLastInsertUuid(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) > 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(LastInsertUuid{}.String(), len(children), 0)
+	}
+
+	return &LastInsertUuid{}, nil
+}
+
+func (l LastInsertUuid) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+func (l LastInsertUuid) Resolved() bool {
+	return true
+}
+
+func (l LastInsertUuid) String() string {
+	return fmt.Sprintf("%s()", l.FunctionName())
+}
+
+func (l LastInsertUuid) Type() sql.Type {
+	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
+}
+
+func (l LastInsertUuid) IsNullable() bool {
+	return false
+}
+
+func (l LastInsertUuid) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+	lastInsertUuid := ctx.GetLastQueryInfoString(sql.LastInsertUuid)
+	result, _, err := l.Type().Convert(lastInsertUuid)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (l LastInsertUuid) Children() []sql.Expression {
+	return nil
+}
+
+func (l LastInsertUuid) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLastInsertUuid(children...)
+}
+
+func (l LastInsertUuid) FunctionName() string {
+	return "last_insert_uuid"
+}
+
+func (l LastInsertUuid) Description() string {
+	return "returns the first value of the UUID() function from the last INSERT statement."
+}
+
 // LastInsertId implements the LAST_INSERT_ID() function
+// https://dev.mysql.com/doc/refman/8.0/en/information-functions.html#function_last-insert-id
 type LastInsertId struct {
 	expression.UnaryExpression
 }
@@ -129,7 +207,7 @@ func (r LastInsertId) IsNullable() bool {
 func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// With no arguments, just return the last insert id for this session
 	if len(r.Children()) == 0 {
-		lastInsertId := ctx.GetLastQueryInfo(sql.LastInsertId)
+		lastInsertId := ctx.GetLastQueryInfoInt(sql.LastInsertId)
 		unsigned, _, err := types.Uint64.Convert(lastInsertId)
 		if err != nil {
 			return nil, err
@@ -147,7 +225,7 @@ func (r LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	ctx.SetLastQueryInfo(sql.LastInsertId, id.(int64))
+	ctx.SetLastQueryInfoInt(sql.LastInsertId, id.(int64))
 	return id, nil
 }
 
@@ -220,7 +298,7 @@ func (r FoundRows) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r FoundRows) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return ctx.GetLastQueryInfo(sql.FoundRows), nil
+	return ctx.GetLastQueryInfoInt(sql.FoundRows), nil
 }
 
 // Children implements sql.Expression

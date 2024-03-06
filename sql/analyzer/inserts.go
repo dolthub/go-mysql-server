@@ -18,8 +18,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -167,12 +170,144 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		}
 	}
 
+	// Handle auto UUID columns
+	autoUuidCol, autoUuidColIdx := findAutoUuidColumn(ctx, schema)
+	if autoUuidCol != nil {
+		if columnDefaultValue, ok := projExprs[autoUuidColIdx].(*sql.ColumnDefaultValue); ok {
+			// If the auto UUID column is being populated through the projection (i.e. it's projecting a
+			// ColumnDefaultValue to create the UUID), then update the project to include the AutoUuid expression.
+			newExpr, identity, err := insertAutoUuidExpression(ctx, columnDefaultValue, autoUuidCol)
+			if err != nil {
+				return nil, false, err
+			}
+			if identity == transform.NewTree {
+				projExprs[autoUuidColIdx] = newExpr
+			}
+		} else {
+			// Otherwise, if the auto UUID column is not getting populated through the projection, then we
+			// need to look through the tuples to look for the first DEFAULT or UUID() expression and apply
+			// the AutoUuid expression to it.
+			err := wrapAutoUuidInValuesTuples(ctx, autoUuidCol, insertSource, columnNames)
+			if err != nil {
+				return nil, false, err
+			}
+		}
+	}
+
 	err := validateRowSource(insertSource, projExprs)
 	if err != nil {
 		return nil, false, err
 	}
 
 	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
+}
+
+// insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid
+// expression above the UUID() function call, so that the auto generated UUID value can be captured and
+// saved to the session's query info.
+func insertAutoUuidExpression(ctx *sql.Context, expr sql.Expression, autoUuidCol *sql.Column) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *function.UUIDFunc:
+			return expression.NewAutoUuid(ctx, autoUuidCol, e), transform.NewTree, nil
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
+}
+
+// findAutoUuidColumn searches the specified |schema| for a column that meets the requirements of an auto UUID
+// column, and if found, returns the column, as well as its index in the schema. See isAutoUuidColumn() for the
+// requirements on what is considered an auto UUID column.
+func findAutoUuidColumn(_ *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
+	for i, col := range schema {
+		if isAutoUuidColumn(col) {
+			return col, i
+		}
+	}
+
+	return nil, -1
+}
+
+// wrapAutoUuidInValuesTuples searches the tuples in the |insertSource| (if it is a *plan.Values) for the first
+// tuple using a DEFAULT() or a UUID() function expression for the |autoUuidCol|, and wraps the UUID() function
+// in an AutoUuid expression so that the generated UUID value can be captured and saved to the session's query info.
+// After finding a first occurrence, this function returns, since only the first generated UUID needs to be saved.
+// The caller must provide the |columnNames| for the insertSource so that this function can identify the index
+// in the value tuples for the auto UUID column.
+func wrapAutoUuidInValuesTuples(ctx *sql.Context, autoUuidCol *sql.Column, insertSource sql.Node, columnNames []string) error {
+	values, ok := insertSource.(*plan.Values)
+	if !ok {
+		// If the insert source isn't value tuples, then we don't need to do anything
+		return nil
+	}
+
+	// Search the column names in the Values tuples to find the right tuple index
+	autoUuidColTupleIdx := -1
+	for i, columnName := range columnNames {
+		if strings.ToLower(autoUuidCol.Name) == strings.ToLower(columnName) {
+			autoUuidColTupleIdx = i
+		}
+	}
+	if autoUuidColTupleIdx == -1 {
+		return nil
+	}
+
+	for _, tuple := range values.ExpressionTuples {
+		expr := tuple[autoUuidColTupleIdx]
+		if wrapper, ok := expr.(*expression.Wrapper); ok {
+			expr = wrapper.Unwrap()
+		}
+
+		switch expr.(type) {
+		case *sql.ColumnDefaultValue, *function.UUIDFunc, *function.UUIDToBin:
+			// Only ColumnDefaultValue, UUIDFunc, and UUIDToBin are valid to use in an auto UUID column
+			newExpr, identity, err := insertAutoUuidExpression(ctx, expr, autoUuidCol)
+			if err != nil {
+				return err
+			}
+			if identity == transform.NewTree {
+				tuple[autoUuidColTupleIdx] = newExpr
+				return nil
+			}
+		}
+	}
+
+	return nil
+}
+
+// isAutoUuidColumn returns true if the specified |col| meets the requirements of an auto generated UUID column. To
+// be an auto UUID column, the column must be part of the primary key (it may be a composite primary key), and the
+// type must be either varchar(36), char(36), varbinary(16), or binary(16). It must have a default value set to
+// populate a UUID, either through the UUID() function (for char and varchar columns) or the UUID_TO_BIN(UUID())
+// function (for binary and varbinary columns).
+func isAutoUuidColumn(col *sql.Column) bool {
+	if col.PrimaryKey == false {
+		return false
+	}
+
+	switch col.Type.Type() {
+	case sqltypes.Char, sqltypes.VarChar:
+		stringType := col.Type.(sql.StringType)
+		if stringType.MaxCharacterLength() != 36 || col.Default == nil {
+			return false
+		}
+		if _, ok := col.Default.Expr.(*function.UUIDFunc); ok {
+			return true
+		}
+	case sqltypes.Binary, sqltypes.VarBinary:
+		stringType := col.Type.(sql.StringType)
+		if stringType.MaxByteLength() != 16 || col.Default == nil {
+			return false
+		}
+		if uuidToBinFunc, ok := col.Default.Expr.(*function.UUIDToBin); ok {
+			if _, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // validGeneratedColumnValue returns true if the column is a generated column and the source node is not a values node.
@@ -204,6 +339,7 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 		switch e := expr.(type) {
 		case *expression.Literal,
 			*expression.AutoIncrement,
+			*expression.AutoUuid,
 			*sql.ColumnDefaultValue:
 			continue
 		case *expression.GetField:

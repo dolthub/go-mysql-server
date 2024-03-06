@@ -1202,11 +1202,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT IS_UUID(UUID())`,
-				Expected: []sql.Row{{int8(1)}},
+				Expected: []sql.Row{{true}},
 			},
 			{
 				Query:    `SELECT IS_UUID(@uuid)`,
-				Expected: []sql.Row{{int8(1)}},
+				Expected: []sql.Row{{true}},
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid))`,
@@ -1351,6 +1351,278 @@ CREATE TABLE tab3 (
 			{
 				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
 				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
+		Name: "last_insert_uuid() behavior",
+		SetUpScript: []string{
+			"create table varchar36 (pk varchar(36) primary key default (UUID()), i int);",
+			"create table char36 (pk char(36) primary key default (UUID()), i int);",
+			"create table varbinary16 (pk varbinary(16) primary key default (UUID_to_bin(UUID())), i int);",
+			"create table binary16 (pk binary(16) primary key default (UUID_to_bin(UUID())), i int);",
+			"create table binary16swap (pk binary(16) primary key default (UUID_to_bin(UUID(), true)), i int);",
+			"create table invalid (pk int primary key, c1 varchar(36) default (UUID()));",
+			"create table prepared (uuid char(36) default (UUID()), ai int auto_increment, c1 varchar(100), primary key (uuid, ai));",
+		},
+		Assertions: []ScriptTestAssertion{
+			// The initial value of last_insert_uuid() is an empty string
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+
+			// invalid table – UUID default is not a primary key, so last_insert_uuid() doesn't get udpated
+			{
+				Query:    "insert into invalid values (1, DEFAULT);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+			{
+				Query:    "insert into invalid values (2, UUID());",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select last_insert_uuid()",
+				Expected: []sql.Row{{""}},
+			},
+
+			// varchar(36) test cases...
+			{
+				Query:    "insert into varchar36 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varchar36 values (UUID(), 2), (UUID(), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varchar36 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// char(36) test cases...
+			{
+				Query:    "insert into char36 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into char36 values (UUID(), 2), (UUID(), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into char36 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into char36 (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// varbinary(16) test cases...
+			{
+				Query:    "insert into varbinary16 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varbinary16 values (UUID_to_bin(UUID()), 2), (UUID_to_bin(UUID()), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into varbinary16 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// binary(16) test cases...
+			{
+				Query:    "insert into binary16 values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16 values (UUID_to_bin(UUID()), 2), (UUID_to_bin(UUID()), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16 values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16 (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// binary(16) with UUID_to_bin swap test cases...
+			{
+				Query:    "insert into binary16swap values (DEFAULT, 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=1);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap values (UUID_to_bin(UUID(), true), 2), (UUID_to_bin(UUID(), true), 3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				// last_insert_uuid() reports the first UUID() generated in the last insert statement
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap values ('notta-uuid', 4);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// INSERT INTO ... SELECT ... Tests
+			{
+				// If we populate the UUID column (pk) with its implicit default, then it updates last_insert_uuid()
+				Query:    "insert into varchar36 (i) select 42 from dual;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				// If all values come from another table, the auto_uuid value shouldn't be generated, so last_insert_uuid() doesn't change
+				Query:    "insert into varchar36 (pk, i) (select 'one', 101 from dual union all select 'two', 202);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
+				Expected: []sql.Row{{true, true}},
+			},
+
+			// Prepared statements
+			{
+				// Test with an insert statement that implicit uses the UUID column default
+				Query:    `prepare stmt1 from "insert into prepared (c1) values ('odd'), ('even')";`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:                         "execute stmt1;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=1), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(1)}},
+			},
+			{
+				// Executing the prepared statement a second time should refresh last_insert_uuid()
+				Query:                         "execute stmt1;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=3), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(3)}},
+			},
+
+			{
+				// Test with an insert statement that explicitly uses the UUID column default
+				Query:    `prepare stmt2 from "insert into prepared (uuid, c1) values (DEFAULT, 'more'), (DEFAULT, 'less')";`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:                         "execute stmt2;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=5), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(5)}},
+			},
+			{
+				// Executing the prepared statement a second time should refresh last_insert_uuid()
+				Query:                         "execute stmt2;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 7}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=7), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(7)}},
 			},
 		},
 	},
