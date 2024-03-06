@@ -88,46 +88,6 @@ func (j JSONSearch) IsUnsupported() bool {
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#operator_member-of
 // TODO(andy): relocate
 
-/////////////////////////////
-// JSON creation functions //
-/////////////////////////////
-
-// JSON_QUOTE(string)
-//
-// JSONQuote Quotes a string as a JSON value by wrapping it with double quote characters and escaping interior quote and
-// other characters, then returning the result as a utf8mb4 string. Returns NULL if the argument is NULL. This function
-// is typically used to produce a valid JSON string literal for inclusion within a JSON document. Certain special
-// characters are escaped with backslashes per the escape sequences shown in Table 12.23, “JSON_UNQUOTE() Special
-// Character Escape Sequences”:
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#json-unquote-character-escape-sequences
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-quote
-type JSONQuote struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONQuote{}
-
-// NewJSONQuote creates a new JSONQuote function.
-func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONQuote{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONQuote) FunctionName() string {
-	return "json_quote"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONQuote) Description() string {
-	return "extracts data from a json document using json paths. Extracting a string will result in that string being quoted. To avoid this, use JSON_UNQUOTE(JSON_EXTRACT(json_doc, path, ...))."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONQuote) IsUnsupported() bool {
-	return true
-}
-
 //////////////////////////
 // JSON table functions //
 //////////////////////////

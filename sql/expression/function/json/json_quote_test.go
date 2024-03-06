@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,9 +25,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestJSONUnquote(t *testing.T) {
-	js := NewJSONUnquote(expression.NewGetField(0, types.LongText, "json", false))
-
+func TestJSONQuote(t *testing.T) {
+	js := NewJSONQuote(expression.NewGetField(0, types.LongText, "json", false))
 	testCases := []struct {
 		row sql.Row
 		exp interface{}
@@ -36,26 +35,30 @@ func TestJSONUnquote(t *testing.T) {
 		{
 			row: sql.Row{nil},
 			exp: nil,
+			err: false,
 		},
 		{
-			row: sql.Row{"\"abc\""},
-			exp: `abc`,
+			row: sql.Row{`abc`},
+			exp: `"abc"`,
+			err: false,
 		},
 		{
-			row: sql.Row{"[1, 2, 3]"},
-			exp: `[1, 2, 3]`,
+			row: sql.Row{`[1, 2, 3]`},
+			exp: `"[1, 2, 3]"`,
+			err: false,
 		},
 		{
 			row: sql.Row{`"\t\u0032"`},
-			exp: "\t2",
+			exp: `"\"\\t\\u0032\""`,
+			err: false,
 		},
 		{
 			row: sql.Row{`\`},
-			err: true,
+			exp: `"\\"`,
 		},
 		{
 			row: sql.Row{`\b\f\n\r\t\"`},
-			exp: "\b\f\n\r\t\"",
+			exp: `"\\b\\f\\n\\r\\t\\\""`,
 		},
 	}
 

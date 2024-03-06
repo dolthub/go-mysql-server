@@ -132,7 +132,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "json_object", Fn: json.NewJSONObject},
 	sql.FunctionN{Name: "json_overlaps", Fn: json.NewJSONOverlaps},
 	sql.FunctionN{Name: "json_pretty", Fn: json.NewJSONPretty},
-	sql.FunctionN{Name: "json_quote", Fn: json.NewJSONQuote},
+	sql.Function1{Name: "json_quote", Fn: json.NewJSONQuote},
 	sql.FunctionN{Name: "json_remove", Fn: json.NewJSONRemove},
 	sql.FunctionN{Name: "json_replace", Fn: json.NewJSONReplace},
 	sql.FunctionN{Name: "json_schema_valid", Fn: json.NewJSONSchemaValid},
