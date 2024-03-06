@@ -313,6 +313,7 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 				return readUserEntry
 			}
 		}
+
 		if strings.Contains(readUserEntry.Host, "/") {
 			_, network, cidrParseErr := net.ParseCIDR(readUserEntry.Host)
 			if cidrParseErr == nil {
@@ -323,6 +324,9 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 					return nil
 				}
 			} else {
+				if readUserEntry.IsSuperUser {
+					return readUserEntry
+				}
 				return nil
 			}
 		}
