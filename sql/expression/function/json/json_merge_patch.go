@@ -116,6 +116,7 @@ func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, nil
 	}
 
+	result := types.DeepCopyJson(initDoc.Val)
 	for _, json := range j.JSONs[1:] {
 		var doc *types.JSONDocument
 		doc, err = getJSONDocumentFromRow(ctx, row, json)
@@ -125,9 +126,9 @@ func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		if doc == nil {
 			return nil, nil
 		}
-		initDoc.Val = merge(initDoc.Val, doc.Val, true)
+		result = merge(result, doc.Val, true)
 	}
-	return *initDoc, nil
+	return types.JSONDocument{Val: result}, nil
 }
 
 

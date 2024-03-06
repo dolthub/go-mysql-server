@@ -124,6 +124,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		return nil, nil
 	}
 
+	result := types.DeepCopyJson(initDoc.Val)
 	for _, json := range j.JSONs[1:] {
 		var doc *types.JSONDocument
 		doc, err = getJSONDocumentFromRow(ctx, row, json)
@@ -133,9 +134,9 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		if doc == nil {
 			return nil, nil
 		}
-		initDoc.Val = merge(initDoc.Val, doc.Val, false)
+		result = merge(result, doc.Val, false)
 	}
-	return *initDoc, nil
+	return types.JSONDocument{Val: result}, nil
 }
 
 // Children implements the Expression interface.
