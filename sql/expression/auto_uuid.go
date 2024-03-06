@@ -17,9 +17,10 @@ package expression
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // AutoUuid is an expression that captures an automatically generated UUID value and stores it in the session for
