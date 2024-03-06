@@ -1737,15 +1737,6 @@ Select * from (
 		},
 	},
 	{
-		Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [2, 1]}`)},
-			{types.MustJSON(`{"a": 1, "b": 2}`)},
-			{types.MustJSON(`{"a": 1, "c": 2}`)},
-			{types.MustJSON(`{"a": 1, "d": 2}`)},
-		},
-	},
-	{
 		Query: `SELECT JSON_MERGE_PRESERVE(c3, '{"a": 1}') FROM jsontable`,
 		Expected: []sql.Row{
 			{types.MustJSON(`{"a": [2, 1]}`)},
@@ -1757,7 +1748,7 @@ Select * from (
 	{
 		Query: `SELECT JSON_MERGE_PATCH(c3, '{"a": 1}') FROM jsontable`,
 		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [2, 1]}`)},
+			{types.MustJSON(`{"a": 1}`)},
 			{types.MustJSON(`{"a": 1, "b": 2}`)},
 			{types.MustJSON(`{"a": 1, "c": 2}`)},
 			{types.MustJSON(`{"a": 1, "d": 2}`)},

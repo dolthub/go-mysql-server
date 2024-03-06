@@ -202,35 +202,44 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "delete me",
+			Name: "physical columns added after virtual one",
 			SetUpScript: []string{
-				`create table jsontable (pk smallint primary key, c1 varchar(20), c2 JSON, c3 JSON)`,
-				`insert into jsontable values
-                    (1, 'row one', '[1,2]', '{"a": 2}'),
-                    (2, 'row two', '[3,4]', '{"b": 2}'),
-                    (3, 'row three', '[5,6]', '{"c": 2}'),
-                    (4, 'row four', '[7,8]', '{"d": 2}')`,
+				"create table t (pk int primary key, col1 int as (pk + 1));",
+				"insert into t (pk) values (1), (3)",
+				"alter table t add index idx1 (col1, pk);",
+				"alter table t add index idx2 (col1);",
+				"alter table t add column col2 int;",
+				"alter table t add column col3 int;",
+				"insert into t (pk, col2, col3) values (2, 4, 5);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
+					Query: "select * from t order by pk",
 					Expected: []sql.Row{
-						{types.MustJSON(`{"a": [2, 1]}`)},
-						{types.MustJSON(`{"a": 1, "b": 2}`)},
-						{types.MustJSON(`{"a": 1, "c": 2}`)},
-						{types.MustJSON(`{"a": 1, "d": 2}`)},
+						{1, 2, nil, nil},
+						{2, 3, 4, 5},
+						{3, 4, nil, nil},
 					},
 				},
 				{
-					Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
+					Query: "select * from t where col1 = 2",
 					Expected: []sql.Row{
-						{types.MustJSON(`{"a": [2, 1]}`)},
-						{types.MustJSON(`{"a": 1, "b": 2}`)},
-						{types.MustJSON(`{"a": 1, "c": 2}`)},
-						{types.MustJSON(`{"a": 1, "d": 2}`)},
+						{1, 2, nil, nil},
+					},
+				},
+				{
+					Query: "select * from t where col1 = 3 and pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
+					},
+				},
+				{
+					Query: "select * from t where pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
 					},
 				},
 			},
@@ -244,8 +253,8 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
