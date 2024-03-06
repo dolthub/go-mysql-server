@@ -202,7 +202,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false, true)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -222,7 +222,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
+			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false, true)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -243,7 +243,7 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented object types")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false, true)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -590,7 +590,7 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 	//TODO: only active roles may be revoked if the SUPER privilege is not held
 	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(client.User, client.Address, false, true)
 	if user == nil {
 		return false
 	}
@@ -599,7 +599,7 @@ func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedO
 		ToUser: user.User,
 	})
 	for _, roleName := range n.Roles {
-		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true, true)
 		if role == nil {
 			return false
 		}
@@ -629,12 +629,12 @@ func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false, true)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}

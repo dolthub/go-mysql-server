@@ -283,7 +283,7 @@ func (db *MySQLDb) LockUser(readUserEntry *User) {
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
 // roles, roleSearch changes whether the search matches against user or role rules.
-func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
+func (db *MySQLDb) GetUser(user string, host string, roleSearch bool, skipCidrChecks bool) *User {
 	//TODO: Determine what the localhost is on the machine, then handle the conversion between IP and localhost.
 	// For now, this just treats localhost and 127.0.0.1 as the same.
 	//TODO: Determine how to match anonymous roles (roles with an empty user string), which differs from users
@@ -303,6 +303,9 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 
 	if len(userEntries) == 1 {
 		readUserEntry := userEntries[0].(*User)
+		if skipCidrChecks {
+			return readUserEntry
+		}
 
 		if lockTime, isLocked := lockUserMap.GetUser(readUserEntry); isLocked {
 			if time.Since(lockTime) > time.Hour {
@@ -321,9 +324,6 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 				if hostIp != nil && network.Contains(hostIp) {
 					return readUserEntry
 				} else {
-					if readUserEntry.IsSuperUser {
-						return readUserEntry
-					}
 					return nil
 				}
 			} else {
@@ -340,6 +340,9 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 		})
 		for _, readUserEntry := range userEntries {
 			readUserEntry := readUserEntry.(*User)
+			if skipCidrChecks {
+				return readUserEntry
+			}
 
 			if lockTime, isLocked := lockUserMap.GetUser(readUserEntry); isLocked {
 				if time.Since(lockTime) > time.Hour {
@@ -381,7 +384,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	}
 
 	client := ctx.Session.Client()
-	user := db.GetUser(client.User, client.Address, false)
+	user := db.GetUser(client.User, client.Address, false, false)
 	if user == nil {
 		return NewPrivilegeSet()
 	}
@@ -395,7 +398,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	//TODO: System variable "activate_all_roles_on_login", if set, will set all roles as active upon logging in
 	for _, roleEdgeEntry := range roleEdgeEntries {
 		roleEdge := roleEdgeEntry.(*RoleEdge)
-		role := db.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
+		role := db.GetUser(roleEdge.FromUser, roleEdge.FromHost, true, false)
 		if role != nil {
 			privSet.UnionWith(role.PrivilegeSet)
 		}
@@ -489,7 +492,7 @@ func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 		host = splitHost
 	}
 
-	u := db.GetUser(user, host, false)
+	u := db.GetUser(user, host, false, false)
 	if u == nil {
 		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
 	}
@@ -521,7 +524,7 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
-	userEntry := db.GetUser(user, host, false)
+	userEntry := db.GetUser(user, host, false, false)
 	if userEntry == nil || userEntry.Locked {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
@@ -555,7 +558,7 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 	if !db.Enabled {
 		return connUser, nil
 	}
-	userEntry := db.GetUser(user, host, false)
+	userEntry := db.GetUser(user, host, false, false)
 
 	if userEntry.Plugin != "" {
 		authplugin, ok := db.plugins[userEntry.Plugin]

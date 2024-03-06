@@ -106,7 +106,7 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	userTableData := mysqlDb.UserTable().Data()
 	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, user := range n.Users {
-		existingUser := mysqlDb.GetUser(user.Name, user.Host, false)
+		existingUser := mysqlDb.GetUser(user.Name, user.Host, false, true)
 		if existingUser == nil {
 			if n.IfExists {
 				continue
