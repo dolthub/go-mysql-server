@@ -1363,6 +1363,7 @@ CREATE TABLE tab3 (
 			"create table binary16 (pk binary(16) primary key default (UUID_to_bin(UUID())), i int);",
 			"create table binary16swap (pk binary(16) primary key default (UUID_to_bin(UUID(), true)), i int);",
 			"create table invalid (pk int primary key, c1 varchar(36) default (UUID()));",
+			"create table prepared (uuid char(36) default (UUID()), ai int auto_increment, c1 varchar(100), primary key (uuid, ai));",
 		},
 		Assertions: []ScriptTestAssertion{
 			// The initial value of last_insert_uuid() is an empty string
@@ -1571,6 +1572,53 @@ CREATE TABLE tab3 (
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
 				Expected: []sql.Row{{true, true}},
+			},
+
+			// Prepared statements
+			{
+				// Test with an insert statement that implicit uses the UUID column default
+				Query:    `prepare stmt1 from "insert into prepared (c1) values ('odd'), ('even')";`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:    "execute stmt1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=1), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(1)}},
+			},
+			{
+				// Executing the prepared statement a second time should refresh last_insert_uuid()
+				Query:    "execute stmt1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=3), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(3)}},
+			},
+
+			{
+				// Test with an insert statement that explicitly uses the UUID column default
+				Query:    `prepare stmt2 from "insert into prepared (uuid, c1) values (DEFAULT, 'more'), (DEFAULT, 'less')";`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+			},
+			{
+				Query:    "execute stmt2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=5), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(5)}},
+			},
+			{
+				// Executing the prepared statement a second time should refresh last_insert_uuid()
+				Query:    "execute stmt2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 7}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=7), last_insert_id();",
+				Expected: []sql.Row{{true, true, uint64(7)}},
 			},
 		},
 	},
