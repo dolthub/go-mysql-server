@@ -77,6 +77,11 @@ func TestJSONMergePreserve(t *testing.T) {
 			exp: types.MustJSON(`{"id": 47, "name": "x"}`),
 		},
 		{
+			f:   f2,
+			row: sql.Row{`{"id": 123}`, `{"id": null}`},
+			exp: types.MustJSON(`{"id": [123, null]}`),
+		},
+		{
 			f: f2,
 			row: sql.Row{
 				`{
