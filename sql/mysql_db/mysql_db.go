@@ -304,6 +304,15 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 	if len(userEntries) == 1 {
 		readUserEntry := userEntries[0].(*User)
 
+		if host == readUserEntry.Host ||
+			(host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+			(host == "localhost" && readUserEntry.Host == "127.0.0.1") ||
+			(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
+			if readUserEntry.IsSuperUser {
+				return readUserEntry
+			}
+		}
+
 		if lockTime, isLocked := lockUserMap.GetUser(readUserEntry); isLocked {
 			if time.Since(lockTime) > time.Hour {
 				readUserEntry.Locked = false
@@ -324,9 +333,6 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 					return nil
 				}
 			} else {
-				if readUserEntry.IsSuperUser {
-					return readUserEntry
-				}
 				return nil
 			}
 		}
