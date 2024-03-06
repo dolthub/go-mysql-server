@@ -15,6 +15,7 @@
 package server
 
 import (
+	goerrors "errors"
 	"io"
 	"net"
 	"regexp"
@@ -22,8 +23,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	goerrors "errors"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
