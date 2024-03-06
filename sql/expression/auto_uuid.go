@@ -24,7 +24,7 @@ import (
 )
 
 // AutoUuid is an expression that captures an automatically generated UUID value and stores it in the session for
-// later retrieval.
+// later retrieval. AutoUuid is intended to only be used directly on top of a UUID function.
 type AutoUuid struct {
 	UnaryExpression
 	uuidCol   *sql.Column
@@ -34,7 +34,8 @@ type AutoUuid struct {
 var _ sql.Expression = (*AutoUuid)(nil)
 var _ sql.CollationCoercible = (*AutoUuid)(nil)
 
-// NewAutoUuid creates a new AutoUuid expression.
+// NewAutoUuid creates a new AutoUuid expression. The |child| expression must be a function.UUIDFunc, but
+// because of package import cycles, we can't enforce that directly here.
 func NewAutoUuid(_ *sql.Context, col *sql.Column, child sql.Expression) *AutoUuid {
 	return &AutoUuid{
 		UnaryExpression: UnaryExpression{Child: child},
@@ -59,29 +60,28 @@ func (au *AutoUuid) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 
 // Eval implements the Expression interface.
 func (au *AutoUuid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// get value provided by INSERT
-	given, err := au.Child.Eval(ctx, row)
+	childResult, err := au.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Technically... setting this here means that another call to last_insert_uuid() in the same statement would
-	//       read this value too early. Test this behaviro with MySQL and make sure that's how MySQL works. Then,
-	//       add a test for that edge case. To fix, we could set a PENDING_LAST_INSERT_UUID or something similar, then
-	//       as part of insertIter execution phase, we could move it from PENDING to LAST_INSERT_UUID
 	if !au.foundUuid {
-		uuidValue, ok := given.(string)
+		uuidValue, ok := childResult.(string)
 		if !ok {
 			// This should never happen – AutoUuid should only ever be placed directly above a UUID function,
 			// so the result from eval'ing its child should *always* be a string.
-			return nil, fmt.Errorf("unexpected type for UUID value: %T", given)
+			return nil, fmt.Errorf("unexpected type for UUID value: %T", childResult)
 		}
 
+		// TODO: Setting this here means that another call to last_insert_uuid() in the same statement could
+		//       read this value too early. We should verify this isn't how MySQL behaves, and then could fix
+		//       by setting a PENDING_LAST_INSERT_UUID value in the session query info, then moving it to
+		//       LAST_INSERT_UUID in the session query info at the end of execution.
 		ctx.Session.SetLastQueryInfoString(sql.LastInsertUuid, uuidValue)
 		au.foundUuid = true
 	}
 
-	return given, nil
+	return childResult, nil
 }
 
 func (au *AutoUuid) String() string {

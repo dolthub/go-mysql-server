@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -306,42 +305,6 @@ func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 		}
 	}
 	return 0
-}
-
-// findUuidPrimaryKey searches for a column in the primary key that is a UUID column. UUID columns are defined as
-// either a char(36) or varchar(36) that has a column default of UUID() or a binary(16) or varbinary(16) that has
-// a column default of UUID_to_bin(UUID()). This is meant to be similar to auto_increment rules, which allow only
-// one auto_increment column that must be part of a key. If a matching column is found, its index is returned,
-// otherwise -1 is returned to indicate that no matching column was found.
-func findUuidPrimaryKey(schema sql.Schema) int {
-	for columnIdx, col := range schema {
-		if col.PrimaryKey == false {
-			continue
-		}
-
-		switch col.Type.Type() {
-		case sqltypes.Char, sqltypes.VarChar:
-			stringType := col.Type.(sql.StringType)
-			if stringType.MaxCharacterLength() != 36 || col.Default == nil {
-				continue
-			}
-			if _, ok := col.Default.Expr.(*function.UUIDFunc); ok {
-				return columnIdx
-			}
-		case sqltypes.Binary, sqltypes.VarBinary:
-			stringType := col.Type.(sql.StringType)
-			if stringType.MaxByteLength() != 16 || col.Default == nil {
-				continue
-			}
-			if uuidToBinFunc, ok := col.Default.Expr.(*function.UUIDToBin); ok {
-				if _, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
-					return columnIdx
-				}
-			}
-		}
-	}
-
-	return -1
 }
 
 func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) error {

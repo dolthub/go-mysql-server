@@ -202,6 +202,9 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
+// insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid
+// expression above the UUID() function call, so that the auto generated UUID value can be captured and
+// saved to the session's query info.
 func insertAutoUuidExpression(ctx *sql.Context, expr sql.Expression, autoUuidCol *sql.Column) (sql.Expression, transform.TreeIdentity, error) {
 	return transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
@@ -213,9 +216,12 @@ func insertAutoUuidExpression(ctx *sql.Context, expr sql.Expression, autoUuidCol
 	})
 }
 
+// findAutoUuidColumn searches the specified |schema| for a column that meets the requirements of an auto UUID
+// column, and if found, returns the column, as well as its index in the schema. See isAutoUuidColumn() for the
+// requirements on what is considered an auto UUID column.
 func findAutoUuidColumn(_ *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
 	for i, col := range schema {
-		if columnIsAutoUuid(col) {
+		if isAutoUuidColumn(col) {
 			return col, i
 		}
 	}
@@ -223,10 +229,13 @@ func findAutoUuidColumn(_ *sql.Context, schema sql.Schema) (autoUuidCol *sql.Col
 	return nil, -1
 }
 
+// wrapAutoUuidInValuesTuples searches the tuples in the |insertSource| (if it is a *plan.Values) for the first
+// tuple using a DEFAULT() or a UUID() function expression for the |autoUuidCol|, and wraps the UUID() function
+// in an AutoUuid expression so that the generated UUID value can be captured and saved to the session's query info.
+// After finding a first occurrence, this function returns, since only the first generated UUID needs to be saved.
+// The caller must provide the |columnNames| for the insertSource so that this function can identify the index
+// in the value tuples for the auto UUID column.
 func wrapAutoUuidInValuesTuples(ctx *sql.Context, autoUuidCol *sql.Column, insertSource sql.Node, columnNames []string) error {
-	// Else... if the source is a *plan.Values, then search the tuples for the first DEFAULT expression, or the
-	// first UUID() expression, or the first UUID_TO_BIN(UUID()) expression tree and wrap it in an expression.AutoUuid
-	// to capture the generated value
 	values, ok := insertSource.(*plan.Values)
 	if !ok {
 		// If the insert source isn't value tuples, then we don't need to do anything
@@ -267,8 +276,12 @@ func wrapAutoUuidInValuesTuples(ctx *sql.Context, autoUuidCol *sql.Column, inser
 	return nil
 }
 
-// TODO: Move to AutoUuid file?
-func columnIsAutoUuid(col *sql.Column) bool {
+// isAutoUuidColumn returns true if the specified |col| meets the requirements of an auto generated UUID column. To
+// be an auto UUID column, the column must be part of the primary key (it may be a composite primary key), and the
+// type must be either varchar(36), char(36), varbinary(16), or binary(16). It must have a default value set to
+// populate a UUID, either through the UUID() function (for char and varchar columns) or the UUID_TO_BIN(UUID())
+// function (for binary and varbinary columns).
+func isAutoUuidColumn(col *sql.Column) bool {
 	if col.PrimaryKey == false {
 		return false
 	}

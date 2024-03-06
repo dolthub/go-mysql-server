@@ -482,7 +482,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if sf.(int8) == 0 {
 		return parsed.String(), nil
 	} else if sf.(int8) == 1 {
-		encoding := UnswapUUIDBytes(parsed)
+		encoding := unswapUUIDBytes(parsed)
 		parsed, err = uuid.FromBytes(encoding)
 
 		if err != nil {
@@ -495,8 +495,8 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// UnswapUUIDBytes unswaps the time-low and time-high parts (the third and first groups of hexadecimal digits, respectively)
-func UnswapUUIDBytes(cur uuid.UUID) []byte {
+// unswapUUIDBytes unswaps the time-low and time-high parts (the third and first groups of hexadecimal digits, respectively)
+func unswapUUIDBytes(cur uuid.UUID) []byte {
 	ret := make([]byte, 16)
 
 	copy(ret[0:4], cur[4:8])
