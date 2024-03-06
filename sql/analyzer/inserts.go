@@ -176,11 +176,13 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		if columnDefaultValue, ok := projExprs[autoUuidColIdx].(*sql.ColumnDefaultValue); ok {
 			// If the auto UUID column is being populated through the projection (i.e. it's projecting a
 			// ColumnDefaultValue to create the UUID), then update the project to include the AutoUuid expression.
-			// TODO: This should be extracted to a reusable function... make sure the AutoUUID expression is
-			//       created directly on top of the UUID function. Probably good to add a runtime check in the
-			//       constructor for that, too.
-			// TODO: Add a test case to trigger this issue (default column is projected, but values are used for non-UUID cols)
-			projExprs[autoUuidColIdx] = expression.NewAutoUuid(ctx, autoUuidCol, columnDefaultValue)
+			newExpr, identity, err := insertAutoUuidExpression(ctx, columnDefaultValue, autoUuidCol)
+			if err != nil {
+				return nil, false, err
+			}
+			if identity == transform.NewTree {
+				projExprs[autoUuidColIdx] = newExpr
+			}
 		} else {
 			// Otherwise, if the auto UUID column is not getting populated through the projection, then we
 			// need to look through the tuples to look for the first DEFAULT or UUID() expression and apply
@@ -200,7 +202,18 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
-func findAutoUuidColumn(ctx *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
+func insertAutoUuidExpression(ctx *sql.Context, expr sql.Expression, autoUuidCol *sql.Column) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *function.UUIDFunc:
+			return expression.NewAutoUuid(ctx, autoUuidCol, e), transform.NewTree, nil
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
+}
+
+func findAutoUuidColumn(_ *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
 	for i, col := range schema {
 		if columnIsAutoUuid(col) {
 			return col, i
@@ -237,50 +250,16 @@ func wrapAutoUuidInValuesTuples(ctx *sql.Context, autoUuidCol *sql.Column, inser
 			expr = wrapper.Unwrap()
 		}
 
-		if columnDefaultValue, ok := expr.(*sql.ColumnDefaultValue); ok {
-			switch t := columnDefaultValue.Expr.(type) {
-			case *function.UUIDFunc:
-				autoUuid := expression.NewAutoUuid(ctx, autoUuidCol, t)
-				expr, err := columnDefaultValue.WithChildren(autoUuid)
-				if err != nil {
-					return err
-				}
-				tuple[autoUuidColTupleIdx] = expr
-			case *function.UUIDToBin:
-				children := t.Children()
-				autoUuid := expression.NewAutoUuid(ctx, autoUuidCol, children[0])
-				children[0] = autoUuid
-				uuidToBin, err := t.WithChildren(children...)
-				if err != nil {
-					return err
-				}
-				expr, err := columnDefaultValue.WithChildren(uuidToBin)
-				if err != nil {
-					return err
-				}
-				tuple[autoUuidColTupleIdx] = expr
-			default:
-				return fmt.Errorf("unexpected column default expression for auto UUID column: %T", t)
+		switch expr.(type) {
+		case *sql.ColumnDefaultValue, *function.UUIDFunc, *function.UUIDToBin:
+			// Only ColumnDefaultValue, UUIDFunc, and UUIDToBin are valid to use in an auto UUID column
+			newExpr, identity, err := insertAutoUuidExpression(ctx, expr, autoUuidCol)
+			if err != nil {
+				return err
 			}
-			break
-		}
-
-		if _, ok := expr.(*function.UUIDFunc); ok {
-			tuple[autoUuidColTupleIdx] = expression.NewAutoUuid(ctx, autoUuidCol, tuple[autoUuidColTupleIdx])
-			break
-		}
-
-		if uuidToBinFunc, ok := expr.(*function.UUIDToBin); ok {
-			if uuidFunc, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
-				children := uuidToBinFunc.Children()
-				autoUuid := expression.NewAutoUuid(ctx, autoUuidCol, uuidFunc)
-				children[0] = autoUuid
-				expr, err := uuidToBinFunc.WithChildren(children...)
-				if err != nil {
-					return err
-				}
-				tuple[autoUuidColTupleIdx] = expr
-				break
+			if identity == transform.NewTree {
+				tuple[autoUuidColTupleIdx] = newExpr
+				return nil
 			}
 		}
 	}

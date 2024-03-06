@@ -34,9 +34,9 @@ var _ sql.Expression = (*AutoUuid)(nil)
 var _ sql.CollationCoercible = (*AutoUuid)(nil)
 
 // NewAutoUuid creates a new AutoUuid expression.
-func NewAutoUuid(_ *sql.Context, col *sql.Column, given sql.Expression) *AutoUuid {
+func NewAutoUuid(_ *sql.Context, col *sql.Column, child sql.Expression) *AutoUuid {
 	return &AutoUuid{
-		UnaryExpression: UnaryExpression{Child: given},
+		UnaryExpression: UnaryExpression{Child: child},
 		uuidCol:         col,
 	}
 }
@@ -73,7 +73,7 @@ func (au *AutoUuid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if !ok {
 			// This should never happen – AutoUuid should only ever be placed directly above a UUID function,
 			// so the result from eval'ing its child should *always* be a string.
-			return nil, fmt.Errorf("TODO: Better error message!")
+			return nil, fmt.Errorf("unexpected type for UUID value: %T", given)
 		}
 
 		ctx.Session.SetLastQueryInfoString(sql.LastInsertUuid, uuidValue)

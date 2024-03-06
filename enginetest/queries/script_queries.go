@@ -1444,6 +1444,14 @@ CREATE TABLE tab3 (
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
+			{
+				Query:    "insert into char36 (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
 
 			// varbinary(16) test cases...
 			{
@@ -1500,6 +1508,14 @@ CREATE TABLE tab3 (
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
 				Expected: []sql.Row{{true, true}},
 			},
+			{
+				Query:    "insert into binary16 (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=5);",
+				Expected: []sql.Row{{true, true}},
+			},
 
 			// binary(16) with UUID_to_bin swap test cases...
 			{
@@ -1526,6 +1542,14 @@ CREATE TABLE tab3 (
 			{
 				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
+				Expected: []sql.Row{{true, true}},
+			},
+			{
+				Query:    "insert into binary16swap (i) values (5);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=5);",
 				Expected: []sql.Row{{true, true}},
 			},
 
