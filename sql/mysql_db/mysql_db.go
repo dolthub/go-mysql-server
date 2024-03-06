@@ -321,6 +321,9 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool) *User {
 				if hostIp != nil && network.Contains(hostIp) {
 					return readUserEntry
 				} else {
+					if readUserEntry.IsSuperUser {
+						return readUserEntry
+					}
 					return nil
 				}
 			} else {
