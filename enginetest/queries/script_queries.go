@@ -1581,8 +1581,9 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
 			},
 			{
-				Query:    "execute stmt1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				Query:                         "execute stmt1;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=1), last_insert_id();",
@@ -1590,8 +1591,9 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Executing the prepared statement a second time should refresh last_insert_uuid()
-				Query:    "execute stmt1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				Query:                         "execute stmt1;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=3), last_insert_id();",
@@ -1604,8 +1606,9 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
 			},
 			{
-				Query:    "execute stmt2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
+				Query:                         "execute stmt2;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=5), last_insert_id();",
@@ -1613,8 +1616,9 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Executing the prepared statement a second time should refresh last_insert_uuid()
-				Query:    "execute stmt2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 7}}},
+				Query:                         "execute stmt2;",
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 7}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=7), last_insert_id();",
