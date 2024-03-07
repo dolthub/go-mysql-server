@@ -583,6 +583,14 @@ var CreateTableScriptTests = []ScriptTest{
 				Query:       `CREATE TABLE t1 (pk int primary key character set utf8mb4)`,
 				ExpectedErr: types.ErrCharacterSetOnInvalidType,
 			},
+			{
+				Query:          `create table t (i int, primary key(i)) charset=utf8mb4 collate=utf8mb3_esperanto_ci;`,
+				ExpectedErrStr: "utf8mb4 is not a valid character set for utf8mb3_esperanto_ci",
+			},
+			{
+				Query:    `create table t (i int, primary key(i)) charset=utf8mb4 collate=utf8mb4_esperanto_ci;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
 		},
 	},
 	{
