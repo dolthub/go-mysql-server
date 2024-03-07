@@ -1703,7 +1703,6 @@ join uv d on d.u = c.x`,
 		},
 		tests: []JoinPlanTest{
 			{
-				// Test that a RangeHeapJoin won't be chosen over a LookupJoin with a multiple-column index.
 				q:     "select * from t1 straight_join t2 on i = j",
 				types: []plan.JoinType{plan.JoinTypeInner},
 				exp: []sql.Row{
