@@ -154,7 +154,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			Host: client.Address,
 		}
 	}
-	user := mysqlDb.GetUser(n.For.Name, n.For.Host, false)
+	user := mysqlDb.GetUser(n.For.Name, n.For.Host, false, true)
 	if user == nil {
 		return nil, sql.ErrShowGrantsUserDoesNotExist.New(n.For.Name, n.For.Host)
 	}

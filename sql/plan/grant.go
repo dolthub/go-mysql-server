@@ -209,7 +209,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false, true)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -235,7 +235,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false, true)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -262,7 +262,7 @@ func (n *Grant) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("GRANT has not yet implemented user assumption")
 		}
 		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
+			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false, true)
 			if user == nil {
 				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
@@ -638,7 +638,7 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 	//TODO: only active roles may be assigned if the SUPER privilege is not held
 	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(client.User, client.Address, false)
+	user := mysqlDb.GetUser(client.User, client.Address, false, true)
 	if user == nil {
 		return false
 	}
@@ -647,7 +647,7 @@ func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOp
 		ToUser: user.User,
 	})
 	for _, roleName := range n.Roles {
-		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true, true)
 		if role == nil {
 			return false
 		}
@@ -677,12 +677,12 @@ func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
 	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
+		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false, true)
 		if user == nil {
 			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
+			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true, true)
 			if role == nil {
 				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
