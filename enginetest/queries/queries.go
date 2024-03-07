@@ -5576,10 +5576,6 @@ Select * from (
 		Expected: []sql.Row{{true}},
 	},
 
-
-
-
-
 	{
 		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,
 		Expected: []sql.Row{{true}},
