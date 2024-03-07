@@ -123,7 +123,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	for k, v := range s.systemVars {
-		if sysType, ok := v.Var.Type.(SetType); ok {
+		if sysType, ok := v.Var.VarType().(SetType); ok {
 			if sv, ok := v.Val.(uint64); ok {
 				if svStr, err := sysType.BitsToString(sv); err == nil {
 					m[k] = svStr
@@ -156,7 +156,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 		}
 	}
 
-	if !sysVar.Var.Dynamic || sysVar.Var.ValueFunction != nil {
+	if sv, isSv := sysVar.Var.(*SystemVariable); isSv && (!sv.Dynamic || sv.ValueFunction != nil) {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
 	return s.setSessVar(ctx, sysVar.Var, value)
@@ -169,19 +169,19 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
 
-	val, ok := s.systemVars[sysVar.Name]
-	if ok && val.Val != sysVar.Default {
+	val, ok := s.systemVars[sysVar.VarName()]
+	if ok && val.Val != sysVar.GetDefault() {
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
 
 	return s.setSessVar(ctx, sysVar, value)
 }
 
-func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}) error {
-	if sysVar.Scope == SystemVariableScope_Global {
-		return ErrSystemVariableGlobalOnly.New(sysVar.Name)
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariableInterface, value interface{}) error {
+	if sv, ok := sysVar.(*SystemVariable); ok && sv.Scope == SystemVariableScope_Global {
+		return ErrSystemVariableGlobalOnly.New(sv.Name)
 	}
-	convertedVal, _, err := sysVar.Type.Convert(value)
+	convertedVal, _, err := sysVar.VarType().Convert(value)
 	if err != nil {
 		return err
 	}
@@ -192,13 +192,13 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 		Val: convertedVal,
 	}
 
-	if sysVar.NotifyChanged != nil {
-		err := sysVar.NotifyChanged(SystemVariableScope_Session, svv)
+	if sv, ok := sysVar.(*SystemVariable); ok && sv.NotifyChanged != nil {
+		err := sv.NotifyChanged(SystemVariableScope_Session, svv)
 		if err != nil {
 			return err
 		}
 	}
-	s.systemVars[sysVar.Name] = svv
+	s.systemVars[sysVar.VarName()] = svv
 	return nil
 }
 
@@ -218,7 +218,7 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
 	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
-	if sysType, ok := sysVar.Var.Type.(SetType); ok {
+	if sysType, ok := sysVar.Var.VarType().(SetType); ok {
 		if sv, ok := sysVar.Val.(uint64); ok {
 			return sysType.BitsToString(sv)
 		}

@@ -200,6 +200,10 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 			}
 			return sysVar, scope, true
 		default:
+			// TODO: currently using table field to identify postgres configuration parameters, but need fix
+			if table == "postgres" {
+				return expression.NewSystemVar(varName, sql.PostgresConfigParamScope_Session, specifiedScope), scope, true
+			}
 			_, err = b.ctx.GetSessionVariable(b.ctx, varName)
 			if err != nil {
 				return nil, scope, false
@@ -241,18 +245,6 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 		setVal, ok := res.(string)
 		if !ok {
 			return nil, false
-		}
-
-		switch strings.ToLower(setVal) {
-		case ast.KeywordString(ast.ON):
-			return expression.NewLiteral(true, types.Boolean), true
-		case ast.KeywordString(ast.TRUE):
-			return expression.NewLiteral(true, types.Boolean), true
-		case ast.KeywordString(ast.OFF):
-			return expression.NewLiteral(false, types.Boolean), true
-		case ast.KeywordString(ast.FALSE):
-			return expression.NewLiteral(false, types.Boolean), true
-		default:
 		}
 
 		if sysVarType == nil {

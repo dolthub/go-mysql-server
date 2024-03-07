@@ -47,11 +47,11 @@ var _ sql.SystemVariableRegistry = (*globalSystemVariables)(nil)
 
 // AddSystemVariables adds the given system variables to the collection. If a name is already used by an existing
 // variable, then it is overwritten with the new one.
-func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable) {
+func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariableInterface) {
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	for _, originalSysVar := range sysVars {
-		sysVar := originalSysVar
+		sysVar := originalSysVar.(*sql.SystemVariable)
 		lowerName := strings.ToLower(sysVar.Name)
 		sysVar.Name = lowerName
 		systemVars[lowerName] = sysVar
@@ -106,13 +106,13 @@ func (sv *globalSystemVariables) NewSessionMap() map[string]sql.SystemVarValue {
 
 // GetGlobal returns the system variable definition and value for the given name. If the variable does not exist, returns
 // false. Case-insensitive.
-func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, interface{}, bool) {
+func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInterface, interface{}, bool) {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	name = strings.ToLower(name)
 	v, ok := systemVars[name]
 	if !ok {
-		return sql.SystemVariable{}, nil, false
+		return nil, nil, false
 	}
 
 	if v.ValueFunction != nil {
@@ -131,7 +131,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 			var err error
 			sysVal.Val, err = sysType.BitsToString(sv)
 			if err != nil {
-				return sql.SystemVariable{}, nil, false
+				return nil, nil, false
 			}
 		}
 	}
@@ -202,15 +202,18 @@ func InitSystemVariables() {
 
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
-func init() {
-	InitSystemVariables()
-}
+//func init() {
+//	if sql.SystemVariables != nil {
+//
+//	}
+//	InitSystemVariables()
+//}
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html
-var systemVars = map[string]sql.SystemVariable{
+var systemVars = map[string]*sql.SystemVariable{
 	"activate_all_roles_on_login": {
 		Name:              "activate_all_roles_on_login",
 		Scope:             sql.SystemVariableScope_Global,
@@ -782,7 +785,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemEnumType("event_scheduler", "ON", "OFF", "DISABLED"),
 		Default:           "ON",
 		NotifyChanged: func(scope sql.SystemVariableScope, value sql.SystemVarValue) error {
-			convertedVal, _, err := value.Var.Type.Convert(value.Val)
+			convertedVal, _, err := value.Var.VarType().Convert(value.Val)
 			if err == nil {
 				// TODO: need to update EventScheduler state at runtime if applicable
 				s := strings.ToLower(convertedVal.(string))

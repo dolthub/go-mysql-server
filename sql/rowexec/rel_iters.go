@@ -675,6 +675,11 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
+	case sql.PostgresConfigParamScope_Session:
+		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
+		if err != nil {
+			return err
+		}
 	default: // should never be hit
 		return fmt.Errorf("unable to set `%s` due to unknown scope `%v`", sysVar.Name, sysVar.Scope)
 	}

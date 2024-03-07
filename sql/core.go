@@ -363,18 +363,29 @@ var SystemVariables SystemVariableRegistry
 // SessionMap() method.
 type SystemVariableRegistry interface {
 	// AddSystemVariables adds the given system variables to this registry
-	AddSystemVariables(sysVars []SystemVariable)
+	AddSystemVariables(sysVars []SystemVariableInterface)
 	// AssignValues assigns the given values to the system variables in this registry
 	AssignValues(vals map[string]interface{}) error
 	// NewSessionMap returns a map of system variables values that can be used by a session
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the global value of the system variable with the given name
-	GetGlobal(name string) (SystemVariable, interface{}, bool)
+	GetGlobal(name string) (SystemVariableInterface, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
 	SetGlobal(name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
 }
+
+type SystemVariableInterface interface {
+	VarName() string
+	SetName(string) // TODO: it should not happen, but we set the name to lower-case string
+	VarType() Type
+	SetDefault(any)
+	GetDefault() any
+	HasDefaultValue(any) bool
+}
+
+var _ SystemVariableInterface = (*SystemVariable)(nil)
 
 // SystemVariable represents a system variable.
 type SystemVariable struct {
@@ -411,6 +422,29 @@ type SystemVariable struct {
 	ValueFunction func() (interface{}, error)
 }
 
+func (s *SystemVariable) HasDefaultValue(a any) bool {
+	return s.Default == a
+}
+
+func (s *SystemVariable) VarName() string {
+	return s.Name
+}
+
+func (s *SystemVariable) SetName(n string) {
+	s.Name = n
+}
+
+func (s *SystemVariable) VarType() Type {
+	return s.Type
+}
+
+func (s *SystemVariable) SetDefault(a any) {
+}
+
+func (s *SystemVariable) GetDefault() any {
+	return s.Default
+}
+
 // SystemVariableScope represents the scope of a system variable.
 type SystemVariableScope byte
 
@@ -427,6 +461,9 @@ const (
 	SystemVariableScope_PersistOnly
 	// SystemVariableScope_ResetPersist is used to remove a persisted variable
 	SystemVariableScope_ResetPersist
+
+	// PostgresConfigParamScope_Session is set when the configuration parameter is being set in the session context.
+	PostgresConfigParamScope_Session
 )
 
 // String returns the scope as an uppercase string.
@@ -450,7 +487,7 @@ func (s SystemVariableScope) String() string {
 }
 
 type SystemVarValue struct {
-	Var SystemVariable
+	Var SystemVariableInterface
 	Val interface{}
 }
 

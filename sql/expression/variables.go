@@ -82,7 +82,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type() sql.Type {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.Type
+		return sysVar.VarType()
 	}
 	return types.Null
 }

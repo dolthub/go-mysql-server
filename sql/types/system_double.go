@@ -102,6 +102,11 @@ func (t systemDoubleType) Convert(v interface{}) (interface{}, sql.ConvertInRang
 			f, _ := value.Decimal.Float64()
 			return t.Convert(f)
 		}
+	case string:
+		f, err := strconv.ParseFloat(value, 64)
+		if err == nil {
+			return t.Convert(f)
+		}
 	}
 
 	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
