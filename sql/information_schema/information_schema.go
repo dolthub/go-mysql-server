@@ -286,12 +286,12 @@ var enabledRolesSchema = Schema{
 }
 
 var enginesSchema = Schema{
-	{Name: "ENGINE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
-	{Name: "SUPPORT", Type: types.MustCreateString(sqltypes.VarChar, 8, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
-	{Name: "COMMENT", Type: types.MustCreateString(sqltypes.VarChar, 80, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
-	{Name: "TRANSACTIONS", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
+	{Name: "Engine", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
+	{Name: "Support", Type: types.MustCreateString(sqltypes.VarChar, 8, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
+	{Name: "Comment", Type: types.MustCreateString(sqltypes.VarChar, 80, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
+	{Name: "Transactions", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
 	{Name: "XA", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
-	{Name: "SAVEPOINTS", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
+	{Name: "Savepoints", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
 }
 
 var eventsSchema = Schema{
