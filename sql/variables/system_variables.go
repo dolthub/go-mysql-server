@@ -51,13 +51,13 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	for _, originalSysVar := range sysVars {
-		sysVar := originalSysVar.(*sql.SystemVariable)
-		lowerName := strings.ToLower(sysVar.Name)
-		sysVar.Name = lowerName
+		sysVar := originalSysVar
+		lowerName := strings.ToLower(sysVar.VarName())
+		sysVar.SetName(lowerName)
 		systemVars[lowerName] = sysVar
 		sv.sysVarVals[lowerName] = sql.SystemVarValue{
 			Var: sysVar,
-			Val: sysVar.Default,
+			Val: sysVar.GetDefault(),
 		}
 	}
 }
@@ -74,7 +74,7 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
-		convertedVal, _, err := sysVar.Type.Convert(val)
+		convertedVal, _, err := sysVar.VarType().Convert(val)
 		if err != nil {
 			return err
 		}
@@ -82,8 +82,8 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 			Var: sysVar,
 			Val: convertedVal,
 		}
-		if sysVar.NotifyChanged != nil {
-			err := sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
+		if v, ok := sysVar.(*sql.SystemVariable); ok && v.NotifyChanged != nil {
+			err := v.NotifyChanged(sql.SystemVariableScope_Global, svv)
 			if err != nil {
 				return err
 			}
@@ -115,8 +115,8 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInter
 		return nil, nil, false
 	}
 
-	if v.ValueFunction != nil {
-		result, err := v.ValueFunction()
+	if sysVar, ok := v.(*sql.SystemVariable); ok && sysVar.ValueFunction != nil {
+		result, err := sysVar.ValueFunction()
 		if err != nil {
 			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", name, err.Error())
 			return v, nil, true
@@ -126,7 +126,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInter
 
 	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
-	if sysType, ok := v.Type.(sql.SetType); ok {
+	if sysType, ok := v.VarType().(sql.SetType); ok {
 		if sv, ok := sysVal.Val.(uint64); ok {
 			var err error
 			sysVal.Val, err = sysType.BitsToString(sv)
@@ -147,9 +147,14 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	name = strings.ToLower(name)
-	sysVar, ok := systemVars[name]
+	sysVarI, ok := systemVars[name]
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(name)
+	}
+	sysVar, ok := sysVarI.(*sql.SystemVariable)
+	if !ok {
+		// TODO: fix
+		return nil
 	}
 	if sysVar.Scope == sql.SystemVariableScope_Session {
 		return sql.ErrSystemVariableSessionOnly.New(name)
@@ -192,9 +197,9 @@ func InitSystemVariables() {
 		sysVarVals: make(map[string]sql.SystemVarValue, len(systemVars)),
 	}
 	for _, sysVar := range systemVars {
-		vars.sysVarVals[sysVar.Name] = sql.SystemVarValue{
+		vars.sysVarVals[sysVar.VarName()] = sql.SystemVarValue{
 			Var: sysVar,
-			Val: sysVar.Default,
+			Val: sysVar.GetDefault(),
 		}
 	}
 	sql.SystemVariables = vars
@@ -202,19 +207,18 @@ func InitSystemVariables() {
 
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
-//func init() {
-//	if sql.SystemVariables != nil {
-//
-//	}
-//	InitSystemVariables()
-//}
+func init() {
+	//if sql.SystemVariables == nil {
+	//InitSystemVariables()
+	//}
+}
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html
 // https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html
-var systemVars = map[string]*sql.SystemVariable{
-	"activate_all_roles_on_login": {
+var systemVars = map[string]sql.SystemVariableInterface{
+	"activate_all_roles_on_login": &sql.SystemVariable{
 		Name:              "activate_all_roles_on_login",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -222,7 +226,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("activate_all_roles_on_login"),
 		Default:           int8(0),
 	},
-	"admin_address": {
+	"admin_address": &sql.SystemVariable{
 		Name:              "admin_address",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -230,7 +234,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_address"),
 		Default:           "",
 	},
-	"admin_port": {
+	"admin_port": &sql.SystemVariable{
 		Name:              "admin_port",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -238,7 +242,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("admin_port", 0, 65535, false),
 		Default:           int64(33062),
 	},
-	"admin_ssl_ca": {
+	"admin_ssl_ca": &sql.SystemVariable{
 		Name:              "admin_ssl_ca",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -246,7 +250,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_ssl_ca"),
 		Default:           "",
 	},
-	"admin_ssl_capath": {
+	"admin_ssl_capath": &sql.SystemVariable{
 		Name:              "admin_ssl_capath",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -254,7 +258,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_ssl_capath"),
 		Default:           "",
 	},
-	"admin_ssl_cert": {
+	"admin_ssl_cert": &sql.SystemVariable{
 		Name:              "admin_ssl_cert",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -262,7 +266,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_ssl_cert"),
 		Default:           "",
 	},
-	"admin_ssl_cipher": {
+	"admin_ssl_cipher": &sql.SystemVariable{
 		Name:              "admin_ssl_cipher",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -270,7 +274,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_ssl_cipher"),
 		Default:           "",
 	},
-	"admin_ssl_crl": {
+	"admin_ssl_crl": &sql.SystemVariable{
 		Name:              "admin_ssl_crl",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -278,7 +282,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_ssl_crl"),
 		Default:           "",
 	},
-	"admin_ssl_crlpath": {
+	"admin_ssl_crlpath": &sql.SystemVariable{
 		Name:              "admin_ssl_crlpath",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -286,7 +290,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_ssl_crlpath"),
 		Default:           "",
 	},
-	"admin_ssl_key": {
+	"admin_ssl_key": &sql.SystemVariable{
 		Name:              "admin_ssl_key",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -294,7 +298,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_ssl_key"),
 		Default:           "",
 	},
-	"admin_tls_ciphersuites": {
+	"admin_tls_ciphersuites": &sql.SystemVariable{
 		Name:              "admin_tls_ciphersuites",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -302,7 +306,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_tls_ciphersuites"),
 		Default:           "",
 	},
-	"admin_tls_version": {
+	"admin_tls_version": &sql.SystemVariable{
 		Name:              "admin_tls_version",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -310,7 +314,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("admin_tls_version"),
 		Default:           "TLSv1,TLSv1.1,TLSv1.2,TLSv1.3",
 	},
-	"authentication_windows_log_level": {
+	"authentication_windows_log_level": &sql.SystemVariable{
 		Name:              "authentication_windows_log_level",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -318,7 +322,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("authentication_windows_log_level", 0, 4, false),
 		Default:           int64(2),
 	},
-	"authentication_windows_use_principal_name": {
+	"authentication_windows_use_principal_name": &sql.SystemVariable{
 		Name:              "authentication_windows_use_principal_name",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -326,7 +330,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("authentication_windows_use_principal_name"),
 		Default:           int8(1),
 	},
-	"autocommit": {
+	"autocommit": &sql.SystemVariable{
 		Name:              "autocommit",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -334,7 +338,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("autocommit"),
 		Default:           int8(1),
 	},
-	"automatic_sp_privileges": {
+	"automatic_sp_privileges": &sql.SystemVariable{
 		Name:              "automatic_sp_privileges",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -342,7 +346,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("automatic_sp_privileges"),
 		Default:           int8(1),
 	},
-	"auto_generate_certs": {
+	"auto_generate_certs": &sql.SystemVariable{
 		Name:              "auto_generate_certs",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -350,7 +354,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("auto_generate_certs"),
 		Default:           int8(1),
 	},
-	"auto_increment_increment": {
+	"auto_increment_increment": &sql.SystemVariable{
 		Name:              "auto_increment_increment",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -358,7 +362,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("auto_increment_increment", 1, 65535, false),
 		Default:           int64(1),
 	},
-	"auto_increment_offset": {
+	"auto_increment_offset": &sql.SystemVariable{
 		Name:              "auto_increment_offset",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -366,7 +370,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("auto_increment_offset", 1, 65535, false),
 		Default:           int64(1),
 	},
-	"avoid_temporal_upgrade": {
+	"avoid_temporal_upgrade": &sql.SystemVariable{
 		Name:              "avoid_temporal_upgrade",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -374,7 +378,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("avoid_temporal_upgrade"),
 		Default:           int8(0),
 	},
-	"back_log": {
+	"back_log": &sql.SystemVariable{
 		Name:              "back_log",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -383,7 +387,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           int64(-1),
 	},
 	// TODO: add to dolt
-	"basedir": {
+	"basedir": &sql.SystemVariable{
 		Name:              "basedir",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -391,7 +395,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("basedir"),
 		Default:           "",
 	},
-	"big_tables": {
+	"big_tables": &sql.SystemVariable{
 		Name:              "big_tables",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -399,7 +403,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("big_tables"),
 		Default:           int8(0),
 	},
-	"bind_address": {
+	"bind_address": &sql.SystemVariable{
 		Name:              "bind_address",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -407,7 +411,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("bind_address"),
 		Default:           "*",
 	},
-	"binlog_gtid_simple_recovery": {
+	"binlog_gtid_simple_recovery": &sql.SystemVariable{
 		Name:              "binlog_gtid_simple_recovery",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -415,7 +419,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("binlog_gtid_simple_recovery"),
 		Default:           int8(1),
 	},
-	"block_encryption_mode": {
+	"block_encryption_mode": &sql.SystemVariable{
 		Name:              "block_encryption_mode",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -423,7 +427,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("block_encryption_mode"),
 		Default:           "aes-128-ecb",
 	},
-	"bulk_insert_buffer_size": {
+	"bulk_insert_buffer_size": &sql.SystemVariable{
 		Name:              "bulk_insert_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -431,7 +435,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("bulk_insert_buffer_size", 0, 18446744073709551615),
 		Default:           uint64(8388608),
 	},
-	"caching_sha2_password_digest_rounds": {
+	"caching_sha2_password_digest_rounds": &sql.SystemVariable{
 		Name:              "caching_sha2_password_digest_rounds",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -439,7 +443,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("caching_sha2_password_digest_rounds", 5000, 4095000, false),
 		Default:           int64(5000),
 	},
-	"caching_sha2_password_auto_generate_rsa_keys": {
+	"caching_sha2_password_auto_generate_rsa_keys": &sql.SystemVariable{
 		Name:              "caching_sha2_password_auto_generate_rsa_keys",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -447,7 +451,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("caching_sha2_password_auto_generate_rsa_keys"),
 		Default:           int8(1),
 	},
-	"caching_sha2_password_private_key_path": {
+	"caching_sha2_password_private_key_path": &sql.SystemVariable{
 		Name:              "caching_sha2_password_private_key_path",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -455,7 +459,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("caching_sha2_password_private_key_path"),
 		Default:           "private_key.pem",
 	},
-	"caching_sha2_password_public_key_path": {
+	"caching_sha2_password_public_key_path": &sql.SystemVariable{
 		Name:              "caching_sha2_password_public_key_path",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -463,7 +467,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("caching_sha2_password_public_key_path"),
 		Default:           "public_key.pem",
 	},
-	"character_set_client": {
+	"character_set_client": &sql.SystemVariable{
 		Name:              "character_set_client",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -472,7 +476,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.CharacterSet().String(),
 		NotifyChanged:     validateCharacterSet,
 	},
-	"character_set_connection": {
+	"character_set_connection": &sql.SystemVariable{
 		Name:              "character_set_connection",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -481,7 +485,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.CharacterSet().String(),
 		NotifyChanged:     validateCharacterSet,
 	},
-	"character_set_database": {
+	"character_set_database": &sql.SystemVariable{
 		Name:              "character_set_database",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -490,7 +494,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.CharacterSet().String(),
 		NotifyChanged:     validateCharacterSet,
 	},
-	"character_set_filesystem": {
+	"character_set_filesystem": &sql.SystemVariable{
 		Name:              "character_set_filesystem",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -499,7 +503,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           "binary",
 		NotifyChanged:     validateCharacterSet,
 	},
-	"character_set_results": {
+	"character_set_results": &sql.SystemVariable{
 		Name:              "character_set_results",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -508,7 +512,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.CharacterSet().String(),
 		NotifyChanged:     validateCharacterSet,
 	},
-	"character_set_server": {
+	"character_set_server": &sql.SystemVariable{
 		Name:              "character_set_server",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -517,7 +521,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.CharacterSet().String(),
 		NotifyChanged:     validateCharacterSet,
 	},
-	"character_set_system": {
+	"character_set_system": &sql.SystemVariable{
 		Name:              "character_set_system",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -526,7 +530,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.CharacterSet().String(),
 		NotifyChanged:     validateCharacterSet,
 	},
-	"character_sets_dir": {
+	"character_sets_dir": &sql.SystemVariable{
 		Name:              "character_sets_dir",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -534,7 +538,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("character_sets_dir"),
 		Default:           "",
 	},
-	"check_proxy_users": {
+	"check_proxy_users": &sql.SystemVariable{
 		Name:              "check_proxy_users",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -542,7 +546,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("check_proxy_users"),
 		Default:           int8(0),
 	},
-	"collation_connection": {
+	"collation_connection": &sql.SystemVariable{
 		Name:              "collation_connection",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -551,7 +555,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.String(),
 		NotifyChanged:     validateCollation,
 	},
-	"collation_database": {
+	"collation_database": &sql.SystemVariable{
 		Name:              "collation_database",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -560,7 +564,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.String(),
 		NotifyChanged:     validateCollation,
 	},
-	"collation_server": {
+	"collation_server": &sql.SystemVariable{
 		Name:              "collation_server",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -569,7 +573,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.Collation_Default.String(),
 		NotifyChanged:     validateCollation,
 	},
-	"completion_type": {
+	"completion_type": &sql.SystemVariable{
 		Name:              "completion_type",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -577,7 +581,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("completion_type", "NO_CHAIN", "CHAIN", "RELEASE"),
 		Default:           "NO_CHAIN",
 	},
-	"concurrent_insert": {
+	"concurrent_insert": &sql.SystemVariable{
 		Name:              "concurrent_insert",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -585,7 +589,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("concurrent_insert", "NEVER", "AUTO", "ALWAYS"),
 		Default:           "AUTO",
 	},
-	"connect_timeout": {
+	"connect_timeout": &sql.SystemVariable{
 		Name:              "connect_timeout",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -593,7 +597,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("connect_timeout", 2, 31536000, false),
 		Default:           int64(10),
 	},
-	"core_file": {
+	"core_file": &sql.SystemVariable{
 		Name:              "core_file",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -601,7 +605,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("core_file"),
 		Default:           int8(0),
 	},
-	"create_admin_listener_thread": {
+	"create_admin_listener_thread": &sql.SystemVariable{
 		Name:              "create_admin_listener_thread",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -609,7 +613,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("create_admin_listener_thread"),
 		Default:           int8(0),
 	},
-	"cte_max_recursion_depth": {
+	"cte_max_recursion_depth": &sql.SystemVariable{
 		Name:              "cte_max_recursion_depth",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -617,7 +621,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("cte_max_recursion_depth", 0, 4294967295, false),
 		Default:           int64(1000),
 	},
-	"datadir": {
+	"datadir": &sql.SystemVariable{
 		Name:              "datadir",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -625,7 +629,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("datadir"),
 		Default:           "",
 	},
-	"debug_sync": {
+	"debug_sync": &sql.SystemVariable{
 		Name:              "debug_sync",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -633,7 +637,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("debug_sync"),
 		Default:           "",
 	},
-	"default_authentication_plugin": {
+	"default_authentication_plugin": &sql.SystemVariable{
 		Name:              "default_authentication_plugin",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -641,7 +645,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("default_authentication_plugin", "mysql_native_password", "sha256_password", "caching_sha2_password"),
 		Default:           "caching_sha2_password",
 	},
-	"default_collation_for_utf8mb4": {
+	"default_collation_for_utf8mb4": &sql.SystemVariable{
 		Name:              "default_collation_for_utf8mb4",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -649,7 +653,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("default_collation_for_utf8mb4", "utf8mb4_0900_ai_ci", "utf8mb4_general_ci"),
 		Default:           "utf8mb4_0900_ai_ci",
 	},
-	"default_password_lifetime": {
+	"default_password_lifetime": &sql.SystemVariable{
 		Name:              "default_password_lifetime",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -657,7 +661,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("default_password_lifetime", 0, 65535, false),
 		Default:           int64(0),
 	},
-	"default_storage_engine": {
+	"default_storage_engine": &sql.SystemVariable{
 		Name:              "default_storage_engine",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -665,7 +669,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("default_storage_engine", "MEMORY", "MRG_MYISAM", "CSV", "FEDERATED", "PERFORMANCE_SCHEMA", "MyISAM", "InnoDB", "BLACKHOLE", "ARCHIVE"),
 		Default:           "InnoDB",
 	},
-	"default_table_encryption": {
+	"default_table_encryption": &sql.SystemVariable{
 		Name:              "default_table_encryption",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -673,7 +677,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("default_table_encryption"),
 		Default:           int8(0),
 	},
-	"default_tmp_storage_engine": {
+	"default_tmp_storage_engine": &sql.SystemVariable{
 		Name:              "default_tmp_storage_engine",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -681,7 +685,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("default_tmp_storage_engine", "MEMORY", "MRG_MYISAM", "CSV", "FEDERATED", "PERFORMANCE_SCHEMA", "MyISAM", "InnoDB", "BLACKHOLE", "ARCHIVE"),
 		Default:           "InnoDB",
 	},
-	"default_week_format": {
+	"default_week_format": &sql.SystemVariable{
 		Name:              "default_week_format",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -689,7 +693,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("default_week_format", 0, 7, false),
 		Default:           int64(0),
 	},
-	"delay_key_write": {
+	"delay_key_write": &sql.SystemVariable{
 		Name:              "delay_key_write",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -697,7 +701,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("delay_key_write", "ON", "OFF", "ALL"),
 		Default:           "ON",
 	},
-	"delayed_insert_limit": {
+	"delayed_insert_limit": &sql.SystemVariable{
 		Name:              "delayed_insert_limit",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -705,7 +709,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("delayed_insert_limit", 1, 18446744073709551615),
 		Default:           uint64(100),
 	},
-	"delayed_insert_timeout": {
+	"delayed_insert_timeout": &sql.SystemVariable{
 		Name:              "delayed_insert_timeout",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -713,7 +717,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("delayed_insert_timeout", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(300),
 	},
-	"delayed_queue_size": {
+	"delayed_queue_size": &sql.SystemVariable{
 		Name:              "delayed_queue_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -721,7 +725,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("delayed_queue_size", 1, 18446744073709551615),
 		Default:           uint64(1000),
 	},
-	"disabled_storage_engines": {
+	"disabled_storage_engines": &sql.SystemVariable{
 		Name:              "disabled_storage_engines",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -729,7 +733,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("disabled_storage_engines"),
 		Default:           "",
 	},
-	"disconnect_on_expired_password": {
+	"disconnect_on_expired_password": &sql.SystemVariable{
 		Name:              "disconnect_on_expired_password",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -737,7 +741,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("disconnect_on_expired_password"),
 		Default:           int8(1),
 	},
-	"div_precision_increment": {
+	"div_precision_increment": &sql.SystemVariable{
 		Name:              "div_precision_increment",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -745,7 +749,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("div_precision_increment", 0, 30, false),
 		Default:           int64(4),
 	},
-	"dragnet.log_error_filter_rules": {
+	"dragnet.log_error_filter_rules": &sql.SystemVariable{
 		Name:              "dragnet.log_error_filter_rules",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -753,7 +757,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("dragnet.log_error_filter_rules"),
 		Default:           "drop",
 	},
-	"end_markers_in_json": {
+	"end_markers_in_json": &sql.SystemVariable{
 		Name:              "end_markers_in_json",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -761,7 +765,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("end_markers_in_json"),
 		Default:           int8(0),
 	},
-	"enforce_gtid_consistency": {
+	"enforce_gtid_consistency": &sql.SystemVariable{
 		Name:              "enforce_gtid_consistency",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -769,7 +773,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("enforce_gtid_consistency", "OFF", "ON", "WARN"),
 		Default:           "OFF",
 	},
-	"eq_range_index_dive_limit": {
+	"eq_range_index_dive_limit": &sql.SystemVariable{
 		Name:              "eq_range_index_dive_limit",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -777,7 +781,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("eq_range_index_dive_limit", 0, 4294967295, false),
 		Default:           int64(200),
 	},
-	"event_scheduler": {
+	"event_scheduler": &sql.SystemVariable{
 		Name:              "event_scheduler",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -801,7 +805,7 @@ var systemVars = map[string]*sql.SystemVariable{
 			return nil
 		},
 	},
-	"explicit_defaults_for_timestamp": {
+	"explicit_defaults_for_timestamp": &sql.SystemVariable{
 		Name:              "explicit_defaults_for_timestamp",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -809,7 +813,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("explicit_defaults_for_timestamp"),
 		Default:           int8(1),
 	},
-	"external_user": {
+	"external_user": &sql.SystemVariable{
 		Name:              "external_user",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           false,
@@ -817,7 +821,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("external_user"),
 		Default:           "",
 	},
-	"flush": {
+	"flush": &sql.SystemVariable{
 		Name:              "flush",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -825,7 +829,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("flush"),
 		Default:           int8(0),
 	},
-	"flush_time": {
+	"flush_time": &sql.SystemVariable{
 		Name:              "flush_time",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -833,7 +837,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("flush_time", 0, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"foreign_key_checks": {
+	"foreign_key_checks": &sql.SystemVariable{
 		Name:              "foreign_key_checks",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -841,7 +845,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("foreign_key_checks"),
 		Default:           int8(1),
 	},
-	"ft_boolean_syntax": {
+	"ft_boolean_syntax": &sql.SystemVariable{
 		Name:              "ft_boolean_syntax",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -849,7 +853,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ft_boolean_syntax"),
 		Default:           `+ -><()~*:""&|`,
 	},
-	"ft_max_word_len": {
+	"ft_max_word_len": &sql.SystemVariable{
 		Name:              "ft_max_word_len",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -857,7 +861,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("ft_max_word_len", 10, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"ft_min_word_len": {
+	"ft_min_word_len": &sql.SystemVariable{
 		Name:              "ft_min_word_len",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -865,7 +869,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("ft_min_word_len", 1, 9223372036854775807, false),
 		Default:           int64(4),
 	},
-	"ft_query_expansion_limit": {
+	"ft_query_expansion_limit": &sql.SystemVariable{
 		Name:              "ft_query_expansion_limit",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -873,7 +877,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("ft_query_expansion_limit", 0, 1000, false),
 		Default:           int64(20),
 	},
-	"ft_stopword_file": {
+	"ft_stopword_file": &sql.SystemVariable{
 		Name:              "ft_stopword_file",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -881,7 +885,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ft_stopword_file"),
 		Default:           "",
 	},
-	"general_log": {
+	"general_log": &sql.SystemVariable{
 		Name:              "general_log",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -889,7 +893,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("general_log"),
 		Default:           int8(0),
 	},
-	"general_log_file": {
+	"general_log_file": &sql.SystemVariable{
 		Name:              "general_log_file",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -897,7 +901,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("general_log_file"),
 		Default:           "host_name.log",
 	},
-	"generated_random_password_length": {
+	"generated_random_password_length": &sql.SystemVariable{
 		Name:              "generated_random_password_length",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -905,7 +909,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("generated_random_password_length", 5, 255, false),
 		Default:           int64(20),
 	},
-	"group_concat_max_len": {
+	"group_concat_max_len": &sql.SystemVariable{
 		Name:              "group_concat_max_len",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -913,7 +917,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("group_concat_max_len", 4, 18446744073709551615),
 		Default:           uint64(1024),
 	},
-	"gtid_executed": {
+	"gtid_executed": &sql.SystemVariable{
 		Name:              "gtid_executed",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -921,7 +925,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("gtid_executed"),
 		Default:           "",
 	},
-	"gtid_executed_compression_period": {
+	"gtid_executed_compression_period": &sql.SystemVariable{
 		Name:              "gtid_executed_compression_period",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -929,7 +933,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("gtid_executed_compression_period", 0, 4294967295, false),
 		Default:           int64(0),
 	},
-	"gtid_mode": {
+	"gtid_mode": &sql.SystemVariable{
 		Name:              "gtid_mode",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -937,7 +941,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("gtid_mode", "OFF", "OFF_PERMISSIVE", "ON_PERMISSIVE", "ON"),
 		Default:           "OFF",
 	},
-	"gtid_next": {
+	"gtid_next": &sql.SystemVariable{
 		Name:              "gtid_next",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -945,7 +949,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("gtid_next", "AUTOMATIC", "ANONYMOUS", "UUID:NUMBER"),
 		Default:           "AUTOMATIC",
 	},
-	"gtid_owned": {
+	"gtid_owned": &sql.SystemVariable{
 		Name:              "gtid_owned",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           false,
@@ -953,7 +957,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("gtid_owned"),
 		Default:           "",
 	},
-	"gtid_purged": {
+	"gtid_purged": &sql.SystemVariable{
 		Name:              "gtid_purged",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -961,7 +965,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("gtid_purged"),
 		Default:           "",
 	},
-	"have_statement_timeout": {
+	"have_statement_timeout": &sql.SystemVariable{
 		Name:              "have_statement_timeout",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -969,7 +973,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("have_statement_timeout"),
 		Default:           int8(0),
 	},
-	"histogram_generation_max_mem_size": {
+	"histogram_generation_max_mem_size": &sql.SystemVariable{
 		Name:              "histogram_generation_max_mem_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -977,7 +981,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("histogram_generation_max_mem_size", 1000000, 18446744073709551615),
 		Default:           uint64(20000000),
 	},
-	"host_cache_size": {
+	"host_cache_size": &sql.SystemVariable{
 		Name:              "host_cache_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -985,7 +989,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("host_cache_size", 0, 65536, true),
 		Default:           int64(-1),
 	},
-	"hostname": {
+	"hostname": &sql.SystemVariable{
 		Name:              "hostname",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -993,7 +997,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("hostname"),
 		Default:           "",
 	},
-	"immediate_server_version": {
+	"immediate_server_version": &sql.SystemVariable{
 		Name:              "immediate_server_version",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -1001,7 +1005,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("immediate_server_version", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(80017),
 	},
-	"init_connect": {
+	"init_connect": &sql.SystemVariable{
 		Name:              "init_connect",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1009,7 +1013,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("init_connect"),
 		Default:           "",
 	},
-	"information_schema_stats_expiry": {
+	"information_schema_stats_expiry": &sql.SystemVariable{
 		Name:              "information_schema_stats_expiry",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1017,7 +1021,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("information_schema_stats_expiry", 0, 31536000, false),
 		Default:           int64(86400),
 	},
-	"init_file": {
+	"init_file": &sql.SystemVariable{
 		Name:              "init_file",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1025,7 +1029,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("init_file"),
 		Default:           "",
 	},
-	"inmemory_joins": {
+	"inmemory_joins": &sql.SystemVariable{
 		Name:              "inmemory_joins",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -1035,7 +1039,7 @@ var systemVars = map[string]*sql.SystemVariable{
 	},
 	// Row locking is currently not supported. This variable is provided for 3p tools, and we always return the
 	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.
-	"innodb_lock_wait_timeout": {
+	"innodb_lock_wait_timeout": &sql.SystemVariable{
 		Name:              "innodb_lock_wait_timeout",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1043,7 +1047,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("innodb_lock_wait_timeout", 1, 1, false),
 		Default:           int64(1),
 	},
-	"innodb_stats_auto_recalc": {
+	"innodb_stats_auto_recalc": &sql.SystemVariable{
 		Name:              "innodb_stats_auto_recalc",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1051,7 +1055,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("innodb_stats_auto_recalc"),
 		Default:           int8(1),
 	},
-	"interactive_timeout": {
+	"interactive_timeout": &sql.SystemVariable{
 		Name:              "interactive_timeout",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1059,7 +1063,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("interactive_timeout", 1, 9223372036854775807, false),
 		Default:           int64(28800),
 	},
-	"internal_tmp_disk_storage_engine": {
+	"internal_tmp_disk_storage_engine": &sql.SystemVariable{
 		Name:              "internal_tmp_disk_storage_engine",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1067,7 +1071,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("internal_tmp_disk_storage_engine", "MYISAM", "INNODB"),
 		Default:           "INNODB",
 	},
-	"internal_tmp_mem_storage_engine": {
+	"internal_tmp_mem_storage_engine": &sql.SystemVariable{
 		Name:              "internal_tmp_mem_storage_engine",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1075,7 +1079,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("internal_tmp_mem_storage_engine", "TempTable", "MEMORY"),
 		Default:           "TempTable",
 	},
-	"join_buffer_size": {
+	"join_buffer_size": &sql.SystemVariable{
 		Name:              "join_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1083,7 +1087,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("join_buffer_size", 128, 18446744073709547520),
 		Default:           uint64(262144),
 	},
-	"join_complexity_limit": {
+	"join_complexity_limit": &sql.SystemVariable{
 		Name:              "join_complexity_limit",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1091,7 +1095,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("join_complexity_limit", 2, 20),
 		Default:           uint64(12),
 	},
-	"keep_files_on_create": {
+	"keep_files_on_create": &sql.SystemVariable{
 		Name:              "keep_files_on_create",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1099,7 +1103,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("keep_files_on_create"),
 		Default:           int8(0),
 	},
-	"key_buffer_size": {
+	"key_buffer_size": &sql.SystemVariable{
 		Name:              "key_buffer_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1107,7 +1111,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("key_buffer_size", 8, 18446744073709551615),
 		Default:           uint64(8388608),
 	},
-	"key_cache_age_threshold": {
+	"key_cache_age_threshold": &sql.SystemVariable{
 		Name:              "key_cache_age_threshold",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1115,7 +1119,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("key_cache_age_threshold", 100, 18446744073709551615),
 		Default:           uint64(300),
 	},
-	"key_cache_block_size": {
+	"key_cache_block_size": &sql.SystemVariable{
 		Name:              "key_cache_block_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1123,7 +1127,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("key_cache_block_size", 512, 16384, false),
 		Default:           int64(1024),
 	},
-	"key_cache_division_limit": {
+	"key_cache_division_limit": &sql.SystemVariable{
 		Name:              "key_cache_division_limit",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1131,7 +1135,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("key_cache_division_limit", 1, 100, false),
 		Default:           int64(100),
 	},
-	"large_files_support": {
+	"large_files_support": &sql.SystemVariable{
 		Name:              "large_files_support",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1139,7 +1143,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("large_files_support"),
 		Default:           int8(0),
 	},
-	"large_pages": {
+	"large_pages": &sql.SystemVariable{
 		Name:              "large_pages",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1147,7 +1151,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("large_pages"),
 		Default:           int8(0),
 	},
-	"large_page_size": {
+	"large_page_size": &sql.SystemVariable{
 		Name:              "large_page_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1155,7 +1159,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("large_page_size", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"last_insert_id": {
+	"last_insert_id": &sql.SystemVariable{
 		Name:              "last_insert_id",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -1163,7 +1167,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("last_insert_id", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"lc_messages": {
+	"lc_messages": &sql.SystemVariable{
 		Name:              "lc_messages",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1171,7 +1175,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("lc_messages"),
 		Default:           "en_US",
 	},
-	"lc_messages_dir": {
+	"lc_messages_dir": &sql.SystemVariable{
 		Name:              "lc_messages_dir",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1179,7 +1183,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("lc_messages_dir"),
 		Default:           "",
 	},
-	"lc_time_names": {
+	"lc_time_names": &sql.SystemVariable{
 		Name:              "lc_time_names",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1187,7 +1191,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("lc_time_names"),
 		Default:           "",
 	},
-	"license": {
+	"license": &sql.SystemVariable{
 		Name:              "license",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1195,7 +1199,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("license"),
 		Default:           "GPL",
 	},
-	"local_infile": {
+	"local_infile": &sql.SystemVariable{
 		Name:              "local_infile",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1203,7 +1207,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("local_infile"),
 		Default:           int8(0),
 	},
-	"lock_wait_timeout": {
+	"lock_wait_timeout": &sql.SystemVariable{
 		Name:              "lock_wait_timeout",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1211,7 +1215,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("lock_wait_timeout", 1, 31536000, false),
 		Default:           int64(31536000),
 	},
-	"log_error": {
+	"log_error": &sql.SystemVariable{
 		Name:              "log_error",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1219,7 +1223,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("log_error"),
 		Default:           "",
 	},
-	"log_error_services": {
+	"log_error_services": &sql.SystemVariable{
 		Name:              "log_error_services",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1227,7 +1231,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("log_error_services"),
 		Default:           "log_filter_internal; log_sink_internal",
 	},
-	"log_error_suppression_list": {
+	"log_error_suppression_list": &sql.SystemVariable{
 		Name:              "log_error_suppression_list",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1235,7 +1239,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("log_error_suppression_list"),
 		Default:           "",
 	},
-	"log_error_verbosity": {
+	"log_error_verbosity": &sql.SystemVariable{
 		Name:              "log_error_verbosity",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1243,7 +1247,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("log_error_verbosity", 1, 3, false),
 		Default:           int64(2),
 	},
-	"log_output": {
+	"log_output": &sql.SystemVariable{
 		Name:              "log_output",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1251,7 +1255,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemSetType("log_output", "TABLE", "FILE", "NONE"),
 		Default:           "FILE",
 	},
-	"log_queries_not_using_indexes": {
+	"log_queries_not_using_indexes": &sql.SystemVariable{
 		Name:              "log_queries_not_using_indexes",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1259,7 +1263,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("log_queries_not_using_indexes"),
 		Default:           int8(0),
 	},
-	"log_raw": {
+	"log_raw": &sql.SystemVariable{
 		Name:              "log_raw",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1267,7 +1271,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("log_raw"),
 		Default:           int8(0),
 	},
-	"log_slow_admin_statements": {
+	"log_slow_admin_statements": &sql.SystemVariable{
 		Name:              "log_slow_admin_statements",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1275,7 +1279,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("log_slow_admin_statements"),
 		Default:           int8(0),
 	},
-	"log_slow_extra": {
+	"log_slow_extra": &sql.SystemVariable{
 		Name:              "log_slow_extra",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1283,7 +1287,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("log_slow_extra"),
 		Default:           int8(0),
 	},
-	"log_syslog": {
+	"log_syslog": &sql.SystemVariable{
 		Name:              "log_syslog",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1291,7 +1295,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("log_syslog"),
 		Default:           int8(1),
 	},
-	"log_syslog_facility": {
+	"log_syslog_facility": &sql.SystemVariable{
 		Name:              "log_syslog_facility",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1299,7 +1303,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("log_syslog_facility"),
 		Default:           "daemon",
 	},
-	"log_syslog_include_pid": {
+	"log_syslog_include_pid": &sql.SystemVariable{
 		Name:              "log_syslog_include_pid",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1307,7 +1311,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("log_syslog_include_pid"),
 		Default:           int8(1),
 	},
-	"log_syslog_tag": {
+	"log_syslog_tag": &sql.SystemVariable{
 		Name:              "log_syslog_tag",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1315,7 +1319,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("log_syslog_tag"),
 		Default:           "",
 	},
-	"log_timestamps": {
+	"log_timestamps": &sql.SystemVariable{
 		Name:              "log_timestamps",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1323,7 +1327,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("log_timestamps", "UTC", "SYSTEM"),
 		Default:           "UTC",
 	},
-	"log_throttle_queries_not_using_indexes": {
+	"log_throttle_queries_not_using_indexes": &sql.SystemVariable{
 		Name:              "log_throttle_queries_not_using_indexes",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1331,7 +1335,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("log_throttle_queries_not_using_indexes", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"long_query_time": {
+	"long_query_time": &sql.SystemVariable{
 		Name:              "long_query_time",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1339,7 +1343,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemDoubleType("long_query_time", 0, math.MaxFloat64),
 		Default:           float64(10),
 	},
-	"low_priority_updates": {
+	"low_priority_updates": &sql.SystemVariable{
 		Name:              "low_priority_updates",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1347,7 +1351,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("low_priority_updates"),
 		Default:           int8(0),
 	},
-	"lower_case_file_system": {
+	"lower_case_file_system": &sql.SystemVariable{
 		Name:              "lower_case_file_system",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1355,7 +1359,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("lower_case_file_system"),
 		Default:           int8(0),
 	},
-	"lower_case_table_names": {
+	"lower_case_table_names": &sql.SystemVariable{
 		Name:              "lower_case_table_names",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1363,7 +1367,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("lower_case_table_names", 0, 2, false),
 		Default:           int64(0),
 	},
-	"mandatory_roles": {
+	"mandatory_roles": &sql.SystemVariable{
 		Name:              "mandatory_roles",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1371,7 +1375,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("mandatory_roles"),
 		Default:           "",
 	},
-	"max_allowed_packet": {
+	"max_allowed_packet": &sql.SystemVariable{
 		Name:              "max_allowed_packet",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1379,7 +1383,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("max_allowed_packet", 1024, 1073741824),
 		Default:           int64(1073741824),
 	},
-	"max_connect_errors": {
+	"max_connect_errors": &sql.SystemVariable{
 		Name:              "max_connect_errors",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1387,7 +1391,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("max_connect_errors", 1, 18446744073709551615),
 		Default:           uint64(100),
 	},
-	"max_connections": {
+	"max_connections": &sql.SystemVariable{
 		Name:              "max_connections",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1395,7 +1399,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_connections", 1, 100000, false),
 		Default:           int64(151),
 	},
-	"max_delayed_threads": {
+	"max_delayed_threads": &sql.SystemVariable{
 		Name:              "max_delayed_threads",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1403,7 +1407,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_delayed_threads", 0, 16384, false),
 		Default:           int64(20),
 	},
-	"max_digest_length": {
+	"max_digest_length": &sql.SystemVariable{
 		Name:              "max_digest_length",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1411,7 +1415,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_digest_length", 0, 1048576, false),
 		Default:           int64(1024),
 	},
-	"max_error_count": {
+	"max_error_count": &sql.SystemVariable{
 		Name:              "max_error_count",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1419,7 +1423,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_error_count", 0, 65535, false),
 		Default:           int64(1024),
 	},
-	"max_execution_time": {
+	"max_execution_time": &sql.SystemVariable{
 		Name:              "max_execution_time",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1427,7 +1431,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_execution_time", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"max_heap_table_size": {
+	"max_heap_table_size": &sql.SystemVariable{
 		Name:              "max_heap_table_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1435,7 +1439,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("max_heap_table_size", 16384, 1844674407370954752),
 		Default:           uint64(16777216),
 	},
-	"max_insert_delayed_threads": {
+	"max_insert_delayed_threads": &sql.SystemVariable{
 		Name:              "max_insert_delayed_threads",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1443,7 +1447,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_insert_delayed_threads", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"max_join_size": {
+	"max_join_size": &sql.SystemVariable{
 		Name:              "max_join_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1451,7 +1455,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("max_join_size", 1, 18446744073709551615),
 		Default:           uint64(18446744073709551615),
 	},
-	"max_length_for_sort_data": {
+	"max_length_for_sort_data": &sql.SystemVariable{
 		Name:              "max_length_for_sort_data",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1459,7 +1463,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_length_for_sort_data", 4, 8388608, false),
 		Default:           int64(4096),
 	},
-	"max_points_in_geometry": {
+	"max_points_in_geometry": &sql.SystemVariable{
 		Name:              "max_points_in_geometry",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1467,7 +1471,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_points_in_geometry", 3, 1048576, false),
 		Default:           int64(65536),
 	},
-	"max_prepared_stmt_count": {
+	"max_prepared_stmt_count": &sql.SystemVariable{
 		Name:              "max_prepared_stmt_count",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1475,7 +1479,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_prepared_stmt_count", 0, 4194304, false),
 		Default:           int64(16382),
 	},
-	"max_seeks_for_key": {
+	"max_seeks_for_key": &sql.SystemVariable{
 		Name:              "max_seeks_for_key",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1483,7 +1487,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("max_seeks_for_key", 1, 18446744073709551615),
 		Default:           uint64(18446744073709551615),
 	},
-	"max_sort_length": {
+	"max_sort_length": &sql.SystemVariable{
 		Name:              "max_sort_length",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1491,7 +1495,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_sort_length", 4, 8388608, false),
 		Default:           int64(1024),
 	},
-	"max_sp_recursion_depth": {
+	"max_sp_recursion_depth": &sql.SystemVariable{
 		Name:              "max_sp_recursion_depth",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1499,7 +1503,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_sp_recursion_depth", -9223372036854775808, 255, false),
 		Default:           int64(0),
 	},
-	"max_user_connections": {
+	"max_user_connections": &sql.SystemVariable{
 		Name:              "max_user_connections",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1507,7 +1511,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("max_user_connections", 0, 4294967295, false),
 		Default:           int64(0),
 	},
-	"max_write_lock_count": {
+	"max_write_lock_count": &sql.SystemVariable{
 		Name:              "max_write_lock_count",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1515,7 +1519,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("max_write_lock_count", 1, 18446744073709551615),
 		Default:           uint64(18446744073709551615),
 	},
-	"mecab_rc_file": {
+	"mecab_rc_file": &sql.SystemVariable{
 		Name:              "mecab_rc_file",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1523,7 +1527,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("mecab_rc_file"),
 		Default:           "",
 	},
-	"metadata_locks_cache_size": {
+	"metadata_locks_cache_size": &sql.SystemVariable{
 		Name:              "metadata_locks_cache_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1531,7 +1535,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("metadata_locks_cache_size", 1, 1048576, false),
 		Default:           int64(1024),
 	},
-	"metadata_locks_hash_instances": {
+	"metadata_locks_hash_instances": &sql.SystemVariable{
 		Name:              "metadata_locks_hash_instances",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1539,7 +1543,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("metadata_locks_hash_instances", 1, 1024, false),
 		Default:           int64(8),
 	},
-	"min_examined_row_limit": {
+	"min_examined_row_limit": &sql.SystemVariable{
 		Name:              "min_examined_row_limit",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1547,7 +1551,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("min_examined_row_limit", 0, 18446744073709551615),
 		Default:           uint64(0),
 	},
-	"myisam_data_pointer_size": {
+	"myisam_data_pointer_size": &sql.SystemVariable{
 		Name:              "myisam_data_pointer_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1555,7 +1559,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("myisam_data_pointer_size", 2, 7, false),
 		Default:           int64(6),
 	},
-	"myisam_max_sort_file_size": {
+	"myisam_max_sort_file_size": &sql.SystemVariable{
 		Name:              "myisam_max_sort_file_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1563,7 +1567,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("myisam_max_sort_file_size", -9223372036854775808, 9223372036853727232, false),
 		Default:           int64(9223372036853727232),
 	},
-	"myisam_mmap_size": {
+	"myisam_mmap_size": &sql.SystemVariable{
 		Name:              "myisam_mmap_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1571,7 +1575,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("myisam_mmap_size", 7, 18446744073709551615),
 		Default:           uint64(18446744073709551615),
 	},
-	"myisam_recover_options": {
+	"myisam_recover_options": &sql.SystemVariable{
 		Name:              "myisam_recover_options",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1579,7 +1583,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("myisam_recover_options", "OFF", "DEFAULT", "BACKUP", "FORCE", "QUICK"),
 		Default:           "OFF",
 	},
-	"myisam_repair_threads": {
+	"myisam_repair_threads": &sql.SystemVariable{
 		Name:              "myisam_repair_threads",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1587,7 +1591,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("myisam_repair_threads", 1, 18446744073709551615),
 		Default:           uint64(1),
 	},
-	"myisam_sort_buffer_size": {
+	"myisam_sort_buffer_size": &sql.SystemVariable{
 		Name:              "myisam_sort_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1595,7 +1599,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("myisam_sort_buffer_size", 4096, 18446744073709551615),
 		Default:           uint64(8388608),
 	},
-	"myisam_stats_method": {
+	"myisam_stats_method": &sql.SystemVariable{
 		Name:              "myisam_stats_method",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1603,7 +1607,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("myisam_stats_method", "nulls_equal", "nulls_unequal", "nulls_ignored"),
 		Default:           "nulls_unequal",
 	},
-	"myisam_use_mmap": {
+	"myisam_use_mmap": &sql.SystemVariable{
 		Name:              "myisam_use_mmap",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1611,7 +1615,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("myisam_use_mmap"),
 		Default:           int8(0),
 	},
-	"mysql_native_password_proxy_users": {
+	"mysql_native_password_proxy_users": &sql.SystemVariable{
 		Name:              "mysql_native_password_proxy_users",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1619,7 +1623,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("mysql_native_password_proxy_users"),
 		Default:           int8(0),
 	},
-	"named_pipe": {
+	"named_pipe": &sql.SystemVariable{
 		Name:              "named_pipe",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1627,7 +1631,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("named_pipe"),
 		Default:           int8(0),
 	},
-	"named_pipe_full_access_group": {
+	"named_pipe_full_access_group": &sql.SystemVariable{
 		Name:              "named_pipe_full_access_group",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1635,7 +1639,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("named_pipe_full_access_group"),
 		Default:           "",
 	},
-	"ndbinfo_version": {
+	"ndbinfo_version": &sql.SystemVariable{
 		Name:              "ndbinfo_version",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1643,7 +1647,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ndbinfo_version"),
 		Default:           "",
 	},
-	"net_buffer_length": {
+	"net_buffer_length": &sql.SystemVariable{
 		Name:              "net_buffer_length",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1651,7 +1655,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("net_buffer_length", 1024, 1048576, false),
 		Default:           int64(16384),
 	},
-	"net_read_timeout": {
+	"net_read_timeout": &sql.SystemVariable{
 		Name:              "net_read_timeout",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1659,7 +1663,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
 		Default:           int64(30),
 	},
-	"net_retry_count": {
+	"net_retry_count": &sql.SystemVariable{
 		Name:              "net_retry_count",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1667,7 +1671,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("net_retry_count", 1, 18446744073709551615),
 		Default:           uint64(10),
 	},
-	"net_write_timeout": {
+	"net_write_timeout": &sql.SystemVariable{
 		Name:              "net_write_timeout",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1675,7 +1679,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 		Default:           int64(60),
 	},
-	"new": {
+	"new": &sql.SystemVariable{
 		Name:              "new",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1683,7 +1687,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("new"),
 		Default:           int8(0),
 	},
-	"ngram_token_size": {
+	"ngram_token_size": &sql.SystemVariable{
 		Name:              "ngram_token_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1691,7 +1695,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("ngram_token_size", 1, 10, false),
 		Default:           int64(2),
 	},
-	"offline_mode": {
+	"offline_mode": &sql.SystemVariable{
 		Name:              "offline_mode",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1699,7 +1703,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("offline_mode"),
 		Default:           int8(0),
 	},
-	"old": {
+	"old": &sql.SystemVariable{
 		Name:              "old",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1707,7 +1711,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("old"),
 		Default:           int8(0),
 	},
-	"old_alter_table": {
+	"old_alter_table": &sql.SystemVariable{
 		Name:              "old_alter_table",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1715,7 +1719,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("old_alter_table"),
 		Default:           int8(0),
 	},
-	"open_files_limit": {
+	"open_files_limit": &sql.SystemVariable{
 		Name:              "open_files_limit",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1723,7 +1727,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("open_files_limit", 0, 18446744073709551615),
 		Default:           uint64(5000),
 	},
-	"optimizer_prune_level": {
+	"optimizer_prune_level": &sql.SystemVariable{
 		Name:              "optimizer_prune_level",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1731,7 +1735,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("optimizer_prune_level", 0, 1, false),
 		Default:           int64(1),
 	},
-	"optimizer_search_depth": {
+	"optimizer_search_depth": &sql.SystemVariable{
 		Name:              "optimizer_search_depth",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1740,7 +1744,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           int64(62),
 	},
 	// TODO: add proper support for this
-	// "optimizer_switch": {
+	// "optimizer_switch": &sql.SystemVariable{
 	//	Name: "optimizer_switch",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
@@ -1748,7 +1752,7 @@ var systemVars = map[string]*sql.SystemVariable{
 	//	Type: NewSystemSetType("optimizer_switch"),
 	//	Default: "",
 	// },
-	"optimizer_trace": {
+	"optimizer_trace": &sql.SystemVariable{
 		Name:              "optimizer_trace",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1756,7 +1760,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("optimizer_trace"),
 		Default:           "",
 	},
-	"optimizer_trace_features": {
+	"optimizer_trace_features": &sql.SystemVariable{
 		Name:              "optimizer_trace_features",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1764,7 +1768,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("optimizer_trace_features"),
 		Default:           "",
 	},
-	"optimizer_trace_limit": {
+	"optimizer_trace_limit": &sql.SystemVariable{
 		Name:              "optimizer_trace_limit",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1772,7 +1776,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("optimizer_trace_limit", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(1),
 	},
-	"optimizer_trace_max_mem_size": {
+	"optimizer_trace_max_mem_size": &sql.SystemVariable{
 		Name:              "optimizer_trace_max_mem_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1780,7 +1784,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("optimizer_trace_max_mem_size", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(1048576),
 	},
-	"optimizer_trace_offset": {
+	"optimizer_trace_offset": &sql.SystemVariable{
 		Name:              "optimizer_trace_offset",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1788,7 +1792,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("optimizer_trace_offset", -9223372036854775808, 9223372036854775807, true),
 		Default:           int64(-1),
 	},
-	"original_server_version": {
+	"original_server_version": &sql.SystemVariable{
 		Name:              "original_server_version",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -1796,7 +1800,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("original_server_version", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(80017),
 	},
-	"parser_max_mem_size": {
+	"parser_max_mem_size": &sql.SystemVariable{
 		Name:              "parser_max_mem_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1804,7 +1808,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("parser_max_mem_size", 10000000, 18446744073709551615),
 		Default:           uint64(18446744073709551615),
 	},
-	"partial_revokes": {
+	"partial_revokes": &sql.SystemVariable{
 		Name:              "partial_revokes",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1812,7 +1816,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("partial_revokes"),
 		Default:           int8(0),
 	},
-	"password_history": {
+	"password_history": &sql.SystemVariable{
 		Name:              "password_history",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1820,7 +1824,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("password_history", 0, 4294967295, false),
 		Default:           int64(0),
 	},
-	"password_require_current": {
+	"password_require_current": &sql.SystemVariable{
 		Name:              "password_require_current",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1828,7 +1832,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("password_require_current"),
 		Default:           int8(0),
 	},
-	"password_reuse_interval": {
+	"password_reuse_interval": &sql.SystemVariable{
 		Name:              "password_reuse_interval",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1836,7 +1840,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("password_reuse_interval", 0, 4294967295, false),
 		Default:           int64(0),
 	},
-	"performance_schema": {
+	"performance_schema": &sql.SystemVariable{
 		Name:              "performance_schema",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1844,7 +1848,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("performance_schema"),
 		Default:           int8(1),
 	},
-	"persisted_globals_load": {
+	"persisted_globals_load": &sql.SystemVariable{
 		Name:              "persisted_globals_load",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1852,7 +1856,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("persisted_globals_load"),
 		Default:           int8(1),
 	},
-	"persist_only_admin_x509_subject": {
+	"persist_only_admin_x509_subject": &sql.SystemVariable{
 		Name:              "persist_only_admin_x509_subject",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1860,7 +1864,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("persist_only_admin_x509_subject"),
 		Default:           "",
 	},
-	"pid_file": {
+	"pid_file": &sql.SystemVariable{
 		Name:              "pid_file",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1868,7 +1872,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("pid_file"),
 		Default:           "",
 	},
-	"plugin_dir": {
+	"plugin_dir": &sql.SystemVariable{
 		Name:              "plugin_dir",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1876,7 +1880,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("plugin_dir"),
 		Default:           "",
 	},
-	"port": {
+	"port": &sql.SystemVariable{
 		Name:              "port",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1884,7 +1888,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("port", 0, 65535, false),
 		Default:           int64(3306),
 	},
-	"preload_buffer_size": {
+	"preload_buffer_size": &sql.SystemVariable{
 		Name:              "preload_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1892,7 +1896,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("preload_buffer_size", 1024, 1073741824, false),
 		Default:           int64(32768),
 	},
-	"print_identified_with_as_hex": {
+	"print_identified_with_as_hex": &sql.SystemVariable{
 		Name:              "print_identified_with_as_hex",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1900,7 +1904,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("print_identified_with_as_hex"),
 		Default:           int8(0),
 	},
-	"protocol_compression_algorithms": {
+	"protocol_compression_algorithms": &sql.SystemVariable{
 		Name:              "protocol_compression_algorithms",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1908,7 +1912,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemSetType("protocol_compression_algorithms", "zlib", "zstd", "uncompressed"),
 		Default:           "zlib,zstd,uncompressed",
 	},
-	"protocol_version": {
+	"protocol_version": &sql.SystemVariable{
 		Name:              "protocol_version",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -1916,7 +1920,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("protocol_version", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
 	},
-	"proxy_user": {
+	"proxy_user": &sql.SystemVariable{
 		Name:              "proxy_user",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           false,
@@ -1924,7 +1928,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("proxy_user"),
 		Default:           "",
 	},
-	"pseudo_slave_mode": {
+	"pseudo_slave_mode": &sql.SystemVariable{
 		Name:              "pseudo_slave_mode",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -1932,7 +1936,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("pseudo_slave_mode"),
 		Default:           int8(0),
 	},
-	"pseudo_thread_id": {
+	"pseudo_thread_id": &sql.SystemVariable{
 		Name:              "pseudo_thread_id",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -1941,7 +1945,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           int64(0),
 	},
 	// TODO: implement block sizes
-	// "query_alloc_block_size": {
+	// "query_alloc_block_size": &sql.SystemVariable{
 	//	Name: "query_alloc_block_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
@@ -1949,7 +1953,7 @@ var systemVars = map[string]*sql.SystemVariable{
 	//	Type: NewSystemIntType("query_alloc_block_size", 1024, 4294967295, false),
 	//	Default: int64(8192),
 	// },
-	"query_cache_size": {
+	"query_cache_size": &sql.SystemVariable{
 		Name:              "query_cache_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -1957,7 +1961,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("query_cache_size", 0, 18446744073709551615),
 		Default:           int8(1),
 	},
-	"query_cache_type": {
+	"query_cache_type": &sql.SystemVariable{
 		Name:              "query_cache_type",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1965,7 +1969,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("query_cache_type", "OFF", "ON", "DEMAND"),
 		Default:           "OFF",
 	},
-	// "query_prealloc_size": {
+	// "query_prealloc_size": &sql.SystemVariable{
 	//	Name: "query_prealloc_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
@@ -1973,7 +1977,7 @@ var systemVars = map[string]*sql.SystemVariable{
 	//	Type: NewSystemUintType("query_prealloc_size", 8192, 18446744073709551615),
 	//	Default: uint64(8192),
 	// },
-	"rand_seed1": {
+	"rand_seed1": &sql.SystemVariable{
 		Name:              "rand_seed1",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -1982,7 +1986,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           int64(0),
 	},
 	// TODO: implement block sizes
-	// "range_alloc_block_size": {
+	// "range_alloc_block_size": &sql.SystemVariable{
 	//	Name: "range_alloc_block_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
@@ -1990,7 +1994,7 @@ var systemVars = map[string]*sql.SystemVariable{
 	//	Type: NewSystemUintType("range_alloc_block_size", 4096, 18446744073709547520),
 	//	Default: uint64(4096),
 	// },
-	"range_optimizer_max_mem_size": {
+	"range_optimizer_max_mem_size": &sql.SystemVariable{
 		Name:              "range_optimizer_max_mem_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -1998,7 +2002,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("range_optimizer_max_mem_size", 0, 18446744073709551615),
 		Default:           uint64(8388608),
 	},
-	"rbr_exec_mode": {
+	"rbr_exec_mode": &sql.SystemVariable{
 		Name:              "rbr_exec_mode",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2006,7 +2010,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("rbr_exec_mode", "IDEMPOTENT", "STRICT"),
 		Default:           "STRICT",
 	},
-	"read_buffer_size": {
+	"read_buffer_size": &sql.SystemVariable{
 		Name:              "read_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2014,7 +2018,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("read_buffer_size", 8192, 2147479552, false),
 		Default:           int64(131072),
 	},
-	"read_only": {
+	"read_only": &sql.SystemVariable{
 		Name:              "read_only",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2022,7 +2026,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("read_only"),
 		Default:           int8(0),
 	},
-	"read_rnd_buffer_size": {
+	"read_rnd_buffer_size": &sql.SystemVariable{
 		Name:              "read_rnd_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2030,7 +2034,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("read_rnd_buffer_size", 1, 2147483647, false),
 		Default:           int64(262144),
 	},
-	"regexp_buffer_size": {
+	"regexp_buffer_size": &sql.SystemVariable{
 		Name:              "regexp_buffer_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2038,7 +2042,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("regexp_buffer_size", 0, 67108864), // 64MB upperbound
 		Default:           uint64(524288),
 	},
-	"regexp_stack_limit": {
+	"regexp_stack_limit": &sql.SystemVariable{
 		Name:              "regexp_stack_limit",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2046,7 +2050,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("regexp_stack_limit", 0, 2147483647, false),
 		Default:           int64(8000000),
 	},
-	"regexp_time_limit": {
+	"regexp_time_limit": &sql.SystemVariable{
 		Name:              "regexp_time_limit",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2054,7 +2058,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("regexp_time_limit", 0, 2147483647, false),
 		Default:           int64(32),
 	},
-	"require_row_format": {
+	"require_row_format": &sql.SystemVariable{
 		Name:              "require_row_format",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -2062,7 +2066,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("require_row_format"),
 		Default:           int8(0),
 	},
-	"require_secure_transport": {
+	"require_secure_transport": &sql.SystemVariable{
 		Name:              "require_secure_transport",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2070,7 +2074,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("require_secure_transport"),
 		Default:           int8(0),
 	},
-	"resultset_metadata": {
+	"resultset_metadata": &sql.SystemVariable{
 		Name:              "resultset_metadata",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -2078,7 +2082,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("resultset_metadata", "FULL", "NONE"),
 		Default:           "FULL",
 	},
-	"secondary_engine_cost_threshold": {
+	"secondary_engine_cost_threshold": &sql.SystemVariable{
 		Name:              "secondary_engine_cost_threshold",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -2086,7 +2090,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemDoubleType("secondary_engine_cost_threshold", 0, math.MaxFloat64),
 		Default:           float64(100000.000000),
 	},
-	"schema_definition_cache": {
+	"schema_definition_cache": &sql.SystemVariable{
 		Name:              "schema_definition_cache",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2094,7 +2098,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("schema_definition_cache", 256, 524288, false),
 		Default:           int64(256),
 	},
-	"secure_file_priv": {
+	"secure_file_priv": &sql.SystemVariable{
 		Name:              "secure_file_priv",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2102,7 +2106,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("secure_file_priv"),
 		Default:           "",
 	},
-	"select_into_buffer_size": {
+	"select_into_buffer_size": &sql.SystemVariable{
 		Name:              "select_into_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2110,7 +2114,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("select_into_buffer_size", 8192, 2147479552, false),
 		Default:           int64(131072),
 	},
-	"select_into_disk_sync": {
+	"select_into_disk_sync": &sql.SystemVariable{
 		Name:              "select_into_disk_sync",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2118,7 +2122,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("select_into_disk_sync"),
 		Default:           int8(0),
 	},
-	"select_into_disk_sync_delay": {
+	"select_into_disk_sync_delay": &sql.SystemVariable{
 		Name:              "select_into_disk_sync_delay",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2126,7 +2130,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("select_into_disk_sync_delay", 0, 31536000, false),
 		Default:           int64(0),
 	},
-	"server_id": {
+	"server_id": &sql.SystemVariable{
 		Name:              "server_id",
 		Scope:             sql.SystemVariableScope_Persist,
 		Dynamic:           true,
@@ -2134,7 +2138,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.Uint32,
 		Default:           uint32(0),
 	},
-	"server_uuid": {
+	"server_uuid": &sql.SystemVariable{
 		Name:              "server_uuid",
 		Scope:             sql.SystemVariableScope_Persist,
 		Dynamic:           false,
@@ -2142,7 +2146,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.Text,
 		Default:           uuid.New().String(),
 	},
-	"session_track_gtids": {
+	"session_track_gtids": &sql.SystemVariable{
 		Name:              "session_track_gtids",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2150,7 +2154,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("session_track_gtids", "OFF", "OWN_GTID", "ALL_GTIDS"),
 		Default:           "OFF",
 	},
-	"session_track_schema": {
+	"session_track_schema": &sql.SystemVariable{
 		Name:              "session_track_schema",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2158,7 +2162,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("session_track_schema"),
 		Default:           int8(1),
 	},
-	"session_track_state_change": {
+	"session_track_state_change": &sql.SystemVariable{
 		Name:              "session_track_state_change",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2166,7 +2170,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("session_track_state_change"),
 		Default:           int8(0),
 	},
-	"session_track_system_variables": {
+	"session_track_system_variables": &sql.SystemVariable{
 		Name:              "session_track_system_variables",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2174,7 +2178,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("session_track_system_variables"),
 		Default:           "time_zone, autocommit, character_set_client, character_set_results, character_set_connection",
 	},
-	"session_track_transaction_info": {
+	"session_track_transaction_info": &sql.SystemVariable{
 		Name:              "session_track_transaction_info",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2182,7 +2186,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("session_track_transaction_info", "OFF", "STATE", "CHARACTERISTICS"),
 		Default:           "OFF",
 	},
-	"sha256_password_auto_generate_rsa_keys": {
+	"sha256_password_auto_generate_rsa_keys": &sql.SystemVariable{
 		Name:              "sha256_password_auto_generate_rsa_keys",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2190,7 +2194,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sha256_password_auto_generate_rsa_keys"),
 		Default:           int8(1),
 	},
-	"sha256_password_private_key_path": {
+	"sha256_password_private_key_path": &sql.SystemVariable{
 		Name:              "sha256_password_private_key_path",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2198,7 +2202,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("sha256_password_private_key_path"),
 		Default:           "private_key.pem",
 	},
-	"sha256_password_proxy_users": {
+	"sha256_password_proxy_users": &sql.SystemVariable{
 		Name:              "sha256_password_proxy_users",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2206,7 +2210,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sha256_password_proxy_users"),
 		Default:           int8(0),
 	},
-	"sha256_password_public_key_path": {
+	"sha256_password_public_key_path": &sql.SystemVariable{
 		Name:              "sha256_password_public_key_path",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2214,7 +2218,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("sha256_password_public_key_path"),
 		Default:           "public_key.pem",
 	},
-	"shared_memory": {
+	"shared_memory": &sql.SystemVariable{
 		Name:              "shared_memory",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2222,7 +2226,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("shared_memory"),
 		Default:           int8(0),
 	},
-	"shared_memory_base_name": {
+	"shared_memory_base_name": &sql.SystemVariable{
 		Name:              "shared_memory_base_name",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2230,7 +2234,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("shared_memory_base_name"),
 		Default:           "MYSQL",
 	},
-	"show_create_table_skip_secondary_engine": {
+	"show_create_table_skip_secondary_engine": &sql.SystemVariable{
 		Name:              "show_create_table_skip_secondary_engine",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -2238,7 +2242,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("show_create_table_skip_secondary_engine"),
 		Default:           int8(0),
 	},
-	"show_create_table_verbosity": {
+	"show_create_table_verbosity": &sql.SystemVariable{
 		Name:              "show_create_table_verbosity",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2246,7 +2250,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("show_create_table_verbosity"),
 		Default:           int8(0),
 	},
-	"show_external_procedures": {
+	"show_external_procedures": &sql.SystemVariable{
 		Name:              "show_external_procedures",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2254,7 +2258,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("show_external_procedures"),
 		Default:           int8(1),
 	},
-	"show_old_temporals": {
+	"show_old_temporals": &sql.SystemVariable{
 		Name:              "show_old_temporals",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2262,7 +2266,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("show_old_temporals"),
 		Default:           int8(0),
 	},
-	"skip_external_locking": {
+	"skip_external_locking": &sql.SystemVariable{
 		Name:              "skip_external_locking",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2270,7 +2274,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("skip_external_locking"),
 		Default:           int8(1),
 	},
-	"skip_name_resolve": {
+	"skip_name_resolve": &sql.SystemVariable{
 		Name:              "skip_name_resolve",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2278,7 +2282,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("skip_name_resolve"),
 		Default:           int8(0),
 	},
-	"skip_networking": {
+	"skip_networking": &sql.SystemVariable{
 		Name:              "skip_networking",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2286,7 +2290,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("skip_networking"),
 		Default:           int8(0),
 	},
-	"skip_show_database": {
+	"skip_show_database": &sql.SystemVariable{
 		Name:              "skip_show_database",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2294,7 +2298,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("skip_show_database"),
 		Default:           int8(0),
 	},
-	"slow_launch_time": {
+	"slow_launch_time": &sql.SystemVariable{
 		Name:              "slow_launch_time",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2302,7 +2306,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("slow_launch_time", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(2),
 	},
-	"slow_query_log": {
+	"slow_query_log": &sql.SystemVariable{
 		Name:              "slow_query_log",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2310,7 +2314,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("slow_query_log"),
 		Default:           int8(0),
 	},
-	"slow_query_log_file": {
+	"slow_query_log_file": &sql.SystemVariable{
 		Name:              "slow_query_log_file",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2318,7 +2322,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("slow_query_log_file"),
 		Default:           "host_name-slow.log",
 	},
-	"socket": {
+	"socket": &sql.SystemVariable{
 		Name:              "socket",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2326,7 +2330,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("socket"),
 		Default:           "/tmp/mysql.sock",
 	},
-	"sort_buffer_size": {
+	"sort_buffer_size": &sql.SystemVariable{
 		Name:              "sort_buffer_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2334,7 +2338,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("sort_buffer_size", 32768, 18446744073709551615),
 		Default:           uint64(262144),
 	},
-	"sql_auto_is_null": {
+	"sql_auto_is_null": &sql.SystemVariable{
 		Name:              "sql_auto_is_null",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2342,7 +2346,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_auto_is_null"),
 		Default:           int8(0),
 	},
-	"sql_big_selects": {
+	"sql_big_selects": &sql.SystemVariable{
 		Name:              "sql_big_selects",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2350,7 +2354,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_big_selects"),
 		Default:           int8(1),
 	},
-	"sql_buffer_result": {
+	"sql_buffer_result": &sql.SystemVariable{
 		Name:              "sql_buffer_result",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2358,7 +2362,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_buffer_result"),
 		Default:           int8(0),
 	},
-	"sql_log_bin": {
+	"sql_log_bin": &sql.SystemVariable{
 		Name:              "sql_log_bin",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2366,7 +2370,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_log_bin"),
 		Default:           int8(0),
 	},
-	"sql_log_off": {
+	"sql_log_off": &sql.SystemVariable{
 		Name:              "sql_log_off",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2374,7 +2378,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_log_off"),
 		Default:           int8(0),
 	},
-	"sql_mode": {
+	"sql_mode": &sql.SystemVariable{
 		Name:              "sql_mode",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2382,7 +2386,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemSetType("sql_mode", "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL", "ANSI"),
 		Default:           "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 	},
-	"sql_notes": {
+	"sql_notes": &sql.SystemVariable{
 		Name:              "sql_notes",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2390,7 +2394,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_notes"),
 		Default:           int8(1),
 	},
-	"sql_quote_show_create": {
+	"sql_quote_show_create": &sql.SystemVariable{
 		Name:              "sql_quote_show_create",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2398,7 +2402,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_quote_show_create"),
 		Default:           int8(1),
 	},
-	"sql_require_primary_key": {
+	"sql_require_primary_key": &sql.SystemVariable{
 		Name:              "sql_require_primary_key",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2406,7 +2410,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_require_primary_key"),
 		Default:           int8(0),
 	},
-	"sql_safe_updates": {
+	"sql_safe_updates": &sql.SystemVariable{
 		Name:              "sql_safe_updates",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2414,7 +2418,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_safe_updates"),
 		Default:           int8(0),
 	},
-	"sql_select_limit": {
+	"sql_select_limit": &sql.SystemVariable{
 		Name:              "sql_select_limit",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2422,7 +2426,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("sql_select_limit", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(2147483647),
 	},
-	"sql_warnings": {
+	"sql_warnings": &sql.SystemVariable{
 		Name:              "sql_warnings",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2430,7 +2434,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("sql_warnings"),
 		Default:           int8(0),
 	},
-	"ssl_ca": {
+	"ssl_ca": &sql.SystemVariable{
 		Name:              "ssl_ca",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2438,7 +2442,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ssl_ca"),
 		Default:           "",
 	},
-	"ssl_capath": {
+	"ssl_capath": &sql.SystemVariable{
 		Name:              "ssl_capath",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2446,7 +2450,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ssl_capath"),
 		Default:           "",
 	},
-	"ssl_cert": {
+	"ssl_cert": &sql.SystemVariable{
 		Name:              "ssl_cert",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2454,7 +2458,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ssl_cert"),
 		Default:           "",
 	},
-	"ssl_cipher": {
+	"ssl_cipher": &sql.SystemVariable{
 		Name:              "ssl_cipher",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2462,7 +2466,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ssl_cipher"),
 		Default:           "",
 	},
-	"ssl_crl": {
+	"ssl_crl": &sql.SystemVariable{
 		Name:              "ssl_crl",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2470,7 +2474,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ssl_crl"),
 		Default:           "",
 	},
-	"ssl_crlpath": {
+	"ssl_crlpath": &sql.SystemVariable{
 		Name:              "ssl_crlpath",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2478,7 +2482,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ssl_crlpath"),
 		Default:           "",
 	},
-	"ssl_fips_mode": {
+	"ssl_fips_mode": &sql.SystemVariable{
 		Name:              "ssl_fips_mode",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2486,7 +2490,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("ssl_fips_mode", "OFF", "ON", "STRICT"),
 		Default:           "OFF",
 	},
-	"ssl_key": {
+	"ssl_key": &sql.SystemVariable{
 		Name:              "ssl_key",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2494,7 +2498,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("ssl_key"),
 		Default:           "",
 	},
-	"stored_program_cache": {
+	"stored_program_cache": &sql.SystemVariable{
 		Name:              "stored_program_cache",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2502,7 +2506,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("stored_program_cache", 16, 524288, false),
 		Default:           int64(256),
 	},
-	"stored_program_definition_cache": {
+	"stored_program_definition_cache": &sql.SystemVariable{
 		Name:              "stored_program_definition_cache",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2510,7 +2514,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("stored_program_definition_cache", 256, 524288, false),
 		Default:           int64(256),
 	},
-	"strict_mysql_compatibility": {
+	"strict_mysql_compatibility": &sql.SystemVariable{
 		Name:              "strict_mysql_compatibility",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2518,7 +2522,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("strict_mysql_compatibility"),
 		Default:           int8(0),
 	},
-	"super_read_only": {
+	"super_read_only": &sql.SystemVariable{
 		Name:              "super_read_only",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2526,7 +2530,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("super_read_only"),
 		Default:           int8(0),
 	},
-	"syseventlog.facility": {
+	"syseventlog.facility": &sql.SystemVariable{
 		Name:              "syseventlog.facility",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2534,7 +2538,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("syseventlog.facility"),
 		Default:           "daemon",
 	},
-	"syseventlog.include_pid": {
+	"syseventlog.include_pid": &sql.SystemVariable{
 		Name:              "syseventlog.include_pid",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2542,7 +2546,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("syseventlog.include_pid"),
 		Default:           int8(1),
 	},
-	"syseventlog.tag": {
+	"syseventlog.tag": &sql.SystemVariable{
 		Name:              "syseventlog.tag",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2550,7 +2554,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("syseventlog.tag"),
 		Default:           "",
 	},
-	"system_time_zone": {
+	"system_time_zone": &sql.SystemVariable{
 		Name:              "system_time_zone",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2558,7 +2562,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("system_time_zone"),
 		Default:           gmstime.SystemTimezoneName(),
 	},
-	"table_definition_cache": {
+	"table_definition_cache": &sql.SystemVariable{
 		Name:              "table_definition_cache",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2566,7 +2570,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("table_definition_cache", 400, 524288, true),
 		Default:           int64(-1),
 	},
-	"table_encryption_privilege_check": {
+	"table_encryption_privilege_check": &sql.SystemVariable{
 		Name:              "table_encryption_privilege_check",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2574,7 +2578,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("table_encryption_privilege_check"),
 		Default:           int8(0),
 	},
-	"table_open_cache": {
+	"table_open_cache": &sql.SystemVariable{
 		Name:              "table_open_cache",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2582,7 +2586,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("table_open_cache", 1, 524288, false),
 		Default:           int64(4000),
 	},
-	"table_open_cache_instances": {
+	"table_open_cache_instances": &sql.SystemVariable{
 		Name:              "table_open_cache_instances",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2590,7 +2594,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("table_open_cache_instances", 1, 64, false),
 		Default:           int64(16),
 	},
-	"tablespace_definition_cache": {
+	"tablespace_definition_cache": &sql.SystemVariable{
 		Name:              "tablespace_definition_cache",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2598,7 +2602,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("tablespace_definition_cache", 256, 524288, false),
 		Default:           int64(256),
 	},
-	"temptable_max_mmap": {
+	"temptable_max_mmap": &sql.SystemVariable{
 		Name:              "temptable_max_mmap",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2606,7 +2610,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("temptable_max_mmap", 0, 18446744073709551615),
 		Default:           uint64(1073741824),
 	},
-	"temptable_max_ram": {
+	"temptable_max_ram": &sql.SystemVariable{
 		Name:              "temptable_max_ram",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2614,7 +2618,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("temptable_max_ram", 2097152, 18446744073709551615),
 		Default:           uint64(1073741824),
 	},
-	"temptable_use_mmap": {
+	"temptable_use_mmap": &sql.SystemVariable{
 		Name:              "temptable_use_mmap",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2622,7 +2626,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("temptable_use_mmap"),
 		Default:           int8(1),
 	},
-	"thread_cache_size": {
+	"thread_cache_size": &sql.SystemVariable{
 		Name:              "thread_cache_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2630,7 +2634,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("thread_cache_size", 0, 16384, true),
 		Default:           int64(-1),
 	},
-	"thread_handling": {
+	"thread_handling": &sql.SystemVariable{
 		Name:              "thread_handling",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2638,7 +2642,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("thread_handling", "no-threads", "one-thread-per-connection", "loaded-dynamically"),
 		Default:           "one-thread-per-connection",
 	},
-	"thread_pool_algorithm": {
+	"thread_pool_algorithm": &sql.SystemVariable{
 		Name:              "thread_pool_algorithm",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2646,7 +2650,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("thread_pool_algorithm", 0, 1, false),
 		Default:           int64(0),
 	},
-	"thread_pool_high_priority_connection": {
+	"thread_pool_high_priority_connection": &sql.SystemVariable{
 		Name:              "thread_pool_high_priority_connection",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2654,7 +2658,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("thread_pool_high_priority_connection", 0, 1, false),
 		Default:           int64(0),
 	},
-	"thread_pool_max_active_query_threads": {
+	"thread_pool_max_active_query_threads": &sql.SystemVariable{
 		Name:              "thread_pool_max_active_query_threads",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2662,7 +2666,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("thread_pool_max_active_query_threads", 0, 512, false),
 		Default:           int64(0),
 	},
-	"thread_pool_max_unused_threads": {
+	"thread_pool_max_unused_threads": &sql.SystemVariable{
 		Name:              "thread_pool_max_unused_threads",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2670,7 +2674,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("thread_pool_max_unused_threads", 0, 4096, false),
 		Default:           int64(0),
 	},
-	"thread_pool_prio_kickup_timer": {
+	"thread_pool_prio_kickup_timer": &sql.SystemVariable{
 		Name:              "thread_pool_prio_kickup_timer",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2678,7 +2682,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("thread_pool_prio_kickup_timer", 0, 4294967294, false),
 		Default:           int64(1000),
 	},
-	"thread_pool_size": {
+	"thread_pool_size": &sql.SystemVariable{
 		Name:              "thread_pool_size",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2686,7 +2690,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("thread_pool_size", 1, 512, false),
 		Default:           int64(16),
 	},
-	"thread_pool_stall_limit": {
+	"thread_pool_stall_limit": &sql.SystemVariable{
 		Name:              "thread_pool_stall_limit",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2695,7 +2699,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           int64(6),
 	},
 	// TODO: implement block sizes
-	// "thread_stack": {
+	// "thread_stack": &sql.SystemVariable{
 	//	Name: "thread_stack",
 	//	Scope: SystemVariableScope_Global,
 	//	Dynamic: false,
@@ -2703,7 +2707,7 @@ var systemVars = map[string]*sql.SystemVariable{
 	//	Type: NewSystemUintType("thread_stack", 131072, 18446744073709551615),
 	//	Default: uint64(286720),
 	// },
-	"time_zone": {
+	"time_zone": &sql.SystemVariable{
 		Name:              "time_zone",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2712,7 +2716,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           "SYSTEM",
 	},
 	// TODO: this needs to utilize a function as the value is not static
-	"timestamp": {
+	"timestamp": &sql.SystemVariable{
 		Name:              "timestamp",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -2720,7 +2724,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemDoubleType("timestamp", 1, 2147483647),
 		Default:           float64(1000.0),
 	},
-	"tls_ciphersuites": {
+	"tls_ciphersuites": &sql.SystemVariable{
 		Name:              "tls_ciphersuites",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2728,7 +2732,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("tls_ciphersuites"),
 		Default:           "",
 	},
-	"tls_version": {
+	"tls_version": &sql.SystemVariable{
 		Name:              "tls_version",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           true,
@@ -2736,7 +2740,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("tls_version"),
 		Default:           "TLSv1,TLSv1.1,TLSv1.2,TLSv1.3",
 	},
-	"tmp_table_size": {
+	"tmp_table_size": &sql.SystemVariable{
 		Name:              "tmp_table_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2744,7 +2748,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemUintType("tmp_table_size", 1024, 18446744073709551615),
 		Default:           uint64(16777216),
 	},
-	"tmpdir": {
+	"tmpdir": &sql.SystemVariable{
 		Name:              "tmpdir",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2753,7 +2757,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Default:           sql.GetTmpdirSessionVar(),
 	},
 	// TODO: implement block sizes
-	// "transaction_alloc_block_size": {
+	// "transaction_alloc_block_size": &sql.SystemVariable{
 	//	Name: "transaction_alloc_block_size",
 	//	Scope: SystemVariableScope_Both,
 	//	Dynamic: true,
@@ -2761,7 +2765,7 @@ var systemVars = map[string]*sql.SystemVariable{
 	//	Type: NewSystemIntType("transaction_alloc_block_size", 1024, 131072, false),
 	//	Default: int64(8192),
 	// },
-	"transaction_isolation": {
+	"transaction_isolation": &sql.SystemVariable{
 		Name:              "transaction_isolation",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2769,7 +2773,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("transaction_isolation", "READ-UNCOMMITTED", "READ-COMMITTED", "REPEATABLE-READ", "SERIALIZABLE"),
 		Default:           "REPEATABLE-READ",
 	},
-	"transaction_prealloc_size": {
+	"transaction_prealloc_size": &sql.SystemVariable{
 		Name:              "transaction_prealloc_size",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2777,7 +2781,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("transaction_prealloc_size", 1024, 131072, false),
 		Default:           int64(4096),
 	},
-	"transaction_read_only": {
+	"transaction_read_only": &sql.SystemVariable{
 		Name:              "transaction_read_only",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2785,7 +2789,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("transaction_read_only"),
 		Default:           int8(0),
 	},
-	"tx_isolation": {
+	"tx_isolation": &sql.SystemVariable{
 		Name:              "tx_isolation",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2793,7 +2797,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("tx_isolation", "READ-UNCOMMITTED", "READ-COMMITTED", "REPEATABLE-READ", "SERIALIZABLE"),
 		Default:           "REPEATABLE-READ",
 	},
-	"tx_read_only": {
+	"tx_read_only": &sql.SystemVariable{
 		Name:              "tx_read_only",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2801,7 +2805,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("tx_read_only"),
 		Default:           int8(0),
 	},
-	"unique_checks": {
+	"unique_checks": &sql.SystemVariable{
 		Name:              "unique_checks",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2809,7 +2813,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("unique_checks"),
 		Default:           int8(1),
 	},
-	"updatable_views_with_limit": {
+	"updatable_views_with_limit": &sql.SystemVariable{
 		Name:              "updatable_views_with_limit",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2817,7 +2821,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
 		Default:           int8(1),
 	},
-	"uptime": {
+	"uptime": &sql.SystemVariable{
 		Name:              "uptime",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2828,7 +2832,7 @@ var systemVars = map[string]*sql.SystemVariable{
 			return int(time.Now().Sub(serverStartUpTime).Seconds()), nil
 		},
 	},
-	"use_secondary_engine": {
+	"use_secondary_engine": &sql.SystemVariable{
 		Name:              "use_secondary_engine",
 		Scope:             sql.SystemVariableScope_Session,
 		Dynamic:           true,
@@ -2836,7 +2840,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemEnumType("use_secondary_engine", "OFF", "ON", "FORCED"),
 		Default:           "ON",
 	},
-	"validate_user_plugins": {
+	"validate_user_plugins": &sql.SystemVariable{
 		Name:              "validate_user_plugins",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2844,7 +2848,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemBoolType("validate_user_plugins"),
 		Default:           int8(1),
 	},
-	"version": {
+	"version": &sql.SystemVariable{
 		Name:              "version",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2852,7 +2856,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("version"),
 		Default:           "8.0.11",
 	},
-	"version_comment": {
+	"version_comment": &sql.SystemVariable{
 		Name:              "version_comment",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2860,7 +2864,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("version_comment"),
 		Default:           "Dolt",
 	},
-	"version_compile_machine": {
+	"version_compile_machine": &sql.SystemVariable{
 		Name:              "version_compile_machine",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2868,7 +2872,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("version_compile_machine"),
 		Default:           "",
 	},
-	"version_compile_os": {
+	"version_compile_os": &sql.SystemVariable{
 		Name:              "version_compile_os",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2876,7 +2880,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("version_compile_os"),
 		Default:           "",
 	},
-	"version_compile_zlib": {
+	"version_compile_zlib": &sql.SystemVariable{
 		Name:              "version_compile_zlib",
 		Scope:             sql.SystemVariableScope_Global,
 		Dynamic:           false,
@@ -2884,7 +2888,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemStringType("version_compile_zlib"),
 		Default:           "",
 	},
-	"wait_timeout": {
+	"wait_timeout": &sql.SystemVariable{
 		Name:              "wait_timeout",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,
@@ -2892,7 +2896,7 @@ var systemVars = map[string]*sql.SystemVariable{
 		Type:              types.NewSystemIntType("wait_timeout", 1, 31536000, false),
 		Default:           int64(28800),
 	},
-	"windowing_use_high_precision": {
+	"windowing_use_high_precision": &sql.SystemVariable{
 		Name:              "windowing_use_high_precision",
 		Scope:             sql.SystemVariableScope_Both,
 		Dynamic:           true,

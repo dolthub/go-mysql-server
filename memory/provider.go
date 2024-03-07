@@ -41,7 +41,9 @@ func NewDBProvider(dbs ...sql.Database) *DbProvider {
 		externalProcedureRegistry.Register(esp)
 	}
 
-	variables.InitSystemVariables()
+	if sql.SystemVariables == nil {
+		variables.InitSystemVariables()
+	}
 
 	return &DbProvider{
 		dbs:                       dbMap,

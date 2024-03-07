@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"os"
 	"strings"
 	"sync"
@@ -74,6 +75,10 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 	var useServer bool
 	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
 		useServer = true
+	}
+
+	if sql.SystemVariables == nil {
+		variables.InitSystemVariables()
 	}
 
 	return &MemoryHarness{
