@@ -65,7 +65,7 @@ func TestJSONUnquote(t *testing.T) {
 		},
 		{
 			arg: expression.NewLiteral(`\`, types.Text),
-			err: true,
+			exp: `\`,
 		},
 		{
 			arg: expression.NewLiteral(`\b\f\n\r\t\"`, types.Text),

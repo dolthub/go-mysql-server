@@ -17,7 +17,8 @@ func Unquote(s string) (string, error) {
 		if s[i] == '\\' {
 			i++
 			if i == len(s) {
-				return "", fmt.Errorf("Missing a closing quotation mark in string")
+				ret.WriteByte('\\')
+				break
 			}
 			switch s[i] {
 			case '"':
