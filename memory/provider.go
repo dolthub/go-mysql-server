@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"sort"
 	"strings"
 	"sync"
@@ -38,6 +39,8 @@ func NewDBProvider(dbs ...sql.Database) *DbProvider {
 	for _, esp := range ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
 	}
+
+	variables.InitSystemVariables()
 
 	return &DbProvider{
 		dbs:                       dbMap,
