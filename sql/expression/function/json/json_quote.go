@@ -105,4 +105,3 @@ func (js *JSONQuote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	return strings.Quote(str), nil
 }
-

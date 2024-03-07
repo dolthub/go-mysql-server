@@ -16,7 +16,7 @@ package json
 
 import (
 	"fmt"
-"testing"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 
