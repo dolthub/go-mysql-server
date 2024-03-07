@@ -348,6 +348,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				if !isEvaluable(e) {
 					return e, transform.SameTree, nil
 				}
+				if conv, ok := e.(*expression.Convert); ok {
+					if types.IsBinaryType(conv.Type()) {
+						return e, transform.SameTree, nil
+					}
+				}
 
 				// All other expressions types can be evaluated once and turned into literals for the rest of query execution
 				val, err := e.Eval(ctx, nil)

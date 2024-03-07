@@ -5877,7 +5877,6 @@ where
 					{"ghi"},
 				},
 			},
-
 			{
 				Query: "select cast(b as char(3)) from tt where b < cast('def' as binary(10));",
 				Expected: []sql.Row{
