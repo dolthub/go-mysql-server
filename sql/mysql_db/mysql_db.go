@@ -243,16 +243,24 @@ type LockUserMap struct {
 	sync.Map
 }
 
-func (m *LockUserMap) SetUser(readUserEntry *User, value time.Time) {
-	m.Set(fmt.Sprintf("%s-%s", readUserEntry.User, readUserEntry.Host), value)
+func (m *LockUserMap) lockUser(user string, host string, value time.Time) {
+	m.Set(fmt.Sprintf("%s-%s", user, host), value)
 }
 
 func (m *LockUserMap) Set(key string, value time.Time) {
 	m.Store(key, value)
 }
 
-func (m *LockUserMap) GetUser(readUserEntry *User) (time.Time, bool) {
+func (m *LockUserMap) GetUser(readUserEntry *User, host string) (time.Time, bool) {
 	return m.Get(fmt.Sprintf("%s-%s", readUserEntry.User, readUserEntry.Host))
+}
+
+func (db *MySQLDb) AddUser(readUserEntry *User, host string) {
+	if readUserEntry == nil {
+		return
+	} else {
+		lockUserMap.lockUser(readUserEntry.User, host, time.Now())
+	}
 }
 
 func (m *LockUserMap) Get(key string) (time.Time, bool) {
@@ -263,23 +271,11 @@ func (m *LockUserMap) Get(key string) (time.Time, bool) {
 	return val.(time.Time), true
 }
 
-func (m *LockUserMap) RemoveUser(readUserEntry *User) {
-	m.Delete(fmt.Sprintf("%s-%s", readUserEntry.User, readUserEntry.Host))
-}
-
-func (m *LockUserMap) Remove(key string) {
-	m.Delete(key)
+func (m *LockUserMap) RemoveUser(readUserEntry *User, host string) {
+	m.Delete(fmt.Sprintf("%s-%s", readUserEntry.User, host))
 }
 
 var lockUserMap = &LockUserMap{}
-
-func (db *MySQLDb) LockUser(readUserEntry *User) {
-	if readUserEntry == nil {
-		return
-	} else {
-		lockUserMap.SetUser(readUserEntry, time.Now())
-	}
-}
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
 // roles, roleSearch changes whether the search matches against user or role rules.
@@ -307,10 +303,10 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool, skipCidrCh
 			return readUserEntry
 		}
 
-		if lockTime, isLocked := lockUserMap.GetUser(readUserEntry); isLocked {
+		if lockTime, isLocked := lockUserMap.GetUser(readUserEntry, host); isLocked {
 			if time.Since(lockTime) > time.Hour {
 				readUserEntry.Locked = false
-				lockUserMap.RemoveUser(readUserEntry)
+				lockUserMap.RemoveUser(readUserEntry, host)
 			} else {
 				readUserEntry.Locked = true
 				return readUserEntry
@@ -344,10 +340,10 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool, skipCidrCh
 				return readUserEntry
 			}
 
-			if lockTime, isLocked := lockUserMap.GetUser(readUserEntry); isLocked {
+			if lockTime, isLocked := lockUserMap.GetUser(readUserEntry, host); isLocked {
 				if time.Since(lockTime) > time.Hour {
 					readUserEntry.Locked = false
-					lockUserMap.RemoveUser(readUserEntry)
+					lockUserMap.RemoveUser(readUserEntry, host)
 				} else {
 					readUserEntry.Locked = true
 					return readUserEntry
@@ -530,7 +526,7 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 	}
 	if len(userEntry.Password) > 0 {
 		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
-			db.LockUser(userEntry)
+			db.AddUser(userEntry, host)
 			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 		}
 	} else if len(authResponse) > 0 { // password is nil or empty, therefore no password is set
