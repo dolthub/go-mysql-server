@@ -5,8 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/variables"
-
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -39,10 +37,6 @@ func NewDBProvider(dbs ...sql.Database) *DbProvider {
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
-	}
-
-	if sql.SystemVariables == nil {
-		variables.InitSystemVariables()
 	}
 
 	return &DbProvider{

@@ -208,9 +208,8 @@ func InitSystemVariables() {
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
 func init() {
-	//if sql.SystemVariables == nil {
-	//InitSystemVariables()
-	//}
+	// This overwrites the global system variables in GMS. Initializing it both here and in GMS needs to be fixed.
+	InitSystemVariables()
 }
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:

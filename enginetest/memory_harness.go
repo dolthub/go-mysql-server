@@ -77,10 +77,6 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		useServer = true
 	}
 
-	if sql.SystemVariables == nil {
-		variables.InitSystemVariables()
-	}
-
 	return &MemoryHarness{
 		name:                      name,
 		numTablePartitions:        numTablePartitions,
