@@ -583,6 +583,68 @@ var CreateTableScriptTests = []ScriptTest{
 				Query:       `CREATE TABLE t1 (pk int primary key character set utf8mb4)`,
 				ExpectedErr: types.ErrCharacterSetOnInvalidType,
 			},
+			{
+				Query:          `create table t (i int, primary key(i)) charset=utf8mb4 collate=utf8mb3_esperanto_ci;`,
+				ExpectedErrStr: "utf8mb4 is not a valid character set for utf8mb3_esperanto_ci",
+			},
+			{
+				Query:    `create table t (i int, primary key(i)) charset=utf8mb4 collate=utf8mb4_esperanto_ci;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name:        "table charset options",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `create table t1 (i int) charset latin1`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `show create table t1`,
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci"},
+				},
+			},
+			{
+				Query:    `create table t2 (i int) character set latin1`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `show create table t2`,
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci"},
+				},
+			},
+			{
+				Query:    `create table t3 (i int) charset binary`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `show create table t3`,
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=binary COLLATE=binary"},
+				},
+			},
+			{
+				Query:    `create table t4 (i int) character set binary`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: `show create table t4`,
+				Expected: []sql.Row{
+					{"t4", "CREATE TABLE `t4` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=binary COLLATE=binary"},
+				},
+			},
 		},
 	},
 }

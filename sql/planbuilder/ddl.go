@@ -1096,19 +1096,19 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 				var err error
 				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
+					b.handleErr(err)
 				}
 			} else if len(charsetSubmatches) == 5 {
 				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
+					b.handleErr(err)
 				}
 				tableCollation = charset.DefaultCollation()
 			} else if len(collationSubmatches) == 5 {
 				var err error
 				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
 				if err != nil {
-					return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
+					b.handleErr(err)
 				}
 			}
 			if len(commentSubmatches) == 5 {
