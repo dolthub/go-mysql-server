@@ -384,7 +384,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	}
 
 	client := ctx.Session.Client()
-	user := db.GetUser(client.User, client.Address, false, false)
+	user := db.GetUser(client.User, client.Address, false, true)
 	if user == nil {
 		return NewPrivilegeSet()
 	}
@@ -398,7 +398,7 @@ func (db *MySQLDb) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	//TODO: System variable "activate_all_roles_on_login", if set, will set all roles as active upon logging in
 	for _, roleEdgeEntry := range roleEdgeEntries {
 		roleEdge := roleEdgeEntry.(*RoleEdge)
-		role := db.GetUser(roleEdge.FromUser, roleEdge.FromHost, true, false)
+		role := db.GetUser(roleEdge.FromUser, roleEdge.FromHost, true, true)
 		if role != nil {
 			privSet.UnionWith(role.PrivilegeSet)
 		}
