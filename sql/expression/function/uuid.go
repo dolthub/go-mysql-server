@@ -54,15 +54,11 @@ import (
 
 type UUIDFunc struct{}
 
-func (u UUIDFunc) IsNonDeterministic() bool {
-	return true
-}
-
 var _ sql.FunctionExpression = &UUIDFunc{}
 var _ sql.CollationCoercible = &UUIDFunc{}
 
 func NewUUIDFunc() sql.Expression {
-	return UUIDFunc{}
+	return &UUIDFunc{}
 }
 
 // Description implements sql.FunctionExpression
@@ -92,7 +88,7 @@ func (u UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, erro
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
 	}
 
-	return UUIDFunc{}, nil
+	return &UUIDFunc{}, nil
 }
 
 func (u UUIDFunc) FunctionName() string {
@@ -113,6 +109,10 @@ func (u UUIDFunc) IsNullable() bool {
 	return false
 }
 
+func (u UUIDFunc) IsNonDeterministic() bool {
+	return true
+}
+
 // IS_UUID(string_uuid)
 //
 // Returns 1 if the argument is a valid string-format UUID, 0 if the argument is not a valid UUID, and NULL if the
@@ -129,7 +129,7 @@ var _ sql.FunctionExpression = &IsUUID{}
 var _ sql.CollationCoercible = &IsUUID{}
 
 func NewIsUUID(arg sql.Expression) sql.Expression {
-	return IsUUID{child: arg}
+	return &IsUUID{child: arg}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -147,7 +147,7 @@ func (u IsUUID) String() string {
 }
 
 func (u IsUUID) Type() sql.Type {
-	return types.Int8
+	return types.Boolean
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -158,7 +158,7 @@ func (IsUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := u.child.Eval(ctx, row)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if str == nil {
@@ -169,19 +169,19 @@ func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case string:
 		_, err := uuid.Parse(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	case []byte:
 		_, err := uuid.ParseBytes(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	default:
-		return int8(0), nil
+		return false, nil
 	}
 }
 
@@ -190,7 +190,7 @@ func (u IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return IsUUID{child: children[0]}, nil
+	return &IsUUID{child: children[0]}, nil
 }
 
 func (u IsUUID) Resolved() bool {
@@ -241,9 +241,9 @@ var _ sql.CollationCoercible = (*UUIDToBin)(nil)
 func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
-		return UUIDToBin{inputUUID: args[0]}, nil
+		return &UUIDToBin{inputUUID: args[0]}, nil
 	case 2:
-		return UUIDToBin{inputUUID: args[0], swapFlag: args[1]}, nil
+		return &UUIDToBin{inputUUID: args[0], swapFlag: args[1]}, nil
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("UUID_TO_BIN", "1 or 2", len(args))
 	}
@@ -271,7 +271,7 @@ func (UUIDToBin) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 4
 }
 
-func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (ub *UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := ub.inputUUID.Eval(ctx, row)
 	if err != nil {
 		return 0, err
@@ -304,7 +304,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return string(bt), nil
+		return bt, nil
 	}
 
 	sf, err := ub.swapFlag.Eval(ctx, row)
@@ -324,10 +324,10 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		return string(bt), nil
+		return bt, nil
 	} else if sf.(int8) == 1 {
 		encoding := swapUUIDBytes(parsed)
-		return string(encoding), nil
+		return encoding, nil
 	} else {
 		return nil, fmt.Errorf("UUID_TO_BIN received invalid swap flag")
 	}
@@ -402,9 +402,9 @@ var _ sql.CollationCoercible = (*BinToUUID)(nil)
 func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
-		return BinToUUID{inputBinary: args[0]}, nil
+		return &BinToUUID{inputBinary: args[0]}, nil
 	case 2:
-		return BinToUUID{inputBinary: args[0], swapFlag: args[1]}, nil
+		return &BinToUUID{inputBinary: args[0], swapFlag: args[1]}, nil
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("BIN_TO_UUID", "1 or 2", len(args))
 	}

@@ -72,7 +72,7 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 	i.topRows = nil
 
 	if i.calcFoundRows {
-		ctx.SetLastQueryInfo(sql.FoundRows, i.numFoundRows)
+		ctx.SetLastQueryInfoInt(sql.FoundRows, i.numFoundRows)
 	}
 
 	return i.childIter.Close(ctx)
@@ -934,7 +934,7 @@ func (li *limitIter) Close(ctx *sql.Context) error {
 	}
 
 	if li.calcFoundRows {
-		ctx.SetLastQueryInfo(sql.FoundRows, li.currentPos)
+		ctx.SetLastQueryInfoInt(sql.FoundRows, li.currentPos)
 	}
 	return nil
 }

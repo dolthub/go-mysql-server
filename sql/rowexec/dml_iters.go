@@ -494,9 +494,9 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 		return nil, io.EOF
 	}
 
-	oldLastInsertId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
+	oldLastInsertId := ctx.Session.GetLastQueryInfoInt(sql.LastInsertId)
 	if oldLastInsertId != 0 {
-		ctx.Session.SetLastQueryInfo(sql.LastInsertId, -1)
+		ctx.Session.SetLastQueryInfoInt(sql.LastInsertId, -1)
 	}
 
 	// We close our child iterator before returning any results. In
@@ -526,12 +526,12 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			// UPDATE statements also set FoundRows to the number of rows that
 			// matched the WHERE clause, same as a SELECT.
 			if ma, ok := a.updateRowHandler.(matchingAccumulator); ok {
-				ctx.SetLastQueryInfo(sql.FoundRows, ma.RowsMatched())
+				ctx.SetLastQueryInfoInt(sql.FoundRows, ma.RowsMatched())
 			}
 
-			newLastInsertId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
+			newLastInsertId := ctx.Session.GetLastQueryInfoInt(sql.LastInsertId)
 			if newLastInsertId == -1 {
-				ctx.Session.SetLastQueryInfo(sql.LastInsertId, oldLastInsertId)
+				ctx.Session.SetLastQueryInfoInt(sql.LastInsertId, oldLastInsertId)
 			}
 
 			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
@@ -545,7 +545,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			}
 
 			// By definition, ROW_COUNT() is equal to RowsAffected.
-			ctx.SetLastQueryInfo(sql.RowCount, int64(res.RowsAffected))
+			ctx.SetLastQueryInfoInt(sql.RowCount, int64(res.RowsAffected))
 
 			return sql.NewRow(res), nil
 		} else if isIg {
