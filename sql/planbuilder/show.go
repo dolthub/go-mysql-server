@@ -815,7 +815,16 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 
 func (b *Builder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, err := b.Parse("select * from information_schema.engines", false)
+	infoSchemaSelect, _, _, err := b.Parse(`
+select
+    ENGINE as Engine,
+    SUPPORT as Support,
+    COMMENT as Comment,
+    TRANSACTIONS as Transactions,
+    XA as XA,
+    SAVEPOINTS as Savepoints
+from information_schema.engines
+`, false)
 	if err != nil {
 		b.handleErr(err)
 	}

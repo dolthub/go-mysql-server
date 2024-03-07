@@ -381,6 +381,32 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "Engine",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Support",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Comment",
+				Type: types.MustCreateString(sqltypes.VarChar, 80, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Transactions",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "XA",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Savepoints",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+		},
 	},
 	{
 		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
@@ -454,6 +480,32 @@ var InfoSchemaQueries = []QueryTest{
 		Query: `SELECT * FROM information_schema.ENGINES ORDER BY engine`,
 		Expected: []sql.Row{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "ENGINE",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "SUPPORT",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "COMMENT",
+				Type: types.MustCreateString(sqltypes.VarChar, 80, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "TRANSACTIONS",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "XA",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "SAVEPOINTS",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
 		},
 	},
 	{
