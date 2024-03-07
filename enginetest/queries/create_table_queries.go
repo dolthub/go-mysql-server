@@ -586,16 +586,15 @@ var CreateTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "table charset options",
-		SetUpScript: []string{
-		},
+		Name:        "table charset options",
+		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `create table t1 (i int) charset latin1`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    `show create table t1`,
+				Query: `show create table t1`,
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int\n" +
@@ -607,7 +606,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    `show create table t2`,
+				Query: `show create table t2`,
 				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
 						"  `i` int\n" +
@@ -619,7 +618,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    `show create table t3`,
+				Query: `show create table t3`,
 				Expected: []sql.Row{
 					{"t3", "CREATE TABLE `t3` (\n" +
 						"  `i` int\n" +
@@ -631,7 +630,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    `show create table t4`,
+				Query: `show create table t4`,
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
 						"  `i` int\n" +
