@@ -5557,29 +5557,20 @@ Select * from (
 
 	{
 		Query:    `SELECT JSON_QUOTE('"foo"')`,
-		Expected: []sql.Row{{`"foo"`}},
+		Expected: []sql.Row{{`"\"foo\""`}},
 	},
 	{
 		Query:    `SELECT JSON_QUOTE('[1, 2, 3]')`,
 		Expected: []sql.Row{{`"[1, 2, 3]"`}},
 	},
 	{
-		Query:    `SELECT JSON_QUOTE('"\\t\\u0032"')`,
-		Expected: []sql.Row{{`"\\t\\u0032"`}},
+		Query:    `SELECT JSON_QUOTE('"\t\u0032"')`,
+		Expected: []sql.Row{{`"\"\tu0032\""`}},
 	},
 	{
 		Query:    `SELECT JSON_QUOTE('"\t\\u0032"')`,
-		Expected: []sql.Row{{"\t2"}},
+		Expected: []sql.Row{{`"\"\t\\u0032\""`}},
 	},
-	{
-		Query:    `SELECT JSON_QUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
-		Expected: []sql.Row{{true}},
-	},
-
-
-
-
-
 	{
 		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,
 		Expected: []sql.Row{{true}},

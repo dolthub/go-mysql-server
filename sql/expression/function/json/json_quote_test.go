@@ -26,52 +26,64 @@ import (
 )
 
 func TestJSONQuote(t *testing.T) {
-	js := NewJSONQuote(expression.NewGetField(0, types.LongText, "json", false))
 	testCases := []struct {
-		row sql.Row
+		arg sql.Expression
 		exp interface{}
 		err bool
 	}{
 		{
-			row: sql.Row{nil},
+			arg: expression.NewLiteral(true, types.Boolean),
+			err: true,
+		},
+		{
+			arg: expression.NewLiteral(123, types.Int64),
+			err: true,
+		},
+		{
+			arg: expression.NewLiteral(123.0, types.Float64),
+			err: true,
+		},
+		{
+			arg: expression.NewLiteral(types.MustJSON(`{"a": 1}`), types.JSON),
+			err: true,
+		},
+		{
+			arg: expression.NewLiteral(nil, types.Null),
 			exp: nil,
-			err: false,
 		},
 		{
-			row: sql.Row{`abc`},
+			arg: expression.NewLiteral("abc", types.Text),
 			exp: `"abc"`,
-			err: false,
 		},
 		{
-			row: sql.Row{`[1, 2, 3]`},
+			arg: expression.NewLiteral(`[1, 2, 3]`, types.Text),
 			exp: `"[1, 2, 3]"`,
-			err: false,
 		},
 		{
-			row: sql.Row{`"\t\u0032"`},
+			arg: expression.NewLiteral(`"\t\u0032"`, types.Text),
 			exp: `"\"\\t\\u0032\""`,
-			err: false,
 		},
 		{
-			row: sql.Row{`\`},
+			arg: expression.NewLiteral(`\`, types.Text),
 			exp: `"\\"`,
 		},
 		{
-			row: sql.Row{`\b\f\n\r\t\"`},
+			arg: expression.NewLiteral(`\b\f\n\r\t\"`, types.Text),
 			exp: `"\\b\\f\\n\\r\\t\\\""`,
 		},
 	}
 
 	for _, tt := range testCases {
-		t.Run(fmt.Sprintf("%v", tt.row[0]), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", tt.arg), func(t *testing.T) {
 			require := require.New(t)
-			result, err := js.Eval(sql.NewEmptyContext(), tt.row)
+			js := NewJSONQuote(tt.arg)
+			res, err := js.Eval(sql.NewEmptyContext(), nil)
 			if tt.err {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
-			require.Equal(tt.exp, result)
+			require.Equal(tt.exp, res)
 		})
 	}
 }

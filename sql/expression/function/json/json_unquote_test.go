@@ -26,43 +26,58 @@ import (
 )
 
 func TestJSONUnquote(t *testing.T) {
-	js := NewJSONUnquote(expression.NewGetField(0, types.LongText, "json", false))
-
 	testCases := []struct {
-		row sql.Row
+		arg sql.Expression
 		exp interface{}
 		err bool
 	}{
 		{
-			row: sql.Row{nil},
-			exp: nil,
-		},
-		{
-			row: sql.Row{"\"abc\""},
-			exp: `abc`,
-		},
-		{
-			row: sql.Row{"[1, 2, 3]"},
-			exp: `[1, 2, 3]`,
-		},
-		{
-			row: sql.Row{`"\t\u0032"`},
-			exp: "\t2",
-		},
-		{
-			row: sql.Row{`\`},
+			arg: expression.NewLiteral(true, types.Boolean),
 			err: true,
 		},
 		{
-			row: sql.Row{`\b\f\n\r\t\"`},
+			arg: expression.NewLiteral(123, types.Int64),
+			err: true,
+		},
+		{
+			arg: expression.NewLiteral(123.0, types.Float64),
+			err: true,
+		},
+		{
+			arg: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			arg: expression.NewLiteral(types.MustJSON(`{"a": 1}`), types.JSON),
+			exp: `{"a": 1}`,
+		},
+		{
+			arg: expression.NewLiteral(`"abc"`, types.Text),
+			exp: `abc`,
+		},
+		{
+			arg: expression.NewLiteral(`"[1, 2, 3]"`, types.Text),
+			exp: `[1, 2, 3]`,
+		},
+		{
+			arg: expression.NewLiteral(`"\t\u0032"`, types.Text),
+			exp: "\t2",
+		},
+		{
+			arg: expression.NewLiteral(`\`, types.Text),
+			err: true,
+		},
+		{
+			arg: expression.NewLiteral(`\b\f\n\r\t\"`, types.Text),
 			exp: "\b\f\n\r\t\"",
 		},
 	}
 
 	for _, tt := range testCases {
-		t.Run(fmt.Sprintf("%v", tt.row[0]), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", tt.arg), func(t *testing.T) {
 			require := require.New(t)
-			result, err := js.Eval(sql.NewEmptyContext(), tt.row)
+			js := NewJSONUnquote(tt.arg)
+			result, err := js.Eval(sql.NewEmptyContext(), nil)
 			if tt.err {
 				require.Error(err)
 				return
