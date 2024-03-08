@@ -5850,6 +5850,53 @@ where
 			},
 		},
 	},
+	{
+		Name: "binary type primary key",
+		SetUpScript: []string{
+			"create table t (b binary(3) primary key);",
+			"insert into t values ('abc'), ('def'), ('ghi');",
+			"create table tt (b binary(10) primary key);",
+			"insert into tt values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select cast(b as char) from t where b < cast('def' as binary(3));",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select cast(b as char) from t where b = cast('def' as binary(3));",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select cast(b as char) from t where b > cast('def' as binary(3));",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select cast(b as char(3)) from tt where b < cast('def' as binary(10));",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select cast(b as char(3)) from tt where b = cast('def' as binary(10));",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select cast(b as char(3)) from tt where b > cast('def' as binary(10));",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

@@ -4913,8 +4913,8 @@ Select * from (
 		Expected: []sql.Row{{"10.56789"}},
 	},
 	{
-		Query:    "SELECT CAST('abcdef' as BINARY(30));",
-		Expected: []sql.Row{{[]byte("abcdef")}},
+		Query:    "SELECT CAST('abcdef' as BINARY(10));",
+		Expected: []sql.Row{{[]byte("abcdef\x00\x00\x00\x00")}},
 	},
 	{
 		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,

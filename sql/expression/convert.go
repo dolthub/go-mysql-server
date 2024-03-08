@@ -298,6 +298,9 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 			}
 			b = encodedBytes
 		}
+		if bb, ok := b.([]byte); ok && len(bb) < typeLength {
+			b = append(bb, make([]byte, typeLength-len(bb))...)
+		}
 		return truncateConvertedValue(b, typeLength)
 	case ConvertToChar, ConvertToNChar:
 		s, _, err := types.LongText.Convert(val)
