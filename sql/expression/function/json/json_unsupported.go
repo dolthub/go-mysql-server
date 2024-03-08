@@ -208,49 +208,6 @@ func (j JSONSchemaValidationReport) IsUnsupported() bool {
 // JSON utility functions //
 ////////////////////////////
 
-// JSON_PRETTY(json_val)
-//
-// JSONPretty Provides pretty-printing of JSON values similar to that implemented in PHP and by other languages and
-// database systems. The value supplied must be a JSON value or a valid string representation of a JSON value.
-// Extraneous whitespaces and newlines present in this value have no effect on the output. For a NULL value, the
-// function returns NULL. If the value is not a JSON document, or if it cannot be parsed as one, the function fails
-// with an error. Formatting of the output from this function adheres to the following rules:
-//   - Each array element or object member appears on a separate line, indented by one additional level as compared to
-//     its parent.
-//   - Each level of indentation adds two leading spaces.
-//   - A comma separating individual array elements or object members is printed before the newline that separates the
-//     two elements or members.
-//   - The key and the value of an object member are separated by a colon followed by a space (': ').
-//   - An empty object or array is printed on a single line. No space is printed between the opening and closing brace.
-//   - Special characters in string scalars and key names are escaped employing the same rules used by JSONQuote.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-utility-functions.html#function_json-pretty
-type JSONPretty struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONPretty{}
-
-// NewJSONPretty creates a new JSONPretty function.
-func NewJSONPretty(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONPretty{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONPretty) FunctionName() string {
-	return "json_pretty"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONPretty) Description() string {
-	return "prints a JSON document in human-readable format."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONPretty) IsUnsupported() bool {
-	return true
-}
-
 // JSON_STORAGE_FREE(json_val)
 //
 // JSONStorageFree For a JSON column value, this function shows how much storage space was freed in its binary
