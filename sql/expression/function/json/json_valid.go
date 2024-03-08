@@ -1,4 +1,4 @@
-// Copyright 2023 Dolthub, Inc.
+// Copyright 2023-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// JSON_VALID(val)
+// JSONValid (val)
 //
 // Returns 0 or 1 to indicate whether a value is valid JSON. Returns NULL if the argument is NULL.
 //
@@ -50,27 +50,27 @@ func (j JSONValid) Description() string {
 	return "returns whether JSON value is valid."
 }
 
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONValid) IsUnsupported() bool {
-	return false
-}
-
+// Resolved implements sql.Expressionq
 func (j JSONValid) Resolved() bool {
 	return j.JSON.Resolved()
 }
 
+// String implements sql.Expression
 func (j JSONValid) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
 }
 
+// Type implements sql.Expression
 func (j JSONValid) Type() sql.Type {
 	return types.Boolean
 }
 
+// IsNullable implements sql.Expression
 func (j JSONValid) IsNullable() bool {
 	return j.JSON.IsNullable()
 }
 
+// Eval implements sql.Expression
 func (j JSONValid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
 	if err != nil {
@@ -82,10 +82,12 @@ func (j JSONValid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return true, nil
 }
 
+// Children implements sql.Expression
 func (j JSONValid) Children() []sql.Expression {
 	return []sql.Expression{j.JSON}
 }
 
+// WithChildren implements sql.Expression
 func (j JSONValid) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_valid did not receive the correct amount of args")

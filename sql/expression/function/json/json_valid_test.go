@@ -15,7 +15,8 @@
 package json
 
 import (
-	"testing"
+	"fmt"
+"testing"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -35,7 +36,10 @@ func TestValid(t *testing.T) {
 		expected interface{}
 	}{
 		{f1, sql.Row{`null`}, true},
+		{f1, sql.Row{`true`}, true},
+		{f1, sql.Row{`false`}, true},
 		{f1, sql.Row{`1`}, true},
+		{f1, sql.Row{`123.456`}, true},
 		{f1, sql.Row{`[1]`}, true},
 		{f1, sql.Row{`"fjsadflkd"`}, true},
 		{f1, sql.Row{`[1, false]`}, true},
@@ -54,7 +58,7 @@ func TestValid(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		t.Run(tt.f.String(), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", tt.row[0]), func(t *testing.T) {
 			require := require.New(t)
 			// any error case will result in output of 'false' value
 			result, _ := tt.f.Eval(sql.NewEmptyContext(), tt.row)
