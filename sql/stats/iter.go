@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -41,6 +42,7 @@ type statsIter struct {
 	typesStr      string
 	colsStr       string
 	lowerBoundStr string
+	createdAt     time.Time
 }
 
 var _ sql.RowIter = (*statsIter)(nil)
@@ -80,6 +82,7 @@ func (s *statsIter) updateIndexMeta() {
 	s.lowerBoundStr = StringifyKey(dStat.LowerBound(), dStat.Types())
 	s.colsStr = strings.Join(dStat.Columns(), ",")
 	s.qual = dStat.Qualifier()
+	s.createdAt = dStat.CreatedAt()
 }
 
 const mcvCnt = 4
@@ -110,7 +113,7 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 		s.typesStr,
 		StringifyKey(bucket.UpperBound(), s.types),
 		uint64(bucket.BoundCount()),
-		"",
+		s.createdAt,
 		mcvs[0], mcvs[1], mcvs[2], mcvs[3],
 		mcvCntB.String(),
 	}, nil
