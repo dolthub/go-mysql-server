@@ -5936,9 +5936,9 @@ where
 					{"ghi"},
 				},
 			},
-			
+
 			{
-				Query: "select * from vt where v = 'defdef';",
+				Query:    "select * from vt where v = 'defdef';",
 				Expected: []sql.Row{},
 			},
 			{
@@ -5968,17 +5968,16 @@ where
 				},
 			},
 
-
 			// MySQL behavior around null bytes is strange
 			{
-				Skip: true,
+				Skip:  true,
 				Query: `select * from vt where v = 'def\0\0';`,
 				Expected: []sql.Row{
 					{"def"},
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: `select * from vt where v < 'def\0\0';`,
 				Expected: []sql.Row{
 					{"abc"},
@@ -5998,7 +5997,7 @@ where
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: `select * from vt where v >= 'def\0\0';`,
 				Expected: []sql.Row{
 					{"def"},
