@@ -5897,6 +5897,116 @@ where
 			},
 		},
 	},
+	{
+		Name: "index lookup length shouldn't matter",
+		SetUpScript: []string{
+			"create table vt (v varchar(3) primary key);",
+			"insert into vt values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from vt where v = 'def';",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v < 'def';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select * from vt where v > 'def';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select * from vt where v <= 'def';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v >= 'def';",
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
+			
+			{
+				Query: "select * from vt where v = 'defdef';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from vt where v < 'defdef';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v > 'defdef';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select * from vt where v <= 'defdef';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v >= 'defdef';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+
+
+			// MySQL behavior around null bytes is strange
+			{
+				Skip: true,
+				Query: `select * from vt where v = 'def\0\0';`,
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Skip: true,
+				Query: `select * from vt where v < 'def\0\0';`,
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: `select * from vt where v > 'def\0\0';`,
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: `select * from vt where v <= 'def\0\0';`,
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Skip: true,
+				Query: `select * from vt where v >= 'def\0\0';`,
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
