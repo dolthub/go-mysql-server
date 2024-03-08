@@ -15,13 +15,13 @@
 package json
 
 import (
-		"github.com/dolthub/go-mysql-server/sql/expression"
-"testing"
+	"testing"
 
+	"github.com/stretchr/testify/require"
 
-"github.com/dolthub/go-mysql-server/sql"
-"github.com/dolthub/go-mysql-server/sql/types"
-"github.com/stretchr/testify/require"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONPretty(t *testing.T) {
@@ -38,7 +38,6 @@ func TestJSONPretty(t *testing.T) {
 			arg: expression.NewLiteral(`badjson`, types.Text),
 			err: true,
 		},
-
 
 		{
 			arg: expression.NewLiteral(nil, types.Null),
@@ -79,8 +78,7 @@ func TestJSONPretty(t *testing.T) {
 		},
 		{
 			arg: expression.NewLiteral(`[1,3,5]`, types.Text),
-			exp:
-`[
+			exp: `[
   1,
   3,
   5
@@ -88,8 +86,7 @@ func TestJSONPretty(t *testing.T) {
 		},
 		{
 			arg: expression.NewLiteral(`["a",1,{"key1": "value1"},"5",     "77" , {"key2":["value3","valueX", "valueY"]},"j", "2"   ]`, types.Text),
-			exp:
-`[
+			exp: `[
   "a",
   1,
   {
@@ -124,4 +121,3 @@ func TestJSONPretty(t *testing.T) {
 		})
 	}
 }
-
