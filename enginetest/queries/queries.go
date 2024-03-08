@@ -1770,22 +1770,22 @@ Select * from (
 		Query: `select json_pretty(c3) from jsontable`,
 		Expected: []sql.Row{
 			{
-`{
+				`{
   "a": 2
 }`,
 			},
 			{
-`{
+				`{
   "b": 2
 }`,
 			},
 			{
-`{
+				`{
   "c": 2
 }`,
 			},
 			{
-`{
+				`{
   "d": 2
 }`,
 			},
@@ -1795,7 +1795,7 @@ Select * from (
 		Query: `select json_pretty(json_object("id", 1, "name", "test"));`,
 		Expected: []sql.Row{
 			{
-`{
+				`{
   "id": 1,
   "name": "test"
 }`,
