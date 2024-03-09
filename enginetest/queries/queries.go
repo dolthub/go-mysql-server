@@ -1767,6 +1767,42 @@ Select * from (
 		},
 	},
 	{
+		Query: `select json_pretty(c3) from jsontable`,
+		Expected: []sql.Row{
+			{
+				`{
+  "a": 2
+}`,
+			},
+			{
+				`{
+  "b": 2
+}`,
+			},
+			{
+				`{
+  "c": 2
+}`,
+			},
+			{
+				`{
+  "d": 2
+}`,
+			},
+		},
+	},
+	{
+		Query: `select json_pretty(json_object("id", 1, "name", "test"));`,
+		Expected: []sql.Row{
+			{
+				`{
+  "id": 1,
+  "name": "test"
+}`,
+			},
+		},
+	},
+	{
 		Query: `SELECT column_0, sum(column_1) FROM
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 order by 1`,
