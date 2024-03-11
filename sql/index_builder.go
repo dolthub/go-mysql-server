@@ -44,8 +44,12 @@ func NewIndexBuilder(idx Index) *IndexBuilder {
 	colExprTypes := make(map[string]Type)
 	ranges := make(map[string][]RangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes() {
-		colExprTypes[strings.ToLower(cet.Expression)] = cet.Type
-		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
+		typ := cet.Type
+		if _, ok := typ.(StringType); ok {
+			typ = typ.Promote()
+		}
+		colExprTypes[strings.ToLower(cet.Expression)] = typ
+		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(typ)}
 	}
 	return &IndexBuilder{
 		idx:          idx,
@@ -128,13 +132,14 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 			}
 		}
 
-		res, _, err := typ.Convert(k)
+		var err error
+		k, _, err = typ.Convert(k)
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
 			return b
 		}
-		potentialRanges[i] = ClosedRangeColumnExpr(res, res, typ)
+		potentialRanges[i] = ClosedRangeColumnExpr(k, k, typ)
 	}
 	b.updateCol(ctx, colExpr, potentialRanges...)
 	return b
@@ -151,7 +156,6 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-
 	// if converting from float to int results in rounding, then it's entire range (excluding nulls)
 	f, c := floor(key), ceil(key)
 	switch key.(type) {
@@ -275,7 +279,6 @@ func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		key = ceil(key)
 	}
-
 	key, _, err := typ.Convert(key)
 	if err != nil {
 		b.isInvalid = true
@@ -371,7 +374,11 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		cets := b.idx.ColumnExpressionTypes()
 		emptyRange := make(Range, len(cets))
 		for i, cet := range cets {
-			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+			typ := cet.Type
+			if _, ok := typ.(StringType); ok {
+				typ = typ.Promote()
+			}
+			emptyRange[i] = EmptyRangeColumnExpr(typ)
 		}
 		return RangeCollection{emptyRange}
 	}
@@ -421,7 +428,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		cets := b.idx.ColumnExpressionTypes()
 		emptyRange := make(Range, len(cets))
 		for i, cet := range cets {
-			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
 		}
 		return RangeCollection{emptyRange}
 	}

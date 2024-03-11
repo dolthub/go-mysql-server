@@ -5931,6 +5931,257 @@ where
 			},
 		},
 	},
+	{
+		Name: "varchar primary key",
+		SetUpScript: []string{
+			"create table vt (v varchar(3) primary key);",
+			"insert into vt values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from vt where v = 'def';",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v < 'def';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select * from vt where v > 'def';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select * from vt where v <= 'def';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v >= 'def';",
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
+
+			{
+				Query:    "select * from vt where v = 'defdef';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from vt where v < 'defdef';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v > 'defdef';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select * from vt where v <= 'defdef';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v >= 'defdef';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+
+			// MySQL behavior around null bytes is strange
+			{
+				Skip:  true,
+				Query: `select * from vt where v = 'def\0\0';`,
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: `select * from vt where v < 'def\0\0';`,
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: `select * from vt where v > 'def\0\0';`,
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: `select * from vt where v <= 'def\0\0';`,
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: `select * from vt where v >= 'def\0\0';`,
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
+
+			{
+				Query: "select * from vt where v = cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v < cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select * from vt where v > cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select * from vt where v <= cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v >= cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
+		},
+	},
+	{
+		Name: "varbinary primary key",
+		SetUpScript: []string{
+			"create table vt (v varbinary(3) primary key);",
+			"insert into vt values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select cast(v as char(3)) from vt where v = 'def';",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v < 'def';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v > 'def';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v <= 'def';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v >= 'def';",
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
+
+			{
+				Query:    "select cast(v as char(3)) from vt where v = 'defdef';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v < 'defdef';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v > 'defdef';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v <= 'defdef';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select cast(v as char(3)) from vt where v >= 'defdef';",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+
+			// MySQL behavior around null bytes is strange
+			{
+				Skip:  true,
+				Query: `select cast(v as char(3)) from vt where v = 'def\0\0';`,
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: `select cast(v as char(3)) from vt where v < 'def\0\0';`,
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: `select cast(v as char(3)) from vt where v > 'def\0\0';`,
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: `select cast(v as char(3)) from vt where v <= 'def\0\0';`,
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: `select cast(v as char(3)) from vt where v >= 'def\0\0';`,
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
