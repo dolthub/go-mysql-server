@@ -15,7 +15,6 @@
 package aggregation
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -24,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestGroupConcat_FunctionName(t *testing.T) {
