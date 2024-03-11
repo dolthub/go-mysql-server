@@ -44,8 +44,8 @@ func NewIndexBuilder(idx Index) *IndexBuilder {
 	colExprTypes := make(map[string]Type)
 	ranges := make(map[string][]RangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes() {
-		colExprTypes[strings.ToLower(cet.Expression)] = cet.Type
-		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
+		colExprTypes[strings.ToLower(cet.Expression)] = cet.Type.Promote()
+		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type.Promote())}
 	}
 	return &IndexBuilder{
 		idx:          idx,
@@ -376,7 +376,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		cets := b.idx.ColumnExpressionTypes()
 		emptyRange := make(Range, len(cets))
 		for i, cet := range cets {
-			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
 		}
 		return RangeCollection{emptyRange}
 	}
@@ -426,7 +426,7 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		cets := b.idx.ColumnExpressionTypes()
 		emptyRange := make(Range, len(cets))
 		for i, cet := range cets {
-			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
 		}
 		return RangeCollection{emptyRange}
 	}
