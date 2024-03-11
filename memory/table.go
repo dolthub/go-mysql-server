@@ -971,6 +971,7 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	tableData := tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
 	tableUnderEdit.data = tableData
 
+	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
 	uniqIdxCols, prefixLengths := tableData.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:   tableUnderEdit,

@@ -1767,6 +1767,42 @@ Select * from (
 		},
 	},
 	{
+		Query: `select json_pretty(c3) from jsontable`,
+		Expected: []sql.Row{
+			{
+				`{
+  "a": 2
+}`,
+			},
+			{
+				`{
+  "b": 2
+}`,
+			},
+			{
+				`{
+  "c": 2
+}`,
+			},
+			{
+				`{
+  "d": 2
+}`,
+			},
+		},
+	},
+	{
+		Query: `select json_pretty(json_object("id", 1, "name", "test"));`,
+		Expected: []sql.Row{
+			{
+				`{
+  "id": 1,
+  "name": "test"
+}`,
+			},
+		},
+	},
+	{
 		Query: `SELECT column_0, sum(column_1) FROM
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 order by 1`,
@@ -5553,6 +5589,23 @@ Select * from (
 	{
 		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
 		Expected: []sql.Row{{true}},
+	},
+
+	{
+		Query:    `SELECT JSON_QUOTE('"foo"')`,
+		Expected: []sql.Row{{`"\"foo\""`}},
+	},
+	{
+		Query:    `SELECT JSON_QUOTE('[1, 2, 3]')`,
+		Expected: []sql.Row{{`"[1, 2, 3]"`}},
+	},
+	{
+		Query:    `SELECT JSON_QUOTE('"\t\u0032"')`,
+		Expected: []sql.Row{{`"\"\tu0032\""`}},
+	},
+	{
+		Query:    `SELECT JSON_QUOTE('"\t\\u0032"')`,
+		Expected: []sql.Row{{`"\"\t\\u0032\""`}},
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,

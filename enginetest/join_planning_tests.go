@@ -1693,6 +1693,25 @@ join uv d on d.u = c.x`,
 			},
 		},
 	},
+	{
+		name: "straight_join is inner join",
+		setup: []string{
+			"create table t1 (i int)",
+			"create table t2 (j int)",
+			"insert into t1 values (1), (2), (3)",
+			"insert into t2 values (2), (3), (4)",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from t1 straight_join t2 on i = j",
+				types: []plan.JoinType{plan.JoinTypeInner},
+				exp: []sql.Row{
+					{2, 2},
+					{3, 3},
+				},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {
