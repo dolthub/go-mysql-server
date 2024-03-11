@@ -7,6 +7,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 var _ sql.DatabaseProvider = (*DbProvider)(nil)
@@ -32,6 +33,10 @@ func NewDBProvider(dbs ...sql.Database) *DbProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db
+	}
+
+	if sql.SystemVariables == nil {
+		variables.InitSystemVariables()
 	}
 
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()

@@ -67,6 +67,9 @@ var _ ServerHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitializer IndexDriverInitializer) *MemoryHarness {
+	// We initialize it here because some tests do not create/use engine.
+	variables.InitSystemVariables()
+
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range memory.ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
@@ -76,9 +79,6 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 	if _, ok := os.LookupEnv("SERVER_ENGINE_TEST"); ok {
 		useServer = true
 	}
-
-	// We initialize it here because some tests do not create/use engine.
-	variables.InitSystemVariables()
 
 	return &MemoryHarness{
 		name:                      name,
