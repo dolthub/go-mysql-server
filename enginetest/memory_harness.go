@@ -17,7 +17,6 @@ package enginetest
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"os"
 	"strings"
 	"sync"
@@ -31,6 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const testNumPartitions = 5
