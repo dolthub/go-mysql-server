@@ -6004,6 +6004,39 @@ where
 					{"ghi"},
 				},
 			},
+
+			{
+				Query: "select * from vt where v = cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v < cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select * from vt where v > cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"ghi"},
+				},
+			},
+			{
+				Query: "select * from vt where v <= cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select * from vt where v >= cast('def' as char(6));",
+				Expected: []sql.Row{
+					{"def"},
+					{"ghi"},
+				},
+			},
 		},
 	},
 	{
