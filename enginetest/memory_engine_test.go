@@ -202,44 +202,17 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
+			Name: "delete me",
 			SetUpScript: []string{
-				"create table t (pk int primary key, col1 int as (pk + 1));",
-				"insert into t (pk) values (1), (3)",
-				"alter table t add index idx1 (col1, pk);",
-				"alter table t add index idx2 (col1);",
-				"alter table t add column col2 int;",
-				"alter table t add column col3 int;",
-				"insert into t (pk, col2, col3) values (2, 4, 5);",
+				"create table t (i int, t1 varchar(255), t2 mediumtext, unique key(i), fulltext key (t1), fulltext key (t2));",
+				"insert into t values (0, 'abc', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t order by pk",
+					Query: "replace into t values (0, 'abc', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
-						{2, 3, 4, 5},
-						{3, 4, nil, nil},
-					},
-				},
-				{
-					Query: "select * from t where col1 = 2",
-					Expected: []sql.Row{
-						{1, 2, nil, nil},
-					},
-				},
-				{
-					Query: "select * from t where col1 = 3 and pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
-					},
-				},
-				{
-					Query: "select * from t where pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
 					},
 				},
 			},
@@ -253,8 +226,6 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
