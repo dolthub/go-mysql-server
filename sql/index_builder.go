@@ -44,8 +44,12 @@ func NewIndexBuilder(idx Index) *IndexBuilder {
 	colExprTypes := make(map[string]Type)
 	ranges := make(map[string][]RangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes() {
-		colExprTypes[strings.ToLower(cet.Expression)] = cet.Type.Promote()
-		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type.Promote())}
+		typ := cet.Type
+		if _, ok := typ.(StringType); ok {
+			typ = typ.Promote()
+		}
+		colExprTypes[strings.ToLower(cet.Expression)] = typ
+		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(typ)}
 	}
 	return &IndexBuilder{
 		idx:          idx,
@@ -109,7 +113,6 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	typ = typ.Promote()
 	potentialRanges := make([]RangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
@@ -153,7 +156,6 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	typ = typ.Promote()
 	// if converting from float to int results in rounding, then it's entire range (excluding nulls)
 	f, c := floor(key), ceil(key)
 	switch key.(type) {
@@ -205,7 +207,6 @@ func (b *IndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}
 		return b
 	}
 
-	typ = typ.Promote()
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		key = floor(key)
 	}
@@ -233,7 +234,6 @@ func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interfac
 		return b
 	}
 
-	typ = typ.Promote()
 	var exclude bool
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		newKey := floor(key)
@@ -276,7 +276,6 @@ func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *
 		return b
 	}
 
-	typ = typ.Promote()
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		key = ceil(key)
 	}
@@ -303,7 +302,6 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 		return b
 	}
 
-	typ = typ.Promote()
 	var exclude bool
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		newKey := ceil(key)
