@@ -374,7 +374,11 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 		cets := b.idx.ColumnExpressionTypes()
 		emptyRange := make(Range, len(cets))
 		for i, cet := range cets {
-			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
+			typ := cet.Type
+			if _, ok := typ.(StringType); ok {
+				typ = typ.Promote()
+			}
+			emptyRange[i] = EmptyRangeColumnExpr(typ)
 		}
 		return RangeCollection{emptyRange}
 	}
