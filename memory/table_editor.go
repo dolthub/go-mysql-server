@@ -178,10 +178,11 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	idx := t.editedTable.data.autoColIdx
+	// todo could peek into internals, not use editedTable t.ea.(*pkTableEditAccumulator).tableData
+	idx := t.ea.TableData().autoColIdx
 	if idx >= 0 {
-		autoCol := t.editedTable.data.schema.Schema[idx]
-		cmp, err := autoCol.Type.Compare(row[idx], t.editedTable.data.autoIncVal)
+		autoCol := t.ea.TableData().schema.Schema[idx]
+		cmp, err := autoCol.Type.Compare(row[idx], t.ea.TableData().autoIncVal)
 		if err != nil {
 			return err
 		}
@@ -191,11 +192,11 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			if err != nil {
 				return err
 			}
-			t.editedTable.data.autoIncVal = v.(uint64)
-			t.editedTable.data.autoIncVal++ // Move onto next autoIncVal
+			t.ea.TableData().autoIncVal = v.(uint64)
+			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
 		} else if cmp == 0 {
 			// Provided value equal to autoIncVal
-			t.editedTable.data.autoIncVal++ // Move onto next autoIncVal
+			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
 		}
 	}
 
@@ -372,6 +373,9 @@ type tableEditAccumulator interface {
 	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
 	Clear()
+	// TableData exposes the session table data for this accumulator. Currently used for mutating
+	// autoincrement in a way that will track row changes.
+	TableData() *TableData
 }
 
 // newTableEditAccumulator returns a tableEditAccumulator based on the schema.
@@ -399,6 +403,10 @@ type pkTableEditAccumulator struct {
 }
 
 var _ tableEditAccumulator = (*pkTableEditAccumulator)(nil)
+
+func (pke *pkTableEditAccumulator) TableData() *TableData {
+	return pke.tableData
+}
 
 // Insert implements the tableEditAccumulator interface.
 func (pke *pkTableEditAccumulator) Insert(value sql.Row) error {
@@ -649,6 +657,10 @@ type keylessTableEditAccumulator struct {
 }
 
 var _ tableEditAccumulator = (*keylessTableEditAccumulator)(nil)
+
+func (k *keylessTableEditAccumulator) TableData() *TableData {
+	return k.tableData
+}
 
 // Insert implements the tableEditAccumulator interface.
 func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
