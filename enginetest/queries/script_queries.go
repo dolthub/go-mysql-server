@@ -122,6 +122,40 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "GMS issue 2369",
+		SetUpScript: []string{
+			`CREATE TABLE table1 (
+	id int NOT NULL AUTO_INCREMENT,
+	name text,
+	parentId int DEFAULT NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT myConstraint FOREIGN KEY (parentId) REFERENCES table1 (id) ON DELETE CASCADE
+)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO table1 (name, parentId) VALUES ('tbl1 row 1', NULL);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "INSERT INTO table1 (name, parentId) VALUES ('tbl1 row 2', 1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				Query:    "INSERT INTO table1 (name, parentId) VALUES ('tbl1 row 3', NULL);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
+			},
+			{
+				Query: "select * from table1",
+				Expected: []sql.Row{
+					{1, "tbl1 row 1", nil},
+					{2, "tbl1 row 2", 1},
+					{3, "tbl1 row 3", nil},
+				},
+			},
+		},
+	},
+	{
 		Name: "GMS issue 2349",
 		SetUpScript: []string{
 			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
