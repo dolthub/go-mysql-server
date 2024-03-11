@@ -1191,6 +1191,10 @@ var FulltextTests = []ScriptTest{
 				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
 				Expected: []sql.Row{},
 			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{},
+			},
 		},
 	},
 }
