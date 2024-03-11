@@ -68,7 +68,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 			}
 			return val, nil
 		}
-	case sql.SystemVariableScope_Global:
+	case sql.SystemVariableScope_Global, sql.PostgresConfigParamScope_Session:
 		_, val, ok := sql.SystemVariables.GetGlobal(v.Name)
 		if !ok {
 			return nil, sql.ErrUnknownSystemVariable.New(v.Name)
@@ -82,7 +82,7 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type() sql.Type {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.VarType()
+		return sysVar.GetType()
 	}
 	return types.Null
 }
@@ -105,6 +105,9 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
+	if v.Scope == sql.PostgresConfigParamScope_Session {
+		return v.Name
+	}
 	// If the scope wasn't explicitly provided, then don't include it in the string representation
 	if v.SpecifiedScope == "" {
 		return fmt.Sprintf("@@%s", v.Name)

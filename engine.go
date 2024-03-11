@@ -37,7 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	_ "github.com/dolthub/go-mysql-server/sql/variables"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const experimentalFlag = "GMS_EXPERIMENTAL"
@@ -159,6 +159,10 @@ type ColumnWithRawDefault struct {
 func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	if cfg == nil {
 		cfg = &Config{}
+	}
+
+	if sql.SystemVariables == nil {
+		variables.InitSystemVariables()
 	}
 
 	if cfg.IncludeRootAccount {

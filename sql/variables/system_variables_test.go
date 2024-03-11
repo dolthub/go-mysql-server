@@ -98,7 +98,7 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			sql.SystemVariables.AddSystemVariables(test.persistedGlobals)
 
 			for i, sysVar := range test.persistedGlobals {
-				cmp, _, _ := sql.SystemVariables.GetGlobal(sysVar.VarName())
+				cmp, _, _ := sql.SystemVariables.GetGlobal(sysVar.GetName())
 				assert.Equal(t, test.expectedCmp[i], cmp)
 			}
 		})

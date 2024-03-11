@@ -52,7 +52,7 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 	defer sv.mutex.Unlock()
 	for _, originalSysVar := range sysVars {
 		sysVar := originalSysVar
-		lowerName := strings.ToLower(sysVar.VarName())
+		lowerName := strings.ToLower(sysVar.GetName())
 		sysVar.SetName(lowerName)
 		systemVars[lowerName] = sysVar
 		sv.sysVarVals[lowerName] = sql.SystemVarValue{
@@ -74,19 +74,9 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
-		convertedVal, _, err := sysVar.VarType().Convert(val)
+		svv, err := sysVar.AssignValue(val)
 		if err != nil {
 			return err
-		}
-		svv := sql.SystemVarValue{
-			Var: sysVar,
-			Val: convertedVal,
-		}
-		if v, ok := sysVar.(*sql.SystemVariable); ok && v.NotifyChanged != nil {
-			err := v.NotifyChanged(sql.SystemVariableScope_Global, svv)
-			if err != nil {
-				return err
-			}
 		}
 		sv.sysVarVals[varName] = svv
 	}
@@ -115,8 +105,9 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInter
 		return nil, nil, false
 	}
 
-	if sysVar, ok := v.(*sql.SystemVariable); ok && sysVar.ValueFunction != nil {
-		result, err := sysVar.ValueFunction()
+	// should always be SystemVariable
+	if systemVar, isOk := v.(*sql.SystemVariable); isOk && systemVar.ValueFunction != nil {
+		result, err := systemVar.ValueFunction()
 		if err != nil {
 			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", name, err.Error())
 			return v, nil, true
@@ -126,7 +117,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInter
 
 	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
-	if sysType, ok := v.VarType().(sql.SetType); ok {
+	if sysType, ok := v.GetType().(sql.SetType); ok {
 		if sv, ok := sysVal.Val.(uint64); ok {
 			var err error
 			sysVal.Val, err = sysType.BitsToString(sv)
@@ -138,6 +129,11 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInter
 	return v, sysVal.Val, true
 }
 
+// DatabaseType is used to identify the system variables are from mysql db.
+func (sv *globalSystemVariables) DatabaseType() string {
+	return "mysql"
+}
+
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,
 // then an error is returned. Additionally, if the value is invalid for the variable's type then an error is returned.
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
@@ -147,31 +143,13 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	name = strings.ToLower(name)
-	sysVarI, ok := systemVars[name]
+	sysVar, ok := systemVars[name]
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
-	sysVar, ok := sysVarI.(*sql.SystemVariable)
-	if !ok {
-		// TODO: fix
-		return nil
-	}
-	if sysVar.Scope == sql.SystemVariableScope_Session {
-		return sql.ErrSystemVariableSessionOnly.New(name)
-	}
-	if !sysVar.Dynamic || sysVar.ValueFunction != nil {
-		return sql.ErrSystemVariableReadOnly.New(name)
-	}
-	convertedVal, _, err := sysVar.Type.Convert(val)
+	svv, err := sysVar.SetValue(val, true)
 	if err != nil {
 		return err
-	}
-	svv := sql.SystemVarValue{Var: sysVar, Val: convertedVal}
-	if sysVar.NotifyChanged != nil {
-		err := sysVar.NotifyChanged(sql.SystemVariableScope_Global, svv)
-		if err != nil {
-			return err
-		}
 	}
 	sv.sysVarVals[name] = svv
 	return nil
@@ -197,7 +175,7 @@ func InitSystemVariables() {
 		sysVarVals: make(map[string]sql.SystemVarValue, len(systemVars)),
 	}
 	for _, sysVar := range systemVars {
-		vars.sysVarVals[sysVar.VarName()] = sql.SystemVarValue{
+		vars.sysVarVals[sysVar.GetName()] = sql.SystemVarValue{
 			Var: sysVar,
 			Val: sysVar.GetDefault(),
 		}
@@ -207,10 +185,10 @@ func InitSystemVariables() {
 
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
-func init() {
-	// This overwrites the global system variables in GMS. Initializing it both here and in GMS needs to be fixed.
-	InitSystemVariables()
-}
+//func init() {
+//	// This overwrites the global system variables in GMS. Initializing it both here and in GMS needs to be fixed.
+//	InitSystemVariables()
+//}
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
@@ -788,7 +766,7 @@ var systemVars = map[string]sql.SystemVariableInterface{
 		Type:              types.NewSystemEnumType("event_scheduler", "ON", "OFF", "DISABLED"),
 		Default:           "ON",
 		NotifyChanged: func(scope sql.SystemVariableScope, value sql.SystemVarValue) error {
-			convertedVal, _, err := value.Var.VarType().Convert(value.Val)
+			convertedVal, _, err := value.Var.GetType().Convert(value.Val)
 			if err == nil {
 				// TODO: need to update EventScheduler state at runtime if applicable
 				s := strings.ToLower(convertedVal.(string))

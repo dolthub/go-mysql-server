@@ -123,7 +123,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	for k, v := range s.systemVars {
-		if sysType, ok := v.Var.VarType().(SetType); ok {
+		if sysType, ok := v.Var.GetType().(SetType); ok {
 			if sv, ok := v.Val.(uint64); ok {
 				if svStr, err := sysType.BitsToString(sv); err == nil {
 					m[k] = svStr
@@ -169,7 +169,7 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
 
-	val, ok := s.systemVars[sysVar.VarName()]
+	val, ok := s.systemVars[sysVar.GetName()]
 	if ok && val.Val != sysVar.GetDefault() {
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
@@ -181,7 +181,7 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariableInterface, v
 	if sv, ok := sysVar.(*SystemVariable); ok && sv.Scope == SystemVariableScope_Global {
 		return ErrSystemVariableGlobalOnly.New(sv.Name)
 	}
-	convertedVal, _, err := sysVar.VarType().Convert(value)
+	convertedVal, _, err := sysVar.GetType().Convert(value)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariableInterface, v
 			return err
 		}
 	}
-	s.systemVars[sysVar.VarName()] = svv
+	s.systemVars[sysVar.GetName()] = svv
 	return nil
 }
 
@@ -218,7 +218,7 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
 	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
-	if sysType, ok := sysVar.Var.VarType().(SetType); ok {
+	if sysType, ok := sysVar.Var.GetType().(SetType); ok {
 		if sv, ok := sysVar.Val.(uint64); ok {
 			return sysType.BitsToString(sv)
 		}

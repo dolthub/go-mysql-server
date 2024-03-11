@@ -374,15 +374,23 @@ type SystemVariableRegistry interface {
 	SetGlobal(name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
+	// DatabaseType returns the name of database type. E.g. "mysql" or "postgres"
+	DatabaseType() string
 }
 
 type SystemVariableInterface interface {
-	VarName() string
+	GetName() string
 	SetName(string) // TODO: it should not happen, but we set the name to lower-case string
-	VarType() Type
+	GetType() Type
 	SetDefault(any)
 	GetDefault() any
 	HasDefaultValue(any) bool
+	// AssignValue sets value without validation.
+	// This is used for setting the initial values using pre-defined variables or for test-purposes.
+	AssignValue(val any) (SystemVarValue, error)
+	// SetValue set the value with validation such as read-only.
+	// This should be used when variables are set using statements.
+	SetValue(val any, global bool) (SystemVarValue, error)
 }
 
 var _ SystemVariableInterface = (*SystemVariable)(nil)
@@ -422,11 +430,7 @@ type SystemVariable struct {
 	ValueFunction func() (interface{}, error)
 }
 
-func (s *SystemVariable) HasDefaultValue(a any) bool {
-	return s.Default == a
-}
-
-func (s *SystemVariable) VarName() string {
+func (s *SystemVariable) GetName() string {
 	return s.Name
 }
 
@@ -434,15 +438,49 @@ func (s *SystemVariable) SetName(n string) {
 	s.Name = n
 }
 
-func (s *SystemVariable) VarType() Type {
+func (s *SystemVariable) GetType() Type {
 	return s.Type
 }
 
 func (s *SystemVariable) SetDefault(a any) {
+	s.Default = a
 }
 
 func (s *SystemVariable) GetDefault() any {
 	return s.Default
+}
+
+func (s *SystemVariable) HasDefaultValue(a any) bool {
+	return s.Default == a
+}
+
+// AssignValue does not check for read-only.
+func (s *SystemVariable) AssignValue(val any) (SystemVarValue, error) {
+	convertedVal, _, err := s.Type.Convert(val)
+	if err != nil {
+		return SystemVarValue{}, err
+	}
+	svv := SystemVarValue{
+		Var: s,
+		Val: convertedVal,
+	}
+	if s.NotifyChanged != nil {
+		err = s.NotifyChanged(SystemVariableScope_Global, svv)
+		if err != nil {
+			return SystemVarValue{}, err
+		}
+	}
+	return svv, nil
+}
+
+func (s *SystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
+	if global && s.Scope == SystemVariableScope_Session {
+		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(s.Name)
+	}
+	if !s.Dynamic || s.ValueFunction != nil {
+		return SystemVarValue{}, ErrSystemVariableReadOnly.New(s.Name)
+	}
+	return s.AssignValue(val)
 }
 
 // SystemVariableScope represents the scope of a system variable.
@@ -481,6 +519,8 @@ func (s SystemVariableScope) String() string {
 		return "RESET PERSIST"
 	case SystemVariableScope_Both:
 		return "GLOBAL, SESSION"
+	case PostgresConfigParamScope_Session:
+		return "POSTGRES SESSION"
 	default:
 		return "UNKNOWN_SYSTEM_SCOPE"
 	}
