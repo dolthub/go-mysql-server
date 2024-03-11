@@ -164,7 +164,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	if sql.SystemVariables == nil {
 		variables.InitSystemVariables()
 	}
-
 	if cfg.IncludeRootAccount {
 		a.Catalog.MySQLDb.AddRootAccount()
 	}

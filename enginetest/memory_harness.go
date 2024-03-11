@@ -30,7 +30,6 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const testNumPartitions = 5
@@ -67,9 +66,6 @@ var _ ServerHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitializer IndexDriverInitializer) *MemoryHarness {
-	// We initialize it here because some tests do not create/use engine.
-	variables.InitSystemVariables()
-
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range memory.ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)

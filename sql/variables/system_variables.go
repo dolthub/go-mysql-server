@@ -118,9 +118,9 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInter
 	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
 	if sysType, ok := v.GetType().(sql.SetType); ok {
-		if sv, ok := sysVal.Val.(uint64); ok {
+		if setTypeVal, ok := sysVal.Val.(uint64); ok {
 			var err error
-			sysVal.Val, err = sysType.BitsToString(sv)
+			sysVal.Val, err = sysType.BitsToString(setTypeVal)
 			if err != nil {
 				return nil, nil, false
 			}
