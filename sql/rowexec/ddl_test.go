@@ -71,9 +71,9 @@ func TestDropTable(t *testing.T) {
 		{Name: "c2", Type: types.Int32},
 	})
 
-	require.NoError(createTable(t, ctx, db, "testTable1", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
-	require.NoError(createTable(t, ctx, db, "testTable2", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
-	require.NoError(createTable(t, ctx, db, "testTable3", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
+	require.NoError(createTable(t, ctx, db, "testTable1", s, false, false))
+	require.NoError(createTable(t, ctx, db, "testTable2", s, false, false))
+	require.NoError(createTable(t, ctx, db, "testTable3", s, false, false))
 
 	d := plan.NewDropTable([]sql.Node{
 		plan.NewResolvedTable(memory.NewTable(db.BaseDatabase, "testTable1", s, db.GetForeignKeyCollection()), db, nil),
