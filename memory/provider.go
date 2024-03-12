@@ -1,10 +1,11 @@
 package memory
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/variables"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
