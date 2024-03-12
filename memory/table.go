@@ -971,6 +971,7 @@ func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql
 	tableData := tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
 	tableUnderEdit.data = tableData
 
+	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
 	uniqIdxCols, prefixLengths := tableData.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
 		editedTable:   tableUnderEdit,
@@ -1906,8 +1907,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		}
 	}
 	if data.indexes[name] != nil {
-		// TODO: extract a standard error type for this
-		return nil, fmt.Errorf("Error: index already exists")
+		return nil, sql.ErrDuplicateKey.New(name)
 	}
 
 	exprs := make([]sql.Expression, len(columns))

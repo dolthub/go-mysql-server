@@ -869,7 +869,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		maybePrivDb = privDb.Unwrap()
 	}
 
-	if n.Temporary() == plan.IsTempTable {
+	if n.Temporary() {
 		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
@@ -911,7 +911,12 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (n.IfNotExists() == plan.IfNotExists)) {
+	tableExists := sql.ErrTableAlreadyExists.Is(err)
+	if tableExists && n.IfNotExists() {
+		return rowIterWithOkResultWithZeroRowsAffected(), nil
+	}
+
+	if err != nil {
 		return sql.RowsToRowIter(), err
 	}
 

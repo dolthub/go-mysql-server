@@ -784,7 +784,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			return false
 		case *plan.CreateTable:
 			// MySQL explicitly blocks the creation of temporary tables in a read only transaction.
-			if n.Temporary() == plan.IsTempTable {
+			if n.Temporary() {
 				valid = false
 			}
 
