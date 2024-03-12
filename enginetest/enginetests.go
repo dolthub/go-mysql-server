@@ -18,6 +18,7 @@ import (
 	"context"
 	dsql "database/sql"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"io"
 	"net"
 	"os"
@@ -4773,11 +4774,12 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 
 	harness.Setup(setup.MydbData, setup.MytableData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
-			defer e.Close()
+			variables.InitSystemVariables()
 			ctx := NewContext(harness)
 			ctx.Session = newPersistableSess(ctx)
 

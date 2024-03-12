@@ -160,7 +160,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-
+	// TODO: dbProviders call initSystemVariables first -- > maybe it's correct.
+	// In terms of Dolt and Doltgres, the system variables should initialize it there.
 	if sql.SystemVariables == nil {
 		variables.InitSystemVariables()
 	}
