@@ -23,12 +23,15 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	_ "github.com/dolthub/go-mysql-server/sql/variables"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func newPersistedSqlContext() *sql.Context {
 	ctx, _ := context.WithCancel(context.TODO())
 	pro := NewDBProvider()
+	if sql.SystemVariables == nil {
+		variables.InitSystemVariables()
+	}
 	sess := sql.NewBaseSession()
 
 	persistedGlobals := GlobalsMap{"max_connections": 1000, "net_read_timeout": 1000, "auto_increment_increment": 123}
