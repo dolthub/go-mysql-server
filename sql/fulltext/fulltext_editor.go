@@ -287,6 +287,9 @@ func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			}
 			word, reachedTheEnd, err := parser.NextUnique(ctx)
 			for ; err == nil && !reachedTheEnd; word, reachedTheEnd, err = parser.NextUnique(ctx) {
+				if len(word) > maxWordLength {
+					continue
+				}
 				if err = editor.updateGlobalCount(ctx, index, word, true); err != nil {
 					return err
 				}
@@ -320,6 +323,9 @@ func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		// Iterate over the words to write their positions
 		word, position, reachedTheEnd, err := parser.Next(ctx)
 		for ; err == nil && !reachedTheEnd; word, position, reachedTheEnd, err = parser.Next(ctx) {
+			if len(word) > maxWordLength {
+				continue
+			}
 			// Write to the position table
 			positionRow := make(sql.Row, 1, len(SchemaPosition)+len(keyCols))
 			positionRow[0] = word
@@ -336,6 +342,9 @@ func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		// Iterate over the unique words to write their counts
 		word, reachedTheEnd, err = parser.NextUnique(ctx)
 		for ; err == nil && !reachedTheEnd; word, reachedTheEnd, err = parser.NextUnique(ctx) {
+			if len(word) > maxWordLength {
+				continue
+			}
 			// Write to the document count table
 			wordDocCount, err := parser.DocumentCount(ctx, word)
 			if err != nil {
@@ -382,6 +391,9 @@ func (editor TableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 		// Grab the source columns
 		sourceCols := make([]interface{}, len(index.SourceCols))
 		for i, sourceCol := range index.SourceCols {
+			if sourceCol >= len(row) {
+				panic(fmt.Sprintf("%v", row))
+			}
 			sourceCols[i] = row[sourceCol]
 		}
 
@@ -442,6 +454,9 @@ func (editor TableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 		}
 		word, position, reachedTheEnd, err := parser.Next(ctx)
 		for ; err == nil && !reachedTheEnd; word, position, reachedTheEnd, err = parser.Next(ctx) {
+			if len(word) > maxWordLength {
+				continue
+			}
 			// Delete from the position table
 			positionRow := make(sql.Row, 1, len(SchemaPosition)+len(keyCols))
 			positionRow[0] = word

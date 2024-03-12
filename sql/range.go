@@ -223,6 +223,9 @@ func (rang Range) TryMerge(otherRange Range) (Range, bool, error) {
 			}
 		}
 	}
+	if indexToMerge == -1 {
+		return nil, false, fmt.Errorf("invalid index to merge")
+	}
 	mergedLastExpr, ok, err := rang[indexToMerge].TryUnion(otherRange[indexToMerge])
 	if err != nil || !ok {
 		return nil, false, err

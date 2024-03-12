@@ -1169,4 +1169,40 @@ var FulltextTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "large tokens",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT UNSIGNED NOT NULL DEFAULT '1', v1 VARCHAR(200) DEFAULT 'def', PRIMARY KEY(pk), FULLTEXT idx (v1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (v1) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "REPLACE INTO test (v1) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{uint64(1), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
