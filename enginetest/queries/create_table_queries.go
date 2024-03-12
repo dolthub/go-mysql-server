@@ -648,13 +648,13 @@ var CreateTableScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "if not exists option blocks",
+		Name: "if not exists option blocks",
 		SetUpScript: []string{
 			"create table t1 (i int, index (i));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "show create table t1",
+				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int,\n" +
@@ -669,7 +669,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t1",
+				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int,\n" +
@@ -684,7 +684,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t1",
+				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int,\n" +
@@ -699,7 +699,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t1",
+				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int,\n" +
@@ -714,7 +714,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t1",
+				Query: "show create table t1",
 				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int,\n" +
