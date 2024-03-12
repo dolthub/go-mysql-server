@@ -18,7 +18,6 @@ import (
 	"context"
 	dsql "database/sql"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"io"
 	"net"
 	"os"
@@ -50,6 +49,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/go-mysql-server/test"
 )
 
