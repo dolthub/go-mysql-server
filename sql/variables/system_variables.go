@@ -51,6 +51,9 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	for _, originalSysVar := range sysVars {
+		if originalSysVar == nil {
+			continue
+		}
 		sysVar := originalSysVar
 		lowerName := strings.ToLower(sysVar.GetName())
 		sysVar.SetName(lowerName)
