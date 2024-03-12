@@ -90,7 +90,7 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		if !ok {
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
-		sv, ok := sysVar.(*sql.SystemVariable)
+		sv, ok := sysVar.(*sql.MysqlSystemVariable)
 		if !ok {
 			return sql.RowsToRowIter(), nil
 		}

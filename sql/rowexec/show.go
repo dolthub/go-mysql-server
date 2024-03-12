@@ -254,7 +254,7 @@ func (b *BaseBuilder) buildShowStatus(ctx *sql.Context, n *plan.ShowStatus, row 
 		if !ok {
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
-		sv, ok := sysVar.(*sql.SystemVariable)
+		sv, ok := sysVar.(*sql.MysqlSystemVariable)
 		if !ok {
 			return sql.RowsToRowIter(), nil
 		}

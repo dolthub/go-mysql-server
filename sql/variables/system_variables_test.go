@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var newConn = &sql.SystemVariable{
+var newConn = &sql.MysqlSystemVariable{
 	Name:    "max_connections",
 	Scope:   sql.SystemVariableScope_Global,
 	Dynamic: true,
@@ -33,7 +33,7 @@ var newConn = &sql.SystemVariable{
 	Default: int64(1000),
 }
 
-var newTimeout = &sql.SystemVariable{
+var newTimeout = &sql.MysqlSystemVariable{
 	Name:    "net_write_timeout",
 	Scope:   sql.SystemVariableScope_Both,
 	Dynamic: true,
@@ -41,7 +41,7 @@ var newTimeout = &sql.SystemVariable{
 	Default: int64(1),
 }
 
-var newUnknown = &sql.SystemVariable{
+var newUnknown = &sql.MysqlSystemVariable{
 	Name:    "net_write_timeout",
 	Scope:   sql.SystemVariableScope_Both,
 	Dynamic: true,
@@ -52,26 +52,26 @@ var newUnknown = &sql.SystemVariable{
 func TestInitSystemVariablesWithDefaults(t *testing.T) {
 	tests := []struct {
 		name             string
-		persistedGlobals []sql.SystemVariableInterface
+		persistedGlobals []sql.SystemVariable
 		err              *errors.Kind
-		expectedCmp      []sql.SystemVariableInterface
+		expectedCmp      []sql.SystemVariable
 	}{
 		{
 			name:             "set max_connections",
-			persistedGlobals: []sql.SystemVariableInterface{newConn},
-			expectedCmp:      []sql.SystemVariableInterface{newConn},
+			persistedGlobals: []sql.SystemVariable{newConn},
+			expectedCmp:      []sql.SystemVariable{newConn},
 		}, {
 			name:             "set two variables",
-			persistedGlobals: []sql.SystemVariableInterface{newConn, newTimeout},
-			expectedCmp:      []sql.SystemVariableInterface{newConn, newTimeout},
+			persistedGlobals: []sql.SystemVariable{newConn, newTimeout},
+			expectedCmp:      []sql.SystemVariable{newConn, newTimeout},
 		}, {
 			name:             "unknown system variable",
-			persistedGlobals: []sql.SystemVariableInterface{newUnknown},
-			expectedCmp:      []sql.SystemVariableInterface{newUnknown},
+			persistedGlobals: []sql.SystemVariable{newUnknown},
+			expectedCmp:      []sql.SystemVariable{newUnknown},
 		}, {
 			name: "bad type", // TODO: no checks to prevent incorrect types currently
-			persistedGlobals: []sql.SystemVariableInterface{
-				&sql.SystemVariable{
+			persistedGlobals: []sql.SystemVariable{
+				&sql.MysqlSystemVariable{
 					Name:    "max_connections",
 					Scope:   sql.SystemVariableScope_Global,
 					Dynamic: true,
@@ -79,8 +79,8 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 					Default: "1000",
 				},
 			},
-			expectedCmp: []sql.SystemVariableInterface{
-				&sql.SystemVariable{
+			expectedCmp: []sql.SystemVariable{
+				&sql.MysqlSystemVariable{
 					Name:    "max_connections",
 					Scope:   sql.SystemVariableScope_Global,
 					Dynamic: true,

@@ -363,25 +363,34 @@ var SystemVariables SystemVariableRegistry
 // SessionMap() method.
 type SystemVariableRegistry interface {
 	// AddSystemVariables adds the given system variables to this registry
-	AddSystemVariables(sysVars []SystemVariableInterface)
+	AddSystemVariables(sysVars []SystemVariable)
 	// AssignValues assigns the given values to the system variables in this registry
 	AssignValues(vals map[string]interface{}) error
 	// NewSessionMap returns a map of system variables values that can be used by a session
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the global value of the system variable with the given name
-	GetGlobal(name string) (SystemVariableInterface, interface{}, bool)
+	GetGlobal(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
 	SetGlobal(name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
 }
 
-type SystemVariableInterface interface {
+// SystemVariable is used to handle mysql system variables and postgres configuration variables interchangeably.
+// TODO: mysql sv and postgres cp should not be mixed.
+type SystemVariable interface {
+	// GetName returns the name of the sv. Case-sensitive.
 	GetName() string
-	SetName(string) // TODO: it should not happen, but we set the name to lower-case string
+	// SetName sets the name of the sv.
+	// TODO: it should not happen, but we set the name to lower-case string?
+	SetName(string)
+	// GetType returns the type of the sv.
 	GetType() Type
+	// SetDefault sets the default value of the sv.
 	SetDefault(any)
+	// GetDefault returns the default value of the sv.
 	GetDefault() any
+	// HasDefaultValue checks whether the default value of the sv is the same value of given argument.
 	HasDefaultValue(any) bool
 	// AssignValue sets value without validation.
 	// This is used for setting the initial values using pre-defined variables or for test-purposes.
@@ -391,10 +400,10 @@ type SystemVariableInterface interface {
 	SetValue(val any, global bool) (SystemVarValue, error)
 }
 
-var _ SystemVariableInterface = (*SystemVariable)(nil)
+var _ SystemVariable = (*MysqlSystemVariable)(nil)
 
-// SystemVariable represents a system variable.
-type SystemVariable struct {
+// MysqlSystemVariable represents a mysql system variable.
+type MysqlSystemVariable struct {
 	// Name is the name of the system variable.
 	Name string
 	// Scope defines the scope of the system variable, which is either Global, Session, or Both.
@@ -428,32 +437,32 @@ type SystemVariable struct {
 	ValueFunction func() (interface{}, error)
 }
 
-func (s *SystemVariable) GetName() string {
+func (s *MysqlSystemVariable) GetName() string {
 	return s.Name
 }
 
-func (s *SystemVariable) SetName(n string) {
+func (s *MysqlSystemVariable) SetName(n string) {
 	s.Name = n
 }
 
-func (s *SystemVariable) GetType() Type {
+func (s *MysqlSystemVariable) GetType() Type {
 	return s.Type
 }
 
-func (s *SystemVariable) SetDefault(a any) {
+func (s *MysqlSystemVariable) SetDefault(a any) {
 	s.Default = a
 }
 
-func (s *SystemVariable) GetDefault() any {
+func (s *MysqlSystemVariable) GetDefault() any {
 	return s.Default
 }
 
-func (s *SystemVariable) HasDefaultValue(a any) bool {
+func (s *MysqlSystemVariable) HasDefaultValue(a any) bool {
 	return s.Default == a
 }
 
 // AssignValue does not check for read-only.
-func (s *SystemVariable) AssignValue(val any) (SystemVarValue, error) {
+func (s *MysqlSystemVariable) AssignValue(val any) (SystemVarValue, error) {
 	convertedVal, _, err := s.Type.Convert(val)
 	if err != nil {
 		return SystemVarValue{}, err
@@ -471,7 +480,7 @@ func (s *SystemVariable) AssignValue(val any) (SystemVarValue, error) {
 	return svv, nil
 }
 
-func (s *SystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
+func (s *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
 	if global && s.Scope == SystemVariableScope_Session {
 		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(s.Name)
 	}
@@ -525,7 +534,7 @@ func (s SystemVariableScope) String() string {
 }
 
 type SystemVarValue struct {
-	Var SystemVariableInterface
+	Var SystemVariable
 	Val interface{}
 }
 

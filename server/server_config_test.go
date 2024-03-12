@@ -63,8 +63,8 @@ func TestConfigWithDefaults(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("server config var: %s", test.Name), func(t *testing.T) {
 			variables.InitSystemVariables()
-			sql.SystemVariables.AddSystemVariables([]sql.SystemVariableInterface{
-				&sql.SystemVariable{
+			sql.SystemVariables.AddSystemVariables([]sql.SystemVariable{
+				&sql.MysqlSystemVariable{
 					Name:    test.Name,
 					Scope:   test.Scope,
 					Dynamic: true,
