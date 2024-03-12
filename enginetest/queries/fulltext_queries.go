@@ -1180,6 +1180,14 @@ var FulltextTests = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+				Expected: []sql.Row{},
+			},
+			{
 				Query:    "REPLACE INTO test (v1) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 			},
