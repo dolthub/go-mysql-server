@@ -374,8 +374,6 @@ type SystemVariableRegistry interface {
 	SetGlobal(name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
-	// DatabaseType returns the name of database type. E.g. "mysql" or "postgres"
-	DatabaseType() string
 }
 
 type SystemVariableInterface interface {

@@ -23,7 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestGroupConcat_FunctionName(t *testing.T) {
@@ -49,9 +48,6 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 
 // Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len (default 1024)
 func TestGroupConcat_PastMaxLen(t *testing.T) {
-	if sql.SystemVariables == nil {
-		variables.InitSystemVariables()
-	}
 	var rows []sql.Row
 	ctx := sql.NewEmptyContext()
 

@@ -23,7 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // MySQL's ADDDATE function is just syntactic sugar on top of DATE_ADD. The first param is the date, and the
@@ -228,11 +227,6 @@ func TestDateSub(t *testing.T) {
 
 func TestUnixTimestamp(t *testing.T) {
 	require := require.New(t)
-
-	if sql.SystemVariables == nil {
-		// This test uses the `time_zone` system variable, and it gets initialized in engine.
-		variables.InitSystemVariables()
-	}
 
 	ctx := sql.NewEmptyContext()
 	_, err := NewUnixTimestamp()

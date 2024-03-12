@@ -37,7 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
+	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 const experimentalFlag = "GMS_EXPERIMENTAL"
@@ -160,11 +160,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-	// TODO: dbProviders call initSystemVariables first -- > maybe it's correct.
-	// In terms of Dolt and Doltgres, the system variables should initialize it there.
-	if sql.SystemVariables == nil {
-		variables.InitSystemVariables()
-	}
+
 	if cfg.IncludeRootAccount {
 		a.Catalog.MySQLDb.AddRootAccount()
 	}

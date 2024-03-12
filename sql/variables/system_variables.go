@@ -132,11 +132,6 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariableInter
 	return v, sysVal.Val, true
 }
 
-// DatabaseType is used to identify the system variables are from mysql db.
-func (sv *globalSystemVariables) DatabaseType() string {
-	return "mysql"
-}
-
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,
 // then an error is returned. Additionally, if the value is invalid for the variable's type then an error is returned.
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
@@ -188,10 +183,9 @@ func InitSystemVariables() {
 
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
-//func init() {
-//	// This overwrites the global system variables in GMS. Initializing it both here and in GMS needs to be fixed.
-//	InitSystemVariables()
-//}
+func init() {
+	InitSystemVariables()
+}
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
