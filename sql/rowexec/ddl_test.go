@@ -42,7 +42,7 @@ func TestCreateTable(t *testing.T) {
 	})
 
 	ctx := newContext(pro)
-	require.NoError(createTable(t, ctx, db, "testTable", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
+	require.NoError(createTable(t, ctx, db, "testTable", s, false, false))
 
 	tables = db.Tables()
 
@@ -55,8 +55,8 @@ func TestCreateTable(t *testing.T) {
 		require.Equal("testTable", s.Source)
 	}
 
-	require.Error(createTable(t, ctx, db, "testTable", s, plan.IfNotExistsAbsent, plan.IsTempTableAbsent))
-	require.NoError(createTable(t, ctx, db, "testTable", s, plan.IfNotExists, plan.IsTempTableAbsent))
+	require.Error(createTable(t, ctx, db, "testTable", s, false, false))
+	require.NoError(createTable(t, ctx, db, "testTable", s, true, false))
 }
 
 func TestDropTable(t *testing.T) {
@@ -108,7 +108,7 @@ func TestDropTable(t *testing.T) {
 	require.False(ok)
 }
 
-func createTable(t *testing.T, ctx *sql.Context, db sql.Database, name string, schema sql.PrimaryKeySchema, ifNotExists plan.IfNotExistsOption, temporary plan.TempTableOption) error {
+func createTable(t *testing.T, ctx *sql.Context, db sql.Database, name string, schema sql.PrimaryKeySchema, ifNotExists, temporary bool) error {
 	c := plan.NewCreateTable(db, name, ifNotExists, temporary, &plan.TableSpec{Schema: schema})
 
 	rows, err := DefaultBuilder.Build(ctx, c, nil)
