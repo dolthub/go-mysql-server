@@ -177,3 +177,33 @@ func TestRowsCache(t *testing.T) {
 		require.True(freed)
 	})
 }
+
+func BenchmarkHashOf(b *testing.B) {
+	row := NewRow(1, "1")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sum, err := HashOf(row)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if sum != 11268758894040352165 {
+			b.Fatalf("got %v", sum)
+		}
+	}
+}
+
+func BenchmarkParallelHashOf(b *testing.B) {
+	row := NewRow(1, "1")
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			sum, err := HashOf(row)
+			if err != nil {
+				b.Fatal(err)
+			}
+			if sum != 11268758894040352165 {
+				b.Fatalf("got %v", sum)
+			}
+		}
+	})
+}
