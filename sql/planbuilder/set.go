@@ -129,6 +129,13 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 		var setScope ast.SetScope
 
 		tblName := strings.ToLower(setExpr.Name.Qualifier.String())
+		// For postgres parameter, if expr is `Default` expr, it means "RESET", so set to 'default' literal value.
+		// Otherwise, it sets to current parameter value, which is not what we want.
+		if _, ok := setExpr.Expr.(*ast.Default); ok && tblName == "postgres" {
+			varToSet := expression.NewSystemVar(setExpr.Name.Name.String(), sql.SystemVariableScope_Global, string(sql.SystemVariableScope_Global))
+			res[i] = expression.NewSetField(varToSet, expression.NewLiteral("default", types.LongText))
+			continue
+		}
 		c, ok := inScope.resolveColumn("", tblName, strings.ToLower(setExpr.Name.Name.String()), true, false)
 		var setVar sql.Expression
 		if ok {
