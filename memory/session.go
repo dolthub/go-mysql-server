@@ -15,10 +15,14 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 type GlobalsMap = map[string]interface{}
@@ -48,6 +52,25 @@ func NewSession(baseSession *sql.BaseSession, provider sql.DatabaseProvider) *Se
 
 func SessionFromContext(ctx *sql.Context) *Session {
 	return ctx.Session.(*Session)
+}
+
+// NewSessionBuilder returns a session for the given in-memory database provider suitable to use in a test server
+// This can't be defined as server.SessionBuilder because importing it would create a circular dependency,
+// but it's the same signature.
+func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+	return func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+		host := ""
+		user := ""
+		mysqlConnectionUser, ok := conn.UserData.(mysql_db.MysqlConnectionUser)
+		if ok {
+			host = mysqlConnectionUser.Host
+			user = mysqlConnectionUser.User
+		}
+
+		client := sql.Client{Address: host, User: user, Capabilities: conn.Capabilities}
+		baseSession := sql.NewBaseSessionWithClientServer(addr, client, conn.ConnectionID)
+		return NewSession(baseSession, pro), nil
+	}
 }
 
 type Transaction struct {

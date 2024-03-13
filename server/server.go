@@ -25,7 +25,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/server/golden"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -55,11 +54,6 @@ type ServerEventListener interface {
 	QueryCompleted(success bool, duration time.Duration)
 }
 
-// NewDefaultServer creates a Server with the default session builder.
-func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
-	return NewServer(cfg, e, DefaultSessionBuilder, nil)
-}
-
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
 func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEventListener) (*Server, error) {
@@ -83,41 +77,6 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 	//handler = NewHandler_(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, cfg.MaxLoggedQueryLen, cfg.EncodeLoggedQuery, listener)
 	return newServerFromHandler(cfg, e, sm, handler)
 }
-
-// NewValidatingServer creates a Server that validates its query results using a MySQL connection
-// as a source of golden-value query result sets.
-func NewValidatingServer(
-	cfg Config,
-	e *sqle.Engine,
-	sb SessionBuilder,
-	listener ServerEventListener,
-	mySqlConn string,
-) (*Server, error) {
-	var tracer trace.Tracer
-	if cfg.Tracer != nil {
-		tracer = cfg.Tracer
-	} else {
-		tracer = sql.NoopTracer
-	}
-
-	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
-	h := &Handler{
-		e:                 e,
-		sm:                sm,
-		readTimeout:       cfg.ConnReadTimeout,
-		disableMultiStmts: cfg.DisableClientMultiStatements,
-		maxLoggedQueryLen: cfg.MaxLoggedQueryLen,
-		encodeLoggedQuery: cfg.EncodeLoggedQuery,
-		sel:               listener,
-	}
-
-	handler, err := golden.NewValidatingHandler(h, mySqlConn, logrus.StandardLogger())
-	if err != nil {
-		return nil, err
-	}
-	return newServerFromHandler(cfg, e, sm, handler)
-}
-
 func portInUse(hostPort string) bool {
 	timeout := time.Second
 	conn, _ := net.DialTimeout("tcp", hostPort, timeout)
