@@ -350,15 +350,17 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool, skipCidrCh
 				return readUserEntry
 			}
 
-			if lockTime, isLocked := lockUserMap.GetUser(readUserEntry, host); isLocked {
-				if time.Since(lockTime) > time.Hour {
+			if lockedUser, isLocking := lockUserMap.GetUser(readUserEntry, host); isLocking {
+				if time.Since(lockedUser.LockTime) > time.Hour {
 					readUserEntry.Locked = false
 					lockUserMap.RemoveUser(readUserEntry, host)
 				} else {
-					readUserEntry.Locked = true
-					return readUserEntry
+					if lockedUser.LockCount > 250 {
+						readUserEntry.Locked = true
+					}
 				}
 			}
+
 			if strings.Contains(readUserEntry.Host, "/") {
 				_, network, cidrParseErr := net.ParseCIDR(readUserEntry.Host)
 				if cidrParseErr == nil {
