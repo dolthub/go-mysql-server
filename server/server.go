@@ -84,11 +84,11 @@ type HandlerWrapper func(h mysql.Handler) (mysql.Handler, error)
 
 // NewServerWithHandler creates a Server with a handler wrapped by the provided wrapper function.
 func NewServerWithHandler(
-		cfg Config,
-		e *sqle.Engine,
-		sb SessionBuilder,
-		listener ServerEventListener,
-		wrapper HandlerWrapper,
+	cfg Config,
+	e *sqle.Engine,
+	sb SessionBuilder,
+	listener ServerEventListener,
+	wrapper HandlerWrapper,
 ) (*Server, error) {
 	var tracer trace.Tracer
 	if cfg.Tracer != nil {
@@ -112,7 +112,7 @@ func NewServerWithHandler(
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return newServerFromHandler(cfg, e, sm, handler)
 }
 
