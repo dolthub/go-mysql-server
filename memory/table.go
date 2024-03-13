@@ -1907,8 +1907,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		}
 	}
 	if data.indexes[name] != nil {
-		// TODO: extract a standard error type for this
-		return nil, fmt.Errorf("Error: index already exists")
+		return nil, sql.ErrDuplicateKey.New(name)
 	}
 
 	exprs := make([]sql.Expression, len(columns))

@@ -385,6 +385,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemStringType("bind_address"),
 		Default:           "*",
 	},
+	"binlog_checksum": &sql.MysqlSystemVariable{
+		Name:              "binlog_checksum",
+		Scope:             sql.SystemVariableScope_Global,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemStringType("binlog_checksum"),
+		Default:           "NONE", // TODO: MySQL's default is CRC32
+	},
 	"binlog_gtid_simple_recovery": &sql.MysqlSystemVariable{
 		Name:              "binlog_gtid_simple_recovery",
 		Scope:             sql.SystemVariableScope_Global,
