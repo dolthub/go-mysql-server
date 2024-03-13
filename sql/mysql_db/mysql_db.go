@@ -243,15 +243,20 @@ type LockUserMap struct {
 	sync.Map
 }
 
-func (m *LockUserMap) lockUser(user string, host string, value time.Time) {
+type LockEntry struct {
+	LockTime  time.Time
+	LockCount int
+}
+
+func (m *LockUserMap) lockUser(user string, host string, value *LockEntry) {
 	m.Set(fmt.Sprintf("%s-%s", user, host), value)
 }
 
-func (m *LockUserMap) Set(key string, value time.Time) {
+func (m *LockUserMap) Set(key string, value *LockEntry) {
 	m.Store(key, value)
 }
 
-func (m *LockUserMap) GetUser(readUserEntry *User, host string) (time.Time, bool) {
+func (m *LockUserMap) GetUser(readUserEntry *User, host string) (*LockEntry, bool) {
 	return m.Get(fmt.Sprintf("%s-%s", readUserEntry.User, readUserEntry.Host))
 }
 
@@ -259,16 +264,20 @@ func (db *MySQLDb) AddUser(readUserEntry *User, host string) {
 	if readUserEntry == nil {
 		return
 	} else {
-		lockUserMap.lockUser(readUserEntry.User, host, time.Now())
+		if lockEntry, isLocked := lockUserMap.GetUser(readUserEntry, host); isLocked {
+			lockEntry.LockCount++
+		} else {
+			lockUserMap.lockUser(readUserEntry.User, host, &LockEntry{LockTime: time.Now(), LockCount: 0})
+		}
 	}
 }
 
-func (m *LockUserMap) Get(key string) (time.Time, bool) {
+func (m *LockUserMap) Get(key string) (*LockEntry, bool) {
 	val, ok := m.Load(key)
 	if !ok {
-		return time.Time{}, false
+		return nil, false
 	}
-	return val.(time.Time), true
+	return val.(*LockEntry), true
 }
 
 func (m *LockUserMap) RemoveUser(readUserEntry *User, host string) {
@@ -303,13 +312,14 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool, skipCidrCh
 			return readUserEntry
 		}
 
-		if lockTime, isLocked := lockUserMap.GetUser(readUserEntry, host); isLocked {
-			if time.Since(lockTime) > time.Hour {
+		if lockedUser, isLocking := lockUserMap.GetUser(readUserEntry, host); isLocking {
+			if time.Since(lockedUser.LockTime) > time.Hour {
 				readUserEntry.Locked = false
 				lockUserMap.RemoveUser(readUserEntry, host)
 			} else {
-				readUserEntry.Locked = true
-				return readUserEntry
+				if lockedUser.LockCount > 250 {
+					readUserEntry.Locked = true
+				}
 			}
 		}
 
@@ -340,15 +350,17 @@ func (db *MySQLDb) GetUser(user string, host string, roleSearch bool, skipCidrCh
 				return readUserEntry
 			}
 
-			if lockTime, isLocked := lockUserMap.GetUser(readUserEntry, host); isLocked {
-				if time.Since(lockTime) > time.Hour {
+			if lockedUser, isLocking := lockUserMap.GetUser(readUserEntry, host); isLocking {
+				if time.Since(lockedUser.LockTime) > time.Hour {
 					readUserEntry.Locked = false
 					lockUserMap.RemoveUser(readUserEntry, host)
 				} else {
-					readUserEntry.Locked = true
-					return readUserEntry
+					if lockedUser.LockCount > 250 {
+						readUserEntry.Locked = true
+					}
 				}
 			}
+
 			if strings.Contains(readUserEntry.Host, "/") {
 				_, network, cidrParseErr := net.ParseCIDR(readUserEntry.Host)
 				if cidrParseErr == nil {
