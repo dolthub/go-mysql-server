@@ -77,6 +77,45 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 	//handler = NewHandler_(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, cfg.MaxLoggedQueryLen, cfg.EncodeLoggedQuery, listener)
 	return newServerFromHandler(cfg, e, sm, handler)
 }
+
+// HandlerWrapper provides a way for clients to wrap the mysql.Handler used by the server with a custom implementation
+// that wraps it.
+type HandlerWrapper func(h mysql.Handler) (mysql.Handler, error)
+
+// NewServerWithHandler creates a Server with a handler wrapped by the provided wrapper function.
+func NewServerWithHandler(
+	cfg Config,
+	e *sqle.Engine,
+	sb SessionBuilder,
+	listener ServerEventListener,
+	wrapper HandlerWrapper,
+) (*Server, error) {
+	var tracer trace.Tracer
+	if cfg.Tracer != nil {
+		tracer = cfg.Tracer
+	} else {
+		tracer = sql.NoopTracer
+	}
+
+	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
+	h := &Handler{
+		e:                 e,
+		sm:                sm,
+		readTimeout:       cfg.ConnReadTimeout,
+		disableMultiStmts: cfg.DisableClientMultiStatements,
+		maxLoggedQueryLen: cfg.MaxLoggedQueryLen,
+		encodeLoggedQuery: cfg.EncodeLoggedQuery,
+		sel:               listener,
+	}
+
+	handler, err := wrapper(h)
+	if err != nil {
+		return nil, err
+	}
+
+	return newServerFromHandler(cfg, e, sm, handler)
+}
+
 func portInUse(hostPort string) bool {
 	timeout := time.Second
 	conn, _ := net.DialTimeout("tcp", hostPort, timeout)
