@@ -132,6 +132,19 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	return v, sysVal.Val, true
 }
 
+// Reset returns the system variable definition and default value for the given name.
+// If the variable does not exist, returns false. Case-insensitive.
+func (sv *globalSystemVariables) Reset(name string) (sql.SystemVariable, interface{}, bool) {
+	sv.mutex.RLock()
+	defer sv.mutex.RUnlock()
+	name = strings.ToLower(name)
+	v, ok := systemVars[name]
+	if !ok {
+		return nil, nil, false
+	}
+	return v, v.GetDefault(), true
+}
+
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,
 // then an error is returned. Additionally, if the value is invalid for the variable's type then an error is returned.
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL

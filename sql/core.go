@@ -370,6 +370,9 @@ type SystemVariableRegistry interface {
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
+	// Reset returns the default or reset value of the system variable with the given name.
+	// This is not the current GLOBAL value. It's used for postgres config parameters only.
+	Reset(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
 	SetGlobal(name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
