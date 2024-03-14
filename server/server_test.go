@@ -16,7 +16,6 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	gsql "github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // TestSeverCustomListener verifies a caller can provide their own net.Conn implementation for the server to use
@@ -37,7 +36,7 @@ func TestSeverCustomListener(t *testing.T) {
 	sessionBuilder := func(ctx context.Context, c *vsql.Conn, addr string) (gsql.Session, error) {
 		host := ""
 		user := ""
-		mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
+		mysqlConnectionUser, ok := c.UserData.(gsql.MysqlConnectionUser)
 		if ok {
 			host = mysqlConnectionUser.Host
 			user = mysqlConnectionUser.User

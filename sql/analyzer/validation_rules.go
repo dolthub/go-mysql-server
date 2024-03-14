@@ -254,9 +254,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	defer span.End()
 
 	// only enforce strict group by when this variable is set
-	if isStrict, err := checkSqlMode(ctx, "ONLY_FULL_GROUP_BY"); err != nil {
-		return n, transform.SameTree, err
-	} else if !isStrict {
+	if !sql.LoadSqlMode(ctx).ModeEnabled(sql.OnlyFullGroupBy) {
 		return n, transform.SameTree, nil
 	}
 

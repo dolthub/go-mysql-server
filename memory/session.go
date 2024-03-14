@@ -22,7 +22,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 type GlobalsMap = map[string]interface{}
@@ -61,7 +60,7 @@ func NewSessionBuilder(pro *DbProvider) func(ctx context.Context, conn *mysql.Co
 	return func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
-		mysqlConnectionUser, ok := conn.UserData.(mysql_db.MysqlConnectionUser)
+		mysqlConnectionUser, ok := conn.UserData.(sql.MysqlConnectionUser)
 		if ok {
 			host = mysqlConnectionUser.Host
 			user = mysqlConnectionUser.User

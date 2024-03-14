@@ -1266,6 +1266,89 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "sql_mode=NO_AUTO_VALUE_ON_ZERO",
+		SetUpScript: []string{
+			"set @old_sql_mode=@@sql_mode",
+			"set @@sql_mode='NO_AUTO_VALUE_ON_ZERO'",
+			"create table auto (i int auto_increment, index (i))",
+			"create table auto_pk (i int auto_increment primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "insert into auto values (0), (0), (1-1)",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 3, InsertID: 0}},
+				},
+			},
+			{
+				Query: "select * from auto order by i",
+				Expected: []sql.Row{
+					{0},
+					{0},
+					{0},
+				},
+			},
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "insert into auto values (1)",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 1}},
+				},
+			},
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
+				Expected: []sql.Row{
+					{uint64(2)},
+				},
+			},
+
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "insert into auto_pk values (0), (1), (NULL), ()",
+				Expected: []sql.Row{
+					{types.NewOkResult(4)},
+				},
+			},
+			{
+				Query: "select * from auto_pk",
+				Expected: []sql.Row{
+					{0},
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
+				Expected: []sql.Row{
+					{uint64(4)},
+				},
+			},
+
+			{
+				// restore old sql_mode just in case
+				SkipResultsCheck: true,
+				Query:            "set @@sql_mode=@old_sql_mode",
+			},
+		},
+	},
+	{
 		Name: "explicit DEFAULT",
 		SetUpScript: []string{
 			"CREATE TABLE t1(id int DEFAULT '2', dt datetime DEFAULT now());",
