@@ -40,6 +40,10 @@ type Catalog struct {
 	// replication messages (e.g. "start replica").
 	BinlogReplicaController binlogreplication.BinlogReplicaController
 
+	// BinlogPrimaryController holds an optional controller that receives forwarded binlog
+	// replication messages (e.g. "show replicas") and commands (e.g. COM_REGISTER_REPLICA).
+	BinlogPrimaryController binlogreplication.BinlogPrimaryController
+
 	mu    sync.RWMutex
 	locks sessionLocks
 }
@@ -53,6 +57,7 @@ var _ sql.FunctionProvider = (*Catalog)(nil)
 var _ sql.TableFunctionProvider = (*Catalog)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*Catalog)(nil)
 var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
+var _ binlogreplication.BinlogPrimaryCatalog = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -77,12 +82,20 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
 }
 
-func (c *Catalog) IsBinlogReplicaCatalog() bool {
+func (c *Catalog) HasBinlogReplicaController() bool {
 	return c.BinlogReplicaController != nil
 }
 
 func (c *Catalog) GetBinlogReplicaController() binlogreplication.BinlogReplicaController {
 	return c.BinlogReplicaController
+}
+
+func (c *Catalog) HasBinlogPrimaryController() bool {
+	return c.BinlogPrimaryController != nil
+}
+
+func (c *Catalog) GetBinlogPrimaryController() binlogreplication.BinlogPrimaryController {
+	return c.BinlogPrimaryController
 }
 
 func (c *Catalog) WithTableFunctions(fns ...sql.TableFunction) (sql.TableFunctionProvider, error) {
