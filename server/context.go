@@ -34,19 +34,6 @@ type SessionBuilder func(ctx context.Context, conn *mysql.Conn, addr string) (sq
 // it can be disposed.
 type DoneFunc func()
 
-// DefaultSessionBuilder is a SessionBuilder that returns a base session.
-func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
-	host := ""
-	user := ""
-	mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
-	if ok {
-		host = mysqlConnectionUser.Host
-		user = mysqlConnectionUser.User
-	}
-	client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
-	return sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
-}
-
 // SessionManager is in charge of creating new sessions for the given
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.

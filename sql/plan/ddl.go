@@ -24,20 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-type IfNotExistsOption bool
-
-const (
-	IfNotExists       IfNotExistsOption = true
-	IfNotExistsAbsent IfNotExistsOption = false
-)
-
-type TempTableOption bool
-
-const (
-	IsTempTable       TempTableOption = true
-	IsTempTableAbsent TempTableOption = false
-)
-
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
 	Db sql.Database
@@ -148,7 +134,7 @@ type CreateTable struct {
 	ddlNode
 	name         string
 	CreateSchema sql.PrimaryKeySchema
-	ifNotExists  IfNotExistsOption
+	ifNotExists  bool
 	FkDefs       []*sql.ForeignKeyConstraint
 	fkParentTbls []sql.ForeignKeyTable
 	checks       sql.CheckConstraints
@@ -156,7 +142,7 @@ type CreateTable struct {
 	Collation    sql.CollationID
 	Comment      string
 	like         sql.Node
-	temporary    TempTableOption
+	temporary    bool
 	selectNode   sql.Node
 }
 
@@ -168,7 +154,7 @@ var _ sql.CheckConstraintNode = (*CreateTable)(nil)
 var _ sql.CollationCoercible = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
+func NewCreateTable(db sql.Database, name string, ifn, temp bool, tableSpec *TableSpec) *CreateTable {
 	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
 	}
@@ -188,7 +174,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp Te
 }
 
 // NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
-func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
+func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec, ifn, temp bool) *CreateTable {
 	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
 	}
@@ -347,35 +333,34 @@ func (c *CreateTable) CreateChecks(ctx *sql.Context, tableNode sql.Table) error 
 func (c *CreateTable) Children() []sql.Node {
 	if c.like != nil {
 		return []sql.Node{c.like}
-	} else if c.selectNode != nil {
+	}
+	if c.selectNode != nil {
 		return []sql.Node{c.selectNode}
 	}
 	return nil
 }
 
 // WithChildren implements the Node interface.
-func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+	nc := *c
 	if len(children) == 0 {
-		return &c, nil
-	} else if len(children) == 1 {
-		child := children[0]
-
-		if c.like != nil {
-			c.like = child
-		} else {
-			c.selectNode = child
-		}
-
-		return &c, nil
-	} else {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+		return &nc, nil
 	}
+	if len(children) == 1 {
+		if c.like != nil {
+			nc.like = children[0]
+		} else {
+			nc.selectNode = children[0]
+		}
+		return &nc, nil
+	}
+	return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	priv := sql.PrivilegeType_Create
-	if c.temporary == IsTempTable {
+	if c.temporary {
 		priv = sql.PrivilegeType_CreateTempTable
 	}
 	subject := sql.PrivilegeCheckSubject{Database: CheckPrivilegeNameForDatabase(c.Db)}
@@ -506,22 +491,22 @@ func (c *CreateTable) Name() string {
 	return c.name
 }
 
-func (c *CreateTable) IfNotExists() IfNotExistsOption {
+func (c *CreateTable) IfNotExists() bool {
 	return c.ifNotExists
 }
 
-func (c *CreateTable) Temporary() TempTableOption {
+func (c *CreateTable) Temporary() bool {
 	return c.temporary
 }
 
-func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	schemaLen := len(c.CreateSchema.Schema)
 	length := schemaLen + len(c.checks)
 	if len(exprs) != length {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
 
-	nc := c
+	nc := *c
 
 	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
 	ns, err := transform.SchemaWithDefaults(c.CreateSchema.Schema, exprs[:schemaLen])

@@ -29,7 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 const testNumPartitions = 5
@@ -103,7 +102,7 @@ func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
 	return func(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
 		host := ""
 		user := ""
-		mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
+		mysqlConnectionUser, ok := c.UserData.(sql.MysqlConnectionUser)
 		if ok {
 			host = mysqlConnectionUser.Host
 			user = mysqlConnectionUser.User

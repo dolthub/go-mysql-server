@@ -74,8 +74,17 @@ type Handler struct {
 	sel               ServerEventListener
 }
 
+func (h *Handler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+	return fmt.Errorf("ComRegisterReplica not implemented")
+}
+
+func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64, gtidSet mysql.GTIDSet) error {
+	return fmt.Errorf("ComBinlogDumpGTID not implemented")
+}
+
 var _ mysql.Handler = (*Handler)(nil)
 var _ mysql.ExtendedHandler = (*Handler)(nil)
+var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {

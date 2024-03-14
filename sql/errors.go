@@ -460,6 +460,9 @@ var (
 	// ErrForeignKeyDepthLimit is returned when the CASCADE depth limit has been reached.
 	ErrForeignKeyDepthLimit = errors.NewKind("Foreign key cascade delete/update exceeds max depth of 15.")
 
+	// ErrDuplicateKey is returned when a duplicate key is defined on a table.
+	ErrDuplicateKey = errors.NewKind("Duplicate key name '%s'")
+
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 

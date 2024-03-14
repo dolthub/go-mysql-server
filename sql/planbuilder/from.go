@@ -140,6 +140,9 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		}
 	case ast.FullOuterJoinStr:
 		op = plan.JoinTypeFullOuter
+	case ast.StraightJoinStr:
+		// TODO: eventually we should support straight joins
+		op = plan.JoinTypeInner
 	default:
 		b.handleErr(fmt.Errorf("unknown join type: %s", te.Join))
 	}

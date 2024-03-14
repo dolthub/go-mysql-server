@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestJSONUnquote(t *testing.T) {
+func TestJSONQuote(t *testing.T) {
 	testCases := []struct {
 		arg sql.Expression
 		exp interface{}
@@ -44,46 +44,46 @@ func TestJSONUnquote(t *testing.T) {
 			err: true,
 		},
 		{
+			arg: expression.NewLiteral(types.MustJSON(`{"a": 1}`), types.JSON),
+			err: true,
+		},
+		{
 			arg: expression.NewLiteral(nil, types.Null),
 			exp: nil,
 		},
 		{
-			arg: expression.NewLiteral(types.MustJSON(`{"a": 1}`), types.JSON),
-			exp: `{"a": 1}`,
+			arg: expression.NewLiteral("abc", types.Text),
+			exp: `"abc"`,
 		},
 		{
-			arg: expression.NewLiteral(`"abc"`, types.Text),
-			exp: `abc`,
-		},
-		{
-			arg: expression.NewLiteral(`"[1, 2, 3]"`, types.Text),
-			exp: `[1, 2, 3]`,
+			arg: expression.NewLiteral(`[1, 2, 3]`, types.Text),
+			exp: `"[1, 2, 3]"`,
 		},
 		{
 			arg: expression.NewLiteral(`"\t\u0032"`, types.Text),
-			exp: "\t2",
+			exp: `"\"\\t\\u0032\""`,
 		},
 		{
 			arg: expression.NewLiteral(`\`, types.Text),
-			exp: `\`,
+			exp: `"\\"`,
 		},
 		{
 			arg: expression.NewLiteral(`\b\f\n\r\t\"`, types.Text),
-			exp: "\b\f\n\r\t\"",
+			exp: `"\\b\\f\\n\\r\\t\\\""`,
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(fmt.Sprintf("%v", tt.arg), func(t *testing.T) {
 			require := require.New(t)
-			js := NewJSONUnquote(tt.arg)
-			result, err := js.Eval(sql.NewEmptyContext(), nil)
+			js := NewJSONQuote(tt.arg)
+			res, err := js.Eval(sql.NewEmptyContext(), nil)
 			if tt.err {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
-			require.Equal(tt.exp, result)
+			require.Equal(tt.exp, res)
 		})
 	}
 }
