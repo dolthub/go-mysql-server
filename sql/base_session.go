@@ -158,7 +158,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 		}
 	}
 
-	if sv, isSv := sysVar.Var.(*MysqlSystemVariable); isSv && (!sv.Dynamic || sv.ValueFunction != nil) {
+	if sysVar.Var.IsReadOnly() {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
 	return s.setSessVar(ctx, sysVar.Var, value)
@@ -180,8 +180,8 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 }
 
 func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}) error {
-	if sv, ok := sysVar.(*MysqlSystemVariable); ok && sv.Scope == SystemVariableScope_Global {
-		return ErrSystemVariableGlobalOnly.New(sv.Name)
+	if sysVar.IsGlobalOnly() {
+		return ErrSystemVariableGlobalOnly.New(sysVar.GetName())
 	}
 	convertedVal, _, err := sysVar.GetType().Convert(value)
 	if err != nil {
@@ -194,8 +194,8 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 		Val: convertedVal,
 	}
 
-	if sv, ok := sysVar.(*MysqlSystemVariable); ok && sv.NotifyChanged != nil {
-		err := sv.NotifyChanged(SystemVariableScope_Session, svv)
+	if nc := sysVar.GetNotifyChanged(); nc != nil {
+		err = nc(SystemVariableScope_Session, svv)
 		if err != nil {
 			return err
 		}

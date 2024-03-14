@@ -332,7 +332,7 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 			var value any
 			var ok bool
 			if table == "postgres" {
-				_, value, ok = sql.SystemVariables.Reset(varName)
+				_, value, ok = sql.SystemVariables.GetResetVal(varName)
 			} else {
 				_, value, ok = sql.SystemVariables.GetGlobal(varName)
 			}

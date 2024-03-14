@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 // Expression is a combination of one or more SQL expressions.
@@ -370,9 +371,9 @@ type SystemVariableRegistry interface {
 	NewSessionMap() map[string]SystemVarValue
 	// GetGlobal returns the global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
-	// Reset returns the default or reset value of the system variable with the given name.
+	// GetResetVal returns the default value of the system variable with the given name.
 	// This is not the current GLOBAL value. It's used for postgres config parameters only.
-	Reset(name string) (SystemVariable, interface{}, bool)
+	GetResetVal(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
 	SetGlobal(name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
@@ -393,14 +394,27 @@ type SystemVariable interface {
 	SetDefault(any)
 	// GetDefault returns the default value of the sv.
 	GetDefault() any
-	// HasDefaultValue checks whether the default value of the sv is the same value of given argument.
+	// GetValue returns the value
+	GetValue(a any) (any, bool)
+	// HasDefaultValue checks whether the default value
+	// of the sv is the same value of given argument.
 	HasDefaultValue(any) bool
 	// AssignValue sets value without validation.
-	// This is used for setting the initial values using pre-defined variables or for test-purposes.
+	// This is used for setting the initial values internally
+	// using pre-defined variables or for test-purposes.
 	AssignValue(val any) (SystemVarValue, error)
 	// SetValue set the value with validation such as read-only.
 	// This should be used when variables are set using statements.
 	SetValue(val any, global bool) (SystemVarValue, error)
+	// IsReadOnly checks whether the variable is read only.
+	// It returns false if variable can be set to a value.
+	IsReadOnly() bool
+	// IsGlobalOnly checks whether the scope of the variable is global only.
+	// For postgres parameters, it's always true for now.
+	IsGlobalOnly() bool
+	// GetNotifyChanged returns the NotifyChanged function for the variable.
+	// For postgres parameters, it's always nil for now
+	GetNotifyChanged() func(SystemVariableScope, SystemVarValue) error
 }
 
 var _ SystemVariable = (*MysqlSystemVariable)(nil)
@@ -440,31 +454,62 @@ type MysqlSystemVariable struct {
 	ValueFunction func() (interface{}, error)
 }
 
+// GetName implements SystemVariable.
 func (s *MysqlSystemVariable) GetName() string {
 	return s.Name
 }
 
+// SetName implements SystemVariable.
 func (s *MysqlSystemVariable) SetName(n string) {
 	s.Name = n
 }
 
+// GetType implements SystemVariable.
 func (s *MysqlSystemVariable) GetType() Type {
 	return s.Type
 }
 
+// SetDefault implements SystemVariable.
 func (s *MysqlSystemVariable) SetDefault(a any) {
 	s.Default = a
 }
 
+// GetDefault implements SystemVariable.
 func (s *MysqlSystemVariable) GetDefault() any {
 	return s.Default
 }
 
+// GetValue implements SystemVariable.
+func (s *MysqlSystemVariable) GetValue(a any) (any, bool) {
+	// should always be MysqlSystemVariable
+	if s.ValueFunction != nil {
+		result, err := s.ValueFunction()
+		if err != nil {
+			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", s.Name, err.Error())
+			return nil, true
+		}
+		return result, true
+	}
+
+	// convert any set types to strings
+	if sysType, ok := s.GetType().(SetType); ok {
+		if setTypeVal, ok := a.(uint64); ok {
+			var err error
+			a, err = sysType.BitsToString(setTypeVal)
+			if err != nil {
+				return nil, false
+			}
+		}
+	}
+	return a, true
+}
+
+// HasDefaultValue implements SystemVariable.
 func (s *MysqlSystemVariable) HasDefaultValue(a any) bool {
 	return s.Default == a
 }
 
-// AssignValue does not check for read-only.
+// AssignValue implements SystemVariable.
 func (s *MysqlSystemVariable) AssignValue(val any) (SystemVarValue, error) {
 	convertedVal, _, err := s.Type.Convert(val)
 	if err != nil {
@@ -483,6 +528,7 @@ func (s *MysqlSystemVariable) AssignValue(val any) (SystemVarValue, error) {
 	return svv, nil
 }
 
+// SetValue implements SystemVariable.
 func (s *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
 	if global && s.Scope == SystemVariableScope_Session {
 		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(s.Name)
@@ -491,6 +537,21 @@ func (s *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, er
 		return SystemVarValue{}, ErrSystemVariableReadOnly.New(s.Name)
 	}
 	return s.AssignValue(val)
+}
+
+// IsReadOnly implements SystemVariable.
+func (s *MysqlSystemVariable) IsReadOnly() bool {
+	return !s.Dynamic || s.ValueFunction != nil
+}
+
+// IsGlobalOnly implements SystemVariable.
+func (s *MysqlSystemVariable) IsGlobalOnly() bool {
+	return s.Scope == SystemVariableScope_Global
+}
+
+// GetNotifyChanged implements SystemVariable.
+func (s *MysqlSystemVariable) GetNotifyChanged() func(SystemVariableScope, SystemVarValue) error {
+	return s.NotifyChanged
 }
 
 // SystemVariableScope represents the scope of a system variable.

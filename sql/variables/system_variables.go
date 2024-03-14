@@ -21,12 +21,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
-
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/google/uuid"
 )
 
 // TODO: Add from the following sources because MySQL likes to not have every variable on a single page:
@@ -108,33 +106,14 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 		return nil, nil, false
 	}
 
-	// should always be MysqlSystemVariable
-	if systemVar, isOk := v.(*sql.MysqlSystemVariable); isOk && systemVar.ValueFunction != nil {
-		result, err := systemVar.ValueFunction()
-		if err != nil {
-			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", name, err.Error())
-			return v, nil, true
-		}
-		return v, result, true
-	}
-
-	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
-	if sysType, ok := v.GetType().(sql.SetType); ok {
-		if setTypeVal, ok := sysVal.Val.(uint64); ok {
-			var err error
-			sysVal.Val, err = sysType.BitsToString(setTypeVal)
-			if err != nil {
-				return nil, nil, false
-			}
-		}
-	}
-	return v, sysVal.Val, true
+	val, ok := v.GetValue(sysVal.Val)
+	return v, val, ok
 }
 
-// Reset returns the system variable definition and default value for the given name.
+// GetResetVal returns the system variable definition and default value for the given name.
 // If the variable does not exist, returns false. Case-insensitive.
-func (sv *globalSystemVariables) Reset(name string) (sql.SystemVariable, interface{}, bool) {
+func (sv *globalSystemVariables) GetResetVal(name string) (sql.SystemVariable, interface{}, bool) {
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	name = strings.ToLower(name)
@@ -142,6 +121,7 @@ func (sv *globalSystemVariables) Reset(name string) (sql.SystemVariable, interfa
 	if !ok {
 		return nil, nil, false
 	}
+	// The default and reset values are the same in postgres.
 	return v, v.GetDefault(), true
 }
 
