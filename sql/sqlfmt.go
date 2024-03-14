@@ -34,11 +34,11 @@ func GenerateCreateTableStatement(tblName string, colStmts []string, autoInc, tb
 	}
 
 	if autoInc != "" {
-		autoInc = fmt.Sprintf("AUTO_INCREMENT=%s", autoInc)
+		autoInc = fmt.Sprintf(" AUTO_INCREMENT=%s", autoInc)
 	}
 
 	return fmt.Sprintf(
-		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB %s DEFAULT CHARSET=%s COLLATE=%s%s",
+		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB%s DEFAULT CHARSET=%s COLLATE=%s%s",
 		QuoteIdentifier(tblName),
 		strings.Join(colStmts, ",\n"),
 		autoInc,

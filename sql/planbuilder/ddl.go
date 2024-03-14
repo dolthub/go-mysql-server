@@ -1079,7 +1079,7 @@ func validateOnUpdateExprs(col *sql.Column) error {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec and returns the parsed primary key schema, collation ID, and table comment.
 func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, string) {
-	// todo: somewhere downstream updates an ALTER MODIY column's type collation
+	// todo: somewhere downstream updates an ALTER MODIFY column's type collation
 	// to match the underlying. That only happens if the type stays unspecified.
 	tableCollation := sql.Collation_Unspecified
 	tableComment := ""
@@ -1088,6 +1088,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		if cdb, _ := db.(sql.CollatedDatabase); cdb != nil {
 			tableCollation = cdb.GetCollation(b.ctx)
 		}
+		// TODO: do something better here
 		if len(tableSpec.Options) > 0 {
 			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
 			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)

@@ -462,10 +462,10 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	autoInc := ""
 	if tbl := getAutoIncrementTable(table); tbl != nil {
 		autoIncVal, err := tbl.PeekNextAutoIncrementValue(ctx)
-		if err != nil {
-			return "", err
+		// TODO: possible to get ErrNoAutoIncrementCol here, so we just ignore
+		if err != nil && autoIncVal > 1 {
+			autoInc = fmt.Sprintf("%v", autoIncVal)
 		}
-		autoInc = fmt.Sprintf("%v", autoIncVal)
 	}
 
 	return sql.GenerateCreateTableStatement(table.Name(), colStmts, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
