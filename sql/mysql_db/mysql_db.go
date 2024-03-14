@@ -818,7 +818,7 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 	defer rd.Close()
 
 	if !db.Enabled() {
-		return MysqlConnectionUser{User: user, Host: host}, nil
+		return sql.MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
 	userEntry := db.GetUser(rd, user, host, false)
@@ -834,7 +834,7 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
 
-	return MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
+	return sql.MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
 }
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
@@ -857,7 +857,7 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 	rd := db.Reader()
 	defer rd.Close()
 
-	connUser := MysqlConnectionUser{User: user, Host: host}
+	connUser := sql.MysqlConnectionUser{User: user, Host: host}
 	if !db.Enabled() {
 		return connUser, nil
 	}
