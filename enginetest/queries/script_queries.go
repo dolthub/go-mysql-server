@@ -6182,6 +6182,26 @@ where
 			},
 		},
 	},
+	{
+		Name: "primary key order",
+		SetUpScript: []string{
+			"create table t (a varchar(5), b varchar(10), primary key(b, a));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t (b, a) values ('1234567890', '12345')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select a, b from t",
+				Expected: []sql.Row{
+					{"12345", "1234567890"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
