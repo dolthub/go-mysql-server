@@ -5850,7 +5850,8 @@ inner join pq on true
 			" ├─ CrossHashJoin (estimated cost=113.050 rows=5)\n" +
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: alias1\n" +
-			" │   │   ├─ outerVisibility: false\n │   │   ├─ isLateral: false\n" +
+			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
