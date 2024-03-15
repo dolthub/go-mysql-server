@@ -272,6 +272,12 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 			clientSessions[client] = clientSession
 		}
 
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(assertion.Query) {
+				t.Skip()
+			}
+		}
+
 		t.Run(assertion.Query, func(t *testing.T) {
 			if assertion.ExpectedErr != nil {
 				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.ExpectedErr)
