@@ -6190,7 +6190,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t1 (a, b) values ('1234567890', '12345')",
+				Query:          "insert into t1 (a, b) values ('1234567890', '12345')",
 				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
 			},
 			{
@@ -6207,7 +6207,7 @@ where
 			},
 
 			{
-				Query: "insert into t2 (a, b) values ('1234567890', '12345')",
+				Query:          "insert into t2 (a, b) values ('1234567890', '12345')",
 				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
 			},
 			{
