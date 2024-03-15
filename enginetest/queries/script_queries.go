@@ -6190,22 +6190,22 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				SkipResultsCheck: true,
-				Query: "start transaction;",
+				Query:            "start transaction;",
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "alter table t change i j int",
+				Query:            "alter table t change i j int",
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "rename table t to tt",
+				Query:            "rename table t to tt",
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "commit;",
+				Query:            "commit;",
 			},
 			{
-				Query: "select j from tt;",
+				Query:    "select j from tt;",
 				Expected: []sql.Row{},
 			},
 		},
