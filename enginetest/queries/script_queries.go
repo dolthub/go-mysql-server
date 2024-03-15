@@ -6185,17 +6185,39 @@ where
 	{
 		Name: "primary key order",
 		SetUpScript: []string{
-			"create table t (a varchar(5), b varchar(10), primary key(b, a));",
+			"create table t1 (a varchar(5), b varchar(10), primary key(a, b));",
+			"create table t2 (a varchar(5), b varchar(10), primary key(b, a));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t (b, a) values ('1234567890', '12345')",
+				Query: "insert into t1 (a, b) values ('1234567890', '12345')",
+				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
+			},
+			{
+				Query: "insert into t1 (b, a) values ('1234567890', '12345')",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
-				Query: "select a, b from t",
+				Query: "select a, b from t1",
+				Expected: []sql.Row{
+					{"12345", "1234567890"},
+				},
+			},
+
+			{
+				Query: "insert into t2 (a, b) values ('1234567890', '12345')",
+				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
+			},
+			{
+				Query: "insert into t2 (b, a) values ('1234567890', '12345')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select a, b from t2",
 				Expected: []sql.Row{
 					{"12345", "1234567890"},
 				},
