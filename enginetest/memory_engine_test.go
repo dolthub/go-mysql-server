@@ -918,6 +918,10 @@ func TestTypesOverWire(t *testing.T) {
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }
 
+func TestTransactions(t *testing.T) {
+	enginetest.TestTransactionScripts(t, enginetest.NewSkippingMemoryHarness())
+}
+
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {

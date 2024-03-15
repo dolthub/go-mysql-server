@@ -308,6 +308,8 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 	}
 
 	sess := SessionFromContext(ctx)
+	// retrieve table data from session
+	//tbl.(*Table).data = sess.tableData(tbl.(*Table))
 	sess.dropTable(tbl.(*Table).data)
 
 	memTbl := tbl.(*Table).copy()
