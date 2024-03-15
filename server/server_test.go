@@ -90,4 +90,49 @@ func TestSeverCustomListener(t *testing.T) {
 	if tableName != "table1" {
 		t.Fatalf("expected to find table1, but got %s", tableName)
 	}
+
+	t.Run("should handle rename tables and columns", func(t *testing.T) {
+		_, err = db.Exec("ALTER TABLE table1 CHANGE `id` `id2` INT")
+		require.NoError(t, err)
+
+		_, err = db.Exec("RENAME TABLE table1 TO table2")
+		require.NoError(t, err)
+
+		_, err = db.Query("SELECT id2 FROM table2")
+		require.NoError(t, err)
+	})
+
+	t.Run("should handle rename tables and columns in a transaction", func(t *testing.T) {
+		tx, err := db.BeginTx(context.Background(), nil)
+		require.NoError(t, err)
+
+		_, err = tx.Exec("ALTER TABLE table1 CHANGE `id` `id2` INT")
+		require.NoError(t, err)
+
+		_, err = tx.Exec("RENAME TABLE table1 TO table2")
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		_, err = db.Query("SELECT id2 FROM table2")
+		require.NoError(t, err)
+	})
+
+	t.Run("should handle rename tables and columns in a transaction reversed", func(t *testing.T) {
+		tx, err := db.BeginTx(context.Background(), nil)
+		require.NoError(t, err)
+
+		_, err = tx.Exec("RENAME TABLE table1 TO table2")
+		require.NoError(t, err)
+
+		_, err = tx.Exec("ALTER TABLE table2 CHANGE `id` `id2` INT")
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.NoError(t, err)
+
+		_, err = db.Query("SELECT id2 FROM table2")
+		require.NoError(t, err)
+	})
 }
