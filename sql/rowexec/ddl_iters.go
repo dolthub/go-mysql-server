@@ -1889,7 +1889,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 					return sql.ErrIncompleteFullTextIntegration.New()
 				}
 			}
-			return fulltext.CreateFulltextIndexes(ctx, database, indexable, nil, indexDef)
+			return fulltext.CreateFulltextIndexes(ctx, database, indexable, nil, sql.IndexDefs{&indexDef})
 		}
 
 		err = indexable.CreateIndex(ctx, indexDef)

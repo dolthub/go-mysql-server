@@ -34,17 +34,19 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return n, transform.SameTree, nil
 	}
 
-	err := validateIdentifiers(ct.Name(), ct.TableSpec())
+	err := validateIdentifiers(ct)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	err = validateIndexes(ctx, ct.TableSpec())
+	sch  := ct.PkSchema().Schema
+	idxs := ct.Indexes()
+	err = validateIndexes(ctx, sch, idxs)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	err = validateNoVirtualColumnsInPrimaryKey(ct.TableSpec())
+	err = validateNoVirtualColumnsInPrimaryKey(sch)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -52,13 +54,13 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	// passed validateIndexes, so they all must be valid indexes
 	// extract map of columns that have indexes defined over them
 	keyedColumns := make(map[string]bool)
-	for _, index := range ct.TableSpec().IdxDefs {
+	for _, index := range idxs {
 		for _, col := range index.Columns {
 			keyedColumns[col.Name] = true
 		}
 	}
 
-	err = validateAutoIncrementModify(ct.CreateSchema.Schema, keyedColumns)
+	err = validateAutoIncrementModify(sch, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -66,8 +68,8 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	return n, transform.SameTree, nil
 }
 
-func validateNoVirtualColumnsInPrimaryKey(spec *plan.TableSpec) error {
-	for _, c := range spec.Schema.Schema {
+func validateNoVirtualColumnsInPrimaryKey(sch sql.Schema) error {
+	for _, c := range sch {
 		if c.PrimaryKey && c.Virtual {
 			return sql.ErrVirtualColumnPrimaryKey.New()
 		}
@@ -112,15 +114,14 @@ func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	return n, transform.SameTree, nil
 }
 
-// validateIdentifiers validates various constraints about identifiers in CREATE TABLE / ALTER TABLE
-// statements.
-func validateIdentifiers(name string, spec *plan.TableSpec) error {
-	if len(name) > sql.MaxIdentifierLength {
-		return sql.ErrInvalidIdentifier.New(name)
+// validateIdentifiers validates various constraints about identifiers in CREATE TABLE / ALTER TABLE statements.
+func validateIdentifiers(ct *plan.CreateTable) error {
+	if len(ct.Name()) > sql.MaxIdentifierLength {
+		return sql.ErrInvalidIdentifier.New(ct.Name())
 	}
 
 	colNames := make(map[string]bool)
-	for _, col := range spec.Schema.Schema {
+	for _, col := range ct.PkSchema().Schema {
 		if len(col.Name) > sql.MaxIdentifierLength {
 			return sql.ErrInvalidIdentifier.New(col.Name)
 		}
@@ -131,19 +132,19 @@ func validateIdentifiers(name string, spec *plan.TableSpec) error {
 		colNames[lower] = true
 	}
 
-	for _, chDef := range spec.ChDefs {
+	for _, chDef := range ct.Checks() {
 		if len(chDef.Name) > sql.MaxIdentifierLength {
 			return sql.ErrInvalidIdentifier.New(chDef.Name)
 		}
 	}
 
-	for _, idxDef := range spec.IdxDefs {
-		if len(idxDef.IndexName) > sql.MaxIdentifierLength {
-			return sql.ErrInvalidIdentifier.New(idxDef.IndexName)
+	for _, idxDef := range ct.Indexes() {
+		if len(idxDef.Name) > sql.MaxIdentifierLength {
+			return sql.ErrInvalidIdentifier.New(idxDef.Name)
 		}
 	}
 
-	for _, fkDef := range spec.FkDefs {
+	for _, fkDef := range ct.ForeignKeys() {
 		if len(fkDef.Name) > sql.MaxIdentifierLength {
 			return sql.ErrInvalidIdentifier.New(fkDef.Name)
 		}
@@ -328,7 +329,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	// We can't evaluate auto-increment until the end of the analysis, since we break adding a new auto-increment unique
 	// column into two steps: first add the column, then create the index. If there was no index created, that's an error.
 	if addedColumn {
-		err = validateAutoIncrementAdd(ctx, sch, keyedColumns)
+		err = validateAutoIncrementAdd(sch, keyedColumns)
 		if err != nil {
 			return nil, false, err
 		}
@@ -858,7 +859,7 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 	return nil
 }
 
-func validateAutoIncrementAdd(ctx *sql.Context, schema sql.Schema, keyColumns map[string]bool) error {
+func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
@@ -886,27 +887,27 @@ const textIndexPrefix = 1000
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 // TODO: this method is very similar to validateIndexType...
-func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
+func validateIndexes(ctx *sql.Context, sch sql.Schema, idxs sql.IndexDefs) error {
 	lwrNames := make(map[string]*sql.Column)
-	for _, col := range tableSpec.Schema.Schema {
+	for _, col := range sch {
 		lwrNames[strings.ToLower(col.Name)] = col
 	}
 	var hasPkIndexDef bool
-	for _, idx := range tableSpec.IdxDefs {
-		if idx.Constraint == sql.IndexConstraint_Primary {
+	for _, idx := range idxs {
+		if idx.IsPrimary() {
 			hasPkIndexDef = true
 		}
 		for _, idxCol := range idx.Columns {
 			schCol, ok := lwrNames[strings.ToLower(idxCol.Name)]
 			if !ok {
-				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.IndexName)
+				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.Name)
 			}
 			err := validatePrefixLength(ctx, schCol, idxCol, idx.Constraint)
 			if err != nil {
 				return err
 			}
 		}
-		if idx.Constraint == sql.IndexConstraint_Spatial {
+		if idx.IsSpatial() {
 			if len(idx.Columns) != 1 {
 				return sql.ErrTooManyKeyParts.New(1)
 			}
@@ -927,7 +928,7 @@ func validateIndexes(ctx *sql.Context, tableSpec *plan.TableSpec) error {
 	// if there was not a PkIndexDef, then any primary key text/blob columns must not have index lengths
 	// otherwise, then it would've been validated before this
 	if !hasPkIndexDef {
-		for _, col := range tableSpec.Schema.Schema {
+		for _, col := range sch {
 			if col.PrimaryKey && types.IsTextBlob(col.Type) {
 				return sql.ErrInvalidBlobTextKey.New(col.Name)
 			}

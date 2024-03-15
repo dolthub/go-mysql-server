@@ -764,38 +764,45 @@ func init() {
 
 // ParseCollation takes in an optional character set and collation, along with the binary attribute if present,
 // and returns a valid collation or error. A nil character set and collation will return the default collation.
-func ParseCollation(characterSetStr *string, collationStr *string, binaryAttribute bool) (CollationID, error) {
-	if characterSetStr == nil || len(*characterSetStr) == 0 {
-		if collationStr == nil || len(*collationStr) == 0 {
-			return Collation_Unspecified, nil
+func ParseCollation(characterSetStr string, collationStr string, binary bool) (CollationID, error) {
+	if len(characterSetStr) == 0 {
+		if len(collationStr) == 0 {
+			// No character set or collation specified: return the default collation
+			return Collation_Default, nil
 		}
-		if collation, ok := collationStringToID[strings.ToLower(*collationStr)]; ok {
-			if binaryAttribute {
-				return collation.CharacterSet().BinaryCollation(), nil
-			}
-			return collation, nil
+		// No character set specified, but a collation was specified: use collation
+		collation, ok := collationStringToID[strings.ToLower(collationStr)]
+		if !ok {
+			return Collation_Unspecified, ErrCollationUnknown.New(collationStr)
 		}
-		return Collation_Unspecified, ErrCollationUnknown.New(*collationStr)
-	} else {
-		characterSet, err := ParseCharacterSet(*characterSetStr)
-		if err != nil {
-			return Collation_Unspecified, err
-		}
-		if collationStr == nil || len(*collationStr) == 0 {
-			if binaryAttribute {
-				return characterSet.BinaryCollation(), nil
-			}
-			return characterSet.DefaultCollation(), nil
-		}
-		collation, exists := collationStringToID[strings.ToLower(*collationStr)]
-		if !exists {
-			return Collation_Unspecified, ErrCollationUnknown.New(*collationStr)
-		}
-		if !collation.WorksWithCharacterSet(characterSet) {
-			return Collation_Unspecified, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)
+		if binary {
+			return collation.CharacterSet().BinaryCollation(), nil
 		}
 		return collation, nil
 	}
+
+	characterSet, err := ParseCharacterSet(characterSetStr)
+	if err != nil {
+		return Collation_Unspecified, err
+	}
+
+	if len(collationStr) == 0 {
+		// Character set specified, but no collation: grab default collation for character set
+		if binary {
+			return characterSet.BinaryCollation(), nil
+		}
+		return characterSet.DefaultCollation(), nil
+	}
+
+	// Both character set and collation specified: check compatibility and use collation
+	collation, ok := collationStringToID[strings.ToLower(collationStr)]
+	if !ok {
+		return Collation_Unspecified, ErrCollationUnknown.New(collationStr)
+	}
+	if !collation.WorksWithCharacterSet(characterSet) {
+		return Collation_Unspecified, fmt.Errorf("%v is not a valid character set for %v", characterSet, collation)
+	}
+	return collation, nil
 }
 
 // Name returns the name of this collation.
