@@ -1415,7 +1415,6 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 
-	t.db.tables[t.name] = t
 	sess.putTable(data)
 
 	return nil

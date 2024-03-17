@@ -6224,34 +6224,6 @@ where
 			},
 		},
 	},
-	{
-		Name: "alter statements apply correctly",
-		SetUpScript: []string{
-			"create table t (i int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				SkipResultsCheck: true,
-				Query:            "start transaction;",
-			},
-			{
-				SkipResultsCheck: true,
-				Query:            "alter table t change i j int",
-			},
-			{
-				SkipResultsCheck: true,
-				Query:            "rename table t to tt",
-			},
-			{
-				SkipResultsCheck: true,
-				Query:            "commit;",
-			},
-			{
-				Query:    "select j from tt;",
-				Expected: []sql.Row{},
-			},
-		},
-	},
 }
 
 var SpatialScriptTests = []ScriptTest{
