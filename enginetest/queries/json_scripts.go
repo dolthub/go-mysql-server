@@ -15,13 +15,114 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var JsonScripts = []ScriptTest{
+	{
+		Name: "json_type scripts",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select JSON_TYPE(CAST(1 AS JSON))",
+				Expected: []sql.Row{
+					{"INTEGER"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(CAST("1" AS JSON))`,
+				Expected: []sql.Row{
+					{"INTEGER"},
+				},
+				// Because standard JSON doesn't have separate int and float types,
+				// golang's JSON parser parses the "1" as a float.
+				SkipResultsCheck: true,
+			},
+			{
+				Query: `select JSON_TYPE(CAST("\"1\"" AS JSON))`,
+				Expected: []sql.Row{
+					{"STRING"},
+				},
+			},
+			// Casting without quotes: `321.4` is parsed as a decimal, then wrapped in a JSON Document.
+			{
+				Query: "select JSON_TYPE(CAST(321.4 AS JSON))",
+				Expected: []sql.Row{
+					{"DECIMAL"},
+				},
+			},
+			// Casting with quotes: The string value is parsed as JSON, resulting in a wrapped double.
+			{
+				Query: `select JSON_TYPE(CAST("321.4" AS JSON))`,
+				Expected: []sql.Row{
+					{"DOUBLE"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(CAST("\"321.4\"" AS JSON))`,
+				Expected: []sql.Row{
+					{"STRING"},
+				},
+			},
+		},
+	},
+	{
+		Name: "types survive round trips into tables",
+		SetUpScript: []string{
+			"CREATE TABLE xy (x bigint primary key, y JSON)",
+			`INSERT INTO xy VALUES (0, CAST(CAST(1.2 AS DECIMAL) AS JSON));`,
+			`INSERT INTO xy VALUES (1, CAST(CAST(1.2 AS DOUBLE) AS JSON));`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x, JSON_TYPE(y) from xy",
+				Expected: []sql.Row{
+					{0, "DECIMAL"},
+					{1, "DOUBLE"},
+				},
+			},
+		},
+	},
+	{
+		Name: "unsigned tinyint survives round-trip into table",
+		SetUpScript: []string{
+			"CREATE TABLE xy (x bigint primary key, y JSON, z tinyint unsigned)",
+			`INSERT INTO xy VALUES (0, null, 0);`,
+			`INSERT INTO xy select 1, CAST(z AS JSON), 1 from xy;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select JSON_TYPE(y) from xy where x = 1;",
+				Expected: []sql.Row{
+					{"UNSIGNED INTEGER"},
+				},
+			},
+		},
+	},
+	{
+		Name: "json_object preserves types",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select JSON_OBJECT('a', CAST(12.34 AS DECIMAL(4, 2)));",
+				Expected: []sql.Row{
+					{types.JSONDocument{Val: map[string]interface{}{"a": decimal.New(1234, -2)}}},
+				},
+			},
+		},
+	},
+	{
+		Name: "json_value conversions",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `select json_value(cast(12.34 as decimal), '$')`,
+				ExpectedErr: json.InvalidJsonArgument,
+			},
+		},
+	},
 	{
 		Name: "json_value",
 		SetUpScript: []string{
