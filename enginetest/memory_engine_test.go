@@ -210,7 +210,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "show create table t",
+					Query: "show create table t",
 					Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +

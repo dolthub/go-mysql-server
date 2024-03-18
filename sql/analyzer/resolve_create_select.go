@@ -43,10 +43,10 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 
 	// TODO: ignore fks, checks, idxs? The old code didn't, but it seems like we should.
 	newSpec := &plan.TableSpec{
-		Schema:  sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
-		FkDefs:  ct.ForeignKeys(),
-		ChDefs:  ct.Checks(),
-		IdxDefs: ct.Indexes(),
+		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		FkDefs:    ct.ForeignKeys(),
+		ChDefs:    ct.Checks(),
+		IdxDefs:   ct.Indexes(),
 		Collation: plan.GetDatabaseCollation(ctx, ct.Database()),
 		TableOpts: ct.TableOpts,
 	}

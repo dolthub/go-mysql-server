@@ -660,9 +660,9 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 			idxDefs = append(idxDefs, &sql.IndexDef{
 				Storage:    sql.IndexUsing_Default,
 				Constraint: sql.IndexConstraint_Fulltext,
-				Columns:    []sql.IndexColumn{
+				Columns: []sql.IndexColumn{
 					{
-						Name:   colDef.Name.String(),
+						Name: colDef.Name.String(),
 					},
 				},
 			})
@@ -672,9 +672,9 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 			idxDefs = append(idxDefs, &sql.IndexDef{
 				Storage:    sql.IndexUsing_Default,
 				Constraint: sql.IndexConstraint_Unique,
-				Columns:    []sql.IndexColumn{
+				Columns: []sql.IndexColumn{
 					{
-						Name:   colDef.Name.String(),
+						Name: colDef.Name.String(),
 					},
 				},
 			})

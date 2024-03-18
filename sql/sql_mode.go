@@ -24,12 +24,12 @@ import (
 const (
 	SqlModeSessionVar = "SQL_MODE"
 
-	ANSI = "ANSI"
-	ANSIQuotes = "ANSI_QUOTES"
-	OnlyFullGroupBy = "ONLY_FULL_GROUP_BY"
-	NoAutoValueOnZero = "NO_AUTO_VALUE_ON_ZERO"
+	ANSI                 = "ANSI"
+	ANSIQuotes           = "ANSI_QUOTES"
+	OnlyFullGroupBy      = "ONLY_FULL_GROUP_BY"
+	NoAutoValueOnZero    = "NO_AUTO_VALUE_ON_ZERO"
 	NoEngineSubstitution = "NO_ENGINE_SUBSTITUTION"
-	StrictTransTables = "STRICT_TRANS_TABLES"
+	StrictTransTables    = "STRICT_TRANS_TABLES"
 )
 
 // SqlMode encodes the SQL mode string and provides methods for querying the enabled modes.

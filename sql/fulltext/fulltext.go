@@ -391,7 +391,7 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 		indexCols := make([]sql.IndexColumn, len(exprs))
 		for i, expr := range exprs {
 			indexCols[i] = sql.IndexColumn{
-				Name:   strings.TrimPrefix(expr, ftIndex.Table()+"."),
+				Name: strings.TrimPrefix(expr, ftIndex.Table()+"."),
 			}
 		}
 		fulltextIndexes = append(fulltextIndexes, &sql.IndexDef{

@@ -39,7 +39,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return nil, transform.SameTree, err
 	}
 
-	sch  := ct.PkSchema().Schema
+	sch := ct.PkSchema().Schema
 	idxs := ct.Indexes()
 	err = validateIndexes(ctx, sch, idxs)
 	if err != nil {

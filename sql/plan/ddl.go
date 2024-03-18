@@ -98,7 +98,7 @@ type CreateTable struct {
 	like       sql.Node
 	selectNode sql.Node
 
-	Collation  sql.CollationID
+	Collation sql.CollationID
 	TableOpts map[string]interface{}
 }
 
@@ -126,7 +126,7 @@ func NewCreateTable(db sql.Database, name string, ifn, temp bool, tableSpec *Tab
 		checks:      tableSpec.ChDefs,
 		idxDefs:     tableSpec.IdxDefs,
 		Collation:   tableSpec.Collation,
-		TableOpts:  tableSpec.TableOpts,
+		TableOpts:   tableSpec.TableOpts,
 	}
 }
 
@@ -137,16 +137,16 @@ func NewCreateTableSelect(db sql.Database, name string, ifn, temp bool, selectNo
 	}
 
 	return &CreateTable{
-		ddlNode:      ddlNode{Db: db},
-		name:         name,
-		ifNotExists:  ifn,
-		temporary:    temp,
-		selectNode:   selectNode,
-		pkSch:        tableSpec.Schema,
-		fkDefs:       tableSpec.FkDefs,
-		checks:       tableSpec.ChDefs,
-		idxDefs:      tableSpec.IdxDefs,
-		Collation:    tableSpec.Collation,
+		ddlNode:     ddlNode{Db: db},
+		name:        name,
+		ifNotExists: ifn,
+		temporary:   temp,
+		selectNode:  selectNode,
+		pkSch:       tableSpec.Schema,
+		fkDefs:      tableSpec.FkDefs,
+		checks:      tableSpec.ChDefs,
+		idxDefs:     tableSpec.IdxDefs,
+		Collation:   tableSpec.Collation,
 		TableOpts:   tableSpec.TableOpts,
 	}
 }
