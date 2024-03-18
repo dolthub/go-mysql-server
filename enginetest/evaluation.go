@@ -252,6 +252,11 @@ func TestTransactionScript(t *testing.T, harness Harness, script queries.Transac
 func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script queries.TransactionTest) {
 	setupSession := NewSession(harness)
 	for _, statement := range script.SetUpScript {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(statement) {
+				t.Skip()
+			}
+		}
 		RunQueryWithContext(t, e, harness, setupSession, statement)
 	}
 
@@ -268,6 +273,10 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 		}
 
 		t.Run(assertion.Query, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
+				t.Skip()
+			}
+
 			if assertion.ExpectedErr != nil {
 				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.ExpectedErr)
 			} else if assertion.ExpectedErrStr != "" {
