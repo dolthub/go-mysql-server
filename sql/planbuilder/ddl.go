@@ -1082,7 +1082,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 			}
 			optVal = val
 		default:
-			optVal = strings.ToLower(tblOpt.Value)
+			optVal = tblOpt.Value
 		}
 		// TODO: deal with conflicting and duplicate table options
 		tblOpts[optName] = optVal

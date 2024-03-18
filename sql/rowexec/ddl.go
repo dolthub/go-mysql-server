@@ -1016,24 +1016,25 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 	indexMap := make(map[string]struct{})
 	fulltextIndexes := make(sql.IndexDefs, 0)
 	for _, idxDef := range idxes {
-		if len(idxDef.Name) > 0 {
-			if _, ok = indexMap[strings.ToLower(idxDef.Name)]; ok {
-				return sql.ErrIndexIDAlreadyRegistered.New(idxDef.Name)
-			}
-		}
-
+		indexName := idxDef.Name
 		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
 		// until we get a non-colliding name if the original name (or each preceding name) already exists.
 		// TODO: this doesn't match getIndexName function in dolt
-		indexName := strings.Join(idxDef.ColumnNames(), "")
-		if _, ok = indexMap[strings.ToLower(indexName)]; ok {
-			for i := 0; true; i++ {
-				newIndexName := fmt.Sprintf("%s_%d", indexName, i)
-				if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
-					indexName = newIndexName
-					break
+		if len(indexName) == 0 {
+			indexName = strings.Join(idxDef.ColumnNames(), "")
+			if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+				for i := 0; true; i++ {
+					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
+						indexName = newIndexName
+						break
+					}
 				}
 			}
+		}
+
+		if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.Name)
 		}
 		indexMap[strings.ToLower(indexName)] = struct{}{}
 

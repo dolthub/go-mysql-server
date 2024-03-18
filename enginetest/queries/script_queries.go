@@ -7428,23 +7428,26 @@ var CreateDatabaseScripts = []ScriptTest{
 		Name: "CREATE DATABASE error handling",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+				Query:    "CREATE DATABASE IF NOT EXISTS mydb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921. Also for when run with prepares, the warning is added twice
-				Query:                         "SHOW WARNINGS /* 1 */",
-				Expected:                      []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				Query:    "SHOW WARNINGS /* 1 */",
+				Expected: []sql.Row{{"Note", 1007, "Can't create database mydb; database exists "}},
 			},
 			{
-				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+				Query:    "CREATE DATABASE IF NOT EXISTS mydb",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921.
 				// TODO: There should only be one warning (the warnings are not clearing for create database query) AND 'PREPARE' statements should not create warning from its query
 				Query:    "SHOW WARNINGS /* 2 */",
-				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}, {"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				Expected: []sql.Row{
+					{"Note", 1007, "Can't create database mydb; database exists "},
+					{"Note", 1007, "Can't create database mydb; database exists "},
+				},
 			},
 			{
 				Query:       "CREATE DATABASE mydb",

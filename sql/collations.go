@@ -767,8 +767,8 @@ func init() {
 func ParseCollation(characterSetStr string, collationStr string, binary bool) (CollationID, error) {
 	if len(characterSetStr) == 0 {
 		if len(collationStr) == 0 {
-			// No character set or collation specified: return the default collation
-			return Collation_Default, nil
+			// No character set or collation specified: return unspecified collation
+			return Collation_Unspecified, nil
 		}
 		// No character set specified, but a collation was specified: use collation
 		collation, ok := collationStringToID[strings.ToLower(collationStr)]
