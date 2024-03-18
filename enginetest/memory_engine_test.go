@@ -210,12 +210,10 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "show create table t",
-					Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
-						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT AUTO_INCREMENT=100 CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
-					}},
+					Query: "select if ('', 1, char(''));",
+					Expected: []sql.Row{
+						{[]byte{0x00}},
+					},
 				},
 			},
 		},
