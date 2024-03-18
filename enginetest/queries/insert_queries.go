@@ -1344,7 +1344,7 @@ var InsertScripts = []ScriptTest{
 			{
 				// restore old sql_mode just in case
 				SkipResultsCheck: true,
-				Query: "set @@sql_mode=@old_sql_mode",
+				Query:            "set @@sql_mode=@old_sql_mode",
 			},
 		},
 	},
