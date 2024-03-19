@@ -121,7 +121,11 @@ func TestJoinOps(t *testing.T) {
 }
 
 func TestJoinStats(t *testing.T) {
-	enginetest.TestJoinStats(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("join stats don't work with bindvars")
+	}
+	enginetest.TestJoinStats(t, harness)
 }
 
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
