@@ -31,6 +31,8 @@ func init() {
 	escapeSeq[uint8('\t')] = []byte("\\t")
 	escapeSeq[uint8('"')] = []byte("\\\"")
 	escapeSeq[uint8('\\')] = []byte("\\\\")
+
+	decimal.MarshalJSONWithoutQuotes = true
 }
 
 type NoCopyBuilder struct {
