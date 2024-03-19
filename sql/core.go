@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -369,52 +370,49 @@ type SystemVariableRegistry interface {
 	AssignValues(vals map[string]interface{}) error
 	// NewSessionMap returns a map of system variables values that can be used by a session
 	NewSessionMap() map[string]SystemVarValue
-	// GetGlobal returns the global value of the system variable with the given name
+	// GetGlobal returns the current global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
-	// GetResetVal returns the default value of the system variable with the given name.
-	// This is not the current GLOBAL value. It's used for postgres config parameters only.
-	GetResetVal(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
 	SetGlobal(name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
 }
 
-// SystemVariable is used to handle mysql system variables and postgres configuration variables interchangeably.
-// TODO: mysql sv and postgres cp should not be mixed.
+// SystemVariable is used to system variables.
 type SystemVariable interface {
 	// GetName returns the name of the sv. Case-sensitive.
 	GetName() string
-	// SetName sets the name of the sv.
-	// TODO: it should not happen, but we set the name to lower-case string?
-	SetName(string)
+	// ForceChangeName sets the name of the sv.
+	ForceChangeName(string)
 	// GetType returns the type of the sv.
 	GetType() Type
+	// GetScope takes a scope if we want to validate it;
+	// otherwise, if nil, it returns the scope of the sv.
+	GetScope(SystemVariableScope) SystemVariableScope
 	// SetDefault sets the default value of the sv.
 	SetDefault(any)
-	// GetDefault returns the default value of the sv.
+	// GetDefault returns the defined default value of the sv.
+	// This is used for resetting some variables to initial default/reset value.
 	GetDefault() any
-	// GetValue returns the value
+	// GetValue takes the current GLOBAL value of the sv
+	// and returns either that value or value from ValueFunction
+	// It converts the value to appropriate type, if necessary.
 	GetValue(a any) (any, bool)
-	// HasDefaultValue checks whether the default value
-	// of the sv is the same value of given argument.
-	HasDefaultValue(any) bool
-	// AssignValue sets value without validation.
+	// ForceSetValue sets value without validation.
 	// This is used for setting the initial values internally
 	// using pre-defined variables or for test-purposes.
-	AssignValue(val any) (SystemVarValue, error)
-	// SetValue set the value with validation such as read-only.
-	// This should be used when variables are set using statements.
+	ForceSetValue(val any) (SystemVarValue, error)
+	// SetValue sets the value of the sv.
 	SetValue(val any, global bool) (SystemVarValue, error)
 	// IsReadOnly checks whether the variable is read only.
 	// It returns false if variable can be set to a value.
 	IsReadOnly() bool
 	// IsGlobalOnly checks whether the scope of the variable is global only.
-	// For postgres parameters, it's always true for now.
 	IsGlobalOnly() bool
 	// GetNotifyChanged returns the NotifyChanged function for the variable.
-	// For postgres parameters, it's always nil for now
 	GetNotifyChanged() func(SystemVariableScope, SystemVarValue) error
+	// String returns the name of the sv to be displayed.
+	String(string) string
 }
 
 var _ SystemVariable = (*MysqlSystemVariable)(nil)
@@ -424,7 +422,7 @@ type MysqlSystemVariable struct {
 	// Name is the name of the system variable.
 	Name string
 	// Scope defines the scope of the system variable, which is either Global, Session, or Both.
-	Scope SystemVariableScope
+	Scope *MysqlScope
 	// Dynamic defines whether the variable may be written to during runtime. Variables with this set to `false` will
 	// return an error if a user attempts to set a value.
 	Dynamic bool
@@ -459,14 +457,25 @@ func (s *MysqlSystemVariable) GetName() string {
 	return s.Name
 }
 
-// SetName implements SystemVariable.
-func (s *MysqlSystemVariable) SetName(n string) {
+// ForceChangeName implements SystemVariable.
+func (s *MysqlSystemVariable) ForceChangeName(n string) {
 	s.Name = n
 }
 
 // GetType implements SystemVariable.
 func (s *MysqlSystemVariable) GetType() Type {
 	return s.Type
+}
+
+// GetScope implements SystemVariable.
+func (s *MysqlSystemVariable) GetScope(scope SystemVariableScope) SystemVariableScope {
+	// If |scope| is defined, then return it. It's used for creating new system var node.
+	// Otherwise, we expect the defined scope for this variable.
+	// TODO: we can perform validation here (e.g. trying to get session scope for global-only variable)
+	if scope != nil {
+		return scope
+	}
+	return s.Scope
 }
 
 // SetDefault implements SystemVariable.
@@ -504,13 +513,8 @@ func (s *MysqlSystemVariable) GetValue(a any) (any, bool) {
 	return a, true
 }
 
-// HasDefaultValue implements SystemVariable.
-func (s *MysqlSystemVariable) HasDefaultValue(a any) bool {
-	return s.Default == a
-}
-
-// AssignValue implements SystemVariable.
-func (s *MysqlSystemVariable) AssignValue(val any) (SystemVarValue, error) {
+// ForceSetValue implements SystemVariable.
+func (s *MysqlSystemVariable) ForceSetValue(val any) (SystemVarValue, error) {
 	convertedVal, _, err := s.Type.Convert(val)
 	if err != nil {
 		return SystemVarValue{}, err
@@ -520,7 +524,7 @@ func (s *MysqlSystemVariable) AssignValue(val any) (SystemVarValue, error) {
 		Val: convertedVal,
 	}
 	if s.NotifyChanged != nil {
-		err = s.NotifyChanged(SystemVariableScope_Global, svv)
+		err = s.NotifyChanged(GetMysqlScope(SystemVariableScope_Global), svv)
 		if err != nil {
 			return SystemVarValue{}, err
 		}
@@ -530,13 +534,13 @@ func (s *MysqlSystemVariable) AssignValue(val any) (SystemVarValue, error) {
 
 // SetValue implements SystemVariable.
 func (s *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
-	if global && s.Scope == SystemVariableScope_Session {
+	if global && s.Scope.Type == SystemVariableScope_Session {
 		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(s.Name)
 	}
 	if !s.Dynamic || s.ValueFunction != nil {
 		return SystemVarValue{}, ErrSystemVariableReadOnly.New(s.Name)
 	}
-	return s.AssignValue(val)
+	return s.ForceSetValue(val)
 }
 
 // IsReadOnly implements SystemVariable.
@@ -546,7 +550,7 @@ func (s *MysqlSystemVariable) IsReadOnly() bool {
 
 // IsGlobalOnly implements SystemVariable.
 func (s *MysqlSystemVariable) IsGlobalOnly() bool {
-	return s.Scope == SystemVariableScope_Global
+	return s.Scope.IsGlobalOnly()
 }
 
 // GetNotifyChanged implements SystemVariable.
@@ -554,12 +558,151 @@ func (s *MysqlSystemVariable) GetNotifyChanged() func(SystemVariableScope, Syste
 	return s.NotifyChanged
 }
 
-// SystemVariableScope represents the scope of a system variable.
-type SystemVariableScope byte
+// String implements SystemVariable.
+func (s *MysqlSystemVariable) String(specifiedScope string) string {
+	// If the scope wasn't explicitly provided, then don't include it in the string representation
+	if specifiedScope == "" {
+		return fmt.Sprintf("@@%s", s.Name)
+	} else {
+		return fmt.Sprintf("@@%s.%s", specifiedScope, s.Name)
+	}
+}
+
+// SystemVariableScope represents the scope of a system variable
+// and handles SV values depending on its scope.
+type SystemVariableScope interface {
+	// SetValue sets an appropriate value to the given SV name depending on the scope.
+	SetValue(*Context, string, any) error
+	// GetValue returns appropriate value of the given SV name depending on the scope.
+	GetValue(*Context, string, CollationID) (any, error)
+	// IsGlobalOnly returns true if SV is of SystemVariableScope_Global scope.
+	IsGlobalOnly() bool
+	// IsSessionOnly returns true if SV is of SystemVariableScope_Session scope.
+	IsSessionOnly() bool
+	// GetDefault takes the defined default value and current GLOBAL value of the SV.
+	// It returns either one depending on the scope of the SV. It is used for getting
+	// the value for DEFAULT expression.
+	GetDefault(any, any) any
+}
+
+// MysqlScope represents the scope of a MySQL system variable.
+type MysqlScope struct {
+	Type MysqlSVScopeType
+}
+
+func GetMysqlScope(t MysqlSVScopeType) *MysqlScope {
+	return &MysqlScope{Type: t}
+}
+
+func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
+	switch m.Type {
+	case SystemVariableScope_Global:
+		err := SystemVariables.SetGlobal(name, val)
+		if err != nil {
+			return err
+		}
+	case SystemVariableScope_Session:
+		err := ctx.SetSessionVariable(ctx, name, val)
+		if err != nil {
+			return err
+		}
+	case SystemVariableScope_Persist:
+		persistSess, ok := ctx.Session.(PersistableSession)
+		if !ok {
+			return ErrSessionDoesNotSupportPersistence.New()
+		}
+		err := persistSess.PersistGlobal(name, val)
+		if err != nil {
+			return err
+		}
+		err = SystemVariables.SetGlobal(name, val)
+		if err != nil {
+			return err
+		}
+	case SystemVariableScope_PersistOnly:
+		persistSess, ok := ctx.Session.(PersistableSession)
+		if !ok {
+			return ErrSessionDoesNotSupportPersistence.New()
+		}
+		err := persistSess.PersistGlobal(name, val)
+		if err != nil {
+			return err
+		}
+	case SystemVariableScope_ResetPersist:
+		// TODO: add parser support for RESET PERSIST
+		persistSess, ok := ctx.Session.(PersistableSession)
+		if !ok {
+			return ErrSessionDoesNotSupportPersistence.New()
+		}
+		if name == "" {
+			err := persistSess.RemoveAllPersistedGlobals()
+			if err != nil {
+				return err
+			}
+		}
+		err := persistSess.RemovePersistedGlobal(name)
+		if err != nil {
+			return err
+		}
+	default: // should never be hit
+		return fmt.Errorf("unable to set `%s` due to unknown scope `%v`", name, m.Type)
+	}
+	return nil
+}
+
+func (m *MysqlScope) GetValue(ctx *Context, name string, collation CollationID) (any, error) {
+	switch m.Type {
+	case SystemVariableScope_Global:
+		_, val, ok := SystemVariables.GetGlobal(name)
+		if !ok {
+			return nil, ErrUnknownSystemVariable.New(name)
+		}
+		return val, nil
+	case SystemVariableScope_Session:
+		// "character_set_database" and "collation_database" are special system variables, in that they're set whenever
+		// the current database is changed. Rather than attempting to synchronize the session variables of all
+		// outstanding contexts whenever a database's collation is updated, we just pull the values from the database
+		// directly. MySQL also plans to make these system variables immutable (from the user's perspective). This isn't
+		// exactly the same as MySQL's behavior, but this is the intent of their behavior, which is also way easier to
+		// implement.
+		switch strings.ToLower(name) {
+		case "character_set_database":
+			return collation.CharacterSet().String(), nil
+		case "collation_database":
+			return collation.String(), nil
+		default:
+			val, err := ctx.GetSessionVariable(ctx, name)
+			if err != nil {
+				return nil, err
+			}
+			return val, nil
+		}
+	default:
+		return nil, fmt.Errorf("unknown scope `%v` on system variable `%s`", m.Type, name)
+	}
+}
+
+func (m *MysqlScope) IsGlobalOnly() bool {
+	return m.Type == SystemVariableScope_Global
+}
+
+func (m *MysqlScope) IsSessionOnly() bool {
+	return m.Type == SystemVariableScope_Session
+}
+
+func (m *MysqlScope) GetDefault(defaultVal, currentGlobalVal any) any {
+	// DEFAULT value in MySQL refers to current GLOBAL value.
+	return currentGlobalVal
+}
+
+var _ SystemVariableScope = (*MysqlScope)(nil)
+
+// MysqlSVScopeType represents the scope of a system variable.
+type MysqlSVScopeType byte
 
 const (
 	// SystemVariableScope_Global is set when the system variable exists only in the global context.
-	SystemVariableScope_Global SystemVariableScope = iota
+	SystemVariableScope_Global MysqlSVScopeType = iota
 	// SystemVariableScope_Session is set when the system variable exists only in the session context.
 	SystemVariableScope_Session
 	// SystemVariableScope_Both is set when the system variable exists in both the global and session contexts.
@@ -570,13 +713,10 @@ const (
 	SystemVariableScope_PersistOnly
 	// SystemVariableScope_ResetPersist is used to remove a persisted variable
 	SystemVariableScope_ResetPersist
-
-	// PostgresConfigParamScope_Session is set when the configuration parameter is being set in the session context.
-	PostgresConfigParamScope_Session
 )
 
 // String returns the scope as an uppercase string.
-func (s SystemVariableScope) String() string {
+func (s MysqlSVScopeType) String() string {
 	switch s {
 	case SystemVariableScope_Global:
 		return "GLOBAL"
@@ -590,8 +730,6 @@ func (s SystemVariableScope) String() string {
 		return "RESET PERSIST"
 	case SystemVariableScope_Both:
 		return "GLOBAL, SESSION"
-	case PostgresConfigParamScope_Session:
-		return "POSTGRES SESSION"
 	default:
 		return "UNKNOWN_SYSTEM_SCOPE"
 	}

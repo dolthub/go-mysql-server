@@ -195,7 +195,7 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 	}
 
 	if nc := sysVar.GetNotifyChanged(); nc != nil {
-		err = nc(SystemVariableScope_Session, svv)
+		err = nc(GetMysqlScope(SystemVariableScope_Session), svv)
 		if err != nil {
 			return err
 		}

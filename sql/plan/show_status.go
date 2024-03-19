@@ -95,8 +95,8 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			continue
 		}
 
-		if s.Modifier == ShowStatusModifier_Session && msv.Scope == sql.SystemVariableScope_Global ||
-			s.Modifier == ShowStatusModifier_Global && msv.Scope == sql.SystemVariableScope_Session {
+		if s.Modifier == ShowStatusModifier_Session && msv.Scope.IsGlobalOnly() ||
+			s.Modifier == ShowStatusModifier_Global && msv.Scope.IsSessionOnly() {
 			continue
 		}
 

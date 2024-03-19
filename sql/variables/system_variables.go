@@ -55,7 +55,7 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 		}
 		sysVar := originalSysVar
 		lowerName := strings.ToLower(sysVar.GetName())
-		sysVar.SetName(lowerName)
+		sysVar.ForceChangeName(lowerName)
 		systemVars[lowerName] = sysVar
 		sv.sysVarVals[lowerName] = sql.SystemVarValue{
 			Var: sysVar,
@@ -76,7 +76,7 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
-		svv, err := sysVar.AssignValue(val)
+		svv, err := sysVar.ForceSetValue(val)
 		if err != nil {
 			return err
 		}
@@ -110,20 +110,6 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	sysVal := sv.sysVarVals[name]
 	val, ok := v.GetValue(sysVal.Val)
 	return v, val, ok
-}
-
-// GetResetVal returns the system variable definition and default value for the given name.
-// If the variable does not exist, returns false. Case-insensitive.
-func (sv *globalSystemVariables) GetResetVal(name string) (sql.SystemVariable, interface{}, bool) {
-	sv.mutex.RLock()
-	defer sv.mutex.RUnlock()
-	name = strings.ToLower(name)
-	v, ok := systemVars[name]
-	if !ok {
-		return nil, nil, false
-	}
-	// The default and reset values are the same in postgres.
-	return v, v.GetDefault(), true
 }
 
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,
@@ -188,7 +174,7 @@ func init() {
 var systemVars = map[string]sql.SystemVariable{
 	"activate_all_roles_on_login": &sql.MysqlSystemVariable{
 		Name:              "activate_all_roles_on_login",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("activate_all_roles_on_login"),
@@ -196,7 +182,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_address": &sql.MysqlSystemVariable{
 		Name:              "admin_address",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_address"),
@@ -204,7 +190,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_port": &sql.MysqlSystemVariable{
 		Name:              "admin_port",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("admin_port", 0, 65535, false),
@@ -212,7 +198,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_ssl_ca": &sql.MysqlSystemVariable{
 		Name:              "admin_ssl_ca",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_ssl_ca"),
@@ -220,7 +206,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_ssl_capath": &sql.MysqlSystemVariable{
 		Name:              "admin_ssl_capath",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_ssl_capath"),
@@ -228,7 +214,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_ssl_cert": &sql.MysqlSystemVariable{
 		Name:              "admin_ssl_cert",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_ssl_cert"),
@@ -236,7 +222,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_ssl_cipher": &sql.MysqlSystemVariable{
 		Name:              "admin_ssl_cipher",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_ssl_cipher"),
@@ -244,7 +230,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_ssl_crl": &sql.MysqlSystemVariable{
 		Name:              "admin_ssl_crl",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_ssl_crl"),
@@ -252,7 +238,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_ssl_crlpath": &sql.MysqlSystemVariable{
 		Name:              "admin_ssl_crlpath",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_ssl_crlpath"),
@@ -260,7 +246,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_ssl_key": &sql.MysqlSystemVariable{
 		Name:              "admin_ssl_key",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_ssl_key"),
@@ -268,7 +254,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_tls_ciphersuites": &sql.MysqlSystemVariable{
 		Name:              "admin_tls_ciphersuites",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_tls_ciphersuites"),
@@ -276,7 +262,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"admin_tls_version": &sql.MysqlSystemVariable{
 		Name:              "admin_tls_version",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("admin_tls_version"),
@@ -284,7 +270,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"authentication_windows_log_level": &sql.MysqlSystemVariable{
 		Name:              "authentication_windows_log_level",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("authentication_windows_log_level", 0, 4, false),
@@ -292,7 +278,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"authentication_windows_use_principal_name": &sql.MysqlSystemVariable{
 		Name:              "authentication_windows_use_principal_name",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("authentication_windows_use_principal_name"),
@@ -300,7 +286,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"autocommit": &sql.MysqlSystemVariable{
 		Name:              "autocommit",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("autocommit"),
@@ -308,7 +294,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"automatic_sp_privileges": &sql.MysqlSystemVariable{
 		Name:              "automatic_sp_privileges",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("automatic_sp_privileges"),
@@ -316,7 +302,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"auto_generate_certs": &sql.MysqlSystemVariable{
 		Name:              "auto_generate_certs",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("auto_generate_certs"),
@@ -324,7 +310,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"auto_increment_increment": &sql.MysqlSystemVariable{
 		Name:              "auto_increment_increment",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("auto_increment_increment", 1, 65535, false),
@@ -332,7 +318,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"auto_increment_offset": &sql.MysqlSystemVariable{
 		Name:              "auto_increment_offset",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("auto_increment_offset", 1, 65535, false),
@@ -340,7 +326,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"avoid_temporal_upgrade": &sql.MysqlSystemVariable{
 		Name:              "avoid_temporal_upgrade",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("avoid_temporal_upgrade"),
@@ -348,7 +334,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"back_log": &sql.MysqlSystemVariable{
 		Name:              "back_log",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("back_log", 1, 65535, true),
@@ -357,7 +343,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// TODO: add to dolt
 	"basedir": &sql.MysqlSystemVariable{
 		Name:              "basedir",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("basedir"),
@@ -365,7 +351,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"big_tables": &sql.MysqlSystemVariable{
 		Name:              "big_tables",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("big_tables"),
@@ -373,7 +359,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"bind_address": &sql.MysqlSystemVariable{
 		Name:              "bind_address",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("bind_address"),
@@ -381,7 +367,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"binlog_checksum": &sql.MysqlSystemVariable{
 		Name:              "binlog_checksum",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("binlog_checksum"),
@@ -389,7 +375,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"binlog_gtid_simple_recovery": &sql.MysqlSystemVariable{
 		Name:              "binlog_gtid_simple_recovery",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("binlog_gtid_simple_recovery"),
@@ -397,7 +383,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"block_encryption_mode": &sql.MysqlSystemVariable{
 		Name:              "block_encryption_mode",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("block_encryption_mode"),
@@ -405,7 +391,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"bulk_insert_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "bulk_insert_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("bulk_insert_buffer_size", 0, 18446744073709551615),
@@ -413,7 +399,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"caching_sha2_password_digest_rounds": &sql.MysqlSystemVariable{
 		Name:              "caching_sha2_password_digest_rounds",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("caching_sha2_password_digest_rounds", 5000, 4095000, false),
@@ -421,7 +407,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"caching_sha2_password_auto_generate_rsa_keys": &sql.MysqlSystemVariable{
 		Name:              "caching_sha2_password_auto_generate_rsa_keys",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("caching_sha2_password_auto_generate_rsa_keys"),
@@ -429,7 +415,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"caching_sha2_password_private_key_path": &sql.MysqlSystemVariable{
 		Name:              "caching_sha2_password_private_key_path",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("caching_sha2_password_private_key_path"),
@@ -437,7 +423,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"caching_sha2_password_public_key_path": &sql.MysqlSystemVariable{
 		Name:              "caching_sha2_password_public_key_path",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("caching_sha2_password_public_key_path"),
@@ -445,7 +431,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_set_client": &sql.MysqlSystemVariable{
 		Name:              "character_set_client",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_client"),
@@ -454,7 +440,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_set_connection": &sql.MysqlSystemVariable{
 		Name:              "character_set_connection",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_connection"),
@@ -463,7 +449,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_set_database": &sql.MysqlSystemVariable{
 		Name:              "character_set_database",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_database"),
@@ -472,7 +458,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_set_filesystem": &sql.MysqlSystemVariable{
 		Name:              "character_set_filesystem",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_filesystem"),
@@ -481,7 +467,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_set_results": &sql.MysqlSystemVariable{
 		Name:              "character_set_results",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_results"),
@@ -490,7 +476,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_set_server": &sql.MysqlSystemVariable{
 		Name:              "character_set_server",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_server"),
@@ -499,7 +485,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_set_system": &sql.MysqlSystemVariable{
 		Name:              "character_set_system",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_set_system"),
@@ -508,7 +494,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"character_sets_dir": &sql.MysqlSystemVariable{
 		Name:              "character_sets_dir",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("character_sets_dir"),
@@ -516,7 +502,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"check_proxy_users": &sql.MysqlSystemVariable{
 		Name:              "check_proxy_users",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("check_proxy_users"),
@@ -524,7 +510,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"collation_connection": &sql.MysqlSystemVariable{
 		Name:              "collation_connection",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_connection"),
@@ -533,7 +519,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"collation_database": &sql.MysqlSystemVariable{
 		Name:              "collation_database",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_database"),
@@ -542,7 +528,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"collation_server": &sql.MysqlSystemVariable{
 		Name:              "collation_server",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("collation_server"),
@@ -551,7 +537,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"completion_type": &sql.MysqlSystemVariable{
 		Name:              "completion_type",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("completion_type", "NO_CHAIN", "CHAIN", "RELEASE"),
@@ -559,7 +545,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"concurrent_insert": &sql.MysqlSystemVariable{
 		Name:              "concurrent_insert",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("concurrent_insert", "NEVER", "AUTO", "ALWAYS"),
@@ -567,7 +553,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"connect_timeout": &sql.MysqlSystemVariable{
 		Name:              "connect_timeout",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("connect_timeout", 2, 31536000, false),
@@ -575,7 +561,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"core_file": &sql.MysqlSystemVariable{
 		Name:              "core_file",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("core_file"),
@@ -583,7 +569,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"create_admin_listener_thread": &sql.MysqlSystemVariable{
 		Name:              "create_admin_listener_thread",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("create_admin_listener_thread"),
@@ -591,7 +577,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"cte_max_recursion_depth": &sql.MysqlSystemVariable{
 		Name:              "cte_max_recursion_depth",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("cte_max_recursion_depth", 0, 4294967295, false),
@@ -599,7 +585,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"datadir": &sql.MysqlSystemVariable{
 		Name:              "datadir",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("datadir"),
@@ -607,7 +593,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"debug_sync": &sql.MysqlSystemVariable{
 		Name:              "debug_sync",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("debug_sync"),
@@ -615,7 +601,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"default_authentication_plugin": &sql.MysqlSystemVariable{
 		Name:              "default_authentication_plugin",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("default_authentication_plugin", "mysql_native_password", "sha256_password", "caching_sha2_password"),
@@ -623,7 +609,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"default_collation_for_utf8mb4": &sql.MysqlSystemVariable{
 		Name:              "default_collation_for_utf8mb4",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("default_collation_for_utf8mb4", "utf8mb4_0900_ai_ci", "utf8mb4_general_ci"),
@@ -631,7 +617,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"default_password_lifetime": &sql.MysqlSystemVariable{
 		Name:              "default_password_lifetime",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("default_password_lifetime", 0, 65535, false),
@@ -639,7 +625,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"default_storage_engine": &sql.MysqlSystemVariable{
 		Name:              "default_storage_engine",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("default_storage_engine", "MEMORY", "MRG_MYISAM", "CSV", "FEDERATED", "PERFORMANCE_SCHEMA", "MyISAM", "InnoDB", "BLACKHOLE", "ARCHIVE"),
@@ -647,7 +633,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"default_table_encryption": &sql.MysqlSystemVariable{
 		Name:              "default_table_encryption",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("default_table_encryption"),
@@ -655,7 +641,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"default_tmp_storage_engine": &sql.MysqlSystemVariable{
 		Name:              "default_tmp_storage_engine",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemEnumType("default_tmp_storage_engine", "MEMORY", "MRG_MYISAM", "CSV", "FEDERATED", "PERFORMANCE_SCHEMA", "MyISAM", "InnoDB", "BLACKHOLE", "ARCHIVE"),
@@ -663,7 +649,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"default_week_format": &sql.MysqlSystemVariable{
 		Name:              "default_week_format",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("default_week_format", 0, 7, false),
@@ -671,7 +657,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"delay_key_write": &sql.MysqlSystemVariable{
 		Name:              "delay_key_write",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("delay_key_write", "ON", "OFF", "ALL"),
@@ -679,7 +665,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"delayed_insert_limit": &sql.MysqlSystemVariable{
 		Name:              "delayed_insert_limit",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("delayed_insert_limit", 1, 18446744073709551615),
@@ -687,7 +673,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"delayed_insert_timeout": &sql.MysqlSystemVariable{
 		Name:              "delayed_insert_timeout",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("delayed_insert_timeout", -9223372036854775808, 9223372036854775807, false),
@@ -695,7 +681,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"delayed_queue_size": &sql.MysqlSystemVariable{
 		Name:              "delayed_queue_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("delayed_queue_size", 1, 18446744073709551615),
@@ -703,7 +689,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"disabled_storage_engines": &sql.MysqlSystemVariable{
 		Name:              "disabled_storage_engines",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("disabled_storage_engines"),
@@ -711,7 +697,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"disconnect_on_expired_password": &sql.MysqlSystemVariable{
 		Name:              "disconnect_on_expired_password",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("disconnect_on_expired_password"),
@@ -719,7 +705,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"div_precision_increment": &sql.MysqlSystemVariable{
 		Name:              "div_precision_increment",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("div_precision_increment", 0, 30, false),
@@ -727,7 +713,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"dragnet.log_error_filter_rules": &sql.MysqlSystemVariable{
 		Name:              "dragnet.log_error_filter_rules",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("dragnet.log_error_filter_rules"),
@@ -735,7 +721,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"end_markers_in_json": &sql.MysqlSystemVariable{
 		Name:              "end_markers_in_json",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("end_markers_in_json"),
@@ -743,7 +729,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"enforce_gtid_consistency": &sql.MysqlSystemVariable{
 		Name:              "enforce_gtid_consistency",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("enforce_gtid_consistency", "OFF", "ON", "WARN"),
@@ -751,7 +737,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"eq_range_index_dive_limit": &sql.MysqlSystemVariable{
 		Name:              "eq_range_index_dive_limit",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("eq_range_index_dive_limit", 0, 4294967295, false),
@@ -759,12 +745,12 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"event_scheduler": &sql.MysqlSystemVariable{
 		Name:              "event_scheduler",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("event_scheduler", "ON", "OFF", "DISABLED"),
 		Default:           "ON",
-		NotifyChanged: func(scope sql.SystemVariableScope, value sql.SystemVarValue) error {
+		NotifyChanged: func(_ sql.SystemVariableScope, value sql.SystemVarValue) error {
 			convertedVal, _, err := value.Var.GetType().Convert(value.Val)
 			if err == nil {
 				// TODO: need to update EventScheduler state at runtime if applicable
@@ -783,7 +769,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"explicit_defaults_for_timestamp": &sql.MysqlSystemVariable{
 		Name:              "explicit_defaults_for_timestamp",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("explicit_defaults_for_timestamp"),
@@ -791,7 +777,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"external_user": &sql.MysqlSystemVariable{
 		Name:              "external_user",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("external_user"),
@@ -799,7 +785,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"flush": &sql.MysqlSystemVariable{
 		Name:              "flush",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("flush"),
@@ -807,7 +793,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"flush_time": &sql.MysqlSystemVariable{
 		Name:              "flush_time",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("flush_time", 0, 9223372036854775807, false),
@@ -815,7 +801,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"foreign_key_checks": &sql.MysqlSystemVariable{
 		Name:              "foreign_key_checks",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("foreign_key_checks"),
@@ -823,7 +809,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ft_boolean_syntax": &sql.MysqlSystemVariable{
 		Name:              "ft_boolean_syntax",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ft_boolean_syntax"),
@@ -831,7 +817,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ft_max_word_len": &sql.MysqlSystemVariable{
 		Name:              "ft_max_word_len",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("ft_max_word_len", 10, 9223372036854775807, false),
@@ -839,7 +825,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ft_min_word_len": &sql.MysqlSystemVariable{
 		Name:              "ft_min_word_len",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("ft_min_word_len", 1, 9223372036854775807, false),
@@ -847,7 +833,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ft_query_expansion_limit": &sql.MysqlSystemVariable{
 		Name:              "ft_query_expansion_limit",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("ft_query_expansion_limit", 0, 1000, false),
@@ -855,7 +841,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ft_stopword_file": &sql.MysqlSystemVariable{
 		Name:              "ft_stopword_file",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ft_stopword_file"),
@@ -863,7 +849,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"general_log": &sql.MysqlSystemVariable{
 		Name:              "general_log",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("general_log"),
@@ -871,7 +857,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"general_log_file": &sql.MysqlSystemVariable{
 		Name:              "general_log_file",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("general_log_file"),
@@ -879,7 +865,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"generated_random_password_length": &sql.MysqlSystemVariable{
 		Name:              "generated_random_password_length",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("generated_random_password_length", 5, 255, false),
@@ -887,7 +873,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"group_concat_max_len": &sql.MysqlSystemVariable{
 		Name:              "group_concat_max_len",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("group_concat_max_len", 4, 18446744073709551615),
@@ -895,7 +881,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"gtid_executed": &sql.MysqlSystemVariable{
 		Name:              "gtid_executed",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("gtid_executed"),
@@ -903,7 +889,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"gtid_executed_compression_period": &sql.MysqlSystemVariable{
 		Name:              "gtid_executed_compression_period",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("gtid_executed_compression_period", 0, 4294967295, false),
@@ -911,7 +897,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"gtid_mode": &sql.MysqlSystemVariable{
 		Name:              "gtid_mode",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("gtid_mode", "OFF", "OFF_PERMISSIVE", "ON_PERMISSIVE", "ON"),
@@ -919,7 +905,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"gtid_next": &sql.MysqlSystemVariable{
 		Name:              "gtid_next",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("gtid_next", "AUTOMATIC", "ANONYMOUS", "UUID:NUMBER"),
@@ -927,7 +913,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"gtid_owned": &sql.MysqlSystemVariable{
 		Name:              "gtid_owned",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("gtid_owned"),
@@ -935,7 +921,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"gtid_purged": &sql.MysqlSystemVariable{
 		Name:              "gtid_purged",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("gtid_purged"),
@@ -943,7 +929,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"have_statement_timeout": &sql.MysqlSystemVariable{
 		Name:              "have_statement_timeout",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("have_statement_timeout"),
@@ -951,7 +937,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"histogram_generation_max_mem_size": &sql.MysqlSystemVariable{
 		Name:              "histogram_generation_max_mem_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("histogram_generation_max_mem_size", 1000000, 18446744073709551615),
@@ -959,7 +945,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"host_cache_size": &sql.MysqlSystemVariable{
 		Name:              "host_cache_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("host_cache_size", 0, 65536, true),
@@ -967,7 +953,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"hostname": &sql.MysqlSystemVariable{
 		Name:              "hostname",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("hostname"),
@@ -975,7 +961,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"immediate_server_version": &sql.MysqlSystemVariable{
 		Name:              "immediate_server_version",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("immediate_server_version", -9223372036854775808, 9223372036854775807, false),
@@ -983,7 +969,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"init_connect": &sql.MysqlSystemVariable{
 		Name:              "init_connect",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("init_connect"),
@@ -991,7 +977,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"information_schema_stats_expiry": &sql.MysqlSystemVariable{
 		Name:              "information_schema_stats_expiry",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("information_schema_stats_expiry", 0, 31536000, false),
@@ -999,7 +985,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"init_file": &sql.MysqlSystemVariable{
 		Name:              "init_file",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("init_file"),
@@ -1007,7 +993,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"inmemory_joins": &sql.MysqlSystemVariable{
 		Name:              "inmemory_joins",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("inmemory_joins"),
@@ -1017,7 +1003,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.
 	"innodb_lock_wait_timeout": &sql.MysqlSystemVariable{
 		Name:              "innodb_lock_wait_timeout",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("innodb_lock_wait_timeout", 1, 1, false),
@@ -1025,7 +1011,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"innodb_stats_auto_recalc": &sql.MysqlSystemVariable{
 		Name:              "innodb_stats_auto_recalc",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("innodb_stats_auto_recalc"),
@@ -1033,7 +1019,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"interactive_timeout": &sql.MysqlSystemVariable{
 		Name:              "interactive_timeout",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("interactive_timeout", 1, 9223372036854775807, false),
@@ -1041,7 +1027,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"internal_tmp_disk_storage_engine": &sql.MysqlSystemVariable{
 		Name:              "internal_tmp_disk_storage_engine",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("internal_tmp_disk_storage_engine", "MYISAM", "INNODB"),
@@ -1049,7 +1035,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"internal_tmp_mem_storage_engine": &sql.MysqlSystemVariable{
 		Name:              "internal_tmp_mem_storage_engine",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemEnumType("internal_tmp_mem_storage_engine", "TempTable", "MEMORY"),
@@ -1057,7 +1043,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"join_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "join_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("join_buffer_size", 128, 18446744073709547520),
@@ -1065,7 +1051,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"join_complexity_limit": &sql.MysqlSystemVariable{
 		Name:              "join_complexity_limit",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("join_complexity_limit", 2, 20),
@@ -1073,7 +1059,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"keep_files_on_create": &sql.MysqlSystemVariable{
 		Name:              "keep_files_on_create",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("keep_files_on_create"),
@@ -1081,7 +1067,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"key_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "key_buffer_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("key_buffer_size", 8, 18446744073709551615),
@@ -1089,7 +1075,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"key_cache_age_threshold": &sql.MysqlSystemVariable{
 		Name:              "key_cache_age_threshold",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("key_cache_age_threshold", 100, 18446744073709551615),
@@ -1097,7 +1083,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"key_cache_block_size": &sql.MysqlSystemVariable{
 		Name:              "key_cache_block_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("key_cache_block_size", 512, 16384, false),
@@ -1105,7 +1091,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"key_cache_division_limit": &sql.MysqlSystemVariable{
 		Name:              "key_cache_division_limit",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("key_cache_division_limit", 1, 100, false),
@@ -1113,7 +1099,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"large_files_support": &sql.MysqlSystemVariable{
 		Name:              "large_files_support",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("large_files_support"),
@@ -1121,7 +1107,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"large_pages": &sql.MysqlSystemVariable{
 		Name:              "large_pages",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("large_pages"),
@@ -1129,7 +1115,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"large_page_size": &sql.MysqlSystemVariable{
 		Name:              "large_page_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("large_page_size", -9223372036854775808, 9223372036854775807, false),
@@ -1137,7 +1123,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"last_insert_id": &sql.MysqlSystemVariable{
 		Name:              "last_insert_id",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("last_insert_id", -9223372036854775808, 9223372036854775807, false),
@@ -1145,7 +1131,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"lc_messages": &sql.MysqlSystemVariable{
 		Name:              "lc_messages",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("lc_messages"),
@@ -1153,7 +1139,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"lc_messages_dir": &sql.MysqlSystemVariable{
 		Name:              "lc_messages_dir",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("lc_messages_dir"),
@@ -1161,7 +1147,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"lc_time_names": &sql.MysqlSystemVariable{
 		Name:              "lc_time_names",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("lc_time_names"),
@@ -1169,7 +1155,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"license": &sql.MysqlSystemVariable{
 		Name:              "license",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("license"),
@@ -1177,7 +1163,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"local_infile": &sql.MysqlSystemVariable{
 		Name:              "local_infile",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("local_infile"),
@@ -1185,7 +1171,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"lock_wait_timeout": &sql.MysqlSystemVariable{
 		Name:              "lock_wait_timeout",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("lock_wait_timeout", 1, 31536000, false),
@@ -1193,7 +1179,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_error": &sql.MysqlSystemVariable{
 		Name:              "log_error",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("log_error"),
@@ -1201,7 +1187,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_error_services": &sql.MysqlSystemVariable{
 		Name:              "log_error_services",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("log_error_services"),
@@ -1209,7 +1195,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_error_suppression_list": &sql.MysqlSystemVariable{
 		Name:              "log_error_suppression_list",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("log_error_suppression_list"),
@@ -1217,7 +1203,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_error_verbosity": &sql.MysqlSystemVariable{
 		Name:              "log_error_verbosity",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("log_error_verbosity", 1, 3, false),
@@ -1225,7 +1211,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_output": &sql.MysqlSystemVariable{
 		Name:              "log_output",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemSetType("log_output", "TABLE", "FILE", "NONE"),
@@ -1233,7 +1219,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_queries_not_using_indexes": &sql.MysqlSystemVariable{
 		Name:              "log_queries_not_using_indexes",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("log_queries_not_using_indexes"),
@@ -1241,7 +1227,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_raw": &sql.MysqlSystemVariable{
 		Name:              "log_raw",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("log_raw"),
@@ -1249,7 +1235,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_slow_admin_statements": &sql.MysqlSystemVariable{
 		Name:              "log_slow_admin_statements",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("log_slow_admin_statements"),
@@ -1257,7 +1243,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_slow_extra": &sql.MysqlSystemVariable{
 		Name:              "log_slow_extra",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("log_slow_extra"),
@@ -1265,7 +1251,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_syslog": &sql.MysqlSystemVariable{
 		Name:              "log_syslog",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("log_syslog"),
@@ -1273,7 +1259,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_syslog_facility": &sql.MysqlSystemVariable{
 		Name:              "log_syslog_facility",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("log_syslog_facility"),
@@ -1281,7 +1267,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_syslog_include_pid": &sql.MysqlSystemVariable{
 		Name:              "log_syslog_include_pid",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("log_syslog_include_pid"),
@@ -1289,7 +1275,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_syslog_tag": &sql.MysqlSystemVariable{
 		Name:              "log_syslog_tag",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("log_syslog_tag"),
@@ -1297,7 +1283,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_timestamps": &sql.MysqlSystemVariable{
 		Name:              "log_timestamps",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("log_timestamps", "UTC", "SYSTEM"),
@@ -1305,7 +1291,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"log_throttle_queries_not_using_indexes": &sql.MysqlSystemVariable{
 		Name:              "log_throttle_queries_not_using_indexes",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("log_throttle_queries_not_using_indexes", -9223372036854775808, 9223372036854775807, false),
@@ -1313,7 +1299,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"long_query_time": &sql.MysqlSystemVariable{
 		Name:              "long_query_time",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemDoubleType("long_query_time", 0, math.MaxFloat64),
@@ -1321,7 +1307,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"low_priority_updates": &sql.MysqlSystemVariable{
 		Name:              "low_priority_updates",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("low_priority_updates"),
@@ -1329,7 +1315,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"lower_case_file_system": &sql.MysqlSystemVariable{
 		Name:              "lower_case_file_system",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("lower_case_file_system"),
@@ -1337,7 +1323,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"lower_case_table_names": &sql.MysqlSystemVariable{
 		Name:              "lower_case_table_names",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("lower_case_table_names", 0, 2, false),
@@ -1345,7 +1331,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"mandatory_roles": &sql.MysqlSystemVariable{
 		Name:              "mandatory_roles",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("mandatory_roles"),
@@ -1353,7 +1339,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_allowed_packet": &sql.MysqlSystemVariable{
 		Name:              "max_allowed_packet",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("max_allowed_packet", 1024, 1073741824),
@@ -1361,7 +1347,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_connect_errors": &sql.MysqlSystemVariable{
 		Name:              "max_connect_errors",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("max_connect_errors", 1, 18446744073709551615),
@@ -1369,7 +1355,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_connections": &sql.MysqlSystemVariable{
 		Name:              "max_connections",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("max_connections", 1, 100000, false),
@@ -1377,7 +1363,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_delayed_threads": &sql.MysqlSystemVariable{
 		Name:              "max_delayed_threads",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("max_delayed_threads", 0, 16384, false),
@@ -1385,7 +1371,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_digest_length": &sql.MysqlSystemVariable{
 		Name:              "max_digest_length",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("max_digest_length", 0, 1048576, false),
@@ -1393,7 +1379,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_error_count": &sql.MysqlSystemVariable{
 		Name:              "max_error_count",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("max_error_count", 0, 65535, false),
@@ -1401,7 +1387,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_execution_time": &sql.MysqlSystemVariable{
 		Name:              "max_execution_time",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("max_execution_time", -9223372036854775808, 9223372036854775807, false),
@@ -1409,7 +1395,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_heap_table_size": &sql.MysqlSystemVariable{
 		Name:              "max_heap_table_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("max_heap_table_size", 16384, 1844674407370954752),
@@ -1417,7 +1403,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_insert_delayed_threads": &sql.MysqlSystemVariable{
 		Name:              "max_insert_delayed_threads",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("max_insert_delayed_threads", -9223372036854775808, 9223372036854775807, false),
@@ -1425,7 +1411,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_join_size": &sql.MysqlSystemVariable{
 		Name:              "max_join_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("max_join_size", 1, 18446744073709551615),
@@ -1433,7 +1419,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_length_for_sort_data": &sql.MysqlSystemVariable{
 		Name:              "max_length_for_sort_data",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("max_length_for_sort_data", 4, 8388608, false),
@@ -1441,7 +1427,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_points_in_geometry": &sql.MysqlSystemVariable{
 		Name:              "max_points_in_geometry",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("max_points_in_geometry", 3, 1048576, false),
@@ -1449,7 +1435,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_prepared_stmt_count": &sql.MysqlSystemVariable{
 		Name:              "max_prepared_stmt_count",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("max_prepared_stmt_count", 0, 4194304, false),
@@ -1457,7 +1443,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_seeks_for_key": &sql.MysqlSystemVariable{
 		Name:              "max_seeks_for_key",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("max_seeks_for_key", 1, 18446744073709551615),
@@ -1465,7 +1451,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_sort_length": &sql.MysqlSystemVariable{
 		Name:              "max_sort_length",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("max_sort_length", 4, 8388608, false),
@@ -1473,7 +1459,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_sp_recursion_depth": &sql.MysqlSystemVariable{
 		Name:              "max_sp_recursion_depth",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("max_sp_recursion_depth", -9223372036854775808, 255, false),
@@ -1481,7 +1467,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_user_connections": &sql.MysqlSystemVariable{
 		Name:              "max_user_connections",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("max_user_connections", 0, 4294967295, false),
@@ -1489,7 +1475,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"max_write_lock_count": &sql.MysqlSystemVariable{
 		Name:              "max_write_lock_count",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("max_write_lock_count", 1, 18446744073709551615),
@@ -1497,7 +1483,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"mecab_rc_file": &sql.MysqlSystemVariable{
 		Name:              "mecab_rc_file",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("mecab_rc_file"),
@@ -1505,7 +1491,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"metadata_locks_cache_size": &sql.MysqlSystemVariable{
 		Name:              "metadata_locks_cache_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("metadata_locks_cache_size", 1, 1048576, false),
@@ -1513,7 +1499,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"metadata_locks_hash_instances": &sql.MysqlSystemVariable{
 		Name:              "metadata_locks_hash_instances",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("metadata_locks_hash_instances", 1, 1024, false),
@@ -1521,7 +1507,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"min_examined_row_limit": &sql.MysqlSystemVariable{
 		Name:              "min_examined_row_limit",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("min_examined_row_limit", 0, 18446744073709551615),
@@ -1529,7 +1515,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_data_pointer_size": &sql.MysqlSystemVariable{
 		Name:              "myisam_data_pointer_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("myisam_data_pointer_size", 2, 7, false),
@@ -1537,7 +1523,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_max_sort_file_size": &sql.MysqlSystemVariable{
 		Name:              "myisam_max_sort_file_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("myisam_max_sort_file_size", -9223372036854775808, 9223372036853727232, false),
@@ -1545,7 +1531,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_mmap_size": &sql.MysqlSystemVariable{
 		Name:              "myisam_mmap_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("myisam_mmap_size", 7, 18446744073709551615),
@@ -1553,7 +1539,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_recover_options": &sql.MysqlSystemVariable{
 		Name:              "myisam_recover_options",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("myisam_recover_options", "OFF", "DEFAULT", "BACKUP", "FORCE", "QUICK"),
@@ -1561,7 +1547,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_repair_threads": &sql.MysqlSystemVariable{
 		Name:              "myisam_repair_threads",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("myisam_repair_threads", 1, 18446744073709551615),
@@ -1569,7 +1555,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_sort_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "myisam_sort_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("myisam_sort_buffer_size", 4096, 18446744073709551615),
@@ -1577,7 +1563,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_stats_method": &sql.MysqlSystemVariable{
 		Name:              "myisam_stats_method",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("myisam_stats_method", "nulls_equal", "nulls_unequal", "nulls_ignored"),
@@ -1585,7 +1571,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"myisam_use_mmap": &sql.MysqlSystemVariable{
 		Name:              "myisam_use_mmap",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("myisam_use_mmap"),
@@ -1593,7 +1579,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"mysql_native_password_proxy_users": &sql.MysqlSystemVariable{
 		Name:              "mysql_native_password_proxy_users",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("mysql_native_password_proxy_users"),
@@ -1601,7 +1587,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"named_pipe": &sql.MysqlSystemVariable{
 		Name:              "named_pipe",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("named_pipe"),
@@ -1609,7 +1595,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"named_pipe_full_access_group": &sql.MysqlSystemVariable{
 		Name:              "named_pipe_full_access_group",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("named_pipe_full_access_group"),
@@ -1617,7 +1603,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ndbinfo_version": &sql.MysqlSystemVariable{
 		Name:              "ndbinfo_version",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ndbinfo_version"),
@@ -1625,7 +1611,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"net_buffer_length": &sql.MysqlSystemVariable{
 		Name:              "net_buffer_length",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("net_buffer_length", 1024, 1048576, false),
@@ -1633,7 +1619,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"net_read_timeout": &sql.MysqlSystemVariable{
 		Name:              "net_read_timeout",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
@@ -1641,7 +1627,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"net_retry_count": &sql.MysqlSystemVariable{
 		Name:              "net_retry_count",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("net_retry_count", 1, 18446744073709551615),
@@ -1649,7 +1635,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"net_write_timeout": &sql.MysqlSystemVariable{
 		Name:              "net_write_timeout",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
@@ -1657,7 +1643,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"new": &sql.MysqlSystemVariable{
 		Name:              "new",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("new"),
@@ -1665,7 +1651,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ngram_token_size": &sql.MysqlSystemVariable{
 		Name:              "ngram_token_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("ngram_token_size", 1, 10, false),
@@ -1673,7 +1659,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"offline_mode": &sql.MysqlSystemVariable{
 		Name:              "offline_mode",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("offline_mode"),
@@ -1681,7 +1667,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"old": &sql.MysqlSystemVariable{
 		Name:              "old",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("old"),
@@ -1689,7 +1675,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"old_alter_table": &sql.MysqlSystemVariable{
 		Name:              "old_alter_table",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("old_alter_table"),
@@ -1697,7 +1683,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"open_files_limit": &sql.MysqlSystemVariable{
 		Name:              "open_files_limit",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("open_files_limit", 0, 18446744073709551615),
@@ -1705,7 +1691,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"optimizer_prune_level": &sql.MysqlSystemVariable{
 		Name:              "optimizer_prune_level",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("optimizer_prune_level", 0, 1, false),
@@ -1713,7 +1699,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"optimizer_search_depth": &sql.MysqlSystemVariable{
 		Name:              "optimizer_search_depth",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("optimizer_search_depth", 0, 62, false),
@@ -1722,7 +1708,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// TODO: add proper support for this
 	// "optimizer_switch": &sql.MysqlSystemVariable{
 	//	Name: "optimizer_switch",
-	//	Scope: SystemVariableScope_Both,
+	//	Scope: sql.GetMysqlScope(SystemVariableScope_Both)
 	//	Dynamic: true,
 	//	SetVarHintApplies: true,
 	//	Type: NewSystemSetType("optimizer_switch"),
@@ -1730,7 +1716,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// },
 	"optimizer_trace": &sql.MysqlSystemVariable{
 		Name:              "optimizer_trace",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("optimizer_trace"),
@@ -1738,7 +1724,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"optimizer_trace_features": &sql.MysqlSystemVariable{
 		Name:              "optimizer_trace_features",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("optimizer_trace_features"),
@@ -1746,7 +1732,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"optimizer_trace_limit": &sql.MysqlSystemVariable{
 		Name:              "optimizer_trace_limit",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("optimizer_trace_limit", -9223372036854775808, 9223372036854775807, false),
@@ -1754,7 +1740,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"optimizer_trace_max_mem_size": &sql.MysqlSystemVariable{
 		Name:              "optimizer_trace_max_mem_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("optimizer_trace_max_mem_size", -9223372036854775808, 9223372036854775807, false),
@@ -1762,7 +1748,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"optimizer_trace_offset": &sql.MysqlSystemVariable{
 		Name:              "optimizer_trace_offset",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("optimizer_trace_offset", -9223372036854775808, 9223372036854775807, true),
@@ -1770,7 +1756,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"original_server_version": &sql.MysqlSystemVariable{
 		Name:              "original_server_version",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("original_server_version", -9223372036854775808, 9223372036854775807, false),
@@ -1778,7 +1764,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"parser_max_mem_size": &sql.MysqlSystemVariable{
 		Name:              "parser_max_mem_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("parser_max_mem_size", 10000000, 18446744073709551615),
@@ -1786,7 +1772,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"partial_revokes": &sql.MysqlSystemVariable{
 		Name:              "partial_revokes",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("partial_revokes"),
@@ -1794,7 +1780,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"password_history": &sql.MysqlSystemVariable{
 		Name:              "password_history",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("password_history", 0, 4294967295, false),
@@ -1802,7 +1788,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"password_require_current": &sql.MysqlSystemVariable{
 		Name:              "password_require_current",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("password_require_current"),
@@ -1810,7 +1796,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"password_reuse_interval": &sql.MysqlSystemVariable{
 		Name:              "password_reuse_interval",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("password_reuse_interval", 0, 4294967295, false),
@@ -1818,7 +1804,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"performance_schema": &sql.MysqlSystemVariable{
 		Name:              "performance_schema",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("performance_schema"),
@@ -1826,7 +1812,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"persisted_globals_load": &sql.MysqlSystemVariable{
 		Name:              "persisted_globals_load",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("persisted_globals_load"),
@@ -1834,7 +1820,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"persist_only_admin_x509_subject": &sql.MysqlSystemVariable{
 		Name:              "persist_only_admin_x509_subject",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("persist_only_admin_x509_subject"),
@@ -1842,7 +1828,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"pid_file": &sql.MysqlSystemVariable{
 		Name:              "pid_file",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("pid_file"),
@@ -1850,7 +1836,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"plugin_dir": &sql.MysqlSystemVariable{
 		Name:              "plugin_dir",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("plugin_dir"),
@@ -1858,7 +1844,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"port": &sql.MysqlSystemVariable{
 		Name:              "port",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("port", 0, 65535, false),
@@ -1866,7 +1852,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"preload_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "preload_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("preload_buffer_size", 1024, 1073741824, false),
@@ -1874,7 +1860,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"print_identified_with_as_hex": &sql.MysqlSystemVariable{
 		Name:              "print_identified_with_as_hex",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("print_identified_with_as_hex"),
@@ -1882,7 +1868,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"protocol_compression_algorithms": &sql.MysqlSystemVariable{
 		Name:              "protocol_compression_algorithms",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemSetType("protocol_compression_algorithms", "zlib", "zstd", "uncompressed"),
@@ -1890,7 +1876,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"protocol_version": &sql.MysqlSystemVariable{
 		Name:              "protocol_version",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("protocol_version", -9223372036854775808, 9223372036854775807, false),
@@ -1898,7 +1884,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"proxy_user": &sql.MysqlSystemVariable{
 		Name:              "proxy_user",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("proxy_user"),
@@ -1906,7 +1892,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"pseudo_slave_mode": &sql.MysqlSystemVariable{
 		Name:              "pseudo_slave_mode",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("pseudo_slave_mode"),
@@ -1914,7 +1900,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"pseudo_thread_id": &sql.MysqlSystemVariable{
 		Name:              "pseudo_thread_id",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("pseudo_thread_id", -9223372036854775808, 9223372036854775807, false),
@@ -1923,7 +1909,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// TODO: implement block sizes
 	// "query_alloc_block_size": &sql.MysqlSystemVariable{
 	//	Name: "query_alloc_block_size",
-	//	Scope: SystemVariableScope_Both,
+	//	Scope: sql.GetMysqlScope(SystemVariableScope_Both),
 	//	Dynamic: true,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemIntType("query_alloc_block_size", 1024, 4294967295, false),
@@ -1931,7 +1917,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// },
 	"query_cache_size": &sql.MysqlSystemVariable{
 		Name:              "query_cache_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("query_cache_size", 0, 18446744073709551615),
@@ -1939,7 +1925,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"query_cache_type": &sql.MysqlSystemVariable{
 		Name:              "query_cache_type",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("query_cache_type", "OFF", "ON", "DEMAND"),
@@ -1947,7 +1933,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	// "query_prealloc_size": &sql.MysqlSystemVariable{
 	//	Name: "query_prealloc_size",
-	//	Scope: SystemVariableScope_Both,
+	//	Scope: sql.GetMysqlScope(SystemVariableScope_Both),
 	//	Dynamic: true,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemUintType("query_prealloc_size", 8192, 18446744073709551615),
@@ -1955,7 +1941,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// },
 	"rand_seed1": &sql.MysqlSystemVariable{
 		Name:              "rand_seed1",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("rand_seed1", -9223372036854775808, 9223372036854775807, false),
@@ -1964,7 +1950,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// TODO: implement block sizes
 	// "range_alloc_block_size": &sql.MysqlSystemVariable{
 	//	Name: "range_alloc_block_size",
-	//	Scope: SystemVariableScope_Both,
+	//	Scope: sql.GetMysqlScope(SystemVariableScope_Both),
 	//	Dynamic: true,
 	//	SetVarHintApplies: true,
 	//	Type: NewSystemUintType("range_alloc_block_size", 4096, 18446744073709547520),
@@ -1972,7 +1958,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// },
 	"range_optimizer_max_mem_size": &sql.MysqlSystemVariable{
 		Name:              "range_optimizer_max_mem_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("range_optimizer_max_mem_size", 0, 18446744073709551615),
@@ -1980,7 +1966,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"rbr_exec_mode": &sql.MysqlSystemVariable{
 		Name:              "rbr_exec_mode",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("rbr_exec_mode", "IDEMPOTENT", "STRICT"),
@@ -1988,7 +1974,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"read_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "read_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("read_buffer_size", 8192, 2147479552, false),
@@ -1996,7 +1982,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"read_only": &sql.MysqlSystemVariable{
 		Name:              "read_only",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("read_only"),
@@ -2004,7 +1990,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"read_rnd_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "read_rnd_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("read_rnd_buffer_size", 1, 2147483647, false),
@@ -2012,7 +1998,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"regexp_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "regexp_buffer_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("regexp_buffer_size", 0, 67108864), // 64MB upperbound
@@ -2020,7 +2006,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"regexp_stack_limit": &sql.MysqlSystemVariable{
 		Name:              "regexp_stack_limit",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("regexp_stack_limit", 0, 2147483647, false),
@@ -2028,7 +2014,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"regexp_time_limit": &sql.MysqlSystemVariable{
 		Name:              "regexp_time_limit",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("regexp_time_limit", 0, 2147483647, false),
@@ -2036,7 +2022,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"require_row_format": &sql.MysqlSystemVariable{
 		Name:              "require_row_format",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("require_row_format"),
@@ -2044,7 +2030,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"require_secure_transport": &sql.MysqlSystemVariable{
 		Name:              "require_secure_transport",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("require_secure_transport"),
@@ -2052,7 +2038,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"resultset_metadata": &sql.MysqlSystemVariable{
 		Name:              "resultset_metadata",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("resultset_metadata", "FULL", "NONE"),
@@ -2060,7 +2046,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"secondary_engine_cost_threshold": &sql.MysqlSystemVariable{
 		Name:              "secondary_engine_cost_threshold",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemDoubleType("secondary_engine_cost_threshold", 0, math.MaxFloat64),
@@ -2068,7 +2054,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"schema_definition_cache": &sql.MysqlSystemVariable{
 		Name:              "schema_definition_cache",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("schema_definition_cache", 256, 524288, false),
@@ -2076,7 +2062,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"secure_file_priv": &sql.MysqlSystemVariable{
 		Name:              "secure_file_priv",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("secure_file_priv"),
@@ -2084,7 +2070,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"select_into_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "select_into_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("select_into_buffer_size", 8192, 2147479552, false),
@@ -2092,7 +2078,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"select_into_disk_sync": &sql.MysqlSystemVariable{
 		Name:              "select_into_disk_sync",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("select_into_disk_sync"),
@@ -2100,7 +2086,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"select_into_disk_sync_delay": &sql.MysqlSystemVariable{
 		Name:              "select_into_disk_sync_delay",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("select_into_disk_sync_delay", 0, 31536000, false),
@@ -2108,7 +2094,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"server_id": &sql.MysqlSystemVariable{
 		Name:              "server_id",
-		Scope:             sql.SystemVariableScope_Persist,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Persist),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Uint32,
@@ -2116,7 +2102,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"server_uuid": &sql.MysqlSystemVariable{
 		Name:              "server_uuid",
-		Scope:             sql.SystemVariableScope_Persist,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Persist),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.Text,
@@ -2124,7 +2110,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"session_track_gtids": &sql.MysqlSystemVariable{
 		Name:              "session_track_gtids",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("session_track_gtids", "OFF", "OWN_GTID", "ALL_GTIDS"),
@@ -2132,7 +2118,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"session_track_schema": &sql.MysqlSystemVariable{
 		Name:              "session_track_schema",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("session_track_schema"),
@@ -2140,7 +2126,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"session_track_state_change": &sql.MysqlSystemVariable{
 		Name:              "session_track_state_change",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("session_track_state_change"),
@@ -2148,7 +2134,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"session_track_system_variables": &sql.MysqlSystemVariable{
 		Name:              "session_track_system_variables",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("session_track_system_variables"),
@@ -2156,7 +2142,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"session_track_transaction_info": &sql.MysqlSystemVariable{
 		Name:              "session_track_transaction_info",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("session_track_transaction_info", "OFF", "STATE", "CHARACTERISTICS"),
@@ -2164,7 +2150,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sha256_password_auto_generate_rsa_keys": &sql.MysqlSystemVariable{
 		Name:              "sha256_password_auto_generate_rsa_keys",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("sha256_password_auto_generate_rsa_keys"),
@@ -2172,7 +2158,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sha256_password_private_key_path": &sql.MysqlSystemVariable{
 		Name:              "sha256_password_private_key_path",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("sha256_password_private_key_path"),
@@ -2180,7 +2166,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sha256_password_proxy_users": &sql.MysqlSystemVariable{
 		Name:              "sha256_password_proxy_users",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("sha256_password_proxy_users"),
@@ -2188,7 +2174,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sha256_password_public_key_path": &sql.MysqlSystemVariable{
 		Name:              "sha256_password_public_key_path",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("sha256_password_public_key_path"),
@@ -2196,7 +2182,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"shared_memory": &sql.MysqlSystemVariable{
 		Name:              "shared_memory",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("shared_memory"),
@@ -2204,7 +2190,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"shared_memory_base_name": &sql.MysqlSystemVariable{
 		Name:              "shared_memory_base_name",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("shared_memory_base_name"),
@@ -2212,7 +2198,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"show_create_table_skip_secondary_engine": &sql.MysqlSystemVariable{
 		Name:              "show_create_table_skip_secondary_engine",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("show_create_table_skip_secondary_engine"),
@@ -2220,7 +2206,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"show_create_table_verbosity": &sql.MysqlSystemVariable{
 		Name:              "show_create_table_verbosity",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("show_create_table_verbosity"),
@@ -2228,7 +2214,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"show_external_procedures": &sql.MysqlSystemVariable{
 		Name:              "show_external_procedures",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("show_external_procedures"),
@@ -2236,7 +2222,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"show_old_temporals": &sql.MysqlSystemVariable{
 		Name:              "show_old_temporals",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("show_old_temporals"),
@@ -2244,7 +2230,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"skip_external_locking": &sql.MysqlSystemVariable{
 		Name:              "skip_external_locking",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("skip_external_locking"),
@@ -2252,7 +2238,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"skip_name_resolve": &sql.MysqlSystemVariable{
 		Name:              "skip_name_resolve",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("skip_name_resolve"),
@@ -2260,7 +2246,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"skip_networking": &sql.MysqlSystemVariable{
 		Name:              "skip_networking",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("skip_networking"),
@@ -2268,7 +2254,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"skip_show_database": &sql.MysqlSystemVariable{
 		Name:              "skip_show_database",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("skip_show_database"),
@@ -2276,7 +2262,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"slow_launch_time": &sql.MysqlSystemVariable{
 		Name:              "slow_launch_time",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("slow_launch_time", -9223372036854775808, 9223372036854775807, false),
@@ -2284,7 +2270,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"slow_query_log": &sql.MysqlSystemVariable{
 		Name:              "slow_query_log",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("slow_query_log"),
@@ -2292,7 +2278,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"slow_query_log_file": &sql.MysqlSystemVariable{
 		Name:              "slow_query_log_file",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("slow_query_log_file"),
@@ -2300,7 +2286,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"socket": &sql.MysqlSystemVariable{
 		Name:              "socket",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("socket"),
@@ -2308,7 +2294,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sort_buffer_size": &sql.MysqlSystemVariable{
 		Name:              "sort_buffer_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("sort_buffer_size", 32768, 18446744073709551615),
@@ -2316,7 +2302,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_auto_is_null": &sql.MysqlSystemVariable{
 		Name:              "sql_auto_is_null",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("sql_auto_is_null"),
@@ -2324,7 +2310,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_big_selects": &sql.MysqlSystemVariable{
 		Name:              "sql_big_selects",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("sql_big_selects"),
@@ -2332,7 +2318,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_buffer_result": &sql.MysqlSystemVariable{
 		Name:              "sql_buffer_result",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("sql_buffer_result"),
@@ -2340,7 +2326,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_log_bin": &sql.MysqlSystemVariable{
 		Name:              "sql_log_bin",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("sql_log_bin"),
@@ -2348,7 +2334,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_log_off": &sql.MysqlSystemVariable{
 		Name:              "sql_log_off",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("sql_log_off"),
@@ -2356,7 +2342,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_mode": &sql.MysqlSystemVariable{
 		Name:              "sql_mode",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemSetType("sql_mode", "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL", "ANSI"),
@@ -2364,7 +2350,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_notes": &sql.MysqlSystemVariable{
 		Name:              "sql_notes",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("sql_notes"),
@@ -2372,7 +2358,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_quote_show_create": &sql.MysqlSystemVariable{
 		Name:              "sql_quote_show_create",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("sql_quote_show_create"),
@@ -2380,7 +2366,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_require_primary_key": &sql.MysqlSystemVariable{
 		Name:              "sql_require_primary_key",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("sql_require_primary_key"),
@@ -2388,7 +2374,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_safe_updates": &sql.MysqlSystemVariable{
 		Name:              "sql_safe_updates",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("sql_safe_updates"),
@@ -2396,7 +2382,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_select_limit": &sql.MysqlSystemVariable{
 		Name:              "sql_select_limit",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemIntType("sql_select_limit", -9223372036854775808, 9223372036854775807, false),
@@ -2404,7 +2390,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"sql_warnings": &sql.MysqlSystemVariable{
 		Name:              "sql_warnings",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("sql_warnings"),
@@ -2412,7 +2398,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_ca": &sql.MysqlSystemVariable{
 		Name:              "ssl_ca",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ssl_ca"),
@@ -2420,7 +2406,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_capath": &sql.MysqlSystemVariable{
 		Name:              "ssl_capath",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ssl_capath"),
@@ -2428,7 +2414,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_cert": &sql.MysqlSystemVariable{
 		Name:              "ssl_cert",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ssl_cert"),
@@ -2436,7 +2422,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_cipher": &sql.MysqlSystemVariable{
 		Name:              "ssl_cipher",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ssl_cipher"),
@@ -2444,7 +2430,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_crl": &sql.MysqlSystemVariable{
 		Name:              "ssl_crl",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ssl_crl"),
@@ -2452,7 +2438,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_crlpath": &sql.MysqlSystemVariable{
 		Name:              "ssl_crlpath",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ssl_crlpath"),
@@ -2460,7 +2446,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_fips_mode": &sql.MysqlSystemVariable{
 		Name:              "ssl_fips_mode",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("ssl_fips_mode", "OFF", "ON", "STRICT"),
@@ -2468,7 +2454,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"ssl_key": &sql.MysqlSystemVariable{
 		Name:              "ssl_key",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("ssl_key"),
@@ -2476,7 +2462,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"stored_program_cache": &sql.MysqlSystemVariable{
 		Name:              "stored_program_cache",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("stored_program_cache", 16, 524288, false),
@@ -2484,7 +2470,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"stored_program_definition_cache": &sql.MysqlSystemVariable{
 		Name:              "stored_program_definition_cache",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("stored_program_definition_cache", 256, 524288, false),
@@ -2492,7 +2478,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"strict_mysql_compatibility": &sql.MysqlSystemVariable{
 		Name:              "strict_mysql_compatibility",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("strict_mysql_compatibility"),
@@ -2500,7 +2486,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"super_read_only": &sql.MysqlSystemVariable{
 		Name:              "super_read_only",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("super_read_only"),
@@ -2508,7 +2494,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"syseventlog.facility": &sql.MysqlSystemVariable{
 		Name:              "syseventlog.facility",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("syseventlog.facility"),
@@ -2516,7 +2502,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"syseventlog.include_pid": &sql.MysqlSystemVariable{
 		Name:              "syseventlog.include_pid",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("syseventlog.include_pid"),
@@ -2524,7 +2510,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"syseventlog.tag": &sql.MysqlSystemVariable{
 		Name:              "syseventlog.tag",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("syseventlog.tag"),
@@ -2532,7 +2518,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"system_time_zone": &sql.MysqlSystemVariable{
 		Name:              "system_time_zone",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("system_time_zone"),
@@ -2540,7 +2526,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"table_definition_cache": &sql.MysqlSystemVariable{
 		Name:              "table_definition_cache",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("table_definition_cache", 400, 524288, true),
@@ -2548,7 +2534,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"table_encryption_privilege_check": &sql.MysqlSystemVariable{
 		Name:              "table_encryption_privilege_check",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("table_encryption_privilege_check"),
@@ -2556,7 +2542,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"table_open_cache": &sql.MysqlSystemVariable{
 		Name:              "table_open_cache",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("table_open_cache", 1, 524288, false),
@@ -2564,7 +2550,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"table_open_cache_instances": &sql.MysqlSystemVariable{
 		Name:              "table_open_cache_instances",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("table_open_cache_instances", 1, 64, false),
@@ -2572,7 +2558,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"tablespace_definition_cache": &sql.MysqlSystemVariable{
 		Name:              "tablespace_definition_cache",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("tablespace_definition_cache", 256, 524288, false),
@@ -2580,7 +2566,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"temptable_max_mmap": &sql.MysqlSystemVariable{
 		Name:              "temptable_max_mmap",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("temptable_max_mmap", 0, 18446744073709551615),
@@ -2588,7 +2574,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"temptable_max_ram": &sql.MysqlSystemVariable{
 		Name:              "temptable_max_ram",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("temptable_max_ram", 2097152, 18446744073709551615),
@@ -2596,7 +2582,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"temptable_use_mmap": &sql.MysqlSystemVariable{
 		Name:              "temptable_use_mmap",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("temptable_use_mmap"),
@@ -2604,7 +2590,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_cache_size": &sql.MysqlSystemVariable{
 		Name:              "thread_cache_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_cache_size", 0, 16384, true),
@@ -2612,7 +2598,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_handling": &sql.MysqlSystemVariable{
 		Name:              "thread_handling",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("thread_handling", "no-threads", "one-thread-per-connection", "loaded-dynamically"),
@@ -2620,7 +2606,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_pool_algorithm": &sql.MysqlSystemVariable{
 		Name:              "thread_pool_algorithm",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_pool_algorithm", 0, 1, false),
@@ -2628,7 +2614,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_pool_high_priority_connection": &sql.MysqlSystemVariable{
 		Name:              "thread_pool_high_priority_connection",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_pool_high_priority_connection", 0, 1, false),
@@ -2636,7 +2622,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_pool_max_active_query_threads": &sql.MysqlSystemVariable{
 		Name:              "thread_pool_max_active_query_threads",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_pool_max_active_query_threads", 0, 512, false),
@@ -2644,7 +2630,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_pool_max_unused_threads": &sql.MysqlSystemVariable{
 		Name:              "thread_pool_max_unused_threads",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_pool_max_unused_threads", 0, 4096, false),
@@ -2652,7 +2638,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_pool_prio_kickup_timer": &sql.MysqlSystemVariable{
 		Name:              "thread_pool_prio_kickup_timer",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_pool_prio_kickup_timer", 0, 4294967294, false),
@@ -2660,7 +2646,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_pool_size": &sql.MysqlSystemVariable{
 		Name:              "thread_pool_size",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_pool_size", 1, 512, false),
@@ -2668,7 +2654,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"thread_pool_stall_limit": &sql.MysqlSystemVariable{
 		Name:              "thread_pool_stall_limit",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("thread_pool_stall_limit", 4, 600, false),
@@ -2677,7 +2663,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// TODO: implement block sizes
 	// "thread_stack": &sql.MysqlSystemVariable{
 	//	Name: "thread_stack",
-	//	Scope: SystemVariableScope_Global,
+	//	Scope: sql.GetMysqlScope(SystemVariableScope_Global),
 	//	Dynamic: false,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemUintType("thread_stack", 131072, 18446744073709551615),
@@ -2685,7 +2671,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// },
 	"time_zone": &sql.MysqlSystemVariable{
 		Name:              "time_zone",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemStringType("time_zone"),
@@ -2694,7 +2680,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// TODO: this needs to utilize a function as the value is not static
 	"timestamp": &sql.MysqlSystemVariable{
 		Name:              "timestamp",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemDoubleType("timestamp", 1, 2147483647),
@@ -2702,7 +2688,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"tls_ciphersuites": &sql.MysqlSystemVariable{
 		Name:              "tls_ciphersuites",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("tls_ciphersuites"),
@@ -2710,7 +2696,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"tls_version": &sql.MysqlSystemVariable{
 		Name:              "tls_version",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("tls_version"),
@@ -2718,7 +2704,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"tmp_table_size": &sql.MysqlSystemVariable{
 		Name:              "tmp_table_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemUintType("tmp_table_size", 1024, 18446744073709551615),
@@ -2726,7 +2712,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"tmpdir": &sql.MysqlSystemVariable{
 		Name:              "tmpdir",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("tmpdir"),
@@ -2735,7 +2721,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// TODO: implement block sizes
 	// "transaction_alloc_block_size": &sql.MysqlSystemVariable{
 	//	Name: "transaction_alloc_block_size",
-	//	Scope: SystemVariableScope_Both,
+	//	Scope: sql.GetMysqlScope(SystemVariableScope_Both),
 	//	Dynamic: true,
 	//	SetVarHintApplies: false,
 	//	Type: NewSystemIntType("transaction_alloc_block_size", 1024, 131072, false),
@@ -2743,7 +2729,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// },
 	"transaction_isolation": &sql.MysqlSystemVariable{
 		Name:              "transaction_isolation",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("transaction_isolation", "READ-UNCOMMITTED", "READ-COMMITTED", "REPEATABLE-READ", "SERIALIZABLE"),
@@ -2751,7 +2737,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"transaction_prealloc_size": &sql.MysqlSystemVariable{
 		Name:              "transaction_prealloc_size",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("transaction_prealloc_size", 1024, 131072, false),
@@ -2759,7 +2745,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"transaction_read_only": &sql.MysqlSystemVariable{
 		Name:              "transaction_read_only",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("transaction_read_only"),
@@ -2767,7 +2753,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"tx_isolation": &sql.MysqlSystemVariable{
 		Name:              "tx_isolation",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("tx_isolation", "READ-UNCOMMITTED", "READ-COMMITTED", "REPEATABLE-READ", "SERIALIZABLE"),
@@ -2775,7 +2761,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"tx_read_only": &sql.MysqlSystemVariable{
 		Name:              "tx_read_only",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("tx_read_only"),
@@ -2783,7 +2769,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"unique_checks": &sql.MysqlSystemVariable{
 		Name:              "unique_checks",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("unique_checks"),
@@ -2791,7 +2777,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"updatable_views_with_limit": &sql.MysqlSystemVariable{
 		Name:              "updatable_views_with_limit",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
@@ -2799,7 +2785,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"uptime": &sql.MysqlSystemVariable{
 		Name:              "uptime",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
@@ -2810,7 +2796,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"use_secondary_engine": &sql.MysqlSystemVariable{
 		Name:              "use_secondary_engine",
-		Scope:             sql.SystemVariableScope_Session,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemEnumType("use_secondary_engine", "OFF", "ON", "FORCED"),
@@ -2818,7 +2804,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"validate_user_plugins": &sql.MysqlSystemVariable{
 		Name:              "validate_user_plugins",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("validate_user_plugins"),
@@ -2826,7 +2812,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"version": &sql.MysqlSystemVariable{
 		Name:              "version",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version"),
@@ -2834,7 +2820,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"version_comment": &sql.MysqlSystemVariable{
 		Name:              "version_comment",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version_comment"),
@@ -2842,7 +2828,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"version_compile_machine": &sql.MysqlSystemVariable{
 		Name:              "version_compile_machine",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version_compile_machine"),
@@ -2850,7 +2836,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"version_compile_os": &sql.MysqlSystemVariable{
 		Name:              "version_compile_os",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version_compile_os"),
@@ -2858,7 +2844,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"version_compile_zlib": &sql.MysqlSystemVariable{
 		Name:              "version_compile_zlib",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version_compile_zlib"),
@@ -2866,7 +2852,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"wait_timeout": &sql.MysqlSystemVariable{
 		Name:              "wait_timeout",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("wait_timeout", 1, 31536000, false),
@@ -2874,7 +2860,7 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"windowing_use_high_precision": &sql.MysqlSystemVariable{
 		Name:              "windowing_use_high_precision",
-		Scope:             sql.SystemVariableScope_Both,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("windowing_use_high_precision"),

@@ -15,9 +15,6 @@
 package expression
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -48,35 +45,8 @@ func (v *SystemVar) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
 func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	switch v.Scope {
-	case sql.SystemVariableScope_Session:
-		// "character_set_database" and "collation_database" are special system variables, in that they're set whenever
-		// the current database is changed. Rather than attempting to synchronize the session variables of all
-		// outstanding contexts whenever a database's collation is updated, we just pull the values from the database
-		// directly. MySQL also plans to make these system variables immutable (from the user's perspective). This isn't
-		// exactly the same as MySQL's behavior, but this is the intent of their behavior, which is also way easier to
-		// implement.
-		switch strings.ToLower(v.Name) {
-		case "character_set_database":
-			return v.Collation.CharacterSet().String(), nil
-		case "collation_database":
-			return v.Collation.String(), nil
-		default:
-			val, err := ctx.GetSessionVariable(ctx, v.Name)
-			if err != nil {
-				return nil, err
-			}
-			return val, nil
-		}
-	case sql.SystemVariableScope_Global, sql.PostgresConfigParamScope_Session:
-		_, val, ok := sql.SystemVariables.GetGlobal(v.Name)
-		if !ok {
-			return nil, sql.ErrUnknownSystemVariable.New(v.Name)
-		}
-		return val, nil
-	default: // should never happen
-		return nil, fmt.Errorf("unknown scope `%v` on system variable `%s`", v.Scope, v.Name)
-	}
+	val, err := v.Scope.GetValue(ctx, v.Name, v.Collation)
+	return val, err
 }
 
 // Type implements the sql.Expression interface.
@@ -105,15 +75,10 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
-	if v.Scope == sql.PostgresConfigParamScope_Session {
-		return v.Name
+	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
+		return sysVar.String(v.SpecifiedScope)
 	}
-	// If the scope wasn't explicitly provided, then don't include it in the string representation
-	if v.SpecifiedScope == "" {
-		return fmt.Sprintf("@@%s", v.Name)
-	} else {
-		return fmt.Sprintf("@@%s.%s", v.SpecifiedScope, v.Name)
-	}
+	return ""
 }
 
 // WithChildren implements the Expression interface.
