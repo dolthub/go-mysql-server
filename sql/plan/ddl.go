@@ -58,30 +58,6 @@ type TableSpec struct {
 	Comment   string
 }
 
-//func (c *TableSpec) WithSchema(schema sql.PrimaryKeySchema) *TableSpec {
-//	nc := *c
-//	nc.Schema = schema
-//	return &nc
-//}
-//
-//func (c *TableSpec) WithForeignKeys(fkDefs []*sql.ForeignKeyConstraint) *TableSpec {
-//	nc := *c
-//	nc.FkDefs = fkDefs
-//	return &nc
-//}
-//
-//func (c *TableSpec) WithCheckConstraints(chDefs []*sql.CheckConstraint) *TableSpec {
-//	nc := *c
-//	nc.ChDefs = chDefs
-//	return &nc
-//}
-//
-//func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) *TableSpec {
-//	nc := *c
-//	nc.IdxDefs = idxDefs
-//	return &nc
-//}
-
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
 	ddlNode
@@ -115,7 +91,6 @@ func NewCreateTable(db sql.Database, name string, ifn, temp bool, tableSpec *Tab
 		s.Source = name
 	}
 
-	// TODO: comment
 	return &CreateTable{
 		ddlNode:     ddlNode{db},
 		name:        name,

@@ -35,7 +35,7 @@ func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql
 	}
 	colCntLit, ok := args[0].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions, not %T", args[0])
 	}
 	colCnt, inBounds, _ := types.Int64.Convert(colCntLit.Value())
 	if !inBounds {
@@ -43,7 +43,7 @@ func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql
 	}
 	rowCntLit, ok := args[1].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions, not %T", args[1])
 	}
 	rowCnt, inBounds, _ := types.Int64.Convert(rowCntLit.Value())
 	if !inBounds {
@@ -51,7 +51,7 @@ func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql
 	}
 	meanLit, ok := args[2].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions, not %T", args[2])
 	}
 	mean, inBounds, _ := types.Float64.Convert(meanLit.Value())
 	if !inBounds {
@@ -59,7 +59,7 @@ func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql
 	}
 	stdLit, ok := args[3].(*expression.Literal)
 	if !ok {
-		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
+		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions, not %T", args[3])
 	}
 	std, inBounds, _ := types.Float64.Convert(stdLit.Value())
 	if !inBounds {
