@@ -27,7 +27,7 @@ import (
 
 var newConn = &sql.MysqlSystemVariable{
 	Name:    "max_connections",
-	Scope:   sql.SystemVariableScope_Global,
+	Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Global),
 	Dynamic: true,
 	Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 	Default: int64(1000),
@@ -35,7 +35,7 @@ var newConn = &sql.MysqlSystemVariable{
 
 var newTimeout = &sql.MysqlSystemVariable{
 	Name:    "net_write_timeout",
-	Scope:   sql.SystemVariableScope_Both,
+	Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Both),
 	Dynamic: true,
 	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
@@ -43,7 +43,7 @@ var newTimeout = &sql.MysqlSystemVariable{
 
 var newUnknown = &sql.MysqlSystemVariable{
 	Name:    "net_write_timeout",
-	Scope:   sql.SystemVariableScope_Both,
+	Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Both),
 	Dynamic: true,
 	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
@@ -73,7 +73,7 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			persistedGlobals: []sql.SystemVariable{
 				&sql.MysqlSystemVariable{
 					Name:    "max_connections",
-					Scope:   sql.SystemVariableScope_Global,
+					Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Global),
 					Dynamic: true,
 					Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 					Default: "1000",
@@ -82,7 +82,7 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			expectedCmp: []sql.SystemVariable{
 				&sql.MysqlSystemVariable{
 					Name:    "max_connections",
-					Scope:   sql.SystemVariableScope_Global,
+					Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Global),
 					Dynamic: true,
 					Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 					Default: "1000",

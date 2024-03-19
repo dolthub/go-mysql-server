@@ -29,7 +29,7 @@ import (
 func TestConfigWithDefaults(t *testing.T) {
 	tests := []struct {
 		Name        string
-		Scope       sql.SystemVariableScope
+		Scope       sql.MysqlSVScopeType
 		Type        sql.SystemVariableType
 		ConfigField string
 		Default     interface{}
@@ -66,7 +66,7 @@ func TestConfigWithDefaults(t *testing.T) {
 			sql.SystemVariables.AddSystemVariables([]sql.SystemVariable{
 				&sql.MysqlSystemVariable{
 					Name:    test.Name,
-					Scope:   test.Scope,
+					Scope:   sql.GetMysqlScope(test.Scope),
 					Dynamic: true,
 					Type:    test.Type,
 					Default: test.Default,
