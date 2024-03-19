@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/jsonpath"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -92,19 +93,11 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	//  sql NULLs, should result in sql NULLs.
 	if js == nil {
-		return nil, err
-	}
-
-	strData, _, err := types.LongBlob.Convert(js)
-	if err != nil {
-		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_value; a JSON string or JSON type is required")
-	}
-	if strData == nil {
 		return nil, nil
 	}
 
-	var jsonData interface{}
-	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+	jsonData, err := GetJSONFromWrapperOrCoercibleString(js)
+	if err != nil {
 		return nil, err
 	}
 
@@ -168,4 +161,29 @@ func (j *JsonValue) String() string {
 		parts[i] = c.String()
 	}
 	return fmt.Sprintf("json_value(%s)", strings.Join(parts, ", "))
+}
+
+var InvalidJsonArgument = errors.NewKind("invalid data type for JSON data in argument 1 to function json_value; a JSON string or JSON type is required")
+
+// GetJSONFromWrapperOrCoercibleString takes a valid argument for JSON functions (either a JSON wrapper type or a string)
+// and unwraps the JSON, or coerces the string into JSON. The return value can return any type that can be stored in
+// a JSON column, not just maps. For a complete list, see
+// https://dev.mysql.com/doc/refman/8.3/en/json-attribute-functions.html#function_json-type
+func GetJSONFromWrapperOrCoercibleString(js interface{}) (jsonData interface{}, err error) {
+	// The first parameter can be either JSON or a string.
+	switch jsType := js.(type) {
+	case string:
+		strData, _, err := types.LongBlob.Convert(js)
+		if err != nil {
+			return nil, err
+		}
+		if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+			return nil, err
+		}
+		return jsonData, nil
+	case sql.JSONWrapper:
+		return jsType.ToInterface(), nil
+	default:
+		return nil, InvalidJsonArgument.New()
+	}
 }

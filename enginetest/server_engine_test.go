@@ -95,10 +95,67 @@ type serverScriptTest struct {
 func TestServerPreparedStatements(t *testing.T) {
 	tests := []serverScriptTest{
 		{
+			name: "read json-wrapped decimal values",
+			setup: []string{
+				"create table json_tbl (id int primary key, j json);",
+				"insert into json_tbl values (0, cast(213.4 as json));",
+				`insert into json_tbl values (1, cast("213.4" as json));`,
+			},
+			assertions: []serverScriptTestAssertion{
+				{
+					query:  "select cast(321.4 as json)",
+					isExec: false,
+					expectedRows: []any{
+						[]float64{321.4},
+					},
+					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var i float64
+						var rowNum int
+						for rows.Next() {
+							if err := rows.Scan(&i); err != nil {
+								return false, err
+							}
+							if rowNum >= len(expectedRows) {
+								return false, nil
+							}
+							if i != expectedRows[rowNum].([]float64)[0] {
+								return false, nil
+							}
+							rowNum++
+						}
+						return true, nil
+					},
+				},
+				{
+					query:  "select j from json_tbl",
+					isExec: false,
+					expectedRows: []any{
+						[]float64{213.4},
+						[]float64{213.4},
+					},
+					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var i float64
+						var rowNum int
+						for rows.Next() {
+							if err := rows.Scan(&i); err != nil {
+								return false, err
+							}
+							if rowNum >= len(expectedRows) {
+								return false, nil
+							}
+							if i != expectedRows[rowNum].([]float64)[0] {
+								return false, nil
+							}
+							rowNum++
+						}
+						return true, nil
+					},
+				},
+			},
+		},
+		{
 			name: "prepared inserts with big ints",
 			setup: []string{
-				"create database test_db;",
-				"use test_db;",
 				"create table signed_tbl (i bigint signed);",
 				"create table unsigned_tbl (i bigint unsigned);",
 			},
@@ -226,7 +283,14 @@ func TestServerPreparedStatements(t *testing.T) {
 			require.NoError(t, cerr)
 			defer conn.Close()
 
-			for _, stmt := range test.setup {
+			commonSetup := []string{
+				"create database test_db;",
+				"use test_db;",
+			}
+			commonTeardown := []string{
+				"drop database test_db",
+			}
+			for _, stmt := range append(commonSetup, test.setup...) {
 				_, err := conn.Exec(stmt)
 				require.NoError(t, err)
 			}
@@ -256,6 +320,10 @@ func TestServerPreparedStatements(t *testing.T) {
 					require.NoError(t, err)
 					require.True(t, ok)
 				})
+			}
+			for _, stmt := range append(commonTeardown) {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
 			}
 		})
 	}
