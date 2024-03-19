@@ -17,6 +17,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
 	"github.com/dolthub/jsonpath"
@@ -92,19 +93,11 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	//  sql NULLs, should result in sql NULLs.
 	if js == nil {
-		return nil, err
-	}
-
-	strData, _, err := types.LongBlob.Convert(js)
-	if err != nil {
-		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_value; a JSON string or JSON type is required")
-	}
-	if strData == nil {
 		return nil, nil
 	}
 
-	var jsonData interface{}
-	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+	jsonData, err := GetJSONOrCoercibleString(js)
+	if err != nil {
 		return nil, err
 	}
 
@@ -168,4 +161,25 @@ func (j *JsonValue) String() string {
 		parts[i] = c.String()
 	}
 	return fmt.Sprintf("json_value(%s)", strings.Join(parts, ", "))
+}
+
+var InvalidJsonArgument = errors.NewKind("invalid data type for JSON data in argument 1 to function json_value; a JSON string or JSON type is required")
+
+func GetJSONOrCoercibleString(js interface{}) (jsonData interface{}, err error) {
+	// The first parameter can be either JSON or a string.
+	switch jsType := js.(type) {
+	case string:
+		strData, _, err := types.LongBlob.Convert(js)
+		if err != nil {
+			return nil, err
+		}
+		if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+			return nil, err
+		}
+		return jsonData, nil
+	case sql.JSONWrapper:
+		return jsType.ToInterface(), nil
+	default:
+		return nil, InvalidJsonArgument.New()
+	}
 }
