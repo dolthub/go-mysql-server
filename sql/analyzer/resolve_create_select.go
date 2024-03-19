@@ -42,7 +42,7 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	}
 
 	newSpec := &plan.TableSpec{
-		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		Schema: sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
 	}
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
