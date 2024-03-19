@@ -15,10 +15,8 @@
 package queries
 
 import (
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -108,9 +106,9 @@ var JsonScripts = []ScriptTest{
 		Name: "json_object preserves types",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select JSON_OBJECT('a', CAST(12.34 AS DECIMAL(4, 2)));",
+				Query: `select JSON_TYPE(JSON_EXTRACT(JSON_OBJECT('a', CAST(12.34 AS DECIMAL(4, 2))), "$.a"));`,
 				Expected: []sql.Row{
-					{types.JSONDocument{Val: map[string]interface{}{"a": decimal.New(1234, -2)}}},
+					{"DECIMAL"},
 				},
 			},
 		},
