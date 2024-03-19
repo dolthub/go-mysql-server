@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"io"
 	"reflect"
 	"sort"
@@ -314,6 +315,7 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte{'"'})
 		return nil
 	case json.Marshaler:
+		decimal.MarshalJSONWithoutQuotes = true
 		bytes, err := val.MarshalJSON()
 		if err != nil {
 			return err
