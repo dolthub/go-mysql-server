@@ -16,11 +16,11 @@ package json
 
 import (
 	"fmt"
-	"math"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/shopspring/decimal"
+	"math"
 )
 
 // JSONType (json_val)
@@ -91,6 +91,10 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return "NULL", nil
 	case bool:
 		return "BOOLEAN", nil
+	case int64:
+		return "INTEGER", nil
+	case uint64:
+		return "UNSIGNED INTEGER", nil
 	case float64:
 		if conv, ok := j.JSON.(*expression.Convert); ok {
 			typ := conv.Child.Type()
@@ -108,9 +112,6 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case string:
 		if conv, ok := j.JSON.(*expression.Convert); ok {
 			typ := conv.Child.Type()
-			if types.IsDecimal(typ) {
-				return "DECIMAL", nil
-			}
 			if types.IsDatetimeType(typ) {
 				return "DATETIME", nil
 			}
@@ -126,6 +127,8 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return "ARRAY", nil
 	case map[string]interface{}:
 		return "OBJECT", nil
+	case decimal.Decimal:
+		return "DECIMAL", nil
 	default:
 		return "OPAQUE", nil
 	}
