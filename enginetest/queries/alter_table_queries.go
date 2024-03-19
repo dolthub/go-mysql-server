@@ -1374,7 +1374,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t;",
+				Query: "show create table t;",
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
 					"  `c1` varchar(255),\n" +
@@ -1413,7 +1413,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t;",
+				Query: "show create table t;",
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
 					"  `c1` varchar(255),\n" +
@@ -1468,7 +1468,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{1, -1, "one"}, {2, -2, "two"}},
 			},
 			{
-				Query:    "show create table t;",
+				Query: "show create table t;",
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 					"  `id1` int NOT NULL AUTO_INCREMENT,\n" +
 					"  `id2` int NOT NULL,\n" +

@@ -814,7 +814,7 @@ var CreateTableAutoIncrementTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// this just ignores the auto_increment argument
-				Query:       "create table t1 (i int) auto_increment=10;",
+				Query:    "create table t1 (i int) auto_increment=10;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -827,7 +827,7 @@ var CreateTableAutoIncrementTests = []ScriptTest{
 			},
 
 			{
-				Query: "create table t2 (i int auto_increment primary key) auto_increment=10;",
+				Query:    "create table t2 (i int auto_increment primary key) auto_increment=10;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -840,7 +840,7 @@ var CreateTableAutoIncrementTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into t2 values (null), (null), (null)",
+				Query:    "insert into t2 values (null), (null), (null)",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 10}}},
 			},
 			{
