@@ -146,7 +146,7 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "unsigned tinyint survives round-trip into table",
+		Name: "unsigned tinyint is still unsigned after round-trip into table",
 		SetUpScript: []string{
 			"CREATE TABLE xy (x bigint primary key, y JSON, z tinyint unsigned)",
 			`INSERT INTO xy VALUES (0, null, 0);`,

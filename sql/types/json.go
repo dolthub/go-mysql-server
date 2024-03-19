@@ -84,6 +84,10 @@ func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertIn
 		return JSONDocument{Val: uint64(v)}, sql.InRange, nil
 	case uint64:
 		return JSONDocument{Val: v}, sql.InRange, nil
+	case float32:
+		return JSONDocument{Val: float64(v)}, sql.InRange, nil
+	case float64:
+		return JSONDocument{Val: v}, sql.InRange, nil
 	case decimal.Decimal:
 		return JSONDocument{Val: v}, sql.InRange, nil
 	default:
