@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 var isEscaped = [256]bool{}
@@ -29,6 +31,8 @@ func init() {
 	escapeSeq[uint8('\t')] = []byte("\\t")
 	escapeSeq[uint8('"')] = []byte("\\\"")
 	escapeSeq[uint8('\\')] = []byte("\\\\")
+
+	decimal.MarshalJSONWithoutQuotes = true
 }
 
 type NoCopyBuilder struct {
@@ -314,6 +318,7 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte{'"'})
 		return nil
 	case json.Marshaler:
+		decimal.MarshalJSONWithoutQuotes = true
 		bytes, err := val.MarshalJSON()
 		if err != nil {
 			return err
