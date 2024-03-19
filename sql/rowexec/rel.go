@@ -189,7 +189,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 		return &jsonTableRowIter{}, nil
 	}
 
-	jsonData, err := json.GetJSONOrCoercibleString(data)
+	jsonData, err := json.GetJSONFromWrapperOrCoercibleString(data)
 	if err != nil {
 		return nil, err
 	}
