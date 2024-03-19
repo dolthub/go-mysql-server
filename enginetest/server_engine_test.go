@@ -97,8 +97,6 @@ func TestServerPreparedStatements(t *testing.T) {
 		{
 			name: "read json-wrapped decimal values",
 			setup: []string{
-				"create database test_db;",
-				"use test_db;",
 				"create table json_tbl (id int primary key, j json);",
 				"insert into json_tbl values (0, cast(213.4 as json));",
 				`insert into json_tbl values (1, cast("213.4" as json));`,
@@ -158,8 +156,6 @@ func TestServerPreparedStatements(t *testing.T) {
 		{
 			name: "prepared inserts with big ints",
 			setup: []string{
-				"create database test_db;",
-				"use test_db;",
 				"create table signed_tbl (i bigint signed);",
 				"create table unsigned_tbl (i bigint unsigned);",
 			},
@@ -287,7 +283,14 @@ func TestServerPreparedStatements(t *testing.T) {
 			require.NoError(t, cerr)
 			defer conn.Close()
 
-			for _, stmt := range test.setup {
+			commonSetup := []string{
+				"create database test_db;",
+				"use test_db;",
+			}
+			commonTeardown := []string{
+				"drop database test_db",
+			}
+			for _, stmt := range append(commonSetup, test.setup...) {
 				_, err := conn.Exec(stmt)
 				require.NoError(t, err)
 			}
@@ -317,6 +320,10 @@ func TestServerPreparedStatements(t *testing.T) {
 					require.NoError(t, err)
 					require.True(t, ok)
 				})
+			}
+			for _, stmt := range append(commonTeardown) {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
 			}
 		})
 	}
