@@ -34,13 +34,22 @@ var JsonScripts = []ScriptTest{
 				},
 			},
 			{
+				Query: `select JSON_TYPE("1")`,
+				Expected: []sql.Row{
+					{"INTEGER"},
+				},
+			},
+			{
 				Query: `select JSON_TYPE(CAST("1" AS JSON))`,
 				Expected: []sql.Row{
 					{"INTEGER"},
 				},
-				// Because standard JSON doesn't have separate int and float types,
-				// golang's JSON parser parses the "1" as a float.
-				SkipResultsCheck: true,
+			},
+			{
+				Query: `select JSON_TYPE("\"1\"")`,
+				Expected: []sql.Row{
+					{"STRING"},
+				},
 			},
 			{
 				Query: `select JSON_TYPE(CAST("\"1\"" AS JSON))`,
@@ -48,24 +57,73 @@ var JsonScripts = []ScriptTest{
 					{"STRING"},
 				},
 			},
-			// Casting without quotes: `321.4` is parsed as a decimal, then wrapped in a JSON Document.
 			{
+				// Casting without quotes: `321.4` is parsed as a decimal, then wrapped in a JSON Document.
 				Query: "select JSON_TYPE(CAST(321.4 AS JSON))",
 				Expected: []sql.Row{
 					{"DECIMAL"},
 				},
 			},
-			// Casting with quotes: The string value is parsed as JSON, resulting in a wrapped double.
 			{
+				// Casting with quotes: The string value is parsed as JSON, resulting in a wrapped double.
+				Query: `select JSON_TYPE("321.4")`,
+				Expected: []sql.Row{
+					{"DOUBLE"},
+				},
+			},
+			{
+				// Casting with quotes: The string value is parsed as JSON, resulting in a wrapped double.
 				Query: `select JSON_TYPE(CAST("321.4" AS JSON))`,
 				Expected: []sql.Row{
 					{"DOUBLE"},
 				},
 			},
 			{
+				Query: `select JSON_TYPE("\"321.4\"")`,
+				Expected: []sql.Row{
+					{"STRING"},
+				},
+			},
+			{
 				Query: `select JSON_TYPE(CAST("\"321.4\"" AS JSON))`,
 				Expected: []sql.Row{
 					{"STRING"},
+				},
+			},
+			{
+				Query: "select JSON_TYPE(CAST(1e-1 AS JSON))",
+				Expected: []sql.Row{
+					{"DOUBLE"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE("1e-1")`,
+				Expected: []sql.Row{
+					{"DOUBLE"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(CAST("1e-1" AS JSON))`,
+				Expected: []sql.Row{
+					{"DOUBLE"},
+				},
+			},
+			{
+				Query: "select JSON_TYPE(CAST(1.0e-1 AS JSON))",
+				Expected: []sql.Row{
+					{"DOUBLE"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE("1.0e-1")`,
+				Expected: []sql.Row{
+					{"DOUBLE"},
+				},
+			},
+			{
+				Query: `select JSON_TYPE(CAST("1.0e-1" AS JSON))`,
+				Expected: []sql.Row{
+					{"DOUBLE"},
 				},
 			},
 		},
@@ -112,14 +170,32 @@ var JsonScripts = []ScriptTest{
 					{"DECIMAL"},
 				},
 			},
+			{
+				Query: `select JSON_TYPE(JSON_EXTRACT(JSON_OBJECT('a', CAST(12 AS UNSIGNED)), "$.a"));`,
+				Expected: []sql.Row{
+					{"UNSIGNED INTEGER"},
+				},
+			},
 		},
 	},
 	{
-		Name: "json_value conversions",
+		Name: "json_value preserves types",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       `select json_value(cast(12.34 as decimal), '$')`,
+				Query:       `select json_value(cast(12.34 as decimal), '$', 'json')`,
 				ExpectedErr: json.InvalidJsonArgument,
+			},
+			{
+				Query: `select json_type(json_value(cast(cast(12.34 as decimal) as json), '$', 'json'))`,
+				Expected: []sql.Row{
+					{"DECIMAL"},
+				},
+			},
+			{
+				Query: `select json_type(json_value(cast(cast(12 as unsigned) as json), '$', 'json'))`,
+				Expected: []sql.Row{
+					{"UNSIGNED INTEGER"},
+				},
 			},
 		},
 	},
