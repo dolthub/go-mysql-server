@@ -382,8 +382,6 @@ type SystemVariableRegistry interface {
 type SystemVariable interface {
 	// GetName returns the name of the sv. Case-sensitive.
 	GetName() string
-	// ForceChangeName sets the name of the sv.
-	ForceChangeName(string)
 	// GetType returns the type of the sv.
 	GetType() Type
 	// GetScope takes a scope if we want to validate it;
@@ -455,11 +453,6 @@ type MysqlSystemVariable struct {
 // GetName implements SystemVariable.
 func (s *MysqlSystemVariable) GetName() string {
 	return s.Name
-}
-
-// ForceChangeName implements SystemVariable.
-func (s *MysqlSystemVariable) ForceChangeName(n string) {
-	s.Name = n
 }
 
 // GetType implements SystemVariable.

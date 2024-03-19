@@ -55,7 +55,6 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 		}
 		sysVar := originalSysVar
 		lowerName := strings.ToLower(sysVar.GetName())
-		sysVar.ForceChangeName(lowerName)
 		systemVars[lowerName] = sysVar
 		sv.sysVarVals[lowerName] = sql.SystemVarValue{
 			Var: sysVar,
