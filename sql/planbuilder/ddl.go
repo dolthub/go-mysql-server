@@ -1480,6 +1480,13 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
 		var charsetStr, collationStr string
+		if len(c.CharsetCollate) != 0 && b.ctx != nil && b.ctx.Session != nil {
+			b.ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERNotSupportedYet,
+				Message: "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet",
+			})
+		}
 		for _, cc := range c.CharsetCollate {
 			ccType := strings.ToLower(cc.Type)
 			if ccType == "character set" {

@@ -174,7 +174,7 @@ func (c *CreateTable) String() string {
 	return fmt.Sprintf("Create table %s%s", ifNotExists, c.name)
 }
 
-// DebugString implements the sql.Node interface.
+// DebugString implements the sql.DebugStringer interface.
 func (c *CreateTable) DebugString() string {
 	p := sql.NewTreePrinter()
 
@@ -481,20 +481,6 @@ func (c *CreateTable) ValidateDefaultPosition() error {
 
 	return nil
 }
-
-// TODO: why do we create a new TableSpec here?
-//func (c *CreateTable) TableSpec() *TableSpec {
-//	tableSpec := TableSpec{}
-//
-//	ret := tableSpec.WithSchema(c.CreateSchema)
-//	ret = ret.WithForeignKeys(c.FkDefs)
-//	ret = ret.WithIndices(c.IdxDefs)
-//	ret = ret.WithCheckConstraints(c.checks)
-//	ret.Collation = c.Collation
-//	ret.Comment = c.Comment
-//
-//	return ret
-//}
 
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
