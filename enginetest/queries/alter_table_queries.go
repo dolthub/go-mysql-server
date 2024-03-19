@@ -1375,7 +1375,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
+					"  `c1` varchar(255),\n" +
+					"  UNIQUE KEY `id` (`id`)\n" +
+					") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "insert into t (c1) values('two');",
@@ -1410,7 +1414,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
+					"  `c1` varchar(255),\n" +
+					"  KEY `id` (`id`)\n" +
+					") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "insert into t (c1) values('two');",
@@ -1461,7 +1469,13 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id1` int NOT NULL AUTO_INCREMENT,\n  `id2` int NOT NULL,\n  `c1` varchar(255),\n  KEY `c1id1` (`c1`,`id1`),\n  KEY `id1c1` (`id1`,`c1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `id1` int NOT NULL AUTO_INCREMENT,\n" +
+					"  `id2` int NOT NULL,\n" +
+					"  `c1` varchar(255),\n" +
+					"  KEY `c1id1` (`c1`,`id1`),\n" +
+					"  KEY `id1c1` (`id1`,`c1`)\n" +
+					") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},

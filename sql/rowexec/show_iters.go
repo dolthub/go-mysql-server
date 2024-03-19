@@ -463,7 +463,10 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	if tbl := getAutoIncrementTable(table); tbl != nil {
 		autoIncVal, err := tbl.PeekNextAutoIncrementValue(ctx)
 		// TODO: possible to get ErrNoAutoIncrementCol here, so we just ignore
-		if err != nil && autoIncVal > 1 {
+		if err != nil && err.Error() != sql.ErrNoAutoIncrementCol.Error() {
+			return "", err
+		}
+		if autoIncVal > 1 {
 			autoInc = fmt.Sprintf("%v", autoIncVal)
 		}
 	}
