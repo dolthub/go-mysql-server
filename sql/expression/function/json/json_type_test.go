@@ -16,15 +16,15 @@ package json
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/shopspring/decimal"
 	"strings"
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONType(t *testing.T) {

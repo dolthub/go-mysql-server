@@ -17,11 +17,11 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/shopspring/decimal"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )

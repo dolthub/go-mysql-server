@@ -3,12 +3,13 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"io"
 	"reflect"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 var isEscaped = [256]bool{}

@@ -17,7 +17,6 @@ package rowexec
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -32,6 +31,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
