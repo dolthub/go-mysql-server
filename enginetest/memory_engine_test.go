@@ -807,7 +807,8 @@ func TestDateParse(t *testing.T) {
 }
 
 func TestJsonScripts(t *testing.T) {
-	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
+	var skippedTests []string = nil
+	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness(), skippedTests)
 }
 
 func TestShowTableStatus(t *testing.T) {

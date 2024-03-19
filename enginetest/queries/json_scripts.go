@@ -71,7 +71,7 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "types survive round trips into tables",
+		Name: "types survive round-trip into tables",
 		SetUpScript: []string{
 			"CREATE TABLE xy (x bigint primary key, y JSON)",
 			`INSERT INTO xy VALUES (0, CAST(CAST(1.2 AS DECIMAL) AS JSON));`,
