@@ -205,9 +205,6 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 			if !ok {
 				return nil, scope, false
 			}
-			if sysVar.IsGlobalOnly() {
-				return nil, scope, false
-			}
 			return expression.NewSystemVar(varName, sysVar.GetSessionScope(), specifiedScope), scope, true
 		}
 	case ast.SetScope_User:
