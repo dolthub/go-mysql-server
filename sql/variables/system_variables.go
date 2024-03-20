@@ -16,6 +16,7 @@ package variables
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"math"
 	"strings"
 	"sync"
@@ -106,9 +107,27 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 		return nil, nil, false
 	}
 
+	if msv, ok := v.(*sql.MysqlSystemVariable); ok && msv.ValueFunction != nil {
+		result, err := msv.ValueFunction()
+		if err != nil {
+			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", msv.GetName(), err.Error())
+			return nil, nil, true
+		}
+		return v, result, true
+	}
+
+	// convert any set types to strings
 	sysVal := sv.sysVarVals[name]
-	val, ok := v.GetValue(sysVal.Val)
-	return v, val, ok
+	if sysType, ok := sysVal.Var.GetType().(sql.SetType); ok {
+		if setTypeVal, ok := sysVal.Val.(uint64); ok {
+			var err error
+			sysVal.Val, err = sysType.BitsToString(setTypeVal)
+			if err != nil {
+				return nil, nil, false
+			}
+		}
+	}
+	return v, sysVal.Val, true
 }
 
 // SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,

@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/sirupsen/logrus"
 )
 
 // Expression is a combination of one or more SQL expressions.
@@ -384,31 +383,27 @@ type SystemVariable interface {
 	GetName() string
 	// GetType returns the type of the sv.
 	GetType() Type
-	// GetScope takes a scope if we want to validate it;
-	// otherwise, if nil, it returns the scope of the sv.
-	GetScope(SystemVariableScope) SystemVariableScope
+	// GetSessionScope returns SESSION scope of the sv.
+	GetSessionScope() SystemVariableScope
 	// SetDefault sets the default value of the sv.
 	SetDefault(any)
 	// GetDefault returns the defined default value of the sv.
 	// This is used for resetting some variables to initial default/reset value.
 	GetDefault() any
-	// GetValue takes the current GLOBAL value of the sv
-	// and returns either that value or value from ValueFunction
-	// It converts the value to appropriate type, if necessary.
-	GetValue(a any) (any, bool)
 	// ForceSetValue sets value without validation.
 	// This is used for setting the initial values internally
 	// using pre-defined variables or for test-purposes.
 	ForceSetValue(val any) (SystemVarValue, error)
-	// SetValue sets the value of the sv.
+	// SetValue sets the value of the sv of given scope, global or session
+	// It validates setting value of correct scope,
+	// converts the given value to appropriate value depending on the sv
+	// and it returns the SystemVarValue with the updated value.
 	SetValue(val any, global bool) (SystemVarValue, error)
 	// IsReadOnly checks whether the variable is read only.
 	// It returns false if variable can be set to a value.
 	IsReadOnly() bool
 	// IsGlobalOnly checks whether the scope of the variable is global only.
 	IsGlobalOnly() bool
-	// GetNotifyChanged returns the NotifyChanged function for the variable.
-	GetNotifyChanged() func(SystemVariableScope, SystemVarValue) error
 	// String returns the name of the sv to be displayed.
 	String(string) string
 }
@@ -460,15 +455,9 @@ func (s *MysqlSystemVariable) GetType() Type {
 	return s.Type
 }
 
-// GetScope implements SystemVariable.
-func (s *MysqlSystemVariable) GetScope(scope SystemVariableScope) SystemVariableScope {
-	// If |scope| is defined, then return it. It's used for creating new system var node.
-	// Otherwise, we expect the defined scope for this variable.
-	// TODO: we can perform validation here (e.g. trying to get session scope for global-only variable)
-	if scope != nil {
-		return scope
-	}
-	return s.Scope
+// GetSessionScope implements SystemVariable.
+func (s *MysqlSystemVariable) GetSessionScope() SystemVariableScope {
+	return GetMysqlScope(SystemVariableScope_Session)
 }
 
 // SetDefault implements SystemVariable.
@@ -479,31 +468,6 @@ func (s *MysqlSystemVariable) SetDefault(a any) {
 // GetDefault implements SystemVariable.
 func (s *MysqlSystemVariable) GetDefault() any {
 	return s.Default
-}
-
-// GetValue implements SystemVariable.
-func (s *MysqlSystemVariable) GetValue(a any) (any, bool) {
-	// should always be MysqlSystemVariable
-	if s.ValueFunction != nil {
-		result, err := s.ValueFunction()
-		if err != nil {
-			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", s.Name, err.Error())
-			return nil, true
-		}
-		return result, true
-	}
-
-	// convert any set types to strings
-	if sysType, ok := s.GetType().(SetType); ok {
-		if setTypeVal, ok := a.(uint64); ok {
-			var err error
-			a, err = sysType.BitsToString(setTypeVal)
-			if err != nil {
-				return nil, false
-			}
-		}
-	}
-	return a, true
 }
 
 // ForceSetValue implements SystemVariable.
@@ -530,10 +494,31 @@ func (s *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, er
 	if global && s.Scope.Type == SystemVariableScope_Session {
 		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(s.Name)
 	}
+	if !global && s.Scope.Type == SystemVariableScope_Global {
+		return SystemVarValue{}, ErrSystemVariableGlobalOnly.New(s.Name)
+	}
 	if !s.Dynamic || s.ValueFunction != nil {
 		return SystemVarValue{}, ErrSystemVariableReadOnly.New(s.Name)
 	}
-	return s.ForceSetValue(val)
+	convertedVal, _, err := s.Type.Convert(val)
+	if err != nil {
+		return SystemVarValue{}, err
+	}
+	svv := SystemVarValue{
+		Var: s,
+		Val: convertedVal,
+	}
+	scope := GetMysqlScope(SystemVariableScope_Session)
+	if global {
+		scope = GetMysqlScope(SystemVariableScope_Global)
+	}
+	if s.NotifyChanged != nil {
+		err = s.NotifyChanged(scope, svv)
+		if err != nil {
+			return SystemVarValue{}, err
+		}
+	}
+	return svv, nil
 }
 
 // IsReadOnly implements SystemVariable.
@@ -544,11 +529,6 @@ func (s *MysqlSystemVariable) IsReadOnly() bool {
 // IsGlobalOnly implements SystemVariable.
 func (s *MysqlSystemVariable) IsGlobalOnly() bool {
 	return s.Scope.IsGlobalOnly()
-}
-
-// GetNotifyChanged implements SystemVariable.
-func (s *MysqlSystemVariable) GetNotifyChanged() func(SystemVariableScope, SystemVarValue) error {
-	return s.NotifyChanged
 }
 
 // String implements SystemVariable.
@@ -572,10 +552,6 @@ type SystemVariableScope interface {
 	IsGlobalOnly() bool
 	// IsSessionOnly returns true if SV is of SystemVariableScope_Session scope.
 	IsSessionOnly() bool
-	// GetDefault takes the defined default value and current GLOBAL value of the SV.
-	// It returns either one depending on the scope of the SV. It is used for getting
-	// the value for DEFAULT expression.
-	GetDefault(any, any) any
 }
 
 // MysqlScope represents the scope of a MySQL system variable.
@@ -681,11 +657,6 @@ func (m *MysqlScope) IsGlobalOnly() bool {
 
 func (m *MysqlScope) IsSessionOnly() bool {
 	return m.Type == SystemVariableScope_Session
-}
-
-func (m *MysqlScope) GetDefault(defaultVal, currentGlobalVal any) any {
-	// DEFAULT value in MySQL refers to current GLOBAL value.
-	return currentGlobalVal
 }
 
 var _ SystemVariableScope = (*MysqlScope)(nil)

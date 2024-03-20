@@ -171,7 +171,8 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
 
-	val, ok := s.systemVars[sysVar.GetName()]
+	sysVarName = strings.ToLower(sysVarName)
+	val, ok := s.systemVars[sysVarName]
 	if ok && val.Val != sysVar.GetDefault() {
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
@@ -180,27 +181,14 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 }
 
 func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}) error {
-	if sysVar.IsGlobalOnly() {
-		return ErrSystemVariableGlobalOnly.New(sysVar.GetName())
-	}
-	convertedVal, _, err := sysVar.GetType().Convert(value)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	svv, err := sysVar.SetValue(value, false)
 	if err != nil {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	svv := SystemVarValue{
-		Var: sysVar,
-		Val: convertedVal,
-	}
-
-	if nc := sysVar.GetNotifyChanged(); nc != nil {
-		err = nc(GetMysqlScope(SystemVariableScope_Session), svv)
-		if err != nil {
-			return err
-		}
-	}
-	s.systemVars[sysVar.GetName()] = svv
+	sysVarName := strings.ToLower(sysVar.GetName())
+	s.systemVars[sysVarName] = svv
 	return nil
 }
 

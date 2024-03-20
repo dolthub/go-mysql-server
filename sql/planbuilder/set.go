@@ -204,8 +204,10 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 			if !ok {
 				return nil, scope, false
 			}
-			svScope := sysVar.GetScope(sql.GetMysqlScope(sql.SystemVariableScope_Session))
-			return expression.NewSystemVar(varName, svScope, specifiedScope), scope, true
+			if sysVar.IsGlobalOnly() {
+				return nil, scope, false
+			}
+			return expression.NewSystemVar(varName, sysVar.GetSessionScope(), specifiedScope), scope, true
 		}
 	case ast.SetScope_User:
 		t, _, err := b.ctx.GetUserVariable(b.ctx, varName)
@@ -326,10 +328,9 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 
 		switch varScope {
 		case ast.SetScope_None, ast.SetScope_Session, ast.SetScope_Global:
-			sv, value, ok := sql.SystemVariables.GetGlobal(varName)
+			_, value, ok := sql.SystemVariables.GetGlobal(varName)
 			if ok {
-				dv := sv.GetScope(nil).GetDefault(sv.GetDefault(), value)
-				return expression.NewLiteral(dv, types.ApproximateTypeFromValue(dv)), true
+				return expression.NewLiteral(value, types.ApproximateTypeFromValue(value)), true
 			}
 			err = sql.ErrUnknownSystemVariable.New(varName)
 		case ast.SetScope_Persist, ast.SetScope_PersistOnly:
