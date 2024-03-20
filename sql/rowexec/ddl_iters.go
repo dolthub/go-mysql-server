@@ -1357,16 +1357,15 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
 
 	var val uint64
+	var autoTbl sql.AutoIncrementTable
 	autoIncColIdx := -1
 	if newSch.HasAutoIncrement() && !i.a.TargetSchema().HasAutoIncrement() {
-		t, ok := rwt.(sql.AutoIncrementTable)
-		if !ok {
+		var ok bool
+		if autoTbl, ok = rwt.(sql.AutoIncrementTable); !ok {
 			return false, plan.ErrAutoIncrementNotSupported.New()
 		}
-
 		autoIncColIdx = newSch.IndexOf(i.a.Column().Name, i.a.Column().Source)
-		val, err = t.GetNextAutoIncrementValue(ctx, 1)
-		if err != nil {
+		if val, err = autoTbl.GetNextAutoIncrementValue(ctx, 1); err != nil {
 			return false, err
 		}
 	}
@@ -1394,6 +1393,10 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 				return false, err
 			}
 			newRow[autoIncColIdx] = v
+			val, err = autoTbl.GetNextAutoIncrementValue(ctx, val)
+			if err != nil {
+				return false, err
+			}
 			val++
 		}
 

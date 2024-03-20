@@ -1023,7 +1023,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 						"  `j` int,\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select pk from t1 order by pk",
@@ -1056,7 +1056,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 						"  `i` int,\n" +
 						"  `j` int,\n" +
 						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select pk from t1 order by pk",
@@ -1086,7 +1086,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 						"  `j` int AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`),\n" +
 						"  UNIQUE KEY `j` (`j`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select * from t1 order by i",
