@@ -27,6 +27,37 @@ type IndexDef struct {
 	Comment    string
 }
 
+func (i *IndexDef) String() string {
+	return i.Name
+}
+
+func (i *IndexDef) IsUnique() bool {
+	return i.Constraint == IndexConstraint_Unique
+}
+
+func (i *IndexDef) IsFullText() bool {
+	return i.Constraint == IndexConstraint_Fulltext
+}
+
+func (i *IndexDef) IsSpatial() bool {
+	return i.Constraint == IndexConstraint_Spatial
+}
+
+func (i *IndexDef) IsPrimary() bool {
+	return i.Constraint == IndexConstraint_Primary
+}
+
+// ColumnNames returns each column's name without the length property.
+func (i *IndexDef) ColumnNames() []string {
+	colNames := make([]string, len(i.Columns))
+	for i, col := range i.Columns {
+		colNames[i] = col.Name
+	}
+	return colNames
+}
+
+type IndexDefs []*IndexDef
+
 // IndexColumn is the column by which to add to an index.
 type IndexColumn struct {
 	Name string

@@ -15,11 +15,13 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/sirupsen/logrus"
 )
 
@@ -275,7 +277,7 @@ func (s *BaseSession) GetCollation() CollationID {
 		return Collation_Unspecified
 	}
 	valStr := sysVar.Val.(string)
-	collation, err := ParseCollation(nil, &valStr, false)
+	collation, err := ParseCollation("", valStr, false)
 	if err != nil {
 		panic(err) // shouldn't happen
 	}
@@ -491,6 +493,19 @@ func (s *BaseSession) GetPrivilegeSet() (PrivilegeSet, uint64) {
 func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
 	s.privSetCounter = counter
 	s.privilegeSet = newPs
+}
+
+// BaseSessionFromConnection is a SessionBuilder that returns a base session for the given connection and remote address
+func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
+	host := ""
+	user := ""
+	mysqlConnectionUser, ok := c.UserData.(MysqlConnectionUser)
+	if ok {
+		host = mysqlConnectionUser.Host
+		user = mysqlConnectionUser.User
+	}
+	client := Client{Address: host, User: user, Capabilities: c.Capabilities}
+	return NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
 }
 
 // NewBaseSessionWithClientServer creates a new session with data.

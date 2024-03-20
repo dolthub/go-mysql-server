@@ -46,19 +46,19 @@ func TestParseCollation(t *testing.T) {
 
 	for _, test := range tests {
 		if test.charset == "" {
-			testParseCollation(t, nil, &test.collation, test.binaryAttribute, test.expectedCollation, test.expectedErr)
+			testParseCollation(t, "", test.collation, test.binaryAttribute, test.expectedCollation, test.expectedErr)
 		}
 		if test.collation == "" {
-			testParseCollation(t, &test.charset, nil, test.binaryAttribute, test.expectedCollation, test.expectedErr)
+			testParseCollation(t, test.charset, "", test.binaryAttribute, test.expectedCollation, test.expectedErr)
 		}
 		if test.charset == "" && test.collation == "" {
-			testParseCollation(t, nil, nil, test.binaryAttribute, test.expectedCollation, test.expectedErr)
+			testParseCollation(t, "", "", test.binaryAttribute, test.expectedCollation, test.expectedErr)
 		}
-		testParseCollation(t, &test.charset, &test.collation, test.binaryAttribute, test.expectedCollation, test.expectedErr)
+		testParseCollation(t, test.charset, test.collation, test.binaryAttribute, test.expectedCollation, test.expectedErr)
 	}
 }
 
-func testParseCollation(t *testing.T, charset *string, collation *string, binaryAttribute bool, expectedCollation CollationID, expectedErr bool) {
+func testParseCollation(t *testing.T, charset string, collation string, binaryAttribute bool, expectedCollation CollationID, expectedErr bool) {
 	t.Run(fmt.Sprintf("%v %v %v", charset, collation, binaryAttribute), func(t *testing.T) {
 		col, err := ParseCollation(charset, collation, binaryAttribute)
 		if expectedErr {

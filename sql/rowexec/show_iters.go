@@ -459,7 +459,19 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		comment = commentedTable.Comment()
 	}
 
-	return sql.GenerateCreateTableStatement(table.Name(), colStmts, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
+	autoInc := ""
+	if tbl := getAutoIncrementTable(table); tbl != nil {
+		autoIncVal, err := tbl.PeekNextAutoIncrementValue(ctx)
+		// TODO: possible to get ErrNoAutoIncrementCol here, so we just ignore
+		if err != nil && err.Error() != sql.ErrNoAutoIncrementCol.Error() {
+			return "", err
+		}
+		if autoIncVal > 1 {
+			autoInc = fmt.Sprintf("%v", autoIncVal)
+		}
+	}
+
+	return sql.GenerateCreateTableStatement(table.Name(), colStmts, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {
@@ -484,6 +496,19 @@ func getForeignKeyTable(t sql.Table) (sql.ForeignKeyTable, error) {
 		return getForeignKeyTable(t.Table)
 	default:
 		return nil, sql.ErrNoForeignKeySupport.New(t.Name())
+	}
+}
+
+func getAutoIncrementTable(t sql.Table) sql.AutoIncrementTable {
+	switch t := t.(type) {
+	case sql.AutoIncrementTable:
+		return t
+	case sql.TableWrapper:
+		return getAutoIncrementTable(t.Underlying())
+	case *plan.ResolvedTable:
+		return getAutoIncrementTable(t.Table)
+	default:
+		return nil
 	}
 }
 

@@ -915,6 +915,34 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "alter column and rename table work within same transaction",
+		SetUpScript: []string{
+			"create table t (i int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				SkipResultsCheck: true,
+				Query:            "start transaction;",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "alter table t change i j int",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "rename table t to tt",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "commit;",
+			},
+			{
+				Query:    "select j from tt;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var RenameTableScripts = []ScriptTest{
@@ -995,7 +1023,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 						"  `j` int,\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select pk from t1 order by pk",
@@ -1028,7 +1056,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 						"  `i` int,\n" +
 						"  `j` int,\n" +
 						"  PRIMARY KEY (`pk`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select pk from t1 order by pk",
@@ -1058,7 +1086,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 						"  `j` int AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`),\n" +
 						"  UNIQUE KEY `j` (`j`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "select * from t1 order by i",
@@ -1374,8 +1402,12 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Query: "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
+					"  `c1` varchar(255),\n" +
+					"  UNIQUE KEY `id` (`id`)\n" +
+					") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "insert into t (c1) values('two');",
@@ -1409,8 +1441,12 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `c1` varchar(255),\n  KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Query: "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
+					"  `c1` varchar(255),\n" +
+					"  KEY `id` (`id`)\n" +
+					") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "insert into t (c1) values('two');",
@@ -1460,8 +1496,14 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 				Expected: []sql.Row{{1, -1, "one"}, {2, -2, "two"}},
 			},
 			{
-				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `id1` int NOT NULL AUTO_INCREMENT,\n  `id2` int NOT NULL,\n  `c1` varchar(255),\n  KEY `c1id1` (`c1`,`id1`),\n  KEY `id1c1` (`id1`,`c1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Query: "show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `id1` int NOT NULL AUTO_INCREMENT,\n" +
+					"  `id2` int NOT NULL,\n" +
+					"  `c1` varchar(255),\n" +
+					"  KEY `c1id1` (`c1`,`id1`),\n" +
+					"  KEY `id1c1` (`id1`,`c1`)\n" +
+					") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},

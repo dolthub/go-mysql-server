@@ -25,7 +25,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/server/golden"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -55,11 +54,6 @@ type ServerEventListener interface {
 	QueryCompleted(success bool, duration time.Duration)
 }
 
-// NewDefaultServer creates a Server with the default session builder.
-func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
-	return NewServer(cfg, e, DefaultSessionBuilder, nil)
-}
-
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
 func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEventListener) (*Server, error) {
@@ -84,14 +78,17 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 	return newServerFromHandler(cfg, e, sm, handler)
 }
 
-// NewValidatingServer creates a Server that validates its query results using a MySQL connection
-// as a source of golden-value query result sets.
-func NewValidatingServer(
+// HandlerWrapper provides a way for clients to wrap the mysql.Handler used by the server with a custom implementation
+// that wraps it.
+type HandlerWrapper func(h mysql.Handler) (mysql.Handler, error)
+
+// NewServerWithHandler creates a Server with a handler wrapped by the provided wrapper function.
+func NewServerWithHandler(
 	cfg Config,
 	e *sqle.Engine,
 	sb SessionBuilder,
 	listener ServerEventListener,
-	mySqlConn string,
+	wrapper HandlerWrapper,
 ) (*Server, error) {
 	var tracer trace.Tracer
 	if cfg.Tracer != nil {
@@ -111,10 +108,11 @@ func NewValidatingServer(
 		sel:               listener,
 	}
 
-	handler, err := golden.NewValidatingHandler(h, mySqlConn, logrus.StandardLogger())
+	handler, err := wrapper(h)
 	if err != nil {
 		return nil, err
 	}
+
 	return newServerFromHandler(cfg, e, sm, handler)
 }
 

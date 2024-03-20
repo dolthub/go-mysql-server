@@ -21,7 +21,16 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-const SqlModeSessionVar = "SQL_MODE"
+const (
+	SqlModeSessionVar = "SQL_MODE"
+
+	ANSI                 = "ANSI"
+	ANSIQuotes           = "ANSI_QUOTES"
+	OnlyFullGroupBy      = "ONLY_FULL_GROUP_BY"
+	NoAutoValueOnZero    = "NO_AUTO_VALUE_ON_ZERO"
+	NoEngineSubstitution = "NO_ENGINE_SUBSTITUTION"
+	StrictTransTables    = "STRICT_TRANS_TABLES"
+)
 
 // SqlMode encodes the SQL mode string and provides methods for querying the enabled modes.
 type SqlMode struct {
@@ -67,7 +76,7 @@ func NewSqlModeFromString(sqlModeString string) *SqlMode {
 // AnsiQuotes returns true if the ANSI_QUOTES SQL mode is enabled. Note that the ANSI mode is a compound mode that
 // includes ANSI_QUOTES and other options, so if ANSI or ANSI_QUOTES is enabled, this function will return true.
 func (s *SqlMode) AnsiQuotes() bool {
-	return s.ModeEnabled("ansi_quotes") || s.ModeEnabled("ansi")
+	return s.ModeEnabled(ANSIQuotes) || s.ModeEnabled(ANSI)
 }
 
 // ModeEnabled returns true if |mode| was explicitly specified in the SQL_MODE string that was used to
