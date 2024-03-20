@@ -152,7 +152,7 @@ func jsonSearch(json interface{}, searchVal string, currPath string, once bool) 
 	case string:
 		if j == searchVal {
 			// Need to format the path as a JSON string
-			return []string{fmt.Sprintf(`"%s"`, currPath)}, once
+			return []string{currPath}, once
 		}
 		return nil, false
 	case []interface{}:
@@ -254,15 +254,19 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	res, _ := jsonSearch(js, searchStr, path, isOne)
-	if len(res) > 0 && isOne {
-		results, _, err := types.JSON.Convert(res[0])
-		if err != nil {
-			return nil, err
-		}
-		return results, nil
+	if len(res) == 0 {
+		return nil, nil
 	}
 
-	results, _, err := types.JSON.Convert(res)
+	var results interface{}
+	if len(res) == 1 {
+		results = fmt.Sprintf(`"%s"`, res[0])
+	} else if isOne {
+		results = fmt.Sprintf(`"%s"`, res[0])
+	} else {
+		results = res
+	}
+	results, _, err = types.JSON.Convert(results)
 	if err != nil {
 		return nil, err
 	}

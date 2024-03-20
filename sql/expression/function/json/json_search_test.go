@@ -54,7 +54,7 @@ func TestJSONSearch(t *testing.T) {
 
 	f3 := buildGetFieldExpressions(t, NewJSONSearch, 3)
 	//f4 := buildGetFieldExpressions(t, NewJSONSearch, 4)
-	//f5 := buildGetFieldExpressions(t, NewJSONSearch, 5)
+	f5 := buildGetFieldExpressions(t, NewJSONSearch, 5)
 
 	json := `["abc", [{"k": "10"}, "def"], {"x":"abc"}, {"y":"bcd"}]`
 
@@ -99,15 +99,90 @@ func TestJSONSearch(t *testing.T) {
 		{
 			f:   f3,
 			row: sql.Row{json, "all", "abc"},
-			exp: types.MustJSON(`"$[0]"`),
+			exp: types.MustJSON(`["$[0]", "$[2].x"]`),
 		},
 		{
 			f:   f3,
 			row: sql.Row{json, "all", "ghi"},
 			exp: nil,
 		},
+		{
+			f:   f3,
+			row: sql.Row{json, "all", "10"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "10", nil, "$"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "10", nil, "$[*]"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "10", nil, "$**.k"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "10", nil, "$[*][0].k"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "10", nil, "$[1]"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "10", nil, "$[1][0]"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "10", nil, "$[2]"},
+			exp: types.MustJSON(`"$[1][0].k"`),
+		},
 
-
+		// TODO: implement wild cards (LIKE syntax)
+		{
+			f:   f3,
+			row: sql.Row{json, "all", "%a%"},
+			exp: types.MustJSON(`["$[0]", "$[2].x"]`),
+		},
+		{
+			f:   f3,
+			row: sql.Row{json, "all", "%b%"},
+			exp: types.MustJSON(`["$[0]", "$[2].x", "$[3].y"]`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "%b%", nil, "$[0]"},
+			exp: types.MustJSON(`"$[0]"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "%b%", nil, "$[2]"},
+			exp: types.MustJSON(`"$[2].x"`),
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "%b%", nil, "$[1]"},
+			exp: nil,
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "%b%", "", "$[1]"},
+			exp: nil,
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "all", "%b%", "", "$[1]"},
+			exp: types.MustJSON(`"$[3].y"`),
+		},
 	}
 
 	for _, tt := range testCases {
