@@ -176,6 +176,12 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	if schema.HasAutoIncrement() {
 		td.autoIncVal = 1
 	}
+	for i, col := range schema.Schema {
+		if col.AutoIncrement {
+			td.autoColIdx = i
+			break
+		}
+	}
 
 	return td
 }

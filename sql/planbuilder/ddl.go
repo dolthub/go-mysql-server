@@ -226,13 +226,13 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
 
-		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), selectScope.node, tableSpec, c.IfNotExists, c.Temporary)
+		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), c.IfNotExists, c.Temporary, selectScope.node, tableSpec)
 		return outScope
 	}
 
 	idxDefs := b.buildIndexDefs(inScope, c.TableSpec)
 
-	schema, collation, comment := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
+	schema, collation, tblOpts := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
 	schema.Schema = assignColumnIndexesInSchema(schema.Schema)
@@ -258,12 +258,12 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		FkDefs:    fkDefs,
 		ChDefs:    chDefs,
 		Collation: collation,
-		Comment:   comment,
+		TableOpts: tblOpts,
 	}
 
 	if c.OptSelect != nil {
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
-		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), selectScope.node, tableSpec, c.IfNotExists, c.Temporary)
+		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), c.IfNotExists, c.Temporary, selectScope.node, tableSpec)
 	} else {
 		outScope.node = plan.NewCreateTable(
 			database, c.Table.Name.String(), c.IfNotExists, c.Temporary, tableSpec)
@@ -314,7 +314,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	newTableName := strings.ToLower(ct.Table.Name.String())
 	outScope.setTableAlias(newTableName)
 
-	var idxDefs []*plan.IndexDefinition
+	var idxDefs sql.IndexDefs
 	if indexableTable, ok := likeTable.Table.(sql.IndexAddressableTable); ok {
 		indexes, err := indexableTable.GetIndexes(b.ctx)
 		if err != nil {
@@ -337,14 +337,11 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 			for i, col := range index.Expressions() {
 				//TODO: find a better way to get only the column name if the table is present
 				col = strings.TrimPrefix(col, indexableTable.Name()+".")
-				columns[i] = sql.IndexColumn{
-					Name:   col,
-					Length: 0,
-				}
+				columns[i] = sql.IndexColumn{Name: col}
 			}
-			idxDefs = append(idxDefs, &plan.IndexDefinition{
-				IndexName:  index.ID(),
-				Using:      sql.IndexUsing_Default,
+			idxDefs = append(idxDefs, &sql.IndexDef{
+				Name:       index.ID(),
+				Storage:    sql.IndexUsing_Default,
 				Constraint: constraint,
 				Columns:    columns,
 				Comment:    index.Comment(),
@@ -628,7 +625,7 @@ func columnOrderToColumnOrder(order *ast.ColumnOrder) *sql.ColumnOrder {
 	}
 }
 
-func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs []*plan.IndexDefinition) {
+func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.IndexDefs) {
 	for _, idxDef := range spec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
@@ -649,9 +646,9 @@ func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs [
 				comment = string(option.Value.Val)
 			}
 		}
-		idxDefs = append(idxDefs, &plan.IndexDefinition{
-			IndexName:  idxDef.Info.Name.String(),
-			Using:      sql.IndexUsing_Default, //TODO: add vitess support for USING
+		idxDefs = append(idxDefs, &sql.IndexDef{
+			Name:       idxDef.Info.Name.String(),
+			Storage:    sql.IndexUsing_Default, //TODO: add vitess support for USING
 			Constraint: constraint,
 			Columns:    columns,
 			Comment:    comment,
@@ -660,26 +657,26 @@ func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs [
 
 	for _, colDef := range spec.Columns {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
-			idxDefs = append(idxDefs, &plan.IndexDefinition{
-				IndexName:  "",
-				Using:      sql.IndexUsing_Default,
+			idxDefs = append(idxDefs, &sql.IndexDef{
+				Storage:    sql.IndexUsing_Default,
 				Constraint: sql.IndexConstraint_Fulltext,
-				Comment:    "",
-				Columns: []sql.IndexColumn{{
-					Name:   colDef.Name.String(),
-					Length: 0,
-				}},
+				Columns: []sql.IndexColumn{
+					{
+						Name: colDef.Name.String(),
+					},
+				},
 			})
-		} else if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
-			idxDefs = append(idxDefs, &plan.IndexDefinition{
-				IndexName:  "",
-				Using:      sql.IndexUsing_Default,
+			continue
+		}
+		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
+			idxDefs = append(idxDefs, &sql.IndexDef{
+				Storage:    sql.IndexUsing_Default,
 				Constraint: sql.IndexConstraint_Unique,
-				Comment:    "",
-				Columns: []sql.IndexColumn{{
-					Name:   colDef.Name.String(),
-					Length: 0,
-				}},
+				Columns: []sql.IndexColumn{
+					{
+						Name: colDef.Name.String(),
+					},
+				},
 			})
 		}
 	}
@@ -905,15 +902,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 
 func (b *Builder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
-	var charSetStr *string
-	var collationStr *string
-	if len(ddl.AlterCollationSpec.CharacterSet) > 0 {
-		charSetStr = &ddl.AlterCollationSpec.CharacterSet
-	}
-	if len(ddl.AlterCollationSpec.Collation) > 0 {
-		collationStr = &ddl.AlterCollationSpec.Collation
-	}
-	collation, err := sql.ParseCollation(charSetStr, collationStr, false)
+	collation, err := sql.ParseCollation(ddl.AlterCollationSpec.CharacterSet, ddl.AlterCollationSpec.Collation, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -1078,42 +1067,48 @@ func validateOnUpdateExprs(col *sql.Column) error {
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec and returns the parsed primary key schema, collation ID, and table comment.
-func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, string) {
-	// todo: somewhere downstream updates an ALTER MODIY column's type collation
-	// to match the underlying. That only happens if the type stays unspecified.
+func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, tableName string, tableSpec *ast.TableSpec, forceInvalidCollation bool) (sql.PrimaryKeySchema, sql.CollationID, map[string]interface{}) {
+	// TODO: helper method?
+	tblOpts := make(map[string]interface{})
+	for _, tblOpt := range tableSpec.TableOpts {
+		optName := strings.ToLower(tblOpt.Name)
+		var optVal interface{}
+		switch optName {
+		case "auto_increment":
+			// convert string to uint64
+			val, err := strconv.ParseUint(tblOpt.Value, 10, 64)
+			if err != nil {
+				b.handleErr(err)
+			}
+			optVal = val
+		default:
+			optVal = tblOpt.Value
+		}
+		// TODO: deal with conflicting and duplicate table options
+		tblOpts[optName] = optVal
+	}
+
+	// TODO: somewhere downstream updates an ALTER MODIFY column's type collation
+	//   to match the underlying. That only happens if the type stays unspecified.
+
 	tableCollation := sql.Collation_Unspecified
-	tableComment := ""
 	if !forceInvalidCollation {
 		tableCollation = sql.Collation_Default
 		if cdb, _ := db.(sql.CollatedDatabase); cdb != nil {
 			tableCollation = cdb.GetCollation(b.ctx)
 		}
-		if len(tableSpec.Options) > 0 {
-			charsetSubmatches := tableCharsetOptionRegex.FindStringSubmatch(tableSpec.Options)
-			collationSubmatches := tableCollationOptionRegex.FindStringSubmatch(tableSpec.Options)
-			commentSubmatches := tableCommentOptionRegex.FindStringSubmatch(tableSpec.Options)
-			if len(charsetSubmatches) == 5 && len(collationSubmatches) == 5 {
-				var err error
-				tableCollation, err = sql.ParseCollation(&charsetSubmatches[4], &collationSubmatches[4], false)
-				if err != nil {
-					b.handleErr(err)
-				}
-			} else if len(charsetSubmatches) == 5 {
-				charset, err := sql.ParseCharacterSet(charsetSubmatches[4])
-				if err != nil {
-					b.handleErr(err)
-				}
-				tableCollation = charset.DefaultCollation()
-			} else if len(collationSubmatches) == 5 {
-				var err error
-				tableCollation, err = sql.ParseCollation(nil, &collationSubmatches[4], false)
-				if err != nil {
-					b.handleErr(err)
-				}
-			}
-			if len(commentSubmatches) == 5 {
-				tableComment = commentSubmatches[4]
-			}
+		charsetOpt, hasCharset := tblOpts["character set"]
+		if !hasCharset {
+			charsetOpt = ""
+		}
+		collateOpt, hasCollate := tblOpts["collate"]
+		if !hasCollate {
+			collateOpt = ""
+		}
+		var err error
+		tableCollation, err = sql.ParseCollation(charsetOpt.(string), collateOpt.(string), false)
+		if err != nil {
+			b.handleErr(err)
 		}
 	}
 
@@ -1163,7 +1158,6 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 		if def != nil && generated[i] != nil {
 			b.handleErr(sql.ErrGeneratedColumnWithDefault.New())
-			return sql.PrimaryKeySchema{}, sql.Collation_Unspecified, ""
 		}
 	}
 
@@ -1187,7 +1181,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	}
 
 	pkSch := sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...)
-	return pkSch, tableCollation, tableComment
+	return pkSch, tableCollation, tblOpts
 }
 
 // jsonTableSpecToSchemaHelper creates a sql.Schema from a parsed TableSpec
@@ -1485,22 +1479,20 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
-		var charsetStr *string
-		var collationStr *string
+		var charsetStr, collationStr string
+		if len(c.CharsetCollate) != 0 && b.ctx != nil && b.ctx.Session != nil {
+			b.ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERNotSupportedYet,
+				Message: "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet",
+			})
+		}
 		for _, cc := range c.CharsetCollate {
 			ccType := strings.ToLower(cc.Type)
 			if ccType == "character set" {
-				val := cc.Value
-				charsetStr = &val
+				charsetStr = cc.Value
 			} else if ccType == "collate" {
-				val := cc.Value
-				collationStr = &val
-			} else if b.ctx != nil && b.ctx.Session != nil {
-				b.ctx.Session.Warn(&sql.Warning{
-					Level:   "Warning",
-					Code:    mysql.ERNotSupportedYet,
-					Message: "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet",
-				})
+				collationStr = cc.Value
 			}
 		}
 		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
@@ -1517,24 +1509,17 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	case ast.AlterStr:
 		if len(c.CharsetCollate) == 0 {
 			if len(c.DBName) > 0 {
-				err := sql.ErrSyntaxError.New(fmt.Sprintf("alter database %s", c.DBName))
-				b.handleErr(err)
-			} else {
-				err := sql.ErrSyntaxError.New("alter database")
-				b.handleErr(err)
+				b.handleErr(sql.ErrSyntaxError.New(fmt.Sprintf("alter database %s", c.DBName)))
 			}
+			b.handleErr(sql.ErrSyntaxError.New("alter database"))
 		}
-
-		var charsetStr *string
-		var collationStr *string
+		var charsetStr, collationStr string
 		for _, cc := range c.CharsetCollate {
 			ccType := strings.ToLower(cc.Type)
 			if ccType == "character set" {
-				val := cc.Value
-				charsetStr = &val
+				charsetStr = cc.Value
 			} else if ccType == "collate" {
-				val := cc.Value
-				collationStr = &val
+				collationStr = cc.Value
 			}
 		}
 		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
@@ -1545,8 +1530,7 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 		alterDb.Catalog = b.cat
 		outScope.node = alterDb
 	default:
-		err := sql.ErrUnsupportedSyntax.New(ast.String(c))
-		b.handleErr(err)
+		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(c)))
 	}
 	return outScope
 }

@@ -191,6 +191,8 @@ type ForeignKeyTable interface {
 	GetForeignKeyEditor(ctx *Context) ForeignKeyEditor
 }
 
+type ForeignKeyTables []ForeignKeyTable
+
 // ForeignKeyEditor is a TableEditor that is addressable via IndexLookup.
 type ForeignKeyEditor interface {
 	TableEditor

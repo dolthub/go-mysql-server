@@ -36,6 +36,6 @@ func validateCollation(_ sql.SystemVariableScope, value sql.SystemVarValue) erro
 	if !ok {
 		return fmt.Errorf("collation variables expect the `string` type, but received `%T`", value.Val)
 	}
-	_, err := sql.ParseCollation(nil, &collation, false)
+	_, err := sql.ParseCollation("", collation, false)
 	return err
 }

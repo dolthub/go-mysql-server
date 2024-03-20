@@ -209,7 +209,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 
-		collId, err := sql.ParseCollation(&v.Type, nil, true)
+		collId, err := sql.ParseCollation(v.Type, "", true)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -300,8 +300,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.CollateExpr:
 		// handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
 		innerExpr := b.buildScalar(inScope, v.Expr)
-		//TODO: rename this from Charset to Collation
-		collation, err := sql.ParseCollation(nil, &v.Charset, false)
+		collation, err := sql.ParseCollation("", v.Collation, false)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -449,8 +448,7 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 			if collateExpr, ok := e.Expr.(*ast.CollateExpr); ok {
 				// We extract the expression out of CollateExpr as we're only concerned about the collation string
 				e.Expr = collateExpr.Expr
-				// TODO: rename this from Charset to Collation
-				collation, err = sql.ParseCollation(nil, &collateExpr.Charset, false)
+				collation, err = sql.ParseCollation("", collateExpr.Collation, false)
 				if err != nil {
 					b.handleErr(err)
 				}
