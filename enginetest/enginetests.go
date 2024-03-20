@@ -1717,9 +1717,14 @@ func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 	}
 }
 
-func TestJsonScriptsPrepared(t *testing.T, harness Harness) {
+func TestJsonScriptsPrepared(t *testing.T, harness Harness, skippedTests []string) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.JsonScripts {
+		for _, skippedTest := range skippedTests {
+			if strings.Contains(script.Name, skippedTest) {
+				t.Skip()
+			}
+		}
 		TestScriptPrepared(t, harness, script)
 	}
 }
@@ -3890,6 +3895,24 @@ func TestVariables(t *testing.T, harness Harness) {
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
 			Expected: []sql.Row{{9002}},
 		},
+		{
+			// For boolean types, OFF/ON is converted
+			Query:    "SET @@GLOBAL.activate_all_roles_on_login = 'ON'",
+			Expected: []sql.Row{{}},
+		},
+		{
+			Query:    "SELECT @@GLOBAL.activate_all_roles_on_login",
+			Expected: []sql.Row{{1}},
+		},
+		{
+			// For non-boolean types, OFF/ON is not converted
+			Query:    "SET @@GLOBAL.delay_key_write = 'OFF'",
+			Expected: []sql.Row{{}},
+		},
+		{
+			Query:    "SELECT @@GLOBAL.delay_key_write",
+			Expected: []sql.Row{{"OFF"}},
+		},
 	} {
 		t.Run(assertion.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx1, engine, harness, assertion.Query, assertion.Expected, nil, nil)
@@ -4639,8 +4662,13 @@ func TestNullRanges(t *testing.T, harness Harness) {
 	}
 }
 
-func TestJsonScripts(t *testing.T, harness Harness) {
+func TestJsonScripts(t *testing.T, harness Harness, skippedTests []string) {
 	for _, script := range queries.JsonScripts {
+		for _, skippedTest := range skippedTests {
+			if strings.Contains(script.Name, skippedTest) {
+				t.Skip()
+			}
+		}
 		TestScript(t, harness, script)
 	}
 }

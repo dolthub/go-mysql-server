@@ -6182,6 +6182,48 @@ where
 			},
 		},
 	},
+	{
+		Name: "primary key order",
+		SetUpScript: []string{
+			"create table t1 (a varchar(5), b varchar(10), primary key(a, b));",
+			"create table t2 (a varchar(5), b varchar(10), primary key(b, a));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t1 (a, b) values ('1234567890', '12345')",
+				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
+			},
+			{
+				Query: "insert into t1 (b, a) values ('1234567890', '12345')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select a, b from t1",
+				Expected: []sql.Row{
+					{"12345", "1234567890"},
+				},
+			},
+
+			{
+				Query:          "insert into t2 (a, b) values ('1234567890', '12345')",
+				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
+			},
+			{
+				Query: "insert into t2 (b, a) values ('1234567890', '12345')",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select a, b from t2",
+				Expected: []sql.Row{
+					{"12345", "1234567890"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -7387,7 +7429,7 @@ var CreateDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921. Also for when run with prepares, the warning is added twice
@@ -7396,13 +7438,16 @@ var CreateDatabaseScripts = []ScriptTest{
 			},
 			{
 				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921.
 				// TODO: There should only be one warning (the warnings are not clearing for create database query) AND 'PREPARE' statements should not create warning from its query
-				Query:    "SHOW WARNINGS /* 2 */",
-				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}, {"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				Query: "SHOW WARNINGS /* 2 */",
+				Expected: []sql.Row{
+					{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"},
+					{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"},
+				},
 			},
 			{
 				Query:       "CREATE DATABASE mydb",

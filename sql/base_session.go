@@ -265,7 +265,7 @@ func (s *BaseSession) GetCollation() CollationID {
 		return Collation_Unspecified
 	}
 	valStr := sysVar.Val.(string)
-	collation, err := ParseCollation(nil, &valStr, false)
+	collation, err := ParseCollation("", valStr, false)
 	if err != nil {
 		panic(err) // shouldn't happen
 	}

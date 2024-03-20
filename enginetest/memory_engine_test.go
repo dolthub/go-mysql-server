@@ -121,7 +121,11 @@ func TestJoinOps(t *testing.T) {
 }
 
 func TestJoinStats(t *testing.T) {
-	enginetest.TestJoinStats(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		t.Skip("join stats don't work with bindvars")
+	}
+	enginetest.TestJoinStats(t, harness)
 }
 
 // TestJSONTableQueries runs the canonical test queries against a single threaded index enabled harness.
@@ -807,7 +811,8 @@ func TestDateParse(t *testing.T) {
 }
 
 func TestJsonScripts(t *testing.T) {
-	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
+	var skippedTests []string = nil
+	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness(), skippedTests)
 }
 
 func TestShowTableStatus(t *testing.T) {
@@ -916,6 +921,10 @@ func TestTypesOverWire(t *testing.T) {
 	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
+}
+
+func TestTransactions(t *testing.T) {
+	enginetest.TestTransactionScripts(t, enginetest.NewSkippingMemoryHarness())
 }
 
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

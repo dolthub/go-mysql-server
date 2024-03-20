@@ -21,14 +21,11 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return nil, transform.SameTree, err
 	}
 
-	// Get the correct schema of the CREATE TABLE based on the select query
-	inputSpec := ct.TableSpec()
-
 	// We don't want to carry any information about keys, constraints, defaults, etc. from a `create table as select`
 	// statement. When the underlying select node is a table, we must remove all such info from its schema. The only
 	// exception is NOT NULL constraints, which we leave alone.
 	selectSchema := stripSchema(analyzedSelect.Schema())
-	mergedSchema := mergeSchemas(inputSpec.Schema.Schema, selectSchema)
+	mergedSchema := mergeSchemas(ct.PkSchema().Schema, selectSchema)
 	newSch := make(sql.Schema, len(mergedSchema))
 
 	for i, col := range mergedSchema {
@@ -44,9 +41,9 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		}
 	}
 
-	newSpec := inputSpec.WithSchema(sql.NewPrimaryKeySchema(newSch, pkOrdinals...))
-	// CREATE ... SELECT will always inherit the database collation for the table
-	newSpec.Collation = plan.GetDatabaseCollation(ctx, ct.Database())
+	newSpec := &plan.TableSpec{
+		Schema: sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+	}
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
 	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)

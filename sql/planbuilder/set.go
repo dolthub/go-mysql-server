@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -248,6 +249,21 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 
 		if sysVarType == nil {
 			return nil, false
+		}
+
+		// If we're targeting a boolean type (likely if we see an INT8 sys var),
+		// convert a few common string values to boolean values.
+		if sysVarType.Type() == sqltypes.Int8 {
+			switch strings.ToLower(setVal) {
+			case ast.KeywordString(ast.ON):
+				return expression.NewLiteral(true, types.Boolean), true
+			case ast.KeywordString(ast.TRUE):
+				return expression.NewLiteral(true, types.Boolean), true
+			case ast.KeywordString(ast.OFF):
+				return expression.NewLiteral(false, types.Boolean), true
+			case ast.KeywordString(ast.FALSE):
+				return expression.NewLiteral(false, types.Boolean), true
+			}
 		}
 
 		enum, _, err := sysVarType.Convert(setVal)

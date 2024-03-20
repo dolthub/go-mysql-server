@@ -373,13 +373,13 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 	}
 
 	predeterminedNames := make(map[string]IndexTableNames)
-	var indexDefs []sql.IndexDef
 
 	// Load the indexes to search for Full-Text indexes
 	indexes, err := tbl.GetIndexes(ctx)
 	if err != nil {
 		return err
 	}
+	fulltextIndexes := make(sql.IndexDefs, 0, len(indexes))
 	for _, index := range indexes {
 		// Skip all non-Full-Text indexes
 		if !index.IsFullText() {
@@ -391,11 +391,10 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 		indexCols := make([]sql.IndexColumn, len(exprs))
 		for i, expr := range exprs {
 			indexCols[i] = sql.IndexColumn{
-				Name:   strings.TrimPrefix(expr, ftIndex.Table()+"."),
-				Length: 0,
+				Name: strings.TrimPrefix(expr, ftIndex.Table()+"."),
 			}
 		}
-		indexDefs = append(indexDefs, sql.IndexDef{
+		fulltextIndexes = append(fulltextIndexes, &sql.IndexDef{
 			Name:       ftIndex.ID(),
 			Columns:    indexCols,
 			Constraint: sql.IndexConstraint_Fulltext,
@@ -425,7 +424,7 @@ func RebuildTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Database)
 			return err
 		}
 	}
-	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, indexDefs...)
+	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, fulltextIndexes)
 }
 
 // DropColumnFromTables removes the given column from all of the Full-Text indexes, which will trigger a rebuild if the
@@ -445,13 +444,14 @@ func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Da
 	lowercaseColName := strings.ToLower(colName)
 	configTableReuse := make(map[string]bool)
 	predeterminedNames := make(map[string]IndexTableNames)
-	var indexDefs []sql.IndexDef
 
 	// Load the indexes to search for Full-Text indexes
 	indexes, err := tbl.GetIndexes(ctx)
 	if err != nil {
 		return err
 	}
+
+	var fulltextIndexes sql.IndexDefs
 	for _, index := range indexes {
 		// Skip all non-Full-Text indexes
 		if !index.IsFullText() {
@@ -480,7 +480,7 @@ func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Da
 		}
 		if len(indexCols) > 0 {
 			// This index will continue to exist, so we want to preserve the config table
-			indexDefs = append(indexDefs, sql.IndexDef{
+			fulltextIndexes = append(fulltextIndexes, &sql.IndexDef{
 				Name:       ftIndex.ID(),
 				Columns:    indexCols,
 				Constraint: sql.IndexConstraint_Fulltext,
@@ -520,18 +520,12 @@ func DropColumnFromTables(ctx *sql.Context, tbl sql.IndexAddressableTable, db Da
 			}
 		}
 	}
-	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, indexDefs...)
+	return CreateFulltextIndexes(ctx, db, tbl, predeterminedNames, fulltextIndexes)
 }
 
 // CreateFulltextIndexes creates and populates Full-Text indexes on the target table.
 func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table,
-	predeterminedNames map[string]IndexTableNames, indexes ...sql.IndexDef) error {
-	fulltextIndexes := make([]sql.IndexDef, 0, len(indexes))
-	for _, index := range indexes {
-		if index.Constraint == sql.IndexConstraint_Fulltext {
-			fulltextIndexes = append(fulltextIndexes, index)
-		}
-	}
+	predeterminedNames map[string]IndexTableNames, fulltextIndexes sql.IndexDefs) error {
 	if len(fulltextIndexes) == 0 {
 		return nil
 	}
@@ -650,7 +644,7 @@ func CreateFulltextIndexes(ctx *sql.Context, database Database, parent sql.Table
 		}
 
 		// Create the Full-Text index
-		err = fulltextAlterable.CreateFulltextIndex(ctx, fulltextIndex, keyCols, tableNames)
+		err = fulltextAlterable.CreateFulltextIndex(ctx, *fulltextIndex, keyCols, tableNames)
 		if err != nil {
 			return err
 		}

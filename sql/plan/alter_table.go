@@ -833,9 +833,10 @@ func (m *ModifyColumn) IsReadOnly() bool {
 	return false
 }
 
-func (m ModifyColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
-	m.targetSchema = schema
-	return &m, nil
+func (m *ModifyColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	nm := *m
+	nm.targetSchema = schema
+	return &nm, nil
 }
 
 func (m *ModifyColumn) TargetSchema() sql.Schema {
@@ -846,12 +847,13 @@ func (m *ModifyColumn) Children() []sql.Node {
 	return []sql.Node{m.Table}
 }
 
-func (m ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (m *ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	m.Table = children[0]
-	return &m, nil
+	nm := *m
+	nm.Table = children[0]
+	return &nm, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -873,24 +875,25 @@ func (m *ModifyColumn) Expressions() []sql.Expression {
 	return append(transform.WrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
 }
 
-func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (m *ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1+len(m.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1+len(m.targetSchema))
 	}
 
-	sch, err := transform.SchemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+	nm := *m
+	sch, err := transform.SchemaWithDefaults(nm.targetSchema, exprs[:len(nm.targetSchema)])
 	if err != nil {
 		return nil, err
 	}
-	m.targetSchema = sch
+	nm.targetSchema = sch
 
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
-		m.column.Default = unwrappedColDefVal
+		nm.column.Default = unwrappedColDefVal
 	} else { // nil fails type check
-		m.column.Default = nil
+		nm.column.Default = nil
 	}
-	return &m, nil
+	return &nm, nil
 }
 
 // Resolved implements the Resolvable interface.
