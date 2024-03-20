@@ -96,6 +96,17 @@ func TestJSONSearch(t *testing.T) {
 			row: sql.Row{json, "one", "abc"},
 			exp: types.MustJSON(`"$[0]"`),
 		},
+		{
+			f:   f3,
+			row: sql.Row{json, "all", "abc"},
+			exp: types.MustJSON(`"$[0]"`),
+		},
+		{
+			f:   f3,
+			row: sql.Row{json, "all", "ghi"},
+			exp: nil,
+		},
+
 
 	}
 
