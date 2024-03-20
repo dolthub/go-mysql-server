@@ -390,10 +390,10 @@ type SystemVariable interface {
 	// GetDefault returns the defined default value of the sv.
 	// This is used for resetting some variables to initial default/reset value.
 	GetDefault() any
-	// ForceSetValue sets value without validation.
+	// InitValue sets value without validation.
 	// This is used for setting the initial values internally
 	// using pre-defined variables or for test-purposes.
-	ForceSetValue(val any) (SystemVarValue, error)
+	InitValue(val any, global bool) (SystemVarValue, error)
 	// SetValue sets the value of the sv of given scope, global or session
 	// It validates setting value of correct scope,
 	// converts the given value to appropriate value depending on the sv
@@ -446,42 +446,46 @@ type MysqlSystemVariable struct {
 }
 
 // GetName implements SystemVariable.
-func (s *MysqlSystemVariable) GetName() string {
-	return s.Name
+func (m *MysqlSystemVariable) GetName() string {
+	return m.Name
 }
 
 // GetType implements SystemVariable.
-func (s *MysqlSystemVariable) GetType() Type {
-	return s.Type
+func (m *MysqlSystemVariable) GetType() Type {
+	return m.Type
 }
 
 // GetSessionScope implements SystemVariable.
-func (s *MysqlSystemVariable) GetSessionScope() SystemVariableScope {
+func (m *MysqlSystemVariable) GetSessionScope() SystemVariableScope {
 	return GetMysqlScope(SystemVariableScope_Session)
 }
 
 // SetDefault implements SystemVariable.
-func (s *MysqlSystemVariable) SetDefault(a any) {
-	s.Default = a
+func (m *MysqlSystemVariable) SetDefault(a any) {
+	m.Default = a
 }
 
 // GetDefault implements SystemVariable.
-func (s *MysqlSystemVariable) GetDefault() any {
-	return s.Default
+func (m *MysqlSystemVariable) GetDefault() any {
+	return m.Default
 }
 
 // ForceSetValue implements SystemVariable.
-func (s *MysqlSystemVariable) ForceSetValue(val any) (SystemVarValue, error) {
-	convertedVal, _, err := s.Type.Convert(val)
+func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, error) {
+	convertedVal, _, err := m.Type.Convert(val)
 	if err != nil {
 		return SystemVarValue{}, err
 	}
 	svv := SystemVarValue{
-		Var: s,
+		Var: m,
 		Val: convertedVal,
 	}
-	if s.NotifyChanged != nil {
-		err = s.NotifyChanged(GetMysqlScope(SystemVariableScope_Global), svv)
+	scope := GetMysqlScope(SystemVariableScope_Session)
+	if global {
+		scope = GetMysqlScope(SystemVariableScope_Global)
+	}
+	if m.NotifyChanged != nil {
+		err = m.NotifyChanged(scope, svv)
 		if err != nil {
 			return SystemVarValue{}, err
 		}
@@ -490,54 +494,36 @@ func (s *MysqlSystemVariable) ForceSetValue(val any) (SystemVarValue, error) {
 }
 
 // SetValue implements SystemVariable.
-func (s *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
-	if global && s.Scope.Type == SystemVariableScope_Session {
-		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(s.Name)
+func (m *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
+	if global && m.Scope.Type == SystemVariableScope_Session {
+		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(m.Name)
 	}
-	if !global && s.Scope.Type == SystemVariableScope_Global {
-		return SystemVarValue{}, ErrSystemVariableGlobalOnly.New(s.Name)
+	if !global && m.Scope.Type == SystemVariableScope_Global {
+		return SystemVarValue{}, ErrSystemVariableGlobalOnly.New(m.Name)
 	}
-	if !s.Dynamic || s.ValueFunction != nil {
-		return SystemVarValue{}, ErrSystemVariableReadOnly.New(s.Name)
+	if !m.Dynamic || m.ValueFunction != nil {
+		return SystemVarValue{}, ErrSystemVariableReadOnly.New(m.Name)
 	}
-	convertedVal, _, err := s.Type.Convert(val)
-	if err != nil {
-		return SystemVarValue{}, err
-	}
-	svv := SystemVarValue{
-		Var: s,
-		Val: convertedVal,
-	}
-	scope := GetMysqlScope(SystemVariableScope_Session)
-	if global {
-		scope = GetMysqlScope(SystemVariableScope_Global)
-	}
-	if s.NotifyChanged != nil {
-		err = s.NotifyChanged(scope, svv)
-		if err != nil {
-			return SystemVarValue{}, err
-		}
-	}
-	return svv, nil
+	return m.InitValue(val, global)
 }
 
 // IsReadOnly implements SystemVariable.
-func (s *MysqlSystemVariable) IsReadOnly() bool {
-	return !s.Dynamic || s.ValueFunction != nil
+func (m *MysqlSystemVariable) IsReadOnly() bool {
+	return !m.Dynamic || m.ValueFunction != nil
 }
 
 // IsGlobalOnly implements SystemVariable.
-func (s *MysqlSystemVariable) IsGlobalOnly() bool {
-	return s.Scope.IsGlobalOnly()
+func (m *MysqlSystemVariable) IsGlobalOnly() bool {
+	return m.Scope.IsGlobalOnly()
 }
 
 // String implements SystemVariable.
-func (s *MysqlSystemVariable) String(specifiedScope string) string {
+func (m *MysqlSystemVariable) String(specifiedScope string) string {
 	// If the scope wasn't explicitly provided, then don't include it in the string representation
 	if specifiedScope == "" {
-		return fmt.Sprintf("@@%s", s.Name)
+		return fmt.Sprintf("@@%s", m.Name)
 	} else {
-		return fmt.Sprintf("@@%s.%s", specifiedScope, s.Name)
+		return fmt.Sprintf("@@%s.%s", specifiedScope, m.Name)
 	}
 }
 

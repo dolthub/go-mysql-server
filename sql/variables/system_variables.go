@@ -76,7 +76,7 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
-		svv, err := sysVar.ForceSetValue(val)
+		svv, err := sysVar.InitValue(val, true)
 		if err != nil {
 			return err
 		}

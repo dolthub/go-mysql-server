@@ -152,7 +152,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 			if !ok {
 				return ErrUnknownSystemVariable.New(sysVarName)
 			}
-			return s.setSessVar(ctx, sv, value)
+			return s.setSessVar(ctx, sv, value, false)
 		} else {
 			return ErrUnknownSystemVariable.New(sysVarName)
 		}
@@ -161,7 +161,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	if sysVar.Var.IsReadOnly() {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
-	return s.setSessVar(ctx, sysVar.Var, value)
+	return s.setSessVar(ctx, sysVar.Var, value, false)
 }
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
@@ -177,15 +177,24 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
 
-	return s.setSessVar(ctx, sysVar, value)
+	return s.setSessVar(ctx, sysVar, value, true)
 }
 
-func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}) error {
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}, init bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	svv, err := sysVar.SetValue(value, false)
-	if err != nil {
-		return err
+	var svv SystemVarValue
+	var err error
+	if init {
+		svv, err = sysVar.InitValue(value, false)
+		if err != nil {
+			return err
+		}
+	} else {
+		svv, err = sysVar.SetValue(value, false)
+		if err != nil {
+			return err
+		}
 	}
 	sysVarName := strings.ToLower(sysVar.GetName())
 	s.systemVars[sysVarName] = svv
