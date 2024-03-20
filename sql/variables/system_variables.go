@@ -16,13 +16,13 @@ package variables
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"math"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
