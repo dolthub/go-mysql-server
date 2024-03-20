@@ -532,6 +532,12 @@ func injectBindVarsAndPrepare(
 				skipTypeConv = true
 				return false, nil
 			}
+
+			// Ensure that the bind variable has the same byte sequence as the original value.
+			// This is important to ensure that it will get parsed the same way.
+			// (Example: the value "1e-1" should be parsed as the float 0.1, not as a decimal value.)
+			bindVar.Value = n.Val
+
 			varName := fmt.Sprintf("v%d", bindCnt+1)
 			bindVars[varName] = bindVar
 			n.Type = sqlparser.ValArg

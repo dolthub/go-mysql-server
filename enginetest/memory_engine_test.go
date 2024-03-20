@@ -815,6 +815,11 @@ func TestJsonScripts(t *testing.T) {
 	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness(), skippedTests)
 }
 
+func TestJsonScriptsPrepared(t *testing.T) {
+	var skippedTests []string = nil
+	enginetest.TestJsonScriptsPrepared(t, enginetest.NewDefaultMemoryHarness(), skippedTests)
+}
+
 func TestShowTableStatus(t *testing.T) {
 	enginetest.TestShowTableStatus(t, enginetest.NewDefaultMemoryHarness())
 }
