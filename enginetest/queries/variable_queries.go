@@ -352,6 +352,33 @@ var VariableQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "innodb autoinc lock mode",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select @@innodb_autoinc_lock_mode;`,
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: `select @@global.innodb_autoinc_lock_mode;`,
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Skip: true,
+				Query: `select @@session.innodb_autoinc_lock_mode;`,
+				ExpectedErr: sql.ErrSystemVariableGlobalOnly,
+			},
+			{
+				Query: `set @@innodb_autoinc_lock_mode = 1;`,
+				ExpectedErr: sql.ErrSystemVariableReadOnly,
+			},
+		},
+	},
 	// User variables
 	{
 		Name: "set user var",
