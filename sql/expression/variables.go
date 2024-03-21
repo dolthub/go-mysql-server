@@ -76,7 +76,7 @@ func (v *SystemVar) Resolved() bool { return true }
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.String(v.SpecifiedScope)
+		return sysVar.DisplayString(v.SpecifiedScope)
 	}
 	return ""
 }

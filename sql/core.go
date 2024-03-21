@@ -404,8 +404,9 @@ type SystemVariable interface {
 	IsReadOnly() bool
 	// IsGlobalOnly checks whether the scope of the variable is global only.
 	IsGlobalOnly() bool
-	// String returns the name of the sv to be displayed.
-	String(string) string
+	// DisplayString gets 'specified scope' prefix and
+	// returns the name with the prefix, if applicable.
+	DisplayString(string) string
 }
 
 var _ SystemVariable = (*MysqlSystemVariable)(nil)
@@ -517,8 +518,8 @@ func (m *MysqlSystemVariable) IsGlobalOnly() bool {
 	return m.Scope.IsGlobalOnly()
 }
 
-// String implements SystemVariable.
-func (m *MysqlSystemVariable) String(specifiedScope string) string {
+// DisplayString implements SystemVariable.
+func (m *MysqlSystemVariable) DisplayString(specifiedScope string) string {
 	// If the scope wasn't explicitly provided, then don't include it in the string representation
 	if specifiedScope == "" {
 		return fmt.Sprintf("@@%s", m.Name)
