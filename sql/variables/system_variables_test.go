@@ -51,6 +51,8 @@ var newUnknown = &sql.MysqlSystemVariable{
 }
 
 func TestInitSystemVars(t *testing.T) {
+	defer InitSystemVariables()
+
 	tests := []struct {
 		varName string
 		varVal  interface{}
@@ -87,6 +89,8 @@ func TestInitSystemVars(t *testing.T) {
 }
 
 func TestInitSystemVariablesWithDefaults(t *testing.T) {
+	defer InitSystemVariables()
+
 	tests := []struct {
 		name             string
 		persistedGlobals []sql.SystemVariable
