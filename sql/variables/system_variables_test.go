@@ -15,6 +15,7 @@
 package variables
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,6 +48,42 @@ var newUnknown = &sql.MysqlSystemVariable{
 	Dynamic: true,
 	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
+}
+
+func TestInitSystemVars(t *testing.T) {
+	tests := []struct {
+		varName string
+		varVal  interface{}
+		err     *errors.Kind
+	} {
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  0,
+			err:     sql.ErrInvalidSystemVariableValue,
+		},
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  1,
+			err:     sql.ErrInvalidSystemVariableValue,
+		},
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  2,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("set %v = %v", test.varName, test.varVal), func(t *testing.T) {
+			InitSystemVariables()
+			err := sql.SystemVariables.AssignValues(map[string]interface{}{test.varName: test.varVal})
+			if test.err != nil {
+				require.Error(t, err)
+				require.True(t, test.err.Is(err))
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestInitSystemVariablesWithDefaults(t *testing.T) {
