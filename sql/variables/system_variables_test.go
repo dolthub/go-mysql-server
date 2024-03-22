@@ -57,7 +57,7 @@ func TestInitSystemVars(t *testing.T) {
 		varName string
 		varVal  interface{}
 		err     *errors.Kind
-	} {
+	}{
 		{
 			varName: "innodb_autoinc_lock_mode",
 			varVal:  0,
