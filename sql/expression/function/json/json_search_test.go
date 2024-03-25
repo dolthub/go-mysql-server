@@ -233,8 +233,6 @@ func TestJSONSearch(t *testing.T) {
 			row: sql.Row{json, "all", `abc`, "", "$[2]", "$"},
 			exp: types.MustJSON(`["$[2].x", "$[0]"]`),
 		},
-
-
 	}
 
 	for _, tt := range testCases {
