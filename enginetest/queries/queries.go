@@ -1719,15 +1719,6 @@ Select * from (
 		},
 	},
 	{
-		Query: "SELECT JSON_SEARCH(c3, 'all', '2') FROM jsontable;",
-		Expected: []sql.Row{
-			{nil},
-			{nil},
-			{nil},
-			{nil},
-		},
-	},
-	{
 		Query: `SELECT JSON_OVERLAPS(c3, '{"a": 2, "d": 2}') FROM jsontable`,
 		Expected: []sql.Row{
 			{true},

@@ -6254,6 +6254,17 @@ where
 					{5, types.MustJSON(`"$.f"`)},
 				},
 			},
+			{
+				Query: "select i, json_search(j, 'all', 'abc', '', '$.a', '$.b') from t order by i",
+				Expected: []sql.Row{
+					{0, types.MustJSON(`"$.a"`)},
+					{1, types.MustJSON(`"$.b"`)},
+					{2, nil},
+					{3, nil},
+					{4, nil},
+					{5, nil},
+				},
+			},
 		},
 	},
 }

@@ -42,19 +42,10 @@ func TestJSONSearch(t *testing.T) {
 	)
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	_, err = NewJSONSearch(
-		expression.NewGetField(0, types.LongText, "arg1", false),
-		expression.NewGetField(1, types.LongText, "arg2", false),
-		expression.NewGetField(2, types.LongText, "arg3", false),
-		expression.NewGetField(3, types.LongText, "arg4", false),
-		expression.NewGetField(4, types.LongText, "arg5", false),
-		expression.NewGetField(5, types.LongText, "arg6", false),
-	)
-	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
-
 	f3 := buildGetFieldExpressions(t, NewJSONSearch, 3)
 	f4 := buildGetFieldExpressions(t, NewJSONSearch, 4)
 	f5 := buildGetFieldExpressions(t, NewJSONSearch, 5)
+	f6 := buildGetFieldExpressions(t, NewJSONSearch, 6)
 
 	json := `["abc", [{"k": "10"}, "def"], {"x":"abc"}, {"y":"bcd"}]`
 
@@ -99,6 +90,16 @@ func TestJSONSearch(t *testing.T) {
 		{
 			f:   f3,
 			row: sql.Row{json, "one", nil},
+			exp: nil,
+		},
+		{
+			f:   f5,
+			row: sql.Row{json, "one", "abc", "", nil},
+			exp: nil,
+		},
+		{
+			f:   f6,
+			row: sql.Row{json, "one", "abc", "", "$", nil},
 			exp: nil,
 		},
 
@@ -221,6 +222,19 @@ func TestJSONSearch(t *testing.T) {
 			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `as%cs%`, `s`},
 			exp: types.MustJSON(`"$[0].a"`),
 		},
+
+		{
+			f:   f6,
+			row: sql.Row{json, "all", `abc`, "", "$[0]", "$[2]"},
+			exp: types.MustJSON(`["$[0]", "$[2].x"]`),
+		},
+		{
+			f:   f6,
+			row: sql.Row{json, "all", `abc`, "", "$[2]", "$"},
+			exp: types.MustJSON(`["$[2].x", "$[0]"]`),
+		},
+
+
 	}
 
 	for _, tt := range testCases {

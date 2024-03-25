@@ -56,7 +56,7 @@ type JSONSearch struct {
 	OneOrAll sql.Expression
 	Search   sql.Expression
 	Escape   sql.Expression
-	Path     sql.Expression
+	Paths    []sql.Expression
 }
 
 var errOneOrAll = fmt.Errorf("the oneOrAll argument to json_search may take these values: 'one' or 'all'")
@@ -67,6 +67,8 @@ var _ sql.FunctionExpression = &JSONSearch{}
 // NewJSONSearch creates a new NewJSONSearch function.
 func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
+	case 0, 1, 2:
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_SEARCH", "3 or more", len(args))
 	case 3:
 		return &JSONSearch{
 			JSON:     args[0],
@@ -80,16 +82,15 @@ func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
 			Search:   args[2],
 			Escape:   args[3],
 		}, nil
-	case 5:
+	default:
+		paths := args[4:]
 		return &JSONSearch{
 			JSON:     args[0],
 			OneOrAll: args[1],
 			Search:   args[2],
 			Escape:   args[3],
-			Path:     args[4],
+			Paths:    paths,
 		}, nil
-	default:
-		return nil, sql.ErrInvalidArgumentNumber.New("JSON_SEARCH", "3 to 5", len(args))
 	}
 }
 
@@ -105,11 +106,15 @@ func (j *JSONSearch) Description() string {
 
 // Resolved implements sql.Expression
 func (j *JSONSearch) Resolved() bool {
+	for _, p := range j.Paths {
+		if !p.Resolved() {
+			return false
+		}
+	}
 	return j.JSON.Resolved() &&
 		j.OneOrAll.Resolved() &&
 		j.Search.Resolved() &&
-		(j.Escape == nil || j.Escape.Resolved()) &&
-		(j.Path == nil || j.Path.Resolved())
+		(j.Escape == nil || j.Escape.Resolved())
 }
 
 // String implements sql.Expression
@@ -121,10 +126,14 @@ func (j *JSONSearch) String() string {
 	} else {
 		escapeStr = j.Escape.String()
 	}
-	if j.Path == nil {
+	if len(j.Paths) == 0 {
 		pathStr = "NULL"
 	} else {
-		pathStr = j.Path.String()
+		var paths []string
+		for _, p := range j.Paths {
+			paths = append(paths, p.String())
+		}
+		pathStr = strings.Join(paths, ", ")
 	}
 	return fmt.Sprintf("%s(%s, %s, %s, %s, %s)",
 		j.FunctionName(),
@@ -143,19 +152,23 @@ func (j *JSONSearch) Type() sql.Type {
 
 // IsNullable implements sql.Expression
 func (j *JSONSearch) IsNullable() bool {
+	for _, p := range j.Paths {
+		if !p.IsNullable() {
+			return false
+		}
+	}
 	return j.JSON.IsNullable() ||
 		j.OneOrAll.IsNullable() ||
 		j.Search.IsNullable() ||
-		(j.Escape != nil && j.Escape.IsNullable()) ||
-		(j.Path != nil && j.Path.IsNullable())
+		(j.Escape != nil && j.Escape.IsNullable())
 }
 
+// jsonSearch recursively searches a JSON object for a string that matches the given matcher. It returns the path to the
+// matched string. If once is true, it will only return the first match, breaking out of the recursion early.
 func jsonSearch(json interface{}, matcher *expression.LikeMatcher, currPath string, once bool) ([]string, bool) {
 	switch js := json.(type) {
 	case string:
-		// TODO: construct LikeMatcher once outside of this function
 		if matcher.Match(js) {
-			// Need to format the path as a JSON string
 			return []string{currPath}, once
 		}
 		return nil, false
@@ -255,54 +268,72 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	path := "$"
-	if j.Path != nil {
-		newPath, err := buildPath(ctx, j.Path, row)
-		if err != nil {
-			return nil, err
-		}
-		if newPath == nil {
-			return nil, nil
-		}
-		path = newPath.(string)
-	}
-	js, err := jsonpath.JsonPathLookup(doc.Val, path)
-	if err != nil {
-		if errors.Is(err, jsonpath.ErrKeyError) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	// Special Case: drop $[*] from path
-	if path == "$[*]" {
-		path = "$"
-	}
-
 	coll, _ := j.CollationCoercibility(ctx)
 	lm, err := expression.ConstructLikeMatcher(coll, searchStr, escape)
 	if err != nil {
 		return nil, err
 	}
 
-	res, _ := jsonSearch(js, &lm, path, isOne)
-	if len(res) == 0 {
+	var paths []string
+	if len(j.Paths) == 0 {
+		paths = []string{"$"}
+	} else {
+		for _, p := range j.Paths {
+			if p == nil {
+				return nil, nil
+			}
+
+			path := "$"
+			if newPath, err := buildPath(ctx, p, row); err != nil {
+				return nil, err
+			} else if newPath == nil {
+				return nil, nil
+			} else {
+				path = newPath.(string)
+			}
+			paths = append(paths, path)
+		}
+	}
+
+	seen := make(map[string]struct{})
+	var results []string
+	for _, path := range paths {
+		js, err := jsonpath.JsonPathLookup(doc.Val, path)
+		if err != nil && !errors.Is(err, jsonpath.ErrKeyError) {
+			return nil, err
+		}
+
+		// Special Case: drop $[*] from path
+		if path == "$[*]" {
+			path = "$"
+		}
+
+		res, _ := jsonSearch(js, &lm, path, isOne)
+		for _, r := range res {
+			if _, ok := seen[r]; !ok {
+				seen[r] = struct{}{}
+				results = append(results, r)
+			}
+		}
+	}
+
+	// If no results, return nil
+	if len(results) == 0 {
 		return nil, nil
 	}
 
-	var results interface{}
-	if len(res) == 1 {
-		results = fmt.Sprintf(`"%s"`, res[0])
-	} else if isOne {
-		results = fmt.Sprintf(`"%s"`, res[0])
+	// Need to format single results as JSON strings, and multiple results as JSON arrays of strings
+	var finalResults interface{}
+	if len(results) == 1 {
+		finalResults = fmt.Sprintf(`"%s"`, results[0])
 	} else {
-		results = res
+		finalResults = results
 	}
-	results, _, err = types.JSON.Convert(results)
+	finalResults, _, err = types.JSON.Convert(finalResults)
 	if err != nil {
 		return nil, err
 	}
-	return results, nil
+	return finalResults, nil
 }
 
 // Children implements sql.Expression
@@ -310,10 +341,8 @@ func (j *JSONSearch) Children() []sql.Expression {
 	if j.Escape == nil {
 		return []sql.Expression{j.JSON, j.OneOrAll, j.Search}
 	}
-	if j.Path == nil {
-		return []sql.Expression{j.JSON, j.OneOrAll, j.Search, j.Escape}
-	}
-	return []sql.Expression{j.JSON, j.OneOrAll, j.Search, j.Escape, j.Path}
+	res := []sql.Expression{j.JSON, j.OneOrAll, j.Search, j.Escape}
+	return append(res, j.Paths...)
 }
 
 // WithChildren implements sql.Expression
