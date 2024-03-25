@@ -80,6 +80,11 @@ func TestJSONSearch(t *testing.T) {
 			row: sql.Row{json, "one ", "abc"},
 			err: true,
 		},
+		{
+			f:   f4,
+			row: sql.Row{json, "one", "abc", "badescape"},
+			err: true,
+		},
 
 		{
 			f:   f3,
