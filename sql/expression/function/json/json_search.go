@@ -16,7 +16,8 @@ package json
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -147,19 +148,20 @@ func (j *JSONSearch) IsNullable() bool {
 		(j.Path != nil && j.Path.IsNullable())
 }
 
-func jsonSearch(json interface{}, searchVal string, currPath string, once bool) ([]string, bool) {
-	switch j := json.(type) {
+func jsonSearch(json interface{}, matcher *expression.LikeMatcher, currPath string, once bool) ([]string, bool) {
+	switch js := json.(type) {
 	case string:
-		if j == searchVal {
+		// TODO: construct LikeMatcher once outside of this function
+		if matcher.Match(js) {
 			// Need to format the path as a JSON string
 			return []string{currPath}, once
 		}
 		return nil, false
 	case []interface{}:
 		var results []string
-		for i, v := range j {
+		for i, v := range js {
 			path := fmt.Sprintf("%s[%d]", currPath, i)
-			res, stop := jsonSearch(v, searchVal, path, once)
+			res, stop := jsonSearch(v, matcher, path, once)
 			if stop {
 				return res, true
 			}
@@ -168,9 +170,9 @@ func jsonSearch(json interface{}, searchVal string, currPath string, once bool) 
 		return results, false
 	case map[string]interface{}:
 		var results []string
-		for k, v := range j {
+		for k, v := range js {
 			path := fmt.Sprintf("%s.%s", currPath, k)
-			res, stop := jsonSearch(v, searchVal, path, once)
+			res, stop := jsonSearch(v, matcher, path, once)
 			if stop {
 				return res, true
 			}
@@ -230,8 +232,23 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	searchStr := search.(string)
 
+	var escape rune
 	if j.Escape != nil {
 		// TODO: implement escape character handling
+		var escapeVal interface{}
+		escapeVal, err = j.Escape.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if escapeVal != nil {
+			escapeVal, _, err = types.Text.Convert(escapeVal)
+			if err != nil {
+				return nil, err
+			}
+			if len(escapeVal.(string)) != 0 {
+				escape = rune(escapeVal.(string)[0])
+			}
+		}
 	}
 
 	path := "$"
@@ -253,7 +270,18 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	res, _ := jsonSearch(js, searchStr, path, isOne)
+	// Special Case: drop $[*] from path
+	if path == "$[*]" {
+		path = "$"
+	}
+
+	coll, _ := j.CollationCoercibility(ctx)
+	lm, err := expression.ConstructLikeMatcher(coll, searchStr, escape)
+	if err != nil {
+		return nil, err
+	}
+
+	res, _ := jsonSearch(js, &lm, path, isOne)
 	if len(res) == 0 {
 		return nil, nil
 	}
@@ -281,4 +309,9 @@ func (j *JSONSearch) Children() []sql.Expression {
 // WithChildren implements sql.Expression
 func (j *JSONSearch) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewJSONSearch(children...)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (j *JSONSearch) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
+	return sql.GetCoercibility(ctx, j.Search)
 }
