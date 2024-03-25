@@ -15,7 +15,6 @@
 package rowexec
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -32,6 +31,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -185,25 +185,15 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 		return nil, err
 	}
 
-	if jd, ok := data.(types.JSONDocument); ok {
-		data, err = jd.JSONString()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	strData, _, err := types.LongBlob.Convert(data)
-	if err != nil {
-		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
-	}
-	if strData == nil {
+	if data == nil {
 		return &jsonTableRowIter{}, nil
 	}
 
-	var jsonData interface{}
-	if err = json.Unmarshal(strData.([]byte), &jsonData); err != nil {
+	jsonData, err := json.GetJSONFromWrapperOrCoercibleString(data)
+	if err != nil {
 		return nil, err
 	}
+
 	jsonPathData, err := jsonpath.JsonPathLookup(jsonData, n.RootPath)
 	if err != nil {
 		jsonPathData = []interface{}{}

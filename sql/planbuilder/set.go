@@ -93,33 +93,33 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 	for i, setExpr := range e {
 		if expr, ok := setExpr.Expr.(*ast.SQLVal); ok && strings.ToLower(setExpr.Name.String()) == "transaction" &&
 			(setExpr.Scope == ast.SetScope_Global || setExpr.Scope == ast.SetScope_Session || string(setExpr.Scope) == "") {
-			scope := sql.SystemVariableScope_Session
+			s := sql.SystemVariableScope_Session
 			if setExpr.Scope == ast.SetScope_Global {
-				scope = sql.SystemVariableScope_Global
+				s = sql.SystemVariableScope_Global
 			}
 			switch strings.ToLower(expr.String()) {
 			case "'isolation level repeatable read'":
-				varToSet := expression.NewSystemVar("transaction_isolation", scope, string(scope))
+				varToSet := expression.NewSystemVar("transaction_isolation", sql.GetMysqlScope(s), string(s))
 				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("REPEATABLE-READ", types.LongText))
 				continue
 			case "'isolation level read committed'":
-				varToSet := expression.NewSystemVar("transaction_isolation", scope, string(scope))
+				varToSet := expression.NewSystemVar("transaction_isolation", sql.GetMysqlScope(s), string(s))
 				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-COMMITTED", types.LongText))
 				continue
 			case "'isolation level read uncommitted'":
-				varToSet := expression.NewSystemVar("transaction_isolation", scope, string(scope))
+				varToSet := expression.NewSystemVar("transaction_isolation", sql.GetMysqlScope(s), string(s))
 				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-UNCOMMITTED", types.LongText))
 				continue
 			case "'isolation level serializable'":
-				varToSet := expression.NewSystemVar("transaction_isolation", scope, string(scope))
+				varToSet := expression.NewSystemVar("transaction_isolation", sql.GetMysqlScope(s), string(s))
 				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("SERIALIZABLE", types.LongText))
 				continue
 			case "'read write'":
-				varToSet := expression.NewSystemVar("transaction_read_only", scope, string(scope))
+				varToSet := expression.NewSystemVar("transaction_read_only", sql.GetMysqlScope(s), string(s))
 				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(false, types.Boolean))
 				continue
 			case "'read only'":
-				varToSet := expression.NewSystemVar("transaction_read_only", scope, string(scope))
+				varToSet := expression.NewSystemVar("transaction_read_only", sql.GetMysqlScope(s), string(s))
 				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(true, types.Boolean))
 				continue
 			}
@@ -190,22 +190,22 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 		if !ok {
 			return nil, scope, false
 		}
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global, specifiedScope), scope, true
+		return expression.NewSystemVar(varName, sql.GetMysqlScope(sql.SystemVariableScope_Global), specifiedScope), scope, true
 	case ast.SetScope_None, ast.SetScope_Session:
 		switch strings.ToLower(varName) {
 		case "character_set_database", "collation_database":
-			sysVar := expression.NewSystemVar(varName, sql.SystemVariableScope_Session, specifiedScope)
+			sysVar := expression.NewSystemVar(varName, sql.GetMysqlScope(sql.SystemVariableScope_Session), specifiedScope)
 			sysVar.Collation = sql.Collation_Default
 			if db, err := b.cat.Database(b.ctx, b.ctx.GetCurrentDatabase()); err == nil {
 				sysVar.Collation = plan.GetDatabaseCollation(b.ctx, db)
 			}
 			return sysVar, scope, true
 		default:
-			_, err = b.ctx.GetSessionVariable(b.ctx, varName)
-			if err != nil {
+			sysVar, _, ok := sql.SystemVariables.GetGlobal(varName)
+			if !ok {
 				return nil, scope, false
 			}
-			return expression.NewSystemVar(varName, sql.SystemVariableScope_Session, specifiedScope), scope, true
+			return expression.NewSystemVar(varName, sysVar.GetSessionScope(), specifiedScope), scope, true
 		}
 	case ast.SetScope_User:
 		t, _, err := b.ctx.GetUserVariable(b.ctx, varName)
@@ -217,9 +217,9 @@ func (b *Builder) buildSysVar(colName *ast.ColName, scopeHint ast.SetScope) (sql
 		}
 		return expression.NewUserVar(varName), scope, true
 	case ast.SetScope_Persist:
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Persist, specifiedScope), scope, true
+		return expression.NewSystemVar(varName, sql.GetMysqlScope(sql.SystemVariableScope_Persist), specifiedScope), scope, true
 	case ast.SetScope_PersistOnly:
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_PersistOnly, specifiedScope), scope, true
+		return expression.NewSystemVar(varName, sql.GetMysqlScope(sql.SystemVariableScope_PersistOnly), specifiedScope), scope, true
 	default: // shouldn't happen
 		err := fmt.Errorf("unknown set scope %v", scope)
 		b.handleErr(err)

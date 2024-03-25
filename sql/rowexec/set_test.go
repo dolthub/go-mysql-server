@@ -75,7 +75,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 		title        string
 		name         string
 		value        int
-		scope        sql.SystemVariableScope
+		scope        sql.MysqlSVScopeType
 		err          *errors.Kind
 		globalCmp    interface{}
 		persistedCmp interface{}
@@ -93,7 +93,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 			sqlCtx, globals := newPersistedSqlContext()
 			s := plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar(test.name, test.scope, string(test.scope)), expression.NewLiteral(int64(test.value), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar(test.name, sql.GetMysqlScope(test.scope), string(test.scope)), expression.NewLiteral(int64(test.value), types.Int64)),
 				},
 			)
 

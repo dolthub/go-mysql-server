@@ -755,7 +755,7 @@ var CreateTableAutoIncrementTests = []ScriptTest{
 						"  `b` int NOT NULL,\n" +
 						"  PRIMARY KEY (`b`),\n" +
 						"  UNIQUE KEY `a` (`a`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "select * from t1 order by b",
@@ -790,7 +790,7 @@ var CreateTableAutoIncrementTests = []ScriptTest{
 						"  `b` int NOT NULL,\n" +
 						"  PRIMARY KEY (`b`),\n" +
 						"  UNIQUE KEY `a` (`a`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "select * from t1 order by b",
@@ -805,6 +805,51 @@ var CreateTableAutoIncrementTests = []ScriptTest{
 			{
 				Query:       "create table t1 (a int auto_increment, b int, primary key(b))",
 				ExpectedErr: sql.ErrInvalidAutoIncCols,
+			},
+		},
+	},
+	{
+		Name:        "table with auto_increment table option",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// this just ignores the auto_increment argument
+				Query:    "create table t1 (i int) auto_increment=10;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query:    "create table t2 (i int auto_increment primary key) auto_increment=10;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "insert into t2 values (null), (null), (null)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 10}}},
+			},
+			{
+				Query: "select * from t2",
+				Expected: []sql.Row{
+					{10},
+					{11},
+					{12},
+				},
 			},
 		},
 	},

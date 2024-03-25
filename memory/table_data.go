@@ -136,7 +136,7 @@ func (td TableData) partition(row sql.Row) (int, error) {
 			}
 		}
 
-		t, isStringType := td.schema.Schema[i].Type.(sql.StringType)
+		t, isStringType := td.schema.Schema[keyColumns[i]].Type.(sql.StringType)
 		if isStringType && v != nil {
 			v, err = types.ConvertToString(v, t)
 			if err == nil {
@@ -175,6 +175,12 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	td.autoIncVal = 0
 	if schema.HasAutoIncrement() {
 		td.autoIncVal = 1
+	}
+	for i, col := range schema.Schema {
+		if col.AutoIncrement {
+			td.autoColIdx = i
+			break
+		}
 	}
 
 	return td

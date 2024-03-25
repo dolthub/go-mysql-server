@@ -254,9 +254,12 @@ func (b *BaseBuilder) buildShowStatus(ctx *sql.Context, n *plan.ShowStatus, row 
 		if !ok {
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
-
-		if n.Modifier == plan.ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
-			n.Modifier == plan.ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
+		msv, ok := sysVar.(*sql.MysqlSystemVariable)
+		if !ok {
+			continue
+		}
+		if n.Modifier == plan.ShowStatusModifier_Session && msv.Scope.IsGlobalOnly() ||
+			n.Modifier == plan.ShowStatusModifier_Global && msv.Scope.IsSessionOnly() {
 			continue
 		}
 

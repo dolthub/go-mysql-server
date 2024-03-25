@@ -849,7 +849,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	if n.Collation == sql.Collation_Unspecified {
 		n.Collation = plan.GetDatabaseCollation(ctx, n.Db)
 		// Need to set each type's collation to the correct type as well
-		for _, col := range n.CreateSchema.Schema {
+		for _, col := range n.PkSchema().Schema {
 			if collatedType, ok := col.Type.(sql.TypeWithCollation); ok && collatedType.Collation() == sql.Collation_Unspecified {
 				col.Type, err = collatedType.WithNewCollation(n.Collation)
 				if err != nil {
@@ -874,26 +874,26 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
-		err = creatable.CreateTemporaryTable(ctx, n.Name(), n.CreateSchema, n.Collation)
+		err = creatable.CreateTemporaryTable(ctx, n.Name(), n.PkSchema(), n.Collation)
 	} else {
 		switch creatable := maybePrivDb.(type) {
 		case sql.IndexedTableCreator:
 			var pkIdxDef sql.IndexDef
 			var hasPkIdxDef bool
-			for _, idxDef := range n.IdxDefs {
+			for _, idxDef := range n.Indexes() {
 				if idxDef.Constraint == sql.IndexConstraint_Primary {
 					hasPkIdxDef = true
 					pkIdxDef = sql.IndexDef{
-						Name:       idxDef.IndexName,
+						Name:       idxDef.Name,
 						Columns:    idxDef.Columns,
 						Constraint: idxDef.Constraint,
-						Storage:    idxDef.Using,
+						Storage:    idxDef.Storage,
 						Comment:    idxDef.Comment,
 					}
 				}
 			}
 			if hasPkIdxDef {
-				err = creatable.CreateIndexedTable(ctx, n.Name(), n.CreateSchema, pkIdxDef, n.Collation)
+				err = creatable.CreateIndexedTable(ctx, n.Name(), n.PkSchema(), pkIdxDef, n.Collation)
 				if sql.ErrUnsupportedIndexPrefix.Is(err) {
 					return sql.RowsToRowIter(), err
 				}
@@ -902,10 +902,18 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 				if !ok {
 					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 				}
-				err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation, n.Comment)
+				comment := ""
+				if n.TableOpts != nil && n.TableOpts["comment"] != nil {
+					comment = n.TableOpts["comment"].(string)
+				}
+				err = creatable.CreateTable(ctx, n.Name(), n.PkSchema(), n.Collation, comment)
 			}
 		case sql.TableCreator:
-			err = creatable.CreateTable(ctx, n.Name(), n.CreateSchema, n.Collation, n.Comment)
+			comment := ""
+			if n.TableOpts != nil && n.TableOpts["comment"] != nil {
+				comment = n.TableOpts["comment"].(string)
+			}
+			err = creatable.CreateTable(ctx, n.Name(), n.PkSchema(), n.Collation, comment)
 		default:
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 		}
@@ -940,9 +948,37 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		return sql.RowsToRowIter(), sql.ErrTableCreatedNotFound.New()
 	}
 
-	var nonPrimaryIdxes []*plan.IndexDefinition
-	for _, def := range n.IdxDefs {
-		if def.Constraint != sql.IndexConstraint_Primary {
+	if autoIncVal, hasAutoIncOpt := n.TableOpts["auto_increment"]; hasAutoIncOpt {
+		aiVal := autoIncVal.(uint64)
+		if aiVal > 1 {
+			// TODO: lots of duplicate code from b.executeAlterAutoIncrement
+			insertable, ok := tableNode.(sql.InsertableTable)
+			if !ok {
+				return sql.RowsToRowIter(), plan.ErrInsertIntoNotSupported.New()
+			}
+			autoTbl, ok := insertable.(sql.AutoIncrementTable)
+			if !ok {
+				return sql.RowsToRowIter(), plan.ErrAutoIncrementNotSupported.New(insertable.Name())
+			}
+
+			// No-op if the table doesn't already have an auto increment column.
+			if autoTbl.Schema().HasAutoIncrement() {
+				setter := autoTbl.AutoIncrementSetter(ctx)
+				err = setter.SetAutoIncrementValue(ctx, aiVal)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+				err = setter.Close(ctx)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+			}
+		}
+	}
+
+	var nonPrimaryIdxes sql.IndexDefs
+	for _, def := range n.Indexes() {
+		if !def.IsPrimary() {
 			nonPrimaryIdxes = append(nonPrimaryIdxes, def)
 		}
 	}
@@ -954,7 +990,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	if len(n.FkDefs) > 0 {
+	if len(n.ForeignKeys()) > 0 {
 		err = n.CreateForeignKeys(ctx, tableNode)
 		if err != nil {
 			return sql.RowsToRowIter(), err
@@ -971,19 +1007,20 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
-func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes []*plan.IndexDefinition) (err error) {
+func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes sql.IndexDefs) (err error) {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return plan.ErrNotIndexable.New()
 	}
 
 	indexMap := make(map[string]struct{})
-	fulltextIndexes := make([]sql.IndexDef, 0, len(idxes))
+	fulltextIndexes := make(sql.IndexDefs, 0)
 	for _, idxDef := range idxes {
-		indexName := idxDef.IndexName
+		indexName := idxDef.Name
 		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
 		// until we get a non-colliding name if the original name (or each preceding name) already exists.
-		if indexName == "" {
+		// TODO: this doesn't match getIndexName function in dolt
+		if len(indexName) == 0 {
 			indexName = strings.Join(idxDef.ColumnNames(), "")
 			if _, ok = indexMap[strings.ToLower(indexName)]; ok {
 				for i := 0; true; i++ {
@@ -994,42 +1031,43 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 					}
 				}
 			}
-		} else if _, ok = indexMap[strings.ToLower(idxDef.IndexName)]; ok {
-			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.IndexName)
 		}
+
+		if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.Name)
+		}
+		indexMap[strings.ToLower(indexName)] = struct{}{}
+
 		// We'll create the Full-Text indexes after all others
-		if idxDef.Constraint == sql.IndexConstraint_Fulltext {
-			otherDef := idxDef.AsIndexDef()
-			otherDef.Name = indexName
-			fulltextIndexes = append(fulltextIndexes, otherDef)
+		if idxDef.IsFullText() {
+			fulltextIndexes = append(fulltextIndexes, idxDef)
 			continue
 		}
-		err := idxAlterable.CreateIndex(ctx, sql.IndexDef{
+		err = idxAlterable.CreateIndex(ctx, sql.IndexDef{
 			Name:       indexName,
 			Columns:    idxDef.Columns,
 			Constraint: idxDef.Constraint,
-			Storage:    idxDef.Using,
+			Storage:    idxDef.Storage,
 			Comment:    idxDef.Comment,
 		})
 		if err != nil {
 			return err
 		}
-		indexMap[strings.ToLower(indexName)] = struct{}{}
 	}
 
 	// Evaluate our Full-Text indexes now
 	if len(fulltextIndexes) > 0 {
-		database, ok := db.(fulltext.Database)
-		if !ok {
-			if privDb, ok := db.(mysql_db.PrivilegedDatabase); ok {
-				if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
-					return sql.ErrCreateTableNotSupported.New(db.Name())
-				}
-			} else {
+		database, isFulltextDb := db.(fulltext.Database)
+		if !isFulltextDb {
+			privDb, isPrivDb := db.(mysql_db.PrivilegedDatabase)
+			if !isPrivDb {
+				return sql.ErrCreateTableNotSupported.New(db.Name())
+			}
+			if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
 				return sql.ErrCreateTableNotSupported.New(db.Name())
 			}
 		}
-		if err = fulltext.CreateFulltextIndexes(ctx, database, idxAlterable, nil, fulltextIndexes...); err != nil {
+		if err = fulltext.CreateFulltextIndexes(ctx, database, idxAlterable, nil, fulltextIndexes); err != nil {
 			return err
 		}
 	}
