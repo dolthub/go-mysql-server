@@ -21,7 +21,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -419,6 +418,14 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("binlog_gtid_simple_recovery"),
 		Default:           int8(1),
+	},
+	"binlog_row_metadata": {
+		Name:              "binlog_row_metadata",
+		Scope:             sql.SystemVariableScope_Global,
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemEnumType("MINIMAL", "FULL"),
+		Default:           "MINIMAL",
 	},
 	"block_encryption_mode": {
 		Name:              "block_encryption_mode",
@@ -2140,12 +2147,17 @@ var systemVars = map[string]sql.SystemVariable{
 		Default:           uint32(0),
 	},
 	"server_uuid": {
-		Name:              "server_uuid",
-		Scope:             sql.SystemVariableScope_Persist,
-		Dynamic:           false,
+		Name:  "server_uuid",
+		Scope: sql.SystemVariableScope_Persist,
+		// TODO: MySQL doesn't allow changing @@server_uuid dynamically, but we allow it
+		//       here to make setting it easier. MySQL requires that it be set in a config file.
+		//       MySQL will also generate a @@server_uuid automatically and persist it
+		//       to data_dir/auto.cnf on startup. We should do something similar, but first
+		//       we're just providing a way to persist it to the default ~/.dolt/ dir.
+		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Text,
-		Default:           uuid.New().String(),
+		Default:           nil,
 	},
 	"session_track_gtids": {
 		Name:              "session_track_gtids",
