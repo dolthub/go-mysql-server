@@ -232,11 +232,9 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	searchStr := search.(string)
 
-	var escape rune
+	var escape = '\\'
 	if j.Escape != nil {
-		// TODO: implement escape character handling
-		var escapeVal interface{}
-		escapeVal, err = j.Escape.Eval(ctx, row)
+		escapeVal, err := j.Escape.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}

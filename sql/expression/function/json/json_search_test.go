@@ -53,7 +53,7 @@ func TestJSONSearch(t *testing.T) {
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	f3 := buildGetFieldExpressions(t, NewJSONSearch, 3)
-	//f4 := buildGetFieldExpressions(t, NewJSONSearch, 4)
+	f4 := buildGetFieldExpressions(t, NewJSONSearch, 4)
 	f5 := buildGetFieldExpressions(t, NewJSONSearch, 5)
 
 	json := `["abc", [{"k": "10"}, "def"], {"x":"abc"}, {"y":"bcd"}]`
@@ -73,6 +73,11 @@ func TestJSONSearch(t *testing.T) {
 		{
 			f:   f3,
 			row: sql.Row{json, "NotOneOrAll", "abc"},
+			err: true,
+		},
+		{
+			f:   f3,
+			row: sql.Row{json, "one ", "abc"},
 			err: true,
 		},
 
@@ -95,6 +100,11 @@ func TestJSONSearch(t *testing.T) {
 		{
 			f:   f3,
 			row: sql.Row{json, "one", "abc"},
+			exp: types.MustJSON(`"$[0]"`),
+		},
+		{
+			f:   f3,
+			row: sql.Row{json, "ONE", "abc"},
 			exp: types.MustJSON(`"$[0]"`),
 		},
 		{
@@ -123,7 +133,7 @@ func TestJSONSearch(t *testing.T) {
 			exp: types.MustJSON(`"$[1][0].k"`),
 		},
 		{
-			// TODO: need to implement special wildcard in jsonpath package
+			// TODO: need to implement ** wildcard in jsonpath package
 			skip: true,
 			f:   f5,
 			row: sql.Row{json, "all", "10", nil, "$**.k"},
@@ -184,6 +194,27 @@ func TestJSONSearch(t *testing.T) {
 			f:   f5,
 			row: sql.Row{json, "all", "%b%", "", "$[3]"},
 			exp: types.MustJSON(`"$[3].y"`),
+		},
+
+		{
+			f:   f4,
+			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a%c%`, ""},
+			exp: types.MustJSON(`["$[0].a", "$[1].b"]`),
+		},
+		{
+			f:   f4,
+			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a\%c\%`, ""},
+			exp: types.MustJSON(`"$[0].a"`),
+		},
+		{
+			f:   f4,
+			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a\%c\%`, `\`},
+			exp: types.MustJSON(`"$[0].a"`),
+		},
+		{
+			f:   f4,
+			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `as%cs%`, `s`},
+			exp: types.MustJSON(`"$[0].a"`),
 		},
 	}
 
