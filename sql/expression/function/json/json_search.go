@@ -307,6 +307,12 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Children implements sql.Expression
 func (j *JSONSearch) Children() []sql.Expression {
+	if j.Escape == nil {
+		return []sql.Expression{j.JSON, j.OneOrAll, j.Search}
+	}
+	if j.Path == nil {
+		return []sql.Expression{j.JSON, j.OneOrAll, j.Search, j.Escape}
+	}
 	return []sql.Expression{j.JSON, j.OneOrAll, j.Search, j.Escape, j.Path}
 }
 
