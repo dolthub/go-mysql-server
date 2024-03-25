@@ -421,15 +421,15 @@ var SupportedCharsets = []CharacterSetID{
 // ParseCharacterSet takes in a string representing a CharacterSet and returns the result if a match is found, or an
 // error if not.
 func ParseCharacterSet(str string) (CharacterSetID, error) {
-	if cs, ok := characterSetStringToID[strings.ToLower(str)]; ok {
-		return cs, nil
-	}
-	// It is valid recognize an empty string as the invalid charset, as some analyzer steps may temporarily use the
-	// invalid charset
-	if str == "" {
+	// Empty string is valid, as some analyzer steps may temporarily use the invalid charset
+	if len(str) == 0 {
 		return CharacterSet_Unspecified, nil
 	}
-	return CharacterSet_Unspecified, ErrCharSetUnknown.New(str)
+	cs, ok := characterSetStringToID[strings.ToLower(str)]
+	if !ok {
+		return CharacterSet_Unspecified, ErrCharSetUnknown.New(str)
+	}
+	return cs, nil
 }
 
 // Name returns the name of this CharacterSet.

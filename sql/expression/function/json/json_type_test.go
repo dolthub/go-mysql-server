@@ -19,10 +19,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONType(t *testing.T) {
@@ -54,6 +56,16 @@ func TestJSONType(t *testing.T) {
 		{
 			f:   f1,
 			row: sql.Row{1},
+			err: true,
+		},
+		{
+			f:   f1,
+			row: sql.Row{1.5},
+			err: true,
+		},
+		{
+			f:   f1,
+			row: sql.Row{decimal.New(15, -1)},
 			err: true,
 		},
 
@@ -103,6 +115,47 @@ func TestJSONType(t *testing.T) {
 		{
 			f:   f1,
 			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
+			exp: "OBJECT",
+		},
+
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{nil}},
+			exp: "NULL",
+		},
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{uint64(1)}},
+			exp: "UNSIGNED INTEGER",
+		},
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{int64(1)}},
+			exp: "INTEGER",
+		},
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{true}},
+			exp: "BOOLEAN",
+		},
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{123.456}},
+			exp: "DOUBLE",
+		},
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{decimal.New(123456, -3)}},
+			exp: "DECIMAL",
+		},
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{[]interface{}{}}},
+			exp: "ARRAY",
+		},
+		{
+			f:   f1,
+			row: sql.Row{types.JSONDocument{map[string]interface{}{}}},
 			exp: "OBJECT",
 		},
 	}

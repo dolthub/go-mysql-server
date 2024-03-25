@@ -629,54 +629,9 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	if err != nil {
 		return err
 	}
-	switch sysVar.Scope {
-	case sql.SystemVariableScope_Global:
-		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
-		if err != nil {
-			return err
-		}
-	case sql.SystemVariableScope_Session:
-		err = ctx.SetSessionVariable(ctx, sysVar.Name, val)
-		if err != nil {
-			return err
-		}
-	case sql.SystemVariableScope_Persist:
-		persistSess, ok := ctx.Session.(sql.PersistableSession)
-		if !ok {
-			return sql.ErrSessionDoesNotSupportPersistence.New()
-		}
-		err = persistSess.PersistGlobal(sysVar.Name, val)
-		if err != nil {
-			return err
-		}
-		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
-		if err != nil {
-			return err
-		}
-	case sql.SystemVariableScope_PersistOnly:
-		persistSess, ok := ctx.Session.(sql.PersistableSession)
-		if !ok {
-			return sql.ErrSessionDoesNotSupportPersistence.New()
-		}
-		err = persistSess.PersistGlobal(sysVar.Name, val)
-		if err != nil {
-			return err
-		}
-	case sql.SystemVariableScope_ResetPersist:
-		// TODO: add parser support for RESET PERSIST
-		persistSess, ok := ctx.Session.(sql.PersistableSession)
-		if !ok {
-			return sql.ErrSessionDoesNotSupportPersistence.New()
-		}
-		if sysVar.Name == "" {
-			err = persistSess.RemoveAllPersistedGlobals()
-		}
-		err = persistSess.RemovePersistedGlobal(sysVar.Name)
-		if err != nil {
-			return err
-		}
-	default: // should never be hit
-		return fmt.Errorf("unable to set `%s` due to unknown scope `%v`", sysVar.Name, sysVar.Scope)
+	err = sysVar.Scope.SetValue(ctx, sysVar.Name, val)
+	if err != nil {
+		return err
 	}
 	// Setting `character_set_connection`, regardless of how it is set (directly or through SET NAMES) will also set
 	// `collation_connection` to the default collation for the given character set.

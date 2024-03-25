@@ -90,9 +90,13 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		if !ok {
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
+		msv, ok := sysVar.(*sql.MysqlSystemVariable)
+		if !ok {
+			continue
+		}
 
-		if s.Modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
-			s.Modifier == ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
+		if s.Modifier == ShowStatusModifier_Session && msv.Scope.IsGlobalOnly() ||
+			s.Modifier == ShowStatusModifier_Global && msv.Scope.IsSessionOnly() {
 			continue
 		}
 

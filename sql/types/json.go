@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -67,6 +68,28 @@ func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertIn
 		if err != nil {
 			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 		}
+	case int8:
+		return JSONDocument{Val: int64(v)}, sql.InRange, nil
+	case int16:
+		return JSONDocument{Val: int64(v)}, sql.InRange, nil
+	case int32:
+		return JSONDocument{Val: int64(v)}, sql.InRange, nil
+	case int64:
+		return JSONDocument{Val: v}, sql.InRange, nil
+	case uint8:
+		return JSONDocument{Val: uint64(v)}, sql.InRange, nil
+	case uint16:
+		return JSONDocument{Val: uint64(v)}, sql.InRange, nil
+	case uint32:
+		return JSONDocument{Val: uint64(v)}, sql.InRange, nil
+	case uint64:
+		return JSONDocument{Val: v}, sql.InRange, nil
+	case float32:
+		return JSONDocument{Val: float64(v)}, sql.InRange, nil
+	case float64:
+		return JSONDocument{Val: v}, sql.InRange, nil
+	case decimal.Decimal:
+		return JSONDocument{Val: v}, sql.InRange, nil
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation

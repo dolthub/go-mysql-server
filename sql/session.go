@@ -666,7 +666,8 @@ func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 	if err == nil {
 		sysVar, _, ok := SystemVariables.GetGlobal(key)
 		if ok {
-			return sysVar.Default == val, val
+			v := sysVar.GetDefault()
+			return v == val, val
 		}
 	}
 	return true, nil
