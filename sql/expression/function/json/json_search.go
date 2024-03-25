@@ -16,13 +16,14 @@ package json
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/jsonpath"
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // JSONSearch (json_doc, one_or_all, search_str[, escape_char[, path] ...])
@@ -51,11 +52,11 @@ import (
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-search
 type JSONSearch struct {
-	JSON      sql.Expression
-	OneOrAll  sql.Expression
-	Search    sql.Expression
-	Escape    sql.Expression
-	Path      sql.Expression
+	JSON     sql.Expression
+	OneOrAll sql.Expression
+	Search   sql.Expression
+	Escape   sql.Expression
+	Path     sql.Expression
 }
 
 var errOneOrAll = fmt.Errorf("the oneOrAll argument to json_search may take these values: 'one' or 'all'")

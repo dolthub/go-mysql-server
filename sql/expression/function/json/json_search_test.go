@@ -16,8 +16,8 @@ package json
 
 import (
 	"fmt"
-"strings"
-"testing"
+	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
@@ -125,15 +125,15 @@ func TestJSONSearch(t *testing.T) {
 		{
 			// TODO: need to implement special wildcard in jsonpath package
 			skip: true,
-			f:   f5,
-			row: sql.Row{json, "all", "10", nil, "$**.k"},
-			exp: types.MustJSON(`"$[1][0].k"`),
+			f:    f5,
+			row:  sql.Row{json, "all", "10", nil, "$**.k"},
+			exp:  types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			skip: true,
-			f:   f5,
-			row: sql.Row{json, "all", "10", nil, "$[*][0].k"},
-			exp: types.MustJSON(`"$[1][0].k"`),
+			f:    f5,
+			row:  sql.Row{json, "all", "10", nil, "$[*][0].k"},
+			exp:  types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			f:   f5,
