@@ -6224,6 +6224,49 @@ where
 			},
 		},
 	},
+	{
+		Name: "test json search",
+		SetUpScript: []string{
+			`create table t (i int primary key, j json);`,
+			`insert into t values (0, '{"a": "abc"}'), (1, '{"b": "abc"}'), (2, '{"c": "abc"}');`,
+			`insert into t values (3, '{"d": "def"}'), (4, '{"e": "def"}'), (5, '{"f": "def"}');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, json_search(j, 'all', 'abc') from t order by i",
+				Expected: []sql.Row{
+					{0, types.MustJSON(`"$.a"`)},
+					{1, types.MustJSON(`"$.b"`)},
+					{2, types.MustJSON(`"$.c"`)},
+					{3, nil},
+					{4, nil},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select i, json_search(j, 'all', 'def') from t order by i",
+				Expected: []sql.Row{
+					{0, nil},
+					{1, nil},
+					{2, nil},
+					{3, types.MustJSON(`"$.d"`)},
+					{4, types.MustJSON(`"$.e"`)},
+					{5, types.MustJSON(`"$.f"`)},
+				},
+			},
+			{
+				Query: "select i, json_search(j, 'all', 'abc', '', '$.a', '$.b') from t order by i",
+				Expected: []sql.Row{
+					{0, types.MustJSON(`"$.a"`)},
+					{1, types.MustJSON(`"$.b"`)},
+					{2, nil},
+					{3, nil},
+					{4, nil},
+					{5, nil},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
