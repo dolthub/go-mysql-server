@@ -1719,7 +1719,7 @@ Select * from (
 		},
 	},
 	{
-		Query:    "SELECT JSON_SEARCH(c3, 'all', '2') FROM jsontable;",
+		Query: "SELECT JSON_SEARCH(c3, 'all', '2') FROM jsontable;",
 		Expected: []sql.Row{
 			{nil},
 			{nil},

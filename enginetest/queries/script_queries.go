@@ -6233,7 +6233,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select i, json_search(j, 'all', 'abc') from t order by i",
+				Query: "select i, json_search(j, 'all', 'abc') from t order by i",
 				Expected: []sql.Row{
 					{0, types.MustJSON(`"$.a"`)},
 					{1, types.MustJSON(`"$.b"`)},
@@ -6244,7 +6244,7 @@ where
 				},
 			},
 			{
-				Query:    "select i, json_search(j, 'all', 'def') from t order by i",
+				Query: "select i, json_search(j, 'all', 'def') from t order by i",
 				Expected: []sql.Row{
 					{0, nil},
 					{1, nil},
