@@ -903,9 +903,14 @@ func setSecureFilePriv() error {
 
 func TestLoadData(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
 
 	require.NoError(t, setSecureFilePriv())
-	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+		Query:    "select @@global.secure_file_priv != '';",
+		Expected: []sql.Row{{true}},
+	})
 
 	for _, script := range queries.LoadDataScripts {
 		TestScript(t, harness, script)
@@ -913,8 +918,14 @@ func TestLoadData(t *testing.T, harness Harness) {
 }
 
 func TestLoadDataErrors(t *testing.T, harness Harness) {
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+
 	require.NoError(t, setSecureFilePriv())
-	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+		Query:    "select @@global.secure_file_priv != '';",
+		Expected: []sql.Row{{true}},
+	})
 
 	for _, script := range queries.LoadDataErrorScripts {
 		TestScript(t, harness, script)
@@ -923,9 +934,14 @@ func TestLoadDataErrors(t *testing.T, harness Harness) {
 
 func TestLoadDataFailing(t *testing.T, harness Harness) {
 	t.Skip()
+	e := mustNewEngine(t, harness)
+	defer e.Close()
 
 	require.NoError(t, setSecureFilePriv())
-	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+		Query:    "select @@global.secure_file_priv != '';",
+		Expected: []sql.Row{{true}},
+	})
 
 	for _, script := range queries.LoadDataFailingScripts {
 		TestScript(t, harness, script)
@@ -942,7 +958,10 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	require.NoError(t, err, nil)
 
 	require.NoError(t, setSecureFilePriv())
-	TestQuery(t, harness, "select @@secure_file_priv != '';", []sql.Row{{true}}, nil, nil)
+	TestQueryWithEngine(t, harness, e, queries.QueryTest{
+		Query:    "select @@global.secure_file_priv != '';",
+		Expected: []sql.Row{{true}},
+	})
 
 	tests := []struct {
 		file  string

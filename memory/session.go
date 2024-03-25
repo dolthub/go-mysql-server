@@ -196,7 +196,7 @@ func (s *Session) PersistGlobal(sysVarName string, value interface{}) error {
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
-	val, _, err := sysVar.Type.Convert(value)
+	val, _, err := sysVar.GetType().Convert(value)
 	if err != nil {
 		return err
 	}
