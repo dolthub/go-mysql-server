@@ -398,9 +398,9 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("binlog_gtid_simple_recovery"),
 		Default:           int8(1),
 	},
-	"binlog_row_metadata": {
+	"binlog_row_metadata": &sql.MysqlSystemVariable{
 		Name:              "binlog_row_metadata",
-		Scope:             sql.SystemVariableScope_Global,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("MINIMAL", "FULL"),
