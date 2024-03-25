@@ -299,18 +299,22 @@ func (h *Handler) ComParsedQuery(
 
 // ComRegisterReplica implements the mysql.BinlogReplicaHandler interface.
 func (h *Handler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
-	// TODO: replicaUser and replicaPassword should be validated at this layer;
-	//       confirm if that has been done already (doesn't seem like it)
+	// TODO: replicaUser and replicaPassword should be validated at this layer (GMS);
+	//       confirm if that has been done already (doesn't seem likely)
+
+	logrus.StandardLogger().
+		WithField("connectionId", c.ConnectionID).
+		WithField("replicaHost", replicaHost).
+		WithField("replicaPort", replicaPort).
+		Debug("Handling COM_REGISTER_REPLICA")
 
 	if !h.e.Analyzer.Catalog.HasBinlogPrimaryController() {
 		return nil
 	}
 
-	// TODO: Is there not a DeregisterReplica command? Seems like the primary just notices when the replica is gone?
-
-	// TODO: Where do we get a ctx from?
+	newCtx := sql.NewContext(context.Background())
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
-	return primaryController.RegisterReplica(nil, c, replicaHost, replicaPort)
+	return primaryController.RegisterReplica(newCtx, c, replicaHost, replicaPort)
 }
 
 // ComBinlogDumpGTID implements the mysql.BinlogReplicaHandler interface.
@@ -319,13 +323,14 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 		return nil
 	}
 
-	// NOTE: gtidSet may be nil, if none was provided in the `START REPLICA` statement
-	// TODO: double check that MySQL sends an empty GTIDSet on the wire in the same case
+	logrus.StandardLogger().
+		WithField("connectionId", c.ConnectionID).
+		Debug("Handling COM_BINLOG_DUMP_GTID")
 
-	// TODO: Where do we get ctx from?
-	// TODO: is logfile and logpos ever really used for COM_BINLOG_DUMP_GTID?
+	// TODO: is logfile and logpos ever actually needed for COM_BINLOG_DUMP_GTID?
+	newCtx := sql.NewContext(context.Background())
 	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
-	return primaryController.BinlogDumpGtid(nil, c, gtidSet)
+	return primaryController.BinlogDumpGtid(newCtx, c, gtidSet)
 }
 
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
