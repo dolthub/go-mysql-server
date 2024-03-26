@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -62,6 +64,41 @@ type BinlogReplicaController interface {
 	ResetReplica(ctx *sql.Context, resetAll bool) error
 }
 
+// BinlogPrimaryController allows an integrator to extend GMS with support for operating as a binlog primary server.
+// Providers built on go-mysql-server may optionally implement this interface and use it when constructing a SQL
+// engine in order to receive callbacks when replication statements for a primary server are received
+// (e.g. SHOW BINARY LOG STATUS) or when MySQL protocol commands related to replication are received
+// (e.g. COM_REGISTER_REPLICA).
+type BinlogPrimaryController interface {
+	// RegisterReplica tells the binlog primary controller to register a new replica on connection |c| with the
+	// primary server. |replicaHost| and |replicaPort| specify where the replica can be accessed, and are returned
+	// from the SHOW REPLICAS statement. Integrators should return from this method as soon as the replica is
+	// registered.
+	RegisterReplica(ctx *sql.Context, c *mysql.Conn, replicaHost string, replicaPort uint16) error
+
+	// BinlogDumpGtid tells this binlog primary controller to start streaming binlog events to the replica over the
+	// current connection, |c|. |gtidSet| specifies the point at which to start replication, or if it is nil, then
+	// it indicates the complete history of all transactions should be sent over the connection. Note that unlike
+	// other methods, this method does NOT return immediately (unless an error is encountered) – the connection is
+	// left open for the duration of the replication stream, which could be days, or longer.
+	BinlogDumpGtid(ctx *sql.Context, c *mysql.Conn, gtidSet mysql.GTIDSet) error
+
+	// ListReplicas is called when the SHOW REPLICAS statement is executed. The integrator should return a list
+	// of all registered replicas who are healthy and still responsive. Note that this function will be expanded
+	// with an additional response parameter once it is wired up to the SQL engine.
+	ListReplicas(ctx *sql.Context) error
+
+	// ListBinaryLogs is called when the SHOW BINARY LOGS statement is executed. The integrator should return a list
+	// of the binary logs currently being managed. Note that this function will be expanded
+	// with an additional response parameter once it is wired up to the SQL engine.
+	ListBinaryLogs(ctx *sql.Context) error
+
+	// GetBinaryLogStatus is called when the SHOW BINARY LOG STATUS statement is executed. The integrator should return
+	// the current status of the binary log. Note that this function will be expanded
+	// with an additional response parameter once it is wired up to the SQL engine.
+	GetBinaryLogStatus(ctx *sql.Context) error
+}
+
 // ReplicaStatus stores the status of a single binlog replica and is returned by `SHOW REPLICA STATUS`.
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ReplicaStatus struct {
@@ -87,9 +124,22 @@ type ReplicaStatus struct {
 	ReplicateIgnoreTables []string
 }
 
+// BinlogReplicaCatalog extends the Catalog interface and provides methods for accessing a BinlogReplicaController
+// for a Catalog.
 type BinlogReplicaCatalog interface {
-	IsBinlogReplicaCatalog() bool
+	// HasBinlogReplicaController returns true if a non-nil BinlogReplicaController is available for this BinlogReplicaCatalog.
+	HasBinlogReplicaController() bool
+	// GetBinlogReplicaController returns the BinlogReplicaController registered with this BinlogReplicaCatalog.
 	GetBinlogReplicaController() BinlogReplicaController
+}
+
+// BinlogPrimaryCatalog extends the Catalog interface and provides methods for accessing a BinlogPrimaryController
+// for a Catalog.
+type BinlogPrimaryCatalog interface {
+	// HasBinlogPrimaryController returns true if a non-nil BinlogPrimaryController is available for this BinlogPrimaryCatalog.
+	HasBinlogPrimaryController() bool
+	// GetBinlogPrimaryController returns the BinlogPrimaryController registered with this BinlogPrimaryCatalog.
+	GetBinlogPrimaryController() BinlogPrimaryController
 }
 
 const (

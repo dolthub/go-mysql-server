@@ -32,7 +32,7 @@ func (b *Builder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeRepl
 		convertedOptions = append(convertedOptions, *convertedOption)
 	}
 	repSrc := plan.NewChangeReplicationSource(convertedOptions)
-	if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+	if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
 		repSrc.ReplicaController = binCat.GetBinlogReplicaController()
 	}
 	outScope.node = repSrc
@@ -71,7 +71,7 @@ func (b *Builder) buildChangeReplicationFilter(inScope *scope, n *ast.ChangeRepl
 		convertedOptions = append(convertedOptions, *convertedOption)
 	}
 	changeFilter := plan.NewChangeReplicationFilter(convertedOptions)
-	if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+	if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
 		changeFilter.ReplicaController = binCat.GetBinlogReplicaController()
 	}
 	outScope.node = changeFilter
