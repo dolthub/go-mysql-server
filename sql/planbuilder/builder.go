@@ -265,21 +265,21 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 	case *ast.StartReplica:
 		outScope = inScope.push()
 		startRep := plan.NewStartReplica()
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
 			startRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = startRep
 	case *ast.StopReplica:
 		outScope = inScope.push()
 		stopRep := plan.NewStopReplica()
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
 			stopRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = stopRep
 	case *ast.ResetReplica:
 		outScope = inScope.push()
 		resetRep := plan.NewResetReplica(n.All)
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.IsBinlogReplicaCatalog() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
 			resetRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = resetRep

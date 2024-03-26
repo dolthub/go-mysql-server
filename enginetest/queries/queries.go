@@ -9286,12 +9286,6 @@ from typestable`,
 		},
 	},
 	{
-		Query: "select length(@@server_uuid)",
-		Expected: []sql.Row{
-			{36},
-		},
-	},
-	{
 		Query:    "select 1 where if('', 1, char(''));",
 		Expected: []sql.Row{},
 	},

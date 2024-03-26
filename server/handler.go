@@ -74,14 +74,6 @@ type Handler struct {
 	sel               ServerEventListener
 }
 
-func (h *Handler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
-	return fmt.Errorf("ComRegisterReplica not implemented")
-}
-
-func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64, gtidSet mysql.GTIDSet) error {
-	return fmt.Errorf("ComBinlogDumpGTID not implemented")
-}
-
 var _ mysql.Handler = (*Handler)(nil)
 var _ mysql.ExtendedHandler = (*Handler)(nil)
 var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
@@ -303,6 +295,42 @@ func (h *Handler) ComParsedQuery(
 ) error {
 	_, err := h.errorWrappedDoQuery(c, query, parsed, MultiStmtModeOff, nil, callback)
 	return err
+}
+
+// ComRegisterReplica implements the mysql.BinlogReplicaHandler interface.
+func (h *Handler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+	// TODO: replicaUser and replicaPassword should be validated at this layer (GMS);
+	//       confirm if that has been done already (doesn't seem likely)
+
+	logrus.StandardLogger().
+		WithField("connectionId", c.ConnectionID).
+		WithField("replicaHost", replicaHost).
+		WithField("replicaPort", replicaPort).
+		Debug("Handling COM_REGISTER_REPLICA")
+
+	if !h.e.Analyzer.Catalog.HasBinlogPrimaryController() {
+		return nil
+	}
+
+	newCtx := sql.NewContext(context.Background())
+	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
+	return primaryController.RegisterReplica(newCtx, c, replicaHost, replicaPort)
+}
+
+// ComBinlogDumpGTID implements the mysql.BinlogReplicaHandler interface.
+func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64, gtidSet mysql.GTIDSet) error {
+	if !h.e.Analyzer.Catalog.HasBinlogPrimaryController() {
+		return nil
+	}
+
+	logrus.StandardLogger().
+		WithField("connectionId", c.ConnectionID).
+		Debug("Handling COM_BINLOG_DUMP_GTID")
+
+	// TODO: is logfile and logpos ever actually needed for COM_BINLOG_DUMP_GTID?
+	newCtx := sql.NewContext(context.Background())
+	primaryController := h.e.Analyzer.Catalog.GetBinlogPrimaryController()
+	return primaryController.BinlogDumpGtid(newCtx, c, gtidSet)
 }
 
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
