@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// JSON_SET(json_doc, path, val[, path, val] ...)
+// JSONSet (json_doc, path, val[, path, val] ...)
 //
 // JSONSet Inserts or updates data in a JSON document and returns the result. Returns NULL if any argument is NULL or
 // path, if given, does not locate an object. An error occurs if the json_doc argument is not a valid JSON document or
@@ -67,6 +67,7 @@ func (j *JSONSet) Description() string {
 	return "inserts data into JSON document."
 }
 
+// Resolved implements sql.Expression
 func (j *JSONSet) Resolved() bool {
 	for _, child := range j.Children() {
 		if child != nil && !child.Resolved() {
@@ -77,10 +78,12 @@ func (j *JSONSet) Resolved() bool {
 	return true
 }
 
+// Children implements sql.Expression
 func (j *JSONSet) Children() []sql.Expression {
 	return append([]sql.Expression{j.JSONDoc}, j.PathAndVals...)
 }
 
+// WithChildren implements sql.Expression
 func (j *JSONSet) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_set did not receive the correct amount of args")
@@ -89,6 +92,7 @@ func (j *JSONSet) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	return NewJSONSet(children...)
 }
 
+// String implements Stringer
 func (j *JSONSet) String() string {
 	children := j.Children()
 	var parts = make([]string, len(children))
@@ -100,10 +104,12 @@ func (j *JSONSet) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
+// Type implements sql.Expression
 func (j *JSONSet) Type() sql.Type {
 	return types.JSON
 }
 
+// IsNullable implements sql.Expression
 func (j *JSONSet) IsNullable() bool {
 	for _, pv := range j.PathAndVals {
 		if pv.IsNullable() {
@@ -113,6 +119,7 @@ func (j *JSONSet) IsNullable() bool {
 	return j.JSONDoc.IsNullable()
 }
 
+// Eval implements sql.Expression
 func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.JSONDoc)
 	if err != nil || doc == nil {
@@ -137,9 +144,4 @@ func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return doc, nil
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONSet) IsUnsupported() bool {
-	return false
 }

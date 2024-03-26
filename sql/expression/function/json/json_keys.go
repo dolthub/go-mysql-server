@@ -64,27 +64,27 @@ func (j *JSONKeys) Description() string {
 	return "returns the keys from the top-level value of a JSON object as a JSON array."
 }
 
-// Resolved implements the sql.Expression interface.
+// Resolved implements sql.Expression
 func (j *JSONKeys) Resolved() bool {
 	return j.JSON.Resolved() && j.Path.Resolved()
 }
 
-// String implements the sql.Expression interface.
+// String implements sql.Expression
 func (j *JSONKeys) String() string {
 	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.JSON.String(), j.Path.String())
 }
 
-// Type implements the sql.Expression interface.
+// Type implements sql.Expression
 func (j *JSONKeys) Type() sql.Type {
 	return types.JSON
 }
 
-// IsNullable implements the sql.Expression interface.
+// IsNullable implements sql.Expression
 func (j *JSONKeys) IsNullable() bool {
 	return j.JSON.IsNullable()
 }
 
-// Eval implements the sql.Expression interface.
+// Eval implements sql.Expression
 func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
 	defer span.End()
@@ -135,12 +135,12 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// Children implements the Expression interface.
+// Children implements sql.Expression
 func (j *JSONKeys) Children() []sql.Expression {
 	return []sql.Expression{j.JSON, j.Path}
 }
 
-// WithChildren implements the Expression interface.
+// WithChildren implements sql.Expression
 func (j *JSONKeys) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewJSONKeys(children...)
 }
