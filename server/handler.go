@@ -54,7 +54,7 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
 const rowsBatch = 128
 
-var tcpCheckerSleepDuration time.Duration = 1 * time.Second
+var tcpCheckerSleepDuration time.Duration = 5 * time.Second
 
 type MultiStmtMode int
 

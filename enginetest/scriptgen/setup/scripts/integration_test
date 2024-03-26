@@ -905,8 +905,316 @@ create table FBPKL (
 ----
 
 exec
+analyze table wgsdc update histogram on (id) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (AVPYF) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "F7H3Y"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (SYPKF) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "M5B5R"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (FZXV5) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "T65YI"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (IDUT2) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "X6K5N"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (DQYGV) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "XRKQ4"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (NOHHR) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "XW5IP"}}';
+---
+
+exec
+analyze table hddvb update histogram on (id) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table hddvb update histogram on (ETPQV) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "ETPQV"}}';
+---
+
+exec
+analyze table hddvb update histogram on (FV24E) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "FV24E"}}';
+---
+
+exec
+analyze table hddvb update histogram on (M22QN) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "M22QN"}}';
+---
+
+exec
+analyze table hddvb update histogram on (NZ4MQ) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "NZ4MQ"}}';
+---
+
+exec
+analyze table hddvb update histogram on (PRUV2) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "PRUV2"}}';
+---
+
+exec
+analyze table hddvb update histogram on (UJ6XY) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "UJ6XY"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (id) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (btxc5) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "EUOFY"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (sjyn2) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "LJD63"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (fvucx) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "LP75T"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (tofpn) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "SZ5IY"}}';
+---
+
+exec
+analyze table flqlp update histogram on (id) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table flqlp update histogram on (fz2r5) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "FZ2R5"}}';
+---
+
+exec
+analyze table flqlp update histogram on (luevy) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "LUEVY"}}';
+---
+
+exec
+analyze table flqlp update histogram on (m22qn) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "M22QN"}}';
+---
+
+exec
+analyze table flqlp update histogram on (nrurt) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "NRURT"}}';
+---
+
+exec
+analyze table flqlp update histogram on (oca7e) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "OCA7E"}}';
+---
+
+exec
+analyze table flqlp update histogram on (ove3e) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "OVE3E"}}';
+---
+
+exec
+analyze table flqlp update histogram on (xmm6q) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "XMM6Q"}}';
+---
+
+exec
+analyze table hu5a5 update histogram on (id) using data '{"row_count": 34, "qualifier": {"database": "mydb", "table": "hu5a5", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table hu5a5 update histogram on (tofpn) using data '{"row_count": 34, "qualifier": {"database": "mydb", "table": "hu5a5", "index": "UYQR2"}}';
+---
+
+exec
+analyze table hu5a5 update histogram on (i3vta) using data '{"row_count": 34, "qualifier": {"database": "mydb", "table": "hu5a5", "index": "Z2WXS"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (id) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (dkcaj) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "DKCAJ"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (hpcms) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "HPCMS"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (kng7t) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "KNG7T"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (tw55n) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "SFMWS"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (fgg57) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "TKKOQ"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (zh72s) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "URBSA"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (xqdyt) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "XQDYT"}}';
+---
+
+exec
+analyze table szw6v update histogram on (id) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table szw6v update histogram on (h4dmt) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "EMW6Y"}}';
+---
+
+exec
+analyze table szw6v update histogram on (sypkf) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "GGI5L"}}';
+---
+
+exec
+analyze table szw6v update histogram on (t4ibq) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "SPZMU"}}';
+---
+
+exec
+analyze table szw6v update histogram on (v7ufh) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "UTKLA"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (id) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (gxlub) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "GXLUB"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (luevy) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "LUEVY"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (m22qn) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "M22QN"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (qqv4m) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "QQV4M"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (teuja) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "TEUJA"}}';
+---
+
+exec
+analyze table nzkpm update histogram on (fgg57) using data '{"row_count": 18779716, "qualifier": {"database": "mydb", "table": "nzkpm", "index": "FXQHW"}}';
+---
+
+exec
+analyze table nzkpm update histogram on (t4ibq) using data '{"row_count": 18779716, "qualifier": {"database": "mydb", "table": "nzkpm", "index": "UFF3F"}}';
+---
+
+exec
 analyze table TPXBU update histogram on (id) using data '{"row_count": 123867}';
 ----
+
+exec
+analyze table yk2gw update histogram on (nb3qs) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "C7DFM"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (ftqlq) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "EZCTT"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (paef5) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "FEGLT"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (eo7iv) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "NFJNB"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (tuxml) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "T3X5H"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (lbl53) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "TU5AX"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (muhjf) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "TWFWA"}}';
+---
+
+exec
+analyze table jdlna update histogram on (ftqlq) using data '{"row_count": 399, "qualifier": {"database": "mydb", "table": "jdlna", "index": "XDW7Z"}}';
+---
+
+exec
+analyze table jdlna update histogram on (ftqlq) using data '{"row_count": 399, "qualifier": {"database": "mydb", "table": "jdlna", "index": "XDW7Z"}}';
+---
+
+exec
+analyze table tpxbu update histogram on (btxc5) using data '{"row_count": 123867, "qualifier": {"database": "mydb", "table": "tpxbu", "index": "UZ6GK"}}';
+---
+
+exec
+analyze table sisut update histogram on (t4ibq) using data '{"row_count": 103907130, "qualifier": {"database": "mydb", "table": "sisut", "index": "TTQYJ"}}';
+---
+
+exec
+analyze table sisut update histogram on (zh72s) using data '{"row_count": 103907130, "qualifier": {"database": "mydb", "table": "sisut", "index": "Z7LT5"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (tvnw2) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "GAG3S"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (zhity) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "JH666"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (sypkf) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "QKJKS"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (tvnw2) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "GAG3S"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (zhity) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "JH666"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (sypkf) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "QKJKS"}}';
+---
+
+exec
+analyze table oubdl update histogram on (v5dpx) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "CZWS6"}}';
+---
+
+exec
+analyze table oubdl update histogram on (no52d) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "IRMAC"}}';
+---
+
+exec
+analyze table oubdl update histogram on (zh72s) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "JFRPY"}}';
+---
+
+exec
+analyze table oubdl update histogram on (ftqlq) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "SVIT7"}}';
+---
+
+exec
+analyze table sfegg update histogram on (dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKCAJ"}}';
+---
+
+exec
+analyze table sfegg update histogram on (no52d,vyo5e,dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKRQA"}}';
+---
+
+exec
+analyze table sfegg update histogram on (dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKCAJ"}}';
+---
+
+exec
+analyze table sfegg update histogram on (no52d,vyo5e,dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKRQA"}}';
+---
 
 exec
 analyze table THNTS update histogram on (id) using data '{"row_count": 2498}';

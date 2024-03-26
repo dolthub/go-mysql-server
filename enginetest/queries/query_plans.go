@@ -1274,8 +1274,8 @@ where
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
-			"     ├─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			" └─ LookupJoin (estimated cost=16.500 rows=5)\n" +
+			"     ├─ LookupJoin (estimated cost=16.500 rows=5)\n" +
 			"     │   ├─ Filter\n" +
 			"     │   │   ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
 			"     │   │   └─ TableAlias(style)\n" +
@@ -1300,8 +1300,8 @@ where
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=1 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=1 loops=1)\n" +
 			"     │   ├─ Filter\n" +
 			"     │   │   ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
 			"     │   │   └─ TableAlias(style)\n" +
@@ -5850,7 +5850,8 @@ inner join pq on true
 			" ├─ CrossHashJoin (estimated cost=113.050 rows=5)\n" +
 			" │   ├─ SubqueryAlias\n" +
 			" │   │   ├─ name: alias1\n" +
-			" │   │   ├─ outerVisibility: false\n │   │   ├─ isLateral: false\n" +
+			" │   │   ├─ outerVisibility: false\n" +
+			" │   │   ├─ isLateral: false\n" +
 			" │   │   ├─ cacheable: true\n" +
 			" │   │   └─ Project\n" +
 			" │   │       ├─ columns: [ab.a, ab.b, xy.x, xy.y]\n" +
@@ -14452,7 +14453,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
-			" └─ LeftOuterMergeJoin (estimated cost=8.160 rows=5)\n" +
+			" └─ LeftOuterMergeJoin (estimated cost=9.170 rows=5)\n" +
 			"     ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"     ├─ Filter\n" +
 			"     │   ├─ (NOT(niltable.f IS NULL))\n" +
@@ -14467,7 +14468,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
-			" └─ LeftOuterMergeJoin (estimated cost=8.160 rows=5) (actual rows=3 loops=1)\n" +
+			" └─ LeftOuterMergeJoin (estimated cost=9.170 rows=5) (actual rows=3 loops=1)\n" +
 			"     ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"     ├─ Filter\n" +
 			"     │   ├─ (NOT(niltable.f IS NULL))\n" +
@@ -19538,7 +19539,7 @@ inner join pq on true
 			"                 ├─ name: niltable\n" +
 			"                 └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedEstimates: "MergeJoin (estimated cost=7.100 rows=3)\n" +
+		ExpectedEstimates: "MergeJoin (estimated cost=8.110 rows=3)\n" +
 			" ├─ cmp: (a.i = b.i)\n" +
 			" ├─ TableAlias(a)\n" +
 			" │   └─ IndexedTableAccess(mytable)\n" +
@@ -19553,7 +19554,7 @@ inner join pq on true
 			"             ├─ filters: [{[NULL, ∞)}]\n" +
 			"             └─ columns: [i i2 b f]\n" +
 			"",
-		ExpectedAnalysis: "MergeJoin (estimated cost=7.100 rows=3) (actual rows=1 loops=1)\n" +
+		ExpectedAnalysis: "MergeJoin (estimated cost=8.110 rows=3) (actual rows=1 loops=1)\n" +
 			" ├─ cmp: (a.i = b.i)\n" +
 			" ├─ TableAlias(a)\n" +
 			" │   └─ IndexedTableAccess(mytable)\n" +
@@ -19652,7 +19653,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ InnerJoin (estimated cost=13.120 rows=3)\n" +
+			" └─ InnerJoin (estimated cost=16.150 rows=3)\n" +
 			"     ├─ (NOT((a.i = b.i)))\n" +
 			"     ├─ Filter\n" +
 			"     │   ├─ (NOT((b.b = 0)))\n" +
@@ -19667,7 +19668,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s, b.i, b.i2, b.b, b.f]\n" +
-			" └─ InnerJoin (estimated cost=13.120 rows=3) (actual rows=5 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=16.150 rows=3) (actual rows=5 loops=1)\n" +
 			"     ├─ (NOT((a.i = b.i)))\n" +
 			"     ├─ Filter\n" +
 			"     │   ├─ (NOT((b.b = 0)))\n" +

@@ -1180,7 +1180,7 @@ END;`,
 			},
 			{
 				Query:          "CREATE PROCEDURE limited_inv(the_limit CHAR(3), the_offset INT) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
-				ExpectedErrStr: "the variable 'the_limit' has a non-integer based type: char(3) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin",
+				ExpectedErrStr: "the variable 'the_limit' has a non-integer based type: char(3)",
 			},
 			{
 				Query:          "CREATE PROCEDURE limited_inv(the_limit float, the_offset INT) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
