@@ -6267,6 +6267,41 @@ where
 			},
 		},
 	},
+	{
+		Name: "test show create database",
+		SetUpScript: []string{
+			"create database def_db;",
+			"create database latin1_db character set latin1;",
+			"create database bin_db charset binary;",
+			"create database mb3_db collate utf8mb3_general_ci;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create database def_db",
+				Expected: []sql.Row{
+					{"def_db", "CREATE DATABASE `def_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */"},
+				},
+			},
+			{
+				Query: "show create database latin1_db",
+				Expected: []sql.Row{
+					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
+				},
+			},
+			{
+				Query: "show create database bin_db",
+				Expected: []sql.Row{
+					{"bin_db", "CREATE DATABASE `bin_db` /*!40100 DEFAULT CHARACTER SET binary COLLATE binary */"},
+				},
+			},
+			{
+				Query: "show create database mb3_db",
+				Expected: []sql.Row{
+					{"mb3_db", "CREATE DATABASE `mb3_db` /*!40100 DEFAULT CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci */"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

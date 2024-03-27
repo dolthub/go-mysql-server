@@ -1489,9 +1489,10 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 		}
 		for _, cc := range c.CharsetCollate {
 			ccType := strings.ToLower(cc.Type)
-			if ccType == "character set" {
+			switch ccType {
+			case "character set", "charset":
 				charsetStr = cc.Value
-			} else if ccType == "collate" {
+			case "collate":
 				collationStr = cc.Value
 			}
 		}
