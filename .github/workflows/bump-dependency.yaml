@@ -98,7 +98,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          check-latest: true
       - name: Bump dependency
         run: GOOS=linux go get github.com/dolthub/${{ github.event.client_payload.dependency }}@${{ github.event.client_payload.head_commit_sha }}
       - name: Get Assignee and Reviewer

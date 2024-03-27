@@ -18,7 +18,6 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
-        check-latest: true
     - name: Test
       if: ${{ matrix.platform != 'ubuntu-latest' }}
       run: go test ./...

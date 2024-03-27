@@ -22,7 +22,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          check-latest: true
       - name: Install goimports
         run: |
           go mod download golang.org/x/tools
@@ -58,7 +57,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          check-latest: true
         id: go
       - name: Check all
         id: check_format
@@ -77,7 +75,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          check-latest: true
         id: go
       - name: Check all
         id: check_format
