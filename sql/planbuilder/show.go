@@ -846,12 +846,7 @@ func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope
 
 func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	var node sql.Node
-	if s.Scope == ast.GlobalStr {
-		node = plan.NewShowStatus(plan.ShowStatusModifier_Global)
-	} else {
-		node = plan.NewShowStatus(plan.ShowStatusModifier_Session)
-	}
+	var node sql.Node = plan.NewShowStatus(s.Scope == ast.GlobalStr)
 
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{

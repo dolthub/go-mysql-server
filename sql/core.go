@@ -471,7 +471,7 @@ func (m *MysqlSystemVariable) GetDefault() any {
 	return m.Default
 }
 
-// ForceSetValue implements SystemVariable.
+// InitValue implements SystemVariable.
 func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, error) {
 	convertedVal, _, err := m.Type.Convert(val)
 	if err != nil {
@@ -694,4 +694,64 @@ type SystemVarValue struct {
 type NameableNode interface {
 	Nameable
 	Node
+}
+
+var StatusVariables StatusVariableRegistry
+
+// StatusVariableRegistry is a registry of status variables.
+type StatusVariableRegistry interface {
+	NewSessionMap() map[string]StatusVarVal
+	GetGlobal(name string) (StatusVariable, interface{}, bool)
+	SetGlobal(name string, val interface{}) error
+}
+
+// StatusVariableScope represents the scope of a status variable.
+type StatusVariableScope byte
+const (
+	StatusVariableScope_Global StatusVariableScope = iota
+	StatusVariableScope_Session
+	StatusVariableScope_Both
+)
+
+type StatusVariable interface {
+	GetName() string
+	GetScope() StatusVariableScope
+	GetType() Type
+	GetDefault() interface{}
+}
+
+// MySQLStatusVariable represents a mysql status variable.
+type MySQLStatusVariable struct {
+	Name    string
+	Scope   StatusVariableScope
+	Type    Type
+	Default interface{}
+}
+
+var _ StatusVariable = (*MySQLStatusVariable)(nil)
+
+// GetName implements StatusVariable.
+func (m *MySQLStatusVariable) GetName() string {
+	return m.Name
+}
+
+// GetScope implements StatusVariable.
+func (m *MySQLStatusVariable) GetScope() StatusVariableScope {
+	return m.Scope
+}
+
+// GetType implements StatusVariable.
+func (m *MySQLStatusVariable) GetType() Type {
+	return m.Type
+}
+
+// GetDefault implements StatusVariable.
+func (m *MySQLStatusVariable) GetDefault() interface{} {
+	return m.Default
+}
+
+// StatusVarVal is a StatusVariable with a value.
+type StatusVarVal struct {
+	Var StatusVariable
+	Val interface{}
 }
