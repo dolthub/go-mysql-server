@@ -95,9 +95,9 @@ jobs:
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.19
+          go-version-file: go.mod
       - name: Bump dependency
         run: GOOS=linux go get github.com/dolthub/${{ github.event.client_payload.dependency }}@${{ github.event.client_payload.head_commit_sha }}
       - name: Get Assignee and Reviewer
