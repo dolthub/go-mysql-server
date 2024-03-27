@@ -79,7 +79,7 @@ func (s *ShowStatus) Children() []sql.Node {
 }
 
 // RowIter implements sql.Node interface.
-func (s *ShowStatus) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
+func (s *ShowStatus) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	vars := sql.StatusVariables.NewSessionMap()
 	var names []string
 	for name := range vars {
@@ -93,13 +93,15 @@ func (s *ShowStatus) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
 		if !ok {
 			return nil, fmt.Errorf("missing system variable %s", name)
 		}
-		scope := sysVarVal.Var.GetScope()
-		if s.isGlobal && scope == sql.StatusVariableScope_Session ||
-			!s.isGlobal && scope == sql.StatusVariableScope_Global {
-			continue
+		if s.isGlobal {
+			_, val, ok := sql.StatusVariables.GetGlobal(name)
+			if !ok {
+				return nil, fmt.Errorf("missing global system variable %s", name)
+			}
+			rows = append(rows, sql.Row{name, val})
+		} else {
+			rows = append(rows, sql.Row{name, sysVarVal.Val})
 		}
-
-		rows = append(rows, sql.Row{name, sysVarVal.Val})
 	}
 
 	return sql.RowsToRowIter(rows...), nil

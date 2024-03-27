@@ -1,8 +1,21 @@
+// Copyright 2024 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package variables
 
 import (
-	"strings"
-"sync"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -11,16 +24,16 @@ import (
 // globalStatusVariables is the underlying type of SystemVariables.
 type globalStatusVariables struct {
 	mutex   *sync.RWMutex
-	varVals map[string]sql.StatusVarVal
+	varVals map[string]sql.StatusVarValue
 }
 
 var _ sql.StatusVariableRegistry = (*globalStatusVariables)(nil)
 
 // NewSessionMap implements sql.StatusVariableRegistry
-func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarVal {
+func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
-	sessionMap := make(map[string]sql.StatusVarVal, len(g.varVals))
+	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		sessionMap[k] = v
 	}
@@ -31,7 +44,6 @@ func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarVal {
 func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, interface{}, bool) {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
-	name = strings.ToLower(name)
 	v, ok := g.varVals[name]
 	if !ok {
 		return nil, nil, false
@@ -43,7 +55,6 @@ func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, inte
 func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
-	name = strings.ToLower(name)
 	v, ok := g.varVals[name]
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(name)
@@ -62,10 +73,10 @@ func init() {
 func InitStatusVariables() {
 	globalVars := &globalStatusVariables{
 		mutex:   &sync.RWMutex{},
-		varVals: make(map[string]sql.StatusVarVal, len(statusVars)),
+		varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
 	}
 	for _, sysVar := range statusVars {
-		globalVars.varVals[sysVar.GetName()] = sql.StatusVarVal{
+		globalVars.varVals[sysVar.GetName()] = sql.StatusVarValue{
 			Var: sysVar,
 			Val: sysVar.GetDefault(),
 		}

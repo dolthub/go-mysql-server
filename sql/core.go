@@ -700,7 +700,7 @@ var StatusVariables StatusVariableRegistry
 
 // StatusVariableRegistry is a registry of status variables.
 type StatusVariableRegistry interface {
-	NewSessionMap() map[string]StatusVarVal
+	NewSessionMap() map[string]StatusVarValue
 	GetGlobal(name string) (StatusVariable, interface{}, bool)
 	SetGlobal(name string, val interface{}) error
 }
@@ -750,8 +750,8 @@ func (m *MySQLStatusVariable) GetDefault() interface{} {
 	return m.Default
 }
 
-// StatusVarVal is a StatusVariable with a value.
-type StatusVarVal struct {
+// StatusVarValue is a StatusVariable with a value.
+type StatusVarValue struct {
 	Var StatusVariable
 	Val interface{}
 }

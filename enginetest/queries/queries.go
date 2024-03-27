@@ -7848,40 +7848,62 @@ Select * from (
 		Expected: []sql.Row{},
 	},
 	{
-		Query: `SHOW STATUS LIKE 'use_secondary_engine'`,
+		Query: `SHOW STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"use_secondary_engine", "ON"},
+			{"Aborted_clients", 0},
 		},
 	},
 	{
-		Query: `SHOW GLOBAL STATUS LIKE 'admin_port'`,
+		Query:    `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"admin_port", 33062},
+			{"Aborted_clients", 0},
 		},
 	},
 	{
-		Query: `SHOW SESSION STATUS LIKE 'auto_increment_increment'`,
+		Query: `SHOW GLOBAL STATUS LIKE 'Bytes_sent'`,
 		Expected: []sql.Row{
-			{"auto_increment_increment", 1},
+			{"Bytes_sent", 0},
 		},
 	},
 	{
-		Query:    `SHOW GLOBAL STATUS LIKE 'use_secondary_engine'`,
-		Expected: []sql.Row{},
+		Query: `SHOW SESSION STATUS LIKE 'Bytes_sent'`,
+		Expected: []sql.Row{
+			{"Bytes_sent", 0},
+		},
 	},
 	{
-		Query:    `SHOW SESSION STATUS LIKE 'version'`,
-		Expected: []sql.Row{},
+		Query: `SHOW GLOBAL STATUS LIKE 'Com\_stmt\_%'`,
+		Expected: []sql.Row{
+			{"Com_stmt_close", 0},
+			{"Com_stmt_execute", 0},
+			{"Com_stmt_fetch", 0},
+			{"Com_stmt_prepare", 0},
+			{"Com_stmt_reprepare", 0},
+			{"Com_stmt_reset", 0},
+			{"Com_stmt_send_long_data", 0},
+		},
+	},
+	{
+		Query:    `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
+		Expected: []sql.Row{
+			{"Com_stmt_close", 0},
+			{"Com_stmt_execute", 0},
+			{"Com_stmt_fetch", 0},
+			{"Com_stmt_prepare", 0},
+			{"Com_stmt_reprepare", 0},
+			{"Com_stmt_reset", 0},
+			{"Com_stmt_send_long_data", 0},
+		},
 	},
 	{
 		Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
-		Expected: []sql.Row{}, // TODO: should be added at some point
+		Expected: []sql.Row{
+			{"Ssl_cipher", ""},
+		},
 	},
 	{
 		Query: `SHOW SESSION STATUS WHERE Value < 0`,
-		Expected: []sql.Row{
-			{"optimizer_trace_offset", -1},
-		},
+		Expected: []sql.Row{},
 	},
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
@@ -9799,6 +9821,20 @@ FROM mytable;`,
 		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as decimal)), "$.a"));`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
+		},
+	},
+	// show variables like ... is case-insensitive
+	{
+		Query: "SHOW VARIABLES LIKE 'VERSION'",
+		Expected: []sql.Row{
+			{"version", "8.0.11"},
+		},
+	},
+	// show status like ... is case-insensitive
+	{
+		Query: `SHOW VARIABLES LIKE 'aborted\_clients'`,
+		Expected: []sql.Row{
+			{"Aborted_clients", "0"},
 		},
 	},
 }
