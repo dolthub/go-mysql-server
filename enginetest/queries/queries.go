@@ -7854,7 +7854,7 @@ Select * from (
 		},
 	},
 	{
-		Query:    `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
+		Query: `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
 			{"Aborted_clients", 0},
 		},
@@ -7884,7 +7884,7 @@ Select * from (
 		},
 	},
 	{
-		Query:    `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
+		Query: `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
 		Expected: []sql.Row{
 			{"Com_stmt_close", 0},
 			{"Com_stmt_execute", 0},
@@ -7896,13 +7896,13 @@ Select * from (
 		},
 	},
 	{
-		Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
+		Query: `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
 		Expected: []sql.Row{
 			{"Ssl_cipher", ""},
 		},
 	},
 	{
-		Query: `SHOW SESSION STATUS WHERE Value < 0`,
+		Query:    `SHOW SESSION STATUS WHERE Value < 0`,
 		Expected: []sql.Row{},
 	},
 	{
