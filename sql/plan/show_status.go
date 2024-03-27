@@ -59,15 +59,15 @@ func (s *ShowStatus) String() string {
 func (s *ShowStatus) Schema() sql.Schema {
 	return sql.Schema{
 		{
-			Name: ShowStatusVariableCol,
-			Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64),
-			Default: nil,
+			Name:     ShowStatusVariableCol,
+			Type:     types.MustCreateStringWithDefaults(sqltypes.VarChar, 64),
+			Default:  nil,
 			Nullable: false,
 		},
 		{
-			Name: ShowStatusValueCol,
-			Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048),
-			Default: nil,
+			Name:     ShowStatusValueCol,
+			Type:     types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048),
+			Default:  nil,
 			Nullable: false,
 		},
 	}

@@ -2908,4 +2908,3 @@ var systemVars = map[string]sql.SystemVariable{
 }
 
 // TODO: need to implement SystemDateTime type
-

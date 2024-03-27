@@ -707,6 +707,7 @@ type StatusVariableRegistry interface {
 
 // StatusVariableScope represents the scope of a status variable.
 type StatusVariableScope byte
+
 const (
 	StatusVariableScope_Global StatusVariableScope = iota
 	StatusVariableScope_Session
