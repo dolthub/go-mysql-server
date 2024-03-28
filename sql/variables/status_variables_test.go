@@ -73,7 +73,6 @@ func TestStatusVariables(t *testing.T) {
 	require.True(ok)
 	require.Equal(int64(100), globalVal)
 
-
 	// Can get variable with Both scope from session
 	sessVal, err = sess.GetStatusVariable(ctx, "Bytes_received")
 	require.NoError(err)
