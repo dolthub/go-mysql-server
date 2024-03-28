@@ -7713,6 +7713,11 @@ Select * from (
 		Expected: []sql.Row{{true}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/7656
+		Query:    "select json_contains(cast('[1, 2]' as json), cast(cast(1 as signed) as json));",
+		Expected: []sql.Row{{true}},
+	},
+	{
 		Query: "select one_pk.pk, one_pk.c1 from one_pk join two_pk on one_pk.c1 = two_pk.c1 order by two_pk.c1",
 		Expected: []sql.Row{
 			{0, 0},
