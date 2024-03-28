@@ -523,18 +523,12 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
 			filter = b.buildScalar(outScope, s.Filter.Filter)
-		}
-		if s.Filter.Like != "" {
-			like := expression.NewLike(
+		} else if s.Filter.Like != "" {
+			filter = expression.NewLike(
 				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
 				expression.NewLiteral(s.Filter.Like, types.LongText),
 				nil,
 			)
-			if filter != nil {
-				filter = expression.NewAnd(like, filter)
-			} else {
-				filter = like
-			}
 		}
 	}
 	if filter == nil {
@@ -860,18 +854,12 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
 			filter = b.buildScalar(outScope, s.Filter.Filter)
-		}
-		if s.Filter.Like != "" {
-			like := expression.NewLike(
+		} else if s.Filter.Like != "" {
+			filter = expression.NewLike(
 				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
 				expression.NewLiteral(s.Filter.Like, types.LongText),
 				nil,
 			)
-			if filter != nil {
-				filter = expression.NewAnd(like, filter)
-			} else {
-				filter = like
-			}
 		}
 	}
 
