@@ -306,13 +306,19 @@ func (b *BaseBuilder) buildShowCreateDatabase(ctx *sql.Context, n *plan.ShowCrea
 		buf.WriteString("/*!32312 IF NOT EXISTS*/ ")
 	}
 
+	// TODO: grab collation from server?
+	collId := sql.Collation_Default
+	if collDb, ok := n.Database().(sql.CollatedDatabase); ok {
+		collId = collDb.GetCollation(ctx)
+	}
+
 	buf.WriteRune('`')
 	buf.WriteString(name)
 	buf.WriteRune('`')
 	buf.WriteString(fmt.Sprintf(
 		" /*!40100 DEFAULT CHARACTER SET %s COLLATE %s */",
-		sql.Collation_Default.CharacterSet().String(),
-		sql.Collation_Default.String(),
+		collId.CharacterSet().String(),
+		collId.String(),
 	))
 
 	return sql.RowsToRowIter(
