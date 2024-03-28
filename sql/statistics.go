@@ -207,6 +207,7 @@ type HistogramBucket interface {
 	BoundCount() uint64
 	UpperBound() Row
 	McvCounts() []uint64
+	// Mcvs are the "most common values" (keys) in the index
 	Mcvs() []Row
 }
 
