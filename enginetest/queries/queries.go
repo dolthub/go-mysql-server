@@ -5567,6 +5567,13 @@ Select * from (
 			{"ssl_fips_mode", "OFF"},
 		},
 	},
+	// show variables like ... is case-insensitive
+	{
+		Query: "SHOW VARIABLES LIKE 'VERSION'",
+		Expected: []sql.Row{
+			{"version", "8.0.11"},
+		},
+	},
 	{
 		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
 		Expected: []sql.Row{{types.MustJSON(`"foo"`)}},
@@ -7847,6 +7854,13 @@ Select * from (
 		Query:    `START TRANSACTION READ WRITE`,
 		Expected: []sql.Row{},
 	},
+	// show status like ... is case-insensitive
+	{
+		Query: `SHOW STATUS LIKE 'aborted\_clients'`,
+		Expected: []sql.Row{
+			{"Aborted_clients", 0},
+		},
+	},
 	{
 		Query: `SHOW STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
@@ -9821,20 +9835,6 @@ FROM mytable;`,
 		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as decimal)), "$.a"));`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
-		},
-	},
-	// show variables like ... is case-insensitive
-	{
-		Query: "SHOW VARIABLES LIKE 'VERSION'",
-		Expected: []sql.Row{
-			{"version", "8.0.11"},
-		},
-	},
-	// show status like ... is case-insensitive
-	{
-		Query: `SHOW VARIABLES LIKE 'aborted\_clients'`,
-		Expected: []sql.Row{
-			{"Aborted_clients", "0"},
 		},
 	},
 }

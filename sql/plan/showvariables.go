@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // ShowVariables is a node that shows the global and session variables
@@ -26,6 +27,9 @@ type ShowVariables struct {
 	Filter sql.Expression
 	Global bool
 }
+
+const ShowVariablesVariableCol = "Variable_name"
+const ShowVariablesValueCol = "Value"
 
 var _ sql.Node = (*ShowVariables)(nil)
 var _ sql.Expressioner = (*ShowVariables)(nil)
@@ -79,8 +83,21 @@ func (sv *ShowVariables) String() string {
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (*ShowVariables) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Variable_name", Type: types.LongText, Nullable: false},
-		&sql.Column{Name: "Value", Type: types.LongText, Nullable: true},
+		{
+			Name:     ShowVariablesVariableCol,
+			// MySQL stores session/global variables under special tables
+			// performance_schema.session_table and performance_schema.global_table with case-insensitive collation
+			// We currently don't have these tables, so we modify the schema to emulate the case-insensitive LIKE behavior
+			Type:     types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_utf8mb4_0900_ai_ci),
+			Default:  nil,
+			Nullable: false,
+		},
+		{
+			Name:     ShowVariablesValueCol,
+			Type:     types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048),
+			Default:  nil,
+			Nullable: false,
+		},
 	}
 }
 
