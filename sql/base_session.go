@@ -42,6 +42,7 @@ type BaseSession struct {
 	currentDB        string
 	transactionDb    string
 	systemVars       map[string]SystemVarValue
+	statusVars       map[string]StatusVarValue
 	userVars         SessionUserVariables
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
@@ -228,6 +229,44 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 // GetUserVariable implements the Session interface.
 func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, interface{}, error) {
 	return s.userVars.GetUserVariable(ctx, varName)
+}
+
+// GetStatusVariable implements the Session interface.
+func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interface{}, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	statVar, ok := s.statusVars[statVarName]
+	if !ok {
+		return nil, ErrUnknownSystemVariable.New(statVarName)
+	}
+	return statVar.Val, nil
+}
+
+// SetStatusVariable implements the Session interface.
+func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, value interface{}) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	statVar, ok := s.statusVars[statVarName]
+	if !ok {
+		return ErrUnknownSystemVariable.New(statVarName)
+	}
+	statVar.Val = value
+	s.statusVars[statVarName] = statVar
+	return nil
+}
+
+// GetAllStatusVariables implements the Session interface.
+func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	m := make(map[string]StatusVarValue)
+	for k, v := range s.statusVars {
+		m[k] = v
+	}
+	return m
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
@@ -508,17 +547,24 @@ func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) 
 // NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	// TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	var sessionVars map[string]SystemVarValue
+	var systemVars map[string]SystemVarValue
 	if SystemVariables != nil {
-		sessionVars = SystemVariables.NewSessionMap()
+		systemVars = SystemVariables.NewSessionMap()
 	} else {
-		sessionVars = make(map[string]SystemVarValue)
+		systemVars = make(map[string]SystemVarValue)
+	}
+	var statusVars map[string]StatusVarValue
+	if StatusVariables != nil {
+		statusVars = StatusVariables.NewSessionMap()
+	} else {
+		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
 		addr:           server,
 		client:         client,
 		id:             id,
-		systemVars:     sessionVars,
+		systemVars:     systemVars,
+		statusVars:     statusVars,
 		userVars:       NewUserVars(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
@@ -532,15 +578,22 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 // NewBaseSession creates a new empty session.
 func NewBaseSession() *BaseSession {
 	// TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	var sessionVars map[string]SystemVarValue
+	var systemVars map[string]SystemVarValue
 	if SystemVariables != nil {
-		sessionVars = SystemVariables.NewSessionMap()
+		systemVars = SystemVariables.NewSessionMap()
 	} else {
-		sessionVars = make(map[string]SystemVarValue)
+		systemVars = make(map[string]SystemVarValue)
+	}
+	var statusVars map[string]StatusVarValue
+	if StatusVariables != nil {
+		statusVars = StatusVariables.NewSessionMap()
+	} else {
+		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
 		id:             atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:     sessionVars,
+		systemVars:     systemVars,
+		statusVars:     statusVars,
 		userVars:       NewUserVars(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),

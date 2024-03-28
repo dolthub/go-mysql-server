@@ -78,6 +78,12 @@ type Session interface {
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
+	// GetStatusVariable returns the value of the status variable with the given name.
+	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)
+	// SetStatusVariable sets the value of the status variable with the given name.
+	SetStatusVariable(ctx *Context, statVarName string, value interface{}) error
+	// GetAllStatusVariables returns a map of all status variables and their values.
+	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
