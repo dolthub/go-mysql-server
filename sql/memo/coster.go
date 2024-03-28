@@ -34,7 +34,7 @@ const (
 	degeneratePenalty         = 2.0
 	optimisticJoinSel         = .10
 	biasFactor                = 1e5
-	defaultFilterSelectivity  = .75
+	defaultFilterSelectivity  = .85
 	perKeyCostReductionFactor = 0.5
 	defaultTableSize          = 100
 )
