@@ -700,8 +700,13 @@ var StatusVariables StatusVariableRegistry
 
 // StatusVariableRegistry is a registry of status variables.
 type StatusVariableRegistry interface {
+	// NewSessionMap returns a deep copy of the status variables that are not GlobalOnly scope (i.e. SessionOnly or Both)
 	NewSessionMap() map[string]StatusVarValue
+	// NewGlobalMap returns a deep copy of the status variables of every scope
+	NewGlobalMap() map[string]StatusVarValue
+	// GetGlobal returns the current global value of the status variable with the given name
 	GetGlobal(name string) (StatusVariable, interface{}, bool)
+	// SetGlobal sets the global value of the status variable with the given name, returns an error if the variable is SessionOnly scope
 	SetGlobal(name string, val interface{}) error
 }
 

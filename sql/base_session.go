@@ -232,7 +232,7 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 }
 
 // GetStatusVariable implements the Session interface.
-func (s *BaseSession) GetStatusVariable(ctx *Context, statVarName string) (interface{}, error) {
+func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interface{}, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -244,9 +244,10 @@ func (s *BaseSession) GetStatusVariable(ctx *Context, statVarName string) (inter
 }
 
 // SetStatusVariable implements the Session interface.
-func (s *BaseSession) SetStatusVariable(ctx *Context, statVarName string, value interface{}) error {
+func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, value interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	statVar, ok := s.statusVars[statVarName]
 	if !ok {
 		return ErrUnknownSystemVariable.New(statVarName)
@@ -254,6 +255,18 @@ func (s *BaseSession) SetStatusVariable(ctx *Context, statVarName string, value 
 	statVar.Val = value
 	s.statusVars[statVarName] = statVar
 	return nil
+}
+
+// GetAllStatusVariables implements the Session interface.
+func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	m := make(map[string]StatusVarValue)
+	for k, v := range s.statusVars {
+		m[k] = v
+	}
+	return m
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).

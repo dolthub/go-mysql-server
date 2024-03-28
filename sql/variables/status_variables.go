@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// globalStatusVariables is the underlying type of SystemVariables.
+// globalStatusVariables is the underlying type of sql.StatusVariables.
 type globalStatusVariables struct {
 	mutex   *sync.RWMutex
 	varVals map[string]sql.StatusVarValue
@@ -35,6 +35,23 @@ func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
 	defer g.mutex.RUnlock()
 	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
+		if v.Var.GetScope() == sql.StatusVariableScope_Global {
+			continue
+		}
+		sessionMap[k] = v
+	}
+	return sessionMap
+}
+
+// NewGlobalMap implements sql.StatusVariableRegistry
+func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
+	g.mutex.RLock()
+	defer g.mutex.RUnlock()
+	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
+	for k, v := range g.varVals {
+		if v.Var.GetScope() == sql.StatusVariableScope_Session {
+			continue
+		}
 		sessionMap[k] = v
 	}
 	return sessionMap
@@ -45,7 +62,7 @@ func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, inte
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
 	v, ok := g.varVals[name]
-	if !ok {
+	if !ok || v.Var.GetScope() == sql.StatusVariableScope_Session {
 		return nil, nil, false
 	}
 	return v.Var, v.Val, true
@@ -56,7 +73,7 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 	v, ok := g.varVals[name]
-	if !ok {
+	if !ok || v.Var.GetScope() == sql.StatusVariableScope_Session {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
 	v.Val = val

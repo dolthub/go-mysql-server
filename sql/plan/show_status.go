@@ -15,8 +15,7 @@
 package plan
 
 import (
-	"fmt"
-	"sort"
+		"sort"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -80,30 +79,27 @@ func (s *ShowStatus) Children() []sql.Node {
 
 // RowIter implements sql.Node interface.
 func (s *ShowStatus) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	vars := sql.StatusVariables.NewSessionMap()
-	var names []string
+	// Session scope has visibility into both GLOBAL and SESSION variables.
+	// Global scope has visibility only into GLOBAL variables.
+	vars := sql.StatusVariables.NewGlobalMap()
+	if !s.isGlobal {
+		// Variables with both GLOBAL and SESSION scope are overridden by SESSION scope.
+		sessVars := ctx.Session.GetAllStatusVariables(ctx)
+		for name, v := range sessVars {
+			vars[name] = v
+		}
+	}
+
+	names := make([]string, 0, len(vars))
 	for name := range vars {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
-	var rows []sql.Row
-	for _, name := range names {
-		sysVarVal, ok := vars[name]
-		if !ok {
-			return nil, fmt.Errorf("missing system variable %s", name)
-		}
-		if s.isGlobal {
-			_, val, ok := sql.StatusVariables.GetGlobal(name)
-			if !ok {
-				return nil, fmt.Errorf("missing global system variable %s", name)
-			}
-			rows = append(rows, sql.Row{name, val})
-		} else {
-			rows = append(rows, sql.Row{name, sysVarVal.Val})
-		}
+	rows := make([]sql.Row, len(names))
+	for i, name := range names {
+		rows[i] = sql.Row{name, vars[name].Val}
 	}
-
 	return sql.RowsToRowIter(rows...), nil
 }
 
