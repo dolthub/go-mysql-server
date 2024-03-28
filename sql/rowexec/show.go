@@ -242,31 +242,7 @@ func (b *BaseBuilder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row 
 }
 
 func (b *BaseBuilder) buildShowStatus(ctx *sql.Context, n *plan.ShowStatus, row sql.Row) (sql.RowIter, error) {
-	var names []string
-	for name := range sql.SystemVariables.NewSessionMap() {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	var rows []sql.Row
-	for _, name := range names {
-		sysVar, val, ok := sql.SystemVariables.GetGlobal(name)
-		if !ok {
-			return nil, fmt.Errorf("missing system variable %s", name)
-		}
-		msv, ok := sysVar.(*sql.MysqlSystemVariable)
-		if !ok {
-			continue
-		}
-		if n.Modifier == plan.ShowStatusModifier_Session && msv.Scope.IsGlobalOnly() ||
-			n.Modifier == plan.ShowStatusModifier_Global && msv.Scope.IsSessionOnly() {
-			continue
-		}
-
-		rows = append(rows, sql.Row{name, val})
-	}
-
-	return sql.RowsToRowIter(rows...), nil
+	return n.RowIter(ctx, row)
 }
 
 func (b *BaseBuilder) buildShowCreateProcedure(ctx *sql.Context, n *plan.ShowCreateProcedure, row sql.Row) (sql.RowIter, error) {

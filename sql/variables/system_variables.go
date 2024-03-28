@@ -2906,3 +2906,5 @@ var systemVars = map[string]sql.SystemVariable{
 		Default:           int8(1),
 	},
 }
+
+// TODO: need to implement SystemDateTime type
