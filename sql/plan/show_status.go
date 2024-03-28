@@ -58,7 +58,7 @@ func (s *ShowStatus) String() string {
 func (s *ShowStatus) Schema() sql.Schema {
 	return sql.Schema{
 		{
-			Name:     ShowStatusVariableCol,
+			Name: ShowStatusVariableCol,
 			// MySQL stores session/global variables under special tables
 			// performance_schema.session_table and performance_schema.global_table with case-insensitive collation
 			// We currently don't have these tables, so we modify the schema to emulate the case-insensitive LIKE behavior

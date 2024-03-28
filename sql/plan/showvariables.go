@@ -17,9 +17,10 @@ package plan
 import (
 	"fmt"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // ShowVariables is a node that shows the global and session variables
@@ -84,7 +85,7 @@ func (sv *ShowVariables) String() string {
 func (*ShowVariables) Schema() sql.Schema {
 	return sql.Schema{
 		{
-			Name:     ShowVariablesVariableCol,
+			Name: ShowVariablesVariableCol,
 			// MySQL stores session/global variables under special tables
 			// performance_schema.session_table and performance_schema.global_table with case-insensitive collation
 			// We currently don't have these tables, so we modify the schema to emulate the case-insensitive LIKE behavior
