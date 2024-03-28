@@ -85,6 +85,8 @@ func (s *statsIter) updateIndexMeta() {
 	s.createdAt = dStat.CreatedAt()
 }
 
+// mcvCnt are the number of most common values that we track
+// TODO: standardize uses of this constant
 const mcvCnt = 4
 
 func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, error) {
