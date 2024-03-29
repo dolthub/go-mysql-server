@@ -1264,16 +1264,16 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(15), globalVal)
+	require.Equal(t, int64(10), globalVal)
 
 	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
 	require.Equal(t, int64(5), sessVal)
 
-	// Errors increment Questions twice
+	// Errors also increment Questions (it's 2x on Windows for some reason)
 	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(10), sessVal)
+	require.Equal(t, int64(5), sessVal)
 
 	conn3 := newConn(3)
 	handler.NewConnection(conn3)
@@ -1286,7 +1286,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(16), globalVal)
+	require.Equal(t, int64(11), globalVal)
 
 	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
@@ -1298,7 +1298,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(17), globalVal)
+	require.Equal(t, int64(12), globalVal)
 
 	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
@@ -1306,7 +1306,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(10), sessVal)
+	require.Equal(t, int64(5), sessVal)
 
 	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
@@ -1340,7 +1340,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(17), globalVal)
+	require.Equal(t, int64(12), globalVal)
 
 	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
@@ -1352,7 +1352,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(18), globalVal)
+	require.Equal(t, int64(13), globalVal)
 
 	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)

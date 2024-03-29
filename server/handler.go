@@ -335,18 +335,13 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 
-func updateStatusVariableQuestions(ctx *sql.Context, hasErr bool) {
-	incVal := int64(1)
-	if hasErr {
-		// for some reason, errors count as two questions
-		incVal = int64(2)
-	}
+func incrementStatusVariableQuestions(ctx *sql.Context) {
 	// ignore all errors relating to status updates
 	if _, globalQuesVal, ok := sql.StatusVariables.GetGlobal("Questions"); ok {
-		sql.StatusVariables.SetGlobal("Questions", globalQuesVal.(int64)+incVal)
+		sql.StatusVariables.SetGlobal("Questions", globalQuesVal.(int64)+1)
 	}
 	if sessQuesVal, err2 := ctx.Session.GetStatusVariable(ctx, "Questions"); err2 == nil {
-		ctx.Session.SetStatusVariable(ctx, "Questions", sessQuesVal.(int64)+incVal)
+		ctx.Session.SetStatusVariable(ctx, "Questions", sessQuesVal.(int64)+1)
 	}
 }
 
@@ -403,9 +398,9 @@ func (h *Handler) doQuery(
 
 	ctx.GetLogger().Tracef("beginning execution")
 
-	// TODO: maybe use a goroutine for this?
+	// TODO: a goroutine might be worth it here, as read/writing status variables go through a mutex
 	defer func() {
-		updateStatusVariableQuestions(ctx, err != nil)
+		incrementStatusVariableQuestions(ctx)
 	}()
 
 	oCtx := ctx
