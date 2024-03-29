@@ -623,7 +623,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 			}
 			bindings[fmt.Sprintf("v%d", i+1)], err = sqltypes.BuildBindVariable(val)
 			if err != nil {
-				return nil, nil
+				return nil, err
 			}
 		} else {
 			bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
