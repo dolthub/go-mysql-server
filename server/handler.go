@@ -350,7 +350,6 @@ func updateStatusVariableQuestions(ctx *sql.Context, hasErr bool) {
 	}
 }
 
-
 func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
