@@ -251,7 +251,7 @@ func PrefixLte(buckets []sql.HistogramBucket, types []sql.Type, val interface{})
 	return PrefixIsNotNull(ret)
 }
 
-func PrefixLteHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
+func PrefixLteHist(h []sql.HistogramBucket, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
 	var searchErr error
 	idx := sort.Search(len(h), func(i int) bool {
 		// lowest index that func is true
@@ -265,7 +265,7 @@ func PrefixLteHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (
 	return idx, searchErr
 }
 
-func PrefixLtHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
+func PrefixLtHist(h []sql.HistogramBucket, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
 	var searchErr error
 	idx := sort.Search(len(h), func(i int) bool {
 		// lowest index that func is true
@@ -279,7 +279,7 @@ func PrefixLtHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (i
 	return idx, searchErr
 }
 
-func PrefixGtHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
+func PrefixGtHist(h []sql.HistogramBucket, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
 	var searchErr error
 	idx := sort.Search(len(h), func(i int) bool {
 		// lowest index that func is true
@@ -294,7 +294,7 @@ func PrefixGtHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (i
 	return idx, searchErr
 }
 
-func PrefixGteHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
+func PrefixGteHist(h []sql.HistogramBucket, target sql.Row, cmp func(sql.Row, sql.Row) (int, error)) (int, error) {
 	var searchErr error
 	idx := sort.Search(len(h), func(i int) bool {
 		// lowest index that func is true

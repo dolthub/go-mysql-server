@@ -121,7 +121,7 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 
 func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, sch sql.Schema, columns []string, types []sql.Type) (outScope *scope) {
 	outScope = inScope.push()
-	statistic := new(stats.Statistic)
+	statisticJ := new(stats.StatisticJSON)
 	using := b.buildScalar(inScope, n.Using)
 	if l, ok := using.(*expression.Literal); ok {
 		if typ, ok := l.Type().(sql.StringType); ok {
@@ -130,7 +130,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 				b.handleErr(err)
 			}
 			if str, ok := val.(string); ok {
-				err := json.Unmarshal([]byte(str), statistic)
+				err := json.Unmarshal([]byte(str), statisticJ)
 				if err != nil {
 					err = ErrFailedToParseStats.New(err.Error(), str)
 					b.handleErr(err)
@@ -139,14 +139,17 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 
 		}
 	}
-	if statistic == nil {
+	if statisticJ == nil {
 		err := fmt.Errorf("no statistics found for update")
 		b.handleErr(err)
 	}
-	indexName := statistic.Qual.Idx
+	indexName := statisticJ.Qual.Idx
 	if indexName == "" {
 		indexName = "primary"
 	}
+
+	statistic := statisticJ.ToStatistic()
+
 	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, strings.ToLower(indexName)))
 	statistic.SetColumns(columns)
 	statistic.SetTypes(types)

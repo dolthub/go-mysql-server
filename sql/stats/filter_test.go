@@ -27,63 +27,63 @@ import (
 var xFds = sql.NewTablescanFDs(sql.NewColSet(1, 2, 3), []sql.ColSet{sql.NewColSet(1)}, nil, sql.NewColSet(1, 2, 3))
 
 // NULL, 0,5,10,15,20, 5 row buckets of duplicates, two buckets for each value
-var x1Stat = &Statistic{Hist: buckets_x_1, Typs: []sql.Type{types.Int64}, fds: xFds, colSet: sql.NewColSet(1)}
-var buckets_x_1 = []*Bucket{
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{5}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{5}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 5},
+var x1Stat = &Statistic{Hist: buckets_x_1, Typs: []sql.Type{types.Int64}, Fds: xFds, Colset: sql.NewColSet(1)}
+var buckets_x_1 = sql.Histogram{
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{5}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{5}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 5},
 }
 
 // staggered buckets, 2 vals per, half is last bound half is current bound
-var x2Stat = &Statistic{Hist: buckets_x_2, Typs: []sql.Type{types.Int64}, fds: xFds, colSet: sql.NewColSet(1)}
-var buckets_x_2 = []*Bucket{
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 3, BoundVal: []interface{}{5}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 2},
+var x2Stat = &Statistic{Hist: buckets_x_2, Typs: []sql.Type{types.Int64}, Fds: xFds, Colset: sql.NewColSet(1)}
+var buckets_x_2 = sql.Histogram{
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 3, BoundVal: []interface{}{5}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 2},
 }
 
 var xyFds = sql.NewTablescanFDs(sql.NewColSet(1, 2, 3), []sql.ColSet{sql.NewColSet(1, 2)}, nil, sql.NewColSet(1, 2, 3))
 
-var xy1Stat = &Statistic{Hist: buckets_xy_1, Typs: []sql.Type{types.Int64, types.Int64}, fds: xyFds, colSet: sql.NewColSet(1, 2)}
+var xy1Stat = &Statistic{Hist: buckets_xy_1, Typs: []sql.Type{types.Int64, types.Int64}, Fds: xyFds, Colset: sql.NewColSet(1, 2)}
 
-var buckets_xy_1 = []*Bucket{
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 3}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{4, 3}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{4, 3}, BoundCnt: 5},
+var buckets_xy_1 = sql.Histogram{
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{4, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{4, 3}, BoundCnt: 5},
 }
 
-var xy2Stat = &Statistic{Hist: buckets_xy_2, Typs: []sql.Type{types.Int64, types.Int64}, fds: xyFds, colSet: sql.NewColSet(1, 2)}
+var xy2Stat = &Statistic{Hist: buckets_xy_2, Typs: []sql.Type{types.Int64, types.Int64}, Fds: xyFds, Colset: sql.NewColSet(1, 2)}
 
-var buckets_xy_2 = []*Bucket{
-	{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{1, 3}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{2, 3}, BoundCnt: 2},
-	{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 2},
+var buckets_xy_2 = sql.Histogram{
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{1, 3}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{2, 3}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 2},
 }
 
 func TestPrefixKey(t *testing.T) {
@@ -605,12 +605,12 @@ func TestPrefixIsNull(t *testing.T) {
 			cols.AddRange(1, len(tt.typs))
 			colset := sql.NewColSetFromIntSet(cols)
 			fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
-			var buckets []*Bucket
+			var buckets []sql.HistogramBucket
 			for _, v := range tt.vals {
 				buckets = append(buckets, &Bucket{BoundVal: v})
 			}
 
-			statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+			statistic := &Statistic{Hist: buckets, Typs: tt.typs, Fds: fds, Colset: colset}
 
 			res, err := PrefixIsNull(statistic.Histogram())
 			require.NoError(t, err)
@@ -647,12 +647,12 @@ func TestPrefixIsNotNull(t *testing.T) {
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
-		var buckets []*Bucket
+		var buckets []sql.HistogramBucket
 		for _, v := range tt.vals {
 			buckets = append(buckets, &Bucket{BoundVal: v})
 		}
 
-		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, Fds: fds, Colset: colset}
 
 		t.Run(fmt.Sprintf("is not null bound: %#v", tt.vals), func(t *testing.T) {
 			res, err := PrefixIsNotNull(statistic.Histogram())
@@ -707,12 +707,12 @@ func TestPrefixGt(t *testing.T) {
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
-		var buckets []*Bucket
+		var buckets []sql.HistogramBucket
 		for _, v := range tt.vals {
 			buckets = append(buckets, &Bucket{BoundVal: v})
 		}
 
-		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, Fds: fds, Colset: colset}
 
 		t.Run(fmt.Sprintf("GT bound: %d", tt.key), func(t *testing.T) {
 			res, err := PrefixGt(statistic.Histogram(), statistic.Types(), tt.key)
@@ -766,12 +766,12 @@ func TestPrefixGte(t *testing.T) {
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
-		var buckets []*Bucket
+		var buckets []sql.HistogramBucket
 		for _, v := range tt.vals {
 			buckets = append(buckets, &Bucket{BoundVal: v})
 		}
 
-		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, Fds: fds, Colset: colset}
 
 		t.Run(fmt.Sprintf("GTE bound: %v", tt.key), func(t *testing.T) {
 			res, err := PrefixGte(statistic.Histogram(), statistic.Types(), tt.key)
@@ -839,12 +839,12 @@ func TestPrefixLt(t *testing.T) {
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
-		var buckets []*Bucket
+		var buckets []sql.HistogramBucket
 		for _, v := range tt.vals {
 			buckets = append(buckets, &Bucket{BoundVal: v})
 		}
 
-		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, Fds: fds, Colset: colset}
 
 		t.Run(fmt.Sprintf("LT bound: %v", tt.key), func(t *testing.T) {
 
@@ -913,12 +913,12 @@ func TestPrefixLte(t *testing.T) {
 		colset := sql.NewColSetFromIntSet(cols)
 		fds := sql.NewTablescanFDs(colset, []sql.ColSet{colset}, nil, colset)
 
-		var buckets []*Bucket
+		var buckets []sql.HistogramBucket
 		for _, v := range tt.vals {
 			buckets = append(buckets, &Bucket{BoundVal: v})
 		}
 
-		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
+		statistic := &Statistic{Hist: buckets, Typs: tt.typs, Fds: fds, Colset: colset}
 
 		t.Run(fmt.Sprintf("LTE bound: %v", tt.key), func(t *testing.T) {
 			res, err := PrefixLte(statistic.Histogram(), statistic.Types(), tt.key)
@@ -945,7 +945,7 @@ func TestUpdateCounts(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		buckets := make([]*Bucket, len(tt.vals))
+		buckets := make([]sql.HistogramBucket, len(tt.vals))
 		for i := range buckets {
 			buckets[i] = &Bucket{RowCnt: tt.vals[i], DistinctCnt: tt.vals[i], NullCnt: tt.vals[i]}
 		}

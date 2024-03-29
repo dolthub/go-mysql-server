@@ -139,7 +139,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		}
 		offset := len(keyVals) / bucketCnt
 		perBucket := int(rowCount) / bucketCnt
-		buckets := make([]*stats.Bucket, bucketCnt)
+		buckets := make([]sql.HistogramBucket, bucketCnt)
 		for i := range buckets {
 			var upperBound []interface{}
 			for _, v := range keyVals[i*offset] {
