@@ -101,11 +101,11 @@ func TestStatusVariables(t *testing.T) {
 	require.True(ok)
 	require.Equal(int64(200), globalVal)
 
-	// New Session preserves values with Both scope
+	// New Session does not preserve values with Both scope
 	newSess := sql.NewBaseSessionWithClientServer("foo", sql.Client{Address: "baz2", User: "bar2"}, 2)
 	sessVal, err = newSess.GetStatusVariable(ctx, "Bytes_received")
 	require.NoError(err)
-	require.Equal(int64(200), sessVal)
+	require.Equal(int64(0), sessVal)
 
 	// New Session does not preserve values with Session scope
 	sessVal, err = newSess.GetStatusVariable(ctx, "Compression")
