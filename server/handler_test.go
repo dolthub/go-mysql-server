@@ -1234,6 +1234,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(0), sessVal)
 
+	// Call ComQuery 5 times
 	for i := 0; i < 5; i++ {
 		err = handler.ComQuery(conn1, "SELECT 1", dummyCb)
 		require.NoError(t, err)
@@ -1254,6 +1255,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
+	// Get 5 syntax errors
 	for i := 0; i < 5; i++ {
 		err = handler.ComQuery(conn2, "syntax error", dummyCb)
 		require.Error(t, err)
@@ -1267,6 +1269,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(5), sessVal)
 
+	// Errors increment Questions twice
 	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
 	require.Equal(t, int64(10), sessVal)
@@ -1288,6 +1291,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(1), sessVal)
 
+	// Calling stored procedure with multiple queries only increment Questions once.
 	err = handler.ComQuery(conn3, "call p()", dummyCb)
 	require.NoError(t, err)
 
@@ -1306,4 +1310,51 @@ func TestStatusVariableQuestions(t *testing.T) {
 	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
 	require.Equal(t, int64(2), sessVal)
+
+
+	conn4 := newConn(4)
+	handler.NewConnection(conn4)
+	err = handler.ComInitDB(conn4, "test")
+	require.NoError(t, err)
+	sess4 := handler.sm.sessions[4]
+
+	// TODO: implement and test that ComPing does not increment Questions
+	// TODO: implement and test that ComStatistics does not increment Questions
+	// TODO: implement and test that ComStmtClose does not increment Questions
+	// TODO: implement and test that ComStmtReset does not increment Questions
+
+	// Prepare does not increment Questions
+	prepare := &mysql.PrepareData{
+		StatementID: 0,
+		PrepareStmt: "select ?",
+		ParamsCount: 0,
+		ParamsType:  nil,
+		ColumnNames: nil,
+		BindVars: map[string]*query.BindVariable{
+			"v1": {Type: query.Type_INT8, Value: []byte("5")},
+		},
+	}
+
+	_, err = handler.ComPrepare(conn4, prepare.PrepareStmt, samplePrepareData)
+	require.NoError(t, err)
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
+	require.True(t, ok)
+	require.Equal(t, int64(17), globalVal)
+
+	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(0), sessVal)
+
+	// Execute does increment Questions
+	err = handler.ComStmtExecute(conn4, prepare, func(*sqltypes.Result) error { return nil })
+	require.NoError(t, err)
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
+	require.True(t, ok)
+	require.Equal(t, int64(18), globalVal)
+
+	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(1), sessVal)
 }
