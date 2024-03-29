@@ -633,33 +633,32 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	if err != nil {
 		return err
 	}
-	// Setting `character_set_connection`, regardless of how it is set (directly or through SET NAMES) will also set
-	// `collation_connection` to the default collation for the given character set.
-	if strings.ToLower(sysVar.Name) == "character_set_connection" {
+
+	// Setting `character_set_connection` and `collation_connection` will set the corresponding variable
+	// Setting `character_set_server` and `collation_server` will set the corresponding variable
+	switch strings.ToLower(sysVar.Name) {
+	case "character_set_connection":
 		newSysVar := &expression.SystemVar{
 			Name:  "collation_connection",
 			Scope: sysVar.Scope,
 		}
 		if val == nil {
-			err = setSystemVar(ctx, newSysVar, expression.NewLiteral("", types.LongText), row)
-			if err != nil {
-				return err
-			}
-		} else {
-			valStr, ok := val.(string)
-			if !ok {
-				return sql.ErrInvalidSystemVariableValue.New("collation_connection", val)
-			}
-			charset, err := sql.ParseCharacterSet(valStr)
-			if err != nil {
-				return err
-			}
-			charset = charset
-			err = setSystemVar(ctx, newSysVar, expression.NewLiteral(charset.DefaultCollation().Name(), types.LongText), row)
-			if err != nil {
-				return err
-			}
+			return setSystemVar(ctx, newSysVar, expression.NewLiteral(nil, types.LongText), row)
 		}
+		valStr, ok := val.(string)
+		if !ok {
+			return sql.ErrInvalidSystemVariableValue.New("collation_connection", val)
+		}
+		var charset sql.CharacterSetID
+		charset, err = sql.ParseCharacterSet(valStr)
+		if err != nil {
+			return err
+		}
+		collationStr := charset.DefaultCollation().Name()
+		return setSystemVar(ctx, newSysVar, expression.NewLiteral(collationStr, types.LongText), row)
+	case "collation_connection":
+	case "character_set_server":
+	case "collation_server":
 	}
 	return nil
 }

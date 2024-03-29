@@ -38,6 +38,7 @@ const (
 const (
 	CurrentDBSessionVar              = "current_database"
 	AutoCommitSessionVar             = "autocommit"
+	// TODO: how does character set and collation get matched?
 	characterSetConnectionSysVarName = "character_set_connection"
 	characterSetResultsSysVarName    = "character_set_results"
 	collationConnectionSysVarName    = "collation_connection"
