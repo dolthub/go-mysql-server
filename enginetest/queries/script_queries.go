@@ -7067,7 +7067,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
-				Query: "execute sd using @d;",
+				Query:                         "execute sd using @d;",
 				Expected: []sql.Row{
 					{"123.45"},
 				},
