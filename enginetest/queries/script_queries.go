@@ -7060,22 +7060,22 @@ var PreparedScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "execute s using @d;",
 				Expected: []sql.Row{
 					{"123.45"},
 				},
 			},
 			{
-				Skip: true,
+				Skip:                          true,
 				SkipResultCheckOnServerEngine: true,
-				Query: "execute sd using @d;",
+				Query:                         "execute sd using @d;",
 				Expected: []sql.Row{
 					{"123.45"},
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "select * from t",
 				Expected: []sql.Row{
 					{"123.45"},
