@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -335,6 +335,16 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 
+func incrementStatusVariableQuestions(ctx *sql.Context) {
+	// ignore all errors relating to status updates
+	if _, globalQuesVal, ok := sql.StatusVariables.GetGlobal("Questions"); ok {
+		sql.StatusVariables.SetGlobal("Questions", globalQuesVal.(int64)+1)
+	}
+	if sessQuesVal, err2 := ctx.Session.GetStatusVariable(ctx, "Questions"); err2 == nil {
+		ctx.Session.SetStatusVariable(ctx, "Questions", sessQuesVal.(int64)+1)
+	}
+}
+
 func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
@@ -387,6 +397,11 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	ctx.GetLogger().Tracef("beginning execution")
+
+	// TODO: a goroutine might be worth it here, as read/writing status variables go through a mutex
+	defer func() {
+		incrementStatusVariableQuestions(ctx)
+	}()
 
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()

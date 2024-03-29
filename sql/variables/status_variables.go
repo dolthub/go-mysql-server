@@ -38,7 +38,10 @@ func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
 		if v.Var.GetScope() == sql.StatusVariableScope_Global {
 			continue
 		}
-		sessionMap[k] = v
+		sessionMap[k] = sql.StatusVarValue{
+			Var: v.Var,
+			Val: v.Var.GetDefault(),
+		}
 	}
 	return sessionMap
 }
