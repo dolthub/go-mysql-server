@@ -7035,6 +7035,15 @@ var PreparedScriptTests = []ScriptTest{
 					{types.NewOkResult(1)},
 				},
 			},
+			{
+				// TODO: should also select t when we fix that
+				Query: "select d, dt, ts from t",
+				Expected: []sql.Row{
+					{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC), nil, nil},
+					{nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC), nil},
+					{nil, nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+				},
+			},
 		},
 	},
 	{
