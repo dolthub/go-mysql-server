@@ -1250,7 +1250,6 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(5), sessVal)
 
-
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
 	err = handler.ComInitDB(conn2, "test")
@@ -1312,7 +1311,6 @@ func TestStatusVariableQuestions(t *testing.T) {
 	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
 	require.Equal(t, int64(2), sessVal)
-
 
 	conn4 := newConn(4)
 	handler.NewConnection(conn4)
