@@ -7051,6 +7051,36 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "prepare with decimal type binding",
+		SetUpScript: []string{
+			"create table t (d decimal);",
+			"set @d = cast(123.45 as Decimal);",
+			"prepare s from 'select ?';",
+			"prepare sd from 'insert into t values(?)';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "execute s using @d;",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query: "execute sd using @d;",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+		},
+	},
+	{
 		Name: "prepare insert",
 		SetUpScript: []string{
 			"set @a = 123",
