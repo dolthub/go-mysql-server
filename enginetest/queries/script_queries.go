@@ -7054,7 +7054,7 @@ var PreparedScriptTests = []ScriptTest{
 		Name: "prepare with decimal type binding",
 		SetUpScript: []string{
 			"create table t (d decimal);",
-			"set @d = cast(123.45 as Decimal);",
+			"set @d = cast(123.45 as Decimal(5,2));",
 			"prepare s from 'select ?';",
 			"prepare sd from 'insert into t values(?)';",
 		},
