@@ -555,19 +555,23 @@ func TestPrefixKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := PrefixKey(tt.statistic, tt.pref, make([]bool, len(tt.pref)))
+			res, _, err := PrefixKey(tt.statistic.Histogram(), tt.statistic.ColSet(), tt.statistic.Typs, tt.statistic.FuncDeps(), tt.pref, make([]bool, len(tt.pref)))
 			require.NoError(t, err)
-			require.Equal(t, tt.expBuckets, len(res.Histogram()))
-			require.Equal(t, tt.expRowCount, res.RowCount())
-			require.Equal(t, tt.expDistinctCount, res.DistinctCount())
-			require.Equal(t, tt.expNullCount, res.NullCount())
+			newStat, err := tt.statistic.WithHistogram(res)
+			require.NoError(t, err)
+			newStat = UpdateCounts(newStat)
+			require.NoError(t, err)
+			require.Equal(t, tt.expBuckets, len(res))
+			require.Equal(t, tt.expRowCount, newStat.RowCount())
+			require.Equal(t, tt.expDistinctCount, newStat.DistinctCount())
+			require.Equal(t, tt.expNullCount, newStat.NullCount())
 		})
 	}
 }
 
-func collectBounds(s *Statistic) [][]interface{} {
+func collectBounds(s []sql.HistogramBucket) [][]interface{} {
 	var bounds [][]interface{}
-	for _, b := range s.Histogram() {
+	for _, b := range s {
 		bounds = append(bounds, b.UpperBound())
 	}
 	return bounds
@@ -608,9 +612,9 @@ func TestPrefixIsNull(t *testing.T) {
 
 			statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
-			res, err := PrefixIsNull(statistic)
+			res, err := PrefixIsNull(statistic.Histogram())
 			require.NoError(t, err)
-			bounds := collectBounds(res.(*Statistic))
+			bounds := collectBounds(res)
 			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
 		})
 	}
@@ -651,9 +655,9 @@ func TestPrefixIsNotNull(t *testing.T) {
 		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
 		t.Run(fmt.Sprintf("is not null bound: %#v", tt.vals), func(t *testing.T) {
-			res, err := PrefixIsNotNull(statistic)
+			res, err := PrefixIsNotNull(statistic.Histogram())
 			require.NoError(t, err)
-			bounds := collectBounds(res.(*Statistic))
+			bounds := collectBounds(res)
 			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
 		})
 
@@ -711,9 +715,9 @@ func TestPrefixGt(t *testing.T) {
 		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
 		t.Run(fmt.Sprintf("GT bound: %d", tt.key), func(t *testing.T) {
-			res, err := PrefixGt(statistic, tt.key)
+			res, err := PrefixGt(statistic.Histogram(), statistic.Types(), tt.key)
 			require.NoError(t, err)
-			bounds := collectBounds(res.(*Statistic))
+			bounds := collectBounds(res)
 			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
 		})
 	}
@@ -770,9 +774,9 @@ func TestPrefixGte(t *testing.T) {
 		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
 		t.Run(fmt.Sprintf("GTE bound: %v", tt.key), func(t *testing.T) {
-			res, err := PrefixGte(statistic, tt.key)
+			res, err := PrefixGte(statistic.Histogram(), statistic.Types(), tt.key)
 			require.NoError(t, err)
-			bounds := collectBounds(res.(*Statistic))
+			bounds := collectBounds(res)
 			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
 		})
 	}
@@ -844,9 +848,9 @@ func TestPrefixLt(t *testing.T) {
 
 		t.Run(fmt.Sprintf("LT bound: %v", tt.key), func(t *testing.T) {
 
-			res, err := PrefixLt(statistic, tt.key)
+			res, err := PrefixLt(statistic.Histogram(), statistic.Types(), tt.key)
 			require.NoError(t, err)
-			bounds := collectBounds(res.(*Statistic))
+			bounds := collectBounds(res)
 			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
 		})
 	}
@@ -917,9 +921,9 @@ func TestPrefixLte(t *testing.T) {
 		statistic := &Statistic{Hist: buckets, Typs: tt.typs, fds: fds, colSet: colset}
 
 		t.Run(fmt.Sprintf("LTE bound: %v", tt.key), func(t *testing.T) {
-			res, err := PrefixLte(statistic, tt.key)
+			res, err := PrefixLte(statistic.Histogram(), statistic.Types(), tt.key)
 			require.NoError(t, err)
-			bounds := collectBounds(res.(*Statistic))
+			bounds := collectBounds(res)
 			require.ElementsMatch(t, tt.vals[tt.expLower:tt.expUpper], bounds)
 		})
 	}

@@ -19,16 +19,79 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func Union(s1, s2 sql.Statistic) sql.Statistic {
-	return s1
+func Union(b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucket, error) {
+	var ret []sql.HistogramBucket
+	i := 0
+	j := 0
+	for i < len(b1) && j < len(b2) {
+		key1 := b1[i].UpperBound()
+		key2 := b2[j].UpperBound()
+		for k := range key1 {
+			t := types[k]
+			cmp, err := nilSafeCmp(t, key1[k], key2[k])
+			if err != nil {
+				return nil, err
+			}
+			switch cmp {
+			case 0:
+				if k == len(key1)-1 {
+					ret = append(ret, b1[i])
+					i++
+					j++
+				}
+				continue
+			case +1:
+				ret = append(ret, b2[j])
+				j++
+			case -1:
+				ret = append(ret, b1[i])
+				i++
+			}
+		}
+	}
+	for i < len(b1) {
+		ret = append(ret, b1[i])
+		i++
+	}
+	for j < len(b2) {
+		ret = append(ret, b2[j])
+		j++
+	}
+	return ret, nil
 }
 
-func Intersect(s1, s2 sql.Statistic) sql.Statistic {
-	return s1
+func Intersect(b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucket, error) {
+	var ret []sql.HistogramBucket
+	i := 0
+	j := 0
+	for i < len(b1) && j < len(b2) {
+		key1 := b1[i].UpperBound()
+		key2 := b2[j].UpperBound()
+		for k := range key1 {
+			t := types[k]
+			cmp, err := nilSafeCmp(t, key1[k], key2[k])
+			if err != nil {
+				return nil, err
+			}
+			switch cmp {
+			case 0:
+				if k == len(key1)-1 {
+					ret = append(ret, b1[i])
+					i++
+					j++
+				}
+				continue
+			case +1:
+				j++
+			case -1:
+				i++
+			}
+		}
+	}
+	return ret, nil
 }
 
-func PrefixKey(statistic sql.Statistic, key []interface{}, nullable []bool) (sql.Statistic, error) {
-	idxCols := statistic.ColSet()
+func PrefixKey(buckets []sql.HistogramBucket, idxCols sql.ColSet, types []sql.Type, oldFds *sql.FuncDepSet, key []interface{}, nullable []bool) ([]sql.HistogramBucket, *sql.FuncDepSet, error) {
 	var constant sql.ColSet
 	var notNull sql.ColSet
 	var i sql.ColumnId
@@ -40,19 +103,17 @@ func PrefixKey(statistic sql.Statistic, key []interface{}, nullable []bool) (sql
 		}
 	}
 
-	old := statistic.FuncDeps()
-	new := sql.NewFilterFDs(old, old.NotNull().Union(notNull), old.Constants().Union(constant), nil)
-	ret := statistic.WithFuncDeps(new)
+	newFds := sql.NewFilterFDs(oldFds, oldFds.NotNull().Union(notNull), oldFds.Constants().Union(constant), nil)
 
 	// find index of bucket >= the key
-	buckets := []sql.HistogramBucket(statistic.Histogram())
+	//buckets := []sql.HistogramBucket(statistic.Histogram())
 	var searchErr error
 	lowBucket := sort.Search(len(buckets), func(i int) bool {
 		// lowest index that func is true
 		// lowest index where bucketKey >= key
 		bucketKey := buckets[i].UpperBound()
 		for i, _ := range key {
-			t := statistic.Types()[i]
+			t := types[i]
 			cmp, err := nilSafeCmp(t, bucketKey[i], key[i])
 			if err != nil {
 				searchErr = err
@@ -70,26 +131,26 @@ func PrefixKey(statistic sql.Statistic, key []interface{}, nullable []bool) (sql
 		return true
 	})
 	if searchErr != nil {
-		return nil, searchErr
+		return nil, nil, searchErr
 	}
 
 	upperBucket := lowBucket
 	equals := true
 	var err error
 	for equals && upperBucket < len(buckets) {
-		equals, err = keysEqual(statistic.Types(), buckets[upperBucket].UpperBound(), key)
+		equals, err = keysEqual(types, buckets[upperBucket].UpperBound(), key)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		upperBucket++
 	}
 
-	ret, err = ret.WithHistogram(buckets[lowBucket:upperBucket])
+	ret := buckets[lowBucket:upperBucket]
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return UpdateCounts(ret), nil
+	return ret, newFds, nil
 }
 
 func nilSafeCmp(typ sql.Type, left, right interface{}) (int, error) {
@@ -102,6 +163,21 @@ func nilSafeCmp(typ sql.Type, left, right interface{}) (int, error) {
 	} else {
 		return typ.Compare(left, right)
 	}
+}
+
+func GetNewCounts(buckets []sql.HistogramBucket) (uint64, uint64, uint64) {
+	if len(buckets) == 0 {
+		return 0, 0, 0
+	}
+	var rowCount uint64
+	var distinctCount uint64
+	var nullCount uint64
+	for _, b := range buckets {
+		rowCount += b.RowCount()
+		distinctCount += b.DistinctCount()
+		nullCount += b.NullCount()
+	}
+	return rowCount, distinctCount, nullCount
 }
 
 func UpdateCounts(statistic sql.Statistic) sql.Statistic {
@@ -134,53 +210,44 @@ func keysEqual(types []sql.Type, left, right []interface{}) (bool, error) {
 	return true, nil
 }
 
-func PrefixLt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
+func PrefixLt(buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
 	// first bucket whose upper bound is greater than val
-	buckets := []sql.HistogramBucket(statistic.Histogram())
-	idx, err := PrefixLtHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
-		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
+	idx, err := PrefixLtHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(types[0], i[0], j[0])
 	})
 	if err != nil {
 		return nil, err
 	}
 	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[:idx])
+	ret := buckets[:idx]
+	return PrefixIsNotNull(ret)
+}
+
+func PrefixGt(buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
+	idx, err := PrefixGtHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(types[0], i[0], j[0])
+	})
+	if err != nil {
+		return nil, err
+	}
+	// inclusive of idx bucket
+	ret := buckets[idx:]
 	if err != nil {
 		return nil, err
 	}
 	return PrefixIsNotNull(ret)
 }
 
-func PrefixGt(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
-	buckets := []sql.HistogramBucket(statistic.Histogram())
-	idx, err := PrefixGtHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
-		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
-	})
-	if err != nil {
-		return nil, err
-	}
-	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[idx:])
-	if err != nil {
-		return nil, err
-	}
-	return PrefixIsNotNull(ret)
-}
-
-func PrefixLte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
+func PrefixLte(buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
 	// first bucket whose upper bound is greater than val
-	buckets := []sql.HistogramBucket(statistic.Histogram())
-	idx, err := PrefixLteHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
-		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
+	idx, err := PrefixLteHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(types[0], i[0], j[0])
 	})
 	if err != nil {
 		return nil, err
 	}
 	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[:idx])
-	if err != nil {
-		return nil, err
-	}
+	ret := buckets[:idx]
 	return PrefixIsNotNull(ret)
 }
 
@@ -241,24 +308,22 @@ func PrefixGteHist(h sql.Histogram, target sql.Row, cmp func(sql.Row, sql.Row) (
 	return idx, searchErr
 }
 
-func PrefixGte(statistic sql.Statistic, val interface{}) (sql.Statistic, error) {
-	buckets := []sql.HistogramBucket(statistic.Histogram())
-	idx, err := PrefixGteHist(statistic.Histogram(), sql.Row{val}, func(i, j sql.Row) (int, error) {
-		return nilSafeCmp(statistic.Types()[0], i[0], j[0])
+func PrefixGte(buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
+	idx, err := PrefixGteHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+		return nilSafeCmp(types[0], i[0], j[0])
 	})
 	if err != nil {
 		return nil, err
 	}
 	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[idx:])
+	ret := buckets[idx:]
 	if err != nil {
 		return nil, err
 	}
 	return PrefixIsNotNull(ret)
 }
 
-func PrefixIsNull(statistic sql.Statistic) (sql.Statistic, error) {
-	buckets := []sql.HistogramBucket(statistic.Histogram())
+func PrefixIsNull(buckets []sql.HistogramBucket) ([]sql.HistogramBucket, error) {
 	var searchErr error
 	idx := sort.Search(len(buckets), func(i int) bool {
 		// lowest index that func is true
@@ -269,15 +334,11 @@ func PrefixIsNull(statistic sql.Statistic) (sql.Statistic, error) {
 		return nil, searchErr
 	}
 	// exclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[:idx])
-	if err != nil {
-		return nil, err
-	}
-	return UpdateCounts(ret), nil
+	ret := buckets[:idx]
+	return ret, nil
 }
 
-func PrefixIsNotNull(statistic sql.Statistic) (sql.Statistic, error) {
-	buckets := []sql.HistogramBucket(statistic.Histogram())
+func PrefixIsNotNull(buckets []sql.HistogramBucket) ([]sql.HistogramBucket, error) {
 	var searchErr error
 	idx := sort.Search(len(buckets), func(i int) bool {
 		// lowest index that func is true
@@ -289,11 +350,7 @@ func PrefixIsNotNull(statistic sql.Statistic) (sql.Statistic, error) {
 		return nil, searchErr
 	}
 	// inclusive of idx bucket
-	ret, err := statistic.WithHistogram(buckets[idx:])
-	if err != nil {
-		return nil, err
-	}
-	return UpdateCounts(ret), nil
+	return buckets[idx:], nil
 }
 
 func McvPrefixGt(statistic sql.Statistic, i int, val interface{}) (sql.Statistic, error) {
