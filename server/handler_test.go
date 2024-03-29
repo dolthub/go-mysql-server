@@ -1205,6 +1205,8 @@ func dummyCb(_ *sqltypes.Result, _ bool) error {
 }
 
 func TestStatusVariableQuestions(t *testing.T) {
+	variables.InitStatusVariables()
+
 	e, pro := setupMemDB(require.New(t))
 	dbFunc := pro.Database
 	handler := &Handler{
