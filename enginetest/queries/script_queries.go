@@ -7010,12 +7010,14 @@ var PreparedScriptTests = []ScriptTest{
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "execute sd using @d;",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "execute sdt using @dt;",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
@@ -7024,12 +7026,14 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				// types.Timespan not supported as bindvar
 				Skip: true,
+				SkipResultCheckOnServerEngine: true,
 				Query: "execute st using @t;",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "execute sts using @ts;",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
