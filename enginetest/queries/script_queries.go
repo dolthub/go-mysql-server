@@ -6997,7 +6997,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				// types.Timespan not supported as bindvar
-				Skip: true,
+				Skip:  true,
 				Query: "execute s using @t;",
 				Expected: []sql.Row{
 					{"12:34:56"},
@@ -7023,7 +7023,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				// types.Timespan not supported as bindvar
-				Skip: true,
+				Skip:  true,
 				Query: "execute st using @t;",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
