@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1198,4 +1198,112 @@ func newConn(id uint32) *mysql.Conn {
 		ConnectionID: id,
 		Conn:         new(mockConn),
 	}
+}
+
+func dummyCb(_ *sqltypes.Result, _ bool) error {
+	return nil
+}
+
+func TestStatusVariableQuestions(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	_, globalVal, ok := sql.StatusVariables.GetGlobal("Questions")
+	require.True(t, ok)
+	require.Equal(t, int64(0), globalVal)
+
+	sessVal, err := sess1.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(0), sessVal)
+
+	for i := 0; i < 5; i++ {
+		err = handler.ComQuery(conn1, "SELECT 1", dummyCb)
+		require.NoError(t, err)
+	}
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
+	require.True(t, ok)
+	require.Equal(t, int64(5), globalVal)
+
+	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(5), sessVal)
+
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	for i := 0; i < 5; i++ {
+		err = handler.ComQuery(conn2, "syntax error", dummyCb)
+		require.Error(t, err)
+	}
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
+	require.True(t, ok)
+	require.Equal(t, int64(15), globalVal)
+
+	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(5), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(10), sessVal)
+
+	conn3 := newConn(3)
+	handler.NewConnection(conn3)
+	err = handler.ComInitDB(conn3, "test")
+	require.NoError(t, err)
+	sess3 := handler.sm.sessions[3]
+
+	err = handler.ComQuery(conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
+	require.NoError(t, err)
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
+	require.True(t, ok)
+	require.Equal(t, int64(16), globalVal)
+
+	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(1), sessVal)
+
+	err = handler.ComQuery(conn3, "call p()", dummyCb)
+	require.NoError(t, err)
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
+	require.True(t, ok)
+	require.Equal(t, int64(17), globalVal)
+
+	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(5), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(10), sessVal)
+
+	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
+	require.NoError(t, err)
+	require.Equal(t, int64(2), sessVal)
 }
