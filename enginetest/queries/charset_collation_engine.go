@@ -462,7 +462,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@session.character_set_connection = 'latin1';",
+				Query:    "set @@session.character_set_connection = 'latin1';",
 				Expected: []sql.Row{{}},
 			},
 			{
@@ -472,7 +472,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@session.collation_connection = 'utf8mb4_0900_bin';",
+				Query:    "set @@session.collation_connection = 'utf8mb4_0900_bin';",
 				Expected: []sql.Row{{}},
 			},
 			{
@@ -489,7 +489,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@global.character_set_connection = 'latin1';",
+				Query:    "set @@global.character_set_connection = 'latin1';",
 				Expected: []sql.Row{{}},
 			},
 			{
@@ -499,7 +499,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@global.collation_connection = 'utf8mb4_0900_bin';",
+				Query:    "set @@global.collation_connection = 'utf8mb4_0900_bin';",
 				Expected: []sql.Row{{}},
 			},
 			{
@@ -516,7 +516,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@session.character_set_server = 'latin1';",
+				Query:    "set @@session.character_set_server = 'latin1';",
 				Expected: []sql.Row{{}},
 			},
 			{
@@ -526,7 +526,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@session.collation_server = 'utf8mb4_0900_bin';",
+				Query:    "set @@session.collation_server = 'utf8mb4_0900_bin';",
 				Expected: []sql.Row{{}},
 			},
 			{
@@ -543,7 +543,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@global.character_set_server = 'latin1';",
+				Query:    "set @@global.character_set_server = 'latin1';",
 				Expected: []sql.Row{{}},
 			},
 			{
@@ -553,7 +553,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				},
 			},
 			{
-				Query: "set @@global.collation_server = 'utf8mb4_0900_bin';",
+				Query:    "set @@global.collation_server = 'utf8mb4_0900_bin';",
 				Expected: []sql.Row{{}},
 			},
 			{
