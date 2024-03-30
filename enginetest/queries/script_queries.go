@@ -6322,6 +6322,7 @@ where
 				},
 			},
 			{
+				// Interestingly, session actually takes priority over global
 				Query: "show create database latin1_db",
 				Expected: []sql.Row{
 					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
