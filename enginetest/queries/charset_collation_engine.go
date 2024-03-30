@@ -453,6 +453,118 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		},
 	},
 	{
+		Name: "setting charset/collation sets the other",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: "select @@session.character_set_connection, @@session.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "set @@session.character_set_connection = 'latin1';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@session.character_set_connection, @@session.collation_connection;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query: "set @@session.collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@session.character_set_connection, @@session.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "select @@global.character_set_connection, @@global.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "set @@global.character_set_connection = 'latin1';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@global.character_set_connection, @@global.collation_connection;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query: "set @@global.collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@global.character_set_connection, @@global.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "set @@session.character_set_server = 'latin1';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query: "set @@session.collation_server = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "set @@global.character_set_server = 'latin1';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query: "set @@global.collation_server = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
 		Name: "ENUM collation handling",
 		SetUpScript: []string{
 			"CREATE TABLE test1 (pk BIGINT PRIMARY KEY, v1 ENUM('abc','def','ghi') COLLATE utf16_unicode_ci);",

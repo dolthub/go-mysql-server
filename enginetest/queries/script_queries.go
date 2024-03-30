@@ -6302,6 +6302,33 @@ where
 			},
 		},
 	},
+	{
+		Name: "test create database with modified server variables",
+		SetUpScript: []string{
+			"set @@session.character_set_server = 'latin1';",
+			"create database latin1_db;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query: "show create database latin1_db",
+				Expected: []sql.Row{
+					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

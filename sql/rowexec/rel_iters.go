@@ -638,12 +638,8 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	// Setting `character_set_server` and `collation_server` will set the corresponding variable
 	switch strings.ToLower(sysVar.Name) {
 	case "character_set_connection":
-		newSysVar := &expression.SystemVar{
-			Name:  "collation_connection",
-			Scope: sysVar.Scope,
-		}
 		if val == nil {
-			return setSystemVar(ctx, newSysVar, expression.NewLiteral(nil, types.LongText), row)
+			return sysVar.Scope.SetValue(ctx, "collation_connection", val)
 		}
 		valStr, ok := val.(string)
 		if !ok {
@@ -654,11 +650,53 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-		collationStr := charset.DefaultCollation().Name()
-		return setSystemVar(ctx, newSysVar, expression.NewLiteral(collationStr, types.LongText), row)
+		collationName := charset.DefaultCollation().Name()
+		return sysVar.Scope.SetValue(ctx, "collation_connection", collationName)
 	case "collation_connection":
+		if val == nil {
+			return sysVar.Scope.SetValue(ctx, "character_set_connection", val)
+		}
+		valStr, ok := val.(string)
+		if !ok {
+			return sql.ErrInvalidSystemVariableValue.New("character_set_connection", val)
+		}
+		var collation sql.CollationID
+		collation, err = sql.ParseCollation("", valStr, false)
+		if err != nil {
+			return err
+		}
+		charsetName := collation.CharacterSet().Name()
+		return sysVar.Scope.SetValue(ctx, "character_set_connection", charsetName)
 	case "character_set_server":
+		if val == nil {
+			return sysVar.Scope.SetValue(ctx, "collation_server", val)
+		}
+		valStr, ok := val.(string)
+		if !ok {
+			return sql.ErrInvalidSystemVariableValue.New("collation_server", val)
+		}
+		var charset sql.CharacterSetID
+		charset, err = sql.ParseCharacterSet(valStr)
+		if err != nil {
+			return err
+		}
+		collationName := charset.DefaultCollation().Name()
+		return sysVar.Scope.SetValue(ctx, "collation_server", collationName)
 	case "collation_server":
+		if val == nil {
+			return sysVar.Scope.SetValue(ctx, "character_set_server", val)
+		}
+		valStr, ok := val.(string)
+		if !ok {
+			return sql.ErrInvalidSystemVariableValue.New("character_set_server", val)
+		}
+		var collation sql.CollationID
+		collation, err = sql.ParseCollation("", valStr, false)
+		if err != nil {
+			return err
+		}
+		charsetName := collation.CharacterSet().Name()
+		return sysVar.Scope.SetValue(ctx, "character_set_server", charsetName)
 	}
 	return nil
 }
