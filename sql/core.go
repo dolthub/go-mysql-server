@@ -761,3 +761,21 @@ type StatusVarValue struct {
 	Var StatusVariable
 	Val interface{}
 }
+
+// IncrementStatusVariable increments the value of the status variable with the given name.
+// name is case-insensitive. Errors are ignored.
+func IncrementStatusVariable(ctx *Context, name string) {
+	// TODO: global and session status variable incrementing should use a goroutine to avoid blocking the main thread.
+	// TODO: there should be some sort of mutex over incrementing status variables, as a read race condition
+	//   is currently possible.
+	if _, globalComDelete, ok := StatusVariables.GetGlobal(name); ok {
+		if v, isUint64 := globalComDelete.(uint64); isUint64 {
+			StatusVariables.SetGlobal(name, v+1)
+		}
+	}
+	if sessComDelete, err := ctx.GetStatusVariable(ctx, name); err == nil {
+		if v, isUint64 := sessComDelete.(uint64); isUint64 {
+			ctx.SetStatusVariable(ctx, name, v+1)
+		}
+	}
+}
