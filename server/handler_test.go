@@ -1230,11 +1230,11 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok := sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(0), globalVal)
+	require.Equal(t, uint64(0), globalVal)
 
 	sessVal, err := sess1.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(0), sessVal)
+	require.Equal(t, uint64(0), sessVal)
 
 	// Call ComQuery 5 times
 	for i := 0; i < 5; i++ {
@@ -1244,11 +1244,11 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(5), globalVal)
+	require.Equal(t, uint64(5), globalVal)
 
 	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(5), sessVal)
+	require.Equal(t, uint64(5), sessVal)
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
@@ -1264,16 +1264,16 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(10), globalVal)
+	require.Equal(t, uint64(10), globalVal)
 
 	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(5), sessVal)
+	require.Equal(t, uint64(5), sessVal)
 
 	// Errors also increment Questions (it's 2x on Windows for some reason)
 	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(5), sessVal)
+	require.Equal(t, uint64(5), sessVal)
 
 	conn3 := newConn(3)
 	handler.NewConnection(conn3)
@@ -1286,11 +1286,11 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(11), globalVal)
+	require.Equal(t, uint64(11), globalVal)
 
 	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(1), sessVal)
+	require.Equal(t, uint64(1), sessVal)
 
 	// Calling stored procedure with multiple queries only increment Questions once.
 	err = handler.ComQuery(conn3, "call p()", dummyCb)
@@ -1298,19 +1298,19 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(12), globalVal)
+	require.Equal(t, uint64(12), globalVal)
 
 	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(5), sessVal)
+	require.Equal(t, uint64(5), sessVal)
 
 	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(5), sessVal)
+	require.Equal(t, uint64(5), sessVal)
 
 	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(2), sessVal)
+	require.Equal(t, uint64(2), sessVal)
 
 	conn4 := newConn(4)
 	handler.NewConnection(conn4)
@@ -1340,11 +1340,11 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(12), globalVal)
+	require.Equal(t, uint64(12), globalVal)
 
 	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(0), sessVal)
+	require.Equal(t, uint64(0), sessVal)
 
 	// Execute does increment Questions
 	err = handler.ComStmtExecute(conn4, prepare, func(*sqltypes.Result) error { return nil })
@@ -1352,9 +1352,21 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
-	require.Equal(t, int64(13), globalVal)
+	require.Equal(t, uint64(13), globalVal)
 
 	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
 	require.NoError(t, err)
-	require.Equal(t, int64(1), sessVal)
+	require.Equal(t, uint64(1), sessVal)
+}
+
+func TestStatusVariablesComDelete(t *testing.T) {
+
+}
+
+func TestStatusVariablesComInsert(t *testing.T) {
+
+}
+
+func TestStatusVariablesComUpdate(t *testing.T) {
+
 }

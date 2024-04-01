@@ -452,7 +452,7 @@ var statusVars = map[string]sql.StatusVariable{
 		Name:    "Com_delete",
 		Scope:   sql.StatusVariableScope_Both,
 		Type:    types.NewSystemIntType("Com_delete", 0, 0, false),
-		Default: int64(0),
+		Default: uint64(0),
 	},
 	"Com_delete_multi": &sql.MySQLStatusVariable{
 		Name:    "Com_delete_multi",
@@ -3608,7 +3608,7 @@ var statusVars = map[string]sql.StatusVariable{
 		Name:    "Questions",
 		Scope:   sql.StatusVariableScope_Both,
 		Type:    types.NewSystemIntType("Questions", 0, 0, false),
-		Default: int64(0),
+		Default: uint64(0),
 	},
 	"Replica_open_temp_tables": &sql.MySQLStatusVariable{
 		Name:    "Replica_open_temp_tables",
