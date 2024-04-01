@@ -31,8 +31,8 @@ var _ sql.StatusVariableRegistry = (*globalStatusVariables)(nil)
 
 // NewSessionMap implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
-	g.mutex.RLock()
-	defer g.mutex.RUnlock()
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
 	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Var.GetScope() == sql.StatusVariableScope_Global {
@@ -48,8 +48,8 @@ func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
 
 // NewGlobalMap implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
-	g.mutex.RLock()
-	defer g.mutex.RUnlock()
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
 	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Var.GetScope() == sql.StatusVariableScope_Session {
@@ -62,8 +62,8 @@ func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
 
 // GetGlobal implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, interface{}, bool) {
-	g.mutex.RLock()
-	defer g.mutex.RUnlock()
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
 	v, ok := g.varVals[name]
 	if !ok || v.Var.GetScope() == sql.StatusVariableScope_Session {
 		return nil, nil, false

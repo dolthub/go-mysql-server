@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -765,17 +766,23 @@ type StatusVarValue struct {
 // IncrementStatusVariable increments the value of the status variable with the given name.
 // name is case-insensitive. Errors are ignored.
 func IncrementStatusVariable(ctx *Context, name string) {
-	// TODO: global and session status variable incrementing should use a goroutine to avoid blocking the main thread.
-	// TODO: there should be some sort of mutex over incrementing status variables, as a read race condition
-	//   is currently possible.
-	if _, globalComDelete, ok := StatusVariables.GetGlobal(name); ok {
-		if v, isUint64 := globalComDelete.(uint64); isUint64 {
-			StatusVariables.SetGlobal(name, v+1)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if _, globalComDelete, ok := StatusVariables.GetGlobal(name); ok {
+			if v, isUint64 := globalComDelete.(uint64); isUint64 {
+				StatusVariables.SetGlobal(name, v+1)
+			}
 		}
-	}
-	if sessComDelete, err := ctx.GetStatusVariable(ctx, name); err == nil {
-		if v, isUint64 := sessComDelete.(uint64); isUint64 {
-			ctx.SetStatusVariable(ctx, name, v+1)
+	}()
+	go func() {
+		defer wg.Done()
+		if sessComDelete, err := ctx.GetStatusVariable(ctx, name); err == nil {
+			if v, isUint64 := sessComDelete.(uint64); isUint64 {
+				ctx.SetStatusVariable(ctx, name, v+1)
+			}
 		}
-	}
+	}()
+	wg.Wait()
 }
