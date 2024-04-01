@@ -103,9 +103,6 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (d *deleteIter) Close(ctx *sql.Context) error {
 	if !d.closed {
-		// TODO: we also need to increment when we error?
-		sql.IncrementStatusVariable(ctx, "Com_delete")
-
 		d.closed = true
 		var firstErr error
 		// Make sure we close all the deleters and the childIter, and track the first

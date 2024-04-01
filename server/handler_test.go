@@ -1360,13 +1360,196 @@ func TestStatusVariableQuestions(t *testing.T) {
 }
 
 func TestStatusVariablesComDelete(t *testing.T) {
+	variables.InitStatusVariables()
 
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_delete")
+	require.True(t, ok)
+	require.Equal(t, uint64(0), globalVal)
+
+	sessVal, err := sess1.GetStatusVariable(nil, "Com_delete")
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Com_delete")
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), sessVal)
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "DELETE FROM doesnotmatter", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "DELETE FROM doesnotmatter", dummyCb)
+	}
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_delete")
+	require.True(t, ok)
+	require.Equal(t, uint64(8), globalVal)
+
+	sessVal, err = sess1.GetStatusVariable(nil, "Com_delete")
+	require.NoError(t, err)
+	require.Equal(t, uint64(5), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Com_delete")
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), sessVal)
 }
 
 func TestStatusVariablesComInsert(t *testing.T) {
+	variables.InitStatusVariables()
 
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_insert")
+	require.True(t, ok)
+	require.Equal(t, uint64(0), globalVal)
+
+	sessVal, err := sess1.GetStatusVariable(nil, "Com_insert")
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Com_insert")
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), sessVal)
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "insert into blahblah values ()", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "insert into blahblah values ()", dummyCb)
+	}
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_insert")
+	require.True(t, ok)
+	require.Equal(t, uint64(8), globalVal)
+
+	sessVal, err = sess1.GetStatusVariable(nil, "Com_insert")
+	require.NoError(t, err)
+	require.Equal(t, uint64(5), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Com_insert")
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), sessVal)
 }
 
 func TestStatusVariablesComUpdate(t *testing.T) {
+	variables.InitStatusVariables()
 
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_update")
+	require.True(t, ok)
+	require.Equal(t, uint64(0), globalVal)
+
+	sessVal, err := sess1.GetStatusVariable(nil, "Com_update")
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Com_update")
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), sessVal)
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "update t set i = 10", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "update t set i = 10", dummyCb)
+	}
+
+	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_update")
+	require.True(t, ok)
+	require.Equal(t, uint64(8), globalVal)
+
+	sessVal, err = sess1.GetStatusVariable(nil, "Com_update")
+	require.NoError(t, err)
+	require.Equal(t, uint64(5), sessVal)
+
+	sessVal, err = sess2.GetStatusVariable(nil, "Com_update")
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), sessVal)
 }

@@ -927,6 +927,10 @@ func TestTransactions(t *testing.T) {
 	enginetest.TestTransactionScripts(t, enginetest.NewSkippingMemoryHarness())
 }
 
+func TestStatusVariables(t *testing.T) {
+	enginetest.TestStatusVariables(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
