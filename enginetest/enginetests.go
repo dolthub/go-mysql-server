@@ -3945,7 +3945,7 @@ func TestVariables(t *testing.T, harness Harness) {
 func TestStatusVariables(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	if IsServerEngine(e) {
-		t.Skip("status variables behave strangely on server engine")
+		t.Skip("prepare statements cause status variables to incorrectly increment twice")
 	}
 	for _, script := range queries.StatusVariableScripts {
 		variables.InitStatusVariables()
