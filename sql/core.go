@@ -768,12 +768,12 @@ func IncrementStatusVariable(ctx *Context, name string) {
 	// TODO: goroutine for speed
 	if _, globalComDelete, ok := StatusVariables.GetGlobal(name); ok {
 		if v, isUint64 := globalComDelete.(uint64); isUint64 {
-			StatusVariables.SetGlobal(name, v + 1)
+			StatusVariables.SetGlobal(name, v+1)
 		}
 	}
 	if sessComDelete, err := ctx.GetStatusVariable(ctx, name); err == nil {
 		if v, isUint64 := sessComDelete.(uint64); isUint64 {
-			ctx.SetStatusVariable(ctx, name, v + 1)
+			ctx.SetStatusVariable(ctx, name, v+1)
 		}
 	}
 }
