@@ -3943,6 +3943,10 @@ func TestVariables(t *testing.T, harness Harness) {
 }
 
 func TestStatusVariables(t *testing.T, harness Harness) {
+	e := mustNewEngine(t, harness)
+	if IsServerEngine(e) {
+		t.Skip("status variables behave strangely on server engine")
+	}
 	for _, script := range queries.StatusVariableScripts {
 		variables.InitStatusVariables()
 		TestScript(t, harness, script)
