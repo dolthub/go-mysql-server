@@ -678,7 +678,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 			{
 				// syntax errors do not trigger the status variable
-				Query: "delete abc",
+				Query:          "delete abc",
 				ExpectedErrStr: "syntax error at position 11 near 'abc'",
 			},
 			{
@@ -731,7 +731,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "delete from t where notarealcolumn > 0",
+				Query:       "delete from t where notarealcolumn > 0",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
@@ -742,7 +742,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "delete from notarealtable",
+				Query:       "delete from notarealtable",
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
@@ -767,7 +767,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "insert syntax error",
+				Query:          "insert syntax error",
 				ExpectedErrStr: "syntax error at position 20 near 'error'",
 			},
 			{
@@ -804,7 +804,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "insert into faketable values (2), (3)",
+				Query:       "insert into faketable values (2), (3)",
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
@@ -815,7 +815,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "insert into t values (1)",
+				Query:       "insert into t values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -826,7 +826,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "insert into t(bad) values (1)",
+				Query:       "insert into t(bad) values (1)",
 				ExpectedErr: sql.ErrUnknownColumn,
 			},
 			{
@@ -852,7 +852,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "update t abc",
+				Query:          "update t abc",
 				ExpectedErrStr: "syntax error at position 13 near 'abc'",
 			},
 			{
@@ -902,7 +902,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "update badtbl set i = 1000",
+				Query:       "update badtbl set i = 1000",
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
@@ -913,7 +913,7 @@ var StatusVariableScripts = []ScriptTest{
 			},
 
 			{
-				Query: "update t set badcol = 1000",
+				Query:       "update t set badcol = 1000",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
@@ -925,4 +925,3 @@ var StatusVariableScripts = []ScriptTest{
 		},
 	},
 }
-
