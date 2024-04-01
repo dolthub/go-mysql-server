@@ -361,7 +361,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func(){
+	go func() {
 		defer wg.Done()
 		sql.IncrementStatusVariable(ctx, "Questions")
 	}()

@@ -34,7 +34,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func(){
+	go func() {
 		defer wg.Done()
 		sql.IncrementStatusVariable(b.ctx, "Com_insert")
 	}()
@@ -408,7 +408,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func(){
+	go func() {
 		defer wg.Done()
 		sql.IncrementStatusVariable(b.ctx, "Com_delete")
 	}()
@@ -472,7 +472,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go func(){
+	go func() {
 		defer wg.Done()
 		sql.IncrementStatusVariable(b.ctx, "Com_update")
 	}()
