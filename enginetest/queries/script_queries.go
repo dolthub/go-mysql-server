@@ -6969,6 +6969,121 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "prepare with time type binding",
+		SetUpScript: []string{
+			"create table t (d date, dt datetime, t time, ts timestamp);",
+			"set @d = date('2001-02-03');",
+			"set @dt = datetime('2001-02-03 12:34:56');",
+			"set @t = time('12:34:56');",
+			"set @ts = timestamp('2001-02-03 12:34:56');",
+			"prepare s from 'select ?';",
+			"prepare sd from 'insert into t(d) values(?)';",
+			"prepare sdt from 'insert into t(dt) values(?)';",
+			"prepare st from 'insert into t(t) values(?)';",
+			"prepare sts from 'insert into t(ts) values(?)';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "execute s using @d;",
+				Expected: []sql.Row{
+					{"2001-02-03"},
+				},
+			},
+			{
+				Query: "execute s using @dt;",
+				Expected: []sql.Row{
+					{"2001-02-03 12:34:56 +0000 UTC"},
+				},
+			},
+			{
+				// types.Timespan not supported as bindvar
+				Skip:  true,
+				Query: "execute s using @t;",
+				Expected: []sql.Row{
+					{"12:34:56"},
+				},
+			},
+			{
+				Query: "execute s using @ts;",
+				Expected: []sql.Row{
+					{"2001-02-03 12:34:56 +0000 UTC"},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sd using @d;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sdt using @dt;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				// types.Timespan not supported as bindvar
+				Skip:                          true,
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute st using @t;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sts using @ts;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				// TODO: should also select t when we fix that
+				Query: "select d, dt, ts from t",
+				Expected: []sql.Row{
+					{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC), nil, nil},
+					{nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC), nil},
+					{nil, nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare with decimal type binding",
+		SetUpScript: []string{
+			"create table t (d decimal);",
+			"set @d = cast(123.45 as Decimal(5,2));",
+			"prepare s from 'select ?';",
+			"prepare sd from 'insert into t values(?)';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "execute s using @d;",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+			{
+				Skip:                          true,
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sd using @d;",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+		},
+	},
+	{
 		Name: "prepare insert",
 		SetUpScript: []string{
 			"set @a = 123",
