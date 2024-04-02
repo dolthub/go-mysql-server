@@ -78,6 +78,7 @@ func (pl *ProcessList) AddConnection(id uint32, addr string) {
 		User:       "unauthenticated user",
 		StartedAt:  time.Now(),
 	}
+	sql.IncrementStatusVariable(nil, "Threads_connected")
 }
 
 func (pl *ProcessList) ConnectionReady(sess sql.Session) {
@@ -104,6 +105,7 @@ func (pl *ProcessList) RemoveConnection(connID uint32) {
 		delete(pl.byQueryPid, p.QueryPid)
 		delete(pl.procs, connID)
 	}
+	sql.IncrementStatusVariable(nil, "Threads_connected")
 }
 
 func (pl *ProcessList) BeginQuery(

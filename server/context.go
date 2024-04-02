@@ -90,6 +90,7 @@ func (s *SessionManager) AddConn(conn *mysql.Conn) {
 	defer s.mu.Unlock()
 	s.connections[conn.ConnectionID] = conn
 	s.processlist.AddConnection(conn.ConnectionID, conn.RemoteAddr().String())
+	sql.StatusVariables
 }
 
 // NewSession creates a Session for the given connection and saves it to the session pool.
