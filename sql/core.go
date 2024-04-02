@@ -763,3 +763,13 @@ type StatusVarValue struct {
 	Var StatusVariable
 	Val interface{}
 }
+
+// IncrementStatusVariable increments the value of the status variable by integer val.
+// name is case-insensitive. Errors are ignored.
+// This runs in a goroutine to avoid blocking the caller, but we do not wait for it to complete.
+func IncrementStatusVariable(ctx *Context, name string, val int) {
+	go func(){
+		StatusVariables.IncrementGlobal(name, val)
+		ctx.Session.IncrementStatusVariable(ctx, name, val)
+	}()
+}

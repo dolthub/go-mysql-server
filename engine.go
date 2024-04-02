@@ -359,21 +359,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
-	// Increment the global and session question counters in the background, but wait for both to finish before returning
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		sql.StatusVariables.IncrementGlobal("Questions", 1)
-	}()
-	go func() {
-		defer wg.Done()
-		ctx.Session.IncrementStatusVariable(ctx, "Questions", 1)
-	}()
-	// This hopefully does not block main query execution, but will wait for the increment to finish before returning
-	defer func() {
-		wg.Wait()
-	}()
+	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 

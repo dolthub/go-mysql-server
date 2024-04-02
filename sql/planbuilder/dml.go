@@ -17,7 +17,6 @@ package planbuilder
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -32,19 +31,7 @@ const OnDupValuesPrefix = "__new_ins"
 func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		sql.StatusVariables.IncrementGlobal("Com_insert", 1)
-	}()
-	go func() {
-		defer wg.Done()
-		b.ctx.Session.IncrementStatusVariable(b.ctx, "Com_insert", 1)
-	}()
-	defer func() {
-		wg.Wait()
-	}()
+	sql.IncrementStatusVariable(b.ctx, "Com_insert", 1)
 
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
@@ -410,19 +397,7 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		sql.StatusVariables.IncrementGlobal("Com_delete", 1)
-	}()
-	go func() {
-		defer wg.Done()
-		b.ctx.Session.IncrementStatusVariable(b.ctx, "Com_delete", 1)
-	}()
-	defer func() {
-		wg.Wait()
-	}()
+	sql.IncrementStatusVariable(b.ctx, "Com_delete", 1)
 
 	outScope = b.buildFrom(inScope, d.TableExprs)
 	b.buildWhere(outScope, d.Where)
@@ -478,19 +453,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		sql.StatusVariables.IncrementGlobal("Com_update", 1)
-	}()
-	go func() {
-		defer wg.Done()
-		b.ctx.Session.IncrementStatusVariable(b.ctx, "Com_update", 1)
-	}()
-	defer func() {
-		wg.Wait()
-	}()
+	sql.IncrementStatusVariable(b.ctx, "Com_update", 1)
 
 	outScope = b.buildFrom(inScope, u.TableExprs)
 
