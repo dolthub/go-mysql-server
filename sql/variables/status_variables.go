@@ -1619,10 +1619,12 @@ var statusVars = map[string]sql.StatusVariable{
 		Default: int64(0),
 	},
 	"Innodb_buffer_pool_pages_total": &sql.MySQLStatusVariable{
-		Name:    "Innodb_buffer_pool_pages_total",
-		Scope:   sql.StatusVariableScope_Global,
-		Type:    types.NewSystemIntType("Innodb_buffer_pool_pages_total", 0, 0, false),
-		Default: int64(0),
+		Name:  "Innodb_buffer_pool_pages_total",
+		Scope: sql.StatusVariableScope_Global,
+		Type:  types.NewSystemIntType("Innodb_buffer_pool_pages_total", 0, 0, false),
+		// NOTE: Datadog errors out with a divide by zero error if this is zero,
+		//       so for now, we just report 1.
+		Default: int64(1),
 	},
 	"Innodb_buffer_pool_read_ahead": &sql.MySQLStatusVariable{
 		Name:    "Innodb_buffer_pool_read_ahead",
