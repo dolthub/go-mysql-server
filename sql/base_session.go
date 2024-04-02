@@ -282,8 +282,11 @@ func (s *BaseSession) IncrementStatusVariable(_ *Context, statVarName string, va
 	if !ok {
 		return fmt.Errorf("status variable %s is not a uint64", statVarName)
 	}
-
-	statVar.Val = statVal + uint64(val)
+	if val < 0 {
+		statVar.Val = statVal - uint64(val)
+	} else {
+		statVar.Val = statVal + uint64(val)
+	}
 	s.statusVars[statVarName] = statVar
 	return nil
 }
