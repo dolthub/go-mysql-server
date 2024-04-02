@@ -20,7 +20,8 @@ import (
 	"io"
 	"net"
 	"strconv"
-	"testing"
+	"sync"
+"testing"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -1204,6 +1205,36 @@ func dummyCb(_ *sqltypes.Result, _ bool) error {
 	return nil
 }
 
+const waitTimeout = 250 * time.Millisecond
+
+func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
+	start := time.Now()
+	var globalVal interface{}
+	var ok bool
+	for time.Now().Sub(start) < waitTimeout {
+		_, globalVal, ok = sql.StatusVariables.GetGlobal(name)
+		require.True(t, ok)
+		if globalVal == expected {
+			return
+		}
+	}
+	require.Fail(t, fmt.Sprintf("expected global status variable %s to be %d, got %d", name, expected, globalVal))
+}
+
+func checkSessionStatVar(t *testing.T, sess sql.Session, name string, expected uint64) {
+	start := time.Now()
+	var sessVal interface{}
+	var err error
+	for time.Now().Sub(start) < waitTimeout {
+		sessVal, err = sess.GetStatusVariable(nil, name)
+		require.NoError(t, err)
+		if sessVal == expected {
+			return
+		}
+	}
+	require.Fail(t, fmt.Sprintf("expected session status variable %s to be %d, got %d", name, expected, sessVal))
+}
+
 func TestStatusVariableQuestions(t *testing.T) {
 	variables.InitStatusVariables()
 
@@ -1314,37 +1345,112 @@ func TestStatusVariableQuestions(t *testing.T) {
 	checkSessionStatVar(t, sess4, "Questions", uint64(1))
 }
 
-const waitTimeout = 250 * time.Millisecond
+func TestStatusVariableThreadsConnected(t *testing.T) {
+	variables.InitStatusVariables()
 
-func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
-	start := time.Now()
-	var globalVal interface{}
-	var ok bool
-	for time.Now().Sub(start) < waitTimeout {
-		_, globalVal, ok = sql.StatusVariables.GetGlobal(name)
-		require.True(t, ok)
-		if globalVal == expected {
-			return
-		}
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
 	}
-	require.Fail(t, "expected global status variable %s to be %d, got %d", name, expected, globalVal)
-}
 
-func checkSessionStatVar(t *testing.T, sess sql.Session, name string, expected uint64) {
-	start := time.Now()
-	var sessVal interface{}
-	var err error
-	for time.Now().Sub(start) < waitTimeout {
-		sessVal, err = sess.GetStatusVariable(nil, name)
+	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(1))
+
+	handler.sm.RemoveConn(conn1)
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+
+	conns := make([]*mysql.Conn, 10)
+	for i := 0; i < 10; i++ {
+		conns[i] = newConn(uint32(i))
+		handler.NewConnection(conns[i])
+		err = handler.ComInitDB(conns[i], "test")
 		require.NoError(t, err)
-		if sessVal == expected {
-			return
-		}
 	}
-	require.Fail(t, "expected session status variable %s to be %d, got %d", name, expected, sessVal)
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(10))
+
+	for i := 0; i < 10; i++ {
+		handler.sm.RemoveConn(conns[i])
+		checkGlobalStatVar(t, "Threads_connected", uint64(10 - i))
+	}
 }
 
-func TestStatusVariablesComDelete(t *testing.T) {
+func TestStatusVariableThreadsRunning(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	checkGlobalStatVar(t, "Threads_running", uint64(0))
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		handler.ComQuery(conn1, "select sleep(1)", dummyCb)
+	}()
+
+	checkGlobalStatVar(t, "Threads_running", uint64(1))
+
+	wg.Wait()
+	checkGlobalStatVar(t, "Threads_running", uint64(0))
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		handler.ComQuery(conn1, "select sleep(1)", dummyCb)
+	}()
+	go func() {
+		defer wg.Done()
+		handler.ComQuery(conn2, "select sleep(1)", dummyCb)
+	}()
+
+	checkGlobalStatVar(t, "Threads_running", uint64(2))
+
+	wg.Wait()
+	checkGlobalStatVar(t, "Threads_running", uint64(0))
+}
+
+func TestStatusVariableComDelete(t *testing.T) {
 	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
@@ -1393,7 +1499,7 @@ func TestStatusVariablesComDelete(t *testing.T) {
 	checkSessionStatVar(t, sess2, "Com_delete", uint64(3))
 }
 
-func TestStatusVariablesComInsert(t *testing.T) {
+func TestStatusVariableComInsert(t *testing.T) {
 	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))
@@ -1442,7 +1548,7 @@ func TestStatusVariablesComInsert(t *testing.T) {
 	checkSessionStatVar(t, sess2, "Com_insert", uint64(3))
 }
 
-func TestStatusVariablesComUpdate(t *testing.T) {
+func TestStatusVariableComUpdate(t *testing.T) {
 	variables.InitStatusVariables()
 
 	e, pro := setupMemDB(require.New(t))

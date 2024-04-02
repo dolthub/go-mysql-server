@@ -149,14 +149,12 @@ func (pl *ProcessList) BeginQuery(
 func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-
-	sql.IncrementStatusVariable(ctx, "Threads_running", -1)
-
 	id := ctx.Session.ID()
 	pid := ctx.Pid()
 	delete(pl.byQueryPid, pid)
 	p := pl.procs[id]
 	if p != nil && p.QueryPid == pid {
+		sql.IncrementStatusVariable(ctx, "Threads_running", -1)
 		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
 		p.StartedAt = time.Now()
