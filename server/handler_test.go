@@ -1315,6 +1315,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 }
 
 const waitTimeout = 250 * time.Millisecond
+const pauseDuration = 10 * time.Millisecond
 
 func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
 	start := time.Now()
@@ -1326,6 +1327,7 @@ func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
 		if globalVal == expected {
 			return
 		}
+		time.Sleep(pauseDuration)
 	}
 	require.Fail(t, "expected global status variable %s to be %d, got %d", name, expected, globalVal)
 }
@@ -1340,6 +1342,7 @@ func checkSessionStatVar(t *testing.T, sess sql.Session, name string, expected u
 		if sessVal == expected {
 			return
 		}
+		time.Sleep(pauseDuration)
 	}
 	require.Fail(t, "expected session status variable %s to be %d, got %d", name, expected, sessVal)
 }
