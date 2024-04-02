@@ -1396,7 +1396,7 @@ func TestStatusVariablesComDelete(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
-		time.Sleep(10 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_delete")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), globalVal)
