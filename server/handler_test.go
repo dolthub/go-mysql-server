@@ -1228,6 +1228,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	sess1 := handler.sm.sessions[1]
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok := sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), globalVal)
@@ -1242,6 +1243,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
 	require.Equal(t, uint64(5), globalVal)
@@ -1262,6 +1264,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 		require.Error(t, err)
 	}
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
 	require.Equal(t, uint64(10), globalVal)
@@ -1284,6 +1287,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	err = handler.ComQuery(conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
 	require.NoError(t, err)
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
 	require.Equal(t, uint64(11), globalVal)
@@ -1296,6 +1300,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	err = handler.ComQuery(conn3, "call p()", dummyCb)
 	require.NoError(t, err)
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
 	require.Equal(t, uint64(12), globalVal)
@@ -1338,6 +1343,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	_, err = handler.ComPrepare(conn4, prepare.PrepareStmt, samplePrepareData)
 	require.NoError(t, err)
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
 	require.Equal(t, uint64(12), globalVal)
@@ -1350,6 +1356,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	err = handler.ComStmtExecute(conn4, prepare, func(*sqltypes.Result) error { return nil })
 	require.NoError(t, err)
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
 	require.True(t, ok)
 	require.Equal(t, uint64(13), globalVal)
@@ -1389,6 +1396,7 @@ func TestStatusVariablesComDelete(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
+		time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_delete")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), globalVal)
@@ -1411,6 +1419,7 @@ func TestStatusVariablesComDelete(t *testing.T) {
 		handler.ComQuery(conn2, "DELETE FROM doesnotmatter", dummyCb)
 	}
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_delete")
 	require.True(t, ok)
 	require.Equal(t, uint64(8), globalVal)
@@ -1454,6 +1463,7 @@ func TestStatusVariablesComInsert(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_insert")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), globalVal)
@@ -1476,6 +1486,7 @@ func TestStatusVariablesComInsert(t *testing.T) {
 		handler.ComQuery(conn2, "insert into blahblah values ()", dummyCb)
 	}
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_insert")
 	require.True(t, ok)
 	require.Equal(t, uint64(8), globalVal)
@@ -1519,6 +1530,7 @@ func TestStatusVariablesComUpdate(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_update")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), globalVal)
@@ -1541,6 +1553,7 @@ func TestStatusVariablesComUpdate(t *testing.T) {
 		handler.ComQuery(conn2, "update t set i = 10", dummyCb)
 	}
 
+	time.Sleep(10 * time.Millisecond)
 	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_update")
 	require.True(t, ok)
 	require.Equal(t, uint64(8), globalVal)
