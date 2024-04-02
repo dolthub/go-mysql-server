@@ -117,7 +117,8 @@ func (d *deleteIter) Close(ctx *sql.Context) error {
 
 		if firstErr != nil {
 			return firstErr
-		} else {
+		}
+		if err != nil {
 			return err
 		}
 	}

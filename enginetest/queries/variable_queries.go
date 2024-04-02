@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -658,5 +659,269 @@ var VariableErrorTests = []QueryErrorTest{
 	{
 		Query:       `set @@global.@myvar = 5`,
 		ExpectedErr: sql.ErrSyntaxError,
+	},
+}
+
+var StatusVariableScripts = []ScriptTest{
+	{
+		Name: "Com_delete",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"insert into t values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show status like 'Com_delete'",
+				Expected: []sql.Row{
+					{"Com_delete", uint64(0)},
+				},
+			},
+			{
+				// syntax errors do not trigger the status variable
+				Query:          "delete abc",
+				ExpectedErrStr: "syntax error at position 11 near 'abc'",
+			},
+			{
+				Query: "show status like 'Com_delete'",
+				Expected: []sql.Row{
+					{"Com_delete", uint64(0)},
+				},
+			},
+
+			{
+				// delete 1 row
+				Query: "delete from t where i = 1",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "show status like 'Com_delete'",
+				Expected: []sql.Row{
+					{"Com_delete", uint64(1)},
+				},
+			},
+
+			{
+				// delete 2 rows
+				Query: "delete from t where i > 0",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: "show status like 'Com_delete'",
+				Expected: []sql.Row{
+					{"Com_delete", uint64(2)},
+				},
+			},
+
+			{
+				// delete 0 rows
+				Query: "delete from t where false",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show status like 'Com_delete'",
+				Expected: []sql.Row{
+					{"Com_delete", uint64(3)},
+				},
+			},
+
+			{
+				Query:       "delete from t where notarealcolumn > 0",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query: "show status like 'Com_delete'",
+				Expected: []sql.Row{
+					{"Com_delete", uint64(4)},
+				},
+			},
+
+			{
+				Query:       "delete from notarealtable",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: "show status like 'Com_delete'",
+				Expected: []sql.Row{
+					{"Com_delete", uint64(5)},
+				},
+			},
+		},
+	},
+	{
+		Name: "Com_insert",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show status like 'Com_insert'",
+				Expected: []sql.Row{
+					{"Com_insert", uint64(0)},
+				},
+			},
+
+			{
+				Query:          "insert syntax error",
+				ExpectedErrStr: "syntax error at position 20 near 'error'",
+			},
+			{
+				Query: "show status like 'Com_insert'",
+				Expected: []sql.Row{
+					{"Com_insert", uint64(0)},
+				},
+			},
+
+			{
+				Query: "insert into t values (1)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "show status like 'Com_insert'",
+				Expected: []sql.Row{
+					{"Com_insert", uint64(1)},
+				},
+			},
+
+			{
+				Query: "insert into t values (2), (3)",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: "show status like 'Com_insert'",
+				Expected: []sql.Row{
+					{"Com_insert", uint64(2)},
+				},
+			},
+
+			{
+				Query:       "insert into faketable values (2), (3)",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: "show status like 'Com_insert'",
+				Expected: []sql.Row{
+					{"Com_insert", uint64(3)},
+				},
+			},
+
+			{
+				Query:       "insert into t values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "show status like 'Com_insert'",
+				Expected: []sql.Row{
+					{"Com_insert", uint64(4)},
+				},
+			},
+
+			{
+				Query:       "insert into t(bad) values (1)",
+				ExpectedErr: sql.ErrUnknownColumn,
+			},
+			{
+				Query: "show status like 'Com_insert'",
+				Expected: []sql.Row{
+					{"Com_insert", uint64(5)},
+				},
+			},
+		},
+	},
+	{
+		Name: "Com_update",
+		SetUpScript: []string{
+			"create table t (i int primary key)",
+			"insert into t values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show status like 'Com_update'",
+				Expected: []sql.Row{
+					{"Com_update", uint64(0)},
+				},
+			},
+
+			{
+				Query:          "update t abc",
+				ExpectedErrStr: "syntax error at position 13 near 'abc'",
+			},
+			{
+				Query: "show status like 'Com_update'",
+				Expected: []sql.Row{
+					{"Com_update", uint64(0)},
+				},
+			},
+
+			{
+				Query: "update t set i = 10 where i = 1",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "show status like 'Com_update'",
+				Expected: []sql.Row{
+					{"Com_update", uint64(1)},
+				},
+			},
+
+			{
+				Query: "update t set i = i * 10 where i < 10",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
+				},
+			},
+			{
+				Query: "show status like 'Com_update'",
+				Expected: []sql.Row{
+					{"Com_update", uint64(2)},
+				},
+			},
+
+			{
+				Query: "update t set i = 1000 where false",
+				Expected: []sql.Row{
+					{types.OkResult{Info: plan.UpdateInfo{}}},
+				},
+			},
+			{
+				Query: "show status like 'Com_update'",
+				Expected: []sql.Row{
+					{"Com_update", uint64(3)},
+				},
+			},
+
+			{
+				Query:       "update badtbl set i = 1000",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: "show status like 'Com_update'",
+				Expected: []sql.Row{
+					{"Com_update", uint64(4)},
+				},
+			},
+
+			{
+				Query:       "update t set badcol = 1000",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query: "show status like 'Com_update'",
+				Expected: []sql.Row{
+					{"Com_update", uint64(5)},
+				},
+			},
+		},
 	},
 }
