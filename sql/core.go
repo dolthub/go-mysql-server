@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-		"time"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
