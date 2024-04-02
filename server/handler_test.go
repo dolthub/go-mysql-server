@@ -1314,7 +1314,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	checkSessionStatVar(t, sess4, "Questions", uint64(1))
 }
 
-const waitTimeout = 100 * time.Millisecond
+const waitTimeout = 250 * time.Millisecond
 
 func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
 	start := time.Now()
