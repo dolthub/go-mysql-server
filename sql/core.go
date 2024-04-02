@@ -768,7 +768,7 @@ type StatusVarValue struct {
 // name is case-insensitive. Errors are ignored.
 // This runs in a goroutine to avoid blocking the caller, but we do not wait for it to complete.
 func IncrementStatusVariable(ctx *Context, name string, val int) {
-	go func(){
+	go func() {
 		StatusVariables.IncrementGlobal(name, val)
 		ctx.Session.IncrementStatusVariable(ctx, name, val)
 	}()
