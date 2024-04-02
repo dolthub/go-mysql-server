@@ -20,7 +20,7 @@ import (
 )
 
 func Union(b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucket, error) {
-	var ret []sql.HistogramBucket
+	ret := make([]sql.HistogramBucket, 0, len(b1)+len(b2))
 	i := 0
 	j := 0
 	for i < len(b1) && j < len(b2) {
@@ -62,6 +62,11 @@ func Union(b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucke
 
 func Intersect(b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucket, error) {
 	var ret []sql.HistogramBucket
+	if len(b1) > len(b2) {
+		ret = make([]sql.HistogramBucket, 0, len(b1))
+	} else {
+		ret = make([]sql.HistogramBucket, 0, len(b2))
+	}
 	i := 0
 	j := 0
 	for i < len(b1) && j < len(b2) {
@@ -106,7 +111,6 @@ func PrefixKey(buckets []sql.HistogramBucket, idxCols sql.ColSet, types []sql.Ty
 	newFds := sql.NewFilterFDs(oldFds, oldFds.NotNull().Union(notNull), oldFds.Constants().Union(constant), nil)
 
 	// find index of bucket >= the key
-	//buckets := []sql.HistogramBucket(statistic.Histogram())
 	var searchErr error
 	lowBucket := sort.Search(len(buckets), func(i int) bool {
 		// lowest index that func is true
@@ -165,13 +169,10 @@ func nilSafeCmp(typ sql.Type, left, right interface{}) (int, error) {
 	}
 }
 
-func GetNewCounts(buckets []sql.HistogramBucket) (uint64, uint64, uint64) {
+func GetNewCounts(buckets []sql.HistogramBucket) (rowCount uint64, distinctCount uint64, nullCount uint64) {
 	if len(buckets) == 0 {
 		return 0, 0, 0
 	}
-	var rowCount uint64
-	var distinctCount uint64
-	var nullCount uint64
 	for _, b := range buckets {
 		rowCount += b.RowCount()
 		distinctCount += b.DistinctCount()
