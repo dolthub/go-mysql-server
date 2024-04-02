@@ -15,6 +15,7 @@
 package variables
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -31,8 +32,8 @@ var _ sql.StatusVariableRegistry = (*globalStatusVariables)(nil)
 
 // NewSessionMap implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
+	g.mutex.RLock()
+	defer g.mutex.RUnlock()
 	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Var.GetScope() == sql.StatusVariableScope_Global {
@@ -48,8 +49,8 @@ func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
 
 // NewGlobalMap implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
+	g.mutex.RLock()
+	defer g.mutex.RUnlock()
 	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Var.GetScope() == sql.StatusVariableScope_Session {
@@ -62,8 +63,8 @@ func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
 
 // GetGlobal implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, interface{}, bool) {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
+	g.mutex.RLock()
+	defer g.mutex.RUnlock()
 	v, ok := g.varVals[name]
 	if !ok || v.Var.GetScope() == sql.StatusVariableScope_Session {
 		return nil, nil, false
@@ -80,6 +81,23 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
 	v.Val = val
+	g.varVals[name] = v
+	return nil
+}
+
+// IncrementGlobal implements sql.StatusVariableRegistry
+func (g *globalStatusVariables) IncrementGlobal(name string, val int) error {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+	v, ok := g.varVals[name]
+	if !ok || v.Var.GetScope() == sql.StatusVariableScope_Session {
+		return sql.ErrUnknownSystemVariable.New(name)
+	}
+	gVal, ok := v.Val.(uint64)
+	if !ok {
+		return fmt.Errorf("variable %s is not an integer", name)
+	}
+	v.Val = gVal + uint64(val)
 	g.varVals[name] = v
 	return nil
 }

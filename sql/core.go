@@ -18,8 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
+		"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -709,6 +708,8 @@ type StatusVariableRegistry interface {
 	GetGlobal(name string) (StatusVariable, interface{}, bool)
 	// SetGlobal sets the global value of the status variable with the given name, returns an error if the variable is SessionOnly scope
 	SetGlobal(name string, val interface{}) error
+	// IncrementGlobal increments the value of the status variable by the given integer value
+	IncrementGlobal(name string, val int) error
 }
 
 // StatusVariableScope represents the scope of a status variable.
@@ -761,28 +762,4 @@ func (m *MySQLStatusVariable) GetDefault() interface{} {
 type StatusVarValue struct {
 	Var StatusVariable
 	Val interface{}
-}
-
-// IncrementStatusVariable increments the value of the status variable with the given name.
-// name is case-insensitive. Errors are ignored.
-func IncrementStatusVariable(ctx *Context, name string) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		if _, globalComDelete, ok := StatusVariables.GetGlobal(name); ok {
-			if v, isUint64 := globalComDelete.(uint64); isUint64 {
-				StatusVariables.SetGlobal(name, v+1)
-			}
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if sessComDelete, err := ctx.GetStatusVariable(ctx, name); err == nil {
-			if v, isUint64 := sessComDelete.(uint64); isUint64 {
-				ctx.SetStatusVariable(ctx, name, v+1)
-			}
-		}
-	}()
-	wg.Wait()
 }
