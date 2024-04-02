@@ -98,7 +98,7 @@ func (g *globalStatusVariables) IncrementGlobal(name string, val int) error {
 		return fmt.Errorf("variable %s is not an integer", name)
 	}
 	if val < 0 {
-		v.Val = gVal - uint64(val)
+		v.Val = gVal - uint64(-val)
 	} else {
 		v.Val = gVal + uint64(val)
 	}
