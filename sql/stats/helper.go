@@ -41,7 +41,7 @@ func InterpolateNewCounts(from, to sql.Statistic) sql.Statistic {
 
 	filterSelectivity := float64(to.DistinctCount()) / float64(from.DistinctCount())
 
-	newHist := make([]*Bucket, len(from.Histogram()))
+	newHist := make([]sql.HistogramBucket, len(from.Histogram()))
 	for i, h := range from.Histogram() {
 		newMcvs := make([]uint64, len(h.McvCounts()))
 		for i, cnt := range h.McvCounts() {

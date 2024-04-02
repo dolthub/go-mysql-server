@@ -29,7 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []*Bucket, class sql.IndexClass, lowerBound sql.Row) *Statistic {
+func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []sql.HistogramBucket, class sql.IndexClass, lowerBound sql.Row) *Statistic {
 	return &Statistic{
 		RowCnt:      rowCount,
 		DistinctCnt: distinctCount,
@@ -54,23 +54,49 @@ type Statistic struct {
 	Qual        sql.StatQualifier `json:"qualifier"`
 	Cols        []string          `json:"columns"`
 	Typs        []sql.Type        `json:"-"`
+	Hist        sql.Histogram     `json:"buckets"`
+	IdxClass    uint8             `json:"index_class"`
+	LowerBnd    sql.Row           `json:"lower_bound"`
+	Fds         *sql.FuncDepSet   `json:"-"`
+	Colset      sql.ColSet        `json:"-"`
+}
+
+// StatisticJSON is used as an intermediary to deserialize the memory stats
+// object. Otherwise, the histogram would have to be deserialized separately.
+type StatisticJSON struct {
+	RowCnt      uint64            `json:"row_count"`
+	DistinctCnt uint64            `json:"distinct_count"`
+	NullCnt     uint64            `json:"null_count"`
+	AvgRowSize  uint64            `json:"avg_size"`
+	Created     time.Time         `json:"created_at"`
+	Qual        sql.StatQualifier `json:"qualifier"`
+	Cols        []string          `json:"columns"`
+	Typs        []sql.Type        `json:"-"`
 	Hist        []*Bucket         `json:"buckets"`
 	IdxClass    uint8             `json:"index_class"`
 	LowerBnd    sql.Row           `json:"lower_bound"`
-	fds         *sql.FuncDepSet   `json:"-"`
-	colSet      sql.ColSet        `json:"-"`
+	Fds         *sql.FuncDepSet   `json:"-"`
+	Colset      sql.ColSet        `json:"-"`
+}
+
+func (j *StatisticJSON) ToStatistic() *Statistic {
+	var hist sql.Histogram
+	for _, b := range j.Hist {
+		hist = append(hist, b)
+	}
+	return NewStatistic(j.RowCnt, j.DistinctCnt, j.NullCnt, j.AvgRowSize, j.Created, j.Qual, j.Cols, j.Typs, hist, sql.IndexClass(j.IdxClass), j.LowerBnd)
 }
 
 var _ sql.JSONWrapper = (*Statistic)(nil)
 var _ sql.Statistic = (*Statistic)(nil)
 
 func (s *Statistic) FuncDeps() *sql.FuncDepSet {
-	return s.fds
+	return s.Fds
 }
 
 func (s *Statistic) WithFuncDeps(fds *sql.FuncDepSet) sql.Statistic {
 	ret := *s
-	ret.fds = fds
+	ret.Fds = fds
 	return &ret
 }
 
@@ -79,12 +105,12 @@ func (s *Statistic) LowerBound() sql.Row {
 }
 
 func (s *Statistic) ColSet() sql.ColSet {
-	return s.colSet
+	return s.Colset
 }
 
 func (s *Statistic) WithColSet(cols sql.ColSet) sql.Statistic {
 	ret := *s
-	ret.colSet = cols
+	ret.Colset = cols
 	return &ret
 }
 
@@ -133,11 +159,7 @@ func (s *Statistic) Types() []sql.Type {
 }
 
 func (s *Statistic) Histogram() sql.Histogram {
-	buckets := make([]sql.HistogramBucket, len(s.Hist))
-	for i, b := range s.Hist {
-		buckets[i] = b
-	}
-	return buckets
+	return s.Hist
 }
 
 func (s *Statistic) WithDistinctCount(i uint64) sql.Statistic {
@@ -192,6 +214,7 @@ func (s *Statistic) ToInterface() interface{} {
 	for i, t := range s.Typs {
 		typs[i] = t.String()
 	}
+
 	return map[string]interface{}{
 		"statistic": map[string]interface{}{
 			"row_count":      s.RowCount(),

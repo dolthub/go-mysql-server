@@ -87,8 +87,8 @@ func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error
 // buckets to estimate the join cardinality. Most common values (mcvs) adjust
 // the estimates to account for outlier keys that are a disproportionately
 // high fraction of the index.
-func joinAlignedStats(left, right sql.Histogram, cmp func(sql.Row, sql.Row) (int, error)) ([]*Bucket, error) {
-	var newBuckets []*Bucket
+func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.Row) (int, error)) ([]sql.HistogramBucket, error) {
+	var newBuckets []sql.HistogramBucket
 	newCnt := uint64(0)
 	for i := range left {
 		l := left[i]
@@ -176,8 +176,8 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 
 	var leftRes sql.Histogram
 	var rightRes sql.Histogram
-	var leftStack []sql.HistogramBucket
-	var rightStack []sql.HistogramBucket
+	var leftStack sql.Histogram
+	var rightStack sql.Histogram
 	var nextL sql.HistogramBucket
 	var nextR sql.HistogramBucket
 	var keyCmp int
@@ -512,7 +512,7 @@ func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []uint64, cmp func(sql
 
 // mergeOverlappingBuckets folds bins with one element into the previous
 // bucket when the bound keys match.
-func mergeOverlappingBuckets(h sql.Histogram, types []sql.Type) (sql.Histogram, error) {
+func mergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramBucket, error) {
 	cmp := func(l, r sql.Row) (int, error) {
 		for i := 0; i < len(types); i++ {
 			cmp, err := types[i].Compare(l[i], r[i])
