@@ -1496,6 +1496,14 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 				collationStr = cc.Value
 			}
 		}
+		// TODO: ensure that collation and charset match when setting them
+		if len(charsetStr) == 0 && len(collationStr) == 0 {
+			collation, err := b.ctx.Session.GetSessionVariable(b.ctx, "collation_server")
+			if err != nil {
+				b.handleErr(err)
+			}
+			collationStr = collation.(string)
+		}
 		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
 		if err != nil {
 			b.handleErr(err)
