@@ -6349,7 +6349,7 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
+				Query: "describe test",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
@@ -6373,7 +6373,7 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
+				Query: "describe test",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
@@ -6397,7 +6397,7 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
+				Query: "describe test",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"},
@@ -6421,7 +6421,7 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
+				Query: "describe test",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
@@ -6445,7 +6445,7 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
+				Query: "describe test",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
@@ -6469,7 +6469,7 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
+				Query: "describe test",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
