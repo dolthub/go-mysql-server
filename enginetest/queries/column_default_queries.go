@@ -389,7 +389,7 @@ var ColumnDefaultTests = []ScriptTest{
 		SetUpScript: []string{"CREATE TABLE t27(pk BIGINT PRIMARY KEY, v1 DOUBLE DEFAULT -1.1)"},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "DESCRIBE t27",
+				Query: "DESCRIBE t27",
 				Expected: []sql.Row{
 					{"pk", "bigint", "NO", "PRI", nil, ""},
 					{"v1", "double", "YES", "", "-1.1", ""},

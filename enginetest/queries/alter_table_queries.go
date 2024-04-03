@@ -2063,7 +2063,7 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "SHOW FULL COLUMNS FROM t1",
+				Query: "SHOW FULL COLUMNS FROM t1",
 				Expected: []sql.Row{
 					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
 					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
@@ -2090,7 +2090,7 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "SHOW FULL COLUMNS FROM t2",
+				Query: "SHOW FULL COLUMNS FROM t2",
 				Expected: []sql.Row{
 					{"a", "int", nil, "YES", "", nil, "", "", ""},
 					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
