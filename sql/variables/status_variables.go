@@ -97,7 +97,11 @@ func (g *globalStatusVariables) IncrementGlobal(name string, val int) error {
 	if !ok {
 		return fmt.Errorf("variable %s is not an integer", name)
 	}
-	v.Val = gVal + uint64(val)
+	if val < 0 {
+		v.Val = gVal - uint64(-val)
+	} else {
+		v.Val = gVal + uint64(val)
+	}
 	g.varVals[name] = v
 	return nil
 }
@@ -109,17 +113,23 @@ func init() {
 }
 
 func InitStatusVariables() {
-	globalVars := &globalStatusVariables{
-		mutex:   &sync.RWMutex{},
-		varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
+	if sql.StatusVariables == nil {
+		globalVars := &globalStatusVariables{
+			mutex:   &sync.RWMutex{},
+			varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
+		}
+		for _, sysVar := range statusVars {
+			globalVars.varVals[sysVar.GetName()] = sql.StatusVarValue{
+				Var: sysVar,
+				Val: sysVar.GetDefault(),
+			}
+		}
+		sql.StatusVariables = globalVars
+		return
 	}
 	for _, sysVar := range statusVars {
-		globalVars.varVals[sysVar.GetName()] = sql.StatusVarValue{
-			Var: sysVar,
-			Val: sysVar.GetDefault(),
-		}
+		sql.StatusVariables.SetGlobal(sysVar.GetName(), sysVar.GetDefault())
 	}
-	sql.StatusVariables = globalVars
 }
 
 // statusVars is a map of status variables that are available in the MySQL server.
@@ -4162,7 +4172,7 @@ var statusVars = map[string]sql.StatusVariable{
 		Name:    "Threads_connected",
 		Scope:   sql.StatusVariableScope_Global,
 		Type:    types.NewSystemIntType("Threads_connected", 0, 0, false),
-		Default: int64(0),
+		Default: uint64(0),
 	},
 	"Threads_created": &sql.MySQLStatusVariable{
 		Name:    "Threads_created",
@@ -4174,7 +4184,7 @@ var statusVars = map[string]sql.StatusVariable{
 		Name:    "Threads_running",
 		Scope:   sql.StatusVariableScope_Global,
 		Type:    types.NewSystemIntType("Threads_running", 0, 0, false),
-		Default: int64(0),
+		Default: uint64(0),
 	},
 	"Tls_library_version": &sql.MySQLStatusVariable{
 		Name:    "Tls_library_version",
