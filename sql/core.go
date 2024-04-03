@@ -708,6 +708,8 @@ type StatusVariableRegistry interface {
 	GetGlobal(name string) (StatusVariable, interface{}, bool)
 	// SetGlobal sets the global value of the status variable with the given name, returns an error if the variable is SessionOnly scope
 	SetGlobal(name string, val interface{}) error
+	// IncrementGlobal increments the value of the status variable by the given integer value
+	IncrementGlobal(name string, val int) error
 }
 
 // StatusVariableScope represents the scope of a status variable.
@@ -762,20 +764,12 @@ type StatusVarValue struct {
 	Val interface{}
 }
 
-// IncrementStatusVariable increments the value of the status variable with the given name.
+// IncrementStatusVariable increments the value of the status variable by integer val.
 // name is case-insensitive. Errors are ignored.
-func IncrementStatusVariable(ctx *Context, name string) {
-	// TODO: global and session status variable incrementing should use a goroutine to avoid blocking the main thread.
-	// TODO: there should be some sort of mutex over incrementing status variables, as a read race condition
-	//   is currently possible.
-	if _, globalComDelete, ok := StatusVariables.GetGlobal(name); ok {
-		if v, isUint64 := globalComDelete.(uint64); isUint64 {
-			StatusVariables.SetGlobal(name, v+1)
-		}
-	}
-	if sessComDelete, err := ctx.GetStatusVariable(ctx, name); err == nil {
-		if v, isUint64 := sessComDelete.(uint64); isUint64 {
-			ctx.SetStatusVariable(ctx, name, v+1)
-		}
-	}
+// This runs in a goroutine to avoid blocking the caller, but we do not wait for it to complete.
+func IncrementStatusVariable(ctx *Context, name string, val int) {
+	go func() {
+		StatusVariables.IncrementGlobal(name, val)
+		ctx.Session.IncrementStatusVariable(ctx, name, val)
+	}()
 }

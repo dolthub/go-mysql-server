@@ -15,6 +15,7 @@
 package variables
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -80,6 +81,23 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
 	v.Val = val
+	g.varVals[name] = v
+	return nil
+}
+
+// IncrementGlobal implements sql.StatusVariableRegistry
+func (g *globalStatusVariables) IncrementGlobal(name string, val int) error {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+	v, ok := g.varVals[name]
+	if !ok || v.Var.GetScope() == sql.StatusVariableScope_Session {
+		return sql.ErrUnknownSystemVariable.New(name)
+	}
+	gVal, ok := v.Val.(uint64)
+	if !ok {
+		return fmt.Errorf("variable %s is not an integer", name)
+	}
+	v.Val = gVal + uint64(val)
 	g.varVals[name] = v
 	return nil
 }

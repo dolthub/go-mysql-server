@@ -1228,13 +1228,8 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	sess1 := handler.sm.sessions[1]
 
-	_, globalVal, ok := sql.StatusVariables.GetGlobal("Questions")
-	require.True(t, ok)
-	require.Equal(t, uint64(0), globalVal)
-
-	sessVal, err := sess1.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
+	checkGlobalStatVar(t, "Questions", uint64(0))
+	checkSessionStatVar(t, sess1, "Questions", uint64(0))
 
 	// Call ComQuery 5 times
 	for i := 0; i < 5; i++ {
@@ -1242,13 +1237,8 @@ func TestStatusVariableQuestions(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
-	require.True(t, ok)
-	require.Equal(t, uint64(5), globalVal)
-
-	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
+	checkGlobalStatVar(t, "Questions", uint64(5))
+	checkSessionStatVar(t, sess1, "Questions", uint64(5))
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
@@ -1262,18 +1252,9 @@ func TestStatusVariableQuestions(t *testing.T) {
 		require.Error(t, err)
 	}
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
-	require.True(t, ok)
-	require.Equal(t, uint64(10), globalVal)
-
-	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
-
-	// Errors also increment Questions (it's 2x on Windows for some reason)
-	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
+	checkGlobalStatVar(t, "Questions", uint64(10))
+	checkSessionStatVar(t, sess1, "Questions", uint64(5))
+	checkSessionStatVar(t, sess2, "Questions", uint64(5))
 
 	conn3 := newConn(3)
 	handler.NewConnection(conn3)
@@ -1284,33 +1265,17 @@ func TestStatusVariableQuestions(t *testing.T) {
 	err = handler.ComQuery(conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
 	require.NoError(t, err)
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
-	require.True(t, ok)
-	require.Equal(t, uint64(11), globalVal)
-
-	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), sessVal)
+	checkGlobalStatVar(t, "Questions", uint64(11))
+	checkSessionStatVar(t, sess3, "Questions", uint64(1))
 
 	// Calling stored procedure with multiple queries only increment Questions once.
 	err = handler.ComQuery(conn3, "call p()", dummyCb)
 	require.NoError(t, err)
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
-	require.True(t, ok)
-	require.Equal(t, uint64(12), globalVal)
-
-	sessVal, err = sess1.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
-
-	sessVal, err = sess2.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
-
-	sessVal, err = sess3.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(2), sessVal)
+	checkGlobalStatVar(t, "Questions", uint64(12))
+	checkSessionStatVar(t, sess1, "Questions", uint64(5))
+	checkSessionStatVar(t, sess2, "Questions", uint64(5))
+	checkSessionStatVar(t, sess3, "Questions", uint64(2))
 
 	conn4 := newConn(4)
 	handler.NewConnection(conn4)
@@ -1338,25 +1303,45 @@ func TestStatusVariableQuestions(t *testing.T) {
 	_, err = handler.ComPrepare(conn4, prepare.PrepareStmt, samplePrepareData)
 	require.NoError(t, err)
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
-	require.True(t, ok)
-	require.Equal(t, uint64(12), globalVal)
-
-	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
+	checkGlobalStatVar(t, "Questions", uint64(12))
+	checkSessionStatVar(t, sess4, "Questions", uint64(0))
 
 	// Execute does increment Questions
 	err = handler.ComStmtExecute(conn4, prepare, func(*sqltypes.Result) error { return nil })
 	require.NoError(t, err)
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Questions")
-	require.True(t, ok)
-	require.Equal(t, uint64(13), globalVal)
+	checkGlobalStatVar(t, "Questions", uint64(13))
+	checkSessionStatVar(t, sess4, "Questions", uint64(1))
+}
 
-	sessVal, err = sess4.GetStatusVariable(nil, "Questions")
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), sessVal)
+const waitTimeout = 250 * time.Millisecond
+
+func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
+	start := time.Now()
+	var globalVal interface{}
+	var ok bool
+	for time.Now().Sub(start) < waitTimeout {
+		_, globalVal, ok = sql.StatusVariables.GetGlobal(name)
+		require.True(t, ok)
+		if globalVal == expected {
+			return
+		}
+	}
+	require.Fail(t, "expected global status variable %s to be %d, got %d", name, expected, globalVal)
+}
+
+func checkSessionStatVar(t *testing.T, sess sql.Session, name string, expected uint64) {
+	start := time.Now()
+	var sessVal interface{}
+	var err error
+	for time.Now().Sub(start) < waitTimeout {
+		sessVal, err = sess.GetStatusVariable(nil, name)
+		require.NoError(t, err)
+		if sessVal == expected {
+			return
+		}
+	}
+	require.Fail(t, "expected session status variable %s to be %d, got %d", name, expected, sessVal)
 }
 
 func TestStatusVariablesComDelete(t *testing.T) {
@@ -1389,17 +1374,9 @@ func TestStatusVariablesComDelete(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
-	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_delete")
-	require.True(t, ok)
-	require.Equal(t, uint64(0), globalVal)
-
-	sessVal, err := sess1.GetStatusVariable(nil, "Com_delete")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
-
-	sessVal, err = sess2.GetStatusVariable(nil, "Com_delete")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
+	checkGlobalStatVar(t, "Com_delete", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_delete", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_delete", uint64(0))
 
 	// have session 1 call delete 5 times
 	for i := 0; i < 5; i++ {
@@ -1411,17 +1388,9 @@ func TestStatusVariablesComDelete(t *testing.T) {
 		handler.ComQuery(conn2, "DELETE FROM doesnotmatter", dummyCb)
 	}
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_delete")
-	require.True(t, ok)
-	require.Equal(t, uint64(8), globalVal)
-
-	sessVal, err = sess1.GetStatusVariable(nil, "Com_delete")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
-
-	sessVal, err = sess2.GetStatusVariable(nil, "Com_delete")
-	require.NoError(t, err)
-	require.Equal(t, uint64(3), sessVal)
+	checkGlobalStatVar(t, "Com_delete", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_delete", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_delete", uint64(3))
 }
 
 func TestStatusVariablesComInsert(t *testing.T) {
@@ -1454,17 +1423,9 @@ func TestStatusVariablesComInsert(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
-	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_insert")
-	require.True(t, ok)
-	require.Equal(t, uint64(0), globalVal)
-
-	sessVal, err := sess1.GetStatusVariable(nil, "Com_insert")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
-
-	sessVal, err = sess2.GetStatusVariable(nil, "Com_insert")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
+	checkGlobalStatVar(t, "Com_insert", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_insert", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_insert", uint64(0))
 
 	// have session 1 call delete 5 times
 	for i := 0; i < 5; i++ {
@@ -1476,17 +1437,9 @@ func TestStatusVariablesComInsert(t *testing.T) {
 		handler.ComQuery(conn2, "insert into blahblah values ()", dummyCb)
 	}
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_insert")
-	require.True(t, ok)
-	require.Equal(t, uint64(8), globalVal)
-
-	sessVal, err = sess1.GetStatusVariable(nil, "Com_insert")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
-
-	sessVal, err = sess2.GetStatusVariable(nil, "Com_insert")
-	require.NoError(t, err)
-	require.Equal(t, uint64(3), sessVal)
+	checkGlobalStatVar(t, "Com_insert", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_insert", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_insert", uint64(3))
 }
 
 func TestStatusVariablesComUpdate(t *testing.T) {
@@ -1519,17 +1472,9 @@ func TestStatusVariablesComUpdate(t *testing.T) {
 	require.NoError(t, err)
 	sess2 := handler.sm.sessions[2]
 
-	_, globalVal, ok := sql.StatusVariables.GetGlobal("Com_update")
-	require.True(t, ok)
-	require.Equal(t, uint64(0), globalVal)
-
-	sessVal, err := sess1.GetStatusVariable(nil, "Com_update")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
-
-	sessVal, err = sess2.GetStatusVariable(nil, "Com_update")
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), sessVal)
+	checkGlobalStatVar(t, "Com_update", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_update", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_update", uint64(0))
 
 	// have session 1 call delete 5 times
 	for i := 0; i < 5; i++ {
@@ -1541,15 +1486,7 @@ func TestStatusVariablesComUpdate(t *testing.T) {
 		handler.ComQuery(conn2, "update t set i = 10", dummyCb)
 	}
 
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Com_update")
-	require.True(t, ok)
-	require.Equal(t, uint64(8), globalVal)
-
-	sessVal, err = sess1.GetStatusVariable(nil, "Com_update")
-	require.NoError(t, err)
-	require.Equal(t, uint64(5), sessVal)
-
-	sessVal, err = sess2.GetStatusVariable(nil, "Com_update")
-	require.NoError(t, err)
-	require.Equal(t, uint64(3), sessVal)
+	checkGlobalStatVar(t, "Com_update", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_update", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_update", uint64(3))
 }

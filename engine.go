@@ -359,7 +359,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
-	sql.IncrementStatusVariable(ctx, "Questions")
+	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
 	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
 

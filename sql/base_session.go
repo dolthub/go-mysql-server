@@ -244,7 +244,7 @@ func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interfa
 }
 
 // SetStatusVariable implements the Session interface.
-func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, value interface{}) error {
+func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, val interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -252,7 +252,7 @@ func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, value in
 	if !ok {
 		return ErrUnknownSystemVariable.New(statVarName)
 	}
-	statVar.Val = value
+	statVar.Val = val
 	s.statusVars[statVarName] = statVar
 	return nil
 }
@@ -267,6 +267,25 @@ func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValu
 		m[k] = v
 	}
 	return m
+}
+
+// IncrementStatusVariable implements the Session interface.
+func (s *BaseSession) IncrementStatusVariable(_ *Context, statVarName string, val int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	statVar, ok := s.statusVars[statVarName]
+	if !ok {
+		return ErrUnknownSystemVariable.New(statVarName)
+	}
+	statVal, ok := statVar.Val.(uint64)
+	if !ok {
+		return fmt.Errorf("status variable %s is not a uint64", statVarName)
+	}
+
+	statVar.Val = statVal + uint64(val)
+	s.statusVars[statVarName] = statVar
+	return nil
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
