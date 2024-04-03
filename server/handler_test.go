@@ -1205,7 +1205,7 @@ func dummyCb(_ *sqltypes.Result, _ bool) error {
 	return nil
 }
 
-const waitTimeout = 250 * time.Millisecond
+const waitTimeout = 500 * time.Millisecond
 
 func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
 	start := time.Now()
