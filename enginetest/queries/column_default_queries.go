@@ -387,9 +387,14 @@ var ColumnDefaultTests = []ScriptTest{
 	{
 		Name:        "Negative float literal",
 		SetUpScript: []string{"CREATE TABLE t27(pk BIGINT PRIMARY KEY, v1 DOUBLE DEFAULT -1.1)"},
-		Assertions: []ScriptTestAssertion{{
-			Query:    "DESCRIBE t27",
-			Expected: []sql.Row{{"pk", "bigint", "NO", "PRI", "NULL", ""}, {"v1", "double", "YES", "", "-1.1", ""}}},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "DESCRIBE t27",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", nil, ""},
+					{"v1", "double", "YES", "", "-1.1", ""},
+				},
+			},
 		},
 	},
 	{
@@ -486,7 +491,7 @@ var ColumnDefaultTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
 					{"v1_new", "timestamp(6)", "YES", "", "CURRENT_TIMESTAMP(6)", "DEFAULT_GENERATED"},
-					{"v2", "varchar(100)", "YES", "", "NULL", ""},
+					{"v2", "varchar(100)", "YES", "", nil, ""},
 					{"v3", "datetime(6)", "YES", "", "CURRENT_TIMESTAMP(6)", "DEFAULT_GENERATED"},
 				},
 			},

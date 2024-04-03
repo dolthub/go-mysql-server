@@ -62,30 +62,30 @@ var AlterTableScripts = []ScriptTest{
 				Query: "SHOW FULL COLUMNS FROM t32",
 				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
 				Expected: []sql.Row{
-					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"v4", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"v1", "varchar(100)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"v4", "int", nil, "YES", "", nil, "", "", ""},
+					{"v1", "varchar(100)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
 					{"v3", "int", nil, "YES", "", "100", "", "", ""},
-					{"newName", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"newName", "int", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t32_2",
 				Expected: []sql.Row{
-					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"v2", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"v3", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"v1", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"v2", "int", nil, "YES", "", nil, "", "", ""},
+					{"v3", "int", nil, "YES", "", nil, "", "", ""},
+					{"v1", "int", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t32_3",
 				Expected: []sql.Row{
-					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"v5", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"v2", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"v3", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"v1", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"v5", "int", nil, "YES", "", nil, "", "", ""},
+					{"v2", "int", nil, "YES", "", nil, "", "", ""},
+					{"v3", "int", nil, "YES", "", nil, "", "", ""},
+					{"v1", "int", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
@@ -114,9 +114,9 @@ var AlterTableScripts = []ScriptTest{
 				Query: "SHOW FULL COLUMNS FROM t33",
 				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
 				Expected: []sql.Row{
-					{"pk", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"v4", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"v1", "int", nil, "YES", "", "NULL", "", "", ""},
+					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"v4", "int", nil, "YES", "", nil, "", "", ""},
+					{"v1", "int", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
@@ -448,8 +448,8 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "describe t40",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"val", "int", "YES", "", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"val", "int", "YES", "", nil, ""},
 				},
 			},
 			{
@@ -715,8 +715,8 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"uk", "int", "YES", "UNI", "NULL", "auto_increment"},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"uk", "int", "YES", "UNI", nil, "auto_increment"},
 				},
 			},
 		},
@@ -744,8 +744,8 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"mk", "int", "YES", "MUL", "NULL", "auto_increment"},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"mk", "int", "YES", "MUL", nil, "auto_increment"},
 				},
 			},
 		},
@@ -1522,8 +1522,8 @@ var AddColumnScripts = []ScriptTest{
 				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
 				// TODO: missing privileges
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
 				},
 			},
@@ -1547,9 +1547,9 @@ var AddColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", nil, "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
 				},
 			},
@@ -1591,9 +1591,9 @@ var AddColumnScripts = []ScriptTest{
 				Query: "SHOW FULL COLUMNS FROM mytable",
 				Expected: []sql.Row{
 					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", nil, "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
 				},
 			},
@@ -1619,10 +1619,10 @@ var AddColumnScripts = []ScriptTest{
 				Query: "SHOW FULL COLUMNS FROM mytable",
 				Expected: []sql.Row{
 					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
-					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", nil, "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
 				},
 			},
@@ -1648,13 +1648,13 @@ var AddColumnScripts = []ScriptTest{
 				Query: "SHOW FULL COLUMNS FROM mytable",
 				Expected: []sql.Row{
 					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
-					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"s2", "text", "utf8mb4_0900_bin", "YES", "", nil, "", "", "hello"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
-					{"s5", "varchar(26)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
-					{"s6", "varchar(27)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
+					{"s5", "varchar(26)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
+					{"s6", "varchar(27)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
 				},
 			},
 			{
@@ -1731,8 +1731,8 @@ var RenameColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
 				Expected: []sql.Row{
-					{"i2", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-					{"s2", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+					{"i2", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+					{"s2", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 				},
 			},
 			{
@@ -1778,8 +1778,8 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 1 */",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "modified"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", "column s"},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "modified"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", "column s"},
 				},
 			},
 			{
@@ -1789,8 +1789,8 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 2 */",
 				Expected: []sql.Row{
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", "column s"},
-					{"i", "tinyint", nil, "NO", "PRI", "NULL", "", "", "yes"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", "column s"},
+					{"i", "tinyint", nil, "NO", "PRI", nil, "", "", "yes"},
 				},
 			},
 			{
@@ -1800,8 +1800,8 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 3 */",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "ok"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", "column s"},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", "column s"},
 				},
 			},
 			{
@@ -1811,8 +1811,8 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 4 */",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "ok"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed"},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
 				},
 			},
 		},
@@ -1828,8 +1828,8 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 1 */",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "auto_increment", "", ""},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed"},
+					{"i", "bigint", nil, "NO", "PRI", nil, "auto_increment", "", ""},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
 				},
 			},
 			{
@@ -1849,9 +1849,9 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 2 */",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "auto_increment", "", ""},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed"},
-					{"i2", "bigint", nil, "YES", "", "NULL", "", "", ""},
+					{"i", "bigint", nil, "NO", "PRI", nil, "auto_increment", "", ""},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
+					{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
@@ -1861,9 +1861,9 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 3 */",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "ok"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed"},
-					{"i2", "bigint", nil, "YES", "", "NULL", "", "", ""},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
+					{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
@@ -1873,9 +1873,9 @@ var ModifyColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 4 */",
 				Expected: []sql.Row{
-					{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "ok"},
-					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed"},
-					{"i2", "bigint", nil, "YES", "", "NULL", "", "", ""},
+					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
+					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
+					{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 		},
@@ -1917,7 +1917,7 @@ var DropColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW FULL COLUMNS FROM mytable",
-				Expected: []sql.Row{{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""}},
+				Expected: []sql.Row{{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""}},
 			},
 			{
 				Query:    "select * from mytable order by i",
@@ -1939,9 +1939,9 @@ var DropColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM t1",
 				Expected: []sql.Row{
-					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
-					{"c", "bigint", nil, "YES", "", "NULL", "", "", ""},
-					{"k", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
+					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
+					{"k", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 				},
 			},
 			{
@@ -1967,9 +1967,9 @@ var DropColumnScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM t2",
 				Expected: []sql.Row{
-					{"a", "int", nil, "YES", "", "NULL", "", "", ""},
-					{"c", "bigint", nil, "YES", "", "NULL", "", "", ""},
-					{"k", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
+					{"a", "int", nil, "YES", "", nil, "", "", ""},
+					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
+					{"k", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 				},
 			},
 			{
@@ -1998,8 +1998,8 @@ var DropColumnScripts = []ScriptTest{
 				Skip:  true,
 				Query: "SHOW FULL COLUMNS FROM t3",
 				Expected: []sql.Row{
-					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
-					{"c", "bigint", nil, "YES", "", "NULL", "", "", ""},
+					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
+					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
@@ -2047,7 +2047,7 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 			},
 			{
 				Query:    "SHOW FULL COLUMNS FROM t0",
-				Expected: []sql.Row{{"i", "bigint", nil, "YES", "", "NULL", "", "", ""}},
+				Expected: []sql.Row{{"i", "bigint", nil, "YES", "", nil, "", "", ""}},
 			},
 		},
 	},
@@ -2064,7 +2064,10 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 			},
 			{
 				Query:    "SHOW FULL COLUMNS FROM t1",
-				Expected: []sql.Row{{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""}, {"c", "bigint", nil, "YES", "", "NULL", "", "", ""}},
+				Expected: []sql.Row{
+					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
+					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
+				},
 			},
 			{
 				Query: "SELECT * FROM t1 ORDER BY b",
@@ -2088,7 +2091,10 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 			},
 			{
 				Query:    "SHOW FULL COLUMNS FROM t2",
-				Expected: []sql.Row{{"a", "int", nil, "YES", "", "NULL", "", "", ""}, {"c", "bigint", nil, "YES", "", "NULL", "", "", ""}},
+				Expected: []sql.Row{
+					{"a", "int", nil, "YES", "", nil, "", "", ""},
+					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
+				},
 			},
 			{
 				Query: "SELECT * FROM t2 ORDER BY c",

@@ -5691,8 +5691,8 @@ Select * from (
 	{
 		Query: `describe myview`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "", "NULL", ""},
-			{"s", "varchar(20)", "NO", "", "NULL", ""},
+			{"i", "bigint", "NO", "", nil, ""},
+			{"s", "varchar(20)", "NO", "", nil, ""},
 		},
 	},
 	{
@@ -9631,22 +9631,22 @@ var KeylessQueries = []QueryTest{
 	{
 		Query: "DESCRIBE keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "NULL", ""},
-			{"c1", "bigint", "YES", "", "NULL", ""},
+			{"c0", "bigint", "YES", "", nil, ""},
+			{"c1", "bigint", "YES", "", nil, ""},
 		},
 	},
 	{
 		Query: "SHOW COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "NULL", ""},
-			{"c1", "bigint", "YES", "", "NULL", ""},
+			{"c0", "bigint", "YES", "", nil, ""},
+			{"c1", "bigint", "YES", "", nil, ""},
 		},
 	},
 	{
 		Query: "SHOW FULL COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", nil, "YES", "", "NULL", "", "", ""},
-			{"c1", "bigint", nil, "YES", "", "NULL", "", "", ""},
+			{"c0", "bigint", nil, "YES", "", nil, "", "", ""},
+			{"c1", "bigint", nil, "YES", "", nil, "", "", ""},
 		},
 	},
 	{
@@ -9945,16 +9945,16 @@ var VersionedScripts = []ScriptTest{
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "NULL", ""},
-					{"s", "text", "NO", "", "NULL", ""},
+					{"i", "bigint", "NO", "PRI", nil, ""},
+					{"s", "text", "NO", "", nil, ""},
 				},
 			},
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "NULL", ""},
-					{"s", "text", "NO", "", "NULL", ""},
-					{"c", "text", "NO", "", "NULL", ""},
+					{"i", "bigint", "NO", "PRI", nil, ""},
+					{"s", "text", "NO", "", nil, ""},
+					{"c", "text", "NO", "", nil, ""},
 				},
 			},
 		},

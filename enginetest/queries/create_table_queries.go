@@ -290,12 +290,12 @@ var CreateTableScriptTests = []ScriptTest{
 				// all other uses parse correctly, but are dropped.
 				Query: "SHOW FULL FIELDS FROM numericDisplayWidthTest;",
 				Expected: []sql.Row{
-					{"pk", "int", interface{}(nil), "NO", "PRI", "NULL", "", "", ""},
-					{"b", "tinyint(1)", interface{}(nil), "YES", "", "NULL", "", "", ""},
-					{"ti", "tinyint", interface{}(nil), "YES", "", "NULL", "", "", ""},
-					{"ti1", "tinyint(1)", interface{}(nil), "YES", "", "NULL", "", "", ""},
-					{"ti2", "tinyint", interface{}(nil), "YES", "", "NULL", "", "", ""},
-					{"i1", "int", interface{}(nil), "YES", "", "NULL", "", "", ""},
+					{"pk", "int", interface{}(nil), "NO", "PRI", nil, "", "", ""},
+					{"b", "tinyint(1)", interface{}(nil), "YES", "", nil, "", "", ""},
+					{"ti", "tinyint", interface{}(nil), "YES", "", nil, "", "", ""},
+					{"ti1", "tinyint(1)", interface{}(nil), "YES", "", nil, "", "", ""},
+					{"ti2", "tinyint", interface{}(nil), "YES", "", nil, "", "", ""},
+					{"i1", "int", interface{}(nil), "YES", "", nil, "", "", ""},
 				},
 			},
 			{
