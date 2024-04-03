@@ -113,17 +113,22 @@ func init() {
 }
 
 func InitStatusVariables() {
-	globalVars := &globalStatusVariables{
-		mutex:   &sync.RWMutex{},
-		varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
+	if sql.StatusVariables == nil {
+		globalVars := &globalStatusVariables{
+			mutex:   &sync.RWMutex{},
+			varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
+		}
+		for _, sysVar := range statusVars {
+			globalVars.varVals[sysVar.GetName()] = sql.StatusVarValue{
+				Var: sysVar,
+				Val: sysVar.GetDefault(),
+			}
+		}
+		return
 	}
 	for _, sysVar := range statusVars {
-		globalVars.varVals[sysVar.GetName()] = sql.StatusVarValue{
-			Var: sysVar,
-			Val: sysVar.GetDefault(),
-		}
+		sql.StatusVariables.SetGlobal(sysVar.GetName(), sysVar.GetDefault())
 	}
-	sql.StatusVariables = globalVars
 }
 
 // statusVars is a map of status variables that are available in the MySQL server.
