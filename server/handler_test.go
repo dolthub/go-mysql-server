@@ -21,7 +21,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
-"testing"
+	"testing"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -1388,7 +1388,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		handler.sm.RemoveConn(conns[i])
-		checkGlobalStatVar(t, "Threads_connected", uint64(10 - i))
+		checkGlobalStatVar(t, "Threads_connected", uint64(10-i))
 	}
 }
 
