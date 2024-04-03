@@ -124,6 +124,7 @@ func InitStatusVariables() {
 				Val: sysVar.GetDefault(),
 			}
 		}
+		sql.StatusVariables = globalVars
 		return
 	}
 	for _, sysVar := range statusVars {
