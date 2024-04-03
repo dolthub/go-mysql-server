@@ -1390,6 +1390,8 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 		handler.sm.RemoveConn(conns[i])
 		checkGlobalStatVar(t, "Threads_connected", uint64(10-i))
 	}
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(0))
 }
 
 func TestStatusVariableThreadsRunning(t *testing.T) {
