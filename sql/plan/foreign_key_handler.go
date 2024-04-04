@@ -30,6 +30,10 @@ type ForeignKeyHandler struct {
 	AllUpdaters  []sql.ForeignKeyEditor
 }
 
+func (n *ForeignKeyHandler) Underlying() sql.Table {
+	return n.Table
+}
+
 var _ sql.Node = (*ForeignKeyHandler)(nil)
 var _ sql.CollationCoercible = (*ForeignKeyHandler)(nil)
 var _ sql.Table = (*ForeignKeyHandler)(nil)
@@ -41,6 +45,7 @@ var _ sql.TableEditor = (*ForeignKeyHandler)(nil)
 var _ sql.RowInserter = (*ForeignKeyHandler)(nil)
 var _ sql.RowUpdater = (*ForeignKeyHandler)(nil)
 var _ sql.RowDeleter = (*ForeignKeyHandler)(nil)
+var _ sql.TableWrapper = (*ForeignKeyHandler)(nil)
 
 // Resolved implements the interface sql.Node.
 func (n *ForeignKeyHandler) Resolved() bool {
