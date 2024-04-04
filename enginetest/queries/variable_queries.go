@@ -111,7 +111,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select @@server_id;",
-				Expected: []sql.Row{{uint32(0)}},
+				Expected: []sql.Row{{uint32(1)}},
 			},
 			{
 				Query:    "set @@server_id=123;",
