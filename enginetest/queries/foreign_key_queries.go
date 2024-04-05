@@ -1645,13 +1645,19 @@ var ForeignKeyTests = []ScriptTest{
 		SetUpScript: []string{
 			"create table t1 (i int primary key, J int, constraint fk1 foreign key (J) references t1(i));",
 			"create table t2 (I int primary key, j int, constraint fk2 foreign key (j) references t2(I));",
+			"create table t3 (i int primary key, j int, constraint fk3 foreign key (J) references t3(I));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				// Casing is preserved in show create table statements
 				Query: "show create table t1;",
 				Expected: []sql.Row{
-					{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `J` int,\n  PRIMARY KEY (`i`),\n  KEY `J` (`J`),\n  CONSTRAINT `fk1` FOREIGN KEY (`J`) REFERENCES `t1` (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int NOT NULL,\n  `J` int,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  KEY `J` (`J`),\n" +
+						"  CONSTRAINT `fk1` FOREIGN KEY (`J`) REFERENCES `t1` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -1668,7 +1674,13 @@ var ForeignKeyTests = []ScriptTest{
 				// Casing is preserved in show create table statements
 				Query: "show create table t2;",
 				Expected: []sql.Row{
-					{"t2", "CREATE TABLE `t2` (\n  `I` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`I`),\n  KEY `j` (`j`),\n  CONSTRAINT `fk2` FOREIGN KEY (`j`) REFERENCES `t2` (`I`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `I` int NOT NULL,\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`I`),\n" +
+						"  KEY `j` (`j`),\n" +
+						"  CONSTRAINT `fk2` FOREIGN KEY (`j`) REFERENCES `t2` (`I`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -1678,7 +1690,28 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Query:       "insert into t2d . values (2, 3);",
+				Query:       "insert into t2 values (2, 3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "show create table t3;",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `i` int NOT NULL,\n  `j` int,\n" +
+						"  PRIMARY KEY (`i`),\n" +
+						"  KEY `j` (`j`),\n" +
+						"  CONSTRAINT `fk3` FOREIGN KEY (`j`) REFERENCES `t3` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t3 values (1, 1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into t3 values (2, 3);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
