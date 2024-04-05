@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-"strings"
+	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -261,7 +261,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 					}
 				}
 			}
-			fkDef.Name = fmt.Sprintf("%s%d", fkNamePrefix, uint32(highest) + 1)
+			fkDef.Name = fmt.Sprintf("%s%d", fkNamePrefix, uint32(highest)+1)
 		} else {
 			fkLowerName := strings.ToLower(fkDef.Name)
 			for _, existingFk := range existingFks {

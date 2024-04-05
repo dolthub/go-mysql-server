@@ -217,19 +217,16 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "alter table child add foreign key (j) references parent (i);",
-					Expected: []sql.Row{
-					},
+					Query:    "alter table child add foreign key (j) references parent (i);",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "alter table child add foreign key (j) references parent (i);",
-					Expected: []sql.Row{
-					},
+					Query:    "alter table child add foreign key (j) references parent (i);",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "show create table child;",
-					Expected: []sql.Row{
-					},
+					Query:    "show create table child;",
+					Expected: []sql.Row{},
 				},
 			},
 		},
