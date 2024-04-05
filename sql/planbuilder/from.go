@@ -278,7 +278,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				outScope.parent = inScope
 			} else {
 				var ok bool
-				outScope, ok = b.buildTablescan(inScope, e.DbQualifier.String(), tableName, t.AsOf)
+				outScope, ok = b.buildTablescan(inScope, e, t.AsOf)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tableName))
 				}
@@ -616,11 +616,15 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 	return outScope
 }
 
-func (b *Builder) buildTablescan(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
-	return b.buildResolvedTable(inScope, db, name, asof)
+func (b *Builder) buildTablescan(inScope *scope, tableName ast.TableName, asof *ast.AsOf) (outScope *scope, ok bool) {
+	return b.buildResolvedTableForTablename(inScope, tableName, asof)
 }
 
-func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
+func (b *Builder) buildResolvedTableForTablename(inScope *scope, tableName ast.TableName, asof *ast.AsOf) (outScope *scope, ok bool) {
+	return b.buildResolvedTable(inScope, tableName.DbQualifier.String(), tableName.SchemaQualifier.String(), tableName.Name.String(), asof)
+}
+
+func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
 	if db == "" && b.ViewCtx().DbName != "" {
@@ -644,6 +648,22 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, name string, asof *ast.
 	database, err = b.cat.Database(b.ctx, db)
 	if err != nil {
 		b.handleErr(err)
+	}
+
+	// Handle schema-level qualifier if present
+	// TODO: schema resolution is more complicated than this and is usually implicit
+	if schema != "" {
+		scd, ok := database.(sql.SchemaDatabase)
+		if !ok {
+			b.handleErr(fmt.Errorf("database %T does not support schemas", database))
+		}
+		database, ok, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !ok {
+			b.handleErr(sql.ErrDatabaseNotFound.New(schema))
+		}
 	}
 
 	if view := b.resolveView(name, database, asOfLit); view != nil {

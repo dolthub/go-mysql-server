@@ -296,18 +296,14 @@ func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 }
 
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
-	tableName := ct.OptLike.LikeTable.Name.String()
-	likeDbName := ct.OptLike.LikeTable.DbQualifier.String()
-	if likeDbName == "" {
-		likeDbName = b.ctx.GetCurrentDatabase()
-	}
-	outScope, ok := b.buildTablescan(inScope, likeDbName, tableName, nil)
+	outScope, ok := b.buildTablescan(inScope, ct.OptLike.LikeTable, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
+		b.handleErr(sql.ErrTableNotFound.New(ct.OptLike.LikeTable.Name.String()))
 	}
+	
 	likeTable, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tableName)
+		err := fmt.Errorf("expected resolved table: %s", ct.OptLike.LikeTable.Name.String())
 		b.handleErr(err)
 	}
 
@@ -967,8 +963,9 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 
 	dbName := strings.ToLower(ddl.Table.DbQualifier.String())
 	tblName := strings.ToLower(ddl.Table.Name.String())
+	
 	var ok bool
-	outScope, ok = b.buildTablescan(inScope, dbName, tblName, nil)
+	outScope, ok = b.buildTablescan(inScope, ddl.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tblName))
 	}

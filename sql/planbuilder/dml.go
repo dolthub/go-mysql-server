@@ -37,8 +37,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		inScope = b.buildWith(inScope, i.With)
 	}
 	dbName := i.Table.DbQualifier.String()
+	schemaName := i.Table.SchemaQualifier.String()
 	tableName := i.Table.Name.String()
-	destScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+	destScope, ok := b.buildResolvedTable(inScope, dbName, schemaName, tableName, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}
@@ -418,9 +419,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 		for i, tableName := range d.Targets {
 			tabName := tableName.Name.String()
 			dbName := tableName.DbQualifier.String()
-			if dbName == "" {
-				dbName = b.ctx.GetCurrentDatabase()
-			}
+			schemaName := tableName.SchemaQualifier.String()
 			var target sql.Node
 			if _, ok := outScope.tables[tabName]; ok {
 				transform.InspectUp(outScope.node, func(n sql.Node) bool {
@@ -435,7 +434,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 					return false
 				})
 			} else {
-				tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
+				tableScope, ok := b.buildResolvedTable(inScope, dbName, schemaName, tabName, nil)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tabName))
 				}
