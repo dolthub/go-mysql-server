@@ -25,7 +25,7 @@ import (
 )
 
 func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
-	dbName := strings.ToLower(d.Table.Qualifier.String())
+	dbName := strings.ToLower(d.Table.DbQualifier.String())
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}

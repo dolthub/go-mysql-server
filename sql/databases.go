@@ -75,6 +75,19 @@ type Database interface {
 	GetTableNames(ctx *Context) ([]string, error)
 }
 
+// SchemaDatabase is a database comprising multiple schemas that can each be queried for tables.
+type SchemaDatabase interface {
+	Nameable
+	GetSchema(ctx *Context, schemaName string) (DatabaseSchema, bool, error)
+	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
+}
+
+// DatabaseSchema is a schema that can be queried for tables. It is functionally equivalent to a Database 
+// (and in MySQL, database and Schema are synonymous). Some providers may have additional schemas.
+type DatabaseSchema interface {
+	Database
+}
+
 // Databaser is a node that contains a reference to a database.
 type Databaser interface {
 	// Database the current database.

@@ -103,7 +103,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 
 	db := s.Database
 	if db == "" {
-		db = s.Table.Qualifier.String()
+		db = s.Table.DbQualifier.String()
 	}
 	if db == "" {
 		db = b.currentDb().Name()
@@ -170,7 +170,7 @@ func (b *Builder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scop
 
 func (b *Builder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := s.Table.Qualifier.String()
+	dbName := s.Table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
@@ -183,7 +183,7 @@ func (b *Builder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope
 }
 
 func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *scope) {
-	dbName := s.Table.Qualifier.String()
+	dbName := s.Table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
@@ -230,7 +230,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 
 func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := strings.ToLower(s.Table.Qualifier.String())
+	dbName := strings.ToLower(s.Table.DbQualifier.String())
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
@@ -312,7 +312,7 @@ func (b *Builder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition
 func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var db sql.Database
-	dbName := s.Table.Qualifier.String()
+	dbName := s.Table.DbQualifier.String()
 	if dbName != "" {
 		db = b.resolveDb(dbName)
 	} else {
@@ -447,7 +447,7 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 	outScope = inScope.push()
 	dbName := strings.ToLower(s.Database)
 	if dbName == "" {
-		dbName = s.Table.Qualifier.String()
+		dbName = s.Table.DbQualifier.String()
 	}
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
@@ -681,7 +681,7 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 
 	db := s.Database
 	if db == "" {
-		db = s.Table.Qualifier.String()
+		db = s.Table.DbQualifier.String()
 	}
 	if db == "" {
 		db = b.currentDb().Name()

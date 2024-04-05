@@ -40,7 +40,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 		b.handleErr(err)
 	}
 
-	dbName := strings.ToLower(n.Tables[0].Qualifier.String())
+	dbName := strings.ToLower(n.Tables[0].DbQualifier.String())
 	if dbName == "" {
 		if defaultDb == "" {
 			err := sql.ErrNoDatabaseSelected.New()
@@ -92,7 +92,7 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 	defaultDb := b.ctx.GetCurrentDatabase()
 	tables := make([]sql.Table, len(n.Tables))
 	for i, table := range n.Tables {
-		dbName := table.Qualifier.String()
+		dbName := table.DbQualifier.String()
 		if dbName == "" {
 			if defaultDb == "" {
 				err := sql.ErrNoDatabaseSelected.New()

@@ -36,7 +36,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
-	dbName := i.Table.Qualifier.String()
+	dbName := i.Table.DbQualifier.String()
 	tableName := i.Table.Name.String()
 	destScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
 	if !ok {
@@ -374,7 +374,7 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 	// expect col reference only
 	switch e := e.(type) {
 	case *ast.ColName:
-		dbName := strings.ToLower(e.Qualifier.Qualifier.String())
+		dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
 		tblName := strings.ToLower(e.Qualifier.Name.String())
 		colName := strings.ToLower(e.Name.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
@@ -417,7 +417,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 		targets = make([]sql.Node, len(d.Targets))
 		for i, tableName := range d.Targets {
 			tabName := tableName.Name.String()
-			dbName := tableName.Qualifier.String()
+			dbName := tableName.DbQualifier.String()
 			if dbName == "" {
 				dbName = b.ctx.GetCurrentDatabase()
 			}

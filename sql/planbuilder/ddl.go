@@ -155,12 +155,12 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	var dropTables []sql.Node
-	dbName := c.FromTables[0].Qualifier.String()
+	dbName := c.FromTables[0].DbQualifier.String()
 	if dbName == "" {
 		dbName = b.currentDb().Name()
 	}
 	for _, t := range c.FromTables {
-		if t.Qualifier.String() != "" && t.Qualifier.String() != dbName {
+		if t.DbQualifier.String() != "" && t.DbQualifier.String() != dbName {
 			err := sql.ErrUnsupportedFeature.New("dropping tables on multiple databases in the same statement")
 			b.handleErr(err)
 		}
@@ -194,14 +194,14 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 
 func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := c.Table.Qualifier.String()
+	dbName := c.Table.DbQualifier.String()
 	tabName := c.Table.Name.String()
 	tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tabName))
 	}
 	outScope.node = plan.NewTruncate(
-		c.Table.Qualifier.String(),
+		c.Table.DbQualifier.String(),
 		tableScope.node,
 	)
 	return
@@ -213,7 +213,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		return b.buildCreateTableLike(inScope, c)
 	}
 
-	qualifier := c.Table.Qualifier.String()
+	qualifier := c.Table.DbQualifier.String()
 	if qualifier == "" {
 		qualifier = b.ctx.GetCurrentDatabase()
 	}
@@ -297,7 +297,7 @@ func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	tableName := ct.OptLike.LikeTable.Name.String()
-	likeDbName := ct.OptLike.LikeTable.Qualifier.String()
+	likeDbName := ct.OptLike.LikeTable.DbQualifier.String()
 	if likeDbName == "" {
 		likeDbName = b.ctx.GetCurrentDatabase()
 	}
@@ -392,7 +392,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		Comment:   likeTable.Comment(),
 	}
 
-	qualifier := ct.Table.Qualifier.String()
+	qualifier := ct.Table.DbQualifier.String()
 	if qualifier == "" {
 		qualifier = b.ctx.GetCurrentDatabase()
 	}
@@ -440,7 +440,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	} else {
-		dbName := ddl.Table.Qualifier.String()
+		dbName := ddl.Table.DbQualifier.String()
 		tableName := ddl.Table.Name.String()
 		var ok bool
 		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
@@ -598,7 +598,7 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			constraint.Database = tname.Qualifier.String()
+			constraint.Database = tname.DbQualifier.String()
 			constraint.Table = tname.Name.String()
 			if constraint.Database == "" {
 				constraint.Database = b.ctx.GetCurrentDatabase()
@@ -697,7 +697,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 		for i, col := range fkConstraint.ReferencedColumns {
 			refColumns[i] = col.String()
 		}
-		refDatabase := fkConstraint.ReferencedTable.Qualifier.String()
+		refDatabase := fkConstraint.ReferencedTable.DbQualifier.String()
 		if refDatabase == "" {
 			refDatabase = b.ctx.GetCurrentDatabase()
 		}
@@ -965,7 +965,7 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		}
 	}
 
-	dbName := strings.ToLower(ddl.Table.Qualifier.String())
+	dbName := strings.ToLower(ddl.Table.DbQualifier.String())
 	tblName := strings.ToLower(ddl.Table.Name.String())
 	var ok bool
 	outScope, ok = b.buildTablescan(inScope, dbName, tblName, nil)

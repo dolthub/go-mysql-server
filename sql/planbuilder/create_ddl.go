@@ -45,7 +45,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	}
 
 	// resolve table -> create initial scope
-	dbName := c.Table.Qualifier.String()
+	dbName := c.Table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
@@ -462,7 +462,7 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 		queryAlias = queryAlias.WithColumnNames(columnsToStrings(c.ViewSpec.Columns))
 	}
 
-	dbName := c.ViewSpec.ViewName.Qualifier.String()
+	dbName := c.ViewSpec.ViewName.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}

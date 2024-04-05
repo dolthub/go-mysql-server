@@ -278,7 +278,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				outScope.parent = inScope
 			} else {
 				var ok bool
-				outScope, ok = b.buildTablescan(inScope, e.Qualifier.String(), tableName, t.AsOf)
+				outScope, ok = b.buildTablescan(inScope, e.DbQualifier.String(), tableName, t.AsOf)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tableName))
 				}
