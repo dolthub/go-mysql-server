@@ -45,11 +45,6 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	}
 
 	// resolve table -> create initial scope
-	dbName := c.Table.DbQualifier.String()
-	if dbName == "" {
-		dbName = b.ctx.GetCurrentDatabase()
-	}
-
 	prevTriggerCtxActive := b.TriggerCtx().Active
 	b.TriggerCtx().Active = true
 	defer func() {
@@ -57,7 +52,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	}()
 
 	tableName := strings.ToLower(c.Table.Name.String())
-	tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}
@@ -92,6 +87,11 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
+
+	dbName := c.Table.DbQualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
 	db := b.resolveDb(dbName)
 
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {

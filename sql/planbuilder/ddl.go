@@ -179,7 +179,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 			}
 		}
 
-		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, t, nil)
 		if ok {
 			dropTables = append(dropTables, tableScope.node)
 		} else if !c.IfExists {
@@ -194,11 +194,9 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 
 func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := c.Table.DbQualifier.String()
-	tabName := c.Table.Name.String()
-	tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tabName))
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
 	}
 	outScope.node = plan.NewTruncate(
 		c.Table.DbQualifier.String(),
@@ -436,16 +434,14 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	} else {
-		dbName := ddl.Table.DbQualifier.String()
-		tableName := ddl.Table.Name.String()
 		var ok bool
-		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, ddl.Table, nil)
 		if !ok {
-			b.handleErr(sql.ErrTableNotFound.New(tableName))
+			b.handleErr(sql.ErrTableNotFound.New(ddl.Table.Name.String()))
 		}
 		rt, ok := tableScope.node.(*plan.ResolvedTable)
 		if !ok {
-			err := fmt.Errorf("expected resolved table: %s", tableName)
+			err := fmt.Errorf("expected resolved table: %s", ddl.Table.Name.String())
 			b.handleErr(err)
 		}
 

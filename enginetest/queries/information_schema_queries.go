@@ -236,6 +236,13 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query: `SHOW FULL COLUMNS FROM foo in foodb`,
+		Expected: []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
+		},
+	},
+	{
 		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
 		Expected: []sql.Row{
 			{"mytable"},

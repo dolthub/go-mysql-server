@@ -36,12 +36,10 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
-	dbName := i.Table.DbQualifier.String()
-	schemaName := i.Table.SchemaQualifier.String()
-	tableName := i.Table.Name.String()
-	destScope, ok := b.buildResolvedTable(inScope, dbName, schemaName, tableName, nil)
+	
+	destScope, ok := b.buildResolvedTableForTablename(inScope, i.Table, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
+		b.handleErr(sql.ErrTableNotFound.New(i.Table.Name.String()))
 	}
 	var db sql.Database
 	var rt *plan.ResolvedTable
@@ -56,9 +54,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	if rt == nil {
 		if b.TriggerCtx().Active && !b.TriggerCtx().Call {
-			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, tableName)
+			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, i.Table.Name.String())
 		} else {
-			err := fmt.Errorf("expected resolved table: %s", tableName)
+			err := fmt.Errorf("expected resolved table: %s", i.Table.Name.String())
 			b.handleErr(err)
 		}
 	}
@@ -86,7 +84,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if rt != nil {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
-	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, tableName, sch)
+	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, i.Table.Name.String(), sch)
 
 	// TODO: on duplicate expressions need to reference both VALUES and
 	//  derived columns equally in ON DUPLICATE UPDATE expressions.
@@ -418,8 +416,6 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 		targets = make([]sql.Node, len(d.Targets))
 		for i, tableName := range d.Targets {
 			tabName := tableName.Name.String()
-			dbName := tableName.DbQualifier.String()
-			schemaName := tableName.SchemaQualifier.String()
 			var target sql.Node
 			if _, ok := outScope.tables[tabName]; ok {
 				transform.InspectUp(outScope.node, func(n sql.Node) bool {
@@ -434,7 +430,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 					return false
 				})
 			} else {
-				tableScope, ok := b.buildResolvedTable(inScope, dbName, schemaName, tabName, nil)
+				tableScope, ok := b.buildResolvedTableForTablename(inScope, tableName, nil)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tabName))
 				}
