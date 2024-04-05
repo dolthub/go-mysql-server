@@ -1641,6 +1641,49 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Self-referential foreign key is not case sensitive",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, J int, constraint fk1 foreign key (J) references t1(i));",
+			"create table t2 (I int primary key, j int, constraint fk2 foreign key (j) references t2(I));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Casing is preserved in show create table statements
+				Query:    "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `J` int,\n  PRIMARY KEY (`i`),\n  KEY `J` (`J`),\n  CONSTRAINT `fk1` FOREIGN KEY (`J`) REFERENCES `t1` (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t1 values (1, 1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t1 values (2, 3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				// Casing is preserved in show create table statements
+				Query:    "show create table t2;",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n  `I` int NOT NULL,\n  `j` int,\n  PRIMARY KEY (`I`),\n  KEY `j` (`j`),\n  CONSTRAINT `fk2` FOREIGN KEY (`j`) REFERENCES `t2` (`I`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t2 values (1, 1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t2d . values (2, 3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
 		Name: "Cascaded DELETE becomes cascading UPDATE after first child, using ON DELETE for second child",
 		SetUpScript: []string{
 			"DROP TABLE child;",
