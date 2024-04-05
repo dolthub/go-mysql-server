@@ -1030,7 +1030,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		// TODO: lower bound should be 0: https://github.com/dolthub/dolt/issues/7634
-		Type:    types.NewSystemIntType("innodb_autoinc_lock_mode", 2, 2, false),
+		Type:    types.NewSystemIntType("innodb_autoinc_lock_mode", 0, 2, false),
 		Default: int64(2),
 	},
 	// Row locking is currently not supported. This variable is provided for 3p tools, and we always return the
