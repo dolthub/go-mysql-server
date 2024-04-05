@@ -395,8 +395,8 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	if reference.ForeignKey.IsSelfReferential() {
 		allMatch := true
 		for i := range reference.ForeignKey.Columns {
-			colPos := reference.SelfCols[reference.ForeignKey.Columns[i]]
-			refPos := reference.SelfCols[reference.ForeignKey.ParentColumns[i]]
+			colPos := reference.SelfCols[strings.ToLower(reference.ForeignKey.Columns[i])]
+			refPos := reference.SelfCols[strings.ToLower(reference.ForeignKey.ParentColumns[i])]
 			cmp, err := reference.RowMapper.SourceSch[colPos].Type.Compare(row[colPos], row[refPos])
 			if err != nil {
 				return err
