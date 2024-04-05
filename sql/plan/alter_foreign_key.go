@@ -17,7 +17,8 @@ package plan
 import (
 	"fmt"
 	"sort"
-	"strings"
+	"strconv"
+"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 
@@ -232,6 +233,8 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 
+	// TODO: deal with empty foreign key names here
+	// TODO: remove dolt code handling this
 	// Check if the current foreign key name has already been used. Rather than checking the table first (which is the
 	// highest cost part of creating a foreign key), we'll check the name if it needs to be checked. If the foreign key
 	// was previously added, we don't need to check the name.
@@ -240,10 +243,31 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		if err != nil {
 			return err
 		}
-		fkLowerName := strings.ToLower(fkDef.Name)
-		for _, existingFk := range existingFks {
-			if fkLowerName == strings.ToLower(existingFk.Name) {
-				return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+
+		if len(fkDef.Name) == 0 {
+			// find the next available name
+			// negative numbers behave weirdly
+			fkNamePrefix := fmt.Sprintf("%s_ibfk_", strings.ToLower(tbl.Name()))
+			var highest uint32
+			for _, existingFk := range existingFks {
+				if strings.HasPrefix(existingFk.Name, fkNamePrefix) {
+					numStr := strings.TrimPrefix(existingFk.Name, fkNamePrefix)
+					num, err := strconv.Atoi(numStr)
+					if err != nil {
+						continue
+					}
+					if uint32(num) > highest {
+						highest = uint32(num)
+					}
+				}
+			}
+			fkDef.Name = fmt.Sprintf("%s%d", fkNamePrefix, uint32(highest) + 1)
+		} else {
+			fkLowerName := strings.ToLower(fkDef.Name)
+			for _, existingFk := range existingFks {
+				if fkLowerName == strings.ToLower(existingFk.Name) {
+					return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+				}
 			}
 		}
 	}

@@ -6330,6 +6330,46 @@ where
 			},
 		},
 	},
+	{
+		Name: "test index naming",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"alter table t add index (i);",
+			"alter table t add index (i);",
+			"alter table t add index (i);",
+
+			"create table tt (i int);",
+			"alter table tt add index i_2(i);",
+			"alter table tt add index (i);",
+			"alter table tt add index (i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  KEY `i` (`i`),\n" +
+						"  KEY `i_2` (`i`),\n" +
+						"  KEY `i_3` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				// MySQL preserves the other that indexes are created
+				// We store them in a map, so we have to sort to have some consistency
+				Query: "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n" +
+						"  `i` int,\n" +
+						"  KEY `i` (`i`),\n" +
+						"  KEY `i_2` (`i`),\n" +
+						"  KEY `i_3` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

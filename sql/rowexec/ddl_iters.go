@@ -1864,7 +1864,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			indexName = strings.Join(n.ColumnNames(), "")
 			if _, ok := indexMap[strings.ToLower(indexName)]; ok {
 				for i := 0; true; i++ {
-					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+					ii := i + 2
+					newIndexName := fmt.Sprintf("%s_%d", indexName, ii)
 					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
 						indexName = newIndexName
 						break
