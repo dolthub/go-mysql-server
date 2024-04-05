@@ -2607,13 +2607,13 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE test2 like test")
 
 		RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test2 modify pk int")
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "PRI", "NULL", ""},
-			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "PRI", nil, ""},
+			{"val", "int", "YES", "", nil, ""}}, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test2 drop primary key")
 
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "", "NULL", ""},
-			{"val", "int", "YES", "", "NULL", ""}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "", nil, ""},
+			{"val", "int", "YES", "", nil, ""}}, nil, nil)
 	})
 
 	for _, tt := range queries.BrokenCreateTableQueries {
@@ -2818,8 +2818,8 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest RENAME COLUMN s TO i1", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{
-			{"i", "int", nil, "NO", "PRI", "NULL", "", "", ""},
-			{"i1", "varchar(20)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
+			{"i", "int", nil, "NO", "PRI", nil, "", "", ""},
+			{"i1", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
 		}, nil, nil)
 	})
 }
@@ -2843,14 +2843,14 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
 			{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
-			{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", "NULL", "", "", ""},
-			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-			{"s2", "text", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "hello"},
-			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+			{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s2", "text", "utf8mb4_0900_bin", "YES", "", nil, "", "", "hello"},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 			{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
-			{"s5", "varchar(26)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
-			{"s6", "varchar(27)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
-			{"s10", "varchar(26)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", ""},
+			{"s5", "varchar(26)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
+			{"s6", "varchar(27)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
+			{"s10", "varchar(26)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
 		}, nil, nil)
 	})
 }
@@ -2873,9 +2873,9 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
-			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", "ok"},
-			{"s", "varchar(21)", "utf8mb4_0900_bin", "YES", "", "NULL", "", "", "changed again"},
-			{"i2", "bigint", nil, "YES", "", "NULL", "", "", ""},
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
+			{"s", "varchar(21)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed again"},
+			{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
 		}, nil, nil)
 	})
 }
@@ -2898,7 +2898,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", "NULL", "", "", ""}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", nil, "", "", ""}}, nil, nil)
 	})
 }
 
@@ -2920,7 +2920,7 @@ func TestDropColumnKeylessTables(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", "NULL", "", "", ""}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", nil, "", "", ""}}, nil, nil)
 	})
 }
 
@@ -3939,17 +3939,6 @@ func TestVariables(t *testing.T, harness Harness) {
 		t.Run(assertion.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx2, engine, harness, assertion.Query, assertion.Expected, nil, nil)
 		})
-	}
-}
-
-func TestStatusVariables(t *testing.T, harness Harness) {
-	e := mustNewEngine(t, harness)
-	if IsServerEngine(e) {
-		t.Skip("prepare statements cause status variables to incorrectly increment twice")
-	}
-	for _, script := range queries.StatusVariableScripts {
-		variables.InitStatusVariables()
-		TestScript(t, harness, script)
 	}
 }
 

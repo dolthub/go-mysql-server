@@ -388,7 +388,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("binlog_checksum"),
-		Default:           "NONE", // TODO: MySQL's default is CRC32
+		Default:           "CRC32",
 	},
 	"binlog_gtid_simple_recovery": &sql.MysqlSystemVariable{
 		Name:              "binlog_gtid_simple_recovery",
@@ -2132,7 +2132,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Uint32,
-		Default:           uint32(0),
+		Default:           uint32(1),
 	},
 	"server_uuid": &sql.MysqlSystemVariable{
 		Name:  "server_uuid",
