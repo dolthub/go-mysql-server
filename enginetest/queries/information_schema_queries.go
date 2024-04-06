@@ -198,41 +198,41 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: `SHOW COLUMNS FROM mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
-			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
+			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `DESCRIBE mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
-			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
+			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `DESC mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
-			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
+			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW FULL COLUMNS FROM mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 		},
 	},
 	{
@@ -703,9 +703,9 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	{
 		Query: `show columns from fk_tbl from mydb`,
 		Expected: []sql.Row{
-			{"pk", "bigint", "NO", "PRI", "NULL", ""},
-			{"a", "bigint", "YES", "MUL", "NULL", ""},
-			{"b", "varchar(20)", "YES", "", "NULL", ""},
+			{"pk", "bigint", "NO", "PRI", nil, ""},
+			{"a", "bigint", "YES", "MUL", nil, ""},
+			{"b", "varchar(20)", "YES", "", nil, ""},
 		},
 	},
 	{
