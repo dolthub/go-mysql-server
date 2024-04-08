@@ -58,12 +58,8 @@ github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71 h1:bMGS25NWAGTE
 github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71/go.mod h1:2/2zjLQ/JOOSbbSboojeg+cAwcRV0fDLzIiWch/lhqI=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81 h1:7/v8q9XGFa6q5Ap4Z/OhNkAMBaK5YeuEzwJt+NZdhiE=
 github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
-github.com/dolthub/vitess v0.0.0-20240329220943-04e0d9e0dcf3 h1:gzlMfGaN0vj+M2Tkv9pREGDMOpBCNFt8C4gWKSx2ew4=
-github.com/dolthub/vitess v0.0.0-20240329220943-04e0d9e0dcf3/go.mod h1:Xy89nzEyIwlMCiFWOJPmlnORpDFz5wFgEdYGfUwbIQ0=
-github.com/dolthub/vitess v0.0.0-20240329223145-3e53a7bee1da h1:EZJqfIEHLV/eRtlxMhep2Jj/JpHSnZBiKFFLFbnmsSo=
-github.com/dolthub/vitess v0.0.0-20240329223145-3e53a7bee1da/go.mod h1:Xy89nzEyIwlMCiFWOJPmlnORpDFz5wFgEdYGfUwbIQ0=
-github.com/dolthub/vitess v0.0.0-20240404214255-c5a87fc7b325 h1:MYUzL2faXlBlG+EEBf+55e5RE/9k8O39MvPXGRAhjJQ=
-github.com/dolthub/vitess v0.0.0-20240404214255-c5a87fc7b325/go.mod h1:Xy89nzEyIwlMCiFWOJPmlnORpDFz5wFgEdYGfUwbIQ0=
+github.com/dolthub/vitess v0.0.0-20240408220504-6eb3bcd25765 h1:iBufa8RnfJ5mQBWymQJ2K33eGrCawqhnL6SQ6xcttF4=
+github.com/dolthub/vitess v0.0.0-20240408220504-6eb3bcd25765/go.mod h1:Xy89nzEyIwlMCiFWOJPmlnORpDFz5wFgEdYGfUwbIQ0=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
