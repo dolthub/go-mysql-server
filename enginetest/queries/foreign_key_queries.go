@@ -2237,7 +2237,7 @@ var ForeignKeyTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "show create table mychild;",
+				Query: "show create table mychild;",
 				Expected: []sql.Row{
 					{"mychild", "CREATE TABLE `mychild` (\n" +
 						"  `j` int NOT NULL,\n" +
@@ -2247,13 +2247,13 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "alter table mychild rename constraint myfk to newfk;",
+				Query: "alter table mychild rename constraint myfk to newfk;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query:    "show create table mychild;",
+				Query: "show create table mychild;",
 				Expected: []sql.Row{
 					{"mychild", "CREATE TABLE `mychild` (\n" +
 						"  `j` int NOT NULL,\n" +
