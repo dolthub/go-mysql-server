@@ -1769,6 +1769,9 @@ func (t *Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstr
 			fks = append(fks, fk)
 		}
 	}
+	sort.Slice(fks, func(i, j int) bool {
+		return fks[i].Name < fks[j].Name
+	})
 	return fks, nil
 }
 

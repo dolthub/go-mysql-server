@@ -206,24 +206,18 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "test index naming",
 			SetUpScript: []string{
 				"create table parent (i int primary key);",
 				"create table child (j int primary key);",
-				"alter table child add constraint `child_ibfk_123e1` foreign key (j) references parent (i);",
+				"alter table child add constraint `b` foreign key (j) references parent (i);",
+				"alter table child add constraint `a` foreign key (j) references parent (i);",
+				"alter table child add constraint `c` foreign key (j) references parent (i);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "alter table child add foreign key (j) references parent (i);",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "alter table child add foreign key (j) references parent (i);",
-					Expected: []sql.Row{},
-				},
 				{
 					Query:    "show create table child;",
 					Expected: []sql.Row{},

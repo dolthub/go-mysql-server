@@ -2237,6 +2237,7 @@ var ForeignKeyTests = []ScriptTest{
 			"create table child3 (j int primary key);",
 			"create table child4 (j int primary key);",
 			"create table child5 (j int primary key);",
+			"create table child6 (j int primary key);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2369,14 +2370,41 @@ var ForeignKeyTests = []ScriptTest{
 				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 			{
+				// foreign keys are sorted by name
 				Query: "show create table child5;",
 				Expected: []sql.Row{
 					{"child5", "CREATE TABLE `child5` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
 						"  CONSTRAINT `child5_ibfk_-2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
-						"  CONSTRAINT `child5_ibfk_4294967295` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
-						"  CONSTRAINT `child5_ibfk_0` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						"  CONSTRAINT `child5_ibfk_0` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child5_ibfk_4294967295` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			// empty string constraint names are allowed if specified explicitly
+			{
+				Query: "alter table child6 add constraint `` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "alter table child6 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip: true, // we need parser changes to tell the difference between an empty string and a NULL
+				Query: "show create table child6;",
+				Expected: []sql.Row{
+					{"child6", "CREATE TABLE `child6` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `child6_ibfk_1` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child6_ibfk_2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
