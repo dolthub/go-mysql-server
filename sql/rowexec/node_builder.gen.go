@@ -379,6 +379,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return n.RowIter(ctx, row)
 	case *plan.CreateSpatialRefSys:
 		return b.buildCreateSpatialRefSys(ctx, n, row)
+	case *plan.RenameForeignKey:
+		return b.buildRenameForeignKey(ctx, n, row)
 	default:
 		return nil, fmt.Errorf("exec builder found unknown Node type %T", n)
 	}

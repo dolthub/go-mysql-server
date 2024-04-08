@@ -452,3 +452,46 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 		joinNode:         n.Child.(*plan.UpdateSource).Child,
 	}, nil
 }
+
+func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameForeignKey, row sql.Row) (sql.RowIter, error) {
+	db, err := n.DbProvider.Database(ctx, n.Database())
+	if err != nil {
+		return nil, err
+	}
+	tbl, ok, err := db.GetTableInsensitive(ctx, n.Table)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(n.Table)
+	}
+	fkTbl, ok := tbl.(sql.ForeignKeyTable)
+	if !ok {
+		return nil, sql.ErrNoForeignKeySupport.New(n.OldName)
+	}
+
+	fkcs, err := fkTbl.GetDeclaredForeignKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var existingFk sql.ForeignKeyConstraint
+	for _, fkc := range fkcs {
+		if fkc.Name == n.OldName {
+			existingFk = fkc
+			break
+		}
+	}
+
+	err = fkTbl.DropForeignKey(ctx, n.OldName)
+	if err != nil {
+		return nil, err
+	}
+
+	existingFk.Name = n.NewName
+	err = fkTbl.AddForeignKey(ctx, existingFk)
+	if err != nil {
+		return nil, err
+	}
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
+}
