@@ -2228,6 +2228,42 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "rename foreign key constraints",
+		SetUpScript: []string{
+			"create table myparent (i int primary key)",
+			"create table mychild (j int primary key)",
+			"alter table mychild add constraint `myfk` foreign key (j) references myparent (i)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show create table mychild;",
+				Expected: []sql.Row{
+					{"mychild", "CREATE TABLE `mychild` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `myfk` FOREIGN KEY (`j`) REFERENCES `myparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "alter table mychild rename constraint myfk to newfk;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "show create table mychild;",
+				Expected: []sql.Row{
+					{"mychild", "CREATE TABLE `mychild` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `newfk` FOREIGN KEY (`j`) REFERENCES `myparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var CreateForeignKeyTests = []ScriptTest{

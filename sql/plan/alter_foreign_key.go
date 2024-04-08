@@ -461,7 +461,7 @@ func (p *RenameForeignKey) Children() []sql.Node {
 // String implements the interface sql.Node.
 func (p *RenameForeignKey) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DropForeignKey(%s, %s)", p.OldName, p.NewName)
+	_ = pr.WriteNode("RenameForeignKey(%s, %s)", p.OldName, p.NewName)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database(), p.Table))
 	return pr.String()
 }
