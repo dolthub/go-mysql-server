@@ -2328,7 +2328,7 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "alter table child4 add foreign key (j) references theparent (i);",
+				Query:       "alter table child4 add foreign key (j) references theparent (i);",
 				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 			{
@@ -2365,7 +2365,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				// This attempts to add 4294967296 again, which throws a duplicate name error
-				Query: "alter table child5 add foreign key (j) references theparent (i);",
+				Query:       "alter table child5 add foreign key (j) references theparent (i);",
 				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 			{
