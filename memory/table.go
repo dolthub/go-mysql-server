@@ -1795,7 +1795,7 @@ func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) err
 	lowerName := strings.ToLower(fk.Name)
 	for _, key := range data.fkColl.Keys() {
 		if strings.ToLower(key.Name) == lowerName {
-			return fmt.Errorf("Constraint %s already exists", fk.Name)
+			return sql.ErrForeignKeyDuplicateName.New(fk.Name)
 		}
 	}
 	data.fkColl.AddFK(fk)
@@ -1824,7 +1824,7 @@ func (t *Table) UpdateForeignKey(ctx *sql.Context, fkName string, fk sql.Foreign
 	lowerName := strings.ToLower(fk.Name)
 	for _, key := range data.fkColl.Keys() {
 		if strings.ToLower(key.Name) == lowerName {
-			return fmt.Errorf("Constraint %s already exists", fk.Name)
+			return sql.ErrForeignKeyDuplicateName.New(fk.Name)
 		}
 	}
 	data.fkColl.AddFK(fk)
@@ -1877,7 +1877,7 @@ func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error 
 
 	for _, key := range data.checks {
 		if key.Name == toInsert.Name {
-			return fmt.Errorf("constraint %s already exists", toInsert.Name)
+			return sql.ErrForeignKeyDuplicateName.New(toInsert.Name)
 		}
 	}
 
