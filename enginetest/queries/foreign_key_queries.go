@@ -2397,7 +2397,7 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // we need parser changes to tell the difference between an empty string and a NULL
+				Skip:  true, // we need parser changes to tell the difference between an empty string and a NULL
 				Query: "show create table child6;",
 				Expected: []sql.Row{
 					{"child6", "CREATE TABLE `child6` (\n" +
