@@ -79,6 +79,7 @@ type Database interface {
 type SchemaDatabase interface {
 	Nameable
 	GetSchema(ctx *Context, schemaName string) (DatabaseSchema, bool, error)
+	CreateSchema(ctx *Context, schemaName string) error
 	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
 }
 
