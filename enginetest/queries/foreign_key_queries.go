@@ -2282,7 +2282,7 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "rename foreign key constraints",
+		Name: "rename check constraints",
 		SetUpScript: []string{
 			"create table t (i int, constraint `mychk` check (i > 0))",
 		},
@@ -2340,7 +2340,6 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 
-			// If a key with a generated name already exists, the generated name will be one after
 			{
 				Query: "alter table child2 add constraint `child2_ibfk_1` foreign key (j) references theparent (i);",
 				Expected: []sql.Row{
@@ -2348,6 +2347,7 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
+				// If generated name collides with existing, then a new name will be generated
 				Query: "alter table child2 add foreign key (j) references theparent (i);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
@@ -2363,6 +2363,11 @@ var ForeignKeyTests = []ScriptTest{
 						"  CONSTRAINT `child2_ibfk_2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
+			},
+			{
+				// explicit name collisions still error
+				Query: "alter table child2 add constraint `child2_ibfk_2` foreign key (j) references theparent (i);",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 
 			// For some reason, the generated name will always be the highest one
