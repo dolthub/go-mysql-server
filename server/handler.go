@@ -350,6 +350,8 @@ func (h *Handler) doQuery(
 		return "", err
 	}
 
+	start := time.Now()
+
 	var remainder string
 	var prequery string
 	if parsed == nil {
@@ -383,8 +385,6 @@ func (h *Handler) doQuery(
 
 	finish := observeQuery(ctx, query)
 	defer finish(err)
-
-	start := time.Now()
 
 	ctx.GetLogger().Tracef("beginning execution")
 
@@ -436,7 +436,6 @@ func (h *Handler) doQuery(
 				}
 			}
 		}
-
 	})
 
 	pollCtx, cancelF := ctx.NewSubContext()
