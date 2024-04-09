@@ -484,7 +484,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		}
 
 		if ddl.ConstraintAction != "" {
-			if len(ddl.TableSpec.Constraints) != 1 {
+			if len(ddl.TableSpec.Constraints) != 1 && ddl.ConstraintAction != ast.RenameStr {
 				b.handleErr(sql.ErrUnsupportedFeature.New("unexpected number of constraints in a single alter constraint clause"))
 			}
 			outScopes = append(outScopes, b.buildAlterConstraint(tableScope, ddl, rt))
@@ -586,6 +586,28 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 				Name:      c.name,
 			}
 		default:
+			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
+			b.handleErr(err)
+		}
+	case ast.RenameStr:
+		if len(ddl.TableSpec.Constraints) != 2 {
+			err := sql.ErrUnsupportedFeature.New("expected two constraints for rename constraint")
+			b.handleErr(err)
+		}
+		switch c := parsedConstraint.(type) {
+		case *sql.ForeignKeyConstraint:
+			otherConstraint := b.convertConstraintDefinition(inScope, ddl.TableSpec.Constraints[1])
+			cc, ok := otherConstraint.(*sql.ForeignKeyConstraint)
+			if !ok {
+				err := sql.ErrUnsupportedFeature.New("expected foreign key constraint")
+				b.handleErr(err)
+			}
+			database := table.SqlDatabase.Name()
+			dropFk := plan.NewAlterRenameForeignKey(database, table.Name(), c.Name, cc.Name)
+			dropFk.DbProvider = b.cat
+			outScope.node = dropFk
+		default:
+			// TODO: *sql.CheckConstraint, namedConstraint
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
 			b.handleErr(err)
 		}
