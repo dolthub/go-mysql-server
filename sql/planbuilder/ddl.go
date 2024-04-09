@@ -594,14 +594,14 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 			err := sql.ErrUnsupportedFeature.New("expected two constraints for rename constraint")
 			b.handleErr(err)
 		}
-		otherConstraint := b.convertConstraintDefinition(inScope, ddl.TableSpec.Constraints[1])
-		cc, ok := otherConstraint.(*sql.ForeignKeyConstraint)
-		if !ok {
-			err := sql.ErrUnsupportedFeature.New("expected foreign key constraint")
-			b.handleErr(err)
-		}
 		switch c := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
+			otherConstraint := b.convertConstraintDefinition(inScope, ddl.TableSpec.Constraints[1])
+			cc, ok := otherConstraint.(*sql.ForeignKeyConstraint)
+			if !ok {
+				err := sql.ErrUnsupportedFeature.New("expected foreign key constraint")
+				b.handleErr(err)
+			}
 			database := table.SqlDatabase.Name()
 			dropFk := plan.NewAlterRenameForeignKey(database, table.Name(), c.Name, cc.Name)
 			dropFk.DbProvider = b.cat

@@ -16,7 +16,8 @@ package rowexec
 
 import (
 	"fmt"
-	"sync"
+	"strings"
+"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
 
@@ -477,7 +478,7 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 
 	var existingFk sql.ForeignKeyConstraint
 	for _, fkc := range fkcs {
-		if fkc.Name == n.OldName {
+		if strings.EqualFold(fkc.Name, n.OldName) {
 			existingFk = fkc
 			break
 		}
