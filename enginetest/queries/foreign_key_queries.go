@@ -2367,7 +2367,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				// explicit name collisions still error
-				Query: "alter table child2 add constraint `child2_ibfk_2` foreign key (j) references theparent (i);",
+				Query:       "alter table child2 add constraint `child2_ibfk_2` foreign key (j) references theparent (i);",
 				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 
@@ -2395,7 +2395,6 @@ var ForeignKeyTests = []ScriptTest{
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
-
 
 			{
 				// Name generation is case-sensitive
@@ -2485,7 +2484,6 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 
-
 			{
 				Query: "alter table child1 add constraint `child7_ibfk_1` foreign key (j) references theparent (i);",
 				Expected: []sql.Row{
@@ -2494,7 +2492,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				// foreign key names are kept unique across tables
-				Query: "alter table child7 add foreign key (j) references theparent (i);",
+				Query:       "alter table child7 add foreign key (j) references theparent (i);",
 				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 		},
