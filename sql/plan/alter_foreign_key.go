@@ -385,6 +385,87 @@ func (p *DropForeignKey) String() string {
 	return pr.String()
 }
 
+type RenameForeignKey struct {
+	DbProvider sql.DatabaseProvider
+	database   string
+	Table      string
+	OldName    string
+	NewName    string
+}
+
+func NewAlterRenameForeignKey(db, table, oldName, newName string) *RenameForeignKey {
+	return &RenameForeignKey{
+		DbProvider: nil,
+		database:   db,
+		Table:      table,
+		OldName:    oldName,
+		NewName:    newName,
+	}
+}
+
+// Database implements the sql.Node interface.
+func (p *RenameForeignKey) Database() string {
+	return p.database
+}
+
+// WithChildren implements the interface sql.Node.
+func (p *RenameForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(p, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *RenameForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: p.database,
+		Table:    p.Table,
+	}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *RenameForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
+// Schema implements the interface sql.Node.
+func (p *RenameForeignKey) Schema() sql.Schema {
+	return types.OkResultSchema
+}
+
+// DatabaseProvider implements the interface sql.MultiDatabaser.
+func (p *RenameForeignKey) DatabaseProvider() sql.DatabaseProvider {
+	return p.DbProvider
+}
+
+// WithDatabaseProvider implements the interface sql.MultiDatabaser.
+func (p *RenameForeignKey) WithDatabaseProvider(provider sql.DatabaseProvider) (sql.Node, error) {
+	np := *p
+	np.DbProvider = provider
+	return &np, nil
+}
+
+// Resolved implements the interface sql.Node.
+func (p *RenameForeignKey) Resolved() bool {
+	return p.DbProvider != nil
+}
+
+func (p *RenameForeignKey) IsReadOnly() bool {
+	return false
+}
+
+// Children implements the interface sql.Node.
+func (p *RenameForeignKey) Children() []sql.Node {
+	return nil
+}
+
+// String implements the interface sql.Node.
+func (p *RenameForeignKey) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("RenameForeignKey(%s, %s)", p.OldName, p.NewName)
+	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database(), p.Table))
+	return pr.String()
+}
+
 // FindForeignKeyColMapping returns the mapping from a given row to its equivalent index position, based on the matching
 // foreign key columns. This also verifies that the column types match, as it is a prerequisite for mapping. For foreign
 // keys that do not match the full index, also returns the types to append during the key mapping, as all index columns
