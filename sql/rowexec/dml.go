@@ -17,7 +17,7 @@ package rowexec
 import (
 	"fmt"
 	"strings"
-"sync"
+	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
 

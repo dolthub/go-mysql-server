@@ -2288,11 +2288,11 @@ var ForeignKeyTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "alter table t rename constraint check mychk to newchk;",
+				Query:       "alter table t rename constraint check mychk to newchk;",
 				ExpectedErr: sql.ErrUnsupportedFeature,
 			},
 			{
-				Query: "alter table t rename constraint mychk to newchk;",
+				Query:       "alter table t rename constraint mychk to newchk;",
 				ExpectedErr: sql.ErrUnsupportedFeature,
 			},
 		},
