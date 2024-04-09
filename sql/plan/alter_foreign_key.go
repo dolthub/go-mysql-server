@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -240,10 +241,31 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		if err != nil {
 			return err
 		}
-		fkLowerName := strings.ToLower(fkDef.Name)
-		for _, existingFk := range existingFks {
-			if fkLowerName == strings.ToLower(existingFk.Name) {
-				return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+
+		if len(fkDef.Name) == 0 {
+			// find the next available name
+			// negative numbers behave weirdly
+			fkNamePrefix := fmt.Sprintf("%s_ibfk_", strings.ToLower(tbl.Name()))
+			var highest uint32
+			for _, existingFk := range existingFks {
+				if strings.HasPrefix(existingFk.Name, fkNamePrefix) {
+					numStr := strings.TrimPrefix(existingFk.Name, fkNamePrefix)
+					num, err := strconv.Atoi(numStr)
+					if err != nil {
+						continue
+					}
+					if uint32(num) > highest {
+						highest = uint32(num)
+					}
+				}
+			}
+			fkDef.Name = fmt.Sprintf("%s%d", fkNamePrefix, uint32(highest)+1)
+		} else {
+			fkLowerName := strings.ToLower(fkDef.Name)
+			for _, existingFk := range existingFks {
+				if fkLowerName == strings.ToLower(existingFk.Name) {
+					return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+				}
 			}
 		}
 	}

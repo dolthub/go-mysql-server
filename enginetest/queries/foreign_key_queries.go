@@ -2282,7 +2282,7 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "rename foreign key constraints",
+		Name: "rename check constraints",
 		SetUpScript: []string{
 			"create table t (i int, constraint `mychk` check (i > 0))",
 		},
@@ -2294,6 +2294,206 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				Query:       "alter table t rename constraint mychk to newchk;",
 				ExpectedErr: sql.ErrUnsupportedFeature,
+			},
+		},
+	},
+	{
+		Name: "foreign key naming",
+		SetUpScript: []string{
+			"create table theparent (i int primary key);",
+			"create table child1 (j int primary key);",
+			"create table child2 (j int primary key);",
+			"create table child3 (j int primary key);",
+			"create table child4 (j int primary key);",
+			"create table child5 (j int primary key);",
+			"create table child6 (j int primary key);",
+			"create table child7 (j int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table child1 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "alter table child1 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "alter table child1 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child1;",
+				Expected: []sql.Row{
+					{"child1", "CREATE TABLE `child1` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `child1_ibfk_1` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child1_ibfk_2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child1_ibfk_3` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "alter table child2 add constraint `child2_ibfk_1` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// If generated name collides with existing, then a new name will be generated
+				Query: "alter table child2 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child2;",
+				Expected: []sql.Row{
+					{"child2", "CREATE TABLE `child2` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `child2_ibfk_1` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child2_ibfk_2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				// explicit name collisions still error
+				Query:       "alter table child2 add constraint `child2_ibfk_2` foreign key (j) references theparent (i);",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
+			},
+
+			{
+				// unlike secondary index naming, constraints will find highest existing index and increment from there
+				Query: "alter table child3 add constraint `child3_ibfk_100` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "alter table child3 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table child3;",
+				Expected: []sql.Row{
+					{"child3", "CREATE TABLE `child3` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `child3_ibfk_100` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child3_ibfk_101` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				// Name generation is case-sensitive
+				Query: "alter table child4 add constraint `CHILD4_IBFK_1` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// the name collision check is case-insensitive
+				Query:       "alter table child4 add foreign key (j) references theparent (i);",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
+			},
+			{
+				Query: "show create table child4;",
+				Expected: []sql.Row{
+					{"child4", "CREATE TABLE `child4` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `CHILD4_IBFK_1` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "alter table child5 add constraint `child5_ibfk_-2` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// This adds -1, which is interpreted as 4294967295
+				Query: "alter table child5 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// This adds 4294967296, which overflows back to 0
+				Query: "alter table child5 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// This attempts to add 4294967296 again, which throws a duplicate name error
+				Query:       "alter table child5 add foreign key (j) references theparent (i);",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
+			},
+			{
+				// foreign keys are sorted by name
+				Query: "show create table child5;",
+				Expected: []sql.Row{
+					{"child5", "CREATE TABLE `child5` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `child5_ibfk_-2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child5_ibfk_0` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child5_ibfk_4294967295` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			// empty string constraint names are allowed if specified explicitly
+			{
+				Query: "alter table child6 add constraint `` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "alter table child6 add foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:  true, // we need parser changes to tell the difference between an empty string and a NULL
+				Query: "show create table child6;",
+				Expected: []sql.Row{
+					{"child6", "CREATE TABLE `child6` (\n" +
+						"  `j` int NOT NULL,\n" +
+						"  PRIMARY KEY (`j`),\n" +
+						"  CONSTRAINT `child6_ibfk_1` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`),\n" +
+						"  CONSTRAINT `child6_ibfk_2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "alter table child1 add constraint `child7_ibfk_1` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// foreign key names are kept unique across tables
+				Query:       "alter table child7 add foreign key (j) references theparent (i);",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 		},
 	},
