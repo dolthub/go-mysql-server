@@ -1029,9 +1029,8 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
-		// TODO: lower bound should be 0: https://github.com/dolthub/dolt/issues/7634
-		Type:    types.NewSystemIntType("innodb_autoinc_lock_mode", 0, 2, false),
-		Default: int64(2),
+		Type:              types.NewSystemIntType("innodb_autoinc_lock_mode", 0, 2, false),
+		Default:           int64(2),
 	},
 	// Row locking is currently not supported. This variable is provided for 3p tools, and we always return the
 	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.

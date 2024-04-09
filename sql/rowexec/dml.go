@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -58,16 +59,16 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	insertExpressions := getInsertExpressions(ii.Source)
 	if ii.HasUnspecifiedAutoInc {
 		_, i, _ := sql.SystemVariables.GetGlobal("innodb_autoinc_lock_mode")
-		lockMode := i.(int64)
-		if err != nil {
-			return nil, err
+		lockMode, ok := i.(int64)
+		if !ok {
+			return nil, errors.New(fmt.Sprintf("unexpected type for innodb_autoinc_lock_mode, expected int64, got %T", i))
 		}
 		// Lock modes "traditional" (0) and "consecutive" (1) require that a single lock is held for the entire iteration.
 		// Lock mode "interleaved" (2) will acquire the lock only when inserting into the table.
 		if lockMode != 2 {
 			autoIncrementable, ok := sql.GetUnderlyingTable(insertable).(sql.AutoIncrementTable)
 			if !ok {
-				panic("Auto increment expression on non-AutoIncrement table. This should not be possible.")
+				return nil, errors.New("auto increment expression on non-AutoIncrement table. This should not be possible")
 			}
 
 			unlocker, err = autoIncrementable.AutoIncrementSetter(ctx).AcquireAutoIncrementLock(ctx)
