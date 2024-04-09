@@ -2214,28 +2214,28 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip: true,
-				Query:    "insert into t values (1);",
+				Skip:  true,
+				Query: "insert into t values (1);",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Skip: true,
-				Query:    "insert into t values (2);",
+				Skip:  true,
+				Query: "insert into t values (2);",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "select * from t;",
 				Expected: []sql.Row{
 					{10},
 				},
 			},
 			{
-				Skip: true,
+				Skip:  true,
 				Query: "select * from t;",
 				Expected: []sql.Row{
 					{20},
@@ -2243,7 +2243,6 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 		},
 	},
-
 }
 
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly
