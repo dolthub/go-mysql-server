@@ -2307,6 +2307,7 @@ var ForeignKeyTests = []ScriptTest{
 			"create table child4 (j int primary key);",
 			"create table child5 (j int primary key);",
 			"create table child6 (j int primary key);",
+			"create table child7 (j int primary key);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2370,8 +2371,8 @@ var ForeignKeyTests = []ScriptTest{
 				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 
-			// For some reason, the generated name will always be the highest one
 			{
+				// unlike secondary index naming, constraints will find highest existing index and increment from there
 				Query: "alter table child3 add constraint `child3_ibfk_100` foreign key (j) references theparent (i);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
@@ -2395,14 +2396,16 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 
-			// Name generation is case-sensitive, but the name collision check is case-insensitive
+
 			{
+				// Name generation is case-sensitive
 				Query: "alter table child4 add constraint `CHILD4_IBFK_1` foreign key (j) references theparent (i);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
+				// the name collision check is case-insensitive
 				Query:       "alter table child4 add foreign key (j) references theparent (i);",
 				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
@@ -2417,7 +2420,6 @@ var ForeignKeyTests = []ScriptTest{
 				},
 			},
 
-			// Negatives behave weirdly
 			{
 				Query: "alter table child5 add constraint `child5_ibfk_-2` foreign key (j) references theparent (i);",
 				Expected: []sql.Row{
@@ -2481,6 +2483,19 @@ var ForeignKeyTests = []ScriptTest{
 						"  CONSTRAINT `child6_ibfk_2` FOREIGN KEY (`j`) REFERENCES `theparent` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
+			},
+
+
+			{
+				Query: "alter table child1 add constraint `child7_ibfk_1` foreign key (j) references theparent (i);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// foreign key names are kept unique across tables
+				Query: "alter table child7 add foreign key (j) references theparent (i);",
+				ExpectedErr: sql.ErrForeignKeyDuplicateName,
 			},
 		},
 	},

@@ -6339,7 +6339,8 @@ where
 			"alter table t add index (i);",
 
 			"create table tt (i int);",
-			"alter table tt add index i_2(i);",
+			"alter table tt add index i_3(i);",
+			"alter table tt add index (i);",
 			"alter table tt add index (i);",
 			"alter table tt add index (i);",
 		},
@@ -6364,7 +6365,8 @@ where
 						"  `i` int,\n" +
 						"  KEY `i` (`i`),\n" +
 						"  KEY `i_2` (`i`),\n" +
-						"  KEY `i_3` (`i`)\n" +
+						"  KEY `i_3` (`i`),\n" +
+						"  KEY `i_4` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},

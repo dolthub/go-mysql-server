@@ -233,8 +233,6 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 
-	// TODO: deal with empty foreign key names here
-	// TODO: remove dolt code handling this
 	// Check if the current foreign key name has already been used. Rather than checking the table first (which is the
 	// highest cost part of creating a foreign key), we'll check the name if it needs to be checked. If the foreign key
 	// was previously added, we don't need to check the name.
