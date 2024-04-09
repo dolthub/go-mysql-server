@@ -2204,6 +2204,46 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 		},
 	},
+
+	{
+		Name: "Trigger with BLOCK and DECLARE",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"create trigger trig before insert on t for each row begin declare x int; select new.i + 10 into x; set new.i = x; end;",
+			//"create trigger trig before insert on t for each row begin declare x int; set x = new.i * 10; set new.i = x; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip: true,
+				Query:    "insert into t values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Skip: true,
+				Query:    "insert into t values (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Skip: true,
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{20},
+				},
+			},
+		},
+	},
+
 }
 
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly

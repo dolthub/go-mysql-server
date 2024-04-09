@@ -271,7 +271,11 @@ var _ sql.CollationCoercible = (*ProcedureParam)(nil)
 
 // NewProcedureParam creates a new ProcedureParam expression.
 func NewProcedureParam(name string, typ sql.Type) *ProcedureParam {
-	return &ProcedureParam{name: strings.ToLower(name), typ: typ}
+	return &ProcedureParam{
+		name: strings.ToLower(name),
+		typ:  typ,
+		pRef: NewProcedureReference(),
+	}
 }
 
 // Children implements the sql.Expression interface.
