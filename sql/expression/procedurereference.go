@@ -60,6 +60,9 @@ type ProcedureReferencable interface {
 
 // InitializeVariable sets the initial value for the variable.
 func (ppr *ProcedureReference) InitializeVariable(name string, sqlType sql.Type, val interface{}) error {
+	if ppr == nil || ppr.InnermostScope == nil {
+		return fmt.Errorf("cannot initialize variable `%s` in an empty procedure reference", name)
+	}
 	convertedVal, _, err := sqlType.Convert(val)
 	if err != nil {
 		return err
@@ -271,7 +274,10 @@ var _ sql.CollationCoercible = (*ProcedureParam)(nil)
 
 // NewProcedureParam creates a new ProcedureParam expression.
 func NewProcedureParam(name string, typ sql.Type) *ProcedureParam {
-	return &ProcedureParam{name: strings.ToLower(name), typ: typ}
+	return &ProcedureParam{
+		name: strings.ToLower(name),
+		typ:  typ,
+	}
 }
 
 // Children implements the sql.Expression interface.

@@ -2204,6 +2204,23 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 		},
 	},
+
+	{
+		Name: "delete me",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create trigger trig1 before insert on t for each row begin declare x int; select new.i + 10 into x; set new.i = x; end;",
+				ExpectedErr: sql.ErrUnsupportedFeature,
+			},
+			{
+				Query:       "create trigger trig2 before insert on t for each row begin declare x int; set x = new.i * 10; set new.i = x; end;",
+				ExpectedErr: sql.ErrUnsupportedFeature,
+			},
+		},
+	},
 }
 
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly
