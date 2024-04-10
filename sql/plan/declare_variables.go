@@ -40,7 +40,6 @@ func NewDeclareVariables(names []string, typ sql.Type, defaultVal *sql.ColumnDef
 		Names:      names,
 		Type:       typ,
 		DefaultVal: defaultVal,
-		Pref:       expression.NewProcedureReference(),
 	}
 }
 
