@@ -61,16 +61,19 @@ func TestInitSystemVars(t *testing.T) {
 		{
 			varName: "innodb_autoinc_lock_mode",
 			varVal:  0,
-			err:     sql.ErrInvalidSystemVariableValue,
 		},
 		{
 			varName: "innodb_autoinc_lock_mode",
 			varVal:  1,
-			err:     sql.ErrInvalidSystemVariableValue,
 		},
 		{
 			varName: "innodb_autoinc_lock_mode",
 			varVal:  2,
+		},
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  3,
+			err:     sql.ErrInvalidSystemVariableValue,
 		},
 	}
 

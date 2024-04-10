@@ -140,6 +140,11 @@ func (editor MultiTableEditor) SetAutoIncrementValue(ctx *sql.Context, u uint64)
 	return editor.primary.(sql.AutoIncrementSetter).SetAutoIncrementValue(ctx, u)
 }
 
+func (editor MultiTableEditor) AcquireAutoIncrementLock(ctx *sql.Context) (func(), error) {
+	// TODO: Add concurrency tests for AutoIncrement locking modes.
+	return func() {}, nil
+}
+
 // Close implements the interface sql.TableEditor.
 func (editor MultiTableEditor) Close(ctx *sql.Context) error {
 	var err error
