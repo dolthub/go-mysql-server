@@ -112,7 +112,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	if block, isBEBlock := bodyScope.node.(*plan.BeginEndBlock); isBEBlock {
 		for _, child := range block.Children() {
 			if _, ok := child.(*plan.DeclareVariables); ok {
-				err := sql.ErrUnsupportedFeature.New("DECLARE in BEGIN END block")
+				err := sql.ErrUnsupportedFeature.New("DECLARE in BEGIN END block in TRIGGER")
 				b.handleErr(err)
 			}
 		}
