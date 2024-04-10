@@ -2206,7 +2206,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 	},
 
 	{
-		Name: "delete me",
+		Name: "triggers with declare statements",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
 		},

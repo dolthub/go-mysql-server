@@ -109,14 +109,14 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	}
 
 	// TODO: https://github.com/dolthub/dolt/issues/7720
-	if block, isBEBlock := bodyScope.node.(*plan.BeginEndBlock); isBEBlock {
-		for _, child := range block.Children() {
-			if _, ok := child.(*plan.DeclareVariables); ok {
-				err := sql.ErrUnsupportedFeature.New("DECLARE in BEGIN END block")
-				b.handleErr(err)
-			}
-		}
-	}
+	//if block, isBEBlock := bodyScope.node.(*plan.BeginEndBlock); isBEBlock {
+	//	for _, child := range block.Children() {
+	//		if _, ok := child.(*plan.DeclareVariables); ok {
+	//			err := sql.ErrUnsupportedFeature.New("DECLARE in BEGIN END block")
+	//			b.handleErr(err)
+	//		}
+	//	}
+	//}
 
 	outScope.node = plan.NewCreateTrigger(
 		db,
