@@ -2213,13 +2213,13 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "insert into t values (1), (2), (3);",
+				Query: "insert into t values (1), (2), (3);",
 				Expected: []sql.Row{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
-				Query:    "select * from t;",
+				Query: "select * from t;",
 				Expected: []sql.Row{
 					{11},
 					{12},
@@ -2236,13 +2236,13 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "insert into t values (1), (2), (3);",
+				Query: "insert into t values (1), (2), (3);",
 				Expected: []sql.Row{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
-				Query:    "select * from t;",
+				Query: "select * from t;",
 				Expected: []sql.Row{
 					{11},
 					{12},
