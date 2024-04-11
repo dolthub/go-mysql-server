@@ -112,7 +112,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	//if block, isBEBlock := bodyScope.node.(*plan.BeginEndBlock); isBEBlock {
 	//	for _, child := range block.Children() {
 	//		if _, ok := child.(*plan.DeclareVariables); ok {
-	//			err := sql.ErrUnsupportedFeature.New("DECLARE in BEGIN END block")
+	//			err := sql.ErrUnsupportedFeature.New("DECLARE in BEGIN END block in TRIGGER")
 	//			b.handleErr(err)
 	//		}
 	//	}
@@ -456,13 +456,18 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 	}
 	selectStatement, ok := stmt.(ast.SelectStatement)
 	if !ok {
-		err := sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
+		err = sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
 		b.handleErr(err)
 	}
 	queryScope := b.buildSelectStmt(inScope, selectStatement)
 
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
+
+	if c.ViewSpec.CheckOption == ast.ViewCheckOptionLocal {
+		err = sql.ErrUnsupportedSyntax.New("WITH LOCAL CHECK OPTION")
+		b.handleErr(err)
+	}
 
 	if len(c.ViewSpec.Columns) > 0 {
 		if len(c.ViewSpec.Columns) != len(queryScope.cols) {
