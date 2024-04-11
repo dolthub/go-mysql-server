@@ -256,7 +256,6 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 			switch n := node.(type) {
 			case expression.ProcedureReferencable:
 				return n.WithParamReference(pRef), transform.NewTree, nil
-			// TODO: into and set should share code... use some sort of expressioner?
 			case sql.Expressioner:
 				newExprs, same, err := transform.Exprs(n.Expressions(), func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					switch e := expr.(type) {

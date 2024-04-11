@@ -2206,18 +2206,48 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 	},
 
 	{
-		Name: "triggers with declare statements",
+		Name: "triggers with declare statements and select into",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
+			"create trigger trig before insert on t for each row begin declare x int; select new.i + 10 into x; set new.i = x; end;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "create trigger trig1 before insert on t for each row begin declare x int; select new.i + 10 into x; set new.i = x; end;",
-				ExpectedErr: sql.ErrUnsupportedFeature,
+				Query:    "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
 			},
 			{
-				Query:       "create trigger trig2 before insert on t for each row begin declare x int; set x = new.i * 10; set new.i = x; end;",
-				ExpectedErr: sql.ErrUnsupportedFeature,
+				Query:    "select * from t;",
+				Expected: []sql.Row{
+					{11},
+					{12},
+					{13},
+				},
+			},
+		},
+	},
+	{
+		Name: "triggers with declare statements and set",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"create trigger trig before insert on t for each row begin declare x int; set x = new.i * 10; set new.i = x; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{
+					{11},
+					{12},
+					{13},
+				},
 			},
 		},
 	},
