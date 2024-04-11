@@ -2251,6 +2251,42 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 		},
 	},
+	{
+		Name: "triggers with nested begin-end blocks",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			`
+create trigger trig
+before insert on t
+for each row
+begin
+  declare x int;
+  set x = new.i * 10;
+  begin
+    declare y int;
+    set y = new.i + 10;
+    set new.i = x + y;
+  end;
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{21},
+					{32},
+					{43},
+				},
+			},
+		},
+	},
 }
 
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly
