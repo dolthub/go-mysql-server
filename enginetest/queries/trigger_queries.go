@@ -2232,7 +2232,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		Name: "triggers with declare statements and set",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
-			"create trigger trig before insert on t for each row begin declare x int; set x = new.i * 10; set new.i = x; end;",
+			"create trigger trig before insert on t for each row begin declare x int; set x = new.i + 10; set new.i = x; end;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{

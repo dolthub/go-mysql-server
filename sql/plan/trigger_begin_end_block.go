@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // TriggerBeginEndBlock represents a BEGIN/END block specific to TRIGGER execution, which has special considerations
@@ -45,4 +46,11 @@ func (b *TriggerBeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, err
 // CheckPrivileges implements the interface sql.Node.
 func (b *TriggerBeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return b.Block.CheckPrivileges(ctx, opChecker)
+}
+
+// WithParamReference implements the interface expression.ProcedureReferencable.
+func (b *TriggerBeginEndBlock) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
+	nb := *b
+	nb.BeginEndBlock = b.BeginEndBlock.WithParamReference(pRef).(*BeginEndBlock)
+	return &nb
 }

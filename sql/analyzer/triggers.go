@@ -249,9 +249,8 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		return nil, transform.SameTree, err
 	}
 
-	pRef := expression.NewProcedureReference()
-	if block, ok := triggerLogic.(*plan.TriggerBeginEndBlock); ok {
-		triggerLogic = block.WithParamReference(pRef)
+	if _, ok := triggerLogic.(*plan.TriggerBeginEndBlock); ok {
+		pRef := expression.NewProcedureReference()
 		triggerLogic, _, err = transform.NodeWithOpaque(triggerLogic, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			switch n := node.(type) {
 			case expression.ProcedureReferencable:

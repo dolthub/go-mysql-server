@@ -209,24 +209,31 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "delete me",
+			Name: "trigger before inserts, use updated reference to other table",
 			SetUpScript: []string{
-				"create table t (i int primary key);",
-				//"create trigger trig before insert on t for each row begin select 1 into @x; end;",
-				"create trigger trig1 before insert on t for each row begin declare x int; select new.i + 10 into x; set new.i = x; end;",
-				//"create trigger trig2 before insert on t for each row begin declare x int; set x = new.i * 10; set new.i = x; end;",
+				"create table a (i int primary key, j int)",
+				"create table b (x int primary key)",
+				"create trigger trig before insert on a for each row begin set new.j = (select coalesce(max(x),1) from b); update b set x = x + 1; end;",
+				"insert into b values (1)",
+				"insert into a values (1,0), (2,0), (3,0)",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into t values (1);",
+					Query: "select * from a order by i",
 					Expected: []sql.Row{
-						{types.NewOkResult(1)},
+						{1, 1}, {2, 2}, {3, 3},
 					},
 				},
 				{
-					Query: "select * from t;",
+					Query: "select x from b",
 					Expected: []sql.Row{
-						{11},
+						{4},
+					},
+				},
+				{
+					Query: "insert into a values (4,0), (5,0)",
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
 					},
 				},
 			},
