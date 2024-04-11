@@ -249,6 +249,43 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		return nil, transform.SameTree, err
 	}
 
+	pRef := expression.NewProcedureReference()
+	if block, ok := triggerLogic.(*plan.TriggerBeginEndBlock); ok {
+		triggerLogic = block.WithParamReference(pRef)
+		triggerLogic, _, err = transform.NodeWithOpaque(triggerLogic, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+			switch n := node.(type) {
+			case expression.ProcedureReferencable:
+				return n.WithParamReference(pRef), transform.NewTree, nil
+			// TODO: into and set should share code... use some sort of expressioner?
+			case sql.Expressioner:
+				newExprs, same, err := transform.Exprs(n.Expressions(), func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					switch e := expr.(type) {
+					case *expression.ProcedureParam:
+						return e.WithParamReference(pRef), transform.NewTree, nil
+					default:
+						return expr, transform.SameTree, nil
+					}
+				})
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if !same {
+					newNode, err := n.WithExpressions(newExprs...)
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					return newNode, transform.NewTree, nil
+				}
+				return node, transform.SameTree, nil
+			default:
+				return node, transform.SameTree, nil
+			}
+		})
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+	}
+
 	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
 		// parent is a trigger body.

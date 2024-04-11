@@ -277,6 +277,7 @@ func NewProcedureParam(name string, typ sql.Type) *ProcedureParam {
 	return &ProcedureParam{
 		name: strings.ToLower(name),
 		typ:  typ,
+		//pRef: NewProcedureReference(),
 	}
 }
 

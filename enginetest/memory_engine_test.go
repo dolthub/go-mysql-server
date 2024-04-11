@@ -206,44 +206,27 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
+			Name: "delete me",
 			SetUpScript: []string{
-				"create table t (pk int primary key, col1 int as (pk + 1));",
-				"insert into t (pk) values (1), (3)",
-				"alter table t add index idx1 (col1, pk);",
-				"alter table t add index idx2 (col1);",
-				"alter table t add column col2 int;",
-				"alter table t add column col3 int;",
-				"insert into t (pk, col2, col3) values (2, 4, 5);",
+				"create table t (i int primary key);",
+				//"create trigger trig before insert on t for each row begin select 1 into @x; end;",
+				"create trigger trig1 before insert on t for each row begin declare x int; select new.i + 10 into x; set new.i = x; end;",
+				//"create trigger trig2 before insert on t for each row begin declare x int; set x = new.i * 10; set new.i = x; end;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t order by pk",
+					Query: "insert into t values (1);",
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
-						{2, 3, 4, 5},
-						{3, 4, nil, nil},
+						{types.NewOkResult(1)},
 					},
 				},
 				{
-					Query: "select * from t where col1 = 2",
+					Query: "select * from t;",
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
-					},
-				},
-				{
-					Query: "select * from t where col1 = 3 and pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
-					},
-				},
-				{
-					Query: "select * from t where pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
+						{11},
 					},
 				},
 			},
@@ -252,13 +235,13 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData, setup.Parent_childData)
+		//harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

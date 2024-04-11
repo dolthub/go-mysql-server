@@ -445,6 +445,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			}
 			return n, transform.SameTree, nil
 		case expression.ProcedureReferencable:
+			// BeginEndBlocks need to reference the same ParameterReference as the Call
 			return n.WithParamReference(pRef), transform.NewTree, nil
 		default:
 			return transform.NodeExprsWithOpaque(n, procParamTransformFunc)
