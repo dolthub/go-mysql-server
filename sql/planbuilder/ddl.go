@@ -47,6 +47,39 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	return database
 }
 
+func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
+	dbName := table.DbQualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	
+	if dbName == "" {
+		b.handleErr(sql.ErrNoDatabaseSelected.New())
+	}
+
+	database, err := b.cat.Database(b.ctx, dbName)
+	if err != nil {
+		b.handleErr(err)
+	}
+	
+	schema := table.SchemaQualifier.String()
+	if schema != "" {
+		scd, ok := database.(sql.SchemaDatabase)
+		if !ok {
+			b.handleErr(fmt.Errorf("database %T does not support schemas", database))
+		}
+		database, ok, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !ok {
+			b.handleErr(sql.ErrDatabaseNotFound.New(schema))
+		}
+	}
+
+	return database
+}
+
 // buildAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
 // the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
 // Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
@@ -211,11 +244,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		return b.buildCreateTableLike(inScope, c)
 	}
 
-	qualifier := c.Table.DbQualifier.String()
-	if qualifier == "" {
-		qualifier = b.ctx.GetCurrentDatabase()
-	}
-	database := b.resolveDb(qualifier)
+	database := b.resolveDbForTable(c.Table)
 
 	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE node.
 	// if the table spec != nil it will get parsed below.
@@ -386,11 +415,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		Comment:   likeTable.Comment(),
 	}
 
-	qualifier := ct.Table.DbQualifier.String()
-	if qualifier == "" {
-		qualifier = b.ctx.GetCurrentDatabase()
-	}
-	database := b.resolveDb(qualifier)
+	database := b.resolveDbForTable(ct.Table)
 
 	outScope.node = plan.NewCreateTable(database, newTableName, ct.IfNotExists, ct.Temporary, tableSpec)
 	return outScope

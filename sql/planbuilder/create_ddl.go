@@ -88,11 +88,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
 
-	dbName := c.Table.DbQualifier.String()
-	if dbName == "" {
-		dbName = b.ctx.GetCurrentDatabase()
-	}
-	db := b.resolveDb(dbName)
+	db := b.resolveDbForTable(c.Table)
 
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
 		if prevTriggerCtxActive {
