@@ -31,7 +31,6 @@ func NewBeginEndBlock(label string, block *Block) *BeginEndBlock {
 	return &BeginEndBlock{
 		Block: block,
 		Label: label,
-		//Pref: expression.NewProcedureReference(),
 	}
 }
 

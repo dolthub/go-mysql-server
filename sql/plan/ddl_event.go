@@ -339,7 +339,7 @@ func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
 	//       analyzer for ProcedureCalls, so we initialize it here.
 	// TODO: How does this work for triggers, which would have the same issue; seems like there
 	//       should be a cleaner way to handle this
-	// TODO: all beginEndBlocks now initialized with ProcedureReference, should be able to remove this
+	// TODO: treat this the same way we treat triggers and stored procedures
 	beginEndBlock.Pref = expression.NewProcedureReference()
 
 	newChildren := make([]sql.Node, len(beginEndBlock.Children()))
