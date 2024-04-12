@@ -263,7 +263,9 @@ var _ sql.RowIter = (*declareCursorIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (d *declareCursorIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.Pref.InitializeCursor(d.Name, d.Select)
+	if err := d.Pref.InitializeCursor(d.Name, d.Select); err != nil {
+		return nil, err
+	}
 	return nil, io.EOF
 }
 
