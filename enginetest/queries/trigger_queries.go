@@ -2206,6 +2206,42 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 	},
 
 	{
+		Name: "triggers with nested begin-end blocks",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			`
+    create trigger trig
+    before insert on t
+    for each row
+    begin
+      declare x int;
+      set x = new.i * 10;
+      begin
+        declare y int;
+        set y = new.i + 10;
+        set new.i = x + y;
+      end;
+    end;
+    `,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{21},
+					{32},
+					{43},
+				},
+			},
+		},
+	},
+	{
 		Name: "triggers with declare statements and select into",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
@@ -2252,21 +2288,16 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		},
 	},
 	{
-		Name: "triggers with nested begin-end blocks",
+		Name: "triggers with declare statements and insert",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
-			`
-create trigger trig
-before insert on t
-for each row
-begin
-  declare x int;
-  set x = new.i * 10;
-  begin
-    declare y int;
-    set y = new.i + 10;
-    set new.i = x + y;
-  end;
+			"create table t2 (i int primary key);",
+`
+create trigger trig before
+insert on t for each row begin
+	declare x int;
+	set x = new.i * 10;
+	insert into t2 values (x);
 end;
 `,
 		},
@@ -2280,9 +2311,94 @@ end;
 			{
 				Query: "select * from t;",
 				Expected: []sql.Row{
-					{21},
-					{32},
-					{43},
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from t2;",
+				Expected: []sql.Row{
+					{10},
+					{20},
+					{30},
+				},
+			},
+		},
+	},
+	{
+		Name: "triggers with declare statements and update",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"create table t2 (i int primary key);",
+			"insert into t2 values (1), (2), (3);",
+`
+create trigger trig before
+insert on t for each row begin
+	declare x int;
+	set x = new.i * 10;
+	update t2 set i = x where i = new.i;
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from t2;",
+				Expected: []sql.Row{
+					{10},
+					{20},
+					{30},
+				},
+			},
+		},
+	},
+	{
+		Name: "triggers with declare statements and update",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"create table t2 (i int primary key);",
+			"insert into t2 values (1), (2), (3);",
+`
+create trigger trig before
+insert on t for each row begin
+	declare x int;
+	set x = new.i;
+	delete from t2 where i = x;
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from t2;",
+				Expected: []sql.Row{
 				},
 			},
 		},

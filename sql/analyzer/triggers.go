@@ -251,34 +251,53 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 
 	if _, ok := triggerLogic.(*plan.TriggerBeginEndBlock); ok {
 		pRef := expression.NewProcedureReference()
-		triggerLogic, _, err = transform.NodeWithOpaque(triggerLogic, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		// assignProcParam transforms any ProcedureParams to reference the ProcedureReference
+		assignProcParam := func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			switch e := expr.(type) {
+			case *expression.ProcedureParam:
+				return e.WithParamReference(pRef), transform.NewTree, nil
+			default:
+				return expr, transform.SameTree, nil
+			}
+		}
+		// assignProcRef calls assignProcParam on all nodes that sql.Expressioner
+		assignProcRef := func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			switch n := node.(type) {
-			case expression.ProcedureReferencable:
-				return n.WithParamReference(pRef), transform.NewTree, nil
 			case sql.Expressioner:
-				newExprs, same, err := transform.Exprs(n.Expressions(), func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					switch e := expr.(type) {
-					case *expression.ProcedureParam:
-						return e.WithParamReference(pRef), transform.NewTree, nil
-					default:
-						return expr, transform.SameTree, nil
-					}
-				})
+				newExprs, same, err := transform.Exprs(n.Expressions(), assignProcParam)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				if !same {
-					newNode, err := n.WithExpressions(newExprs...)
-					if err != nil {
-						return nil, transform.SameTree, err
-					}
-					return newNode, transform.NewTree, nil
+				if same {
+					return node, transform.SameTree, nil
 				}
-				return node, transform.SameTree, nil
+				newNode, err := n.WithExpressions(newExprs...)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return newNode, transform.NewTree, nil
 			default:
 				return node, transform.SameTree, nil
 			}
-		})
+		}
+		assignProcs := func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+			switch n := node.(type) {
+			case *plan.InsertInto:
+				newSource, same, err := transform.NodeWithOpaque(n.Source, assignProcRef)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return node, transform.SameTree, nil
+				}
+				return n.WithSource(newSource), transform.NewTree, nil
+			case expression.ProcedureReferencable:
+				return n.WithParamReference(pRef), transform.NewTree, nil
+			default:
+				return assignProcRef(node)
+			}
+		}
+		triggerLogic, _, err = transform.NodeWithOpaque(triggerLogic, assignProcs)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
