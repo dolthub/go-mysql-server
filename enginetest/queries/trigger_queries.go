@@ -2292,7 +2292,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		SetUpScript: []string{
 			"create table t (i int primary key);",
 			"create table t2 (i int primary key);",
-`
+			`
 create trigger trig before
 insert on t for each row begin
 	declare x int;
@@ -2332,7 +2332,7 @@ end;
 			"create table t (i int primary key);",
 			"create table t2 (i int primary key);",
 			"insert into t2 values (1), (2), (3);",
-`
+			`
 create trigger trig before
 insert on t for each row begin
 	declare x int;
@@ -2372,7 +2372,7 @@ end;
 			"create table t (i int primary key);",
 			"create table t2 (i int primary key);",
 			"insert into t2 values (1), (2), (3);",
-`
+			`
 create trigger trig before
 insert on t for each row begin
 	declare x int;
@@ -2397,9 +2397,8 @@ end;
 				},
 			},
 			{
-				Query: "select * from t2;",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from t2;",
+				Expected: []sql.Row{},
 			},
 		},
 	},
