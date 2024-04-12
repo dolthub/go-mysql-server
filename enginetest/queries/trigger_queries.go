@@ -2438,7 +2438,7 @@ end;
 				},
 			},
 			{
-				Query:    "select * from t2;",
+				Query: "select * from t2;",
 				Expected: []sql.Row{
 					{11},
 					{12},
