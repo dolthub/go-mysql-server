@@ -206,34 +206,44 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "trigger before inserts, use updated reference to other table",
+			Name: "physical columns added after virtual one",
 			SetUpScript: []string{
-				"create table a (i int primary key, j int)",
-				"create table b (x int primary key)",
-				"create trigger trig before insert on a for each row begin set new.j = (select coalesce(max(x),1) from b); update b set x = x + 1; end;",
-				"insert into b values (1)",
-				"insert into a values (1,0), (2,0), (3,0)",
+				"create table t (pk int primary key, col1 int as (pk + 1));",
+				"insert into t (pk) values (1), (3)",
+				"alter table t add index idx1 (col1, pk);",
+				"alter table t add index idx2 (col1);",
+				"alter table t add column col2 int;",
+				"alter table t add column col3 int;",
+				"insert into t (pk, col2, col3) values (2, 4, 5);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from a order by i",
+					Query: "select * from t order by pk",
 					Expected: []sql.Row{
-						{1, 1}, {2, 2}, {3, 3},
+						{1, 2, nil, nil},
+						{2, 3, 4, 5},
+						{3, 4, nil, nil},
 					},
 				},
 				{
-					Query: "select x from b",
+					Query: "select * from t where col1 = 2",
 					Expected: []sql.Row{
-						{4},
+						{1, 2, nil, nil},
 					},
 				},
 				{
-					Query: "insert into a values (4,0), (5,0)",
+					Query: "select * from t where col1 = 3 and pk = 2",
 					Expected: []sql.Row{
-						{types.OkResult{RowsAffected: 2}},
+						{2, 3, 4, 5},
+					},
+				},
+				{
+					Query: "select * from t where pk = 2",
+					Expected: []sql.Row{
+						{2, 3, 4, 5},
 					},
 				},
 			},
@@ -242,13 +252,13 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		//harness.Setup(setup.MydbData, setup.Parent_childData)
+		harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
