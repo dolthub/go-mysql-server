@@ -731,9 +731,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe t;",
 				Expected: []sql.Row{
-					{"c1", "int unsigned", "YES", "", "NULL", ""},
-					{"c2", "varchar(200)", "YES", "", "NULL", ""},
-					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+					{"c1", "int unsigned", "YES", "", nil, ""},
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
 				},
 			},
 			{
@@ -743,8 +743,8 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe t;",
 				Expected: []sql.Row{
-					{"c2", "varchar(200)", "YES", "", "NULL", ""},
-					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
 				},
 			},
 			{
@@ -758,9 +758,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe t;",
 				Expected: []sql.Row{
-					{"c2", "varchar(200)", "YES", "", "NULL", ""},
-					{"c3", "enum('one','two')", "YES", "", "NULL", ""},
-					{"new3", "int", "YES", "", "NULL", ""},
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
+					{"new3", "int", "YES", "", nil, ""},
 				},
 			},
 			{
@@ -838,14 +838,14 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE enumtest1;",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"e", "enum('abc','XYZ')", "YES", "", "NULL", ""}},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('abc','XYZ')", "YES", "", nil, ""}},
 			},
 			{
 				Query: "DESCRIBE enumtest2;",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"e", "enum('x','X','y','Y')", "YES", "", "NULL", ""}},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('x','X','y','Y')", "YES", "", nil, ""}},
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
@@ -876,8 +876,8 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE enumtest1;",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", "NULL", ""}},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", nil, ""}},
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
@@ -2233,7 +2233,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "NULL", ""},
+					{"pk", "bigint", "NO", "PRI", nil, ""},
 					{"v1", "bigint", "NO", "", "200", ""},
 				},
 			},
@@ -2900,9 +2900,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "NO", "PRI", "NULL", ""},
+					{"pk", "int", "NO", "", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "NO", "PRI", nil, ""},
 				},
 			},
 			{
@@ -2912,9 +2912,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "NO", "PRI", "NULL", ""},
+					{"pk", "int", "NO", "", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "NO", "PRI", nil, ""},
 				},
 			},
 		},
@@ -2932,8 +2932,8 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""}, // should not be dropped
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""}, // should not be dropped
 				},
 			},
 			{
@@ -2943,9 +2943,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "YES", "MUL", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
 				},
 			},
 			{
@@ -2955,9 +2955,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "YES", "MUL", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
 				},
 			},
 			{
@@ -2967,9 +2967,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "YES", "MUL", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
 				},
 			},
 			{
@@ -2979,9 +2979,9 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "YES", "MUL", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
 				},
 			},
 			{
@@ -2991,10 +2991,10 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "YES", "MUL", "NULL", ""},
-					{"v4", "int", "YES", "MUL", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "MUL", nil, ""},
+					{"v4", "int", "YES", "MUL", nil, ""},
 				},
 			},
 			{
@@ -3008,11 +3008,11 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "YES", "", "NULL", ""},
-					{"v4", "int", "YES", "MUL", "NULL", ""},
-					{"v5", "int", "YES", "MUL", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "YES", "", nil, ""},
+					{"v4", "int", "YES", "MUL", nil, ""},
+					{"v5", "int", "YES", "MUL", nil, ""},
 				},
 			},
 		},
@@ -3064,7 +3064,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "NULL", ""},
+					{"pk", "bigint", "NO", "PRI", nil, ""},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -3087,7 +3087,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -3098,7 +3098,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -3109,7 +3109,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
@@ -3120,10 +3120,10 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
-					{"v3", "int", "NO", "", "NULL", ""},
-					{"v4", "int", "YES", "", "NULL", ""},
-					{"v5", "int", "NO", "", "NULL", ""},
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
+					{"v3", "int", "NO", "", nil, ""},
+					{"v4", "int", "YES", "", nil, ""},
+					{"v5", "int", "NO", "", nil, ""},
 				},
 			},
 			{
@@ -3133,11 +3133,11 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "bigint", "NO", "PRI", "NULL", "auto_increment"},
-					{"v3", "int", "NO", "", "NULL", ""},
-					{"mycol", "int", "NO", "", "NULL", ""},
-					{"v6", "int", "NO", "", "NULL", ""},
-					{"v7", "int", "YES", "", "NULL", ""},
+					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
+					{"v3", "int", "NO", "", nil, ""},
+					{"mycol", "int", "NO", "", nil, ""},
+					{"v6", "int", "NO", "", nil, ""},
+					{"v7", "int", "YES", "", nil, ""},
 				},
 			},
 			// TODO: Does not include tests with column renames and defaults.
@@ -3211,7 +3211,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
 					{"val", "int", "YES", "", "((`pk` * 2))", "DEFAULT_GENERATED"},
 				},
 			},
@@ -6224,6 +6224,154 @@ where
 			},
 		},
 	},
+	{
+		Name: "test json search",
+		SetUpScript: []string{
+			`create table t (i int primary key, j json);`,
+			`insert into t values (0, '{"a": "abc"}'), (1, '{"b": "abc"}'), (2, '{"c": "abc"}');`,
+			`insert into t values (3, '{"d": "def"}'), (4, '{"e": "def"}'), (5, '{"f": "def"}');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, json_search(j, 'all', 'abc') from t order by i",
+				Expected: []sql.Row{
+					{0, types.MustJSON(`"$.a"`)},
+					{1, types.MustJSON(`"$.b"`)},
+					{2, types.MustJSON(`"$.c"`)},
+					{3, nil},
+					{4, nil},
+					{5, nil},
+				},
+			},
+			{
+				Query: "select i, json_search(j, 'all', 'def') from t order by i",
+				Expected: []sql.Row{
+					{0, nil},
+					{1, nil},
+					{2, nil},
+					{3, types.MustJSON(`"$.d"`)},
+					{4, types.MustJSON(`"$.e"`)},
+					{5, types.MustJSON(`"$.f"`)},
+				},
+			},
+			{
+				Query: "select i, json_search(j, 'all', 'abc', '', '$.a', '$.b') from t order by i",
+				Expected: []sql.Row{
+					{0, types.MustJSON(`"$.a"`)},
+					{1, types.MustJSON(`"$.b"`)},
+					{2, nil},
+					{3, nil},
+					{4, nil},
+					{5, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "test show create database",
+		SetUpScript: []string{
+			"create database def_db;",
+			"create database latin1_db character set latin1;",
+			"create database bin_db charset binary;",
+			"create database mb3_db collate utf8mb3_general_ci;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create database def_db",
+				Expected: []sql.Row{
+					{"def_db", "CREATE DATABASE `def_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */"},
+				},
+			},
+			{
+				Query: "show create database latin1_db",
+				Expected: []sql.Row{
+					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
+				},
+			},
+			{
+				Query: "show create database bin_db",
+				Expected: []sql.Row{
+					{"bin_db", "CREATE DATABASE `bin_db` /*!40100 DEFAULT CHARACTER SET binary COLLATE binary */"},
+				},
+			},
+			{
+				Query: "show create database mb3_db",
+				Expected: []sql.Row{
+					{"mb3_db", "CREATE DATABASE `mb3_db` /*!40100 DEFAULT CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci */"},
+				},
+			},
+		},
+	},
+	{
+		Name: "test create database with modified server variables",
+		SetUpScript: []string{
+			"set @@session.character_set_server = 'latin1';",
+			"create database latin1_db;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				// Interestingly, session actually takes priority over global
+				Query: "show create database latin1_db",
+				Expected: []sql.Row{
+					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
+				},
+			},
+		},
+	},
+	{
+		Name: "test index naming",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"alter table t add index (i);",
+			"alter table t add index (i);",
+			"alter table t add index (i);",
+
+			"create table tt (i int);",
+			"alter table tt add index i_3(i);",
+			"alter table tt add index (i);",
+			"alter table tt add index (i);",
+			"alter table tt add index (i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  KEY `i` (`i`),\n" +
+						"  KEY `i_2` (`i`),\n" +
+						"  KEY `i_3` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				// MySQL preserves the other that indexes are created
+				// We store them in a map, so we have to sort to have some consistency
+				Query: "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n" +
+						"  `i` int,\n" +
+						"  KEY `i` (`i`),\n" +
+						"  KEY `i_2` (`i`),\n" +
+						"  KEY `i_3` (`i`),\n" +
+						"  KEY `i_4` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -6243,8 +6391,11 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
+				},
 			},
 		},
 	},
@@ -6264,8 +6415,11 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
+				},
 			},
 		},
 	},
@@ -6285,8 +6439,11 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"},
+				},
 			},
 		},
 	},
@@ -6306,8 +6463,11 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"}},
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
+				},
 			},
 		},
 	},
@@ -6327,8 +6487,11 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"}},
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
+				},
 			},
 		},
 	},
@@ -6348,8 +6511,10 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "describe test",
-				Expected: []sql.Row{{"i", "int", "NO", "PRI", "NULL", ""}, {"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
 		},
 	},
@@ -6891,6 +7056,121 @@ var PreparedScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "prepare with time type binding",
+		SetUpScript: []string{
+			"create table t (d date, dt datetime, t time, ts timestamp);",
+			"set @d = date('2001-02-03');",
+			"set @dt = datetime('2001-02-03 12:34:56');",
+			"set @t = time('12:34:56');",
+			"set @ts = timestamp('2001-02-03 12:34:56');",
+			"prepare s from 'select ?';",
+			"prepare sd from 'insert into t(d) values(?)';",
+			"prepare sdt from 'insert into t(dt) values(?)';",
+			"prepare st from 'insert into t(t) values(?)';",
+			"prepare sts from 'insert into t(ts) values(?)';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "execute s using @d;",
+				Expected: []sql.Row{
+					{"2001-02-03"},
+				},
+			},
+			{
+				Query: "execute s using @dt;",
+				Expected: []sql.Row{
+					{"2001-02-03 12:34:56 +0000 UTC"},
+				},
+			},
+			{
+				// types.Timespan not supported as bindvar
+				Skip:  true,
+				Query: "execute s using @t;",
+				Expected: []sql.Row{
+					{"12:34:56"},
+				},
+			},
+			{
+				Query: "execute s using @ts;",
+				Expected: []sql.Row{
+					{"2001-02-03 12:34:56 +0000 UTC"},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sd using @d;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sdt using @dt;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				// types.Timespan not supported as bindvar
+				Skip:                          true,
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute st using @t;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sts using @ts;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				// TODO: should also select t when we fix that
+				Query: "select d, dt, ts from t",
+				Expected: []sql.Row{
+					{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC), nil, nil},
+					{nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC), nil},
+					{nil, nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare with decimal type binding",
+		SetUpScript: []string{
+			"create table t (d decimal);",
+			"set @d = cast(123.45 as Decimal(5,2));",
+			"prepare s from 'select ?';",
+			"prepare sd from 'insert into t values(?)';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "execute s using @d;",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+			{
+				Skip:                          true,
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "execute sd using @d;",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{"123.45"},
+				},
+			},
+		},
+	},
+	{
 		Name: "prepare insert",
 		SetUpScript: []string{
 			"set @a = 123",
@@ -7143,9 +7423,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"uk1", "int", "NO", "MUL", "NULL", "auto_increment"},
-					{"uk1", "int", "YES", "", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"uk1", "int", "YES", "", nil, ""},
 				},
 			},
 		},
@@ -7160,9 +7440,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "describe test",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", "NULL", ""},
-					{"mk1", "int", "NO", "MUL", "NULL", "auto_increment"},
-					{"mk1", "int", "YES", "", "NULL", ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"mk1", "int", "YES", "", nil, ""},
 				},
 			},
 		},
@@ -7209,9 +7489,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "NO", "PRI", "NULL", ""},
+					{"pk", "int", "NO", "", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "NO", "PRI", nil, ""},
 				},
 			},
 			{
@@ -7221,9 +7501,9 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "NULL", ""},
-					{"v1", "int", "YES", "", "NULL", ""},
-					{"v2", "int", "NO", "PRI", "NULL", ""},
+					{"pk", "int", "NO", "", nil, ""},
+					{"v1", "int", "YES", "", nil, ""},
+					{"v2", "int", "NO", "PRI", nil, ""},
 				},
 			},
 			{
@@ -7235,11 +7515,11 @@ var BrokenScriptTests = []ScriptTest{
 			{
 				Query: "DESCRIBE t",
 				Expected: []sql.Row{
-					{"pk", "int", "NO", "", "NULL", ""},
-					{"v4", "int", "NO", "", "NULL", ""},
-					{"v5", "int", "NO", "", "NULL", ""},
-					{"v6", "int", "NO", "", "NULL", ""},
-					{"v7", "int", "NO", "", "NULL", ""},
+					{"pk", "int", "NO", "", nil, ""},
+					{"v4", "int", "NO", "", nil, ""},
+					{"v5", "int", "NO", "", nil, ""},
+					{"v6", "int", "NO", "", nil, ""},
+					{"v7", "int", "NO", "", nil, ""},
 				},
 			},
 		},

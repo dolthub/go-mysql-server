@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
 const rowsBatch = 128
 
-var tcpCheckerSleepDuration time.Duration = 1 * time.Second
+var tcpCheckerSleepDuration time.Duration = 5 * time.Second
 
 type MultiStmtMode int
 
@@ -350,6 +350,8 @@ func (h *Handler) doQuery(
 		return "", err
 	}
 
+	start := time.Now()
+
 	var remainder string
 	var prequery string
 	if parsed == nil {
@@ -383,8 +385,6 @@ func (h *Handler) doQuery(
 
 	finish := observeQuery(ctx, query)
 	defer finish(err)
-
-	start := time.Now()
 
 	ctx.GetLogger().Tracef("beginning execution")
 
@@ -436,7 +436,6 @@ func (h *Handler) doQuery(
 				}
 			}
 		}
-
 	})
 
 	pollCtx, cancelF := ctx.NewSubContext()

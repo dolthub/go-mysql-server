@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -1198,4 +1199,402 @@ func newConn(id uint32) *mysql.Conn {
 		ConnectionID: id,
 		Conn:         new(mockConn),
 	}
+}
+
+func dummyCb(_ *sqltypes.Result, _ bool) error {
+	return nil
+}
+
+const waitTimeout = 500 * time.Millisecond
+
+func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
+	start := time.Now()
+	var globalVal interface{}
+	var ok bool
+	for time.Now().Sub(start) < waitTimeout {
+		_, globalVal, ok = sql.StatusVariables.GetGlobal(name)
+		require.True(t, ok)
+		if globalVal == expected {
+			return
+		}
+	}
+	require.Fail(t, fmt.Sprintf("expected global status variable %s to be %d, got %d", name, expected, globalVal))
+}
+
+func checkSessionStatVar(t *testing.T, sess sql.Session, name string, expected uint64) {
+	start := time.Now()
+	var sessVal interface{}
+	var err error
+	for time.Now().Sub(start) < waitTimeout {
+		sessVal, err = sess.GetStatusVariable(nil, name)
+		require.NoError(t, err)
+		if sessVal == expected {
+			return
+		}
+	}
+	require.Fail(t, fmt.Sprintf("expected session status variable %s to be %d, got %d", name, expected, sessVal))
+}
+
+func TestStatusVariableQuestions(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	checkGlobalStatVar(t, "Questions", uint64(0))
+	checkSessionStatVar(t, sess1, "Questions", uint64(0))
+
+	// Call ComQuery 5 times
+	for i := 0; i < 5; i++ {
+		err = handler.ComQuery(conn1, "SELECT 1", dummyCb)
+		require.NoError(t, err)
+	}
+
+	checkGlobalStatVar(t, "Questions", uint64(5))
+	checkSessionStatVar(t, sess1, "Questions", uint64(5))
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	// Get 5 syntax errors
+	for i := 0; i < 5; i++ {
+		err = handler.ComQuery(conn2, "syntax error", dummyCb)
+		require.Error(t, err)
+	}
+
+	checkGlobalStatVar(t, "Questions", uint64(10))
+	checkSessionStatVar(t, sess1, "Questions", uint64(5))
+	checkSessionStatVar(t, sess2, "Questions", uint64(5))
+
+	conn3 := newConn(3)
+	handler.NewConnection(conn3)
+	err = handler.ComInitDB(conn3, "test")
+	require.NoError(t, err)
+	sess3 := handler.sm.sessions[3]
+
+	err = handler.ComQuery(conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Questions", uint64(11))
+	checkSessionStatVar(t, sess3, "Questions", uint64(1))
+
+	// Calling stored procedure with multiple queries only increment Questions once.
+	err = handler.ComQuery(conn3, "call p()", dummyCb)
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Questions", uint64(12))
+	checkSessionStatVar(t, sess1, "Questions", uint64(5))
+	checkSessionStatVar(t, sess2, "Questions", uint64(5))
+	checkSessionStatVar(t, sess3, "Questions", uint64(2))
+
+	conn4 := newConn(4)
+	handler.NewConnection(conn4)
+	err = handler.ComInitDB(conn4, "test")
+	require.NoError(t, err)
+	sess4 := handler.sm.sessions[4]
+
+	// TODO: implement and test that ComPing does not increment Questions
+	// TODO: implement and test that ComStatistics does not increment Questions
+	// TODO: implement and test that ComStmtClose does not increment Questions
+	// TODO: implement and test that ComStmtReset does not increment Questions
+
+	// Prepare does not increment Questions
+	prepare := &mysql.PrepareData{
+		StatementID: 0,
+		PrepareStmt: "select ?",
+		ParamsCount: 0,
+		ParamsType:  nil,
+		ColumnNames: nil,
+		BindVars: map[string]*query.BindVariable{
+			"v1": {Type: query.Type_INT8, Value: []byte("5")},
+		},
+	}
+
+	_, err = handler.ComPrepare(conn4, prepare.PrepareStmt, samplePrepareData)
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Questions", uint64(12))
+	checkSessionStatVar(t, sess4, "Questions", uint64(0))
+
+	// Execute does increment Questions
+	err = handler.ComStmtExecute(conn4, prepare, func(*sqltypes.Result) error { return nil })
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Questions", uint64(13))
+	checkSessionStatVar(t, sess4, "Questions", uint64(1))
+}
+
+func TestStatusVariableThreadsConnected(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(1))
+
+	handler.sm.RemoveConn(conn1)
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+
+	conns := make([]*mysql.Conn, 10)
+	for i := 0; i < 10; i++ {
+		conns[i] = newConn(uint32(i))
+		handler.NewConnection(conns[i])
+		err = handler.ComInitDB(conns[i], "test")
+		require.NoError(t, err)
+	}
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(10))
+
+	for i := 0; i < 10; i++ {
+		handler.sm.RemoveConn(conns[i])
+		checkGlobalStatVar(t, "Threads_connected", uint64(10-i))
+	}
+
+	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+}
+
+func TestStatusVariableThreadsRunning(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	checkGlobalStatVar(t, "Threads_running", uint64(0))
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		handler.ComQuery(conn1, "select sleep(1)", dummyCb)
+	}()
+
+	checkGlobalStatVar(t, "Threads_running", uint64(1))
+
+	wg.Wait()
+	checkGlobalStatVar(t, "Threads_running", uint64(0))
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		handler.ComQuery(conn1, "select sleep(1)", dummyCb)
+	}()
+	go func() {
+		defer wg.Done()
+		handler.ComQuery(conn2, "select sleep(1)", dummyCb)
+	}()
+
+	checkGlobalStatVar(t, "Threads_running", uint64(2))
+
+	wg.Wait()
+	checkGlobalStatVar(t, "Threads_running", uint64(0))
+}
+
+func TestStatusVariableComDelete(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	checkGlobalStatVar(t, "Com_delete", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_delete", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_delete", uint64(0))
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "DELETE FROM doesnotmatter", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "DELETE FROM doesnotmatter", dummyCb)
+	}
+
+	checkGlobalStatVar(t, "Com_delete", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_delete", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_delete", uint64(3))
+}
+
+func TestStatusVariableComInsert(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	checkGlobalStatVar(t, "Com_insert", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_insert", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_insert", uint64(0))
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "insert into blahblah values ()", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "insert into blahblah values ()", dummyCb)
+	}
+
+	checkGlobalStatVar(t, "Com_insert", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_insert", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_insert", uint64(3))
+}
+
+func TestStatusVariableComUpdate(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	checkGlobalStatVar(t, "Com_update", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_update", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_update", uint64(0))
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "update t set i = 10", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "update t set i = 10", dummyCb)
+	}
+
+	checkGlobalStatVar(t, "Com_update", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_update", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_update", uint64(3))
 }

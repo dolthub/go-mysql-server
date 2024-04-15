@@ -276,6 +276,8 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 	switch b := b.(type) {
 	case float64:
 		return a == b, nil
+	case int64:
+		return a == float64(b), nil
 	default:
 		return false, nil
 	}

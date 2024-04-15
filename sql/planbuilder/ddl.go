@@ -484,7 +484,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		}
 
 		if ddl.ConstraintAction != "" {
-			if len(ddl.TableSpec.Constraints) != 1 {
+			if len(ddl.TableSpec.Constraints) != 1 && ddl.ConstraintAction != ast.RenameStr {
 				b.handleErr(sql.ErrUnsupportedFeature.New("unexpected number of constraints in a single alter constraint clause"))
 			}
 			outScopes = append(outScopes, b.buildAlterConstraint(tableScope, ddl, rt))
@@ -586,6 +586,28 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 				Name:      c.name,
 			}
 		default:
+			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
+			b.handleErr(err)
+		}
+	case ast.RenameStr:
+		if len(ddl.TableSpec.Constraints) != 2 {
+			err := sql.ErrUnsupportedFeature.New("expected two constraints for rename constraint")
+			b.handleErr(err)
+		}
+		switch c := parsedConstraint.(type) {
+		case *sql.ForeignKeyConstraint:
+			otherConstraint := b.convertConstraintDefinition(inScope, ddl.TableSpec.Constraints[1])
+			cc, ok := otherConstraint.(*sql.ForeignKeyConstraint)
+			if !ok {
+				err := sql.ErrUnsupportedFeature.New("expected foreign key constraint")
+				b.handleErr(err)
+			}
+			database := table.SqlDatabase.Name()
+			dropFk := plan.NewAlterRenameForeignKey(database, table.Name(), c.Name, cc.Name)
+			dropFk.DbProvider = b.cat
+			outScope.node = dropFk
+		default:
+			// TODO: *sql.CheckConstraint, namedConstraint
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
 			b.handleErr(err)
 		}
@@ -1489,11 +1511,20 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 		}
 		for _, cc := range c.CharsetCollate {
 			ccType := strings.ToLower(cc.Type)
-			if ccType == "character set" {
+			switch ccType {
+			case "character set", "charset":
 				charsetStr = cc.Value
-			} else if ccType == "collate" {
+			case "collate":
 				collationStr = cc.Value
 			}
+		}
+		// TODO: ensure that collation and charset match when setting them
+		if len(charsetStr) == 0 && len(collationStr) == 0 {
+			collation, err := b.ctx.Session.GetSessionVariable(b.ctx, "collation_server")
+			if err != nil {
+				b.handleErr(err)
+			}
+			collationStr = collation.(string)
 		}
 		collation, err := sql.ParseCollation(charsetStr, collationStr, false)
 		if err != nil {

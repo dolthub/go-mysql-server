@@ -29,6 +29,10 @@ import (
 const OnDupValuesPrefix = "__new_ins"
 
 func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
+	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
+	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
+	sql.IncrementStatusVariable(b.ctx, "Com_insert", 1)
+
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
@@ -391,6 +395,10 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 }
 
 func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
+	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
+	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
+	sql.IncrementStatusVariable(b.ctx, "Com_delete", 1)
+
 	outScope = b.buildFrom(inScope, d.TableExprs)
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, outScope, d.OrderBy)
@@ -443,6 +451,10 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 }
 
 func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
+	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
+	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
+	sql.IncrementStatusVariable(b.ctx, "Com_update", 1)
+
 	outScope = b.buildFrom(inScope, u.TableExprs)
 
 	// default expressions only resolve to target table

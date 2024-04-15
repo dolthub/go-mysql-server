@@ -5574,6 +5574,13 @@ Select * from (
 			{"ssl_fips_mode", "OFF"},
 		},
 	},
+	// show variables like ... is case-insensitive
+	{
+		Query: "SHOW VARIABLES LIKE 'VERSION'",
+		Expected: []sql.Row{
+			{"version", "8.0.11"},
+		},
+	},
 	{
 		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
 		Expected: []sql.Row{{types.MustJSON(`"foo"`)}},
@@ -5691,8 +5698,8 @@ Select * from (
 	{
 		Query: `describe myview`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "", "NULL", ""},
-			{"s", "varchar(20)", "NO", "", "NULL", ""},
+			{"i", "bigint", "NO", "", nil, ""},
+			{"s", "varchar(20)", "NO", "", nil, ""},
 		},
 	},
 	{
@@ -7720,6 +7727,11 @@ Select * from (
 		Expected: []sql.Row{{true}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/7656
+		Query:    "select json_contains(cast('[1, 2]' as json), cast(cast(1 as signed) as json));",
+		Expected: []sql.Row{{true}},
+	},
+	{
 		Query: "select one_pk.pk, one_pk.c1 from one_pk join two_pk on one_pk.c1 = two_pk.c1 order by two_pk.c1",
 		Expected: []sql.Row{
 			{0, 0},
@@ -7854,41 +7866,70 @@ Select * from (
 		Query:    `START TRANSACTION READ WRITE`,
 		Expected: []sql.Row{},
 	},
+	// show status like ... is case-insensitive
 	{
-		Query: `SHOW STATUS LIKE 'use_secondary_engine'`,
+		Query: `SHOW STATUS LIKE 'aborted\_clients'`,
 		Expected: []sql.Row{
-			{"use_secondary_engine", "ON"},
+			{"Aborted_clients", 0},
 		},
 	},
 	{
-		Query: `SHOW GLOBAL STATUS LIKE 'admin_port'`,
+		Query: `SHOW STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"admin_port", 33062},
+			{"Aborted_clients", 0},
 		},
 	},
 	{
-		Query: `SHOW SESSION STATUS LIKE 'auto_increment_increment'`,
+		Query: `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"auto_increment_increment", 1},
+			{"Aborted_clients", 0},
 		},
 	},
 	{
-		Query:    `SHOW GLOBAL STATUS LIKE 'use_secondary_engine'`,
+		Query: `SHOW GLOBAL STATUS LIKE 'Bytes_sent'`,
+		Expected: []sql.Row{
+			{"Bytes_sent", 0},
+		},
+	},
+	{
+		Query: `SHOW SESSION STATUS LIKE 'Bytes_sent'`,
+		Expected: []sql.Row{
+			{"Bytes_sent", 0},
+		},
+	},
+	{
+		Query: `SHOW GLOBAL STATUS LIKE 'Com\_stmt\_%'`,
+		Expected: []sql.Row{
+			{"Com_stmt_close", 0},
+			{"Com_stmt_execute", 0},
+			{"Com_stmt_fetch", 0},
+			{"Com_stmt_prepare", 0},
+			{"Com_stmt_reprepare", 0},
+			{"Com_stmt_reset", 0},
+			{"Com_stmt_send_long_data", 0},
+		},
+	},
+	{
+		Query: `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
+		Expected: []sql.Row{
+			{"Com_stmt_close", 0},
+			{"Com_stmt_execute", 0},
+			{"Com_stmt_fetch", 0},
+			{"Com_stmt_prepare", 0},
+			{"Com_stmt_reprepare", 0},
+			{"Com_stmt_reset", 0},
+			{"Com_stmt_send_long_data", 0},
+		},
+	},
+	{
+		Query: `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
+		Expected: []sql.Row{
+			{"Ssl_cipher", ""},
+		},
+	},
+	{
+		Query:    `SHOW SESSION STATUS WHERE Value < 0`,
 		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SHOW SESSION STATUS LIKE 'version'`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
-		Expected: []sql.Row{}, // TODO: should be added at some point
-	},
-	{
-		Query: `SHOW SESSION STATUS WHERE Value < 0`,
-		Expected: []sql.Row{
-			{"optimizer_trace_offset", -1},
-		},
 	},
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
@@ -9597,22 +9638,22 @@ var KeylessQueries = []QueryTest{
 	{
 		Query: "DESCRIBE keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "NULL", ""},
-			{"c1", "bigint", "YES", "", "NULL", ""},
+			{"c0", "bigint", "YES", "", nil, ""},
+			{"c1", "bigint", "YES", "", nil, ""},
 		},
 	},
 	{
 		Query: "SHOW COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", "NULL", ""},
-			{"c1", "bigint", "YES", "", "NULL", ""},
+			{"c0", "bigint", "YES", "", nil, ""},
+			{"c1", "bigint", "YES", "", nil, ""},
 		},
 	},
 	{
 		Query: "SHOW FULL COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", nil, "YES", "", "NULL", "", "", ""},
-			{"c1", "bigint", nil, "YES", "", "NULL", "", "", ""},
+			{"c0", "bigint", nil, "YES", "", nil, "", "", ""},
+			{"c1", "bigint", nil, "YES", "", nil, "", "", ""},
 		},
 	},
 	{
@@ -9911,16 +9952,16 @@ var VersionedScripts = []ScriptTest{
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "NULL", ""},
-					{"s", "text", "NO", "", "NULL", ""},
+					{"i", "bigint", "NO", "PRI", nil, ""},
+					{"s", "text", "NO", "", nil, ""},
 				},
 			},
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
 				Expected: []sql.Row{
-					{"i", "bigint", "NO", "PRI", "NULL", ""},
-					{"s", "text", "NO", "", "NULL", ""},
-					{"c", "text", "NO", "", "NULL", ""},
+					{"i", "bigint", "NO", "PRI", nil, ""},
+					{"s", "text", "NO", "", nil, ""},
+					{"c", "text", "NO", "", nil, ""},
 				},
 			},
 		},

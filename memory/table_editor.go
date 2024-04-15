@@ -277,6 +277,11 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error 
 	return nil
 }
 
+func (t *tableEditor) AcquireAutoIncrementLock(ctx *sql.Context) (func(), error) {
+	// TODO: Add concurrency tests for AutoIncrement locking modes.
+	return func() {}, nil
+}
+
 func (t *tableEditor) PreciseMatch() bool {
 	return true
 }

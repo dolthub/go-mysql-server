@@ -471,7 +471,7 @@ func (m *MysqlSystemVariable) GetDefault() any {
 	return m.Default
 }
 
-// ForceSetValue implements SystemVariable.
+// InitValue implements SystemVariable.
 func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, error) {
 	convertedVal, _, err := m.Type.Convert(val)
 	if err != nil {
@@ -694,4 +694,82 @@ type SystemVarValue struct {
 type NameableNode interface {
 	Nameable
 	Node
+}
+
+var StatusVariables StatusVariableRegistry
+
+// StatusVariableRegistry is a registry of status variables.
+type StatusVariableRegistry interface {
+	// NewSessionMap returns a deep copy of the status variables that are not GlobalOnly scope (i.e. SessionOnly or Both)
+	NewSessionMap() map[string]StatusVarValue
+	// NewGlobalMap returns a deep copy of the status variables of every scope
+	NewGlobalMap() map[string]StatusVarValue
+	// GetGlobal returns the current global value of the status variable with the given name
+	GetGlobal(name string) (StatusVariable, interface{}, bool)
+	// SetGlobal sets the global value of the status variable with the given name, returns an error if the variable is SessionOnly scope
+	SetGlobal(name string, val interface{}) error
+	// IncrementGlobal increments the value of the status variable by the given integer value
+	IncrementGlobal(name string, val int) error
+}
+
+// StatusVariableScope represents the scope of a status variable.
+type StatusVariableScope byte
+
+const (
+	StatusVariableScope_Global StatusVariableScope = iota
+	StatusVariableScope_Session
+	StatusVariableScope_Both
+)
+
+type StatusVariable interface {
+	GetName() string
+	GetScope() StatusVariableScope
+	GetType() Type
+	GetDefault() interface{}
+}
+
+// MySQLStatusVariable represents a mysql status variable.
+type MySQLStatusVariable struct {
+	Name    string
+	Scope   StatusVariableScope
+	Type    Type
+	Default interface{}
+}
+
+var _ StatusVariable = (*MySQLStatusVariable)(nil)
+
+// GetName implements StatusVariable.
+func (m *MySQLStatusVariable) GetName() string {
+	return m.Name
+}
+
+// GetScope implements StatusVariable.
+func (m *MySQLStatusVariable) GetScope() StatusVariableScope {
+	return m.Scope
+}
+
+// GetType implements StatusVariable.
+func (m *MySQLStatusVariable) GetType() Type {
+	return m.Type
+}
+
+// GetDefault implements StatusVariable.
+func (m *MySQLStatusVariable) GetDefault() interface{} {
+	return m.Default
+}
+
+// StatusVarValue is a StatusVariable with a value.
+type StatusVarValue struct {
+	Var StatusVariable
+	Val interface{}
+}
+
+// IncrementStatusVariable increments the value of the status variable by integer val.
+// name is case-insensitive. Errors are ignored.
+// This runs in a goroutine to avoid blocking the caller, but we do not wait for it to complete.
+func IncrementStatusVariable(ctx *Context, name string, val int) {
+	go func() {
+		StatusVariables.IncrementGlobal(name, val)
+		ctx.Session.IncrementStatusVariable(ctx, name, val)
+	}()
 }

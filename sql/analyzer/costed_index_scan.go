@@ -255,7 +255,13 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		retFilters = b.leftover
 	}
 
-	return ret, c.bestStat, retFilters, nil
+	bestStat, err := c.bestStat.WithHistogram(c.bestHist)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	bestStat = stats.UpdateCounts(bestStat)
+
+	return ret, bestStat, retFilters, nil
 }
 
 func addIndexScans(m *memo.Memo) error {
@@ -363,6 +369,8 @@ type indexCoster struct {
 	idToExpr map[indexScanId]sql.Expression
 	// bestStat is the lowest cardinality indexScan option
 	bestStat sql.Statistic
+	bestHist []sql.HistogramBucket
+	bestCnt  uint64
 	// bestFilters is the set of conjunctions used to create bestStat
 	bestFilters sql.FastIntSet
 	// bestConstant are the constant best filters
@@ -377,7 +385,8 @@ type indexCoster struct {
 func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) error {
 	ordinals := ordinalsForStat(stat)
 
-	newStat := stat
+	var newHist []sql.HistogramBucket
+	var newFds *sql.FuncDepSet
 	var filters sql.FastIntSet
 	var prefix int
 	var err error
@@ -385,13 +394,13 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 
 	switch f := f.(type) {
 	case *iScanAnd:
-		newStat, filters, prefix, err = c.costIndexScanAnd(f, stat, ordinals, idx)
+		newHist, newFds, filters, prefix, err = c.costIndexScanAnd(f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
 			return err
 		}
 
 	case *iScanOr:
-		newStat, ok, err = c.costIndexScanOr(f, stat, ordinals, idx)
+		newHist, newFds, ok, err = c.costIndexScanOr(f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
 			return err
 		}
@@ -399,7 +408,7 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 			filters.Add(int(f.id))
 		}
 	case *iScanLeaf:
-		newStat, ok, prefix, err = c.costIndexScanLeaf(f, stat, ordinals, idx)
+		newHist, newFds, ok, prefix, err = c.costIndexScanLeaf(f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
 			return err
 		}
@@ -410,25 +419,33 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 		panic("unreachable")
 	}
 
-	c.updateBest(newStat, filters, prefix)
+	if newFds == nil {
+		newFds = &sql.FuncDepSet{}
+	}
+
+	c.updateBest(stat, newHist, newFds, filters, prefix)
+
 	return nil
 }
 
-func (c *indexCoster) updateBest(s sql.Statistic, filters sql.FastIntSet, prefix int) {
+func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sql.FastIntSet, prefix int) {
 	if s == nil || filters.Len() == 0 {
 		return
 	}
+	rowCnt, _, _ := stats.GetNewCounts(hist)
 
 	var update bool
 	defer func() {
 		if update {
-			c.bestStat = s
+			c.bestStat = s.WithFuncDeps(fds)
+			c.bestHist = hist
+			c.bestCnt = rowCnt
 			c.bestFilters = filters
 			c.bestPrefix = prefix
 		}
 	}()
 
-	if c.bestStat == nil || s.RowCount() < c.bestStat.RowCount() {
+	if c.bestStat == nil || rowCnt < c.bestCnt {
 		update = true
 		return
 	} else if c.bestStat.FuncDeps().HasMax1Row() {
@@ -437,9 +454,9 @@ func (c *indexCoster) updateBest(s sql.Statistic, filters sql.FastIntSet, prefix
 		// any prefix is better than no prefix
 		update = prefix > c.bestPrefix
 		return
-	} else if s.RowCount() == c.bestStat.RowCount() {
+	} else if rowCnt == c.bestCnt {
 		// hand rules when stats don't exist or match exactly
-		cmp := s.FuncDeps()
+		cmp := fds
 		best := c.bestStat.FuncDeps()
 		if cmp.HasMax1Row() {
 			update = true
@@ -1111,28 +1128,34 @@ func ordinalsForStat(stat sql.Statistic) map[string]int {
 // updated statistic, the subset of applicable filters, the maximum prefix
 // key created by a subset of equality filters (from conjunction only),
 // or an error if applicable.
-func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, sql.FastIntSet, int, error) {
+func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, sql.FastIntSet, int, error) {
 	// first step finds the conjunctions that match index prefix columns.
 	// we divide into eqFilters and rangeFilters
 
-	ret := s
+	ret := s.Histogram()
 	var exact sql.FastIntSet
 
 	if len(filter.orChildren) > 0 {
 		for _, or := range filter.orChildren {
-			childStat, ok, err := c.costIndexScanOr(or.(*iScanOr), s, ordinals, idx)
+			childStat, fds, ok, err := c.costIndexScanOr(or.(*iScanOr), s, buckets, ordinals, idx)
 			if err != nil {
-				return nil, sql.FastIntSet{}, 0, err
+				return nil, nil, sql.FastIntSet{}, 0, err
 			}
 			// if valid, INTERSECT
 			if ok {
-				ret = stats.Intersect(ret, childStat)
+				if fds != nil {
+					s = s.WithFuncDeps(fds)
+				}
+				ret, err = stats.Intersect(ret, childStat, s.Types())
+				if err != nil {
+					return nil, nil, sql.FastIntSet{}, 0, err
+				}
 				exact.Add(int(or.Id()))
 			}
 		}
 	}
 
-	conj := newConjCollector(ret, ordinals)
+	conj := newConjCollector(s, ret, ordinals)
 	for _, c := range s.Columns() {
 		if colFilters, ok := filter.leafChildren[c]; ok {
 			for _, f := range colFilters {
@@ -1143,46 +1166,58 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, ordina
 
 	if exact.Len()+conj.applied.Len() == filter.childCnt() {
 		// matched all filters
-		return conj.stat, sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
+		return conj.hist, conj.fds, sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
 	}
 
-	return conj.stat, exact.Union(conj.applied), conj.missingPrefix, nil
+	return conj.hist, conj.fds, exact.Union(conj.applied), conj.missingPrefix, nil
 }
 
-func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, error) {
+func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, error) {
 	// OR just unions the statistics from each child?
 	// if one of the children is invalid, we balk and return false
 	// otherwise we union the buckets between the children
-	ret := s
+	ret := buckets
 	for _, child := range filter.children {
 		switch child := child.(type) {
 		case *iScanAnd:
-			childStat, ids, _, err := c.costIndexScanAnd(child, s, ordinals, idx)
+			childBuckets, fds, ids, _, err := c.costIndexScanAnd(child, s, buckets, ordinals, idx)
 			if err != nil {
-				return nil, false, err
+				return nil, nil, false, err
 			}
 			if ids.Len() != 1 || !ids.Contains(int(child.Id())) {
 				// scan option missed some filters
-				return nil, false, nil
+				return nil, nil, false, nil
 			}
-			ret = stats.Union(s, childStat)
+			if fds != nil {
+				s = s.WithFuncDeps(fds)
+			}
+			ret, err = stats.Union(buckets, childBuckets, s.Types())
+			if err != nil {
+				return nil, nil, false, err
+			}
 
 		case *iScanLeaf:
 			var ok bool
-			childStat, ok, _, err := c.costIndexScanLeaf(child, s, ordinals, idx)
+			childBuckets, fds, ok, _, err := c.costIndexScanLeaf(child, s, ret, ordinals, idx)
 			if err != nil {
-				return nil, false, err
+				return nil, nil, false, err
 			}
 			if !ok {
-				return nil, false, nil
+				return nil, nil, false, nil
 			}
-			ret = stats.Union(s, childStat)
+			if fds != nil {
+				s = s.WithFuncDeps(fds)
+			}
+			ret, err = stats.Union(ret, childBuckets, s.Types())
+			if err != nil {
+				return nil, nil, false, err
+			}
 
 		default:
-			return nil, false, fmt.Errorf("invalid *iScanOr child: %T", child)
+			return nil, nil, false, fmt.Errorf("invalid *iScanOr child: %T", child)
 		}
 	}
-	return ret, true, nil
+	return ret, nil, true, nil
 }
 
 // indexHasContentHashedFieldForFilter returns true if the given index |idx| has a content-hashed field that is used
@@ -1212,10 +1247,10 @@ func indexHasContentHashedFieldForFilter(filter *iScanLeaf, idx sql.Index, ordin
 // costIndexScanLeaf tries to apply a leaf filter to an index represented
 // by a statistic, returning the updated statistic, whether the filter was
 // applicable, and the maximum prefix key (0 or 1 for a leaf).
-func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordinals map[string]int, idx sql.Index) (sql.Statistic, bool, int, error) {
+func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, int, error) {
 	ord, ok := ordinals[strings.ToLower(filter.gf.Name())]
 	if !ok {
-		return nil, false, 0, nil
+		return nil, nil, false, 0, nil
 	}
 
 	// indexes with content-hashed fields can be used to test equality or compare with NULL,
@@ -1224,21 +1259,21 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, ordi
 		switch filter.op {
 		case indexScanOpEq, indexScanOpNotEq, indexScanOpNullSafeEq, indexScanOpIsNull, indexScanOpIsNotNull:
 		default:
-			return nil, false, 0, nil
+			return nil, nil, false, 0, nil
 		}
 	}
 
 	switch filter.op {
 	case indexScanOpSpatialEq:
 		stat, ok, err := c.costSpatial(filter, s, ord)
-		return stat, ok, 0, err
+		return buckets, stat.FuncDeps(), ok, 0, err
 	case indexScanOpFulltextEq:
 		stat, ok, err := c.costFulltext(filter, s, ord)
-		return stat, ok, 0, err
+		return buckets, stat.FuncDeps(), ok, 0, err
 	default:
-		conj := newConjCollector(s, ordinals)
+		conj := newConjCollector(s, buckets, ordinals)
 		conj.add(filter)
-		return conj.stat, true, conj.missingPrefix, nil
+		return conj.hist, conj.fds, true, conj.missingPrefix, nil
 	}
 }
 
@@ -1521,9 +1556,11 @@ func newUniformDistStatistic(dbName, tableName string, sch sql.Schema, idx sql.I
 	return ret, nil
 }
 
-func newConjCollector(s sql.Statistic, ordinals map[string]int) *conjCollector {
+func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[string]int) *conjCollector {
 	return &conjCollector{
 		stat:     s,
+		hist:     hist,
+		fds:      s.FuncDeps(),
 		ordinals: ordinals,
 		eqVals:   make([]interface{}, len(ordinals)),
 		nullable: make([]bool, len(ordinals)),
@@ -1534,6 +1571,8 @@ func newConjCollector(s sql.Statistic, ordinals map[string]int) *conjCollector {
 // an index histogram for a list of conjugate filters
 type conjCollector struct {
 	stat          sql.Statistic
+	hist          []sql.HistogramBucket
+	fds           *sql.FuncDepSet
 	ordinals      map[string]int
 	missingPrefix int
 	constant      sql.FastIntSet
@@ -1587,7 +1626,7 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 
 		// truncate buckets
 		var err error
-		c.stat, err = stats.PrefixKey(c.stat, c.eqVals[:ord+1], c.nullable)
+		c.hist, c.fds, err = stats.PrefixKey(c.stat.Histogram(), c.stat.ColSet(), c.stat.Types(), c.stat.FuncDeps(), c.eqVals[:ord+1], c.nullable)
 		if err != nil {
 			return err
 		}
@@ -1619,19 +1658,19 @@ func (c *conjCollector) cmpFirstCol(op indexScanOp, val interface{}) error {
 	switch op {
 	case indexScanOpNotEq:
 		// todo notEq
-		c.stat, err = stats.PrefixGt(c.stat, val)
+		c.hist, err = stats.PrefixGt(c.hist, c.stat.Types(), val)
 	case indexScanOpGt:
-		c.stat, err = stats.PrefixGt(c.stat, val)
+		c.hist, err = stats.PrefixGt(c.hist, c.stat.Types(), val)
 	case indexScanOpGte:
-		c.stat, err = stats.PrefixGte(c.stat, val)
+		c.hist, err = stats.PrefixGte(c.hist, c.stat.Types(), val)
 	case indexScanOpLt:
-		c.stat, err = stats.PrefixLt(c.stat, val)
+		c.hist, err = stats.PrefixLt(c.hist, c.stat.Types(), val)
 	case indexScanOpLte:
-		c.stat, err = stats.PrefixLte(c.stat, val)
+		c.hist, err = stats.PrefixLte(c.hist, c.stat.Types(), val)
 	case indexScanOpIsNull:
-		c.stat, err = stats.PrefixIsNull(c.stat)
+		c.hist, err = stats.PrefixIsNull(c.hist)
 	case indexScanOpIsNotNull:
-		c.stat, err = stats.PrefixIsNotNull(c.stat)
+		c.hist, err = stats.PrefixIsNotNull(c.hist)
 	}
 	return err
 }

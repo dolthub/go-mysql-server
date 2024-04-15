@@ -55,27 +55,27 @@ func (j JSONType) Description() string {
 	return "returns type of JSON value."
 }
 
-// Resolved implements the Expression interface.
+// Resolved implements sql.Expression
 func (j JSONType) Resolved() bool {
 	return j.JSON.Resolved()
 }
 
-// String implements the fmt.Stringer interface.
+// String implements fmt.Stringer
 func (j JSONType) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), j.JSON.String())
 }
 
-// Type implements the Expression interface.
+// Type implements sql.Expression
 func (j JSONType) Type() sql.Type {
 	return types.Text
 }
 
-// IsNullable implements the Expression interface.
+// IsNullable implements sql.Expression
 func (j JSONType) IsNullable() bool {
 	return j.JSON.IsNullable()
 }
 
-// Eval implements the Expression interface.
+// Eval implements sql.Expression
 func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span(fmt.Sprintf("function.%s", j.FunctionName()))
 	defer span.End()
@@ -136,12 +136,12 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// Children implements the Expression interface.
+// Children implements sql.Expression
 func (j JSONType) Children() []sql.Expression {
 	return []sql.Expression{j.JSON}
 }
 
-// WithChildren implements the Expression interface.
+// WithChildren implements sql.Expression
 func (j JSONType) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewJSONType(children...)
 }

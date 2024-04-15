@@ -6,7 +6,7 @@ require (
 	github.com/dolthub/go-icu-regex v0.0.0-20230524105445-af7e7991c97e
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20240321165217-ad95f0dd1119
+	github.com/dolthub/vitess v0.0.0-20240410183958-15cc912ab042
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
 	github.com/gocraft/dbr/v2 v2.7.2
@@ -15,7 +15,7 @@ require (
 	github.com/lestrrat-go/strftime v1.0.4
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/shopspring/decimal v1.2.0
+	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.8.2
 	go.opentelemetry.io/otel v1.7.0
@@ -43,4 +43,4 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 )
 
-go 1.20
+go 1.22

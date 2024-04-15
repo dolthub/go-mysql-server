@@ -508,8 +508,8 @@ func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
 
 func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dummy := &plan.ShowVariables{}
-	for _, c := range dummy.Schema() {
+	node := &plan.ShowVariables{}
+	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(c.DatabaseSource),
 			table:    strings.ToLower(c.Source),
@@ -520,22 +520,15 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 	}
 
 	var filter sql.Expression
-	var like sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
 			filter = b.buildScalar(outScope, s.Filter.Filter)
-		}
-		if s.Filter.Like != "" {
-			like = expression.NewLike(
-				expression.NewGetField(0, types.LongText, "variable_name", false),
+		} else if s.Filter.Like != "" {
+			filter = expression.NewLike(
+				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
 				expression.NewLiteral(strings.ToLower(s.Filter.Like), types.LongText),
 				nil,
 			)
-			if filter != nil {
-				filter = expression.NewAnd(like, filter)
-			} else {
-				filter = like
-			}
 		}
 	}
 	if filter == nil {
@@ -846,13 +839,7 @@ func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope
 
 func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	var node sql.Node
-	if s.Scope == ast.GlobalStr {
-		node = plan.NewShowStatus(plan.ShowStatusModifier_Global)
-	} else {
-		node = plan.NewShowStatus(plan.ShowStatusModifier_Session)
-	}
-
+	var node sql.Node = plan.NewShowStatus(s.Scope == ast.GlobalStr)
 	for _, c := range node.Schema() {
 		outScope.newColumn(scopeColumn{
 			db:       strings.ToLower(c.DatabaseSource),
@@ -865,14 +852,14 @@ func (b *Builder) buildShowStatus(inScope *scope, s *ast.Show) (outScope *scope)
 
 	var filter sql.Expression
 	if s.Filter != nil {
-		if s.Filter.Like != "" {
+		if s.Filter.Filter != nil {
+			filter = b.buildScalar(outScope, s.Filter.Filter)
+		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
 				expression.NewLiteral(s.Filter.Like, types.LongText),
 				nil,
 			)
-		} else if s.Filter.Filter != nil {
-			filter = b.buildScalar(outScope, s.Filter.Filter)
 		}
 	}
 

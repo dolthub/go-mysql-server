@@ -242,31 +242,7 @@ func (b *BaseBuilder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row 
 }
 
 func (b *BaseBuilder) buildShowStatus(ctx *sql.Context, n *plan.ShowStatus, row sql.Row) (sql.RowIter, error) {
-	var names []string
-	for name := range sql.SystemVariables.NewSessionMap() {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	var rows []sql.Row
-	for _, name := range names {
-		sysVar, val, ok := sql.SystemVariables.GetGlobal(name)
-		if !ok {
-			return nil, fmt.Errorf("missing system variable %s", name)
-		}
-		msv, ok := sysVar.(*sql.MysqlSystemVariable)
-		if !ok {
-			continue
-		}
-		if n.Modifier == plan.ShowStatusModifier_Session && msv.Scope.IsGlobalOnly() ||
-			n.Modifier == plan.ShowStatusModifier_Global && msv.Scope.IsSessionOnly() {
-			continue
-		}
-
-		rows = append(rows, sql.Row{name, val})
-	}
-
-	return sql.RowsToRowIter(rows...), nil
+	return n.RowIter(ctx, row)
 }
 
 func (b *BaseBuilder) buildShowCreateProcedure(ctx *sql.Context, n *plan.ShowCreateProcedure, row sql.Row) (sql.RowIter, error) {
@@ -330,13 +306,19 @@ func (b *BaseBuilder) buildShowCreateDatabase(ctx *sql.Context, n *plan.ShowCrea
 		buf.WriteString("/*!32312 IF NOT EXISTS*/ ")
 	}
 
+	// TODO: grab collation from server?
+	collId := sql.Collation_Default
+	if collDb, ok := n.Database().(sql.CollatedDatabase); ok {
+		collId = collDb.GetCollation(ctx)
+	}
+
 	buf.WriteRune('`')
 	buf.WriteString(name)
 	buf.WriteRune('`')
 	buf.WriteString(fmt.Sprintf(
 		" /*!40100 DEFAULT CHARACTER SET %s COLLATE %s */",
-		sql.Collation_Default.CharacterSet().String(),
-		sql.Collation_Default.String(),
+		collId.CharacterSet().String(),
+		collId.String(),
 	))
 
 	return sql.RowsToRowIter(
@@ -489,14 +471,14 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 			panic(fmt.Sprintf("unexpected type %T", n.Child))
 		}
 
-		var defaultVal string
+		var defaultVal interface{}
 		if col.Default != nil {
 			defaultVal = col.Default.String()
 		} else {
 			// From: https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
 			// The default value for the column. This is NULL if the column has an explicit default of NULL,
 			// or if the column definition includes no DEFAULT clause.
-			defaultVal = "NULL"
+			defaultVal = nil
 		}
 
 		extra := col.Extra

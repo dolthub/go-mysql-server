@@ -37,6 +37,7 @@ type insertIter struct {
 	rowSource           sql.RowIter
 	lastInsertIdUpdated bool
 	hasAutoAutoIncValue bool
+	unlocker            func()
 	ctx                 *sql.Context
 	insertExprs         []sql.Expression
 	updateExprs         []sql.Expression
@@ -257,6 +258,9 @@ func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 func (i *insertIter) Close(ctx *sql.Context) error {
 	if !i.closed {
 		i.closed = true
+		if i.unlocker != nil {
+			i.unlocker()
+		}
 		var rsErr, iErr, rErr, uErr error
 		if i.rowSource != nil {
 			rsErr = i.rowSource.Close(ctx)

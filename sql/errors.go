@@ -243,6 +243,9 @@ var (
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 
+	// ErrUnknownStatusVariable is returned when a query references a status variable that doesn't exist
+	ErrUnknownStatusVariable = errors.NewKind(`Unknown status variable '%s'`)
+
 	// ErrUnknownUserVariable is returned when a query references a user variable that doesn't exist
 	ErrUnknownUserVariable = errors.NewKind(`Unknown user variable '%s'`)
 

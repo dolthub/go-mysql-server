@@ -1864,7 +1864,8 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			indexName = strings.Join(n.ColumnNames(), "")
 			if _, ok := indexMap[strings.ToLower(indexName)]; ok {
 				for i := 0; true; i++ {
-					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+					// MySQL starts at 2 for duplicate indexes
+					newIndexName := fmt.Sprintf("%s_%d", indexName, i+2)
 					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
 						indexName = newIndexName
 						break

@@ -36,8 +36,9 @@ const (
 )
 
 const (
-	CurrentDBSessionVar              = "current_database"
-	AutoCommitSessionVar             = "autocommit"
+	CurrentDBSessionVar  = "current_database"
+	AutoCommitSessionVar = "autocommit"
+	// TODO: how does character set and collation get matched?
 	characterSetConnectionSysVarName = "character_set_connection"
 	characterSetResultsSysVarName    = "character_set_results"
 	collationConnectionSysVarName    = "collation_connection"
@@ -72,12 +73,24 @@ type Session interface {
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
 	SetUserVariable(ctx *Context, varName string, value interface{}, typ Type) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
+	// To access global scope, use sql.SystemVariables.GetGlobal instead.
 	GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
 	// GetUserVariable returns this session's value of the user variable with the given name, along with its most
 	// appropriate type.
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
+	// GetStatusVariable returns the value of the status variable with session scope with the given name.
+	// To access global scope, use sql.StatusVariables instead.
+	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)
+	// SetStatusVariable sets the value of the status variable with session scope with the given name.
+	// To access global scope, use sql.StatusVariables.GetGlobal instead.
+	SetStatusVariable(ctx *Context, statVarName string, val interface{}) error
+	// GetAllStatusVariables returns a map of all status variables with session scope and their values.
+	// To access global scope, use sql.StatusVariables instead.
+	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
+	// IncrementStatusVariable increments the value of the status variable by the integer value
+	IncrementStatusVariable(ctx *Context, statVarName string, val int) error
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
