@@ -400,7 +400,7 @@ func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 	case "privileges":
 		node, _ := plan.NewFlushPrivileges(writesToBinlog).WithDatabase(b.resolveDb("mysql"))
 		outScope.node = node
-	case "binary logs", "engine logs":
+	case "binary logs", "engine logs", "table", "tables":
 		node := plan.Nothing{}
 		outScope.node = node
 	case "error logs", "relay logs", "general logs", "slow logs", "status":

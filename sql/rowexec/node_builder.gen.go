@@ -56,6 +56,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildDropHistogram(ctx, n, row)
 	case *plan.QueryProcess:
 		return b.buildQueryProcess(ctx, n, row)
+	case *plan.ShowBinlogStatus:
+		return b.buildShowBinlogStatus(ctx, n, row)
 	case *plan.ShowReplicaStatus:
 		return b.buildShowReplicaStatus(ctx, n, row)
 	case *plan.UpdateSource:
