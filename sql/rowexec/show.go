@@ -528,7 +528,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 
 	for k, v := range sysVars {
 		if n.Filter != nil {
-			res, err := n.Filter.Eval(ctx, sql.Row{k})
+			res, err := n.Filter.Eval(ctx, sql.Row{strings.ToLower(k)})
 			if err != nil {
 				return nil, err
 			}

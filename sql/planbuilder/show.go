@@ -526,7 +526,7 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
-				expression.NewLiteral(s.Filter.Like, types.LongText),
+				expression.NewLiteral(strings.ToLower(s.Filter.Like), types.LongText),
 				nil,
 			)
 		}
