@@ -134,7 +134,7 @@ func TestFromDays(t *testing.T) {
 			exp: "0000-00-00",
 		},
 		{
-			arg: expression.NewLiteral("-10", types.Int32),
+			arg: expression.NewLiteral(-10, types.Int32),
 			exp: "0000-00-00",
 		},
 		{

@@ -9591,6 +9591,19 @@ from typestable`,
 			{3},
 		},
 	},
+
+	{
+		Query: "select to_days('2024-04-15');",
+		Expected: []sql.Row{
+			{739356},
+		},
+	},
+	{
+		Query: "select from_days(739356);",
+		Expected: []sql.Row{
+			{time.Date(2024, 4, 15, 0, 0, 0, 0, time.UTC)},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
