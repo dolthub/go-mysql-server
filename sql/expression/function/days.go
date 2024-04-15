@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ToDays is a function that returns the year of a date.
+// ToDays is a function that converts a date to a number of days since year 0.
 type ToDays struct {
 	expression.UnaryExpression
 }
@@ -31,7 +31,7 @@ type ToDays struct {
 var _ sql.FunctionExpression = (*ToDays)(nil)
 var _ sql.CollationCoercible = (*ToDays)(nil)
 
-// NewToDays creates a new Year UDF.
+// NewToDays creates a new ToDays function.
 func NewToDays(date sql.Expression) sql.Expression {
 	return &ToDays{expression.UnaryExpression{Child: date}}
 }
@@ -109,7 +109,7 @@ func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return res, nil
 }
 
-// FromDays is a function that returns the year of a date.
+// FromDays is a function that returns date for a given number of days since year 0.
 type FromDays struct {
 	expression.UnaryExpression
 }
@@ -117,9 +117,9 @@ type FromDays struct {
 var _ sql.FunctionExpression = (*FromDays)(nil)
 var _ sql.CollationCoercible = (*FromDays)(nil)
 
-// NewFromDays creates a new Year UDF.
-func NewFromDays(date sql.Expression) sql.Expression {
-	return &FromDays{expression.UnaryExpression{Child: date}}
+// NewFromDays creates a new FromDays function.
+func NewFromDays(days sql.Expression) sql.Expression {
+	return &FromDays{expression.UnaryExpression{Child: days}}
 }
 
 // CollationCoercibility implements sql.CollationCoercible
@@ -184,10 +184,7 @@ func daysToYear(days int64) (int64, int64) {
 }
 
 func isLeapYear(year int64) bool {
-	if year == 0 {
-		return false
-	}
-	return (year%4 == 0 && year%100 != 0) || year%400 == 0
+	return year != 0 && ((year%4 == 0 && year%100 != 0) || year%400 == 0)
 }
 
 var daysPerMonth = [12]int64{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
