@@ -1719,7 +1719,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 	},
 	{
 
-		Name:        "information_schema.tables has table comments",
+		Name: "information_schema.tables has table comments",
 		SetUpScript: []string{
 			"create table t (i int primary key) comment 'this is a table comment';",
 		},
