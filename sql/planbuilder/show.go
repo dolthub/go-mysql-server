@@ -528,7 +528,7 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 		if s.Filter.Like != "" {
 			like = expression.NewLike(
 				expression.NewGetField(0, types.LongText, "variable_name", false),
-				expression.NewLiteral(s.Filter.Like, types.LongText),
+				expression.NewLiteral(strings.ToLower(s.Filter.Like), types.LongText),
 				nil,
 			)
 			if filter != nil {
