@@ -16,7 +16,7 @@ package function
 
 import (
 	"fmt"
-"testing"
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -34,74 +34,74 @@ func TestToDays(t *testing.T) {
 		skip bool
 	}{
 		{
-			arg:  expression.NewLiteral(nil, types.Null),
-			exp:  nil,
+			arg: expression.NewLiteral(nil, types.Null),
+			exp: nil,
 		},
 		{
-			arg:  expression.NewLiteral("notadate", types.Text),
-			exp:  nil,
+			arg: expression.NewLiteral("notadate", types.Text),
+			exp: nil,
 		},
 		{
-			arg:  expression.NewLiteral("-10", types.Int32),
-			exp:  nil,
+			arg: expression.NewLiteral("-10", types.Int32),
+			exp: nil,
 		},
 
 		{
-			arg:  expression.NewLiteral("0000-00-00", types.Text),
-			exp:  nil,
+			arg: expression.NewLiteral("0000-00-00", types.Text),
+			exp: nil,
 		},
 		{
-			arg:  expression.NewLiteral("0000-01-01", types.Text),
-			exp:  1,
+			arg: expression.NewLiteral("0000-01-01", types.Text),
+			exp: 1,
 		},
 		{
-			arg:  expression.NewLiteral("0000-01-02", types.Text),
-			exp:  2,
+			arg: expression.NewLiteral("0000-01-02", types.Text),
+			exp: 2,
 		},
 		{
-			arg:  expression.NewLiteral("1999-11-05", types.Text),
-			exp:  730428,
+			arg: expression.NewLiteral("1999-11-05", types.Text),
+			exp: 730428,
 		},
 		{
 			// Leap Year before leap day
-			arg:  expression.NewLiteral("2000-01-01", types.Text),
-			exp:  730485,
+			arg: expression.NewLiteral("2000-01-01", types.Text),
+			exp: 730485,
 		},
 		{
 			// Leap Year on leap day
-			arg:  expression.NewLiteral("2000-02-29", types.Text),
-			exp:  730544,
+			arg: expression.NewLiteral("2000-02-29", types.Text),
+			exp: 730544,
 		},
 		{
 			// Leap Year after leap day
-			arg:  expression.NewLiteral("2000-12-31", types.Text),
-			exp:  730850,
+			arg: expression.NewLiteral("2000-12-31", types.Text),
+			exp: 730850,
 		},
 
 		{
-			arg:  expression.NewLiteral("0000-00-00 00:00:00", types.Text),
-			exp:  nil,
+			arg: expression.NewLiteral("0000-00-00 00:00:00", types.Text),
+			exp: nil,
 		},
 		{
-			arg:  expression.NewLiteral("0000-01-01 00:00:00", types.Text),
-			exp:  1,
+			arg: expression.NewLiteral("0000-01-01 00:00:00", types.Text),
+			exp: 1,
 		},
 		{
-			arg:  expression.NewLiteral("0000-01-01 12:59:59", types.Text),
-			exp:  1,
+			arg: expression.NewLiteral("0000-01-01 12:59:59", types.Text),
+			exp: 1,
 		},
 
 		{
-			arg:  expression.NewLiteral(time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), types.Date),
-			exp:  nil,
+			arg: expression.NewLiteral(time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), types.Date),
+			exp: nil,
 		},
 		{
-			arg:  expression.NewLiteral(time.Date(1, 0, 0, 0, 0, 0, 0, time.UTC), types.Date),
-			exp:  335,
+			arg: expression.NewLiteral(time.Date(1, 0, 0, 0, 0, 0, 0, time.UTC), types.Date),
+			exp: 335,
 		},
 		{
-			arg:  expression.NewLiteral(time.Date(1, 0, 1, 0, 0, 0, 0, time.UTC), types.Date),
-			exp:  336,
+			arg: expression.NewLiteral(time.Date(1, 0, 1, 0, 0, 0, 0, time.UTC), types.Date),
+			exp: 336,
 		},
 	}
 	for _, tt := range tests {
@@ -148,8 +148,8 @@ func TestFromDays(t *testing.T) {
 		{
 			// This should round down always
 			skip: true,
-			arg: expression.NewLiteral(366.9999, types.Float32),
-			exp: time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC),
+			arg:  expression.NewLiteral(366.9999, types.Float32),
+			exp:  time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 
 		{
@@ -167,47 +167,47 @@ func TestFromDays(t *testing.T) {
 		},
 		{
 			// First day of year 1
-			arg: expression.NewLiteral(365 + 1, types.Int32),
+			arg: expression.NewLiteral(365+1, types.Int32),
 			exp: time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// Last day of year 3
-			arg: expression.NewLiteral(4 * 365, types.Int32),
+			arg: expression.NewLiteral(4*365, types.Int32),
 			exp: time.Date(3, 12, 31, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// First day of year 4
-			arg: expression.NewLiteral(4 * 365 + 1, types.Int32),
+			arg: expression.NewLiteral(4*365+1, types.Int32),
 			exp: time.Date(4, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// First leap day ever
-			arg: expression.NewLiteral(4 * 365 + 31 + 29, types.Int32),
+			arg: expression.NewLiteral(4*365+31+29, types.Int32),
 			exp: time.Date(4, 2, 29, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// Last day of year 99
-			arg: expression.NewLiteral(100 * 365 + 24, types.Int32),
+			arg: expression.NewLiteral(100*365+24, types.Int32),
 			exp: time.Date(99, 12, 31, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// First day of year 100
-			arg: expression.NewLiteral(100 * 365 + 24 + 1, types.Int32),
+			arg: expression.NewLiteral(100*365+24+1, types.Int32),
 			exp: time.Date(100, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// No leap day in year 100
-			arg: expression.NewLiteral(100 * 365 + 24 + 31 + 29, types.Int32),
+			arg: expression.NewLiteral(100*365+24+31+29, types.Int32),
 			exp: time.Date(100, 3, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// Last day of year 399
-			arg: expression.NewLiteral(400 * 365 + 97 - 1, types.Int32),
+			arg: expression.NewLiteral(400*365+97-1, types.Int32),
 			exp: time.Date(399, 12, 31, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			// First day of year 400
-			arg: expression.NewLiteral(400 * 365 + 97, types.Int32),
+			arg: expression.NewLiteral(400*365+97, types.Int32),
 			exp: time.Date(400, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
