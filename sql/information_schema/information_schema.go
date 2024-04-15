@@ -1822,6 +1822,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		y2k, _, _ := types.Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			tableCollation = t.Collation().String()
+			comment := ""
 			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
 					tableRows, _, err = st.RowCount(ctx)
@@ -1856,6 +1857,10 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 						autoInc = nil
 					}
 				}
+
+				if commentedTable, ok := t.(CommentedTable); ok {
+					comment = commentedTable.Comment()
+				}
 			}
 
 			rows = append(rows, Row{
@@ -1879,7 +1884,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				tableCollation, // table_collation
 				nil,            // checksum
 				"",             // create_options
-				"",             // table_comment
+				comment,        // table_comment
 			})
 
 			return true, nil
