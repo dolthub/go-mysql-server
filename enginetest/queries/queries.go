@@ -5518,6 +5518,13 @@ Select * from (
 		},
 	},
 	{
+		// SHOW VARIABLES is case-insensitive
+		Query: `SHOW VARIABLES LIKE 'gtID_mO%'`,
+		Expected: []sql.Row{
+			{"gtid_mode", "OFF"},
+		},
+	},
+	{
 		Query: `SHOW VARIABLES LIKE 'gtid%'`,
 		Expected: []sql.Row{
 			{"gtid_executed", ""},

@@ -112,9 +112,9 @@ var UserPrivTests = []UserPrivilegeTest{
 			"CREATE USER 'replica-admin'@localhost;",
 			"CREATE USER 'replica-client'@localhost;",
 			"CREATE USER 'replica-reload'@localhost;",
-			// REPLICATION_SLAVE_ADMIN allows: start replica,
+			// REPLICATION_SLAVE_ADMIN allows: start replica, stop replica, change replication source, change replication filter
 			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO 'replica-admin'@localhost;",
-			// REPLICATION CLIENT allows: show replica status
+			// REPLICATION CLIENT allows: show replica status, show binary logs, show binary log status
 			"GRANT REPLICATION CLIENT ON *.* to 'replica-client'@localhost;",
 			// RELOAD allows: reset replica
 			"GRANT RELOAD ON *.* TO 'replica-reload'@localhost;",
@@ -248,6 +248,38 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SHOW REPLICA STATUS;",
+				Expected: []sql.Row{},
+			},
+
+			// SHOW BINARY LOG STATUS
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "replica-client",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOG STATUS;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOG STATUS;",
 				Expected: []sql.Row{},
 			},
 

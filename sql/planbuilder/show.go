@@ -78,6 +78,13 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 		return b.buildShowStatus(inScope, s)
 	case ast.KeywordString(ast.PLUGINS):
 		return b.buildShowPlugins(inScope, s)
+	case "binary log status":
+		outScope = inScope.push()
+		showRep := plan.NewShowBinlogStatus()
+		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryCatalog); ok && binCat.HasBinlogPrimaryController() {
+			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
+		}
+		outScope.node = showRep
 	case "replica status":
 		outScope = inScope.push()
 		showRep := plan.NewShowReplicaStatus()
@@ -526,7 +533,7 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
-				expression.NewLiteral(s.Filter.Like, types.LongText),
+				expression.NewLiteral(strings.ToLower(s.Filter.Like), types.LongText),
 				nil,
 			)
 		}

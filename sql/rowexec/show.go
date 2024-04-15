@@ -528,7 +528,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 
 	for k, v := range sysVars {
 		if n.Filter != nil {
-			res, err := n.Filter.Eval(ctx, sql.Row{k})
+			res, err := n.Filter.Eval(ctx, sql.Row{strings.ToLower(k)})
 			if err != nil {
 				return nil, err
 			}
@@ -715,6 +715,32 @@ func (b *BaseBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateT
 		schema:   n.TargetSchema(),
 		pkSchema: n.PrimaryKeySchema,
 	}, nil
+}
+
+func (b *BaseBuilder) buildShowBinlogStatus(ctx *sql.Context, n *plan.ShowBinlogStatus, row sql.Row) (sql.RowIter, error) {
+	if n.PrimaryController == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	statusResults, err := n.PrimaryController.GetBinaryLogStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if statusResults == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	for _, status := range statusResults {
+		row = sql.Row{
+			status.File,          // File
+			status.Position,      // Position
+			status.DoDbs,         // Binlog_Do_DB
+			status.IgnoreDbs,     // Binlog_Ignore_DB
+			status.ExecutedGtids, // Executed_Gtid_Set
+		}
+	}
+
+	return sql.RowsToRowIter(row), nil
 }
 
 func (b *BaseBuilder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowReplicaStatus, row sql.Row) (sql.RowIter, error) {
