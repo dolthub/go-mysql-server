@@ -1717,6 +1717,21 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 		},
 	},
+	{
+
+		Name:        "information_schema.tables has table comments",
+		SetUpScript: []string{
+			"create table t (i int primary key) comment 'this is a table comment';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select table_comment from information_schema.tables where table_name = 't';",
+				Expected: []sql.Row{
+					{"this is a table comment"},
+				},
+			},
+		},
+	},
 }
 
 var SkippedInfoSchemaScripts = []ScriptTest{
