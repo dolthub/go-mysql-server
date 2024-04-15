@@ -16,9 +16,11 @@ package function
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 // GtidSubtract implements MySQL's built-in gtid_subtract() function.
