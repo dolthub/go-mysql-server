@@ -105,11 +105,9 @@ func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	years := d.Year()
 
 	// YearDay includes leap day, so we subtract 1 from years to not count it twice
-	res := 365 * years + countLeapYears(years - 1) + d.YearDay()
+	res := 365*years + countLeapYears(years-1) + d.YearDay()
 	return res, nil
 }
-
-
 
 // FromDays is a function that returns the year of a date.
 type FromDays struct {
@@ -158,10 +156,10 @@ func (f *FromDays) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 const (
-	DaysPerYear = 365
-    DaysPer400Years  = 400 * DaysPerYear + 97
-    DaysPer100Years= 100 * DaysPerYear + 24
-    DaysPer4Years  = 4 * DaysPerYear + 1
+	DaysPerYear     = 365
+	DaysPer400Years = 400*DaysPerYear + 97
+	DaysPer100Years = 100*DaysPerYear + 24
+	DaysPer4Years   = 4*DaysPerYear + 1
 )
 
 // daysToYear converts a number of days to number of years since year 0 (including leap years), and the remaining days
@@ -189,7 +187,7 @@ func isLeapYear(year int64) bool {
 	if year == 0 {
 		return false
 	}
-	return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+	return (year%4 == 0 && year%100 != 0) || year%400 == 0
 }
 
 var daysPerMonth = [12]int64{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
