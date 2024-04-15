@@ -390,6 +390,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemStringType("binlog_checksum"),
 		Default:           "CRC32",
 	},
+	"binlog_format": &sql.MysqlSystemVariable{
+		Name:              "binlog_format",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemEnumType("binlog_format", "ROW"),
+		Default:           "ROW",
+	},
 	"binlog_gtid_simple_recovery": &sql.MysqlSystemVariable{
 		Name:              "binlog_gtid_simple_recovery",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
