@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -2153,7 +2154,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Text,
-		Default:           nil,
+		Default:           uuid.New().String(),
 	},
 	"session_track_gtids": &sql.MysqlSystemVariable{
 		Name:              "session_track_gtids",
