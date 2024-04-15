@@ -81,6 +81,18 @@ func TestAddDate(t *testing.T) {
 	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
 	require.NoError(err)
 	require.Nil(result)
+
+	// If the second argument is NOT an interval, then it's assumed to be a day interval
+	t.Skip("Interval does not handle overflows correctly")
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02", types.Text),
+		expression.NewLiteral(int64(1_000_000), types.Int64))
+	require.NoError(err)
+	expected = time.Date(4756, time.March, 29, 0, 0, 0, 0, time.UTC)
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
 }
 
 func TestDateAdd(t *testing.T) {
