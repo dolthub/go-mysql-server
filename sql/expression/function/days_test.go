@@ -294,8 +294,8 @@ func TestLastDay(t *testing.T) {
 		},
 		{
 			skip: true, // we should parse 00 days
-			arg: expression.NewLiteral("0001-11-00", types.Text),
-			exp: time.Date(1, 11, 30, 0, 0, 0, 0, time.UTC),
+			arg:  expression.NewLiteral("0001-11-00", types.Text),
+			exp:  time.Date(1, 11, 30, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			arg: expression.NewLiteral("0001-01-31", types.Text),
