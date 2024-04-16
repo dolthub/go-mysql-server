@@ -1046,37 +1046,45 @@ func ExtractQueryNode(node sql.Node) sql.Node {
 
 // RunWriteQueryTest runs the specified |tt| WriteQueryTest using the specified harness.
 func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	RunWriteQueryTestWithEngine(t, harness, e, tt)
+	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if tt.Skip {
+			t.Skip()
+			return
+		}
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		RunWriteQueryTestWithEngine(t, harness, e, tt)
+	})
 }
 
 // RunWriteQueryTestWithEngine runs the specified |tt| WriteQueryTest, using the specified harness and engine. Callers
 // are still responsible for closing the engine.
 func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.WriteQueryTest) {
-	t.Run(tt.WriteQuery, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.WriteQuery) {
-				t.Logf("Skipping query %s", tt.WriteQuery)
-				return
-			}
-			if sh.SkipQueryTest(tt.SelectQuery) {
-				t.Logf("Skipping query %s", tt.SelectQuery)
-				return
-			}
+	if sh, ok := harness.(SkippingHarness); ok {
+		if sh.SkipQueryTest(tt.WriteQuery) {
+			t.Logf("Skipping query %s", tt.WriteQuery)
+			return
 		}
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
-		expectedSelect := tt.ExpectedSelect
-		if IsServerEngine(e) && tt.SkipServerEngine {
-			expectedSelect = nil
+		if sh.SkipQueryTest(tt.SelectQuery) {
+			t.Logf("Skipping query %s", tt.SelectQuery)
+			return
 		}
-		TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil)
-	})
+	}
+	ctx := NewContext(harness)
+	TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
+	expectedSelect := tt.ExpectedSelect
+	if IsServerEngine(e) && tt.SkipServerEngine {
+		expectedSelect = nil
+	}
+	TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil)
 }
 
 func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if tt.Skip {
+			t.Skip()
+			return
+		}
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
 				t.Logf("Skipping query %s", tt.WriteQuery)
