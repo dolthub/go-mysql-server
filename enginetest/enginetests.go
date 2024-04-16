@@ -18,7 +18,6 @@ import (
 	"context"
 	dsql "database/sql"
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"net"
 	"os"
@@ -27,6 +26,14 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/gocraft/dbr/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
@@ -44,12 +51,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/go-mysql-server/test"
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/gocraft/dbr/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestQueries tests a variety of queries against databases and tables provided by the given harness.
