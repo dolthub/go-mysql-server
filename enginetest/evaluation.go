@@ -16,18 +16,11 @@ package enginetest
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/dolthub/vitess/go/sqltypes"
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
@@ -38,6 +31,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
@@ -1046,33 +1045,33 @@ func ExtractQueryNode(node sql.Node) sql.Node {
 
 // RunWriteQueryTest runs the specified |tt| WriteQueryTest using the specified harness.
 func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	RunWriteQueryTestWithEngine(t, harness, e, tt)
+	t.Run(tt.WriteQuery, func(t *testing.T) {
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		RunWriteQueryTestWithEngine(t, harness, e, tt)
+	})
 }
 
 // RunWriteQueryTestWithEngine runs the specified |tt| WriteQueryTest, using the specified harness and engine. Callers
 // are still responsible for closing the engine.
 func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.WriteQueryTest) {
-	t.Run(tt.WriteQuery, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.WriteQuery) {
-				t.Logf("Skipping query %s", tt.WriteQuery)
-				return
-			}
-			if sh.SkipQueryTest(tt.SelectQuery) {
-				t.Logf("Skipping query %s", tt.SelectQuery)
-				return
-			}
+	if sh, ok := harness.(SkippingHarness); ok {
+		if sh.SkipQueryTest(tt.WriteQuery) {
+			t.Logf("Skipping query %s", tt.WriteQuery)
+			return
 		}
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
-		expectedSelect := tt.ExpectedSelect
-		if IsServerEngine(e) && tt.SkipServerEngine {
-			expectedSelect = nil
+		if sh.SkipQueryTest(tt.SelectQuery) {
+			t.Logf("Skipping query %s", tt.SelectQuery)
+			return
 		}
-		TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil)
-	})
+	}
+	ctx := NewContext(harness)
+	TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
+	expectedSelect := tt.ExpectedSelect
+	if IsServerEngine(e) && tt.SkipServerEngine {
+		expectedSelect = nil
+	}
+	TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil)
 }
 
 func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {

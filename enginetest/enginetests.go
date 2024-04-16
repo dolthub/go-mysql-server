@@ -1235,10 +1235,12 @@ func TestDelete(t *testing.T, harness Harness) {
 		for name, coster := range biasedCosters {
 			t.Run(name+" join", func(t *testing.T) {
 				for _, tt := range queries.DeleteJoinTests {
-					e := mustNewEngine(t, harness)
-					e.EngineAnalyzer().Coster = coster
-					defer e.Close()
-					RunWriteQueryTestWithEngine(t, harness, e, tt)
+					t.Run(tt.WriteQuery, func(t *testing.T) {
+						e := mustNewEngine(t, harness)
+						e.EngineAnalyzer().Coster = coster
+						defer e.Close()
+						RunWriteQueryTestWithEngine(t, harness, e, tt)
+					})
 				}
 			})
 		}
