@@ -233,7 +233,7 @@ func (f *FromDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return time.Date(int(years), time.Month(months), int(days), 0, 0, 0, 0, time.UTC), nil
 }
 
-// LastDay is a function that the date but at the last day of the month.
+// LastDay is a function that returns the date at the last day of the month.
 type LastDay struct {
 	expression.UnaryExpression
 }
