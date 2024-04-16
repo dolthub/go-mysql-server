@@ -1284,7 +1284,7 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into auto1 values (1);",
+				Query:       "insert into auto1 values (1);",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -1330,7 +1330,7 @@ var InsertScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into auto2 values (null, null);",
+				Query:       "insert into auto2 values (null, null);",
 				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 			},
 			{
