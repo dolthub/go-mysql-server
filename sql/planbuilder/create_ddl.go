@@ -438,8 +438,13 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 
 func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-
-	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	selectStr := c.SubStatementStr
+	if selectStr == "" {
+		if c.SubStatementPositionEnd > len(query) {
+			b.handleErr(fmt.Errorf("unable to get sub statement"))
+		}
+		selectStr = query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	}
 	stmt, _, err := ast.ParseOneWithOptions(selectStr, b.parserOpts)
 	if err != nil {
 		b.handleErr(err)
