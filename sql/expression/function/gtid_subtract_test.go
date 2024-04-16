@@ -106,6 +106,18 @@ func TestGtidSubtract(t *testing.T) {
 			right:    newStringLiteral("3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57"),
 			expected: "",
 		},
+
+		// Additional cases
+		{
+			left:     newStringLiteral("3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57"),
+			right:    newStringLiteral("3E11FA47-71CA-11E1-9E33-C80AA9429562:20-21"),
+			expected: "3e11fa47-71ca-11e1-9e33-c80aa9429562:22-57",
+		},
+		{
+			left:     newStringLiteral("3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57"),
+			right:    newStringLiteral("3E11FA47-71CA-11E1-9E33-C80AA9429562:57-58"),
+			expected: "3e11fa47-71ca-11e1-9e33-c80aa9429562:21-56",
+		},
 	}
 
 	for _, test := range tests {
