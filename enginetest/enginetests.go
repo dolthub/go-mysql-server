@@ -18,6 +18,7 @@ import (
 	"context"
 	dsql "database/sql"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"io"
 	"net"
 	"os"
@@ -46,6 +47,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
