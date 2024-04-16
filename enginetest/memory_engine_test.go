@@ -206,44 +206,54 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
+			Name: "delete me",
 			SetUpScript: []string{
-				"create table t (pk int primary key, col1 int as (pk + 1));",
-				"insert into t (pk) values (1), (3)",
-				"alter table t add index idx1 (col1, pk);",
-				"alter table t add index idx2 (col1);",
-				"alter table t add column col2 int;",
-				"alter table t add column col3 int;",
-				"insert into t (pk, col2, col3) values (2, 4, 5);",
+				"create table t (i int default (1));",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select * from t order by pk",
+					Query: "create table t1 select * from t",
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
-						{2, 3, 4, 5},
-						{3, 4, nil, nil},
+						{types.NewOkResult(0)},
 					},
 				},
 				{
-					Query: "select * from t where col1 = 2",
+					Query: "show create table t1;",
 					Expected: []sql.Row{
-						{1, 2, nil, nil},
+						{"t1", "CREATE TABLE `t1` (\n" +
+							"  `i` int DEFAULT (1)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 					},
 				},
 				{
-					Query: "select * from t where col1 = 3 and pk = 2",
+					Query: "create table t2 select i from t",
 					Expected: []sql.Row{
-						{2, 3, 4, 5},
+						{types.NewOkResult(0)},
 					},
 				},
 				{
-					Query: "select * from t where pk = 2",
+					Query: "show create table t2;",
 					Expected: []sql.Row{
-						{2, 3, 4, 5},
+						{"t2", "CREATE TABLE `t2` (\n" +
+							"  `i` int DEFAULT (1)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					},
+				},
+				{
+					Query: "create table t3 select i + 1 as i from t",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
+				},
+				{
+					Query: "show create table t3;",
+					Expected: []sql.Row{
+						{"t3", "CREATE TABLE `t3` (\n" +
+							"  `i` bigint\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 					},
 				},
 			},
@@ -252,13 +262,10 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

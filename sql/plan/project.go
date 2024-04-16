@@ -46,8 +46,16 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
-	for i, e := range p.Projections {
-		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
+	childSch := p.Child.Schema()
+	for i, expr := range p.Projections {
+		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
+		if gf, isGf := expr.(*expression.GetField); isGf {
+			idx := gf.Index() - 1
+			if idx < 0 || idx >= len(childSch) {
+				continue
+			}
+			s[i].Default = childSch[idx].Default
+		}
 	}
 	return s
 }
