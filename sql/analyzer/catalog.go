@@ -29,9 +29,10 @@ import (
 )
 
 type Catalog struct {
-	MySQLDb       *mysql_db.MySQLDb
-	InfoSchema    sql.Database
-	StatsProvider sql.StatsProvider
+	MySQLDb            *mysql_db.MySQLDb
+	InfoSchema         sql.Database
+	SystemSchemaConfig *sql.SystemSchemaConfig
+	StatsProvider      sql.StatsProvider
 
 	DbProvider       sql.DatabaseProvider
 	builtInFunctions function.Registry
@@ -116,6 +117,11 @@ func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	var dbs []sql.Database
 	dbs = append(dbs, c.InfoSchema)
 
+	if c.SystemSchemaConfig != nil {
+		config := *c.SystemSchemaConfig
+		dbs = append(dbs, config.SystemSchema)
+	}
+
 	if c.MySQLDb.Enabled() {
 		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).AllDatabases(ctx)...)
 	} else {
@@ -165,9 +171,17 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	}
 }
 
+func (c *Catalog) matchesSystemSchemaDatabase(db string) bool {
+	if c.SystemSchemaConfig == nil {
+		return false
+	}
+	config := *c.SystemSchemaConfig
+	return config.IsSystemSchemaDatabase(db)
+}
+
 func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 	db = strings.ToLower(db)
-	if db == "information_schema" {
+	if db == sql.InformationSchemaDatabaseName || c.matchesSystemSchemaDatabase(db) {
 		return true
 	} else if c.MySQLDb.Enabled() {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).HasDatabase(ctx, db)
@@ -178,8 +192,11 @@ func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
-	if strings.ToLower(db) == "information_schema" {
+	if strings.ToLower(db) == sql.InformationSchemaDatabaseName {
 		return c.InfoSchema, nil
+	} else if c.matchesSystemSchemaDatabase(db) {
+		config := *c.SystemSchemaConfig
+		return config.SystemSchema, nil
 	} else if c.MySQLDb.Enabled() {
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).Database(ctx, db)
 	} else {

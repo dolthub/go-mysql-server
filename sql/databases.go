@@ -24,6 +24,11 @@ const (
 	InformationSchemaDatabaseName = "information_schema"
 )
 
+type SystemSchemaConfig struct {
+	SystemSchema           Database
+	IsSystemSchemaDatabase func(db string) bool
+}
+
 // DatabaseProvider is the fundamental interface to integrate with the engine. It provides access to all databases in
 // a given backend. A DatabaseProvider is provided to the Catalog when the engine is initialized.
 type DatabaseProvider interface {
