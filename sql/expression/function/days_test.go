@@ -298,8 +298,8 @@ func TestLastDay(t *testing.T) {
 			exp:  time.Date(1, 11, 30, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			arg:  expression.NewLiteral("2001-02-30", types.Text),
-			exp:  nil,
+			arg: expression.NewLiteral("2001-02-30", types.Text),
+			exp: nil,
 		},
 		{
 			arg: expression.NewLiteral("0001-01-31", types.Text),
