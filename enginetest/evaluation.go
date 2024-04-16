@@ -1047,6 +1047,10 @@ func ExtractQueryNode(node sql.Node) sql.Node {
 // RunWriteQueryTest runs the specified |tt| WriteQueryTest using the specified harness.
 func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if tt.Skip {
+			t.Skip()
+			return
+		}
 		e := mustNewEngine(t, harness)
 		defer e.Close()
 		RunWriteQueryTestWithEngine(t, harness, e, tt)
@@ -1077,6 +1081,10 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 
 func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if tt.Skip {
+			t.Skip()
+			return
+		}
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
 				t.Logf("Skipping query %s", tt.WriteQuery)

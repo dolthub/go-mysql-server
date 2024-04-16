@@ -27,14 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/gocraft/dbr/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-errors.v1"
-
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -51,6 +43,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/go-mysql-server/test"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestQueries tests a variety of queries against databases and tables provided by the given harness.
@@ -367,6 +364,10 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	} {
 		for _, tt := range querySet {
 			t.Run(tt.WriteQuery, func(t *testing.T) {
+				if tt.Skip {
+					t.Skip()
+					return
+				}
 				AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzererrors.ErrReadOnlyDatabase)
 			})
 		}
@@ -1236,6 +1237,10 @@ func TestDelete(t *testing.T, harness Harness) {
 			t.Run(name+" join", func(t *testing.T) {
 				for _, tt := range queries.DeleteJoinTests {
 					t.Run(tt.WriteQuery, func(t *testing.T) {
+						if tt.Skip {
+							t.Skip()
+							return
+						}
 						e := mustNewEngine(t, harness)
 						e.EngineAnalyzer().Coster = coster
 						defer e.Close()

@@ -476,20 +476,20 @@ var InsertQueries = []WriteQueryTest{
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
 	},
-	/* Disabled, see https://github.com/dolthub/dolt/issues/7638
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt(new_i,new_s) ON DUPLICATE KEY UPDATE s=new_s",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
+		Skip:                true, // https://github.com/dolthub/dolt/issues/7638
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt ON DUPLICATE KEY UPDATE mytable.s=dt.s",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "hir"}},
+		Skip:                true, // https://github.com/dolthub/dolt/issues/7638
 	},
-	*/
 	{
 		WriteQuery:          "INSERT INTO mytable (s,i) values ('dup',1) ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'licate')",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
