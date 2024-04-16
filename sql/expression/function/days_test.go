@@ -264,3 +264,110 @@ func TestFromDays(t *testing.T) {
 		})
 	}
 }
+
+func TestLastDay(t *testing.T) {
+	tests := []struct {
+		arg  sql.Expression
+		exp  interface{}
+		err  bool
+		skip bool
+	}{
+		{
+			arg: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			arg: expression.NewLiteral("notadate", types.Text),
+			exp: nil,
+		},
+		{
+			arg: expression.NewLiteral(-10, types.Int32),
+			exp: nil,
+		},
+		{
+			arg: expression.NewLiteral(366.13, types.Float32),
+			exp: nil,
+		},
+		{
+			arg: expression.NewLiteral("0004-02-01", types.Text),
+			exp: time.Date(4, 2, 29, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			skip: true, // we should parse 00 days
+			arg:  expression.NewLiteral("0001-11-00", types.Text),
+			exp:  time.Date(1, 11, 30, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("2001-02-30", types.Text),
+			exp: nil,
+		},
+		{
+			arg: expression.NewLiteral("0001-01-31", types.Text),
+			exp: time.Date(1, 1, 31, 0, 0, 0, 0, time.UTC),
+		},
+
+		{
+			arg: expression.NewLiteral("0001-01-01", types.Text),
+			exp: time.Date(1, 1, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-02-01", types.Text),
+			exp: time.Date(1, 2, 28, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-03-01", types.Text),
+			exp: time.Date(1, 3, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-04-01", types.Text),
+			exp: time.Date(1, 4, 30, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-05-01", types.Text),
+			exp: time.Date(1, 5, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-06-01", types.Text),
+			exp: time.Date(1, 6, 30, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-07-01", types.Text),
+			exp: time.Date(1, 7, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-08-01", types.Text),
+			exp: time.Date(1, 8, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-09-01", types.Text),
+			exp: time.Date(1, 9, 30, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-10-01", types.Text),
+			exp: time.Date(1, 10, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-11-01", types.Text),
+			exp: time.Date(1, 11, 30, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			arg: expression.NewLiteral("0001-12-01", types.Text),
+			exp: time.Date(1, 12, 31, 0, 0, 0, 0, time.UTC),
+		},
+	}
+	for _, tt := range tests {
+		name := fmt.Sprintf("last_day(%v)", tt.arg)
+		t.Run(name, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+			}
+			f := NewLastDay(tt.arg)
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			if tt.err {
+				require.Error(t, err)
+				return
+			}
+			require.Equal(t, tt.exp, res)
+		})
+	}
+}

@@ -9611,6 +9611,18 @@ from typestable`,
 			{time.Date(2024, 4, 15, 0, 0, 0, 0, time.UTC)},
 		},
 	},
+	{
+		Query: "select last_day('2000-02-21');",
+		Expected: []sql.Row{
+			{time.Date(2000, 2, 29, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select last_day('1999-11-05');",
+		Expected: []sql.Row{
+			{time.Date(1999, 11, 30, 0, 0, 0, 0, time.UTC)},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

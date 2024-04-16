@@ -232,3 +232,82 @@ func (f *FromDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	months, days := daysToMonth(years, days)
 	return time.Date(int(years), time.Month(months), int(days), 0, 0, 0, 0, time.UTC), nil
 }
+
+// LastDay is a function that returns the date at the last day of the month.
+type LastDay struct {
+	expression.UnaryExpression
+}
+
+var _ sql.FunctionExpression = (*LastDay)(nil)
+var _ sql.CollationCoercible = (*LastDay)(nil)
+
+// NewLastDay creates a new LastDay function.
+func NewLastDay(date sql.Expression) sql.Expression {
+	return &LastDay{expression.UnaryExpression{Child: date}}
+}
+
+// CollationCoercibility implements sql.CollationCoercible
+func (f *LastDay) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+// String implements sql.Stringer
+func (f *LastDay) String() string {
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (f *LastDay) FunctionName() string {
+	return "last_day"
+}
+
+// Description implements sql.FunctionExpression
+func (f *LastDay) Description() string {
+	return "return the last day of the month for date"
+}
+
+// Type implements sql.Expression
+func (f *LastDay) Type() sql.Type {
+	return types.Date
+}
+
+// WithChildren implements sql.Expression
+func (f *LastDay) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewLastDay(children[0]), nil
+}
+
+// lastDay returns the last day of the month for the given year and month
+func lastDay(year, month int) int {
+	if month == 2 && isLeapYear(int64(year)) {
+		return 29
+	}
+	return int(daysPerMonth[month-1])
+}
+
+// Eval implements sql.Expression
+func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	date, err := f.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
+
+	date, _, err = types.Date.Convert(date)
+	if err != nil {
+		ctx.Warn(1292, err.Error())
+		return nil, nil
+	}
+
+	d, ok := date.(time.Time)
+	if !ok {
+		return nil, nil
+	}
+
+	lDay := lastDay(d.Year(), int(d.Month()))
+	return time.Date(d.Year(), d.Month(), lDay, 0, 0, 0, 0, time.UTC), nil
+}
