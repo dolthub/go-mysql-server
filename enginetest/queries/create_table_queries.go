@@ -764,7 +764,7 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 
 			{
-				Query: "create table t3 select j as k from a;",
+				Query: "create table t3 select j as i from a;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
@@ -773,7 +773,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Query: "show create table t3;",
 				Expected: []sql.Row{
 					{"t3", "CREATE TABLE `t3` (\n" +
-						"  `k` int DEFAULT '100'\n" +
+						"  `i` int DEFAULT '100'\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -852,6 +852,69 @@ var CreateTableScriptTests = []ScriptTest{
 						"  `j` int DEFAULT '100',\n" +
 						"  `x` int NOT NULL,\n" +
 						"  `y` int DEFAULT '200'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: `create table t9 select * from json_table('[{"c1": 1}]', '$[*]' columns (c1 int path '$.c1' default '100' on empty)) as jt;`,
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "show create table t9;",
+				Expected: []sql.Row{
+					{"t9", "CREATE TABLE `t9` (\n" +
+						"  `c1` int NOT NULL\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip: true, // syntax unsupported
+				Query: `create table t10 (select j from a) union (select y from b);`,
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip: true, // syntax unsupported
+				Query: "show create table t10;",
+				Expected: []sql.Row{
+					{"t9", "CREATE TABLE `t9` (\n" +
+						"  `c1` int NOT NULL\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t11 select sum(j) over() as jj from a;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t11;",
+				Expected: []sql.Row{
+					{"t11", "CREATE TABLE `t11` (\n" +
+						"  `jj` int NOT NULL\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t12 select j from a group by j;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip: true, // Group By also drops default
+				Query: "show create table t12;",
+				Expected: []sql.Row{
+					{"t12", "CREATE TABLE `t12` (\n" +
+						"  `j` int DEFAULT '100',\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
