@@ -872,14 +872,14 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 
 			{
-				Skip: true, // syntax unsupported
+				Skip:  true, // syntax unsupported
 				Query: `create table t10 (select j from a) union (select y from b);`,
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip: true, // syntax unsupported
+				Skip:  true, // syntax unsupported
 				Query: "show create table t10;",
 				Expected: []sql.Row{
 					{"t9", "CREATE TABLE `t9` (\n" +
@@ -910,7 +910,7 @@ var CreateTableScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // Group By also drops default
+				Skip:  true, // Group By also drops default
 				Query: "show create table t12;",
 				Expected: []sql.Row{
 					{"t12", "CREATE TABLE `t12` (\n" +
