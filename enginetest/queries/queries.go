@@ -10763,6 +10763,7 @@ type WriteQueryTest struct {
 	SelectQuery         string
 	ExpectedSelect      []sql.Row
 	Bindings            map[string]*query.BindVariable
+	Skip                bool
 	SkipServerEngine    bool
 }
 

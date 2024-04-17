@@ -367,6 +367,10 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	} {
 		for _, tt := range querySet {
 			t.Run(tt.WriteQuery, func(t *testing.T) {
+				if tt.Skip {
+					t.Skip()
+					return
+				}
 				AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzererrors.ErrReadOnlyDatabase)
 			})
 		}
@@ -1235,10 +1239,16 @@ func TestDelete(t *testing.T, harness Harness) {
 		for name, coster := range biasedCosters {
 			t.Run(name+" join", func(t *testing.T) {
 				for _, tt := range queries.DeleteJoinTests {
-					e := mustNewEngine(t, harness)
-					e.EngineAnalyzer().Coster = coster
-					defer e.Close()
-					RunWriteQueryTestWithEngine(t, harness, e, tt)
+					t.Run(tt.WriteQuery, func(t *testing.T) {
+						if tt.Skip {
+							t.Skip()
+							return
+						}
+						e := mustNewEngine(t, harness)
+						e.EngineAnalyzer().Coster = coster
+						defer e.Close()
+						RunWriteQueryTestWithEngine(t, harness, e, tt)
+					})
 				}
 			})
 		}

@@ -99,6 +99,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "from_unixtime", Fn: NewFromUnixtime},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
 	sql.Function0{Name: "group_concat", Fn: aggregation.NewEmptyGroupConcat},
+	sql.Function2{Name: "gtid_subtract", Fn: NewGtidSubtract},
 	sql.Function1{Name: "hex", Fn: NewHex},
 	sql.Function1{Name: "hour", Fn: NewHour},
 	sql.Function3{Name: "if", Fn: NewIf},

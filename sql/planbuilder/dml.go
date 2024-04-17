@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -128,7 +129,7 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 	switch v := ir.(type) {
 	case ast.SelectStatement:
 		return b.buildSelectStmt(inScope, v)
-	case ast.Values:
+	case *ast.AliasedValues:
 		outScope = b.buildInsertValues(inScope, v, columnNames, tableName, destSchema)
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
@@ -137,7 +138,7 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 	return
 }
 
-func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope) {
+func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope) {
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
 
 	for i, columnName := range columnNames {
@@ -156,8 +157,22 @@ func (b *Builder) buildInsertValues(inScope *scope, v ast.Values, columnNames []
 		}
 	}
 
-	exprTuples := make([][]sql.Expression, len(v))
-	for i, vt := range v {
+	if !v.As.IsEmpty() {
+		if len(v.Columns) != 0 {
+			for _, tuple := range v.Values {
+				if len(v.Columns) != len(tuple) {
+					err := sql.ErrColumnCountMismatch.New()
+					b.handleErr(err)
+				}
+			}
+
+			err := errors.New("insert row aliases are not currently supported; use the VALUES() function instead")
+			b.handleErr(err)
+		}
+	}
+
+	exprTuples := make([][]sql.Expression, len(v.Values))
+	for i, vt := range v.Values {
 		// noExprs is an edge case where we fill VALUES with nil expressions
 		noExprs := len(vt) == 0
 		// triggerUnknownTable is an edge case where we ignored an unresolved
@@ -217,10 +232,10 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-func (b *Builder) buildValues(inScope *scope, v ast.Values) (outScope *scope) {
+func (b *Builder) buildValues(inScope *scope, v ast.AliasedValues) (outScope *scope) {
 	// TODO add literals to outScope?
-	exprTuples := make([][]sql.Expression, len(v))
-	for i, vt := range v {
+	exprTuples := make([][]sql.Expression, len(v.Values))
+	for i, vt := range v.Values {
 		exprs := make([]sql.Expression, len(vt))
 		exprTuples[i] = exprs
 		for j, e := range vt {
