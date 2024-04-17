@@ -47,23 +47,52 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	childSch := p.Child.Schema()
+
+	var colSet sql.ColSet
+	var firstColId sql.ColumnId
+	first := false
+	tblIdNode, isTblIdNode := p.Child.(TableIdNode)
+	if isTblIdNode {
+		colSet = tblIdNode.Columns()
+		colSet.ForEach(func(colId sql.ColumnId) {
+			if !first {
+				firstColId = colId
+				first = true
+			}
+		})
+	}
+
 	for i, expr := range p.Projections {
 		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
-		if alias, isAlias := expr.(*expression.Alias); isAlias {
-			if gf, isGf := alias.Child.(*expression.GetField); isGf {
-				idx := gf.Index() - 1 // not sure why these are off by 1
-				if idx < 0 || idx >= len(childSch) {
-					continue
-				}
-				s[i].Default = childSch[idx].Default
-				continue
-			}
+		if !isTblIdNode {
+			continue
 		}
 
-		// try to find matching column in child schema, and copy default value
-		if idx := childSch.IndexOf(s[i].Name, s[i].Source); idx >= 0 {
-			s[i].Default = childSch[idx].Default
+		var gf *expression.GetField
+		switch e := expr.(type) {
+		case *expression.Alias:
+			if child, isGf := e.Child.(*expression.GetField); isGf {
+				gf = child
+			}
+		case *expression.GetField:
+			gf = e
+		default:
+			gf = nil
 		}
+		if gf == nil {
+			continue
+		}
+
+		gfId := gf.Id()
+		if !colSet.Contains(gfId) {
+			continue
+		}
+
+		idx := gfId - firstColId
+		if idx < 0 || int(idx) >= len(childSch) {
+			continue
+		}
+		s[i].Default = childSch[idx].Default
 	}
 	return s
 }

@@ -206,56 +206,13 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "delete me",
+			Name: "test script",
 			SetUpScript: []string{
-				"create table t (i int default (1));",
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "create table t1 select * from t",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "show create table t1;",
-					Expected: []sql.Row{
-						{"t1", "CREATE TABLE `t1` (\n" +
-							"  `i` int DEFAULT (1)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
-				},
-				{
-					Query: "create table t2 select i from t",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "show create table t2;",
-					Expected: []sql.Row{
-						{"t2", "CREATE TABLE `t2` (\n" +
-							"  `i` int DEFAULT (1)\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
-				},
-				{
-					Query: "create table t3 select i + 1 as i from t",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "show create table t3;",
-					Expected: []sql.Row{
-						{"t3", "CREATE TABLE `t3` (\n" +
-							"  `i` bigint\n" +
-							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
-					},
-				},
 			},
 		},
 	}
