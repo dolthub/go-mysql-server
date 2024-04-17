@@ -49,11 +49,19 @@ func (p *Project) Schema() sql.Schema {
 	childSch := p.Child.Schema()
 	for i, expr := range p.Projections {
 		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
-		if gf, isGf := expr.(*expression.GetField); isGf {
-			idx := gf.Index() - 1
-			if idx < 0 || idx >= len(childSch) {
+		if alias, isAlias := expr.(*expression.Alias); isAlias {
+			if gf, isGf := alias.Child.(*expression.GetField); isGf {
+				idx := gf.Index() - 1 // not sure why these are off by 1
+				if idx < 0 || idx >= len(childSch) {
+					continue
+				}
+				s[i].Default = childSch[idx].Default
 				continue
 			}
+		}
+
+		// try to find matching column in child schema, and copy default value
+		if idx := childSch.IndexOf(s[i].Name, s[i].Source); idx >= 0 {
 			s[i].Default = childSch[idx].Default
 		}
 	}

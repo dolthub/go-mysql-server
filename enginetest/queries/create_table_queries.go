@@ -725,6 +725,138 @@ var CreateTableScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "create table with select preserves default",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int default 100);",
+			"create table b (x int primary key, y int default 200);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table t1 select * from a;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `j` int DEFAULT '100'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t2 select j from a;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t2;",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `j` int DEFAULT '100'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t3 select j as k from a;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t3;",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `k` int DEFAULT '100'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t4 select j + 1 from a;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t4;",
+				Expected: []sql.Row{
+					{"t4", "CREATE TABLE `t4` (\n" +
+						"  `(a.j + 1)` bigint\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t5 select a.j from a;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t5;",
+				Expected: []sql.Row{
+					{"t5", "CREATE TABLE `t5` (\n" +
+						"  `j` int DEFAULT '100'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t6 select sqa.j from (select i, j from a) sqa;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t6;",
+				Expected: []sql.Row{
+					{"t6", "CREATE TABLE `t6` (\n" +
+						"  `j` int DEFAULT '100'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t7 select (select j from a) sq from dual;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)}, // ???
+				},
+			},
+			{
+				Query: "show create table t7;",
+				Expected: []sql.Row{
+					{"t7", "CREATE TABLE `t7` (\n" +
+						"  `sq` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t8 select * from (select * from a) a join (select * from b) b;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t8;",
+				Expected: []sql.Row{
+					{"t8", "CREATE TABLE `t8` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `j` int DEFAULT '100',\n" +
+						"  `x` int NOT NULL,\n" +
+						"  `y` int DEFAULT '200'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var CreateTableAutoIncrementTests = []ScriptTest{
