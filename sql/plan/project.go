@@ -43,58 +43,53 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
-func getGetField(expr sql.Expression) *expression.GetField {
-	switch e := expr.(type) {
-	case *expression.GetField:
-		return e
-	case *expression.Alias:
-		return getGetField(e.Child)
-	default:
-		return nil
-	}
-}
-
-// fillDefault finds the matching GetField in the node's Schema and fills the default value in the column.
-func fillDefault(node sql.Node, gf *expression.GetField, col *sql.Column) bool {
+// findDefault finds the matching GetField in the node's Schema and fills the default value in the column.
+func findDefault(node sql.Node, gf *expression.GetField) *sql.ColumnDefaultValue {
 	colSet := sql.NewColSet()
 	switch n := node.(type) {
 	case TableIdNode:
 		colSet = n.Columns()
 	case *GroupBy:
-		return fillDefault(n.Child, gf, col)
+		return findDefault(n.Child, gf)
 	case *HashLookup:
-		return fillDefault(n.Child, gf, col)
+		return findDefault(n.Child, gf)
 	case *JoinNode:
-		if fillDefault(n.Left(), gf, col) {
-			return true
+		if defVal := findDefault(n.Left(), gf); defVal != nil {
+			return defVal
 		}
-		if fillDefault(n.Right(), gf, col) {
-			return true
+		if defVal := findDefault(n.Right(), gf); defVal != nil {
+			return defVal
 		}
+		return nil
 	default:
-		return true
+		return nil
 	}
 
 	if !colSet.Contains(gf.Id()) {
-		return false
+		return nil
 	}
-
-	var firstColId sql.ColumnId
-	var first bool
-	colSet.ForEach(func(colId sql.ColumnId) {
-		if !first {
-			firstColId = colId
-			first = true
-		}
-	})
+	firstColId, ok := colSet.Next(1)
+	if !ok {
+		return nil
+	}
 
 	sch := node.Schema()
 	idx := gf.Id() - firstColId
 	if idx < 0 || int(idx) >= len(sch) {
-		return false
+		return nil
 	}
-	col.Default = sch[idx].Default
-	return true
+	return sch[idx].Default
+}
+
+func unwrapGetField(expr sql.Expression) *expression.GetField {
+	switch e := expr.(type) {
+	case *expression.GetField:
+		return e
+	case *expression.Alias:
+		return unwrapGetField(e.Child)
+	default:
+		return nil
+	}
 }
 
 // Schema implements the Node interface.
@@ -102,13 +97,9 @@ func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, expr := range p.Projections {
 		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
-
-		gf := getGetField(expr)
-		if gf == nil {
-			continue
+		if gf := unwrapGetField(expr); gf != nil {
+			s[i].Default = findDefault(p.Child, gf)
 		}
-
-		fillDefault(p.Child, gf, s[i])
 	}
 	return s
 }

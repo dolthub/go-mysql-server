@@ -730,6 +730,7 @@ var CreateTableScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"create table a (i int primary key, j int default 100);",
 			"create table b (x int primary key, y int default 200);",
+			"create table c (p int primary key, q int default 300, u int as (q));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -914,6 +915,23 @@ var CreateTableScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{"t12", "CREATE TABLE `t12` (\n" +
 						"  `j` int DEFAULT '100'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "create table t13 select * from c;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t13;",
+				Expected: []sql.Row{
+					{"t13", "CREATE TABLE `t13` (\n" +
+						"  `p` int NOT NULL,\n" +
+						"  `q` int DEFAULT '300',\n" +
+						"  `u` int\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
