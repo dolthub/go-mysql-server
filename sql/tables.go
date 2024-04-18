@@ -67,6 +67,13 @@ type TableWrapper interface {
 	Underlying() Table
 }
 
+func GetUnderlyingTable(t Table) Table {
+	if tw, ok := t.(TableWrapper); ok {
+		return GetUnderlyingTable(tw.Underlying())
+	}
+	return t
+}
+
 // MutableTableWrapper is a TableWrapper that can change its underlying table.
 type MutableTableWrapper interface {
 	TableWrapper
@@ -332,6 +339,11 @@ type AutoIncrementTable interface {
 type AutoIncrementSetter interface {
 	// SetAutoIncrementValue sets a new AUTO_INCREMENT value.
 	SetAutoIncrementValue(*Context, uint64) error
+
+	// AcquireAutoIncrementLock acquires (if necessary) an exclusive lock on generating auto-increment values for the underlying table.
+	// This is called when @@innodb_autoinc_lock_mode is set to 0 (traditional) or 1 (consecutive), in order to guarentee that insert
+	// operations get a consecutive range of generated ids. The function returns a callback to release the lock.
+	AcquireAutoIncrementLock(ctx *Context) (func(), error)
 	// Closer finalizes the set operation, persisting the result.
 	Closer
 }

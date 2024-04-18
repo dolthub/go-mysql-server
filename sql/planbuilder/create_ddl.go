@@ -434,21 +434,31 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 
 func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-
-	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	selectStr := c.SubStatementStr
+	if selectStr == "" {
+		if c.SubStatementPositionEnd > len(query) {
+			b.handleErr(fmt.Errorf("unable to get sub statement"))
+		}
+		selectStr = query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+	}
 	stmt, _, err := ast.ParseOneWithOptions(selectStr, b.parserOpts)
 	if err != nil {
 		b.handleErr(err)
 	}
 	selectStatement, ok := stmt.(ast.SelectStatement)
 	if !ok {
-		err := sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
+		err = sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
 		b.handleErr(err)
 	}
 	queryScope := b.buildSelectStmt(inScope, selectStatement)
 
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
+
+	if c.ViewSpec.CheckOption == ast.ViewCheckOptionLocal {
+		err = sql.ErrUnsupportedSyntax.New("WITH LOCAL CHECK OPTION")
+		b.handleErr(err)
+	}
 
 	if len(c.ViewSpec.Columns) > 0 {
 		if len(c.ViewSpec.Columns) != len(queryScope.cols) {

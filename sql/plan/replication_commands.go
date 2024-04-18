@@ -37,9 +37,19 @@ const DynamicPrivilege_ReplicationSlaveAdmin = "replication_slave_admin"
 type BinlogReplicaControllerCommand interface {
 	sql.Node
 
-	// WithBinlogReplicaController returns a new instance of this BinlogReplicaController, with the binlog replica
+	// WithBinlogReplicaController returns a new instance of this BinlogReplicaControllerCommand, with the binlog replica
 	// controller configured.
 	WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node
+}
+
+// BinlogPrimaryControllerCommand represents a SQL statement that requires a BinlogPrimaryController
+// (e.g. SHOW BINARY LOG STATUS, SHOW REPLICAS).
+type BinlogPrimaryControllerCommand interface {
+	sql.Node
+
+	// WithBinlogPrimaryController returns a new instance of this BinlogPrimaryControllerCommand, with the binlog
+	// primary controller configured.
+	WithBinlogPrimaryController(controller binlogreplication.BinlogPrimaryController) sql.Node
 }
 
 // ChangeReplicationSource is the plan node for the "CHANGE REPLICATION SOURCE TO" statement.

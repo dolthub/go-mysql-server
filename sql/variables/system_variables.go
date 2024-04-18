@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -388,7 +389,15 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("binlog_checksum"),
-		Default:           "NONE", // TODO: MySQL's default is CRC32
+		Default:           "CRC32",
+	},
+	"binlog_format": &sql.MysqlSystemVariable{
+		Name:              "binlog_format",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemEnumType("binlog_format", "ROW"),
+		Default:           "ROW",
 	},
 	"binlog_gtid_simple_recovery": &sql.MysqlSystemVariable{
 		Name:              "binlog_gtid_simple_recovery",
@@ -1029,9 +1038,8 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
-		// TODO: lower bound should be 0: https://github.com/dolthub/dolt/issues/7634
-		Type:    types.NewSystemIntType("innodb_autoinc_lock_mode", 2, 2, false),
-		Default: int64(2),
+		Type:              types.NewSystemIntType("innodb_autoinc_lock_mode", 0, 2, false),
+		Default:           int64(2),
 	},
 	// Row locking is currently not supported. This variable is provided for 3p tools, and we always return the
 	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.
@@ -2132,7 +2140,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Uint32,
-		Default:           uint32(0),
+		Default:           uint32(1),
 	},
 	"server_uuid": &sql.MysqlSystemVariable{
 		Name:  "server_uuid",
@@ -2145,7 +2153,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Text,
-		Default:           nil,
+		Default:           uuid.New().String(),
 	},
 	"session_track_gtids": &sql.MysqlSystemVariable{
 		Name:              "session_track_gtids",

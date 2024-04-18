@@ -28,13 +28,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-const zeroDateStr = "0000-00-00"
+const ZeroDateStr = "0000-00-00"
 
-const zeroTimestampDatetimeStr = "0000-00-00 00:00:00"
+const ZeroTimestampDatetimeStr = "0000-00-00 00:00:00"
 
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
-	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%s'")
+	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%v'")
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
@@ -226,7 +226,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	}
 	switch value := v.(type) {
 	case string:
-		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
+		if value == ZeroDateStr || value == ZeroTimestampDatetimeStr {
 			return zeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
@@ -383,21 +383,21 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 	case sqltypes.Date:
 		typ = sqltypes.Date
 		if vt.Equal(zeroTime) {
-			val = vt.Format(zeroDateStr)
+			val = vt.Format(ZeroDateStr)
 		} else {
 			val = vt.Format(sql.DateLayout)
 		}
 	case sqltypes.Datetime:
 		typ = sqltypes.Datetime
 		if vt.Equal(zeroTime) {
-			val = vt.Format(zeroTimestampDatetimeStr)
+			val = vt.Format(ZeroTimestampDatetimeStr)
 		} else {
 			val = vt.Format(sql.TimestampDatetimeLayout)
 		}
 	case sqltypes.Timestamp:
 		typ = sqltypes.Timestamp
 		if vt.Equal(zeroTime) {
-			val = vt.Format(zeroTimestampDatetimeStr)
+			val = vt.Format(ZeroTimestampDatetimeStr)
 		} else {
 			val = vt.Format(sql.TimestampDatetimeLayout)
 		}

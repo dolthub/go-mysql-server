@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -240,10 +241,31 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		if err != nil {
 			return err
 		}
-		fkLowerName := strings.ToLower(fkDef.Name)
-		for _, existingFk := range existingFks {
-			if fkLowerName == strings.ToLower(existingFk.Name) {
-				return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+
+		if len(fkDef.Name) == 0 {
+			// find the next available name
+			// negative numbers behave weirdly
+			fkNamePrefix := fmt.Sprintf("%s_ibfk_", strings.ToLower(tbl.Name()))
+			var highest uint32
+			for _, existingFk := range existingFks {
+				if strings.HasPrefix(existingFk.Name, fkNamePrefix) {
+					numStr := strings.TrimPrefix(existingFk.Name, fkNamePrefix)
+					num, err := strconv.Atoi(numStr)
+					if err != nil {
+						continue
+					}
+					if uint32(num) > highest {
+						highest = uint32(num)
+					}
+				}
+			}
+			fkDef.Name = fmt.Sprintf("%s%d", fkNamePrefix, uint32(highest)+1)
+		} else {
+			fkLowerName := strings.ToLower(fkDef.Name)
+			for _, existingFk := range existingFks {
+				if fkLowerName == strings.ToLower(existingFk.Name) {
+					return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+				}
 			}
 		}
 	}
@@ -381,6 +403,87 @@ func (p *DropForeignKey) Children() []sql.Node {
 func (p *DropForeignKey) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DropForeignKey(%s)", p.Name)
+	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database(), p.Table))
+	return pr.String()
+}
+
+type RenameForeignKey struct {
+	DbProvider sql.DatabaseProvider
+	database   string
+	Table      string
+	OldName    string
+	NewName    string
+}
+
+func NewAlterRenameForeignKey(db, table, oldName, newName string) *RenameForeignKey {
+	return &RenameForeignKey{
+		DbProvider: nil,
+		database:   db,
+		Table:      table,
+		OldName:    oldName,
+		NewName:    newName,
+	}
+}
+
+// Database implements the sql.Node interface.
+func (p *RenameForeignKey) Database() string {
+	return p.database
+}
+
+// WithChildren implements the interface sql.Node.
+func (p *RenameForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(p, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *RenameForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: p.database,
+		Table:    p.Table,
+	}
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *RenameForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
+// Schema implements the interface sql.Node.
+func (p *RenameForeignKey) Schema() sql.Schema {
+	return types.OkResultSchema
+}
+
+// DatabaseProvider implements the interface sql.MultiDatabaser.
+func (p *RenameForeignKey) DatabaseProvider() sql.DatabaseProvider {
+	return p.DbProvider
+}
+
+// WithDatabaseProvider implements the interface sql.MultiDatabaser.
+func (p *RenameForeignKey) WithDatabaseProvider(provider sql.DatabaseProvider) (sql.Node, error) {
+	np := *p
+	np.DbProvider = provider
+	return &np, nil
+}
+
+// Resolved implements the interface sql.Node.
+func (p *RenameForeignKey) Resolved() bool {
+	return p.DbProvider != nil
+}
+
+func (p *RenameForeignKey) IsReadOnly() bool {
+	return false
+}
+
+// Children implements the interface sql.Node.
+func (p *RenameForeignKey) Children() []sql.Node {
+	return nil
+}
+
+// String implements the interface sql.Node.
+func (p *RenameForeignKey) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("RenameForeignKey(%s, %s)", p.OldName, p.NewName)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database(), p.Table))
 	return pr.String()
 }

@@ -94,9 +94,25 @@ type BinlogPrimaryController interface {
 	ListBinaryLogs(ctx *sql.Context) error
 
 	// GetBinaryLogStatus is called when the SHOW BINARY LOG STATUS statement is executed. The integrator should return
-	// the current status of the binary log. Note that this function will be expanded
-	// with an additional response parameter once it is wired up to the SQL engine.
-	GetBinaryLogStatus(ctx *sql.Context) error
+	// the current status of all available (i.e. non-purged) binary logs.
+	GetBinaryLogStatus(ctx *sql.Context) ([]BinaryLogStatus, error)
+}
+
+// BinaryLogStatus holds the data for one row of results from the `SHOW BINARY LOG STATUS` statement (or the deprecated
+// `SHOW MASTER LOGS` statement). Integrators should return one instance for each binary log file that is being tracked
+// by the server.
+// https://dev.mysql.com/doc/refman/8.3/en/show-binary-log-status.html
+type BinaryLogStatus struct {
+	// The filename of the binary log file.
+	File string
+	// The latest byte position in the binary log file.
+	Position uint
+	// Names of the databases whose changes are being tracked in this binary log.
+	DoDbs string
+	// Names of the databases whose changes are NOT being included in this binary log.
+	IgnoreDbs string
+	// The set of GTIDs that have been executed on this server.
+	ExecutedGtids string
 }
 
 // ReplicaStatus stores the status of a single binlog replica and is returned by `SHOW REPLICA STATUS`.
