@@ -58,7 +58,6 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 func stripSchema(schema sql.Schema) sql.Schema {
 	sch := schema.Copy()
 	for i := range schema {
-		sch[i].Default = nil
 		sch[i].Generated = nil
 		sch[i].AutoIncrement = false
 		sch[i].PrimaryKey = false
