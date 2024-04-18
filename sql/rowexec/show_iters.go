@@ -260,6 +260,30 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	), nil
 }
 
+func isFirstColInUniqueKeyNotNull(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+	for _, idx := range s.Indexes {
+		if !idx.IsUnique() {
+			continue
+		}
+
+		firstIndexCol := plan.GetColumnFromIndexExpr(idx.Expressions()[0], table)
+		if firstIndexCol == nil || firstIndexCol.Name != col.Name {
+			continue
+		}
+
+		for _, expr := range idx.Expressions() {
+			idxCol := plan.GetColumnFromIndexExpr(expr, table)
+			if idxCol == nil || idxCol.Nullable {
+				continue
+			}
+		}
+
+		return true
+	}
+
+	return false
+}
+
 func isFirstColInUniqueKey(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		if !idx.IsUnique() {

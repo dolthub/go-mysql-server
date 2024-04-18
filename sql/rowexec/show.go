@@ -437,6 +437,7 @@ func (b *BaseBuilder) buildShowCreateTrigger(ctx *sql.Context, n *plan.ShowCreat
 func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, row sql.Row) (sql.RowIter, error) {
 	span, _ := ctx.Span("plan.ShowColumns")
 
+	var hasPrimary bool
 	schema := n.TargetSchema()
 	var rows = make([]sql.Row, len(schema))
 	for i, col := range schema {
@@ -460,6 +461,10 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		case *plan.ResolvedTable:
 			if col.PrimaryKey {
 				key = "PRI"
+				hasPrimary = true
+			} else if !hasPrimary && isFirstColInUniqueKeyNotNull(n, col, table) {
+				key = "PRI"
+				hasPrimary = true
 			} else if isFirstColInUniqueKey(n, col, table) {
 				key = "UNI"
 			} else if isFirstColInNonUniqueKey(n, col, table) {
