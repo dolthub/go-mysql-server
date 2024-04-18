@@ -43,7 +43,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 	if strings.ToLower(n.Tables[0].DbQualifier.String()) == "" && defaultDb == "" {
 		b.handleErr(sql.ErrNoDatabaseSelected.New())
 	}
-	
+
 	tableScope, ok := b.buildTablescan(inScope, n.Tables[0], nil)
 	if !ok {
 		err := sql.ErrTableNotFound.New(strings.ToLower(n.Tables[0].Name.String()))

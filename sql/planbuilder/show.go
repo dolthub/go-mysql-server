@@ -459,7 +459,7 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 	} else if s.Table.DbQualifier.String() != "" {
 		db = s.Table.DbQualifier.String()
 	}
-	
+
 	tableScope, ok := b.buildResolvedTable(inScope, db, "", s.Table.Name.String(), nil)
 	if !ok {
 		err := sql.ErrTableNotFound.New(s.Table.Name.String())
