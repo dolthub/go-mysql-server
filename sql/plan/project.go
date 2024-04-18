@@ -18,10 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Project is a projection of certain expression from the children node.
@@ -55,7 +54,7 @@ func getGetField(expr sql.Expression) *expression.GetField {
 	}
 }
 
-// find the column in the schema of the node
+// fillDefault finds the matching GetField in the node's Schema and fills the default value in the column.
 func fillDefault(node sql.Node, gf *expression.GetField, col *sql.Column) bool {
 	colSet := sql.NewColSet()
 	switch n := node.(type) {
