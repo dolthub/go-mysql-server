@@ -16,12 +16,12 @@ package plan
 
 import (
 	"fmt"
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-)
+	)
 
 // Project is a projection of certain expression from the children node.
 type Project struct {
@@ -43,56 +43,72 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
+func getGetField(expr sql.Expression) *expression.GetField {
+	switch e := expr.(type) {
+	case *expression.GetField:
+		return e
+	case *expression.Alias:
+		return getGetField(e.Child)
+	default:
+		return nil
+	}
+}
+
+// find the column in the schema of the node
+func fillDefault(node sql.Node, gf *expression.GetField, col *sql.Column) bool {
+	colSet := sql.NewColSet()
+	switch n := node.(type) {
+	case TableIdNode:
+		colSet = n.Columns()
+	case *GroupBy:
+		return fillDefault(n.Child, gf, col)
+	case *HashLookup:
+		return fillDefault(n.Child, gf, col)
+	case *JoinNode:
+		if fillDefault(n.Left(), gf, col) {
+			return true
+		}
+		if fillDefault(n.Right(), gf, col) {
+			return true
+		}
+	default:
+		return true
+	}
+
+	if !colSet.Contains(gf.Id()) {
+		return false
+	}
+
+	var firstColId sql.ColumnId
+	var first bool
+	colSet.ForEach(func(colId sql.ColumnId) {
+		if !first {
+			firstColId = colId
+			first = true
+		}
+	})
+
+	sch := node.Schema()
+	idx := gf.Id() - firstColId
+	if idx < 0 || int(idx) >= len(sch) {
+		return false
+	}
+	col.Default = sch[idx].Default
+	return true
+}
+
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
-	childSch := p.Child.Schema()
-
-	var colSet sql.ColSet
-	var firstColId sql.ColumnId
-	first := false
-	tblIdNode, isTblIdNode := p.Child.(TableIdNode)
-	if isTblIdNode {
-		colSet = tblIdNode.Columns()
-		colSet.ForEach(func(colId sql.ColumnId) {
-			if !first {
-				firstColId = colId
-				first = true
-			}
-		})
-	}
-
 	for i, expr := range p.Projections {
 		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
-		if !isTblIdNode {
-			continue
-		}
 
-		var gf *expression.GetField
-		switch e := expr.(type) {
-		case *expression.Alias:
-			if child, isGf := e.Child.(*expression.GetField); isGf {
-				gf = child
-			}
-		case *expression.GetField:
-			gf = e
-		default:
-			gf = nil
-		}
+		gf := getGetField(expr)
 		if gf == nil {
 			continue
 		}
 
-		gfId := gf.Id()
-		if !colSet.Contains(gfId) {
-			continue
-		}
-
-		idx := gfId - firstColId
-		if idx < 0 || int(idx) >= len(childSch) {
-			continue
-		}
-		s[i].Default = childSch[idx].Default
+		fillDefault(p.Child, gf, s[i])
 	}
 	return s
 }

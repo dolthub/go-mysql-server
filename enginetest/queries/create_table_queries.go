@@ -845,7 +845,6 @@ var CreateTableScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true, // join drops default
 				Query: "show create table t8;",
 				Expected: []sql.Row{
 					{"t8", "CREATE TABLE `t8` (\n" +
@@ -911,11 +910,10 @@ var CreateTableScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Skip:  true, // Group By also drops default
 				Query: "show create table t12;",
 				Expected: []sql.Row{
 					{"t12", "CREATE TABLE `t12` (\n" +
-						"  `j` int DEFAULT '100',\n" +
+						"  `j` int DEFAULT '100'\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
