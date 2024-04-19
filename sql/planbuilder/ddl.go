@@ -1332,7 +1332,7 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		Name:          cd.Name.String(),
 		Type:          internalTyp,
 		AutoIncrement: bool(cd.Type.Autoincrement),
-		Nullable:      nullable,
+		Nullable:      nullable && !bool(cd.Type.Autoincrement),
 		PrimaryKey:    isPkey,
 		Comment:       comment,
 		Extra:         extra,
