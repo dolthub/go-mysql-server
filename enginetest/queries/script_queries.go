@@ -3178,7 +3178,7 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Skip: true, // supposed to be the first index defined, not in order of columns
+				Skip:  true, // supposed to be the first index defined, not in order of columns
 				Query: "describe t2;",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "UNI", nil, ""},
@@ -3188,8 +3188,8 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe t3;",
 				Expected: []sql.Row{
-					{"i", "int", "NO",  "MUL", nil, ""},
-					{"j", "int", "YES", "",    nil, ""},
+					{"i", "int", "NO", "MUL", nil, ""},
+					{"j", "int", "YES", "", nil, ""},
 				},
 			},
 			{
@@ -3201,7 +3201,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// TODO: the order of indexes retrieved is not guaranteed...
-				Skip: true,
+				Skip:  true,
 				Query: "describe t5;",
 				Expected: []sql.Row{
 					{"i", "int", "NO", "PRI", nil, ""},
@@ -3218,19 +3218,19 @@ CREATE TABLE tab3 (
 			{
 				Query: "describe t7;",
 				Expected: []sql.Row{
-					{"pk", "int", "NO",  "PRI", nil, ""},
-					{"i",  "int", "YES", "UNI", nil, ""},
-					{"j",  "int", "NO",  "MUL", nil, ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "UNI", nil, ""},
+					{"j", "int", "NO", "MUL", nil, ""},
 				},
 			},
 			{
-				Skip: true, // for some reason MUL takes priority over UNI for i
+				Skip:  true, // for some reason MUL takes priority over UNI for i
 				Query: "describe t8;",
 				Expected: []sql.Row{
-					{"pk", "int", "NO",  "PRI", nil, ""},
-					{"i",  "int", "YES", "MUL", nil, ""},
-					{"j",  "int", "YES", "UNI", nil, ""},
-					{"k",  "int", "YES", "UNI", nil, ""},
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "MUL", nil, ""},
+					{"j", "int", "YES", "UNI", nil, ""},
+					{"k", "int", "YES", "UNI", nil, ""},
 				},
 			},
 		},
