@@ -3200,7 +3200,8 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				// TODO: the order of indexes retrieved is not guaranteed...
+				// MySQL reads indexes in the order that they were created, while we sort by idx name
+				// https://github.com/dolthub/dolt/issues/2289
 				Skip:  true,
 				Query: "describe t5;",
 				Expected: []sql.Row{
