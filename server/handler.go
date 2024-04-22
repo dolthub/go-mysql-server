@@ -407,6 +407,9 @@ func (h *Handler) doQuery(
 		return remainder, err
 	}
 
+	// create result before goroutines to avoid |ctx| racing
+	r := &sqltypes.Result{Fields: schemaToFields(ctx, schema)}
+
 	var rowChan chan sql.Row
 
 	rowChan = make(chan sql.Row, 512)
@@ -454,7 +457,6 @@ func (h *Handler) doQuery(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	var r *sqltypes.Result
 	var processedAtLeastOneBatch bool
 
 	// reads rows from the channel, converts them to wire format,
@@ -463,9 +465,6 @@ func (h *Handler) doQuery(
 		defer cancelF()
 		defer wg.Done()
 		for {
-			if r == nil {
-				r = &sqltypes.Result{Fields: schemaToFields(ctx, schema)}
-			}
 
 			if r.RowsAffected == rowsBatch {
 				if err := callback(r, more); err != nil {
