@@ -7870,55 +7870,55 @@ Select * from (
 	{
 		Query: `SHOW STATUS LIKE 'aborted\_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Bytes_sent'`,
 		Expected: []sql.Row{
-			{"Bytes_sent", 0},
+			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Bytes_sent'`,
 		Expected: []sql.Row{
-			{"Bytes_sent", 0},
+			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Com\_stmt\_%'`,
 		Expected: []sql.Row{
-			{"Com_stmt_close", 0},
-			{"Com_stmt_execute", 0},
-			{"Com_stmt_fetch", 0},
-			{"Com_stmt_prepare", 0},
-			{"Com_stmt_reprepare", 0},
-			{"Com_stmt_reset", 0},
-			{"Com_stmt_send_long_data", 0},
+			{"Com_stmt_close", uint64(0)},
+			{"Com_stmt_execute", uint64(0)},
+			{"Com_stmt_fetch", uint64(0)},
+			{"Com_stmt_prepare", uint64(0)},
+			{"Com_stmt_reprepare", uint64(0)},
+			{"Com_stmt_reset", uint64(0)},
+			{"Com_stmt_send_long_data", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
 		Expected: []sql.Row{
-			{"Com_stmt_close", 0},
-			{"Com_stmt_execute", 0},
-			{"Com_stmt_fetch", 0},
-			{"Com_stmt_prepare", 0},
-			{"Com_stmt_reprepare", 0},
-			{"Com_stmt_reset", 0},
-			{"Com_stmt_send_long_data", 0},
+			{"Com_stmt_close", uint64(0)},
+			{"Com_stmt_execute", uint64(0)},
+			{"Com_stmt_fetch", uint64(0)},
+			{"Com_stmt_prepare", uint64(0)},
+			{"Com_stmt_reprepare", uint64(0)},
+			{"Com_stmt_reset", uint64(0)},
+			{"Com_stmt_send_long_data", uint64(0)},
 		},
 	},
 	{
