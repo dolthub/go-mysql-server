@@ -43,7 +43,7 @@ type BaseSession struct {
 	warncnt          uint16
 	locks            map[string]bool
 	queriedDb        string
-	lastQueryInfo    map[string]any
+	lastQueryInfo    map[string]*atomic.Value
 	tx               Transaction
 	ignoreAutocommit bool
 
@@ -414,12 +414,12 @@ func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
 }
 
 func (s *BaseSession) SetLastQueryInfoInt(key string, value int64) {
-	s.lastQueryInfo[key] = value
+	s.lastQueryInfo[key].Store(value)
 }
 
 func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
 
-	value, ok := s.lastQueryInfo[key].(int64)
+	value, ok := s.lastQueryInfo[key].Load().(int64)
 	if !ok {
 		panic(fmt.Sprintf("last query info value stored for %s is not an int64 value, but a %T", key, s.lastQueryInfo[key]))
 	}
@@ -427,12 +427,11 @@ func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
 }
 
 func (s *BaseSession) SetLastQueryInfoString(key string, value string) {
-	s.lastQueryInfo[key] = value
+	s.lastQueryInfo[key].Store(value)
 }
 
 func (s *BaseSession) GetLastQueryInfoString(key string) string {
-
-	value, ok := s.lastQueryInfo[key].(string)
+	value, ok := s.lastQueryInfo[key].Load().(string)
 	if !ok {
 		panic(fmt.Sprintf("last query info value stored for %s is not a string value, but a %T", key, s.lastQueryInfo[key]))
 	}
