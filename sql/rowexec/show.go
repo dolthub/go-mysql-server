@@ -460,9 +460,11 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		case *plan.ResolvedTable:
 			if col.PrimaryKey {
 				key = "PRI"
-			} else if isFirstColInUniqueKey(n, col, table) {
+			} else if isPriCol(n, col, table) {
+				key = "PRI"
+			} else if isUnqCol(n, col, table) {
 				key = "UNI"
-			} else if isFirstColInNonUniqueKey(n, col, table) {
+			} else if isMulCol(n, col, table) {
 				key = "MUL"
 			}
 		case *plan.SubqueryAlias:
