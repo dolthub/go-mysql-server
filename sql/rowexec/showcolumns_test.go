@@ -109,7 +109,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 
 	expected := []sql.Row{
 		{"a", "text", "NO", "PRI", nil, ""},
-		{"b", "bigint", "YES", "UNI", nil, ""},
+		{"b", "bigint", "YES", "MUL", nil, ""},
 		{"c", "bigint", "NO", "", "1", ""},
 		{"d", "bigint", "YES", "MUL", nil, ""},
 		{"e", "bigint", "NO", "", "1", ""},
