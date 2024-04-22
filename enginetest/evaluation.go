@@ -470,7 +470,7 @@ func injectBindVarsAndPrepare(
 	q string,
 ) (string, map[string]*querypb.BindVariable, error) {
 	sqlMode := sql.LoadSqlMode(ctx)
-	parsed, err := sqlparser.ParseWithOptions(q, sqlMode.ParserOptions())
+	parsed, err := sqlparser.ParseWithOptions(ctx, q, sqlMode.ParserOptions())
 	if err != nil {
 		// cannot prepare empty statement, can query
 		if err.Error() == "empty statement" {

@@ -231,7 +231,7 @@ func (e *Engine) PrepareParsedQuery(
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
-	node, err := binder.BindOnly(stmt, query)
+	node, err := binder.BindOnly(ctx, stmt, query)
 
 	if err != nil {
 		return nil, err
@@ -583,7 +583,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 			return nil, err
 		}
 	} else {
-		bound, err = binder.BindOnly(parsed, query)
+		bound, err = binder.BindOnly(ctx, parsed, query)
 		if err != nil {
 			return nil, err
 		}
@@ -633,7 +633,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	}
 	binder.SetBindings(bindings)
 
-	bound, err := binder.BindOnly(prep, query)
+	bound, err := binder.BindOnly(ctx, prep, query)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {

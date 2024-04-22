@@ -721,7 +721,7 @@ func TestHandlerKill(t *testing.T) {
 
 	err = handler.sm.SetDB(conn1, "test")
 	require.NoError(err)
-	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
+	ctx1, err := handler.sm.NewContextWithQuery(ctx, conn1, "SELECT 1")
 	require.NoError(err)
 	ctx1, err = handler.e.ProcessList.BeginQuery(ctx1, "SELECT 1")
 	require.NoError(err)
@@ -871,7 +871,7 @@ func TestSchemaToFields(t *testing.T) {
 	conn := newConn(1)
 	handler.NewConnection(conn)
 
-	ctx, err := handler.sm.NewContextWithQuery(conn, "SELECT 1")
+	ctx, err := handler.sm.NewContextWithQuery(ctx, conn, "SELECT 1")
 	require.NoError(err)
 
 	fields := schemaToFields(ctx, schema)

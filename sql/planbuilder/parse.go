@@ -15,7 +15,10 @@
 package planbuilder
 
 import (
+	"context"
 	goerrors "errors"
+	trace2 "runtime/trace"
+
 	"strings"
 	"unicode"
 
@@ -78,7 +81,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 
 	parsed = s
 	if !multi {
-		stmt, err = ast.ParseWithOptions(s, options)
+		stmt, err = ast.ParseWithOptions(ctx, s, options)
 	} else {
 		var ri int
 		stmt, ri, err = ast.ParseOneWithOptions(s, options)
@@ -106,6 +109,7 @@ func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options 
 }
 
 func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
+	defer trace2.StartRegion(b.ctx, "ParseOnly").End()
 	b.nesting++
 	if b.nesting > maxAnalysisIterations {
 		return nil, "", "", ErrMaxAnalysisIters.New(maxAnalysisIterations)
@@ -130,7 +134,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 
 	parsed = s
 	if !multi {
-		stmt, err = ast.ParseWithOptions(s, b.parserOpts)
+		stmt, err = ast.ParseWithOptions(ctx, s, b.parserOpts)
 	} else {
 		var ri int
 		stmt, ri, err = ast.ParseOneWithOptions(s, b.parserOpts)
@@ -159,7 +163,8 @@ func (b *Builder) ParseOne(query string) (ret sql.Node, err error) {
 	return ret, err
 }
 
-func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err error) {
+func (b *Builder) BindOnly(ctx context.Context, stmt ast.Statement, s string) (ret sql.Node, err error) {
+	defer trace2.StartRegion(ctx, "BindOnly").End()
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
@@ -175,6 +180,7 @@ func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err erro
 }
 
 func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, string, string, error) {
+	defer trace2.StartRegion(ctx, "ParseOnly").End()
 	sqlMode := sql.LoadSqlMode(ctx)
 	options := sqlMode.ParserOptions()
 
@@ -187,7 +193,7 @@ func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, strin
 
 	parsed = s
 	if !multi {
-		stmt, err = ast.ParseWithOptions(s, options)
+		stmt, err = ast.ParseWithOptions(ctx, s, options)
 	} else {
 		var ri int
 		stmt, ri, err = ast.ParseOneWithOptions(s, options)

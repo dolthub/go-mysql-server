@@ -73,11 +73,11 @@ func (v Validator) ComInitDB(c *mysql.Conn, schemaName string) error {
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
 // with the given [c.ConnectionID].
-func (v Validator) ComPrepare(_ *mysql.Conn, _ string, _ *mysql.PrepareData) ([]*query.Field, error) {
+func (v Validator) ComPrepare(_ context.Context, _ *mysql.Conn, _ string, _ *mysql.PrepareData) ([]*query.Field, error) {
 	return nil, fmt.Errorf("ComPrepare unsupported")
 }
 
-func (v Validator) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+func (v Validator) ComStmtExecute(_ context.Context, _ *mysql.Conn, _ *mysql.PrepareData, _ func(*sqltypes.Result) error) error {
 	return fmt.Errorf("ComStmtExecute unsupported")
 }
 
@@ -92,6 +92,7 @@ func (v Validator) ConnectionClosed(c *mysql.Conn) {
 }
 
 func (v Validator) ComMultiQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	callback mysql.ResultSpoolFn,
@@ -100,12 +101,12 @@ func (v Validator) ComMultiQuery(
 	var remainder string
 	eg, _ := errgroup.WithContext(context.Background())
 	eg.Go(func() (err error) {
-		remainder, err = v.handler.ComMultiQuery(c, query, ag.processResults)
+		remainder, err = v.handler.ComMultiQuery(ctx, c, query, ag.processResults)
 		return
 	})
 	eg.Go(func() error {
 		// ignore errors from MySQL connection
-		_, _ = v.golden.ComMultiQuery(c, query, ag.processGoldenResults)
+		_, _ = v.golden.ComMultiQuery(ctx, c, query, ag.processGoldenResults)
 		return nil
 	})
 
@@ -120,6 +121,7 @@ func (v Validator) ComMultiQuery(
 
 // ComQuery executes a SQL query on the SQLe engine.
 func (v Validator) ComQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	callback mysql.ResultSpoolFn,
@@ -127,11 +129,11 @@ func (v Validator) ComQuery(
 	ag := newResultAggregator(callback)
 	eg, _ := errgroup.WithContext(context.Background())
 	eg.Go(func() error {
-		return v.handler.ComQuery(c, query, ag.processResults)
+		return v.handler.ComQuery(ctx, c, query, ag.processResults)
 	})
 	eg.Go(func() error {
 		// ignore errors from MySQL connection
-		_ = v.golden.ComQuery(c, query, ag.processGoldenResults)
+		_ = v.golden.ComQuery(ctx, c, query, ag.processGoldenResults)
 		return nil
 	})
 
@@ -145,12 +147,13 @@ func (v Validator) ComQuery(
 
 // ComQuery executes a SQL query on the SQLe engine.
 func (v Validator) ComParsedQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
 	callback func(*sqltypes.Result, bool) error,
 ) error {
-	return v.ComQuery(c, query, callback)
+	return v.ComQuery(ctx, c, query, callback)
 }
 
 // WarningCount is called at the end of each query to obtain
