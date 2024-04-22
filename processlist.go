@@ -101,9 +101,7 @@ func (pl *ProcessList) RemoveConnection(connID uint32) {
 	defer pl.mu.Unlock()
 	p := pl.procs[connID]
 	if p != nil {
-		go func() {
-			sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
-		}()
+		sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
 		if p.Kill != nil {
 			p.Kill()
 		}
