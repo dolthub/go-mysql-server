@@ -174,7 +174,7 @@ func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql
 	panic("implement me")
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]sql.Statistic, error) {
+func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -199,12 +199,12 @@ func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []str
 	panic("implement me")
 }
 
-func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
+func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error) {
+func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	//TODO implement me
 	panic("implement me")
 }

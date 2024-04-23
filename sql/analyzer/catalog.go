@@ -378,7 +378,7 @@ func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string
 	return c.StatsProvider.RefreshTableStats(ctx, table, db)
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]sql.Statistic, error) {
+func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
 	return c.StatsProvider.GetTableStats(ctx, db, table)
 }
 
@@ -394,17 +394,13 @@ func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []str
 	return c.StatsProvider.DropStats(ctx, qual, cols)
 }
 
-func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
+func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	cnt, err := c.StatsProvider.RowCount(ctx, db, table)
 	if err == nil && cnt > 0 {
 		return cnt, nil
 	}
 	// fallback to on-table statistics
-	t, _, err := c.Table(ctx, db, table)
-	if err != nil {
-		return 0, err
-	}
-	st, ok := t.(sql.StatisticsTable)
+	st, ok := table.(sql.StatisticsTable)
 	if !ok {
 		return 0, nil
 	}
@@ -412,17 +408,13 @@ func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
 	return cnt, err
 }
 
-func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error) {
+func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	length, err := c.StatsProvider.DataLength(ctx, db, table)
 	if err == nil && length > 0 {
 		return length, nil
 	}
 	// fallback to on-table statistics
-	t, _, err := c.Table(ctx, db, table)
-	if err != nil {
-		return 0, err
-	}
-	st, ok := t.(sql.StatisticsTable)
+	st, ok := table.(sql.StatisticsTable)
 	if !ok {
 		return 0, nil
 	}
