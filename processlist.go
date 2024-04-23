@@ -71,9 +71,7 @@ func (pl *ProcessList) Processes() []sql.Process {
 func (pl *ProcessList) AddConnection(id uint32, addr string) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-	go func() {
-		sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
-	}()
+	sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
 	pl.procs[id] = &sql.Process{
 		Connection: id,
 		Command:    sql.ProcessCommandConnect,
@@ -101,9 +99,7 @@ func (pl *ProcessList) RemoveConnection(connID uint32) {
 	defer pl.mu.Unlock()
 	p := pl.procs[connID]
 	if p != nil {
-		go func() {
-			sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
-		}()
+		sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
 		if p.Kill != nil {
 			p.Kill()
 		}
