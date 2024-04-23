@@ -884,6 +884,9 @@ var (
 	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
 	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
 
+	// ErrJSONIndex is returned when attempting to create an index over a JSON column directly
+	ErrJSONIndex = errors.NewKind("JSON column '%s' supports indexing only via generated columns on a specified JSON path")
+
 	ErrInvalidOnUpdate = errors.NewKind("Invalid ON UPDATE clause for '%s' column")
 
 	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")

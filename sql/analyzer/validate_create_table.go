@@ -887,6 +887,7 @@ const textIndexPrefix = 1000
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 // TODO: this method is very similar to validateIndexType...
+// TODO: rowexec code should go here too
 func validateIndexes(ctx *sql.Context, sch sql.Schema, idxs sql.IndexDefs) error {
 	lwrNames := make(map[string]*sql.Column)
 	for _, col := range sch {
