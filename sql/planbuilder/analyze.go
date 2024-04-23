@@ -124,7 +124,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 	if dbName == "" {
 		b.handleErr(sql.ErrNoDatabaseSelected.New())
 	}
-	
+
 	outScope = inScope.push()
 	statisticJ := new(stats.StatisticJSON)
 	using := b.buildScalar(inScope, n.Using)
