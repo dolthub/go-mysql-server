@@ -240,9 +240,9 @@ func (s *BaseSession) IncrementStatusVariable(_ *Context, statVarName string, va
 		return ErrUnknownSystemVariable.New(statVarName)
 	}
 	if val < 0 {
-		s.statusVars[statVarName].Increment(-(uint64(val)))
-	} else {
 		s.statusVars[statVarName].Increment(-(uint64(-val)))
+	} else {
+		s.statusVars[statVarName].Increment((uint64(val)))
 	}
 	return nil
 }
