@@ -316,6 +316,93 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
+func TestSingleQueryPlan(t *testing.T) {
+	// t.Skip()
+	
+	tt := []queries.QueryPlanTest{
+		{
+			Query: `SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
+			ExpectedPlan: "Project\n" +
+					" ├─ columns: [t1.i:0!null]\n" +
+					" └─ LookupJoin\n" +
+					"     ├─ Eq\n" +
+					"     │   ├─ t1.i:0!null\n" +
+					"     │   └─ (t2.i:1!null + 1 (tinyint))\n" +
+					"     ├─ TableAlias(t1)\n" +
+					"     │   └─ IndexedTableAccess(mytable)\n" +
+					"     │       ├─ index: [mytable.i]\n" +
+					"     │       ├─ static: [{[2, 2]}]\n" +
+					"     │       ├─ colSet: (1,2)\n" +
+					"     │       ├─ tableId: 1\n" +
+					"     │       └─ Table\n" +
+					"     │           ├─ name: mytable\n" +
+					"     │           └─ columns: [i]\n" +
+					"     └─ Filter\n" +
+					"         ├─ Eq\n" +
+					"         │   ├─ t2.i:0!null\n" +
+					"         │   └─ 1 (tinyint)\n" +
+					"         └─ TableAlias(t2)\n" +
+					"             └─ IndexedTableAccess(mytable)\n" +
+					"                 ├─ index: [mytable.i]\n" +
+					"                 ├─ keys: [1 (tinyint)]\n" +
+					"                 ├─ colSet: (3,4)\n" +
+					"                 ├─ tableId: 2\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: mytable\n" +
+					"                     └─ columns: [i]\n" +
+					"",
+			ExpectedEstimates: "Project\n" +
+					" ├─ columns: [t1.i]\n" +
+					" └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
+					"     ├─ (t1.i = (t2.i + 1))\n" +
+					"     ├─ TableAlias(t1)\n" +
+					"     │   └─ IndexedTableAccess(mytable)\n" +
+					"     │       ├─ index: [mytable.i]\n" +
+					"     │       ├─ filters: [{[2, 2]}]\n" +
+					"     │       └─ columns: [i]\n" +
+					"     └─ Filter\n" +
+					"         ├─ (t2.i = 1)\n" +
+					"         └─ TableAlias(t2)\n" +
+					"             └─ IndexedTableAccess(mytable)\n" +
+					"                 ├─ index: [mytable.i]\n" +
+					"                 ├─ columns: [i]\n" +
+					"                 └─ keys: 1\n" +
+					"",
+			ExpectedAnalysis: "Project\n" +
+					" ├─ columns: [t1.i]\n" +
+					" └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=1 loops=1)\n" +
+					"     ├─ (t1.i = (t2.i + 1))\n" +
+					"     ├─ TableAlias(t1)\n" +
+					"     │   └─ IndexedTableAccess(mytable)\n" +
+					"     │       ├─ index: [mytable.i]\n" +
+					"     │       ├─ filters: [{[2, 2]}]\n" +
+					"     │       └─ columns: [i]\n" +
+					"     └─ Filter\n" +
+					"         ├─ (t2.i = 1)\n" +
+					"         └─ TableAlias(t2)\n" +
+					"             └─ IndexedTableAccess(mytable)\n" +
+					"                 ├─ index: [mytable.i]\n" +
+					"                 ├─ columns: [i]\n" +
+					"                 └─ keys: 1\n" +
+					"",
+		},
+	}
+
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, 2, true, nil)
+	harness.Setup(setup.PlanSetup...)
+
+	for _, test:= range tt {
+		t.Run(test.Query, func(t *testing.T) {
+			engine, err := harness.NewEngine(t)
+			engine.EngineAnalyzer().Verbose = true
+			engine.EngineAnalyzer().Debug = true
+			
+			require.NoError(t, err)
+			enginetest.TestQueryPlan(t, harness, engine, test.Query, test.ExpectedPlan, enginetest.DebugQueryPlan)
+		})
+	}
+}
+
 func TestIntegrationQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
