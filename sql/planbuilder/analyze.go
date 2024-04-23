@@ -73,7 +73,15 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 		return b.buildAnalyzeUpdate(inScope, n, strings.ToLower(n.Tables[0].DbQualifier.String()), strings.ToLower(n.Tables[0].Name.String()), sch, columns, types)
 	case ast.DropStr:
 		outScope = inScope.push()
-		outScope.node = plan.NewDropHistogram(strings.ToLower(n.Tables[0].DbQualifier.String()), strings.ToLower(n.Tables[0].Name.String()), columns).WithProvider(b.cat)
+		dbName := n.Tables[0].DbQualifier.String()
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		if dbName == "" {
+			b.handleErr(sql.ErrNoDatabaseSelected.New())
+		}
+
+		outScope.node = plan.NewDropHistogram(strings.ToLower(dbName), strings.ToLower(n.Tables[0].Name.String()), columns).WithProvider(b.cat)
 	default:
 		err := fmt.Errorf("invalid ANALYZE action: %s, expected UPDATE or DROP", n.Action)
 		b.handleErr(err)
@@ -110,6 +118,13 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 }
 
 func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, sch sql.Schema, columns []string, types []sql.Type) (outScope *scope) {
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	if dbName == "" {
+		b.handleErr(sql.ErrNoDatabaseSelected.New())
+	}
+	
 	outScope = inScope.push()
 	statisticJ := new(stats.StatisticJSON)
 	using := b.buildScalar(inScope, n.Using)
@@ -140,7 +155,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 
 	statistic := statisticJ.ToStatistic()
 
-	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, strings.ToLower(indexName)))
+	statistic.SetQualifier(sql.NewStatQualifier(strings.ToLower(dbName), tableName, strings.ToLower(indexName)))
 	statistic.SetColumns(columns)
 	statistic.SetTypes(types)
 
