@@ -52,7 +52,7 @@ func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
-	
+
 	if dbName == "" {
 		b.handleErr(sql.ErrNoDatabaseSelected.New())
 	}
@@ -61,7 +61,7 @@ func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
 	if err != nil {
 		b.handleErr(err)
 	}
-	
+
 	schema := table.SchemaQualifier.String()
 	if schema != "" {
 		scd, ok := database.(sql.SchemaDatabase)
@@ -327,7 +327,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(ct.OptLike.LikeTable.Name.String()))
 	}
-	
+
 	likeTable, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
 		err := fmt.Errorf("expected resolved table: %s", ct.OptLike.LikeTable.Name.String())
@@ -1006,7 +1006,7 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 
 	dbName := strings.ToLower(ddl.Table.DbQualifier.String())
 	tblName := strings.ToLower(ddl.Table.Name.String())
-	
+
 	var ok bool
 	outScope, ok = b.buildTablescan(inScope, ddl.Table, nil)
 	if !ok {

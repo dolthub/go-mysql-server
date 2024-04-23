@@ -83,7 +83,7 @@ type SchemaDatabase interface {
 	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
 }
 
-// DatabaseSchema is a schema that can be queried for tables. It is functionally equivalent to a Database 
+// DatabaseSchema is a schema that can be queried for tables. It is functionally equivalent to a Database
 // (and in MySQL, database and Schema are synonymous). Some providers may have additional schemas.
 type DatabaseSchema interface {
 	Database

@@ -37,7 +37,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
-	
+
 	destScope, ok := b.buildResolvedTableForTablename(inScope, i.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(i.Table.Name.String()))
