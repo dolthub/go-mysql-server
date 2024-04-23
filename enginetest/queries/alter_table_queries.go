@@ -716,7 +716,7 @@ var AlterTableScripts = []ScriptTest{
 				Query: "describe test",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk", "int", "YES", "UNI", nil, "auto_increment"},
+					{"uk", "int", "NO", "UNI", nil, "auto_increment"},
 				},
 			},
 		},
@@ -745,7 +745,7 @@ var AlterTableScripts = []ScriptTest{
 				Query: "describe test",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk", "int", "YES", "MUL", nil, "auto_increment"},
+					{"mk", "int", "NO", "MUL", nil, "auto_increment"},
 				},
 			},
 		},
@@ -1083,7 +1083,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 					"CREATE TABLE `t1` (\n" +
 						"  `i` bigint NOT NULL,\n" +
 						"  `s` varchar(20),\n" +
-						"  `j` int AUTO_INCREMENT,\n" +
+						"  `j` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`),\n" +
 						"  UNIQUE KEY `j` (`j`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},

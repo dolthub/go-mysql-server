@@ -556,7 +556,7 @@ func allTableCols(rel SourceRel) sql.Schema {
 			Type:           c.Type,
 			Default:        c.Default,
 			AutoIncrement:  c.AutoIncrement,
-			Nullable:       c.Nullable,
+			Nullable:       c.Nullable && !c.AutoIncrement,
 			Source:         rel.Name(),
 			DatabaseSource: c.DatabaseSource,
 			PrimaryKey:     c.PrimaryKey,

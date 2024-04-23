@@ -407,6 +407,9 @@ func (h *Handler) doQuery(
 		return remainder, err
 	}
 
+	// create result before goroutines to avoid |ctx| racing
+	resultFields := schemaToFields(ctx, schema)
+
 	var rowChan chan sql.Row
 
 	rowChan = make(chan sql.Row, 512)
@@ -464,9 +467,8 @@ func (h *Handler) doQuery(
 		defer wg.Done()
 		for {
 			if r == nil {
-				r = &sqltypes.Result{Fields: schemaToFields(ctx, schema)}
+				r = &sqltypes.Result{Fields: resultFields}
 			}
-
 			if r.RowsAffected == rowsBatch {
 				if err := callback(r, more); err != nil {
 					return err

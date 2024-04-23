@@ -43,11 +43,63 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
+// findDefault finds the matching GetField in the node's Schema and fills the default value in the column.
+func findDefault(node sql.Node, gf *expression.GetField) *sql.ColumnDefaultValue {
+	colSet := sql.NewColSet()
+	switch n := node.(type) {
+	case TableIdNode:
+		colSet = n.Columns()
+	case *GroupBy:
+		return findDefault(n.Child, gf)
+	case *HashLookup:
+		return findDefault(n.Child, gf)
+	case *JoinNode:
+		if defVal := findDefault(n.Left(), gf); defVal != nil {
+			return defVal
+		}
+		if defVal := findDefault(n.Right(), gf); defVal != nil {
+			return defVal
+		}
+		return nil
+	default:
+		return nil
+	}
+
+	if !colSet.Contains(gf.Id()) {
+		return nil
+	}
+	firstColId, ok := colSet.Next(1)
+	if !ok {
+		return nil
+	}
+
+	sch := node.Schema()
+	idx := gf.Id() - firstColId
+	if idx < 0 || int(idx) >= len(sch) {
+		return nil
+	}
+	return sch[idx].Default
+}
+
+func unwrapGetField(expr sql.Expression) *expression.GetField {
+	switch e := expr.(type) {
+	case *expression.GetField:
+		return e
+	case *expression.Alias:
+		return unwrapGetField(e.Child)
+	default:
+		return nil
+	}
+}
+
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
-	for i, e := range p.Projections {
-		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
+	for i, expr := range p.Projections {
+		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
+		if gf := unwrapGetField(expr); gf != nil {
+			s[i].Default = findDefault(p.Child, gf)
+		}
 	}
 	return s
 }

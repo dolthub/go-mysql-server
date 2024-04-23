@@ -249,10 +249,11 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE node.
 	// if the table spec != nil it will get parsed below.
 	if c.TableSpec == nil && c.OptSelect != nil {
-		tableSpec := &plan.TableSpec{}
-
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
-
+		sch := b.resolveSchemaDefaults(outScope, selectScope.node.Schema())
+		tableSpec := &plan.TableSpec{
+			Schema: sql.NewPrimaryKeySchema(sch),
+		}
 		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), c.IfNotExists, c.Temporary, selectScope.node, tableSpec)
 		return outScope
 	}
@@ -1349,7 +1350,7 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		Name:          cd.Name.String(),
 		Type:          internalTyp,
 		AutoIncrement: bool(cd.Type.Autoincrement),
-		Nullable:      nullable,
+		Nullable:      nullable && !bool(cd.Type.Autoincrement),
 		PrimaryKey:    isPkey,
 		Comment:       comment,
 		Extra:         extra,
