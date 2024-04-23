@@ -689,6 +689,8 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	var dbName string
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.DbName != "" {
 		dbName = s.ShowTablesOpt.DbName
+	} else if s.Table.DbQualifier.String() != "" {
+		dbName = s.Table.DbQualifier.String()
 	}
 
 	tableScope, ok := b.buildResolvedTable(inScope, dbName, "", s.Table.Name.String(), asOf)
