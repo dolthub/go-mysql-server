@@ -442,7 +442,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 				dbName = tn.Database().Name()
 				table = tn.UnderlyingTable()
 			} else {
-				return &stats.Statistic{RowCnt: defaultTableSize}	
+				return &stats.Statistic{RowCnt: defaultTableSize}
 			}
 		default:
 			return &stats.Statistic{RowCnt: defaultTableSize}
