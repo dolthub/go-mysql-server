@@ -441,6 +441,8 @@ func statsForRel(rel RelExpr) sql.Statistic {
 			if tn, ok := tn.Child.(sql.TableNode); ok {
 				dbName = tn.Database().Name()
 				table = tn.UnderlyingTable()
+			} else {
+				return &stats.Statistic{RowCnt: defaultTableSize}	
 			}
 		default:
 			return &stats.Statistic{RowCnt: defaultTableSize}
