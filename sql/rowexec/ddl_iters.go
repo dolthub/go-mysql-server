@@ -1869,7 +1869,7 @@ func getFulltextDatabase(db sql.Database) (fulltext.Database, error) {
 	if !isPrivDb {
 		return nil, sql.ErrCreateTableNotSupported.New()
 	}
-	fullTextDb, isFulltextDb = privDb.Unwrap().(fulltext.Database);
+	fullTextDb, isFulltextDb = privDb.Unwrap().(fulltext.Database)
 	if isFulltextDb {
 		return fullTextDb, nil
 	}
