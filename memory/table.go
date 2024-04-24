@@ -1540,6 +1540,8 @@ type IndexedTable struct {
 	Lookup sql.IndexLookup
 }
 
+var _ sql.StatisticsTable = (*IndexedTable)(nil)
+
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
 	memIdx := lookup.Index.(*Index)
 	filter, err := memIdx.rangeFilterExpr(ctx, lookup.Ranges...)

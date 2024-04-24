@@ -400,7 +400,7 @@ func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64
 		return cnt, nil
 	}
 	// fallback to on-table statistics
-	st, ok := table.(sql.StatisticsTable)
+	st, ok := getStatisticsTable(table)
 	if !ok {
 		return 0, nil
 	}
@@ -414,11 +414,22 @@ func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint
 		return length, nil
 	}
 	// fallback to on-table statistics
-	st, ok := table.(sql.StatisticsTable)
+	st, ok := getStatisticsTable(table)
 	if !ok {
 		return 0, nil
 	}
 	return st.DataLength(ctx)
+}
+
+func getStatisticsTable(table sql.Table) (sql.StatisticsTable, bool) {
+	switch t := table.(type) {
+	case sql.StatisticsTable:
+		return t, true
+	case sql.TableNode:
+		return getStatisticsTable(t.UnderlyingTable())
+	default:
+		return nil, false
+	}
 }
 
 func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {
