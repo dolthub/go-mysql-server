@@ -15,7 +15,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -384,12 +383,11 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 			return "", err
 		}
 	case sql.JSONWrapper:
-		jsonInterface := s.ToInterface()
-		jsonBytes, err := json.Marshal(jsonInterface)
+		jsonString, err := StringifyJSON(s)
 		if err != nil {
 			return "", err
 		}
-		val, err = strings.Unquote(string(jsonBytes))
+		val, err = strings.Unquote(jsonString)
 		if err != nil {
 			return "", err
 		}

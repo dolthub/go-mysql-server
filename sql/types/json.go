@@ -147,7 +147,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		}
 		val = AppendAndSliceString(dest, str)
 	default:
-		jsonBytes, err := json.Marshal(js.ToInterface())
+		jsonBytes, err := MarshallJson(js)
 		if err != nil {
 			return sqltypes.NULL, err
 		}

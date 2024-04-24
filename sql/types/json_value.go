@@ -34,6 +34,33 @@ type JSONStringer interface {
 	JSONString() (string, error)
 }
 
+func MarshallJson(jsonWrapper sql.JSONWrapper) ([]byte, error) {
+	if stringer, ok := jsonWrapper.(JSONStringer); ok {
+		s, err := stringer.JSONString()
+		return []byte(s), err
+	}
+	val, err := jsonWrapper.ToInterface()
+	if err != nil {
+		return []byte{}, err
+	}
+	return json.Marshal(val)
+}
+
+func StringifyJSON(jsonWrapper sql.JSONWrapper) (string, error) {
+	if stringer, ok := jsonWrapper.(JSONStringer); ok {
+		return stringer.JSONString()
+	}
+	val, err := jsonWrapper.ToInterface()
+	if err != nil {
+		return "", err
+	}
+	bytes, err := json.Marshal(val)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
 type JsonObject = map[string]interface{}
 type JsonArray = []interface{}
 
