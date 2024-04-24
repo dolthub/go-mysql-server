@@ -16,18 +16,18 @@ package types
 
 import (
 	"database/sql/driver"
-
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/jsonpath"
-	"github.com/shopspring/decimal"
-	"golang.org/x/exp/maps"
 	"io"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/dolthub/jsonpath"
+	"github.com/shopspring/decimal"
+	"golang.org/x/exp/maps"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
