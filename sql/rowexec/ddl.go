@@ -398,7 +398,7 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 	if database == "" {
 		return nil, sql.ErrNoDatabaseSelected.New()
 	}
-	
+
 	db, err := n.Catalog.Database(ctx, database)
 	if err != nil {
 		return nil, err
@@ -413,7 +413,7 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
 
 	if exists {
@@ -429,7 +429,7 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 			return nil, sql.ErrDatabaseSchemaExists.New(n.DbName)
 		}
 	}
-	
+
 	// TODO: collation
 	err = sdb.CreateSchema(ctx, n.DbName)
 	if err != nil {

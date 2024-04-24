@@ -553,7 +553,7 @@ var (
 
 	// ErrDatabaseSchemaNotFound is thrown when a database schema is not found
 	ErrDatabaseSchemaNotFound = errors.NewKind("database schema not found: %s")
-	
+
 	// ErrDatabaseSchemasNotSupported is thrown when a database does not support schemas
 	ErrDatabaseSchemasNotSupported = errors.NewKind("database '%s' does not support schemas")
 

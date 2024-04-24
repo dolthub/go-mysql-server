@@ -1550,7 +1550,7 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 			b.handleErr(err)
 		}
 
-		var node sql.Node 
+		var node sql.Node
 		switch c.SchemaOrDatabase {
 		case "database":
 			createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
@@ -1561,7 +1561,7 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 			createSchema.Catalog = b.cat
 			node = createSchema
 		}
-		
+
 		outScope.node = node
 	case ast.DropStr:
 		dropDb := plan.NewDropDatabase(c.DBName, c.IfExists)
