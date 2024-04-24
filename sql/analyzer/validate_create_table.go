@@ -441,24 +441,22 @@ func isStrictMysqlCompatibilityEnabled(ctx *sql.Context) (bool, error) {
 
 func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
-	nameable := table.(sql.Nameable)
+	tableName := table.(sql.Nameable).Name() // TODO: worth preventing panic?
 
-	err := validateIdentifier(mc.NewColumn().Name)
-	if err != nil {
+	// The old column must exist in the original schema before this statement was run.
+	// It cannot have been renamed in the same statement.
+	oldColName := mc.Column()
+	if !schema.Contains(oldColName, tableName) || !initialSch.Contains(oldColName, tableName) {
+		return nil, sql.ErrTableColumnNotFound.New(table, oldColName)
+	}
+
+	newCol := mc.NewColumn()
+	if err := validateIdentifier(newCol.Name); err != nil {
 		return nil, err
 	}
 
-	// Look for the old column and throw an error if it's not there. The column cannot have been renamed in the same
-	// statement. This matches the MySQL behavior.
-	if !schema.Contains(mc.Column(), nameable.Name()) ||
-		!initialSch.Contains(mc.Column(), nameable.Name()) {
-		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
-	}
-
-	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
-
-	err = validateAutoIncrementModify(newSch, keyedColumns)
-	if err != nil {
+	newSch := replaceInSchema(schema, newCol, tableName)
+	if err := validateAutoIncrementModify(newSch, keyedColumns); err != nil {
 		return nil, err
 	}
 
@@ -467,8 +465,8 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	//       That would be consistent with MySQL behavior.
 
 	// not becoming a text/blob column
-	newCol := mc.NewColumn()
-	if !types.IsTextBlob(newCol.Type) {
+	// TODO: need to run index validation here because of JSON columns
+	if !types.IsTextBlob(newCol.Type) && !types.IsJSON(newCol.Type) {
 		return newSch, nil
 	}
 
@@ -482,26 +480,32 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	if err != nil {
 		return nil, err
 	}
-	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
+
+	// TODO: not sure how this is different than `table` and `tableName`
+	// Get underlying table and table name
+	tbl := getTable(table)
+	tblName := getTableName(table)
+	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), tblName)
 	for _, index := range indexes {
 		if index.IsFullText() {
 			continue
 		}
 		prefixLengths := index.PrefixLengths()
 		for i, expr := range index.Expressions() {
-			col := plan.GetColumnFromIndexExpr(expr, getTable(table))
-			if col.Name == mc.Column() {
-				if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
-					// MariaDB allows BLOB and TEXT columns to be used in unique keys WITHOUT specifying
-					// a prefix length, but MySQL does not, so still throw an error if we are in strict
-					// MySQL compatibility mode.
-					if !index.IsFullText() && (!index.IsUnique() && !strictMysqlCompatibility) {
-						return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
-					}
+			col := plan.GetColumnFromIndexExpr(expr, tbl)
+			if col.Name != oldColName {
+				continue
+			}
+			if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
+				// MariaDB allows BLOB and TEXT columns to be used in unique keys WITHOUT specifying
+				// a prefix length, but MySQL does not, so still throw an error if we are in strict
+				// MySQL compatibility mode.
+				if strictMysqlCompatibility && !index.IsUnique() {
+					return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
 				}
-				if types.IsTextOnly(newCol.Type) && len(prefixLengths) > 0 && prefixLengths[i]*4 > MaxBytePrefix {
-					return nil, sql.ErrKeyTooLong.New()
-				}
+			}
+			if types.IsTextOnly(newCol.Type) && len(prefixLengths) > 0 && prefixLengths[i]*4 > MaxBytePrefix {
+				return nil, sql.ErrKeyTooLong.New()
 			}
 		}
 	}
@@ -836,6 +840,7 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 }
 
 // TODO: make this work for CREATE TABLE statements where there's a non-pk auto increment column
+// TODO: verify that the above is fixed
 func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {

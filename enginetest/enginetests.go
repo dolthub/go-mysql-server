@@ -5557,9 +5557,18 @@ func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 func TestBlobs(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.BlobData, setup.MytableData)
 
+	// TODO: enable strict_mysql_compatibility mode
+	err := sql.SystemVariables.AssignValues(map[string]interface{}{
+		"strict_mysql_compatibility": int8(1),
+	})
+	require.NoError(t, err)
 	for _, tt := range queries.BlobErrors {
 		runQueryErrorTest(t, h, tt)
 	}
+	err = sql.SystemVariables.AssignValues(map[string]interface{}{
+		"strict_mysql_compatibility": int8(0),
+	})
+	require.NoError(t, err)
 
 	e := mustNewEngine(t, h)
 	defer e.Close()
