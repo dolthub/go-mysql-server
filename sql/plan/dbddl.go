@@ -103,6 +103,18 @@ func NewCreateSchema(schemaName string, ifNotExists bool, collation sql.Collatio
 	}
 }
 
+func (c *CreateSchema) String() string {
+	ifNotExists := ""
+	if c.IfNotExists {
+		ifNotExists = " if not exists"
+	}
+	return fmt.Sprintf("%s schema%s %v", sqlparser.CreateStr, ifNotExists, c.DbName)
+}
+
+func (c *CreateSchema) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(c, children...)
+}
+
 // DropDB removes a databases from the Catalog and updates the active database if it gets removed itself.
 type DropDB struct {
 	Catalog  sql.Catalog

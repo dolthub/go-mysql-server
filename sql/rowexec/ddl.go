@@ -395,7 +395,7 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 
 func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, row sql.Row) (sql.RowIter, error) {
 	database := ctx.GetCurrentDatabase()
-	if database != "" {
+	if database == "" {
 		return nil, sql.ErrNoDatabaseSelected.New()
 	}
 	
@@ -429,12 +429,8 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 			return nil, sql.ErrDatabaseSchemaExists.New(n.DbName)
 		}
 	}
-
-	collation := n.Collation
-	if collation == sql.Collation_Unspecified {
-		collation = sql.Collation_Default
-	}
 	
+	// TODO: collation
 	err = sdb.CreateSchema(ctx, n.DbName)
 	if err != nil {
 		return nil, err
