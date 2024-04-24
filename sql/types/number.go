@@ -233,6 +233,7 @@ func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+	var err error
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -242,7 +243,10 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange
 	}
 
 	if jv, ok := v.(sql.JSONWrapper); ok {
-		v = jv.ToInterface()
+		v, err = jv.ToInterface()
+		if err != nil {
+			return nil, sql.OutOfRange, err
+		}
 	}
 
 	switch t.baseType {

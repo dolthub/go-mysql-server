@@ -142,7 +142,7 @@ func (h Histogram) IsEmpty() bool {
 	return len(h) == 0
 }
 
-func (h Histogram) ToInterface() interface{} {
+func (h Histogram) ToInterface() (interface{}, error) {
 	ret := make([]interface{}, len(h))
 	for i, b := range h {
 		var upperBound Row
@@ -167,7 +167,7 @@ func (h Histogram) ToInterface() interface{} {
 			"upper_bound":    upperBound,
 		}
 	}
-	return ret
+	return ret, nil
 }
 
 func (h Histogram) DebugString() string {
@@ -216,5 +216,5 @@ type HistogramBucket interface {
 // by minimizing the need to unmarshall a JSONWrapper into a JSONDocument.
 type JSONWrapper interface {
 	// ToInterface converts a JSONWrapper to an interface{} of simple types
-	ToInterface() interface{}
+	ToInterface() (interface{}, error)
 }

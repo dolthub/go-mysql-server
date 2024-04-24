@@ -61,12 +61,16 @@ type JSONDocument struct {
 
 var _ sql.JSONWrapper = JSONDocument{}
 
-func (doc JSONDocument) ToInterface() interface{} {
-	return doc.Val
+func (doc JSONDocument) ToInterface() (interface{}, error) {
+	return doc.Val, nil
 }
 
 func (doc JSONDocument) Compare(other sql.JSONWrapper) (int, error) {
-	return CompareJSON(doc.Val, other.ToInterface())
+	otherVal, err := other.ToInterface()
+	if err != nil {
+		return 0, err
+	}
+	return CompareJSON(doc.Val, otherVal)
 }
 
 func (doc JSONDocument) JSONString() (string, error) {
@@ -88,7 +92,11 @@ var _ MutableJSON = JSONDocument{}
 // Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
 // it returns a bool
 func (doc JSONDocument) Contains(candidate sql.JSONWrapper) (val interface{}, err error) {
-	return ContainsJSON(doc.Val, candidate.ToInterface())
+	candidateVal, err := candidate.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	return ContainsJSON(doc.Val, candidateVal)
 }
 
 func (doc JSONDocument) Extract(path string) (sql.JSONWrapper, error) {
@@ -113,7 +121,10 @@ func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
 	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
 	// to always result in sql NULL, except in the case of the identity lookup
 	// $.
-	r := j.ToInterface()
+	r, err := j.ToInterface()
+	if err != nil {
+		return nil, err
+	}
 	if r == nil {
 		return nil, nil
 	}
@@ -147,9 +158,13 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 }
 
 func ConcatenateJSONValues(ctx *sql.Context, vals ...sql.JSONWrapper) (sql.JSONWrapper, error) {
+	var err error
 	arr := make(JsonArray, len(vals))
 	for i, v := range vals {
-		arr[i] = v.ToInterface()
+		arr[i], err = v.ToInterface()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return JSONDocument{Val: arr}, nil
 }
@@ -349,6 +364,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func CompareJSON(a, b interface{}) (int, error) {
+	var err error
 	if hasNulls, res := CompareNulls(b, a); hasNulls {
 		return res, nil
 	}
@@ -389,9 +405,16 @@ func CompareJSON(a, b interface{}) (int, error) {
 		return compareJSONNumber(af, b)
 	case sql.JSONWrapper:
 		if jw, ok := b.(sql.JSONWrapper); ok {
-			b = jw.ToInterface()
+			b, err = jw.ToInterface()
+			if err != nil {
+				return 0, err
+			}
 		}
-		return CompareJSON(a.ToInterface(), b)
+		aVal, err := a.ToInterface()
+		if err != nil {
+			return 0, err
+		}
+		return CompareJSON(aVal, b)
 	default:
 		return 0, sql.ErrInvalidType.New(a)
 	}
@@ -655,7 +678,10 @@ func (doc JSONDocument) unwrapAndExecute(path string, val sql.JSONWrapper, mode 
 	var err error
 	var unmarshalled interface{}
 	if val != nil {
-		unmarshalled = val.ToInterface()
+		unmarshalled, err = val.ToInterface()
+		if err != nil {
+			return nil, false, err
+		}
 	} else if mode != REMOVE {
 		return nil, false, fmt.Errorf("Invariant violation. value may not be nil")
 	}

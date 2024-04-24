@@ -162,7 +162,15 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	// Now determine whether the candidate value exists in the target
-	return types.ContainsJSON(target.ToInterface(), candidate.ToInterface())
+	targetVal, err := target.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	candidateVal, err := candidate.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	return types.ContainsJSON(targetVal, candidateVal)
 }
 
 func (j *JSONContains) Children() []sql.Expression {

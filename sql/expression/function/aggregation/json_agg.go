@@ -159,7 +159,10 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 	// unwrap JSON values
 	if js, ok := val.(sql.JSONWrapper); ok {
-		val = js.ToInterface()
+		val, err = js.ToInterface()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Update the map.
