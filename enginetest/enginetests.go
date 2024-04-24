@@ -426,29 +426,8 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	runTestWithDescribeOptions := func(t *testing.T, query, expectedPlan string, options sql.DescribeOptions) {
-		TestQueryPlanWithName(t, options.String(), harness, e, query, expectedPlan, options)
-	}
 	for _, tt := range planTests {
-		if tt.Skip {
-			t.Skip()
-		}
-		t.Run(tt.Query, func(t *testing.T) {
-			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
-				Debug: true,
-			})
-			if tt.ExpectedEstimates != "" {
-				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedEstimates, sql.DescribeOptions{
-					Estimates: true,
-				})
-			}
-			if tt.ExpectedAnalysis != "" {
-				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedAnalysis, sql.DescribeOptions{
-					Estimates: true,
-					Analyze:   true,
-				})
-			}
-		})
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
