@@ -56,6 +56,7 @@ type AlterIndex struct {
 	IndexName string
 	// PreviousIndexName states the old name when renaming an index
 	PreviousIndexName string
+	// TODO: This should just use sql.IndexDef
 	// Using states whether you're using BTREE, HASH, or none
 	Using sql.IndexUsing
 	// Constraint specifies whether this is UNIQUE, FULLTEXT, SPATIAL, or none

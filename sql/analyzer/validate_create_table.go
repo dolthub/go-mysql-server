@@ -26,8 +26,7 @@ import (
 
 const MaxBytePrefix = 3072
 
-// validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
-// at execution time, and should be moved here over time.
+// validateCreateTable validates various constraints about CREATE TABLE statements.
 func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
@@ -490,6 +489,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 		if index.IsFullText() {
 			continue
 		}
+		// TODO: call validateIndexes here
 		prefixLengths := index.PrefixLengths()
 		for i, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, tbl)
@@ -615,45 +615,25 @@ func validateColumnSafeToDropWithCheckConstraint(columnName string, checks sql.C
 // validateAlterIndex validates the specified column can have an index added, dropped, or renamed. Returns an updated
 // list of index name given the add, drop, or rename operations.
 func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
-	tableName := getTableName(ai.Table)
-
 	switch ai.Action {
 	case plan.IndexAction_Create:
 		err := validateIdentifier(ai.IndexName)
 		if err != nil {
 			return nil, err
 		}
-
-		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
-		if !ok {
-			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
+		colMap := schToColMap(sch)
+		// TODO: plan.AlterIndex should just have a sql.IndexDef
+		indexDef := &sql.IndexDef{
+			Name: ai.IndexName,
+			Columns: ai.Columns,
+			Constraint: ai.Constraint,
+			Storage: ai.Using,
+			Comment: ai.Comment,
 		}
-		err = validateIndexType(ctx, ai.Columns, sch, ai.Constraint)
+		err = validateIndex(ctx, colMap, indexDef)
 		if err != nil {
 			return nil, err
 		}
-
-		if ai.Constraint == sql.IndexConstraint_Spatial {
-			if len(ai.Columns) != 1 {
-				return nil, sql.ErrTooManyKeyParts.New(1)
-			}
-			idx := sch.IndexOfColName(ai.Columns[0].Name)
-			if idx == -1 {
-				return nil, sql.ErrColumnNotFound.New(ai.Columns[0].Name)
-			}
-			schCol := sch[idx]
-			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
-			if !ok {
-				return nil, sql.ErrBadSpatialIdxCol.New()
-			}
-			if schCol.Nullable {
-				return nil, sql.ErrNullableSpatialIdx.New()
-			}
-			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
-				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
-			}
-		}
-
 		return append(indexes, ai.IndexName), nil
 	case plan.IndexAction_Drop:
 		savedIdx := -1
@@ -663,11 +643,9 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 				break
 			}
 		}
-
 		if savedIdx == -1 {
 			return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
 		}
-
 		// Remove the index from the list
 		return append(indexes[:savedIdx], indexes[savedIdx+1:]...), nil
 	case plan.IndexAction_Rename:
@@ -675,18 +653,15 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if err != nil {
 			return nil, err
 		}
-
 		savedIdx := -1
 		for i, idx := range indexes {
 			if strings.EqualFold(idx, ai.PreviousIndexName) {
 				savedIdx = i
 			}
 		}
-
 		if savedIdx == -1 {
 			return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
 		}
-
 		// Simulate the rename by deleting the old name and adding the new one.
 		return append(append(indexes[:savedIdx], indexes[savedIdx+1:]...), ai.IndexName), nil
 	}
@@ -696,11 +671,8 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
 func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn, constraint sql.IndexConstraint) error {
-	isFullText := constraint == sql.IndexConstraint_Fulltext
-	isUnique := constraint == sql.IndexConstraint_Unique
-
 	// Prefix length is ignored for full text indexes
-	if isFullText {
+	if constraint == sql.IndexConstraint_Fulltext {
 		return nil
 	}
 
@@ -709,13 +681,10 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
-	// Get prefix key length in bytes, so times 4 for varchar, text, and varchar
 	prefixByteLength := idxCol.Length
 	if types.IsTextOnly(schCol.Type) {
 		prefixByteLength = 4 * idxCol.Length
 	}
-
-	// Prefix length is longer than max
 	if prefixByteLength > MaxBytePrefix {
 		return sql.ErrKeyTooLong.New()
 	}
@@ -726,6 +695,7 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
 	}
 
+	// TODO: This is repeated somewhere
 	strictMysqlCompatibility, err := isStrictMysqlCompatibilityEnabled(ctx)
 	if err != nil {
 		return err
@@ -734,6 +704,7 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 	// Prefix length is required for BLOB and TEXT columns.
 	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
 		// MariaDB extends this behavior so that unique indexes don't require a prefix length.
+		isUnique := constraint == sql.IndexConstraint_Unique
 		if !isUnique || strictMysqlCompatibility {
 			return sql.ErrInvalidBlobTextKey.New(schCol.Name)
 		}
@@ -753,25 +724,10 @@ func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.Index
 	return nil
 }
 
-// validateIndexType prevents creating invalid indexes
-func validateIndexType(ctx *sql.Context, cols []sql.IndexColumn, sch sql.Schema, constraint sql.IndexConstraint) error {
-	for _, idxCol := range cols {
-		idx := sch.IndexOfColName(idxCol.Name)
-		if idx == -1 {
-			return sql.ErrColumnNotFound.New(idxCol.Name)
-		}
-		schCol := sch[idx]
-		err := validatePrefixLength(ctx, schCol, idxCol, constraint)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // missingIdxColumn takes in a set of IndexColumns and returns false, along with the offending column name, if
 // an index Column is not in an index.
 func missingIdxColumn(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
+	// TODO: move this into validateIndexes
 	for _, c := range cols {
 		if ok := sch.Contains(c.Name, tableName); !ok {
 			return c.Name, false
@@ -890,47 +846,30 @@ func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) err
 
 const textIndexPrefix = 1000
 
+func schToColMap(sch sql.Schema) map[string]*sql.Column {
+	colMap := make(map[string]*sql.Column, len(sch))
+	for _, col := range sch {
+		colMap[strings.ToLower(col.Name)] = col
+	}
+	return colMap
+}
+
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
 // TODO: this method is very similar to validateIndexType...
 // TODO: rowexec code should go here too
-func validateIndexes(ctx *sql.Context, sch sql.Schema, idxs sql.IndexDefs) error {
-	lwrNames := make(map[string]*sql.Column)
-	for _, col := range sch {
-		lwrNames[strings.ToLower(col.Name)] = col
-	}
+func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs) error {
+	colMap := schToColMap(sch)
 	var hasPkIndexDef bool
-	for _, idx := range idxs {
-		if idx.IsPrimary() {
+	for _, idxDef := range idxDefs {
+		if idxDef.IsPrimary() {
 			hasPkIndexDef = true
 		}
-		for _, idxCol := range idx.Columns {
-			schCol, ok := lwrNames[strings.ToLower(idxCol.Name)]
-			if !ok {
-				return sql.ErrUnknownIndexColumn.New(idxCol.Name, idx.Name)
-			}
-			err := validatePrefixLength(ctx, schCol, idxCol, idx.Constraint)
-			if err != nil {
-				return err
-			}
-		}
-		if idx.IsSpatial() {
-			if len(idx.Columns) != 1 {
-				return sql.ErrTooManyKeyParts.New(1)
-			}
-			schCol, _ := lwrNames[strings.ToLower(idx.Columns[0].Name)]
-			spatialCol, ok := schCol.Type.(sql.SpatialColumnType)
-			if !ok {
-				return sql.ErrBadSpatialIdxCol.New()
-			}
-			if schCol.Nullable {
-				return sql.ErrNullableSpatialIdx.New()
-			}
-			if _, ok = spatialCol.GetSpatialTypeSRID(); !ok {
-				ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribyte to the column.", schCol.Name)
-			}
+		if err := validateIndex(ctx, colMap, idxDef); err != nil {
+			return err
 		}
 	}
 
+	// TODO: this happens because sometimes the primary key is included in the index and other times it is not
 	// if there was not a PkIndexDef, then any primary key text/blob columns must not have index lengths
 	// otherwise, then it would've been validated before this
 	if !hasPkIndexDef {
@@ -938,6 +877,56 @@ func validateIndexes(ctx *sql.Context, sch sql.Schema, idxs sql.IndexDefs) error
 			if col.PrimaryKey && types.IsTextBlob(col.Type) {
 				return sql.ErrInvalidBlobTextKey.New(col.Name)
 			}
+		}
+	}
+	return nil
+}
+
+// validateIndex ensures that the Index Definition is valid for the table schema.
+// This function will throw errors and warnings as needed.
+// All columns in the index must be:
+//   - in the schema
+//   - not duplicated
+//   - not JSON Type
+//   - have the proper prefix length
+func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.IndexDef) error {
+	if idxDef.IsSpatial() {
+		if len(idxDef.Columns) != 1 {
+			return sql.ErrTooManyKeyParts.New(1)
+		}
+		schCol, _ := colMap[strings.ToLower(idxDef.Columns[0].Name)]
+		spatialCol, isSpatialCol := schCol.Type.(sql.SpatialColumnType)
+		if !isSpatialCol {
+			return sql.ErrBadSpatialIdxCol.New()
+		}
+		if schCol.Nullable {
+			return sql.ErrNullableSpatialIdx.New()
+		}
+		if _, hasSRID := spatialCol.GetSpatialTypeSRID(); !hasSRID {
+			ctx.Warn(3674, "The spatial index on column '%s' will not be used by the query optimizer since the column does not have an SRID attribute. Consider adding an SRID attribute to the column.", schCol.Name)
+		}
+	}
+
+	seenCols := make(map[string]struct{})
+	for _, idxCol := range idxDef.Columns {
+		schCol, exists := colMap[idxCol.Name]
+		if !exists {
+			// TODO: determine correct error
+			//return sql.ErrUnknownIndexColumn.New(idxCol.Name, idxDef.Name)
+			return plan.ErrCreateIndexNonExistentColumn.New(idxDef.Name)
+		}
+		if _, ok := seenCols[schCol.Name]; ok {
+			return plan.ErrCreateIndexDuplicateColumn.New(idxDef.Name)
+		}
+		seenCols[schCol.Name] = struct{}{}
+
+		if types.IsJSON(schCol.Type) {
+			return sql.ErrJSONIndex.New(schCol.Name)
+		}
+
+		err := validatePrefixLength(ctx, idxCol.Name, idxCol.Length, schCol.Type, idxDef.Constraint)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
