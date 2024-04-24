@@ -268,7 +268,7 @@ func TestQueryPlanTODOs(t *testing.T) {
 	}
 	for _, tt := range queries.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, enginetest.DebugQueryPlan)
+			enginetest.TestQueryPlan(t, harness, e, tt)
 		})
 	}
 }
@@ -321,69 +321,79 @@ func TestSingleQueryPlan(t *testing.T) {
 	
 	tt := []queries.QueryPlanTest{
 		{
-			Query: `SELECT t1.i FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
+			Query: `SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)`,
 			ExpectedPlan: "Project\n" +
-					" ├─ columns: [t1.i:0!null]\n" +
-					" └─ LookupJoin\n" +
-					"     ├─ Eq\n" +
-					"     │   ├─ t1.i:0!null\n" +
-					"     │   └─ (t2.i:1!null + 1 (tinyint))\n" +
-					"     ├─ TableAlias(t1)\n" +
-					"     │   └─ IndexedTableAccess(mytable)\n" +
-					"     │       ├─ index: [mytable.i]\n" +
-					"     │       ├─ static: [{[2, 2]}]\n" +
-					"     │       ├─ colSet: (1,2)\n" +
-					"     │       ├─ tableId: 1\n" +
-					"     │       └─ Table\n" +
-					"     │           ├─ name: mytable\n" +
-					"     │           └─ columns: [i]\n" +
-					"     └─ Filter\n" +
-					"         ├─ Eq\n" +
-					"         │   ├─ t2.i:0!null\n" +
-					"         │   └─ 1 (tinyint)\n" +
-					"         └─ TableAlias(t2)\n" +
-					"             └─ IndexedTableAccess(mytable)\n" +
-					"                 ├─ index: [mytable.i]\n" +
-					"                 ├─ keys: [1 (tinyint)]\n" +
-					"                 ├─ colSet: (3,4)\n" +
-					"                 ├─ tableId: 2\n" +
-					"                 └─ Table\n" +
-					"                     ├─ name: mytable\n" +
-					"                     └─ columns: [i]\n" +
+					" ├─ columns: [mytable.i:0!null, selfjoin.i:2!null]\n" +
+					" └─ SemiJoin\n" +
+					"     ├─ MergeJoin\n" +
+					"     │   ├─ cmp: Eq\n" +
+					"     │   │   ├─ mytable.i:0!null\n" +
+					"     │   │   └─ selfjoin.i:2!null\n" +
+					"     │   ├─ IndexedTableAccess(mytable)\n" +
+					"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+					"     │   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					"     │   │   ├─ colSet: (1,2)\n" +
+					"     │   │   ├─ tableId: 1\n" +
+					"     │   │   └─ Table\n" +
+					"     │   │       ├─ name: mytable\n" +
+					"     │   │       └─ columns: [i s]\n" +
+					"     │   └─ Filter\n" +
+					"     │       ├─ Eq\n" +
+					"     │       │   ├─ selfjoin.i:0!null\n" +
+					"     │       │   └─ 1 (tinyint)\n" +
+					"     │       └─ TableAlias(selfjoin)\n" +
+					"     │           └─ IndexedTableAccess(mytable)\n" +
+					"     │               ├─ index: [mytable.i]\n" +
+					"     │               ├─ static: [{[1, 1]}]\n" +
+					"     │               ├─ colSet: (3,4)\n" +
+					"     │               ├─ tableId: 2\n" +
+					"     │               └─ Table\n" +
+					"     │                   ├─ name: mytable\n" +
+					"     │                   └─ columns: [i s]\n" +
+					"     └─ Project\n" +
+					"         ├─ columns: [1 (tinyint)]\n" +
+					"         └─ ProcessTable\n" +
+					"             └─ Table\n" +
+					"                 ├─ name: \n" +
+					"                 └─ columns: []\n" +
 					"",
 			ExpectedEstimates: "Project\n" +
-					" ├─ columns: [t1.i]\n" +
-					" └─ LookupJoin (estimated cost=9.900 rows=3)\n" +
-					"     ├─ (t1.i = (t2.i + 1))\n" +
-					"     ├─ TableAlias(t1)\n" +
-					"     │   └─ IndexedTableAccess(mytable)\n" +
-					"     │       ├─ index: [mytable.i]\n" +
-					"     │       ├─ filters: [{[2, 2]}]\n" +
-					"     │       └─ columns: [i]\n" +
-					"     └─ Filter\n" +
-					"         ├─ (t2.i = 1)\n" +
-					"         └─ TableAlias(t2)\n" +
-					"             └─ IndexedTableAccess(mytable)\n" +
-					"                 ├─ index: [mytable.i]\n" +
-					"                 ├─ columns: [i]\n" +
-					"                 └─ keys: 1\n" +
+					" ├─ columns: [mytable.i, selfjoin.i]\n" +
+					" └─ SemiJoin (estimated cost=154.500 rows=3)\n" +
+					"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+					"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
+					"     │   ├─ IndexedTableAccess(mytable)\n" +
+					"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+					"     │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					"     │   └─ Filter\n" +
+					"     │       ├─ (selfjoin.i = 1)\n" +
+					"     │       └─ TableAlias(selfjoin)\n" +
+					"     │           └─ IndexedTableAccess(mytable)\n" +
+					"     │               ├─ index: [mytable.i]\n" +
+					"     │               └─ filters: [{[1, 1]}]\n" +
+					"     └─ Project\n" +
+					"         ├─ columns: [1]\n" +
+					"         └─ Table\n" +
+					"             └─ name: \n" +
 					"",
 			ExpectedAnalysis: "Project\n" +
-					" ├─ columns: [t1.i]\n" +
-					" └─ LookupJoin (estimated cost=9.900 rows=3) (actual rows=1 loops=1)\n" +
-					"     ├─ (t1.i = (t2.i + 1))\n" +
-					"     ├─ TableAlias(t1)\n" +
-					"     │   └─ IndexedTableAccess(mytable)\n" +
-					"     │       ├─ index: [mytable.i]\n" +
-					"     │       ├─ filters: [{[2, 2]}]\n" +
-					"     │       └─ columns: [i]\n" +
-					"     └─ Filter\n" +
-					"         ├─ (t2.i = 1)\n" +
-					"         └─ TableAlias(t2)\n" +
-					"             └─ IndexedTableAccess(mytable)\n" +
-					"                 ├─ index: [mytable.i]\n" +
-					"                 ├─ columns: [i]\n" +
-					"                 └─ keys: 1\n" +
+					" ├─ columns: [mytable.i, selfjoin.i]\n" +
+					" └─ SemiJoin (estimated cost=154.500 rows=3) (actual rows=1 loops=1)\n" +
+					"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
+					"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
+					"     │   ├─ IndexedTableAccess(mytable)\n" +
+					"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+					"     │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					"     │   └─ Filter\n" +
+					"     │       ├─ (selfjoin.i = 1)\n" +
+					"     │       └─ TableAlias(selfjoin)\n" +
+					"     │           └─ IndexedTableAccess(mytable)\n" +
+					"     │               ├─ index: [mytable.i]\n" +
+					"     │               └─ filters: [{[1, 1]}]\n" +
+					"     └─ Project\n" +
+					"         ├─ columns: [1]\n" +
+					"         └─ Table\n" +
+					"             └─ name: \n" +
 					"",
 		},
 	}
@@ -398,7 +408,7 @@ func TestSingleQueryPlan(t *testing.T) {
 			engine.EngineAnalyzer().Debug = true
 			
 			require.NoError(t, err)
-			enginetest.TestQueryPlan(t, harness, engine, test.Query, test.ExpectedPlan, enginetest.DebugQueryPlan)
+			enginetest.TestQueryPlan(t, harness, engine, test)
 		})
 	}
 }
