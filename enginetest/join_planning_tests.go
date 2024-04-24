@@ -690,12 +690,12 @@ FROM xy
 			},
 			{
 				q:     "select * from xy where x in (select 1 where 1 in (select 1 where 1 in (select 1 where x != 2)) and x = 1);",
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeSemi, plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeSemi, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x in (select * from (select 1 where 1 in (select 1 where x != 2)) r where x = 1);",
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeSemi},
+				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeSemi},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
