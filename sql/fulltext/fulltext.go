@@ -175,6 +175,14 @@ func writeHashedValue(h hash.Hash, val interface{}) (valIsNull bool, err error) 
 		if _, err := h.Write([]byte(str)); err != nil {
 			return false, err
 		}
+	case *types.LazyJSONDocument:
+		str, err := val.JSONString()
+		if err != nil {
+			return false, err
+		}
+		if _, err := h.Write([]byte(str)); err != nil {
+			return false, err
+		}
 	case nil:
 		return true, nil
 	default:

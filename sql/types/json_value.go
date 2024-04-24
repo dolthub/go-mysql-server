@@ -16,16 +16,18 @@ package types
 
 import (
 	"database/sql/driver"
+
+	"encoding/json"
 	"fmt"
+	"github.com/dolthub/jsonpath"
+	"github.com/shopspring/decimal"
+	"golang.org/x/exp/maps"
 	"io"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/dolthub/jsonpath"
-	"github.com/shopspring/decimal"
-	"golang.org/x/exp/maps"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -87,6 +89,7 @@ type JSONDocument struct {
 }
 
 var _ sql.JSONWrapper = JSONDocument{}
+var _ MutableJSON = JSONDocument{}
 
 func (doc JSONDocument) ToInterface() (interface{}, error) {
 	return doc.Val, nil
@@ -113,9 +116,6 @@ func (doc JSONDocument) String() string {
 	return result
 }
 
-var _ sql.JSONWrapper = JSONDocument{}
-var _ MutableJSON = JSONDocument{}
-
 // Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
 // it returns a bool
 func (doc JSONDocument) Contains(candidate sql.JSONWrapper) (val interface{}, err error) {
@@ -128,6 +128,36 @@ func (doc JSONDocument) Contains(candidate sql.JSONWrapper) (val interface{}, er
 
 func (doc JSONDocument) Extract(path string) (sql.JSONWrapper, error) {
 	return LookupJSONValue(doc, path)
+}
+
+type LazyJSONDocument struct {
+	Bytes         []byte
+	interfaceFunc func() (interface{}, error)
+}
+
+var _ sql.JSONWrapper = &LazyJSONDocument{}
+var _ JSONStringer = &LazyJSONDocument{}
+
+func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
+	return &LazyJSONDocument{
+		Bytes: bytes,
+		interfaceFunc: sync.OnceValues(func() (interface{}, error) {
+			var val interface{}
+			err := json.Unmarshal(bytes, &val)
+			if err != nil {
+				return nil, err
+			}
+			return val, nil
+		}),
+	}
+}
+
+func (j *LazyJSONDocument) ToInterface() (interface{}, error) {
+	return j.interfaceFunc()
+}
+
+func (j *LazyJSONDocument) JSONString() (string, error) {
+	return string(j.Bytes), nil
 }
 
 func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {

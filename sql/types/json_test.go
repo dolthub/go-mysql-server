@@ -212,6 +212,29 @@ func TestValuer(t *testing.T) {
 	require.Equal(t, `{"a": "one"}`, res)
 }
 
+func TestLazyJsonDocument(t *testing.T) {
+	testCases := []struct {
+		s    string
+		json interface{}
+	}{
+		{"\"1\"", "1"},
+		{"{\"a\": [1.0, null]}", map[string]any{"a": []any{1.0, nil}}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.s, func(t *testing.T) {
+			doc := NewLazyJSONDocument([]byte(testCase.s))
+			val, err := doc.ToInterface()
+			require.NoError(t, err)
+			require.Equal(t, testCase.json, val)
+		})
+	}
+	t.Run("lazy docs only error when deserialized", func(t *testing.T) {
+		doc := NewLazyJSONDocument([]byte("not valid json"))
+		_, err := doc.ToInterface()
+		require.Error(t, err)
+	})
+}
+
 type JsonRoundtripTest struct {
 	desc     string
 	input    string
