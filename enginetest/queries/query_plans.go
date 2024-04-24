@@ -8128,7 +8128,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i, selfjoin.i]\n" +
-			" └─ SemiJoin (estimated cost=154.500 rows=3)\n" +
+			" └─ SemiJoin (estimated cost=4.515 rows=1)\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
 			"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 			"     │   ├─ IndexedTableAccess(mytable)\n" +
@@ -8147,7 +8147,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i, selfjoin.i]\n" +
-			" └─ SemiJoin (estimated cost=154.500 rows=3) (actual rows=1 loops=1)\n" +
+			" └─ SemiJoin (estimated cost=4.515 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
 			"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 			"     │   ├─ IndexedTableAccess(mytable)\n" +

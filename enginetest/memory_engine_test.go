@@ -317,8 +317,7 @@ func TestQueryPlans(t *testing.T) {
 }
 
 func TestSingleQueryPlan(t *testing.T) {
-	// t.Skip()
-	
+	t.Skip()
 	tt := []queries.QueryPlanTest{
 		{
 			Query: `SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)`,
@@ -359,7 +358,7 @@ func TestSingleQueryPlan(t *testing.T) {
 					"",
 			ExpectedEstimates: "Project\n" +
 					" ├─ columns: [mytable.i, selfjoin.i]\n" +
-					" └─ SemiJoin (estimated cost=154.500 rows=3)\n" +
+					" └─ SemiJoin (estimated cost=4.515 rows=1)\n" +
 					"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
 					"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 					"     │   ├─ IndexedTableAccess(mytable)\n" +
@@ -378,7 +377,7 @@ func TestSingleQueryPlan(t *testing.T) {
 					"",
 			ExpectedAnalysis: "Project\n" +
 					" ├─ columns: [mytable.i, selfjoin.i]\n" +
-					" └─ SemiJoin (estimated cost=154.500 rows=3) (actual rows=1 loops=1)\n" +
+					" └─ SemiJoin (estimated cost=4.515 rows=1) (actual rows=1 loops=1)\n" +
 					"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
 					"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 					"     │   ├─ IndexedTableAccess(mytable)\n" +
@@ -401,12 +400,12 @@ func TestSingleQueryPlan(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, 2, true, nil)
 	harness.Setup(setup.PlanSetup...)
 
-	for _, test:= range tt {
+	for _, test := range tt {
 		t.Run(test.Query, func(t *testing.T) {
 			engine, err := harness.NewEngine(t)
 			engine.EngineAnalyzer().Verbose = true
 			engine.EngineAnalyzer().Debug = true
-			
+
 			require.NoError(t, err)
 			enginetest.TestQueryPlan(t, harness, engine, test)
 		})
