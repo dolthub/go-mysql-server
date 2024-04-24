@@ -393,7 +393,7 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateDB, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, row sql.Row) (sql.RowIter, error) {
 	database := ctx.GetCurrentDatabase()
 	if database != "" {
 		return nil, sql.ErrNoDatabaseSelected.New()
