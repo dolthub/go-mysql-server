@@ -116,21 +116,13 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		tbl, ok := updateDest.(sql.ForeignKeyTable)
+		fkTbl, ok := updateDest.(sql.ForeignKeyTable)
 		// If foreign keys aren't supported then we return
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		// re-resolve the table to get foreign key modifiable table
-		tbl2, _, err := a.Catalog.Table(ctx, n.Database(), tbl.Name())
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		modTbl, ok := tbl2.(sql.ForeignKeyTable)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-		fkEditor, err := getForeignKeyEditor(ctx, a, modTbl, cache, fkChain, false)
+
+		fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -138,7 +130,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			return n, transform.SameTree, nil
 		}
 		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
-			Table:        tbl,
+			Table:        fkTbl,
 			Sch:          updateDest.Schema(),
 			OriginalNode: n.Child,
 			Editor:       fkEditor,
