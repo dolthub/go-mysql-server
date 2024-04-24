@@ -557,11 +557,11 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, tt queries.Quer
 	runTestWithDescribeOptions := func(t *testing.T, query, expectedPlan string, options sql.DescribeOptions) {
 		TestQueryPlanWithName(t, options.String(), harness, e, query, expectedPlan, options)
 	}
-	
+
 	if tt.Skip {
 		t.Skip()
 	}
-	
+
 	t.Run(tt.Query, func(t *testing.T) {
 		runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
 			Debug: true,
