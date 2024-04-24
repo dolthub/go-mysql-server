@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// CreateDB creates an in memory database that lasts the length of the process only.
+// CreateDB creates a database in the Catalog.
 type CreateDB struct {
 	Catalog     sql.Catalog
 	DbName      string
@@ -82,6 +82,24 @@ func NewCreateDatabase(dbName string, ifNotExists bool, collation sql.CollationI
 		DbName:      dbName,
 		IfNotExists: ifNotExists,
 		Collation:   collation,
+	}
+}
+
+// CreateSchema creates a schema in the Catalog using the currently selected database.
+type CreateSchema struct {
+	*CreateDB
+}
+
+var _ sql.Node = (*CreateSchema)(nil)
+var _ sql.CollationCoercible = (*CreateSchema)(nil)
+
+func NewCreateSchema(schemaName string, ifNotExists bool, collation sql.CollationID) *CreateSchema {
+	return &CreateSchema{
+		&CreateDB{
+			DbName:      schemaName,
+			IfNotExists: ifNotExists,
+			Collation:   collation,
+		},
 	}
 }
 

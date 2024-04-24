@@ -1549,9 +1549,20 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 		if err != nil {
 			b.handleErr(err)
 		}
-		createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
-		createDb.Catalog = b.cat
-		outScope.node = createDb
+
+		var node sql.Node 
+		switch c.SchemaOrDatabase {
+		case "database":
+			createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
+			createDb.Catalog = b.cat
+			node = createDb
+		case "schema":
+			createSchema := plan.NewCreateSchema(c.DBName, c.IfNotExists, collation)
+			createSchema.Catalog = b.cat
+			node = createSchema
+		}
+		
+		outScope.node = node
 	case ast.DropStr:
 		dropDb := plan.NewDropDatabase(c.DBName, c.IfExists)
 		dropDb.Catalog = b.cat

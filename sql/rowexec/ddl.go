@@ -393,6 +393,56 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 	return sql.RowsToRowIter(rows...), nil
 }
 
+func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateDB, row sql.Row) (sql.RowIter, error) {
+	database := ctx.GetCurrentDatabase()
+	if database != "" {
+		return nil, sql.ErrNoDatabaseSelected.New()
+	}
+	
+	db, err := n.Catalog.Database(ctx, database)
+	if err != nil {
+		return nil, err
+	}
+
+	sdb, ok := db.(sql.SchemaDatabase)
+	if !ok {
+		return nil, sql.ErrDatabaseSchemasNotSupported.New(db.Name())
+	}
+
+	_, exists, err := sdb.GetSchema(ctx, n.DbName)
+	if err != nil {
+		return nil, err
+	}
+	
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
+
+	if exists {
+		if n.IfNotExists && ctx != nil && ctx.Session != nil {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    mysql.ERDbCreateExists,
+				Message: fmt.Sprintf("Can't create schema %s; schema exists ", n.DbName),
+			})
+
+			return sql.RowsToRowIter(rows...), nil
+		} else {
+			return nil, sql.ErrDatabaseSchemaExists.New(n.DbName)
+		}
+	}
+
+	collation := n.Collation
+	if collation == sql.Collation_Unspecified {
+		collation = sql.Collation_Default
+	}
+	
+	err = sdb.CreateSchema(ctx, n.DbName)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(rows...), nil
+}
+
 func (b *BaseBuilder) buildAlterDefaultDrop(ctx *sql.Context, n *plan.AlterDefaultDrop, row sql.Row) (sql.RowIter, error) {
 	table, ok, err := n.Db.GetTableInsensitive(ctx, getTableName(n.Table))
 	if err != nil {

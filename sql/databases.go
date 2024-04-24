@@ -78,8 +78,13 @@ type Database interface {
 // SchemaDatabase is a database comprising multiple schemas that can each be queried for tables.
 type SchemaDatabase interface {
 	Nameable
+	// GetSchema returns the database with the schema name provided, matched case-insensitive. 
+	// If the schema does not exist, the boolean return value should be false.
 	GetSchema(ctx *Context, schemaName string) (DatabaseSchema, bool, error)
+	// CreateSchema creates a new schema in the database. 
+	// If the schema already exists, should return ErrSchemaAlreadyExists, although the engine checks this as well.
 	CreateSchema(ctx *Context, schemaName string) error
+	// AllSchemas returns all schemas in the database.
 	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
 }
 
