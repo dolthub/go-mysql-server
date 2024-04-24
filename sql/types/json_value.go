@@ -15,6 +15,7 @@
 package types
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -32,35 +33,40 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// JSONStringer can be converted to a string representation that is compatible with MySQL's JSON output, including spaces.
 type JSONStringer interface {
 	JSONString() (string, error)
 }
 
-func MarshallJson(jsonWrapper sql.JSONWrapper) ([]byte, error) {
+// StringifyJSON generates a string representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
+func StringifyJSON(jsonWrapper sql.JSONWrapper) (string, error) {
 	if stringer, ok := jsonWrapper.(JSONStringer); ok {
-		s, err := stringer.JSONString()
-		return []byte(s), err
+		return stringer.JSONString()
+	}
+	jsonBytes, err := MarshallJson(jsonWrapper)
+	if err != nil {
+		return "", err
+	}
+	jsonBytes = bytes.ReplaceAll(jsonBytes, []byte(",\""), []byte(", \""))
+	jsonBytes = bytes.ReplaceAll(jsonBytes, []byte("\":"), []byte("\": "))
+	return string(jsonBytes), nil
+}
+
+// JSONBytes are values which can be represented as JSON.
+type JSONBytes interface {
+	GetBytes() ([]byte, error)
+}
+
+// JSONBytes returns or generates a byte array for the JSON representation of the underlying sql.JSONWrapper
+func MarshallJson(jsonWrapper sql.JSONWrapper) ([]byte, error) {
+	if bytes, ok := jsonWrapper.(JSONBytes); ok {
+		return bytes.GetBytes()
 	}
 	val, err := jsonWrapper.ToInterface()
 	if err != nil {
 		return []byte{}, err
 	}
 	return json.Marshal(val)
-}
-
-func StringifyJSON(jsonWrapper sql.JSONWrapper) (string, error) {
-	if stringer, ok := jsonWrapper.(JSONStringer); ok {
-		return stringer.JSONString()
-	}
-	val, err := jsonWrapper.ToInterface()
-	if err != nil {
-		return "", err
-	}
-	bytes, err := json.Marshal(val)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
 }
 
 type JsonObject = map[string]interface{}
@@ -136,7 +142,7 @@ type LazyJSONDocument struct {
 }
 
 var _ sql.JSONWrapper = &LazyJSONDocument{}
-var _ JSONStringer = &LazyJSONDocument{}
+var _ JSONBytes = &LazyJSONDocument{}
 
 func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
 	return &LazyJSONDocument{
@@ -156,8 +162,8 @@ func (j *LazyJSONDocument) ToInterface() (interface{}, error) {
 	return j.interfaceFunc()
 }
 
-func (j *LazyJSONDocument) JSONString() (string, error) {
-	return string(j.Bytes), nil
+func (j *LazyJSONDocument) GetBytes() ([]byte, error) {
+	return j.Bytes, nil
 }
 
 func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {

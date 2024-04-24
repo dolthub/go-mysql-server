@@ -16,20 +16,19 @@ package types
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"reflect"
 	"strconv"
 	strings2 "strings"
 	"time"
 	"unicode/utf8"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/shopspring/decimal"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/internal/strings"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -371,17 +370,6 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 			return "", nil
 		}
 		val = s.Decimal.String()
-
-	case JSONStringer:
-		var err error
-		val, err = s.JSONString()
-		if err != nil {
-			return "", err
-		}
-		val, err = strings.Unquote(val)
-		if err != nil {
-			return "", err
-		}
 	case sql.JSONWrapper:
 		jsonString, err := StringifyJSON(s)
 		if err != nil {

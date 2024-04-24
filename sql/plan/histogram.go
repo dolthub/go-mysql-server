@@ -59,8 +59,8 @@ func (u *UpdateHistogram) Resolved() bool {
 }
 
 func (u *UpdateHistogram) String() string {
-	statString, _ := types.StringifyJSON(u.stats)
-	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statString)
+	statBytes, _ := types.MarshallJson(u.stats)
+	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statBytes)
 }
 
 func (u *UpdateHistogram) Schema() sql.Schema {

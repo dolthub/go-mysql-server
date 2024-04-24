@@ -176,7 +176,7 @@ func writeHashedValue(h hash.Hash, val interface{}) (valIsNull bool, err error) 
 			return false, err
 		}
 	case *types.LazyJSONDocument:
-		str, err := val.JSONString()
+		str, err := types.StringifyJSON(val)
 		if err != nil {
 			return false, err
 		}

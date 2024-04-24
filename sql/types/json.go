@@ -15,7 +15,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"reflect"
 
@@ -138,24 +137,11 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	}
 	js := jsVal.(sql.JSONWrapper)
 
-	var val []byte
-	switch j := js.(type) {
-	case JSONStringer:
-		str, err := j.JSONString()
-		if err != nil {
-			return sqltypes.NULL, err
-		}
-		val = AppendAndSliceString(dest, str)
-	default:
-		jsonBytes, err := MarshallJson(js)
-		if err != nil {
-			return sqltypes.NULL, err
-		}
-
-		jsonBytes = bytes.ReplaceAll(jsonBytes, []byte(",\""), []byte(", \""))
-		jsonBytes = bytes.ReplaceAll(jsonBytes, []byte("\":"), []byte("\": "))
-		val = AppendAndSliceBytes(dest, jsonBytes)
+	str, err := StringifyJSON(js)
+	if err != nil {
+		return sqltypes.NULL, err
 	}
+	val := AppendAndSliceString(dest, str)
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
