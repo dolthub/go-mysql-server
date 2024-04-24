@@ -624,11 +624,11 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		colMap := schToColMap(sch)
 		// TODO: plan.AlterIndex should just have a sql.IndexDef
 		indexDef := &sql.IndexDef{
-			Name: ai.IndexName,
-			Columns: ai.Columns,
+			Name:       ai.IndexName,
+			Columns:    ai.Columns,
 			Constraint: ai.Constraint,
-			Storage: ai.Using,
-			Comment: ai.Comment,
+			Storage:    ai.Using,
+			Comment:    ai.Comment,
 		}
 		err = validateIndex(ctx, colMap, indexDef)
 		if err != nil {
