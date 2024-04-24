@@ -371,12 +371,21 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 			return "", nil
 		}
 		val = s.Decimal.String()
-	case sql.JSONWrapper:
+	case JSONDocument:
 		jsonString, err := StringifyJSON(s)
 		if err != nil {
 			return "", err
 		}
 		val, err = strings.Unquote(jsonString)
+		if err != nil {
+			return "", err
+		}
+	case sql.JSONWrapper:
+		jsonBytes, err := MarshallJson(s)
+		if err != nil {
+			return "", err
+		}
+		val, err = strings.Unquote(string(jsonBytes))
 		if err != nil {
 			return "", err
 		}
