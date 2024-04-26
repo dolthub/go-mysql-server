@@ -1587,9 +1587,9 @@ func (ps partitionssort) Len() int {
 }
 
 func (ps partitionssort) Less(i, j int) bool {
+	ps.partitionMux.RLock()
 	lidx := ps.idx[i]
 	ridx := ps.idx[j]
-	ps.partitionMux.RLock()
 	lr := ps.ps[lidx.key][lidx.i]
 	rr := ps.ps[ridx.key][ridx.i]
 	ps.partitionMux.RUnlock()
@@ -1597,11 +1597,9 @@ func (ps partitionssort) Less(i, j int) bool {
 }
 
 func (ps partitionssort) Swap(i, j int) {
-	ps.partitionMux.RLock()
+	ps.partitionMux.Lock()
 	lidx := ps.idx[i]
 	ridx := ps.idx[j]
-	ps.partitionMux.RUnlock()
-	ps.partitionMux.Lock()
 	ps.ps[lidx.key][lidx.i], ps.ps[ridx.key][ridx.i] = ps.ps[ridx.key][ridx.i], ps.ps[lidx.key][lidx.i]
 	ps.partitionMux.Unlock()
 }
