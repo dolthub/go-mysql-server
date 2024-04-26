@@ -20988,7 +20988,7 @@ WHERE
 			"             │       │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │       │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"             │       │                   ├─ keys: [pqsxb.BTXC5:10]\n" +
-			"             │       │                   ├─ colSet: (124-126)\n" +
+			"             │       │                   ├─ colSet: (123-125)\n" +
 			"             │       │                   ├─ tableId: 10\n" +
 			"             │       │                   └─ Table\n" +
 			"             │       │                       ├─ name: TPXBU\n" +
@@ -21008,7 +21008,7 @@ WHERE
 			"             │           │               └─ IndexedTableAccess(TPXBU)\n" +
 			"             │           │                   ├─ index: [TPXBU.BTXC5]\n" +
 			"             │           │                   ├─ keys: [pqsxb.BTXC5:10]\n" +
-			"             │           │                   ├─ colSet: (124-126)\n" +
+			"             │           │                   ├─ colSet: (123-125)\n" +
 			"             │           │                   ├─ tableId: 10\n" +
 			"             │           │                   └─ Table\n" +
 			"             │           │                       ├─ name: TPXBU\n" +
@@ -21035,7 +21035,7 @@ WHERE
 			"             │                   │   ├─ outerVisibility: false\n" +
 			"             │                   │   ├─ isLateral: false\n" +
 			"             │                   │   ├─ cacheable: true\n" +
-			"             │                   │   ├─ colSet: (92-103)\n" +
+			"             │                   │   ├─ colSet: (91-102)\n" +
 			"             │                   │   ├─ tableId: 8\n" +
 			"             │                   │   └─ Project\n" +
 			"             │                   │       ├─ columns: [Subquery\n" +
@@ -21124,7 +21124,12 @@ WHERE
 			"             │                   │       │           │               │                   └─ Table\n" +
 			"             │                   │       │           │               │                       ├─ name: E2I7U\n" +
 			"             │                   │       │           │               │                       └─ columns: [dkcaj tw55n]\n" +
-			"             │                   │       │           │               │   END]\n" +
+			"             │                   │       │           │               │   END as CASE\n" +
+			"             │                   │       │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
+			"             │                   │       │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
+			"             │                   │       │           │               │                          ELSE\n" +
+			"             │                   │       │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
+			"             │                   │       │           │               │                      END]\n" +
 			"             │                   │       │           │               └─ Project\n" +
 			"             │                   │       │           │                   ├─ columns: [dual.:39!null]\n" +
 			"             │                   │       │           │                   └─ Table\n" +
@@ -21232,7 +21237,12 @@ WHERE
 			"             │                   │           │           │               │                   └─ Table\n" +
 			"             │                   │           │           │               │                       ├─ name: E2I7U\n" +
 			"             │                   │           │           │               │                       └─ columns: [dkcaj tw55n]\n" +
-			"             │                   │           │           │               │   END]\n" +
+			"             │                   │           │           │               │   END as CASE\n" +
+			"             │                   │           │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
+			"             │                   │           │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
+			"             │                   │           │           │               │                          ELSE\n" +
+			"             │                   │           │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
+			"             │                   │           │           │               │                      END]\n" +
 			"             │                   │           │           │               └─ Project\n" +
 			"             │                   │           │           │                   ├─ columns: [dual.:27!null]\n" +
 			"             │                   │           │           │                   └─ Table\n" +
@@ -21296,7 +21306,7 @@ WHERE
 			"             │                           │   └─ IndexedTableAccess(E2I7U)\n" +
 			"             │                           │       ├─ index: [E2I7U.ZH72S]\n" +
 			"             │                           │       ├─ keys: [pqsxb.K3B6V:9]\n" +
-			"             │                           │       ├─ colSet: (104-120)\n" +
+			"             │                           │       ├─ colSet: (103-119)\n" +
 			"             │                           │       ├─ tableId: 9\n" +
 			"             │                           │       └─ Table\n" +
 			"             │                           │           ├─ name: E2I7U\n" +
@@ -21305,7 +21315,7 @@ WHERE
 			"             │                               └─ IndexedTableAccess(E2I7U)\n" +
 			"             │                                   ├─ index: [E2I7U.TW55N]\n" +
 			"             │                                   ├─ keys: [pqsxb.H4DMT:11!null]\n" +
-			"             │                                   ├─ colSet: (104-120)\n" +
+			"             │                                   ├─ colSet: (103-119)\n" +
 			"             │                                   ├─ tableId: 9\n" +
 			"             │                                   └─ Table\n" +
 			"             │                                       ├─ name: E2I7U\n" +
