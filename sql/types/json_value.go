@@ -15,7 +15,6 @@
 package types
 
 import (
-	"bytes"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -43,13 +42,11 @@ func StringifyJSON(jsonWrapper sql.JSONWrapper) (string, error) {
 	if stringer, ok := jsonWrapper.(JSONStringer); ok {
 		return stringer.JSONString()
 	}
-	jsonBytes, err := MarshallJson(jsonWrapper)
+	val, err := jsonWrapper.ToInterface()
 	if err != nil {
 		return "", err
 	}
-	jsonBytes = bytes.ReplaceAll(jsonBytes, []byte(",\""), []byte(", \""))
-	jsonBytes = bytes.ReplaceAll(jsonBytes, []byte("\":"), []byte("\": "))
-	return string(jsonBytes), nil
+	return marshalToMySqlString(val)
 }
 
 // JSONBytes are values which can be represented as JSON.
