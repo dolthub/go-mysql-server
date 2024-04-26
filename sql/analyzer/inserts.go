@@ -194,11 +194,6 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		}
 	}
 
-	err := validateRowSource(insertSource, projExprs)
-	if err != nil {
-		return nil, false, err
-	}
-
 	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
@@ -351,6 +346,7 @@ func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) erro
 			exprType := expr.Type()
 			_, _, err := exprType.Convert(otherCol.Type.Zero())
 			if err != nil {
+				// TODO: there are many values that fail when passing to ENUM, but we should allow them
 				// The zero value will fail when passing string values to ENUM, so we specially handle this case
 				if _, ok := exprType.(sql.EnumType); ok && types.IsText(otherCol.Type) {
 					continue
