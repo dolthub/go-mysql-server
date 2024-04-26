@@ -402,8 +402,9 @@ func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64
 	// fallback to on-table statistics
 	st, ok := getStatisticsTable(table, nil)
 	if !ok {
-		return 0, nil
+		return 0, fmt.Errorf("%T is not a statistics table, no row count available", table)
 	}
+	
 	cnt, _, err = st.RowCount(ctx)
 	return cnt, err
 }
@@ -416,7 +417,7 @@ func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint
 	// fallback to on-table statistics
 	st, ok := getStatisticsTable(table, nil)
 	if !ok {
-		return 0, nil
+		return 0, fmt.Errorf("%T is not a statistics table, no data length available", table)
 	}
 	return st.DataLength(ctx)
 }
