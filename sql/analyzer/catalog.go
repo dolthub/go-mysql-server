@@ -400,7 +400,7 @@ func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64
 		return cnt, nil
 	}
 	// fallback to on-table statistics
-	st, ok := getStatisticsTable(table)
+	st, ok := getStatisticsTable(table, nil)
 	if !ok {
 		return 0, nil
 	}
@@ -414,19 +414,23 @@ func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint
 		return length, nil
 	}
 	// fallback to on-table statistics
-	st, ok := getStatisticsTable(table)
+	st, ok := getStatisticsTable(table, nil)
 	if !ok {
 		return 0, nil
 	}
 	return st.DataLength(ctx)
 }
 
-func getStatisticsTable(table sql.Table) (sql.StatisticsTable, bool) {
+func getStatisticsTable(table sql.Table, prevTable sql.Table) (sql.StatisticsTable, bool) {
+	// Some TableNodes return themselves for UnderlyingTable, so we need to check for that
+	if table == prevTable {
+		return nil, false
+	}
 	switch t := table.(type) {
 	case sql.StatisticsTable:
 		return t, true
 	case sql.TableNode:
-		return getStatisticsTable(t.UnderlyingTable())
+		return getStatisticsTable(t.UnderlyingTable(), table)
 	default:
 		return nil, false
 	}
