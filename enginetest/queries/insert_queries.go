@@ -1989,6 +1989,42 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "INSERT INTO ... SELECT with TEXT types",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, t text);",
+			"insert into t1 values (1, '2001-01-01'), (2, 'badtime'), (3, '');",
+			"create table t2 (d datetime);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t2(d) select t from t1 where false;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "insert into t2(d) select t from t1 where i = 3;",
+				ExpectedErrStr: "Incorrect datetime value: ''",
+			},
+			{
+				Query:    "insert into t2(d) select t from t1 where i = 2;",
+				ExpectedErrStr: "Incorrect datetime value: 'badtime'",
+			},
+			{
+				Query:    "insert into t2(d) select t from t1 where i = 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{
+					{time.Date(2001, time.January, 1, 0, 0, 0, 0, time.UTC)},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/5411
 		Name: "Defaults with escaped strings",
 		SetUpScript: []string{
