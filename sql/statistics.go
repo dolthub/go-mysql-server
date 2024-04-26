@@ -99,7 +99,7 @@ func NewQualifierFromString(q string) (StatQualifier, error) {
 }
 
 func NewStatQualifier(db, table, index string) StatQualifier {
-	return StatQualifier{Database: db, Tab: table, Idx: index}
+	return StatQualifier{Database: strings.ToLower(db), Tab: strings.ToLower(table), Idx: strings.ToLower(index)}
 }
 
 // StatQualifier is the namespace hierarchy for a given statistic.
