@@ -404,7 +404,7 @@ func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64
 	if !ok {
 		return 0, fmt.Errorf("%T is not a statistics table, no row count available", table)
 	}
-	
+
 	cnt, _, err = st.RowCount(ctx)
 	return cnt, err
 }
