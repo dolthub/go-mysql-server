@@ -406,7 +406,13 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 
 	sdb, ok := db.(sql.SchemaDatabase)
 	if !ok {
-		return nil, sql.ErrDatabaseSchemasNotSupported.New(db.Name())
+		// If schemas aren't supported, treat CREATE SCHEMA as a synonym for CREATE DATABASE (as is the case in MySQL)
+		return b.buildCreateDB(ctx, &plan.CreateDB{
+			Catalog:     n.Catalog,
+			DbName:      n.DbName,
+			IfNotExists: n.IfNotExists,
+			Collation:   n.Collation,
+		}, row)
 	}
 
 	_, exists, err := sdb.GetSchema(ctx, n.DbName)
