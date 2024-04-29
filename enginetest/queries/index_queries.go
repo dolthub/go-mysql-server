@@ -4229,7 +4229,7 @@ var IndexQueries = []ScriptTest{
 			},
 			{
 				// Ensure the above statements did not create tables without indexes
-				Query:    "show tables;",
+				Query: "show tables;",
 				Expected: []sql.Row{
 					{"json_tbl"},
 					{"idx_tbl"},

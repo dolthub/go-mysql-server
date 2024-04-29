@@ -965,7 +965,7 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		}
 
 		colMap := schToColMap(sch)
-		idxDef := &sql.IndexDef {
+		idxDef := &sql.IndexDef{
 			Name:       "PRIMARY",
 			Columns:    ai.Columns,
 			Constraint: sql.IndexConstraint_Primary,
