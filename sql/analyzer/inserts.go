@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -194,11 +193,6 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		}
 	}
 
-	err := validateRowSource(insertSource, projExprs)
-	if err != nil {
-		return nil, false, err
-	}
-
 	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
 }
 
@@ -331,50 +325,5 @@ func validGeneratedColumnValue(idx int, source sql.Node) bool {
 		return false
 	default:
 		return false
-	}
-}
-
-func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) error {
-	for _, expr := range projExprs {
-		switch e := expr.(type) {
-		case *expression.Literal,
-			*expression.AutoIncrement,
-			*expression.AutoUuid,
-			*sql.ColumnDefaultValue:
-			continue
-		case *expression.GetField:
-			otherCol := schema[e.Index()]
-			// special case: null field type, will get checked at execution time
-			if otherCol.Type == types.Null {
-				continue
-			}
-			exprType := expr.Type()
-			_, _, err := exprType.Convert(otherCol.Type.Zero())
-			if err != nil {
-				// The zero value will fail when passing string values to ENUM, so we specially handle this case
-				if _, ok := exprType.(sql.EnumType); ok && types.IsText(otherCol.Type) {
-					continue
-				}
-				return plan.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
-			}
-		default:
-			return plan.ErrInsertIntoUnsupportedValues.New(expr)
-		}
-	}
-	return nil
-}
-
-func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
-	if exchange, ok := values.(*plan.Exchange); ok {
-		values = exchange.Child
-	}
-
-	switch n := values.(type) {
-	case *plan.Values, *plan.LoadData:
-		// already verified
-		return nil
-	default:
-		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
-		return assertCompatibleSchemas(projExprs, n.Schema())
 	}
 }
