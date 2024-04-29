@@ -217,8 +217,8 @@ func TestLazyJsonDocument(t *testing.T) {
 		s    string
 		json interface{}
 	}{
-		{"\"1\"", "1"},
-		{"{\"a\": [1.0, null]}", map[string]any{"a": []any{1.0, nil}}},
+		{`"1"`, "1"},
+		{`{"a": [1.0, null]}`, map[string]any{"a": []any{1.0, nil}}},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.s, func(t *testing.T) {
