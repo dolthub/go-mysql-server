@@ -181,7 +181,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 		if selectExprNeedsAlias(e, expr) {
 			// if the input expression is the same as expression string, then it's referencable.
 			// E.g. "SLEEP(1)" is the same as "sleep(1)"
-			if strings.ToLower(e.InputExpression) == strings.ToLower(expr.String()) {
+			if strings.EqualFold(e.InputExpression, expr.String()) {
 				return expression.NewAlias(e.InputExpression, expr)
 			}
 			return expression.NewAlias(e.InputExpression, expr).AsUnreferencable()
