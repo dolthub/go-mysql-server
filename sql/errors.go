@@ -509,7 +509,7 @@ var (
 	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition: there can be only one auto column and it must be defined as a key")
 
 	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
-	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
+	ErrKeyColumnDoesNotExist = errors.NewKind("key column '%s' doesn't exist in table")
 
 	// ErrCantDropFieldOrKey is returned when a table invokes DropPrimaryKey on a keyless table.
 	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")

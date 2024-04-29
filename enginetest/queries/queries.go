@@ -10412,7 +10412,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `CREATE TABLE test (pk int, primary key(pk, noexist))`,
-		ExpectedErr: sql.ErrUnknownIndexColumn,
+		ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 	},
 	{
 		Query:       `CREATE TABLE test (pk int auto_increment, pk2 int auto_increment, primary key (pk))`,

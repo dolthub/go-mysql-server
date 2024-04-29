@@ -40,7 +40,11 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 
 	sch := ct.PkSchema().Schema
 	idxs := ct.Indexes()
-	err = validateIndexes(ctx, sch, idxs)
+	strictMySQLCompat, err := isStrictMysqlCompatibilityEnabled(ctx)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	err = validateIndexes(ctx, sch, idxs, strictMySQLCompat)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -463,13 +467,12 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	//       are still valid (e.g. if the column type changed) and throw an error if they are invalidated.
 	//       That would be consistent with MySQL behavior.
 
-	// not becoming a text/blob column
-	// TODO: need to run index validation here because of JSON columns
+	// not becoming a text/blob or json column
 	if !types.IsTextBlob(newCol.Type) && !types.IsJSON(newCol.Type) {
 		return newSch, nil
 	}
 
-	strictMysqlCompatibility, err := isStrictMysqlCompatibilityEnabled(ctx)
+	strictMySQLCompat, err := isStrictMysqlCompatibilityEnabled(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -489,23 +492,22 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 		if index.IsFullText() {
 			continue
 		}
-		// TODO: call validateIndexes here
 		prefixLengths := index.PrefixLengths()
 		for i, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, tbl)
-			if col.Name != oldColName {
+			if !strings.EqualFold(col.Name, oldColName) {
 				continue
 			}
-			if len(prefixLengths) == 0 || prefixLengths[i] == 0 {
-				// MariaDB allows BLOB and TEXT columns to be used in unique keys WITHOUT specifying
-				// a prefix length, but MySQL does not, so still throw an error if we are in strict
-				// MySQL compatibility mode.
-				if strictMysqlCompatibility && !index.IsUnique() {
-					return nil, sql.ErrInvalidBlobTextKey.New(col.Name)
-				}
+			if types.IsJSON(newCol.Type) {
+				return nil, sql.ErrJSONIndex.New(col.Name)
 			}
-			if types.IsTextOnly(newCol.Type) && len(prefixLengths) > 0 && prefixLengths[i]*4 > MaxBytePrefix {
-				return nil, sql.ErrKeyTooLong.New()
+			var prefixLen int64
+			if i < len(prefixLengths) {
+				prefixLen = int64(prefixLengths[i])
+			}
+			err = validatePrefixLength(ctx, oldColName, prefixLen, newCol.Type, strictMySQLCompat, index.IsUnique())
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -622,6 +624,10 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			return nil, err
 		}
 		colMap := schToColMap(sch)
+		strictMySQLCompat, err := isStrictMysqlCompatibilityEnabled(ctx)
+		if err != nil {
+			return nil, err
+		}
 		// TODO: plan.AlterIndex should just have a sql.IndexDef
 		indexDef := &sql.IndexDef{
 			Name:       ai.IndexName,
@@ -630,7 +636,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			Storage:    ai.Using,
 			Comment:    ai.Comment,
 		}
-		err = validateIndex(ctx, colMap, indexDef)
+		err = validateIndex(ctx, colMap, indexDef, strictMySQLCompat)
 		if err != nil {
 			return nil, err
 		}
@@ -670,55 +676,44 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 }
 
 // validatePrefixLength handles all errors related to creating indexes with prefix lengths
-func validatePrefixLength(ctx *sql.Context, schCol *sql.Column, idxCol sql.IndexColumn, constraint sql.IndexConstraint) error {
-	// Prefix length is ignored for full text indexes
-	if constraint == sql.IndexConstraint_Fulltext {
+func validatePrefixLength(ctx *sql.Context, colName string, colLen int64, colType sql.Type, strictMySQLCompat, isUnique bool) error {
+	// Throw prefix length error for non-string types with prefixes
+	if !types.IsText(colType) {
+		if colLen > 0 {
+			return sql.ErrInvalidIndexPrefix.New(colName)
+		}
 		return nil
 	}
 
-	// Throw prefix length error for non-string types with prefixes
-	if idxCol.Length > 0 && !types.IsText(schCol.Type) {
-		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
-	}
-
-	prefixByteLength := idxCol.Length
-	if types.IsTextOnly(schCol.Type) {
-		prefixByteLength = 4 * idxCol.Length
-	}
-	if prefixByteLength > MaxBytePrefix {
-		return sql.ErrKeyTooLong.New()
-	}
-
-	// The specified prefix length is longer than the column
-	maxByteLength := int64(schCol.Type.MaxTextResponseByteLength(ctx))
-	if prefixByteLength > maxByteLength {
-		return sql.ErrInvalidIndexPrefix.New(schCol.Name)
-	}
-
-	// TODO: This is repeated somewhere
-	strictMysqlCompatibility, err := isStrictMysqlCompatibilityEnabled(ctx)
-	if err != nil {
-		return err
-	}
-
 	// Prefix length is required for BLOB and TEXT columns.
-	if types.IsTextBlob(schCol.Type) && prefixByteLength == 0 {
+	if colLen == 0 && types.IsTextBlob(colType) {
 		// MariaDB extends this behavior so that unique indexes don't require a prefix length.
-		isUnique := constraint == sql.IndexConstraint_Unique
-		if !isUnique || strictMysqlCompatibility {
-			return sql.ErrInvalidBlobTextKey.New(schCol.Name)
+		if strictMySQLCompat || !isUnique {
+			return sql.ErrInvalidBlobTextKey.New(colName)
 		}
 
 		// The hash we compute doesn't take into account the collation settings of the column, so in a
 		// case-insensitive collation, although "YES" and "yes" are equivalent, they will still generate
 		// different hashes which won't correctly identify a real uniqueness constraint violation.
-		stringType, ok := schCol.Type.(types.StringType)
-		if ok {
+		if stringType, ok := colType.(types.StringType); ok {
 			collation := stringType.Collation().Collation()
 			if !collation.IsCaseSensitive || !collation.IsAccentSensitive {
 				return sql.ErrCollationNotSupportedOnUniqueTextIndex.New()
 			}
 		}
+	}
+
+	if types.IsTextOnly(colType) {
+		colLen = 4 * colLen
+	}
+	if colLen > MaxBytePrefix {
+		return sql.ErrKeyTooLong.New()
+	}
+
+	// The specified prefix length is longer than the column
+	maxByteLength := int64(colType.MaxTextResponseByteLength(ctx))
+	if colLen > maxByteLength {
+		return sql.ErrInvalidIndexPrefix.New(colName)
 	}
 
 	return nil
@@ -855,16 +850,14 @@ func schToColMap(sch sql.Schema) map[string]*sql.Column {
 }
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
-// TODO: this method is very similar to validateIndexType...
-// TODO: rowexec code should go here too
-func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs) error {
+func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs, strictMySQLCompat bool) error {
 	colMap := schToColMap(sch)
 	var hasPkIndexDef bool
 	for _, idxDef := range idxDefs {
 		if idxDef.IsPrimary() {
 			hasPkIndexDef = true
 		}
-		if err := validateIndex(ctx, colMap, idxDef); err != nil {
+		if err := validateIndex(ctx, colMap, idxDef, strictMySQLCompat); err != nil {
 			return err
 		}
 	}
@@ -889,7 +882,31 @@ func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs) er
 //   - not duplicated
 //   - not JSON Type
 //   - have the proper prefix length
-func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.IndexDef) error {
+func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.IndexDef, strictMySQLCompat bool) error {
+	seenCols := make(map[string]struct{})
+	for _, idxCol := range idxDef.Columns {
+		schCol, exists := colMap[strings.ToLower(idxCol.Name)]
+		if !exists {
+			return sql.ErrKeyColumnDoesNotExist.New(idxCol.Name)
+		}
+		if _, ok := seenCols[schCol.Name]; ok {
+			return sql.ErrDuplicateColumn.New(schCol.Name)
+		}
+		seenCols[schCol.Name] = struct{}{}
+		if types.IsJSON(schCol.Type) {
+			return sql.ErrJSONIndex.New(schCol.Name)
+		}
+
+		if idxDef.IsFullText() {
+			continue
+		}
+
+		err := validatePrefixLength(ctx, idxCol.Name, idxCol.Length, schCol.Type, strictMySQLCompat, idxDef.IsUnique())
+		if err != nil {
+			return err
+		}
+	}
+
 	if idxDef.IsSpatial() {
 		if len(idxDef.Columns) != 1 {
 			return sql.ErrTooManyKeyParts.New(1)
@@ -907,28 +924,6 @@ func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.
 		}
 	}
 
-	seenCols := make(map[string]struct{})
-	for _, idxCol := range idxDef.Columns {
-		schCol, exists := colMap[idxCol.Name]
-		if !exists {
-			// TODO: determine correct error
-			//return sql.ErrUnknownIndexColumn.New(idxCol.Name, idxDef.Name)
-			return plan.ErrCreateIndexNonExistentColumn.New(idxDef.Name)
-		}
-		if _, ok := seenCols[schCol.Name]; ok {
-			return plan.ErrCreateIndexDuplicateColumn.New(idxDef.Name)
-		}
-		seenCols[schCol.Name] = struct{}{}
-
-		if types.IsJSON(schCol.Type) {
-			return sql.ErrJSONIndex.New(schCol.Name)
-		}
-
-		err := validatePrefixLength(ctx, idxCol.Name, idxCol.Length, schCol.Type, idxDef.Constraint)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -987,9 +982,14 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 
+		strictMySQLCompat, err := isStrictMysqlCompatibilityEnabled(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, idxCol := range ai.Columns {
 			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
-			err := validatePrefixLength(ctx, schCol, idxCol, sql.IndexConstraint_Primary)
+			err := validatePrefixLength(ctx, schCol.Name, idxCol.Length, schCol.Type, strictMySQLCompat, false)
 			if err != nil {
 				return nil, err
 			}

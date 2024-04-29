@@ -30,10 +30,6 @@ var (
 	ErrIndexActionNotImplemented = errors.NewKind("alter table index action is not implemented: %v")
 	// ErrCreateIndexMissingColumns is returned when a CREATE INDEX statement does not provide any columns
 	ErrCreateIndexMissingColumns = errors.NewKind("cannot create an index without columns")
-	// ErrCreateIndexNonExistentColumn is returned when a key is provided in the index that isn't in the table
-	ErrCreateIndexNonExistentColumn = errors.NewKind("column `%v` does not exist in the table")
-	// ErrCreateIndexDuplicateColumn is returned when a CREATE INDEX statement has the same column multiple times
-	ErrCreateIndexDuplicateColumn = errors.NewKind("cannot have duplicates of columns in an index: `%v`")
 )
 
 type IndexAction byte

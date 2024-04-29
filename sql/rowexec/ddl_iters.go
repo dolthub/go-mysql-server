@@ -1839,6 +1839,8 @@ func generateIndexName(ctx *sql.Context, idxAltable sql.IndexAlterableTable, idx
 //   - not duplicated
 //   - not JSON
 func validateIndexDef(idxDef sql.IndexDef, schema sql.Schema) error {
+	return nil
+	// TODO: delete this; all validation should be handled in analyzer
 	schMap := make(map[string]*sql.Column, len(schema))
 	seenCols := make(map[*sql.Column]struct{})
 	for _, col := range schema {
@@ -1847,10 +1849,10 @@ func validateIndexDef(idxDef sql.IndexDef, schema sql.Schema) error {
 	for _, indexCol := range idxDef.Columns {
 		col, exists := schMap[strings.ToLower(indexCol.Name)]
 		if !exists {
-			return plan.ErrCreateIndexNonExistentColumn.New(indexCol.Name)
+			return sql.ErrKeyColumnDoesNotExist.New(indexCol.Name)
 		}
 		if _, seen := seenCols[col]; seen {
-			return plan.ErrCreateIndexDuplicateColumn.New(indexCol.Name)
+			return sql.ErrDuplicateColumn.New(indexCol.Name)
 		}
 		if types.IsJSON(col.Type) {
 			return sql.ErrJSONIndex.New(col.Name)
