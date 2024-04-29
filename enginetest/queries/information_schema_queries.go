@@ -236,6 +236,20 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query: `SHOW FULL COLUMNS FROM mytable FROM mydb`,
+		Expected: []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
+		},
+	},
+	{
+		Query: `SHOW FULL COLUMNS FROM othertable in foo`,
+		Expected: []sql.Row{
+			{"text", "varchar(20)", "utf8mb4_0900_bin", "NO", "PRI", nil, "", "", ""},
+			{"number", "mediumint", nil, "YES", "", nil, "", "", ""},
+		},
+	},
+	{
 		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
 		Expected: []sql.Row{
 			{"mytable"},
@@ -328,6 +342,18 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM othertable FROM foo`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM foo.othertable`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{

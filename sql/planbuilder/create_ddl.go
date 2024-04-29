@@ -45,11 +45,6 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	}
 
 	// resolve table -> create initial scope
-	dbName := c.Table.Qualifier.String()
-	if dbName == "" {
-		dbName = b.ctx.GetCurrentDatabase()
-	}
-
 	prevTriggerCtxActive := b.TriggerCtx().Active
 	b.TriggerCtx().Active = true
 	defer func() {
@@ -57,7 +52,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	}()
 
 	tableName := strings.ToLower(c.Table.Name.String())
-	tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tableName))
 	}
@@ -92,7 +87,8 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
-	db := b.resolveDb(dbName)
+
+	db := b.resolveDbForTable(c.Table)
 
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
 		if prevTriggerCtxActive {
@@ -469,7 +465,7 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 		queryAlias = queryAlias.WithColumnNames(columnsToStrings(c.ViewSpec.Columns))
 	}
 
-	dbName := c.ViewSpec.ViewName.Qualifier.String()
+	dbName := c.ViewSpec.ViewName.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}

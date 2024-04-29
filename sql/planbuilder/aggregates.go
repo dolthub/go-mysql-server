@@ -105,7 +105,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		case *ast.ColName:
 			var ok bool
 			// GROUP BY binds to column references before projections.
-			dbName := strings.ToLower(e.Qualifier.Qualifier.String())
+			dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(e.Qualifier.Name.String())
 			colName := strings.ToLower(e.Name.String())
 			col, ok = fromScope.resolveColumn(dbName, tblName, colName, true, false)
@@ -760,7 +760,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			}
 		case *ast.ColName:
 			// add to extra cols
-			dbName := strings.ToLower(n.Qualifier.Qualifier.String())
+			dbName := strings.ToLower(n.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(n.Qualifier.Name.String())
 			colName := strings.ToLower(n.Name.String())
 			c, ok := fromScope.resolveColumn(dbName, tblName, colName, true, false)

@@ -290,6 +290,9 @@ var (
 	// ErrDatabaseExists is returned when CREATE DATABASE attempts to create a database that already exists.
 	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
+	// ErrDatabaseSchemaExists is returned when CREATE SCHEMA attempts to create a schema that already exists.
+	ErrDatabaseSchemaExists = errors.NewKind("can't create schema %s; schema exists")
+
 	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
 	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
 
@@ -547,6 +550,12 @@ var (
 
 	// ErrDatabaseNotFound is thrown when a database is not found
 	ErrDatabaseNotFound = errors.NewKind("database not found: %s")
+
+	// ErrDatabaseSchemaNotFound is thrown when a database schema is not found
+	ErrDatabaseSchemaNotFound = errors.NewKind("database schema not found: %s")
+
+	// ErrDatabaseSchemasNotSupported is thrown when a database does not support schemas
+	ErrDatabaseSchemasNotSupported = errors.NewKind("database '%s' does not support schemas")
 
 	// ErrNoDatabaseSelected is thrown when a database is not selected and the query requires one
 	ErrNoDatabaseSelected = errors.NewKind("no database selected")

@@ -431,22 +431,24 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		stat = &stats.Statistic{RowCnt: defaultTableSize / 2}
 
 	case SourceRel:
-		var tableName string
+		var table sql.Table
 		var dbName string
 		switch tn := rel.TableIdNode().(type) {
 		case sql.TableNode:
-			tableName = tn.Name()
+			table = tn.UnderlyingTable()
 			dbName = tn.Database().Name()
 		case *plan.TableAlias:
 			if tn, ok := tn.Child.(sql.TableNode); ok {
 				dbName = tn.Database().Name()
-				tableName = tn.Name()
+				table = tn.UnderlyingTable()
+			} else {
+				return &stats.Statistic{RowCnt: defaultTableSize}
 			}
 		default:
 			return &stats.Statistic{RowCnt: defaultTableSize}
 		}
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
-			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, strings.ToLower(tableName)); err == nil {
+			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, table); err == nil {
 				return &stats.Statistic{RowCnt: card}
 				break
 			}

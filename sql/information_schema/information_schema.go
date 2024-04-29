@@ -890,7 +890,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			privSetTbl := privSetDb.Table(t.Name())
-			tableStats, err := c.GetTableStats(ctx, dbName, t.Name())
+			tableStats, err := c.GetTableStats(ctx, dbName, t)
 			if err != nil {
 				return true, nil
 			}
