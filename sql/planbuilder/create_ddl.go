@@ -445,13 +445,10 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 		}
 		selectStr = query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
 	}
-	stmt, _, err := ast.ParseOneWithOptions(selectStr, b.parserOpts)
-	if err != nil {
-		b.handleErr(err)
-	}
-	selectStatement, ok := stmt.(ast.SelectStatement)
+
+	selectStatement, ok := c.ViewSpec.ViewExpr.(ast.SelectStatement)
 	if !ok {
-		err = sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
+		err := sql.ErrUnsupportedSyntax.New(ast.String(c.ViewSpec.ViewExpr))
 		b.handleErr(err)
 	}
 	queryScope := b.buildSelectStmt(inScope, selectStatement)
@@ -460,7 +457,7 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
 
 	if c.ViewSpec.CheckOption == ast.ViewCheckOptionLocal {
-		err = sql.ErrUnsupportedSyntax.New("WITH LOCAL CHECK OPTION")
+		err := sql.ErrUnsupportedSyntax.New("WITH LOCAL CHECK OPTION")
 		b.handleErr(err)
 	}
 
