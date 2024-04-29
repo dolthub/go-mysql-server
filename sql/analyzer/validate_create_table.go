@@ -719,19 +719,6 @@ func validatePrefixLength(ctx *sql.Context, colName string, colLen int64, colTyp
 	return nil
 }
 
-// missingIdxColumn takes in a set of IndexColumns and returns false, along with the offending column name, if
-// an index Column is not in an index.
-func missingIdxColumn(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
-	// TODO: move this into validateIndexes
-	for _, c := range cols {
-		if ok := sch.Contains(c.Name, tableName); !ok {
-			return c.Name, false
-		}
-	}
-
-	return "", true
-}
-
 func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {
 	idx := sch.IndexOf(col.Name, tableName)
 	schCopy := make(sql.Schema, len(sch))
@@ -973,27 +960,27 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 	tableName := getTableName(ai.Table)
 	switch ai.Action {
 	case plan.PrimaryKeyAction_Create:
-		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
-		if !ok {
-			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
-		}
-
 		if hasPrimaryKeys(sch) {
 			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 
+		colMap := schToColMap(sch)
+		idxDef := &sql.IndexDef {
+			Name:       "PRIMARY",
+			Columns:    ai.Columns,
+			Constraint: sql.IndexConstraint_Primary,
+		}
 		strictMySQLCompat, err := isStrictMysqlCompatibilityEnabled(ctx)
+		if err != nil {
+			return nil, err
+		}
+		err = validateIndex(ctx, colMap, idxDef, strictMySQLCompat)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, idxCol := range ai.Columns {
-			schCol := sch[sch.IndexOf(idxCol.Name, tableName)]
-			err := validatePrefixLength(ctx, schCol.Name, idxCol.Length, schCol.Type, strictMySQLCompat, false)
-			if err != nil {
-				return nil, err
-			}
-
+			schCol := colMap[strings.ToLower(idxCol.Name)]
 			if schCol.Virtual {
 				return nil, sql.ErrVirtualColumnPrimaryKey.New()
 			}

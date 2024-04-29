@@ -1026,9 +1026,6 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 		}
 
 		indexMap[strings.ToLower(idxDef.Name)] = struct{}{}
-		if err = validateIndexDef(*idxDef, idxAltTbl.Schema()); err != nil {
-			return err
-		}
 
 		// We'll create the Full-Text indexes after all others
 		if idxDef.IsFullText() {

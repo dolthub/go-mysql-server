@@ -4215,8 +4215,6 @@ var IndexQueries = []ScriptTest{
 				Query:       "alter table idx_tbl modify column j json;",
 				ExpectedErr: sql.ErrJSONIndex,
 			},
-			// TODO: in GMS these tables are still being created, just without the indexes
-			// The correct fix is to have these error occur before rowexec or have gms transactions rollback
 			{
 				Query:       "create table t1 (i int primary key, j json, index(j));",
 				ExpectedErr: sql.ErrJSONIndex,
@@ -4228,6 +4226,14 @@ var IndexQueries = []ScriptTest{
 			{
 				Query:       "create table t3 (i int, j json, index(j, i));",
 				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				// Ensure the above statements did not create tables without indexes
+				Query:    "show tables;",
+				Expected: []sql.Row{
+					{"json_tbl"},
+					{"idx_tbl"},
+				},
 			},
 		},
 	},

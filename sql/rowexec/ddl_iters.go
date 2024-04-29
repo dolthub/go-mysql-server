@@ -1833,34 +1833,6 @@ func generateIndexName(ctx *sql.Context, idxAltable sql.IndexAlterableTable, idx
 	return indexName, nil
 }
 
-// validateIndexDef ensures that the Index Definition is valid for the table schema.
-// Columns must be:
-//   - in the schema
-//   - not duplicated
-//   - not JSON
-func validateIndexDef(idxDef sql.IndexDef, schema sql.Schema) error {
-	return nil
-	// TODO: delete this; all validation should be handled in analyzer
-	schMap := make(map[string]*sql.Column, len(schema))
-	seenCols := make(map[*sql.Column]struct{})
-	for _, col := range schema {
-		schMap[strings.ToLower(col.Name)] = col
-	}
-	for _, indexCol := range idxDef.Columns {
-		col, exists := schMap[strings.ToLower(indexCol.Name)]
-		if !exists {
-			return sql.ErrKeyColumnDoesNotExist.New(indexCol.Name)
-		}
-		if _, seen := seenCols[col]; seen {
-			return sql.ErrDuplicateColumn.New(indexCol.Name)
-		}
-		if types.IsJSON(col.Type) {
-			return sql.ErrJSONIndex.New(col.Name)
-		}
-	}
-	return nil
-}
-
 // getFulltextDatabase returns the fulltext.Database from the given sql.Database, or an error if it is not supported.
 func getFulltextDatabase(db sql.Database) (fulltext.Database, error) {
 	fullTextDb, isFulltextDb := db.(fulltext.Database)
@@ -1913,10 +1885,6 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			Constraint: n.Constraint,
 			Storage:    n.Using,
 			Comment:    n.Comment,
-		}
-
-		if err = validateIndexDef(indexDef, idxAltTbl.Schema()); err != nil {
-			return err
 		}
 
 		if indexDef.IsFullText() {
