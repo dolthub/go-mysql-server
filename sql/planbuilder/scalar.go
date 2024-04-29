@@ -100,7 +100,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		dbName := strings.ToLower(v.Qualifier.Qualifier.String())
+		dbName := strings.ToLower(v.Qualifier.DbQualifier.String())
 		tblName := strings.ToLower(v.Qualifier.Name.String())
 		colName := strings.ToLower(v.Name.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
@@ -316,7 +316,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			if v.Name.Qualifier.Name.String() == "" {
 				v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
 			}
-			dbName := strings.ToLower(v.Name.Qualifier.Qualifier.String())
+			dbName := strings.ToLower(v.Name.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(v.Name.Qualifier.Name.String())
 			colName := strings.ToLower(v.Name.Name.String())
 			col, ok := inScope.resolveColumn(dbName, tblName, colName, false, false)

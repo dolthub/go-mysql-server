@@ -46,6 +46,7 @@ func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
+
 			for _, setup := range tt.setup {
 				for _, statement := range setup {
 					if sh, ok := harness.(SkippingHarness); ok {

@@ -47,6 +47,39 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	return database
 }
 
+func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
+	dbName := table.DbQualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+
+	if dbName == "" {
+		b.handleErr(sql.ErrNoDatabaseSelected.New())
+	}
+
+	database, err := b.cat.Database(b.ctx, dbName)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	schema := table.SchemaQualifier.String()
+	if schema != "" {
+		scd, ok := database.(sql.SchemaDatabase)
+		if !ok {
+			b.handleErr(fmt.Errorf("database %T does not support schemas", database))
+		}
+		database, ok, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !ok {
+			b.handleErr(sql.ErrDatabaseNotFound.New(schema))
+		}
+	}
+
+	return database
+}
+
 // buildAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
 // the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
 // Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
@@ -155,12 +188,12 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	var dropTables []sql.Node
-	dbName := c.FromTables[0].Qualifier.String()
+	dbName := c.FromTables[0].DbQualifier.String()
 	if dbName == "" {
 		dbName = b.currentDb().Name()
 	}
 	for _, t := range c.FromTables {
-		if t.Qualifier.String() != "" && t.Qualifier.String() != dbName {
+		if t.DbQualifier.String() != "" && t.DbQualifier.String() != dbName {
 			err := sql.ErrUnsupportedFeature.New("dropping tables on multiple databases in the same statement")
 			b.handleErr(err)
 		}
@@ -179,7 +212,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 			}
 		}
 
-		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, t, nil)
 		if ok {
 			dropTables = append(dropTables, tableScope.node)
 		} else if !c.IfExists {
@@ -194,14 +227,12 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 
 func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := c.Table.Qualifier.String()
-	tabName := c.Table.Name.String()
-	tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tabName))
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
 	}
 	outScope.node = plan.NewTruncate(
-		c.Table.Qualifier.String(),
+		c.Table.DbQualifier.String(),
 		tableScope.node,
 	)
 	return
@@ -213,11 +244,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		return b.buildCreateTableLike(inScope, c)
 	}
 
-	qualifier := c.Table.Qualifier.String()
-	if qualifier == "" {
-		qualifier = b.ctx.GetCurrentDatabase()
-	}
-	database := b.resolveDb(qualifier)
+	database := b.resolveDbForTable(c.Table)
 
 	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE node.
 	// if the table spec != nil it will get parsed below.
@@ -297,18 +324,14 @@ func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 }
 
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
-	tableName := ct.OptLike.LikeTable.Name.String()
-	likeDbName := ct.OptLike.LikeTable.Qualifier.String()
-	if likeDbName == "" {
-		likeDbName = b.ctx.GetCurrentDatabase()
-	}
-	outScope, ok := b.buildTablescan(inScope, likeDbName, tableName, nil)
+	outScope, ok := b.buildTablescan(inScope, ct.OptLike.LikeTable, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
+		b.handleErr(sql.ErrTableNotFound.New(ct.OptLike.LikeTable.Name.String()))
 	}
+
 	likeTable, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tableName)
+		err := fmt.Errorf("expected resolved table: %s", ct.OptLike.LikeTable.Name.String())
 		b.handleErr(err)
 	}
 
@@ -393,11 +416,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		Comment:   likeTable.Comment(),
 	}
 
-	qualifier := ct.Table.Qualifier.String()
-	if qualifier == "" {
-		qualifier = b.ctx.GetCurrentDatabase()
-	}
-	database := b.resolveDb(qualifier)
+	database := b.resolveDbForTable(ct.Table)
 
 	outScope.node = plan.NewCreateTable(database, newTableName, ct.IfNotExists, ct.Temporary, tableSpec)
 	return outScope
@@ -441,16 +460,14 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	} else {
-		dbName := ddl.Table.Qualifier.String()
-		tableName := ddl.Table.Name.String()
 		var ok bool
-		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, ddl.Table, nil)
 		if !ok {
-			b.handleErr(sql.ErrTableNotFound.New(tableName))
+			b.handleErr(sql.ErrTableNotFound.New(ddl.Table.Name.String()))
 		}
 		rt, ok := tableScope.node.(*plan.ResolvedTable)
 		if !ok {
-			err := fmt.Errorf("expected resolved table: %s", tableName)
+			err := fmt.Errorf("expected resolved table: %s", ddl.Table.Name.String())
 			b.handleErr(err)
 		}
 
@@ -621,7 +638,7 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			constraint.Database = tname.Qualifier.String()
+			constraint.Database = tname.DbQualifier.String()
 			constraint.Table = tname.Name.String()
 			if constraint.Database == "" {
 				constraint.Database = b.ctx.GetCurrentDatabase()
@@ -720,7 +737,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 		for i, col := range fkConstraint.ReferencedColumns {
 			refColumns[i] = col.String()
 		}
-		refDatabase := fkConstraint.ReferencedTable.Qualifier.String()
+		refDatabase := fkConstraint.ReferencedTable.DbQualifier.String()
 		if refDatabase == "" {
 			refDatabase = b.ctx.GetCurrentDatabase()
 		}
@@ -988,10 +1005,11 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		}
 	}
 
-	dbName := strings.ToLower(ddl.Table.Qualifier.String())
+	dbName := strings.ToLower(ddl.Table.DbQualifier.String())
 	tblName := strings.ToLower(ddl.Table.Name.String())
+
 	var ok bool
-	outScope, ok = b.buildTablescan(inScope, dbName, tblName, nil)
+	outScope, ok = b.buildTablescan(inScope, ddl.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tblName))
 	}
@@ -1531,9 +1549,20 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 		if err != nil {
 			b.handleErr(err)
 		}
-		createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
-		createDb.Catalog = b.cat
-		outScope.node = createDb
+
+		var node sql.Node
+		switch c.SchemaOrDatabase {
+		case "database":
+			createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
+			createDb.Catalog = b.cat
+			node = createDb
+		case "schema":
+			createSchema := plan.NewCreateSchema(c.DBName, c.IfNotExists, collation)
+			createSchema.Catalog = b.cat
+			node = createSchema
+		}
+
+		outScope.node = node
 	case ast.DropStr:
 		dropDb := plan.NewDropDatabase(c.DBName, c.IfExists)
 		dropDb.Catalog = b.cat

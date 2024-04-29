@@ -233,8 +233,8 @@ func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Ro
 	return queue, nil
 }
 
-func (s *StatsProv) GetTableStats(ctx *sql.Context, db, table string) ([]sql.Statistic, error) {
-	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table))
+func (s *StatsProv) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
+	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
 	var ret []sql.Statistic
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
@@ -268,8 +268,8 @@ func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []s
 	return nil
 }
 
-func (s *StatsProv) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
-	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table))
+func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
 	var cnt uint64
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
@@ -281,7 +281,7 @@ func (s *StatsProv) RowCount(ctx *sql.Context, db, table string) (uint64, error)
 	return cnt, nil
 }
 
-func (s *StatsProv) DataLength(ctx *sql.Context, db, table string) (uint64, error) {
+func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	pref := fmt.Sprintf("%s.%s", db, table)
 	var size uint64
 	for key, stats := range s.colStats {

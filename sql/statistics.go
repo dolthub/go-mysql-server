@@ -34,7 +34,7 @@ type StatisticsTable interface {
 // build and provide index statistics.
 type StatsProvider interface {
 	// GetTableStats returns all statistics for the table
-	GetTableStats(ctx *Context, db, table string) ([]Statistic, error)
+	GetTableStats(ctx *Context, db string, table Table) ([]Statistic, error)
 	// RefreshTableStats updates all statistics associated with a given table
 	RefreshTableStats(ctx *Context, table Table, db string) error
 	// SetStats updates or overwrites a set of table statistics
@@ -46,9 +46,9 @@ type StatsProvider interface {
 	// DropAllStats deletes all database statistics
 	DropDbStats(ctx *Context, db string, flush bool) error
 	// RowCount returns the number of rows in a table
-	RowCount(ctx *Context, db, table string) (uint64, error)
+	RowCount(ctx *Context, db string, table Table) (uint64, error)
 	// DataLength returns the estimated size of each row in the table
-	DataLength(ctx *Context, db, table string) (uint64, error)
+	DataLength(ctx *Context, db string, table Table) (uint64, error)
 }
 
 type IndexClass uint8
@@ -99,7 +99,7 @@ func NewQualifierFromString(q string) (StatQualifier, error) {
 }
 
 func NewStatQualifier(db, table, index string) StatQualifier {
-	return StatQualifier{Database: db, Tab: table, Idx: index}
+	return StatQualifier{Database: strings.ToLower(db), Tab: strings.ToLower(table), Idx: strings.ToLower(index)}
 }
 
 // StatQualifier is the namespace hierarchy for a given statistic.

@@ -53,7 +53,7 @@ func (b *Builder) buildReplicationOption(inScope *scope, option *ast.Replication
 		urts := make([]sql.UnresolvedTable, len(vv))
 		for i, tableName := range vv {
 			// downstream logic expects these to specifically be unresolved tables
-			urts[i] = plan.NewUnresolvedTable(tableName.Name.String(), tableName.Qualifier.String())
+			urts[i] = plan.NewUnresolvedTable(tableName.Name.String(), tableName.DbQualifier.String())
 		}
 		return binlogreplication.NewReplicationOption(option.Name, binlogreplication.TableNamesReplicationOptionValue{Value: urts})
 	default:
