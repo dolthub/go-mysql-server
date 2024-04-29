@@ -224,5 +224,5 @@ func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
 		}
 	})
 
-	return complex || strings.ToLower(e.InputExpression) != strings.ToLower(expr.String())
+	return complex || e.InputExpression != expr.String()
 }
