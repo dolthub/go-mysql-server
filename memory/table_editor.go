@@ -515,6 +515,8 @@ func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) error {
 		}
 	}
 
+	// Cost of synchronizing sorts is pretty hefty, so we're going to bypass that
+	// for our use case...
 	pke.table.sortRows()
 
 	return nil
