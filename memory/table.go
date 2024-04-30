@@ -1558,15 +1558,17 @@ func (t *Table) sortRows() {
 	}
 
 	var idx []partidx
+	t.partitionMux.RLock()
 	for _, k := range t.partitionKeys {
-		t.partitionMux.RLock()
 		p := t.partitions[string(k)]
 		for i := 0; i < len(p); i++ {
 			idx = append(idx, partidx{string(k), i})
 		}
-		t.partitionMux.RUnlock()
 	}
+	t.partitionMux.RUnlock()
 
+	t.partitionMux.Lock()
+	defer t.partitionMux.Unlock()
 	sort.Sort(partitionssort{&t.partitionMux, t.partitions, idx, less})
 }
 
@@ -1587,23 +1589,17 @@ func (ps partitionssort) Len() int {
 }
 
 func (ps partitionssort) Less(i, j int) bool {
-	var less bool
-	ps.partitionMux.RLock()
 	lidx := ps.idx[i]
 	ridx := ps.idx[j]
 	lr := ps.ps[lidx.key][lidx.i]
 	rr := ps.ps[ridx.key][ridx.i]
-	less = ps.less(lr, rr)
-	ps.partitionMux.RUnlock()
-	return less
+	return ps.less(lr, rr)
 }
 
 func (ps partitionssort) Swap(i, j int) {
-	ps.partitionMux.Lock()
 	lidx := ps.idx[i]
 	ridx := ps.idx[j]
 	ps.ps[lidx.key][lidx.i], ps.ps[ridx.key][ridx.i] = ps.ps[ridx.key][ridx.i], ps.ps[lidx.key][lidx.i]
-	ps.partitionMux.Unlock()
 }
 
 func copyschema(sch sql.Schema) sql.Schema {
