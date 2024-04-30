@@ -512,7 +512,7 @@ var (
 	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition: there can be only one auto column and it must be defined as a key")
 
 	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
-	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
+	ErrKeyColumnDoesNotExist = errors.NewKind("key column '%s' doesn't exist in table")
 
 	// ErrCantDropFieldOrKey is returned when a table invokes DropPrimaryKey on a keyless table.
 	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")
@@ -892,6 +892,9 @@ var (
 
 	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
 	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
+
+	// ErrJSONIndex is returned when attempting to create an index over a JSON column directly
+	ErrJSONIndex = errors.NewKind("JSON column '%s' supports indexing only via generated columns on a specified JSON path")
 
 	ErrInvalidOnUpdate = errors.NewKind("Invalid ON UPDATE clause for '%s' column")
 

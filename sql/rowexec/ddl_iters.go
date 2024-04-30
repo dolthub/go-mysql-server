@@ -1806,21 +1806,62 @@ func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
 	}
 }
 
+// generateIndexName generates a unique index name based on the columns in the index, and any existing indexes on the table.
+func generateIndexName(ctx *sql.Context, idxAltable sql.IndexAlterableTable, idxColNames []string) (string, error) {
+	indexMap := make(map[string]struct{})
+	if indexedTable, ok := idxAltable.(sql.IndexAddressable); ok {
+		indexes, err := indexedTable.GetIndexes(ctx)
+		if err != nil {
+			return "", err
+		}
+		for _, index := range indexes {
+			indexMap[strings.ToLower(index.ID())] = struct{}{}
+		}
+	}
+	indexName := strings.Join(idxColNames, "")
+	if _, ok := indexMap[strings.ToLower(indexName)]; !ok {
+		return indexName, nil
+	}
+	// MySQL starts at 2 for generating duplicate indexes
+	for i := 2; true; i++ {
+		newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+		if _, ok := indexMap[strings.ToLower(newIndexName)]; !ok {
+			return newIndexName, nil
+		}
+	}
+	// Should never reach here
+	return indexName, nil
+}
+
+// getFulltextDatabase returns the fulltext.Database from the given sql.Database, or an error if it is not supported.
+func getFulltextDatabase(db sql.Database) (fulltext.Database, error) {
+	fullTextDb, isFulltextDb := db.(fulltext.Database)
+	if isFulltextDb {
+		return fullTextDb, nil
+	}
+	privDb, isPrivDb := db.(mysql_db.PrivilegedDatabase)
+	if !isPrivDb {
+		return nil, sql.ErrCreateTableNotSupported.New()
+	}
+	fullTextDb, isFulltextDb = privDb.Unwrap().(fulltext.Database)
+	if isFulltextDb {
+		return fullTextDb, nil
+	}
+	return nil, sql.ErrIncompleteFullTextIntegration.New()
+}
+
 // Execute inserts the rows in the database.
 func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) error {
 	// We should refresh the state of the table in case this alter was in a multi alter statement.
-	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
+	db := n.Database()
+	table, err := getTableFromDatabase(ctx, db, n.Table)
 	if err != nil {
 		return err
 	}
 
-	indexable, ok := table.(sql.IndexAlterableTable)
+	idxAltTbl, ok := table.(sql.IndexAlterableTable)
 	if !ok {
 		return plan.ErrNotIndexable.New()
-	}
-
-	if err != nil {
-		return err
 	}
 
 	switch n.Action {
@@ -1829,51 +1870,15 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			return plan.ErrCreateIndexMissingColumns.New()
 		}
 
-		// Make sure that all columns are valid, in the table, and there are no duplicates
-		seenCols := make(map[string]bool)
-		for _, col := range indexable.Schema() {
-			seenCols[strings.ToLower(col.Name)] = false
-		}
-		for _, indexCol := range n.Columns {
-			if seen, ok := seenCols[strings.ToLower(indexCol.Name)]; ok {
-				if !seen {
-					seenCols[strings.ToLower(indexCol.Name)] = true
-				} else {
-					return plan.ErrCreateIndexDuplicateColumn.New(indexCol.Name)
-				}
-			} else {
-				return plan.ErrCreateIndexNonExistentColumn.New(indexCol.Name)
-			}
-		}
-
 		indexName := n.IndexName
-		if indexName == "" {
-			indexMap := make(map[string]struct{})
-			// If we can get the other indexes declared on this table then we can ensure that we're creating a unique
-			// index name. In either case, we retain the map search to simplify the logic (it will either be populated
-			// or empty).
-			if indexedTable, ok := indexable.(sql.IndexAddressable); ok {
-				indexes, err := indexedTable.GetIndexes(ctx)
-				if err != nil {
-					return err
-				}
-				for _, index := range indexes {
-					indexMap[strings.ToLower(index.ID())] = struct{}{}
-				}
-			}
-			indexName = strings.Join(n.ColumnNames(), "")
-			if _, ok := indexMap[strings.ToLower(indexName)]; ok {
-				for i := 0; true; i++ {
-					// MySQL starts at 2 for duplicate indexes
-					newIndexName := fmt.Sprintf("%s_%d", indexName, i+2)
-					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
-						indexName = newIndexName
-						break
-					}
-				}
+		if len(indexName) == 0 {
+			indexName, err = generateIndexName(ctx, idxAltTbl, n.ColumnNames())
+			if err != nil {
+				return err
 			}
 		}
 
+		// TODO: this should really be a pointer, but there are too many interfaces that expect a value
 		indexDef := sql.IndexDef{
 			Name:       indexName,
 			Columns:    n.Columns,
@@ -1882,28 +1887,27 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			Comment:    n.Comment,
 		}
 
-		if n.Constraint == sql.IndexConstraint_Fulltext {
-			database, ok := n.Database().(fulltext.Database)
-			if !ok {
-				if privDb, ok := n.Database().(mysql_db.PrivilegedDatabase); ok {
-					if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
-						return sql.ErrIncompleteFullTextIntegration.New()
-					}
-				} else {
-					return sql.ErrIncompleteFullTextIntegration.New()
-				}
+		if indexDef.IsFullText() {
+			var database fulltext.Database
+			database, err = getFulltextDatabase(db)
+			if err != nil {
+				return err
 			}
-			return fulltext.CreateFulltextIndexes(ctx, database, indexable, nil, sql.IndexDefs{&indexDef})
+			err = fulltext.CreateFulltextIndexes(ctx, database, idxAltTbl, nil, sql.IndexDefs{&indexDef})
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 
-		err = indexable.CreateIndex(ctx, indexDef)
+		err = idxAltTbl.CreateIndex(ctx, indexDef)
 		if err != nil {
 			return err
 		}
 
 		// Two ways to build an index for an integrator, implemented by two different interfaces.
 		// The first way is building just an index with a special Inserter, only if the integrator requests it
-		ibt, isIndexBuilding := indexable.(sql.IndexBuildingTable)
+		ibt, isIndexBuilding := idxAltTbl.(sql.IndexBuildingTable)
 		if isIndexBuilding {
 			shouldRebuild, err := ibt.ShouldBuildIndex(ctx, indexDef)
 			if err != nil {
@@ -1916,14 +1920,14 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		}
 
 		// The second way to rebuild an index is with a full table rewrite
-		rwt, isRewritable := indexable.(sql.RewritableTable)
+		rwt, isRewritable := idxAltTbl.(sql.RewritableTable)
 		if isRewritable && indexCreateRequiresBuild(n) {
 			return rewriteTableForIndexCreate(ctx, n, table, rwt)
 		}
 
 		return nil
 	case plan.IndexAction_Drop:
-		if fkTable, ok := indexable.(sql.ForeignKeyTable); ok {
+		if fkTable, ok := idxAltTbl.(sql.ForeignKeyTable); ok {
 			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 			if err != nil {
 				return err
@@ -1954,11 +1958,10 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		}
 
 		// If we're dropping a Full-Text, then we also need to delete its tables
-		database := n.Database()
-		if addressable, ok := indexable.(sql.IndexAddressableTable); !ok {
+		if addressable, ok := idxAltTbl.(sql.IndexAddressableTable); !ok {
 			// If they don't support their creation, then it's safe to assume that they won't have any to delete
-			if _, ok = database.(fulltext.Database); ok {
-				return sql.ErrIncompleteFullTextIntegration.New()
+			if _, err = getFulltextDatabase(db); err != nil {
+				return err
 			}
 		} else {
 			indexes, err := addressable.GetIndexes(ctx)
@@ -1986,7 +1989,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 			// We found the index and it is Full-Text, so we need to delete the other tables
 			if ftIndex != nil {
-				dropper, ok := database.(sql.TableDropper)
+				dropper, ok := db.(sql.TableDropper)
 				if !ok {
 					return sql.ErrIncompleteFullTextIntegration.New()
 				}
@@ -2014,9 +2017,9 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				}
 			}
 		}
-		return indexable.DropIndex(ctx, n.IndexName)
+		return idxAltTbl.DropIndex(ctx, n.IndexName)
 	case plan.IndexAction_Rename:
-		return indexable.RenameIndex(ctx, n.PreviousIndexName, n.IndexName)
+		return idxAltTbl.RenameIndex(ctx, n.PreviousIndexName, n.IndexName)
 	case plan.IndexAction_DisableEnableKeys:
 		if ctx != nil && ctx.Session != nil {
 			ctx.Session.Warn(&sql.Warning{

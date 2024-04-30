@@ -1091,7 +1091,7 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CREATE TABLE test (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v1));",
-				ExpectedErr: sql.ErrFullTextDuplicateColumn,
+				ExpectedErr: sql.ErrDuplicateColumn,
 			},
 		},
 	},
@@ -1100,7 +1100,7 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "CREATE TABLE test (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v3));",
-				ExpectedErr: sql.ErrUnknownIndexColumn,
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 			},
 		},
 	},

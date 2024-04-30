@@ -930,22 +930,21 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	} else {
 		switch creatable := maybePrivDb.(type) {
 		case sql.IndexedTableCreator:
-			var pkIdxDef sql.IndexDef
-			var hasPkIdxDef bool
+			var pkIdxDef *sql.IndexDef
 			for _, idxDef := range n.Indexes() {
-				if idxDef.Constraint == sql.IndexConstraint_Primary {
-					hasPkIdxDef = true
-					pkIdxDef = sql.IndexDef{
+				if idxDef.IsPrimary() {
+					pkIdxDef = &sql.IndexDef{
 						Name:       idxDef.Name,
 						Columns:    idxDef.Columns,
 						Constraint: idxDef.Constraint,
 						Storage:    idxDef.Storage,
 						Comment:    idxDef.Comment,
 					}
+					break
 				}
 			}
-			if hasPkIdxDef {
-				err = creatable.CreateIndexedTable(ctx, n.Name(), n.PkSchema(), pkIdxDef, n.Collation)
+			if pkIdxDef != nil {
+				err = creatable.CreateIndexedTable(ctx, n.Name(), n.PkSchema(), *pkIdxDef, n.Collation)
 				if sql.ErrUnsupportedIndexPrefix.Is(err) {
 					return sql.RowsToRowIter(), err
 				}
@@ -1060,7 +1059,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 }
 
 func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes sql.IndexDefs) (err error) {
-	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
+	idxAltTbl, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return plan.ErrNotIndexable.New()
 	}
@@ -1068,40 +1067,24 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 	indexMap := make(map[string]struct{})
 	fulltextIndexes := make(sql.IndexDefs, 0)
 	for _, idxDef := range idxes {
-		indexName := idxDef.Name
-		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
-		// until we get a non-colliding name if the original name (or each preceding name) already exists.
-		// TODO: this doesn't match getIndexName function in dolt
-		if len(indexName) == 0 {
-			indexName = strings.Join(idxDef.ColumnNames(), "")
-			if _, ok = indexMap[strings.ToLower(indexName)]; ok {
-				for i := 0; true; i++ {
-					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
-					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
-						indexName = newIndexName
-						break
-					}
-				}
+		if len(idxDef.Name) == 0 {
+			idxDef.Name, err = generateIndexName(ctx, idxAltTbl, idxDef.ColumnNames())
+			if err != nil {
+				return err
 			}
-		}
-
-		if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+		} else if _, ok = indexMap[strings.ToLower(idxDef.Name)]; ok {
 			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.Name)
 		}
-		indexMap[strings.ToLower(indexName)] = struct{}{}
+
+		indexMap[strings.ToLower(idxDef.Name)] = struct{}{}
 
 		// We'll create the Full-Text indexes after all others
 		if idxDef.IsFullText() {
 			fulltextIndexes = append(fulltextIndexes, idxDef)
 			continue
 		}
-		err = idxAlterable.CreateIndex(ctx, sql.IndexDef{
-			Name:       indexName,
-			Columns:    idxDef.Columns,
-			Constraint: idxDef.Constraint,
-			Storage:    idxDef.Storage,
-			Comment:    idxDef.Comment,
-		})
+
+		err = idxAltTbl.CreateIndex(ctx, *idxDef)
 		if err != nil {
 			return err
 		}
@@ -1109,17 +1092,13 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 
 	// Evaluate our Full-Text indexes now
 	if len(fulltextIndexes) > 0 {
-		database, isFulltextDb := db.(fulltext.Database)
-		if !isFulltextDb {
-			privDb, isPrivDb := db.(mysql_db.PrivilegedDatabase)
-			if !isPrivDb {
-				return sql.ErrCreateTableNotSupported.New(db.Name())
-			}
-			if database, ok = privDb.Unwrap().(fulltext.Database); !ok {
-				return sql.ErrCreateTableNotSupported.New(db.Name())
-			}
+		var database fulltext.Database
+		database, err = getFulltextDatabase(db)
+		if err != nil {
+			return err
 		}
-		if err = fulltext.CreateFulltextIndexes(ctx, database, idxAlterable, nil, fulltextIndexes); err != nil {
+		err = fulltext.CreateFulltextIndexes(ctx, database, idxAltTbl, nil, fulltextIndexes)
+		if err != nil {
 			return err
 		}
 	}
