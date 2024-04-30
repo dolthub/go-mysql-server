@@ -1059,7 +1059,6 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 }
 
 func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sql.Table, idxes sql.IndexDefs) (err error) {
-	// TODO: This should do what execute alter index does
 	idxAltTbl, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return plan.ErrNotIndexable.New()

@@ -444,7 +444,7 @@ func isStrictMysqlCompatibilityEnabled(ctx *sql.Context) (bool, error) {
 
 func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
-	tableName := table.(sql.Nameable).Name() // TODO: worth preventing panic?
+	tableName := table.(sql.Nameable).Name()
 
 	// The old column must exist in the original schema before this statement was run.
 	// It cannot have been renamed in the same statement.
@@ -777,8 +777,6 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
-// TODO: make this work for CREATE TABLE statements where there's a non-pk auto increment column
-// TODO: verify that the above is fixed
 func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
