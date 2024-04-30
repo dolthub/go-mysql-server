@@ -109,7 +109,10 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			key = val.(string)
 		} else {
 			if json, ok := val.(sql.JSONWrapper); ok {
-				val = json.ToInterface()
+				val, err = json.ToInterface()
+				if err != nil {
+					return nil, err
+				}
 			}
 			obj[key] = val
 		}

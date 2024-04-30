@@ -16,12 +16,14 @@ package types
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/jsonpath"
 	"github.com/shopspring/decimal"
@@ -30,8 +32,38 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// JSONStringer can be converted to a string representation that is compatible with MySQL's JSON output, including spaces.
 type JSONStringer interface {
 	JSONString() (string, error)
+}
+
+// StringifyJSON generates a string representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
+func StringifyJSON(jsonWrapper sql.JSONWrapper) (string, error) {
+	if stringer, ok := jsonWrapper.(JSONStringer); ok {
+		return stringer.JSONString()
+	}
+	val, err := jsonWrapper.ToInterface()
+	if err != nil {
+		return "", err
+	}
+	return marshalToMySqlString(val)
+}
+
+// JSONBytes are values which can be represented as JSON.
+type JSONBytes interface {
+	GetBytes() ([]byte, error)
+}
+
+// JSONBytes returns or generates a byte array for the JSON representation of the underlying sql.JSONWrapper
+func MarshallJson(jsonWrapper sql.JSONWrapper) ([]byte, error) {
+	if bytes, ok := jsonWrapper.(JSONBytes); ok {
+		return bytes.GetBytes()
+	}
+	val, err := jsonWrapper.ToInterface()
+	if err != nil {
+		return []byte{}, err
+	}
+	return json.Marshal(val)
 }
 
 type JsonObject = map[string]interface{}
@@ -60,13 +92,18 @@ type JSONDocument struct {
 }
 
 var _ sql.JSONWrapper = JSONDocument{}
+var _ MutableJSON = JSONDocument{}
 
-func (doc JSONDocument) ToInterface() interface{} {
-	return doc.Val
+func (doc JSONDocument) ToInterface() (interface{}, error) {
+	return doc.Val, nil
 }
 
 func (doc JSONDocument) Compare(other sql.JSONWrapper) (int, error) {
-	return CompareJSON(doc.Val, other.ToInterface())
+	otherVal, err := other.ToInterface()
+	if err != nil {
+		return 0, err
+	}
+	return CompareJSON(doc.Val, otherVal)
 }
 
 func (doc JSONDocument) JSONString() (string, error) {
@@ -82,17 +119,50 @@ func (doc JSONDocument) String() string {
 	return result
 }
 
-var _ sql.JSONWrapper = JSONDocument{}
-var _ MutableJSON = JSONDocument{}
-
 // Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
 // it returns a bool
 func (doc JSONDocument) Contains(candidate sql.JSONWrapper) (val interface{}, err error) {
-	return ContainsJSON(doc.Val, candidate.ToInterface())
+	candidateVal, err := candidate.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	return ContainsJSON(doc.Val, candidateVal)
 }
 
 func (doc JSONDocument) Extract(path string) (sql.JSONWrapper, error) {
 	return LookupJSONValue(doc, path)
+}
+
+// LazyJSONDocument is an implementation of sql.JSONWrapper that wraps a JSON string and defers deserializing
+// it unless needed. This is more efficient for queries that interact with JSON values but don't care about their structure.
+type LazyJSONDocument struct {
+	Bytes         []byte
+	interfaceFunc func() (interface{}, error)
+}
+
+var _ sql.JSONWrapper = &LazyJSONDocument{}
+var _ JSONBytes = &LazyJSONDocument{}
+
+func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
+	return &LazyJSONDocument{
+		Bytes: bytes,
+		interfaceFunc: sync.OnceValues(func() (interface{}, error) {
+			var val interface{}
+			err := json.Unmarshal(bytes, &val)
+			if err != nil {
+				return nil, err
+			}
+			return val, nil
+		}),
+	}
+}
+
+func (j *LazyJSONDocument) ToInterface() (interface{}, error) {
+	return j.interfaceFunc()
+}
+
+func (j *LazyJSONDocument) GetBytes() ([]byte, error) {
+	return j.Bytes, nil
 }
 
 func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
@@ -113,7 +183,10 @@ func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
 	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
 	// to always result in sql NULL, except in the case of the identity lookup
 	// $.
-	r := j.ToInterface()
+	r, err := j.ToInterface()
+	if err != nil {
+		return nil, err
+	}
 	if r == nil {
 		return nil, nil
 	}
@@ -147,9 +220,13 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 }
 
 func ConcatenateJSONValues(ctx *sql.Context, vals ...sql.JSONWrapper) (sql.JSONWrapper, error) {
+	var err error
 	arr := make(JsonArray, len(vals))
 	for i, v := range vals {
-		arr[i] = v.ToInterface()
+		arr[i], err = v.ToInterface()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return JSONDocument{Val: arr}, nil
 }
@@ -349,6 +426,7 @@ func containsJSONNumber(a float64, b interface{}) (bool, error) {
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json.html#json-comparison
 func CompareJSON(a, b interface{}) (int, error) {
+	var err error
 	if hasNulls, res := CompareNulls(b, a); hasNulls {
 		return res, nil
 	}
@@ -389,9 +467,16 @@ func CompareJSON(a, b interface{}) (int, error) {
 		return compareJSONNumber(af, b)
 	case sql.JSONWrapper:
 		if jw, ok := b.(sql.JSONWrapper); ok {
-			b = jw.ToInterface()
+			b, err = jw.ToInterface()
+			if err != nil {
+				return 0, err
+			}
 		}
-		return CompareJSON(a.ToInterface(), b)
+		aVal, err := a.ToInterface()
+		if err != nil {
+			return 0, err
+		}
+		return CompareJSON(aVal, b)
 	default:
 		return 0, sql.ErrInvalidType.New(a)
 	}
@@ -655,7 +740,10 @@ func (doc JSONDocument) unwrapAndExecute(path string, val sql.JSONWrapper, mode 
 	var err error
 	var unmarshalled interface{}
 	if val != nil {
-		unmarshalled = val.ToInterface()
+		unmarshalled, err = val.ToInterface()
+		if err != nil {
+			return nil, false, err
+		}
 	} else if mode != REMOVE {
 		return nil, false, fmt.Errorf("Invariant violation. value may not be nil")
 	}

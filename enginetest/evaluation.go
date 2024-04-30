@@ -819,7 +819,10 @@ func widenJSONValues(val interface{}) sql.JSONWrapper {
 		js = types.MustJSON(str)
 	}
 
-	doc := js.ToInterface()
+	doc, err := js.ToInterface()
+	if err != nil {
+		panic(err)
+	}
 
 	if _, ok := js.(sql.Statistic); ok {
 		// avoid comparing time values in statistics

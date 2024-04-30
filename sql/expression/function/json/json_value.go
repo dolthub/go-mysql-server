@@ -182,7 +182,7 @@ func GetJSONFromWrapperOrCoercibleString(js interface{}) (jsonData interface{}, 
 		}
 		return jsonData, nil
 	case sql.JSONWrapper:
-		return jsType.ToInterface(), nil
+		return jsType.ToInterface()
 	default:
 		return nil, InvalidJsonArgument.New()
 	}

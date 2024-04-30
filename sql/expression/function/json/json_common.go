@@ -71,7 +71,11 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 	doc, ok := converted.(types.JSONDocument)
 	if !ok {
 		// This should never happen, but just in case.
-		doc = types.JSONDocument{Val: js.(sql.JSONWrapper).ToInterface()}
+		val, err := js.(sql.JSONWrapper).ToInterface()
+		if err != nil {
+			return nil, err
+		}
+		doc = types.JSONDocument{Val: val}
 	}
 
 	return &doc, nil

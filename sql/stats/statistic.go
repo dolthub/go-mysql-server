@@ -209,10 +209,15 @@ func (s *Statistic) IndexClass() sql.IndexClass {
 	return sql.IndexClass(s.IdxClass)
 }
 
-func (s *Statistic) ToInterface() interface{} {
+func (s *Statistic) ToInterface() (interface{}, error) {
 	typs := make([]string, len(s.Typs))
 	for i, t := range s.Typs {
 		typs[i] = t.String()
+	}
+
+	buckets, err := s.Histogram().ToInterface()
+	if err != nil {
+		return nil, err
 	}
 
 	return map[string]interface{}{
@@ -225,9 +230,9 @@ func (s *Statistic) ToInterface() interface{} {
 			"qualifier":      s.Qualifier().String(),
 			"columns":        s.Columns(),
 			"types:":         typs,
-			"buckets":        s.Histogram().ToInterface(),
+			"buckets":        buckets,
 		},
-	}
+	}, nil
 }
 
 func ParseTypeStrings(typs []string) ([]sql.Type, error) {
