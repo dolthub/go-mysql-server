@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	goerrors "errors"
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
