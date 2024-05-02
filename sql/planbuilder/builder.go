@@ -106,13 +106,6 @@ func New(ctx *sql.Context, cat sql.Catalog) *Builder {
 	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}
 }
 
-func (b *Builder) Initialize(ctx *sql.Context, cat sql.Catalog, opts ast.ParserOptions) {
-	b.ctx = ctx
-	b.cat = cat
-	b.f.ctx = ctx
-	b.parserOpts = opts
-}
-
 func (b *Builder) SetDebug(val bool) {
 	b.f.debug = val
 }
