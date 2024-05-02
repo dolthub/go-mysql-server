@@ -357,8 +357,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 	return
 }
 
-// buildVirtualTableScan returns a ProjectNode for a table that has virtual columns, projecting the values of any
-// generated columns
+// buildVirtualTableScan returns a VirtualColumnTable for a table with virtual columns.
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
 	schema := tab.Schema()
