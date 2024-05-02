@@ -26,7 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -1767,7 +1766,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string
 }
 
 func analyzeQuery(ctx *sql.Context, e QueryEngine, query string) (sql.Node, error) {
-	parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
+	parsed, err := e.ParseAndBuildQuery(ctx, nil, query)
 	if err != nil {
 		return nil, err
 	}

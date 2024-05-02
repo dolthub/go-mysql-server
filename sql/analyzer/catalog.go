@@ -44,6 +44,9 @@ type Catalog struct {
 	// replication messages (e.g. "show replicas") and commands (e.g. COM_REGISTER_REPLICA).
 	BinlogPrimaryController binlogreplication.BinlogPrimaryController
 
+	// Parser defaults to sql.MysqlParser unless set by `SetParser` function.
+	Parser sql.Parser
+
 	mu    sync.RWMutex
 	locks sessionLocks
 }
@@ -74,6 +77,7 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 		builtInFunctions: function.NewRegistry(),
 		StatsProvider:    memory.NewStatsProv(),
 		locks:            make(sessionLocks),
+		Parser:           &sql.MysqlParser{},
 	}
 }
 
@@ -420,6 +424,14 @@ func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint
 		return 0, fmt.Errorf("%T is not a statistics table, no data length available", table)
 	}
 	return st.DataLength(ctx)
+}
+
+func (c *Catalog) SetParser(p sql.Parser) {
+	c.Parser = p
+}
+
+func (c *Catalog) GetParser() sql.Parser {
+	return c.Parser
 }
 
 func getStatisticsTable(table sql.Table, prevTable sql.Table) (sql.StatisticsTable, bool) {

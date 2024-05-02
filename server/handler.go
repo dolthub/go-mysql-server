@@ -40,7 +40,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -357,7 +356,7 @@ func (h *Handler) doQuery(
 	if parsed == nil {
 		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 		if mode == MultiStmtModeOn && !inPreparedCache {
-			parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
+			parsed, prequery, remainder, err = h.e.ParseQuery(ctx, query, true)
 			if prequery != "" {
 				query = prequery
 			}

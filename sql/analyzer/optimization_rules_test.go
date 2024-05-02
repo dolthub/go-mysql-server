@@ -223,7 +223,7 @@ func TestPushNotFilters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
 			q := fmt.Sprintf("SELECT 1 from xy WHERE %s", tt.in)
-			node, err := b.ParseOne(q)
+			node, _, _, err := b.Parse(q, false)
 			require.NoError(t, err)
 
 			cmp, _, err := pushNotFilters(ctx, nil, node, nil, nil)

@@ -36,6 +36,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -150,6 +151,14 @@ func (s *ServerQueryEngine) EngineAnalyzer() *analyzer.Analyzer {
 
 func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
+}
+
+func (s *ServerQueryEngine) ParseQuery(ctx *sql.Context, query string, multi bool) (sqlparser.Statement, string, string, error) {
+	return s.engine.ParseQuery(ctx, query, multi)
+}
+
+func (s *ServerQueryEngine) ParseAndBuildQuery(ctx *sql.Context, b *planbuilder.Builder, q string) (sql.Node, error) {
+	return s.engine.ParseAndBuildQuery(ctx, b, q)
 }
 
 func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {

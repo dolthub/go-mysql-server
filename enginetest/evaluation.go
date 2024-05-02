@@ -469,8 +469,7 @@ func injectBindVarsAndPrepare(
 	e QueryEngine,
 	q string,
 ) (string, map[string]*querypb.BindVariable, error) {
-	sqlMode := sql.LoadSqlMode(ctx)
-	parsed, err := sqlparser.ParseWithOptions(q, sqlMode.ParserOptions())
+	stmt, _, _, err := e.ParseQuery(ctx, q, false)
 	if err != nil {
 		// cannot prepare empty statement, can query
 		if err.Error() == "empty statement" {
@@ -479,7 +478,7 @@ func injectBindVarsAndPrepare(
 		return q, nil, sql.ErrSyntaxError.New(err)
 	}
 
-	switch p := parsed.(type) {
+	switch p := stmt.(type) {
 	case *sqlparser.Load, *sqlparser.Prepare, *sqlparser.Execute:
 		// LOAD DATA query cannot be used as PREPARED STATEMENT
 		return q, nil, nil
@@ -492,12 +491,13 @@ func injectBindVarsAndPrepare(
 		}
 	}
 
-	resPlan, err := planbuilder.ParseWithOptions(ctx, e.EngineAnalyzer().Catalog, q, sqlMode.ParserOptions())
+	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog)
+	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
+	resPlan, err := b.BindOnly(stmt, q)
 	if err != nil {
 		return q, nil, err
 	}
 
-	b := planbuilder.New(ctx, sql.MapCatalog{})
 	_, isInsert := resPlan.(*plan.InsertInto)
 	bindVars := make(map[string]*querypb.BindVariable)
 	var bindCnt int
@@ -542,7 +542,7 @@ func injectBindVarsAndPrepare(
 		default:
 		}
 		return true, nil
-	}, parsed)
+	}, stmt)
 	if err != nil {
 		return "", nil, err
 	}
@@ -551,8 +551,8 @@ func injectBindVarsAndPrepare(
 	}
 
 	buf := sqlparser.NewTrackedBuffer(nil)
-	parsed.Format(buf)
-	e.EnginePreparedDataCache().CacheStmt(ctx.Session.ID(), buf.String(), parsed)
+	stmt.Format(buf)
+	e.EnginePreparedDataCache().CacheStmt(ctx.Session.ID(), buf.String(), stmt)
 
 	_, isDatabaser := resPlan.(sql.Databaser)
 

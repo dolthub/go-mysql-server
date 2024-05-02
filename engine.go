@@ -62,6 +62,8 @@ type Config struct {
 	// disabled, and including any users here will enable authentication. All users in this list will have full access.
 	// This field is only temporary, and will be removed as development on users and authentication continues.
 	TemporaryUsers []TemporaryUser
+
+	Parser sql.Parser
 }
 
 // TemporaryUser is a user that will be added to the engine. This is for temporary use while the remaining features
@@ -146,6 +148,7 @@ type Engine struct {
 	mu                *sync.Mutex
 	Version           sql.AnalyzerVersion
 	EventScheduler    *eventscheduler.EventScheduler
+	Parser            sql.Parser
 }
 
 type ColumnWithRawDefault struct {
@@ -174,6 +177,14 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
+	var parser sql.Parser
+	if cfg.Parser != nil {
+		parser = cfg.Parser
+		a.Catalog.SetParser(parser)
+	} else {
+		parser = &sql.MysqlParser{}
+	}
+
 	ret := &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
@@ -184,6 +195,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
+		Parser:            parser,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret
@@ -200,8 +212,7 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-	parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+	parsed, err := e.ParseAndBuildQuery(ctx, nil, query)
 	if err != nil {
 		return nil, err
 	}
@@ -213,10 +224,7 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-
-	sqlMode := sql.LoadSqlMode(ctx)
-	stmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+	stmt, _, err := e.Parser.ParseOneWithOptions(query, sql.LoadSqlMode(ctx).ParserOptions())
 	if err != nil {
 		return nil, err
 	}
@@ -244,6 +252,33 @@ func (e *Engine) PrepareParsedQuery(
 // Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
 	return e.QueryWithBindings(ctx, query, nil, nil)
+}
+
+// ParseQueryWithOptions returns a parsed statement
+func (e *Engine) ParseQueryWithOptions(query string, options sqlparser.ParserOptions) (sqlparser.Statement, error) {
+	stmt, _, _, err := e.Parser.ParseWithOptions(query, ';', false, options)
+	return stmt, err
+}
+
+// ParseQuery returns a parsed statement
+func (e *Engine) ParseQuery(ctx *sql.Context, query string, multi bool) (sqlparser.Statement, string, string, error) {
+	return e.Parser.Parse(ctx, query, multi)
+}
+
+// ParseAndBuildQueryWithOptions returns a parsed statement
+func (e *Engine) ParseAndBuildQueryWithOptions(ctx *sql.Context, binder *planbuilder.Builder, query string, options sqlparser.ParserOptions) (sql.Node, error) {
+	if binder == nil {
+		binder = planbuilder.New(ctx, e.Analyzer.Catalog)
+	}
+	binder.SetParserOptions(options)
+	bound, _, _, err := binder.Parse(query, false)
+	return bound, err
+}
+
+// ParseAndBuildQuery returns a parsed statement
+func (e *Engine) ParseAndBuildQuery(ctx *sql.Context, binder *planbuilder.Builder, query string) (sql.Node, error) {
+	parserOpts := sql.LoadSqlMode(ctx).ParserOptions()
+	return e.ParseAndBuildQueryWithOptions(ctx, binder, query, parserOpts)
 }
 
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
@@ -361,7 +396,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
 	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
 	if err != nil {
@@ -455,7 +490,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 		return nil, errors.New("parsed statement must not be nil")
 	}
 
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
 	binder.SetBindings(bindings)
@@ -574,7 +609,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
 	var bound sql.Node
 	if parsed == nil {
-		bound, err = binder.ParseOne(query)
+		bound, err = e.ParseAndBuildQuery(ctx, binder, query)
 		if err != nil {
 			clearAutocommitErr := clearAutocommitTransaction(ctx)
 			if clearAutocommitErr != nil {
