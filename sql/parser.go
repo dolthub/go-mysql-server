@@ -22,22 +22,20 @@ import (
 )
 
 type Parser interface {
-	ParseSingleWithOptions(query string, options ast.ParserOptions) (ast.Statement, error)
-
+	// Parse parses using default parser options of the ctx and returns the parsed statement
+	// along with the query string and remainder string if it's multiple queries.
 	Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error)
+	// ParseWithOptions parses using given parser options and returns the parsed statement
+	// along with the query string and remainder string if it's multiple queries.
 	ParseWithOptions(query string, delimiter rune, multi bool, options ast.ParserOptions) (ast.Statement, string, string, error)
+	// ParseOneWithOptions parses the first query using specified parsing returns the parsed statement along with
+	// the index of the start of the next query.
 	ParseOneWithOptions(string, ast.ParserOptions) (ast.Statement, int, error)
 }
 
 var _ Parser = &MysqlParser{}
 
 type MysqlParser struct {
-}
-
-func (m *MysqlParser) ParseSingleWithOptions(query string, options ast.ParserOptions) (stmt ast.Statement, err error) {
-	s := RemoveSpaceAndDelimiter(query, ';')
-	stmt, err = ast.ParseWithOptions(s, options)
-	return
 }
 
 func (m *MysqlParser) Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error) {

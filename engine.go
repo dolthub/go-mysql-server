@@ -565,7 +565,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		// todo(max): improve name resolution so we can cache post name-binding.
 		// this involves expression memoization, which currently screws up aggregation
 		// and order by aliases
-		prepStmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+		prepStmt, _, err := e.Parser.ParseOneWithOptions(query, sqlMode.ParserOptions())
 		if err != nil {
 			return nil, err
 		}
@@ -573,7 +573,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		if !ok {
 			return nil, fmt.Errorf("expected *sqlparser.Prepare, found %T", prepStmt)
 		}
-		cacheStmt, _, err := sqlparser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
+		cacheStmt, _, err := e.Parser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
 		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
 			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
 			if err != nil {
@@ -583,7 +583,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 			if !ok {
 				return nil, fmt.Errorf("expected string, found %T", val)
 			}
-			cacheStmt, _, err = sqlparser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
+			cacheStmt, _, err = e.Parser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
 			if err != nil {
 				return nil, err
 			}

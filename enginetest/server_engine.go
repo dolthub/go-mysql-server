@@ -171,7 +171,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 
 	var err error
 	if parsed == nil {
-		parsed, err = sqlparser.Parse(query)
+		parsed, _, _, err = s.engine.ParseQuery(ctx, query, false)
 		if err != nil {
 			// TODO: conn.Query() empty query does not error
 			if strings.HasSuffix(err.Error(), "empty statement") {
@@ -182,7 +182,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 			//  because the 'ANSI' mode is not on by default and will not
 			//  be set on the context after SET @@sql_mode = 'ANSI' query.
 			ansiQuery := strings.Replace(query, "\"", "`", -1)
-			parsed, err = sqlparser.Parse(ansiQuery)
+			parsed, _, _, err = s.engine.ParseQuery(ctx, ansiQuery, false)
 			if err != nil {
 				return nil, nil, err
 			}
