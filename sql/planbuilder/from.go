@@ -651,7 +651,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	}
 
 	// Handle schema-level qualifier if present
-	// TODO: schema resolution is more complicated than this and is usually implicit
+	// TODO: the db level qualifier is actually the schema level qualifier in some cases, need to differentiate here
 	if schema != "" {
 		scd, ok := database.(sql.SchemaDatabase)
 		if !ok {
@@ -690,9 +690,9 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	}
 
 	if asOfLit != nil {
-		tab, database, err = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
+		tab, database, err = b.cat.DatabaseTableAsOf(b.ctx, database, name, asOfLit)
 	} else {
-		tab, _, err = database.GetTableInsensitive(b.ctx, name)
+		tab, _, err = b.cat.DatabaseTable(b.ctx, database, name)
 	}
 	if err != nil {
 		if sql.ErrDatabaseNotFound.Is(err) {

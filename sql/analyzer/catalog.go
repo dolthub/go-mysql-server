@@ -74,11 +74,6 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	}
 }
 
-// TODO: kill this
-func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
-	return sql.NewDatabaseProvider(dbs...)
-}
-
 func (c *Catalog) HasBinlogReplicaController() bool {
 	return c.BinlogReplicaController != nil
 }
