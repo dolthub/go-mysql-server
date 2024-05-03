@@ -182,7 +182,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		parser = cfg.Parser
 		a.Catalog.SetParser(parser)
 	} else {
-		parser = &sql.MysqlParser{}
+		parser = sql.NewMysqlParser()
 	}
 
 	ret := &Engine{

@@ -38,6 +38,10 @@ var _ Parser = &MysqlParser{}
 type MysqlParser struct {
 }
 
+func NewMysqlParser() *MysqlParser {
+	return &MysqlParser{}
+}
+
 func (m *MysqlParser) Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error) {
 	return m.ParseWithOptions(query, ';', multi, LoadSqlMode(ctx).ParserOptions())
 }

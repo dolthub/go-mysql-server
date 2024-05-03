@@ -150,5 +150,5 @@ func (t MapCatalog) DropDbStats(ctx *Context, db string, flush bool) error {
 }
 
 func (t MapCatalog) GetParser() Parser {
-	return &MysqlParser{}
+	return NewMysqlParser()
 }

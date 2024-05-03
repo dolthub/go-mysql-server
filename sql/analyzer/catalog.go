@@ -77,7 +77,7 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 		builtInFunctions: function.NewRegistry(),
 		StatsProvider:    memory.NewStatsProv(),
 		locks:            make(sessionLocks),
-		Parser:           &sql.MysqlParser{},
+		Parser:           sql.NewMysqlParser(),
 	}
 }
 

@@ -215,5 +215,5 @@ func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 }
 
 func (c *Catalog) GetParser() sql.Parser {
-	return &sql.MysqlParser{}
+	return sql.NewMysqlParser()
 }
