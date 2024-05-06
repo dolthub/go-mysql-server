@@ -224,6 +224,7 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
+	query = sql.RemoveSpaceAndDelimiter(query, ';')
 	stmt, _, err := e.Parser.ParseOneWithOptions(query, sql.LoadSqlMode(ctx).ParserOptions())
 	if err != nil {
 		return nil, err
@@ -368,6 +369,8 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
+
+	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
 	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
 	if err != nil {
