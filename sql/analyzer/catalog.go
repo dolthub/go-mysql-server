@@ -426,14 +426,6 @@ func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint
 	return st.DataLength(ctx)
 }
 
-func (c *Catalog) SetParser(p sql.Parser) {
-	c.Parser = p
-}
-
-func (c *Catalog) GetParser() sql.Parser {
-	return c.Parser
-}
-
 func getStatisticsTable(table sql.Table, prevTable sql.Table) (sql.StatisticsTable, bool) {
 	// Some TableNodes return themselves for UnderlyingTable, so we need to check for that
 	if table == prevTable {

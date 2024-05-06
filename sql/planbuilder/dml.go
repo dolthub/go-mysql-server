@@ -727,8 +727,7 @@ func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.Ch
 }
 
 func (b *Builder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinition) *sql.CheckConstraint {
-	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
-	parsed, err := ast.Parse(parseStr)
+	parsed, err := b.ctx.Parser.ParseSimple(fmt.Sprintf("select %s", check.CheckExpression))
 	if err != nil {
 		b.handleErr(err)
 	}

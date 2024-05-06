@@ -206,12 +206,19 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test script",
-			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{},
+			Name: "test script",
+			SetUpScript: []string{
+				"create table t11 (pk int)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "create view unionView as (select * from t11 order by pk desc limit 1) union all (select * from t11 order by pk limit 1)",
+					Expected: []sql.Row{},
+				},
+			},
 		},
 	}
 

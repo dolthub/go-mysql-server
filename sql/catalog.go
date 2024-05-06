@@ -56,10 +56,6 @@ type Catalog interface {
 
 	// UnlockTables unlocks all tables locked by the session id given
 	UnlockTables(ctx *Context, id uint32) error
-
-	// GetParser returns a sql parser, this should be used to parse queries
-	// rather than using any Parse method directly from `sqlparser` library.
-	GetParser() Parser
 }
 
 // CatalogTable is a Table that depends on a Catalog.

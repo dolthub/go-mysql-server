@@ -239,6 +239,7 @@ type Context struct {
 	tracer      trace.Tracer
 	rootSpan    trace.Span
 	Version     AnalyzerVersion
+	Parser      Parser
 }
 
 // ContextOption is a function to configure the context.
@@ -341,6 +342,7 @@ func NewContext(
 		Session:   nil,
 		queryTime: ctxNowFunc(),
 		tracer:    NoopTracer,
+		Parser:    NewMysqlParser(),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -450,6 +452,17 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 
 	nc := *c
 	nc.Context = ctx
+	return &nc
+}
+
+// WithParser returns a new context with the given parser.
+func (c *Context) WithParser(p Parser) *Context {
+	if c == nil {
+		return nil
+	}
+
+	nc := *c
+	nc.Parser = p
 	return &nc
 }
 

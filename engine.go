@@ -180,7 +180,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	var parser sql.Parser
 	if cfg.Parser != nil {
 		parser = cfg.Parser
-		a.Catalog.SetParser(parser)
 	} else {
 		parser = sql.NewMysqlParser()
 	}

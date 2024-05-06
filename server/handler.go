@@ -104,6 +104,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 	if err != nil {
 		return nil, err
 	}
+	ctx = ctx.WithParser(h.e.Parser)
 	var analyzed sql.Node
 	if analyzer.PreparedStmtDisabled {
 		analyzed, err = h.e.AnalyzeQuery(ctx, query)
@@ -144,6 +145,7 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 		return nil, nil, err
 	}
 
+	ctx = ctx.WithParser(h.e.Parser)
 	analyzed, err := h.e.PrepareParsedQuery(ctx, query, query, parsed)
 	if err != nil {
 		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())

@@ -62,14 +62,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	span, ctx := b.ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
-	var parser sql.Parser
-	if b.cat == nil {
-		parser = &sql.MysqlParser{}
-	} else {
-		parser = b.cat.GetParser()
-	}
-
-	stmt, parsed, remainder, err := parser.ParseWithOptions(query, ';', multi, b.parserOpts)
+	stmt, parsed, remainder, err := b.ctx.Parser.ParseWithOptions(query, ';', multi, b.parserOpts)
 	if err != nil {
 		if goerrors.Is(err, ast.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")

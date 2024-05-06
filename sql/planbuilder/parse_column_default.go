@@ -28,7 +28,7 @@ import (
 // StringToColumnDefaultValue takes in a string representing a default value and returns the equivalent Expression.
 func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDefaultValue, error) {
 	// all valid default expressions will parse correctly with SELECT prepended, as the parser will not parse raw expressions
-	stmt, err := sqlparser.Parse("SELECT " + exprStr)
+	stmt, err := ctx.Parser.ParseSimple("SELECT " + exprStr)
 	if err != nil {
 		return nil, err
 	}

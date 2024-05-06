@@ -22,6 +22,7 @@ import (
 )
 
 type Parser interface {
+	ParseSimple(query string) (ast.Statement, error)
 	// Parse parses using default parser options of the ctx and returns the parsed statement
 	// along with the query string and remainder string if it's multiple queries.
 	Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error)
@@ -40,6 +41,10 @@ type MysqlParser struct {
 
 func NewMysqlParser() *MysqlParser {
 	return &MysqlParser{}
+}
+
+func (m *MysqlParser) ParseSimple(query string) (ast.Statement, error) {
+	return ast.Parse(query)
 }
 
 func (m *MysqlParser) Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error) {
