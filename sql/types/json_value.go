@@ -142,6 +142,8 @@ type LazyJSONDocument struct {
 
 var _ sql.JSONWrapper = &LazyJSONDocument{}
 var _ JSONBytes = &LazyJSONDocument{}
+var _ fmt.Stringer = &LazyJSONDocument{}
+var _ driver.Valuer = &LazyJSONDocument{}
 
 func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
 	return &LazyJSONDocument{
@@ -163,6 +165,20 @@ func (j *LazyJSONDocument) ToInterface() (interface{}, error) {
 
 func (j *LazyJSONDocument) GetBytes() ([]byte, error) {
 	return j.Bytes, nil
+}
+
+// Value implements driver.Valuer for interoperability with other go libraries
+func (j *LazyJSONDocument) Value() (driver.Value, error) {
+	return StringifyJSON(j)
+}
+
+// LazyJSONDocument implements the fmt.Stringer interface.
+func (j *LazyJSONDocument) String() string {
+	s, err := StringifyJSON(j)
+	if err != nil {
+		return fmt.Sprintf("error while stringifying JSON: %s", err.Error())
+	}
+	return s
 }
 
 func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
