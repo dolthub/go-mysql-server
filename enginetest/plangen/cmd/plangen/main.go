@@ -31,6 +31,7 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 )
 
 //go:generate go run ./main.go -srcRoot=../../../../ plan ../../testdata/spec.yaml
@@ -164,7 +165,8 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 
 		if !tt.Skip {
 			ctx := enginetest.NewContextWithEngine(harness, engine)
-			parsed, err := engine.ParseAndBuildQuery(ctx, nil, tt.Query)
+			binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, sql.NewMysqlParser())
+			parsed, _, _, err := binder.Parse(tt.Query, false)
 			if err != nil {
 				exit(fmt.Errorf("%w\nfailed to parse query: %s", err, tt.Query))
 			}
