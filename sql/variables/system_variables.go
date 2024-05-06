@@ -1219,6 +1219,17 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("lock_wait_timeout", 1, 31536000, false),
 		Default:           int64(31536000),
 	},
+	"log_bin": &sql.MysqlSystemVariable{
+		Name:              "log_bin",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Persist),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("log_bin"),
+		// NOTE: MySQL defaults to the binary log being enabled, but GMS defaults
+		//       to disabled, since binary log support is not available in GMS.
+		//       Integrators who provide binary logging may change this default.
+		Default: int8(0),
+	},
 	"log_error": &sql.MysqlSystemVariable{
 		Name:              "log_error",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
@@ -1850,7 +1861,10 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("performance_schema"),
-		Default:           int8(1),
+		// NOTE: MySQL defaults performance_schema to enabled, but since GMS does not
+		//       provide a performance_schema yet, we default to disabled so that tools
+		//       know not to try and query it.
+		Default: int8(0),
 	},
 	"persisted_globals_load": &sql.MysqlSystemVariable{
 		Name:              "persisted_globals_load",
