@@ -369,8 +369,6 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
-	query = sql.RemoveSpaceAndDelimiter(query, ';')
-
 	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
 	if err != nil {
 		return nil, nil, err
