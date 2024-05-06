@@ -269,7 +269,7 @@ func (d Database) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExe
 }
 
 // CreateView implements the interface sql.ViewDatabase.
-func (d Database) CreateView(ctx *sql.Context, name string, createViewStmt string) error {
+func (d Database) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
 	return d.shim.Exec(d.name, createViewStmt)
 }
 
