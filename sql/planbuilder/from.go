@@ -820,7 +820,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			case *plan.SubqueryAlias:
 				view = n.AsView(viewDef.CreateViewStatement)
 			default:
-				view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, n).AsView(viewDef.CreateViewStatement)
+				view = plan.NewSubqueryAlias(name, create.Definition.TextDefinition, n).AsView(viewDef.CreateViewStatement)
 			}
 
 		}

@@ -53,7 +53,8 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			for _, procedure := range procedures {
 				var procToRegister *plan.Procedure
 				var parsedProcedure sql.Node
-				b := planbuilder.New(ctx, a.Catalog)
+				// TODO: get correct parser
+				b := planbuilder.New(ctx, a.Catalog, nil)
 				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
 				if err != nil {
@@ -283,7 +284,8 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return nil, transform.SameTree, err
 			}
 			var parsedProcedure sql.Node
-			b := planbuilder.New(ctx, a.Catalog)
+			// TODO: get correct parser
+			b := planbuilder.New(ctx, a.Catalog, nil)
 			b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 			if call.AsOf() != nil {
 				asOf, err := call.AsOf().Eval(ctx, nil)

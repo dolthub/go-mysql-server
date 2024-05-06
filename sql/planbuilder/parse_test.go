@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -2495,7 +2496,7 @@ Project
 				}
 				t.Skip()
 			}
-			stmt, err := ctx.Parser.ParseSimple(tt.Query)
+			stmt, err := sqlparser.Parse(tt.Query)
 			require.NoError(t, err)
 
 			outScope := b.build(nil, stmt, tt.Query)
@@ -2843,7 +2844,7 @@ func TestPlanBuilderErr(t *testing.T) {
 			if tt.Skip {
 				t.Skip()
 			}
-			stmt, err := ctx.Parser.ParseSimple(tt.Query)
+			stmt, err := sqlparser.Parse(tt.Query)
 			require.NoError(t, err)
 
 			_, err = b.BindOnly(stmt, tt.Query)

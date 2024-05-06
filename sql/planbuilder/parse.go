@@ -37,7 +37,8 @@ func Parse(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, error) {
 }
 
 func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (sql.Node, error) {
-	b := New(ctx, cat)
+	// TODO: need correct parser
+	b := New(ctx, cat, nil)
 	b.SetParserOptions(options)
 	node, _, _, err := b.Parse(query, false)
 	return node, err
@@ -62,7 +63,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	span, ctx := b.ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
-	stmt, parsed, remainder, err := b.ctx.Parser.ParseWithOptions(query, ';', multi, b.parserOpts)
+	stmt, parsed, remainder, err := b.parser.ParseWithOptions(query, ';', multi, b.parserOpts)
 	if err != nil {
 		if goerrors.Is(err, ast.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")

@@ -44,9 +44,6 @@ type Catalog struct {
 	// replication messages (e.g. "show replicas") and commands (e.g. COM_REGISTER_REPLICA).
 	BinlogPrimaryController binlogreplication.BinlogPrimaryController
 
-	// Parser defaults to sql.MysqlParser unless set by `SetParser` function.
-	Parser sql.Parser
-
 	mu    sync.RWMutex
 	locks sessionLocks
 }
@@ -77,7 +74,6 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 		builtInFunctions: function.NewRegistry(),
 		StatsProvider:    memory.NewStatsProv(),
 		locks:            make(sessionLocks),
-		Parser:           sql.NewMysqlParser(),
 	}
 }
 

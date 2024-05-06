@@ -2201,7 +2201,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 				return nil, ErrTriggerCreateStatementInvalid.New(view.CreateViewStatement)
 			}
 
-			viewDef := view.TextDefinition
+			viewDef := viewPlan.Definition.TextDefinition
 			definer := removeBackticks(viewPlan.Definer)
 
 			// TODO: WITH CHECK OPTION is not supported yet.

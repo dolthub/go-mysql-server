@@ -55,7 +55,7 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 		}
 	}
 
-	childStmt, _, _, err := b.ctx.Parser.ParseWithOptions(expr, ';', false, sql.LoadSqlMode(b.ctx).ParserOptions())
+	childStmt, _, _, err := b.parser.ParseWithOptions(expr, ';', false, sql.LoadSqlMode(b.ctx).ParserOptions())
 	if err != nil {
 		b.handleErr(err)
 	}

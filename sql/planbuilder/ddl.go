@@ -1441,7 +1441,7 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 		return b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, columnDef.Type, columnDef.Nullable)
 	}
 
-	parsed, err := b.ctx.Parser.ParseSimple(fmt.Sprintf("SELECT %s", def))
+	parsed, err := b.parser.ParseSimple(fmt.Sprintf("SELECT %s", def))
 	if err != nil {
 		err := fmt.Errorf("%w: %s", sql.ErrInvalidColumnDefaultValue.New(def), err)
 		b.handleErr(err)

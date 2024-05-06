@@ -491,7 +491,7 @@ func injectBindVarsAndPrepare(
 		}
 	}
 
-	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog)
+	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, nil)
 	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
 	resPlan, err := b.BindOnly(stmt, q)
 	if err != nil {

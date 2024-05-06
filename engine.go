@@ -237,7 +237,7 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
 	node, err := binder.BindOnly(stmt, query)
 
 	if err != nil {
@@ -267,7 +267,7 @@ func (e *Engine) ParseQuery(ctx *sql.Context, query string, multi bool) (sqlpars
 // ParseAndBuildQueryWithOptions returns a parsed statement
 func (e *Engine) ParseAndBuildQueryWithOptions(ctx *sql.Context, binder *planbuilder.Builder, query string, options sqlparser.ParserOptions) (sql.Node, error) {
 	if binder == nil {
-		binder = planbuilder.New(ctx, e.Analyzer.Catalog)
+		binder = planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
 	}
 	binder.SetParserOptions(options)
 	bound, _, _, err := binder.Parse(query, false)
@@ -491,7 +491,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
@@ -545,7 +545,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 	}
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
 	if preparedDataFound {
 		parsed = preparedAst
 		binder.SetBindings(bindings)
