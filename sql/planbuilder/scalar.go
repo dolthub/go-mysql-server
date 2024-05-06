@@ -502,9 +502,58 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 	return expr
 }
 
+// typeCoerceComparisonLiteral losslessly expands comparison literals to
+// column types to simplify comparison execution.
+func (b *Builder) typeCoerceComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
+	// TODO if one is get field, other is literal, convert the literal to the get field
+	var leftLit, rightLit *expression.Literal
+	var leftGf, rightGf *expression.GetField
+	switch l := left.(type) {
+	case *expression.GetField:
+		leftGf = l
+	case *expression.Literal:
+		leftLit = l
+	}
+	switch r := right.(type) {
+	case *expression.GetField:
+		rightGf = r
+	case *expression.Literal:
+		rightLit = r
+	}
+
+	if leftLit != nil && rightGf != nil {
+		left, right = right, left
+		rightLit, leftGf = leftLit, rightGf
+	}
+
+	if rightLit != nil && leftGf != nil {
+		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) {
+			// col = lit
+			if left.Type().MaxTextResponseByteLength(b.ctx) >= right.Type().MaxTextResponseByteLength(b.ctx) {
+				// no lost information converting to col type
+				val, _, err := leftGf.Type().Convert(rightLit.Value())
+				if err != nil && !expression.ErrNilOperand.Is(err) {
+					b.handleErr(err)
+				}
+				right = expression.NewLiteral(val, leftGf.Type())
+			} else {
+				val, _, err := types.Int64.Convert(rightLit.Value())
+				if err != nil && !expression.ErrNilOperand.Is(err) {
+					b.handleErr(err)
+				}
+				right = expression.NewLiteral(val, types.Int64)
+				left = expression.NewConvert(left, expression.ConvertToSigned)
+			}
+		}
+	}
+	return left, right
+}
+
 func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
+
+	left, right = b.typeCoerceComparisonLiteral(left, right)
 
 	var escape sql.Expression = nil
 	if c.Escape != nil {
