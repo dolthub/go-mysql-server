@@ -211,7 +211,8 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	parsed, err := e.ParseAndBuildQuery(ctx, nil, query)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	parsed, _, _, err := binder.Parse(query, false)
 	if err != nil {
 		return nil, err
 	}
@@ -251,33 +252,6 @@ func (e *Engine) PrepareParsedQuery(
 // Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
 	return e.QueryWithBindings(ctx, query, nil, nil)
-}
-
-// ParseQueryWithOptions returns a parsed statement
-func (e *Engine) ParseQueryWithOptions(query string, options sqlparser.ParserOptions) (sqlparser.Statement, error) {
-	stmt, _, _, err := e.Parser.ParseWithOptions(query, ';', false, options)
-	return stmt, err
-}
-
-// ParseQuery returns a parsed statement
-func (e *Engine) ParseQuery(ctx *sql.Context, query string, multi bool) (sqlparser.Statement, string, string, error) {
-	return e.Parser.Parse(ctx, query, multi)
-}
-
-// ParseAndBuildQueryWithOptions returns a parsed statement
-func (e *Engine) ParseAndBuildQueryWithOptions(ctx *sql.Context, binder *planbuilder.Builder, query string, options sqlparser.ParserOptions) (sql.Node, error) {
-	if binder == nil {
-		binder = planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	}
-	binder.SetParserOptions(options)
-	bound, _, _, err := binder.Parse(query, false)
-	return bound, err
-}
-
-// ParseAndBuildQuery returns a parsed statement
-func (e *Engine) ParseAndBuildQuery(ctx *sql.Context, binder *planbuilder.Builder, query string) (sql.Node, error) {
-	parserOpts := sql.LoadSqlMode(ctx).ParserOptions()
-	return e.ParseAndBuildQueryWithOptions(ctx, binder, query, parserOpts)
 }
 
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
@@ -608,7 +582,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
 	var bound sql.Node
 	if parsed == nil {
-		bound, err = e.ParseAndBuildQuery(ctx, binder, query)
+		bound, _, _, err = binder.Parse(query, false)
 		if err != nil {
 			clearAutocommitErr := clearAutocommitTransaction(ctx)
 			if clearAutocommitErr != nil {

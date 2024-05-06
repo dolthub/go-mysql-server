@@ -105,11 +105,6 @@ type ProcContext struct {
 // New takes ctx, catalog and parser. If the parser is nil, then default parser is mysql parser.
 func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
 	sqlMode := sql.LoadSqlMode(ctx)
-
-	if p == nil {
-		p = sql.NewMysqlParser()
-	}
-
 	return &Builder{
 		ctx:        ctx,
 		cat:        cat,

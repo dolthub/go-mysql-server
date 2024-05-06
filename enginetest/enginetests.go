@@ -18,6 +18,7 @@ import (
 	"context"
 	dsql "database/sql"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"io"
 	"net"
 	"os"
@@ -582,7 +583,8 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, tt queries.Quer
 func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
 	t.Run(name, func(t *testing.T) {
 		ctx := NewContext(harness)
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, query)
+
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 		require.NoError(t, err)
 
 		node, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
@@ -609,7 +611,7 @@ func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEn
 func TestQueryPlanWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryPlanTest, verbose bool) {
 	t.Run(tt.Query, func(t *testing.T) {
 		ctx := NewContext(harness)
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, tt.Query)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, tt.Query)
 		require.NoError(t, err)
 
 		node, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
@@ -1358,7 +1360,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t5"
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1387,7 +1389,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t6parent VALUES (1,1), (2,2)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t6child VALUES (1,1), (2,2)")
 
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, "DELETE FROM t6parent")
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, "DELETE FROM t6parent")
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1415,7 +1417,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(3), int64(3)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t7"
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1443,7 +1445,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t8"
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1472,7 +1474,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t9 WHERE pk > 0"
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1499,7 +1501,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t10 LIMIT 1000"
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1526,7 +1528,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t11 ORDER BY 1"
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
@@ -1557,7 +1559,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE t12a, t12b FROM t12a INNER JOIN t12b WHERE t12a.pk=t12b.pk"
-		parsed, err := e.ParseAndBuildQuery(ctx, nil, deleteStr)
+		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
 		require.NoError(t, err)
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
 		require.NoError(t, err)

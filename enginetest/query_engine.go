@@ -21,7 +21,6 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 )
 
 type QueryEngine interface {
@@ -32,8 +31,6 @@ type QueryEngine interface {
 	EngineAnalyzer() *analyzer.Analyzer
 	// TODO: get rid of this, should not be exposed to engine tests
 	EnginePreparedDataCache() *sqle.PreparedDataCache
-	ParseQuery(*sql.Context, string, bool) (sqlparser.Statement, string, string, error)
-	ParseAndBuildQuery(*sql.Context, *planbuilder.Builder, string) (sql.Node, error)
 	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error)
 	CloseSession(connID uint32)
 	Close() error

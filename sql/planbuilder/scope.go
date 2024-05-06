@@ -83,7 +83,8 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 	var found scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
-		if strings.EqualFold(c.col, col) && (strings.EqualFold(c.table, table) || table == "") && (strings.EqualFold(c.db, db) || db == "") {
+		colNameMatch := strings.EqualFold(c.col, col) || (strings.EqualFold(strings.Split(c.col, "::")[0], col))
+		if colNameMatch && (strings.EqualFold(c.table, table) || table == "") && (strings.EqualFold(c.db, db) || db == "") {
 			if foundCand {
 				if found.equals(c) {
 					continue

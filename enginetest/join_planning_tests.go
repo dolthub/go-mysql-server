@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"strings"
 	"testing"
 
@@ -1766,7 +1767,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string
 }
 
 func analyzeQuery(ctx *sql.Context, e QueryEngine, query string) (sql.Node, error) {
-	parsed, err := e.ParseAndBuildQuery(ctx, nil, query)
+	parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 	if err != nil {
 		return nil, err
 	}

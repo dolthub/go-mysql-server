@@ -36,7 +36,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -153,14 +152,6 @@ func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
 }
 
-func (s *ServerQueryEngine) ParseQuery(ctx *sql.Context, query string, multi bool) (sqlparser.Statement, string, string, error) {
-	return s.engine.ParseQuery(ctx, query, multi)
-}
-
-func (s *ServerQueryEngine) ParseAndBuildQuery(ctx *sql.Context, b *planbuilder.Builder, q string) (sql.Node, error) {
-	return s.engine.ParseAndBuildQuery(ctx, b, q)
-}
-
 func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
@@ -171,7 +162,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 
 	var err error
 	if parsed == nil {
-		parsed, _, _, err = s.engine.ParseQuery(ctx, query, false)
+		parsed, err = sqlparser.Parse(query)
 		if err != nil {
 			// TODO: conn.Query() empty query does not error
 			if strings.HasSuffix(err.Error(), "empty statement") {
@@ -182,7 +173,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 			//  because the 'ANSI' mode is not on by default and will not
 			//  be set on the context after SET @@sql_mode = 'ANSI' query.
 			ansiQuery := strings.Replace(query, "\"", "`", -1)
-			parsed, _, _, err = s.engine.ParseQuery(ctx, ansiQuery, false)
+			parsed, err = sqlparser.Parse(ansiQuery)
 			if err != nil {
 				return nil, nil, err
 			}

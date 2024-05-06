@@ -356,7 +356,7 @@ func (h *Handler) doQuery(
 	if parsed == nil {
 		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 		if mode == MultiStmtModeOn && !inPreparedCache {
-			parsed, prequery, remainder, err = h.e.ParseQuery(ctx, query, true)
+			parsed, prequery, remainder, err = h.e.Parser.Parse(ctx, query, true)
 			if prequery != "" {
 				query = prequery
 			}

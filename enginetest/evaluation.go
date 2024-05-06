@@ -469,7 +469,8 @@ func injectBindVarsAndPrepare(
 	e QueryEngine,
 	q string,
 ) (string, map[string]*querypb.BindVariable, error) {
-	stmt, _, _, err := e.ParseQuery(ctx, q, false)
+	sqlMode := sql.LoadSqlMode(ctx)
+	stmt, err := sqlparser.ParseWithOptions(q, sqlMode.ParserOptions())
 	if err != nil {
 		// cannot prepare empty statement, can query
 		if err.Error() == "empty statement" {
@@ -491,7 +492,7 @@ func injectBindVarsAndPrepare(
 		}
 	}
 
-	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, nil)
+	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
 	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
 	resPlan, err := b.BindOnly(stmt, q)
 	if err != nil {
