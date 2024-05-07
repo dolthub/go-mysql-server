@@ -147,6 +147,6 @@ func (lit *Literal) Type2() sql.Type2 {
 }
 
 // Value returns the literal value.
-func (p *Literal) Value() interface{} {
-	return p.value
+func (lit *Literal) Value() interface{} {
+	return lit.value
 }
