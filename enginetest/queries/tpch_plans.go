@@ -198,7 +198,7 @@ order by
 			"             │   │   │   │   ├─ AND\n" +
 			"             │   │   │   │   │   ├─ Eq\n" +
 			"             │   │   │   │   │   │   ├─ part.p_size:5!null\n" +
-			"             │   │   │   │   │   │   └─ 15 (tinyint)\n" +
+			"             │   │   │   │   │   │   └─ 15 (int)\n" +
 			"             │   │   │   │   │   └─ part.p_type LIKE '%BRASS'\n" +
 			"             │   │   │   │   └─ IndexedTableAccess(part)\n" +
 			"             │   │   │   │       ├─ index: [part.P_PARTKEY]\n" +

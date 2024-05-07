@@ -521,7 +521,9 @@ func (b *Builder) typeCoerceComparisonLiteral(left, right sql.Expression) (sql.E
 		rightLit = r
 	}
 
+	var swap bool
 	if leftLit != nil && rightGf != nil {
+		swap = true
 		left, right = right, left
 		rightLit, leftGf = leftLit, rightGf
 	}
@@ -545,6 +547,9 @@ func (b *Builder) typeCoerceComparisonLiteral(left, right sql.Expression) (sql.E
 				left = expression.NewConvert(left, expression.ConvertToSigned)
 			}
 		}
+	}
+	if swap {
+		return right, left
 	}
 	return left, right
 }
