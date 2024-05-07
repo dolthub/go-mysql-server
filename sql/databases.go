@@ -27,12 +27,19 @@ const (
 // DatabaseProvider is the fundamental interface to integrate with the engine. It provides access to all databases in
 // a given backend. A DatabaseProvider is provided to the Catalog when the engine is initialized.
 type DatabaseProvider interface {
-	// Database gets a Database from the provider.
+	// Database returns the database with the name given, or sql.ErrDatabaseNotFound if it doesn't exist.
 	Database(ctx *Context, name string) (Database, error)
 	// HasDatabase checks if the Database exists in the provider.
 	HasDatabase(ctx *Context, name string) bool
 	// AllDatabases returns a slice of all Databases in the provider.
 	AllDatabases(ctx *Context) []Database
+}
+
+// SchemaDatabaseProvider is a DatabaseProvider that can resolve a database using a name and schema. 
+type SchemaDatabaseProvider interface {
+	DatabaseProvider
+	// SchemaDatabase is called to resolve a DatabaseSchema when both are provided in an identifier.
+	SchemaDatabase(ctx *Context, dbName, schemeName string) DatabaseSchema
 }
 
 // MutableDatabaseProvider is a DatabaseProvider that can create and drop databases.
@@ -86,6 +93,10 @@ type SchemaDatabase interface {
 	CreateSchema(ctx *Context, schemaName string) error
 	// AllSchemas returns all schemas in the database.
 	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
+	// GetTable returns the table with the name given in the schema given. The schema name may be empty.
+	GetTable(ctx *Context, schemaName, tableName string) (Table, bool, error)
+	// GetTableAsOf returns the table with the name given in the schema given. The schema name may be empty.
+	GetTableAsOf(ctx *Context, schemaName, tableName string, asOf interface{}) (Table, bool, error)
 }
 
 // DatabaseSchema is a schema that can be queried for tables. It is functionally equivalent to a Database

@@ -46,6 +46,12 @@ type Catalog interface {
 	UnlockTables(ctx *Context, id uint32) error
 }
 
+type SchemaCatalog interface {
+	Catalog
+	// TableWithSchema returns the table with the name given. dbName and schemaName can be empty.
+	TableWithSchema(ctx *Context, dbName, schemaName, tableName string) (Table, Database, error)
+}
+
 // CatalogTable is a Table that depends on a Catalog.
 type CatalogTable interface {
 	Table
