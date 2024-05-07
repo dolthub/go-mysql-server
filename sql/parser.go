@@ -22,6 +22,7 @@ import (
 )
 
 type Parser interface {
+	// ParseSimple takes only query string and returns the parsed statement.
 	ParseSimple(query string) (ast.Statement, error)
 	// Parse parses using default parser options of the ctx and returns the parsed statement
 	// along with the query string and remainder string if it's multiple queries.
@@ -36,21 +37,25 @@ type Parser interface {
 
 var _ Parser = &MysqlParser{}
 
-type MysqlParser struct {
-}
+// MysqlParser is a mysql syntax parser used as parser in the engine for Dolt.
+type MysqlParser struct{}
 
+// NewMysqlParser creates new MysqlParser
 func NewMysqlParser() *MysqlParser {
 	return &MysqlParser{}
 }
 
+// ParseSimple implements Parser interface.
 func (m *MysqlParser) ParseSimple(query string) (ast.Statement, error) {
 	return ast.Parse(query)
 }
 
+// Parse implements Parser interface.
 func (m *MysqlParser) Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error) {
 	return m.ParseWithOptions(query, ';', multi, LoadSqlMode(ctx).ParserOptions())
 }
 
+// ParseWithOptions implements Parser interface.
 func (m *MysqlParser) ParseWithOptions(query string, delimiter rune, multi bool, options ast.ParserOptions) (stmt ast.Statement, parsed, remainder string, err error) {
 	s := RemoveSpaceAndDelimiter(query, delimiter)
 	parsed = s
@@ -69,6 +74,7 @@ func (m *MysqlParser) ParseWithOptions(query string, delimiter rune, multi bool,
 	return
 }
 
+// ParseOneWithOptions implements Parser interface.
 func (m *MysqlParser) ParseOneWithOptions(s string, options ast.ParserOptions) (ast.Statement, int, error) {
 	return ast.ParseOneWithOptions(s, options)
 }
