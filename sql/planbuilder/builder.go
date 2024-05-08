@@ -34,7 +34,7 @@ var BinderFactory = &sync.Pool{New: func() interface{} {
 
 type Builder struct {
 	ctx             *sql.Context
-	cat             sql.Catalog
+	cat             sql.SchemaCatalog
 	parserOpts      ast.ParserOptions
 	f               *factory
 	currentDatabase sql.Database
@@ -101,7 +101,7 @@ type ProcContext struct {
 	DbName string
 }
 
-func New(ctx *sql.Context, cat sql.Catalog) *Builder {
+func New(ctx *sql.Context, cat sql.SchemaCatalog) *Builder {
 	sqlMode := sql.LoadSqlMode(ctx)
 	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}
 }
