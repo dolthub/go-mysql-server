@@ -735,7 +735,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		}
 	}
 	
-	if tab == nil || tableResolveErr != nil {
+	if tableResolveErr != nil {
 		if sql.ErrDatabaseNotFound.Is(tableResolveErr) {
 			if db == "" {
 				b.handleErr(sql.ErrNoDatabaseSelected.New())
@@ -749,11 +749,16 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 				return outScope, true
 			}
 			return outScope, false
-		} else if tab == nil {
-			return outScope, false
+		} else {
+			b.handleErr(tableResolveErr)	
 		}
 	}
 
+	// If we haven't resolved the table at this point, report that and give up
+	if tab == nil {
+		return outScope, false
+	}
+	
 	// TODO: this is maybe too broad for this method, we don't need this for some statements
 	if tab.Schema().HasVirtualColumns() {
 		tab = b.buildVirtualTableScan(db, tab)
