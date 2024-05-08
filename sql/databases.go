@@ -38,8 +38,8 @@ type DatabaseProvider interface {
 // SchemaDatabaseProvider is a DatabaseProvider that can resolve a database using a name and schema. 
 type SchemaDatabaseProvider interface {
 	DatabaseProvider
-	// SchemaDatabase is called to resolve a DatabaseSchema when both are provided in an identifier.
-	SchemaDatabase(ctx *Context, dbName, schemeName string) DatabaseSchema
+	// SchemaDatabase is called to resolve a DatabaseSchema when only the schema is provided in an identifier.
+	SchemaDatabase(ctx *Context, dbName, schemeName string) (DatabaseSchema, bool, error)
 }
 
 // MutableDatabaseProvider is a DatabaseProvider that can create and drop databases.

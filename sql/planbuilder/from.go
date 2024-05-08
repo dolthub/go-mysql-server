@@ -650,7 +650,6 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			b.handleErr(err)
 		}
 
-		// Handle schema-level qualifier if present
 		scd, ok := database.(sql.SchemaDatabase)
 		if !ok {
 			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
