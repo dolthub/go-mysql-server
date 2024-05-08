@@ -30,7 +30,7 @@ type Call struct {
 	asOf      sql.Expression
 	Procedure *Procedure
 	Pref      *expression.ProcedureReference
-	cat       *sql.Catalog
+	cat       sql.Catalog
 }
 
 var _ sql.Node = (*Call)(nil)
@@ -39,7 +39,7 @@ var _ sql.Expressioner = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
 // NewCall returns a *Call node.
-func NewCall(db sql.Database, name string, params []sql.Expression, asOf sql.Expression, catalog *sql.Catalog) *Call {
+func NewCall(db sql.Database, name string, params []sql.Expression, asOf sql.Expression, catalog sql.Catalog) *Call {
 	return &Call{
 		db:     db,
 		Name:   name,
@@ -99,7 +99,7 @@ func (c *Call) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperati
 	adminOnly := false
 	if c.cat != nil {
 		paramCount := len(c.Params)
-		proc, err := (*c.cat).ExternalStoredProcedure(ctx, c.Name, paramCount)
+		proc, err := c.cat.ExternalStoredProcedure(ctx, c.Name, paramCount)
 		// Not finding the procedure isn't great - but that's going to surface with a better error later in the
 		// query execution. For the permission check, we'll proceed as though the procedure exists, and is not AdminOnly.
 		if proc != nil && err == nil && proc.AdminOnly {

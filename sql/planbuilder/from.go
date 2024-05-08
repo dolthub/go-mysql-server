@@ -638,18 +638,19 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 
 	// Resolve the table. This returns early if the name refers to a view instead.
 	var tab sql.Table
+	var database sql.Database
 	var tableResolveErr error
 	
 	// three cases here based on how many qualifiers were provided
 	if schema != "" {
 		// The table was identified like `db.schema.table`.
-		database, err := b.cat.Database(b.ctx, db)
+		var err error
+		database, err = b.cat.Database(b.ctx, db)
 		if err != nil {
 			b.handleErr(err)
 		}
 
 		// Handle schema-level qualifier if present
-		// TODO: the db level qualifier is actually the schema level qualifier in some cases, need to differentiate here
 		scd, ok := database.(sql.SchemaDatabase)
 		if !ok {
 			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
@@ -662,7 +663,6 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			b.handleErr(sql.ErrDatabaseNotFound.New(schema))
 		}
 
-		// TODO: Schemas
 		if view := b.resolveView(name, database, asOfLit); view != nil {
 			return resolvedViewScope(outScope, view, db, name)
 		}
@@ -679,26 +679,37 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		// 2) a schema name, and the database is the current database
 		// Unlike the case above, where we have both a database and schema qualifier, we don't know whether this qualifier
 		// refers to a schema name or a database name. So we have to defer to the integrator's DatabaseProvider to tell us.
-		database, err := b.cat.Database(b.ctx, db)
-		if err != nil {
-			b.handleErr(err)
-		}
-
+	
 		// Catalog is a term of art from the SQL standard, used here to refer to the top-level database object
 		catalog := b.ctx.GetCurrentDatabase()
 		if b.ViewCtx().DbName != "" {
 			catalog = b.ViewCtx().DbName
 		}
 
-		// TODO: Schemas
-		if view := b.resolveView(name, database, asOfLit); view != nil {
-			return resolvedViewScope(outScope, view, db, name)
-		}
+		// TODO: handle resolving views the same way
+		// var err error
+		// database, err = b.cat.Database(b.ctx, db)
+		// if err != nil {
+		// 	b.handleErr(err)
+		// }
+		// 
+		// if view := b.resolveView(name, database, asOfLit); view != nil {
+		// 	return resolvedViewScope(outScope, view, db, name)
+		// }
 		
+		schemaCat, _ := b.cat.(sql.SchemaCatalog)
 		if asOfLit != nil {
-			tab, database, tableResolveErr = b.cat.TableWithSchema(b.ctx, catalog, db, name)
+			if schemaCat != nil {
+				tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, db, name)
+			} else {
+				tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asof)
+			}
 		} else {
-			tab, _, tableResolveErr = b.cat.TableWithSchemaAsOf(b.ctx, catalog, db, name, asOfLit)
+			if schemaCat != nil {
+				tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, db, name, asOfLit)
+			} else {
+				tab, database, tableResolveErr = b.cat.Table(b.ctx, db, name)
+			}
 		}
 	} else {
 		// No qualifiers, naked table name
@@ -707,7 +718,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			db = b.ViewCtx().DbName
 		}
 
-		database, err := b.cat.Database(b.ctx, db)
+		var err error
+		database, err = b.cat.Database(b.ctx, db)
 		if err != nil {
 			b.handleErr(err)
 		}

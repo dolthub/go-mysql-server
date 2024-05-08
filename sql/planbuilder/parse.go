@@ -60,7 +60,7 @@ func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options a
 	return
 }
 
-func ParseOne(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, string, string, error) {
+func ParseOne(ctx *sql.Context, cat sql.SchemaCatalog, query string) (sql.Node, string, string, error) {
 	sqlMode := sql.LoadSqlMode(ctx)
 	return parse(ctx, cat, query, true, sqlMode.ParserOptions())
 }
