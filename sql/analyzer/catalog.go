@@ -301,15 +301,14 @@ func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName
 }
 
 func (c *Catalog) TableWithSchema(ctx *sql.Context, dbName, schemaName, tableName string) (sql.Table, sql.DatabaseSchema, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	sdbp, ok := c.DbProvider.(sql.SchemaDatabaseProvider)
 	if !ok {
-		c.mu.RUnlock()
 		// schemaName is the only explicitly provided qualifier in this case
 		return c.Table(ctx, schemaName, tableName)
 	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	schemaDatabase, ok, err := sdbp.SchemaDatabase(ctx, dbName, schemaName)
 	if err != nil {
@@ -330,15 +329,14 @@ func (c *Catalog) TableWithSchema(ctx *sql.Context, dbName, schemaName, tableNam
 }
 
 func (c *Catalog) TableWithSchemaAsOf(ctx *sql.Context, dbName, schemaName, tableName string, asOf any) (sql.Table, sql.DatabaseSchema, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	sdbp, ok := c.DbProvider.(sql.SchemaDatabaseProvider)
 	if !ok {
-		c.mu.RUnlock()
 		// schemaName is the only explicitly provided qualifier in this case
 		return c.TableAsOf(ctx, schemaName, tableName, asOf)
 	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	schemaDatabase, ok, err := sdbp.SchemaDatabase(ctx, dbName, schemaName)
 	if err != nil {
