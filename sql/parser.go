@@ -21,6 +21,10 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
+// GlobalParser is a temporary variable to expose Doltgres parser.
+// It defaults to MysqlParser.
+var GlobalParser Parser = NewMysqlParser()
+
 type Parser interface {
 	// ParseSimple takes only query string and returns the parsed statement.
 	ParseSimple(query string) (ast.Statement, error)

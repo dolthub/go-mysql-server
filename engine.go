@@ -62,8 +62,6 @@ type Config struct {
 	// disabled, and including any users here will enable authentication. All users in this list will have full access.
 	// This field is only temporary, and will be removed as development on users and authentication continues.
 	TemporaryUsers []TemporaryUser
-	// Parser sets the parser that the engine uses to parse sql statements.
-	Parser sql.Parser
 }
 
 // TemporaryUser is a user that will be added to the engine. This is for temporary use while the remaining features
@@ -177,14 +175,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	})
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
-	// Parser defaults to MySQL parser if not specified.
-	var parser sql.Parser
-	if cfg.Parser != nil {
-		parser = cfg.Parser
-	} else {
-		parser = sql.NewMysqlParser()
-	}
-
 	ret := &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
@@ -195,7 +185,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
-		Parser:            parser,
+		Parser:            sql.NewMysqlParser(),
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret
