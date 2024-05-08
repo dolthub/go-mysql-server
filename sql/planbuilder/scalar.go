@@ -502,10 +502,9 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 	return expr
 }
 
-// typeCoerceComparisonLiteral losslessly expands comparison literals to
-// column types to simplify comparison execution.
-func (b *Builder) typeCoerceComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
-	// TODO if one is get field, other is literal, convert the literal to the get field
+// typeExpandComparisonLiteral expands comparison literals to column types
+// to simplify comparison execution when the conversion is safe.
+func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
 	var leftLit, rightLit *expression.Literal
 	var leftGf, rightGf *expression.GetField
 	switch l := left.(type) {
@@ -559,7 +558,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
 
-	left, right = b.typeCoerceComparisonLiteral(left, right)
+	left, right = b.typeExpandComparisonLiteral(left, right)
 
 	var escape sql.Expression = nil
 	if c.Escape != nil {
