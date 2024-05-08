@@ -699,13 +699,13 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		schemaCat, _ := b.cat.(sql.SchemaCatalog)
 		if asOfLit != nil {
 			if schemaCat != nil {
-				tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, db, name)
+				tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, db, name, asOfLit)
 			} else {
 				tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asof)
 			}
 		} else {
 			if schemaCat != nil {
-				tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, db, name, asOfLit)
+				tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, db, name)
 			} else {
 				tab, database, tableResolveErr = b.cat.Table(b.ctx, db, name)
 			}
