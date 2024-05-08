@@ -735,20 +735,23 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		}
 	}
 	
-	if tableResolveErr != nil {
+	if tab == nil || tableResolveErr != nil {
 		if sql.ErrDatabaseNotFound.Is(tableResolveErr) {
 			if db == "" {
-				tableResolveErr = sql.ErrNoDatabaseSelected.New()
+				b.handleErr(sql.ErrNoDatabaseSelected.New())
 			}
+			b.handleErr(tableResolveErr)
+		} else if sql.ErrTableNotFound.Is(tableResolveErr) {
+			// If we're in a trigger context, it's ok for a table to be unresolved
+			if b.TriggerCtx().Active && !b.TriggerCtx().Call {
+				outScope.node = plan.NewUnresolvedTable(name, db)
+				b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, name)
+				return outScope, true
+			}
+			return outScope, false
+		} else if tab == nil {
+			return outScope, false
 		}
-		b.handleErr(tableResolveErr)
-	} else if tab == nil {
-		if b.TriggerCtx().Active && !b.TriggerCtx().Call {
-			outScope.node = plan.NewUnresolvedTable(name, db)
-			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, name)
-			return outScope, true
-		}
-		return outScope, false
 	}
 
 	// TODO: this is maybe too broad for this method, we don't need this for some statements
