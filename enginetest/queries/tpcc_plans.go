@@ -39,10 +39,10 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"         │   │   └─ 9 (tinyint)\n" +
 			"         │   └─ Eq\n" +
 			"         │       ├─ customer2.c_id:0!null\n" +
-			"         │       └─ 2151 (smallint)\n" +
+			"         │       └─ 2151 (int)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
 			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ keys: [warehouse2.w_id:0!null 9 (tinyint) 2151 (smallint)]\n" +
+			"             ├─ keys: [warehouse2.w_id:0!null 9 (tinyint) 2151 (int)]\n" +
 			"             ├─ colSet: (1-21)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -184,7 +184,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ stock2.s_w_id:1!null\n" +
-			"     │   └─ 1 (tinyint)\n" +
+			"     │   └─ 1 (smallint)\n" +
 			"     └─ IndexedTableAccess(stock2)\n" +
 			"         ├─ index: [stock2.s_i_id]\n" +
 			"         ├─ static: [{[2532, 2532]}]\n" +
@@ -221,7 +221,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ stock2.s_w_id:1!null\n" +
-			"             │   └─ 1 (tinyint)\n" +
+			"             │   └─ 1 (smallint)\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
 			"                 ├─ index: [stock2.s_i_id]\n" +
 			"                 ├─ static: [{[2532, 2532]}]\n" +
@@ -284,7 +284,7 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ stock2.s_w_id:1!null\n" +
-			"     │   └─ 1 (tinyint)\n" +
+			"     │   └─ 1 (smallint)\n" +
 			"     └─ IndexedTableAccess(stock2)\n" +
 			"         ├─ index: [stock2.s_i_id]\n" +
 			"         ├─ static: [{[2532, 2532]}]\n" +
@@ -321,7 +321,7 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ stock2.s_w_id:1!null\n" +
-			"             │   └─ 1 (tinyint)\n" +
+			"             │   └─ 1 (smallint)\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
 			"                 ├─ index: [stock2.s_i_id]\n" +
 			"                 ├─ static: [{[64568, 64568]}]\n" +
@@ -771,13 +771,13 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"             ├─ AND\n" +
 			"             │   ├─ Eq\n" +
 			"             │   │   ├─ stock2.s_w_id:1!null\n" +
-			"             │   │   └─ 1 (tinyint)\n" +
+			"             │   │   └─ 1 (smallint)\n" +
 			"             │   └─ LessThan\n" +
 			"             │       ├─ stock2.s_quantity:2\n" +
-			"             │       └─ 18 (tinyint)\n" +
+			"             │       └─ 18 (smallint)\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
 			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"                 ├─ keys: [1 (tinyint) order_line2.ol_i_id:3]\n" +
+			"                 ├─ keys: [1 (smallint) order_line2.ol_i_id:3]\n" +
 			"                 ├─ colSet: (11-27)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -933,7 +933,7 @@ from
 			"         │           └─ Having\n" +
 			"         │               ├─ GreaterThan\n" +
 			"         │               │   ├─ countdistinct([orders2.o_id]):0!null\n" +
-			"         │               │   └─ 1 (tinyint)\n" +
+			"         │               │   └─ 1 (bigint)\n" +
 			"         │               └─ GroupBy\n" +
 			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null, orders2.o_id:0!null\n" +
 			"         │                   ├─ group: orders2.o_c_id:3, orders2.o_d_id:1!null, orders2.o_w_id:2!null\n" +

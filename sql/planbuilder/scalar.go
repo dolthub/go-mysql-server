@@ -502,9 +502,63 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 	return expr
 }
 
+// typeExpandComparisonLiteral expands comparison literals to column types
+// to simplify comparison execution when the conversion is safe.
+func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
+	var leftLit, rightLit *expression.Literal
+	var leftGf, rightGf *expression.GetField
+	switch l := left.(type) {
+	case *expression.GetField:
+		leftGf = l
+	case *expression.Literal:
+		leftLit = l
+	}
+	switch r := right.(type) {
+	case *expression.GetField:
+		rightGf = r
+	case *expression.Literal:
+		rightLit = r
+	}
+
+	var swap bool
+	if leftLit != nil && rightGf != nil {
+		// format: col = lit
+		swap = true
+		left, right = right, left
+		rightLit, leftGf = leftLit, rightGf
+	}
+
+	if leftGf != nil && rightLit != nil {
+		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) ||
+			types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
+			types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
+			types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
+			types.IsText(left.Type()) && types.IsText(right.Type()) {
+			if left.Type().MaxTextResponseByteLength(b.ctx) >= right.Type().MaxTextResponseByteLength(b.ctx) {
+				// The types are congruent and the literal does not lose
+				// information casting to the column type. The conditions
+				// should preclude out of range, casting errors, or
+				// correctness missteps.
+				val, _, err := leftGf.Type().Convert(rightLit.Value())
+				if err != nil && !expression.ErrNilOperand.Is(err) {
+					b.handleErr(err)
+				}
+				right = expression.NewLiteral(val, leftGf.Type())
+			}
+		}
+
+	}
+	if swap {
+		return right, left
+	}
+	return left, right
+}
+
 func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
+
+	left, right = b.typeExpandComparisonLiteral(left, right)
 
 	var escape sql.Expression = nil
 	if c.Escape != nil {

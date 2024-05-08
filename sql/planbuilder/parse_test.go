@@ -268,7 +268,7 @@ Project
  └─ Filter
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 2 (tinyint)
+     │   └─ 2 (bigint)
      └─ Table
          ├─ name: xy
          ├─ columns: [x y z]
@@ -284,7 +284,7 @@ Project
  └─ Filter
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 2 (tinyint)
+     │   └─ 2 (bigint)
      └─ Table
          ├─ name: xy
          ├─ columns: [x y z]
@@ -300,7 +300,7 @@ Project
  └─ Filter
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 2 (tinyint)
+     │   └─ 2 (bigint)
      └─ Table
          ├─ name: xy
          ├─ columns: [x y z]
@@ -316,7 +316,7 @@ Project
  └─ Filter
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 2 (tinyint)
+     │   └─ 2 (bigint)
      └─ Table
          ├─ name: xy
          ├─ columns: [x y z]
@@ -332,7 +332,7 @@ Project
  └─ Filter
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 2 (tinyint)
+     │   └─ 2 (bigint)
      └─ Table
          ├─ name: xy
          ├─ columns: [x y z]
@@ -348,7 +348,7 @@ Project
  └─ Filter
      ├─ Eq
      │   ├─ s.x:1!null
-     │   └─ 2 (tinyint)
+     │   └─ 2 (bigint)
      └─ TableAlias(s)
          └─ Table
              ├─ name: xy
@@ -365,7 +365,7 @@ Project
  └─ Filter
      ├─ Eq
      │   ├─ s.x:1!null
-     │   └─ 2 (tinyint)
+     │   └─ 2 (bigint)
      └─ InnerJoin
          ├─ Eq
          │   ├─ s.x:1!null
@@ -1171,7 +1171,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ s:4!null
-     │   └─ 1 (tinyint)
+     │   └─ 1 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, (1 (tinyint) + xy.x:1!null) as s]
          └─ GroupBy
@@ -1192,7 +1192,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ s:7!null
-     │   └─ 1 (tinyint)
+     │   └─ 1 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, (1 (tinyint) + xy.x:1!null) as s]
          └─ GroupBy
@@ -1258,7 +1258,7 @@ Project
  └─ Having
      ├─ GreaterThan
      │   ├─ x:4!null
-     │   └─ 1 (tinyint)
+     │   └─ 1 (bigint)
      └─ Project
          ├─ columns: [sum
          │   ├─ over ( partition by xy.y order by xy.x asc)
@@ -1439,13 +1439,13 @@ Project
  └─ Having
      ├─ GreaterThan
      │   ├─ x:4!null
-     │   └─ 1 (tinyint)
+     │   └─ 1 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + xy.y:2!null) as X]
          └─ Filter
              ├─ LessThan
              │   ├─ xy.x:1!null
-             │   └─ 1 (tinyint)
+             │   └─ 1 (bigint)
              └─ Table
                  ├─ name: xy
                  ├─ columns: [x y z]
@@ -1511,7 +1511,7 @@ Project
  └─ Having
      ├─ GreaterThan
      │   ├─ xy.x:0!null
-     │   └─ 1 (tinyint)
+     │   └─ 1 (bigint)
      └─ Project
          ├─ columns: [count(xy.x):4!null, xy.x:1!null, count(xy.x):4!null as cnt]
          └─ GroupBy
@@ -1544,7 +1544,7 @@ Project
      │       └─ Having
      │           ├─ GreaterThan
      │           │   ├─ count(uv.u):7!null
-     │           │   └─ 1 (tinyint)
+     │           │   └─ 1 (bigint)
      │           └─ Project
      │               ├─ columns: [count(uv.u):7!null, uv.u:4!null, count(uv.u):7!null as count_1]
      │               └─ GroupBy
@@ -1614,7 +1614,7 @@ SubqueryAlias
          │                   └─ Filter
          │                       ├─ LessThan
          │                       │   ├─ rt.foo:2!null
-         │                       │   └─ 5 (tinyint)
+         │                       │   └─ 5 (bigint)
          │                       └─ RecursiveTable(rt)
          └─ Project
              ├─ columns: [(ladder.depth:6!null + 1 (tinyint)) as depth, rt.foo:2!null]
@@ -1645,7 +1645,7 @@ SubqueryAlias
                                      └─ Filter
                                          ├─ LessThan
                                          │   ├─ rt.foo:2!null
-                                         │   └─ 5 (tinyint)
+                                         │   └─ 5 (bigint)
                                          └─ RecursiveTable(rt)
 `,
 		},
@@ -1673,7 +1673,7 @@ Project
  │       └─ Having
  │           ├─ GreaterThan
  │           │   ├─ alias1:4!null
- │           │   └─ 0 (tinyint)
+ │           │   └─ 0 (bigint)
  │           └─ GroupBy
  │               ├─ select: alias1:4!null
  │               ├─ group: xy.x:1!null as alias1
@@ -1688,7 +1688,7 @@ Project
      └─ Filter
          ├─ GreaterThan
          │   ├─ xy.x:1!null
-         │   └─ 1 (tinyint)
+         │   └─ 1 (bigint)
          └─ Table
              ├─ name: xy
              ├─ columns: [x y z]
@@ -2032,7 +2032,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:4!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
          └─ GroupBy
@@ -2053,7 +2053,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:4!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as xx]
          └─ Table
@@ -2071,7 +2071,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
          └─ GroupBy
@@ -2092,7 +2092,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null as xx]
          └─ Table
@@ -2110,7 +2110,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:4!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
          └─ GroupBy
@@ -2131,7 +2131,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:4!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + 1 (tinyint)) as xx]
          └─ Table
@@ -2251,7 +2251,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:7!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
          └─ GroupBy
@@ -2281,7 +2281,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:7!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, xy.x:1!null as xx]
          └─ InnerJoin
@@ -2308,7 +2308,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.x:1!null as xx]
          └─ GroupBy
@@ -2338,7 +2338,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xy.x:1!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, xy.x:1!null as xx]
          └─ InnerJoin
@@ -2365,7 +2365,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:7!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, (xy.x:1!null + 1 (tinyint)) as xx]
          └─ GroupBy
@@ -2395,7 +2395,7 @@ Project
  └─ Having
      ├─ Eq
      │   ├─ xx:7!null
-     │   └─ 123 (tinyint)
+     │   └─ 123 (bigint)
      └─ Project
          ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, uv.u:4!null, uv.v:5!null, uv.w:6!null, (xy.x:1!null + 1 (tinyint)) as xx]
          └─ InnerJoin

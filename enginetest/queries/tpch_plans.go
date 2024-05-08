@@ -198,7 +198,7 @@ order by
 			"             │   │   │   │   ├─ AND\n" +
 			"             │   │   │   │   │   ├─ Eq\n" +
 			"             │   │   │   │   │   │   ├─ part.p_size:5!null\n" +
-			"             │   │   │   │   │   │   └─ 15 (tinyint)\n" +
+			"             │   │   │   │   │   │   └─ 15 (int)\n" +
 			"             │   │   │   │   │   └─ part.p_type LIKE '%BRASS'\n" +
 			"             │   │   │   │   └─ IndexedTableAccess(part)\n" +
 			"             │   │   │   │       ├─ index: [part.P_PARTKEY]\n" +
@@ -3718,7 +3718,7 @@ order by
 			"                         │                   ├─ AND\n" +
 			"                         │                   │   ├─ GreaterThan\n" +
 			"                         │                   │   │   ├─ customer.c_acctbal:9!null\n" +
-			"                         │                   │   │   └─ 0 (decimal(3,2))\n" +
+			"                         │                   │   │   └─ 0 (decimal(15,2))\n" +
 			"                         │                   │   └─ HashIn\n" +
 			"                         │                   │       ├─ SUBSTRING(customer.c_phone, 1, 2)\n" +
 			"                         │                   │       └─ TUPLE(13 (longtext), 31 (longtext), 23 (longtext), 29 (longtext), 30 (longtext), 18 (longtext), 17 (longtext))\n" +
