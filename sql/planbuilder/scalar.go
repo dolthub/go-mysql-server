@@ -523,30 +523,31 @@ func (b *Builder) typeCoerceComparisonLiteral(left, right sql.Expression) (sql.E
 
 	var swap bool
 	if leftLit != nil && rightGf != nil {
+		// format: col = lit
 		swap = true
 		left, right = right, left
 		rightLit, leftGf = leftLit, rightGf
 	}
 
-	if rightLit != nil && leftGf != nil {
-		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) {
-			// col = lit
+	if leftGf != nil && rightLit != nil {
+		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) ||
+			types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
+			types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
+			types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
+			types.IsText(left.Type()) && types.IsText(right.Type()) {
 			if left.Type().MaxTextResponseByteLength(b.ctx) >= right.Type().MaxTextResponseByteLength(b.ctx) {
-				// no lost information converting to col type
+				// The types are congruent and the literal does not lose
+				// information casting to the column type. The conditions
+				// should preclude out of range, casting errors, or
+				// correctness missteps.
 				val, _, err := leftGf.Type().Convert(rightLit.Value())
 				if err != nil && !expression.ErrNilOperand.Is(err) {
 					b.handleErr(err)
 				}
 				right = expression.NewLiteral(val, leftGf.Type())
-			} else {
-				val, _, err := types.Int64.Convert(rightLit.Value())
-				if err != nil && !expression.ErrNilOperand.Is(err) {
-					b.handleErr(err)
-				}
-				right = expression.NewLiteral(val, types.Int64)
-				left = expression.NewConvert(left, expression.ConvertToSigned)
 			}
 		}
+
 	}
 	if swap {
 		return right, left

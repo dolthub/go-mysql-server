@@ -49,7 +49,7 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	rewrite = true
+	//rewrite = true
 
 	var tests = []planTest{
 		{
