@@ -68,7 +68,7 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 	}
 
 	if len(ins.ColumnNames) > 0 {
-		err := validateColumns(table.Name(), columnNames, dstSchema, ins.Source)
+		err := validateInsertColumns(table.Name(), columnNames, dstSchema, ins.Source)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -95,12 +95,12 @@ func existsNonZeroValueCount(values sql.Node) bool {
 	return false
 }
 
-// validateColumns performs two checks. The first is insert and destination column
+// validateInsertColumns performs two checks. The first is insert and destination column
 // names. The insert column name must be valid, and we reject duplicate/conflicting
 // column names. The second check validates that we are not trying to modify a
 // read-only column (generated), which depends on first pairing source/destination
 // columns.
-func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema, source sql.Node) error {
+func validateInsertColumns(tableName string, columnNames []string, dstSchema sql.Schema, source sql.Node) error {
 	type namePos struct {
 		name string
 		pos  int
