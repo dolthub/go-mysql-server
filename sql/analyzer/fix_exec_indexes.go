@@ -36,6 +36,13 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
+	switch n := n.(type) {
+	case *plan.InsertInto:
+		if n.SkipSourceAnalyze && len(n.Checks()) == 0 && len(n.OnDupExprs) == 0 {
+			return n, transform.SameTree, nil
+		}
+	default:
+	}
 	ret, _, err := assignIndexesHelper(n, s)
 	if err != nil {
 		return n, transform.SameTree, err

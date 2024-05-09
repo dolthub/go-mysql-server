@@ -521,7 +521,44 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 	)
 	a.Log("starting analysis of node of type: %T", n)
 	a.LogNode(n)
-	for _, batch := range a.Batches {
+
+	batches := a.Batches
+	switch n := n.(type) {
+	case *plan.Commit:
+		batches = nil
+	case *plan.StartTransaction:
+		batches = nil
+	case *plan.InsertInto:
+		if n.SkipSourceAnalyze {
+			batches = []*Batch{
+				{
+					Desc:       "short insert analyze",
+					Iterations: 1,
+					Rules: []Rule{
+						{
+							Id:    applyFKsId,
+							Apply: applyForeignKeys,
+						},
+						{
+							Id:    validatePrivilegesId,
+							Apply: validatePrivileges,
+						},
+						{
+							Id:    validateReadOnlyDatabaseId,
+							Apply: validateReadOnlyDatabase,
+						},
+						{
+							Id:    validateReadOnlyTransactionId,
+							Apply: validateReadOnlyTransaction,
+						},
+					},
+				},
+				batches[len(batches)-1],
+			}
+		}
+	}
+
+	for _, batch := range batches {
 		if batchSelector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)
 			n, same, err = batch.Eval(ctx, a, n, scope, ruleSelector)
