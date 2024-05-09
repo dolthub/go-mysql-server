@@ -83,6 +83,7 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	h.sm.AddConn(c)
+	updateMaxUsedConnectionsStatusVariable()
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
@@ -722,6 +723,53 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	}
 
 	return 0
+}
+
+// getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
+// this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
+// logged and 0 will be returned.
+func getMaxUsedConnections() uint64 {
+	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+	if !ok {
+		logrus.Errorf("unable to find Max_used_connections status variable")
+		return 0
+	}
+	maxUsedConnections, ok := maxUsedConnectionsValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Max_used_connections status variable: %T", maxUsedConnectionsValue)
+		return 0
+	}
+	return maxUsedConnections
+}
+
+// getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
+// variable. If any error is encountered, it will be logged and 0 will be returned.
+func getThreadsConnected() uint64 {
+	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+	if !ok {
+		logrus.Errorf("unable to find Threads_connected status variable")
+		return 0
+	}
+	threadsConnected, ok := threadsConnectedValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Threads_connected status variable: %T", threadsConnectedValue)
+		return 0
+	}
+	return threadsConnected
+}
+
+// updateMaxUsedConnectionsStatusVariable updates the Max_used_connections and Max_used_connections_time status
+// variables if the current number of connected threads is greater than the current value of Max_used_connections.
+func updateMaxUsedConnectionsStatusVariable() {
+	go func() {
+		maxUsedConnections := getMaxUsedConnections()
+		threadsConnected := getThreadsConnected()
+		if threadsConnected > maxUsedConnections {
+			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			sql.StatusVariables.SetGlobal("Max_used_connections_time",
+				time.Now().Format("2006-01-02 15:04:05"))
+		}
+	}()
 }
 
 func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
