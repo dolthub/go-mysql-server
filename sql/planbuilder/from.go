@@ -709,9 +709,9 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		}
 		
 		if asOfLit != nil {
-			tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, db, name, asOfLit)
+			tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, schema, name, asOfLit)
 		} else {
-			tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, db, name)
+			tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, schema, name)
 		}
 	} else {
 		// No qualifiers, naked table name
