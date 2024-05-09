@@ -67,6 +67,7 @@ type InsertInto struct {
 	OnDupExprs            []sql.Expression
 	checks                sql.CheckConstraints
 	Ignore                bool
+	SkipSourceAnalyze     bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
