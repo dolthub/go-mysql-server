@@ -79,7 +79,7 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.lastPid
 }
 
-// Add a connection to be tracked by the SessionManager. Should be called as
+// AddConn adds a connection to be tracked by the SessionManager. Should be called as
 // soon as possible after the server has accepted the connection. Results in
 // the connection being tracked by ProcessList and being available through
 // KillConnection. The connection will be tracked until RemoveConn is called,

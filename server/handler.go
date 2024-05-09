@@ -44,8 +44,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var errConnectionNotFound = errors.NewKind("connection not found: %c")
-
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
 var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout")
 
@@ -737,28 +735,6 @@ func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, er
 		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
 		if s != nil {
 			o[i], err = s[i].Type.SQL(ctx, nil, v)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return o, nil
-}
-
-func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row))
-	var err error
-	for i := 0; i < row.Len(); i++ {
-		v := row.GetField(i)
-		if v.IsNull() {
-			o[i] = sqltypes.NULL
-			continue
-		}
-
-		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if s != nil {
-			o[i], err = s[i].Type.(sql.Type2).SQL2(v)
 			if err != nil {
 				return nil, err
 			}

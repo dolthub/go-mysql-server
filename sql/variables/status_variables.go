@@ -88,11 +88,7 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
-	convVal, _, err := types.Uint64.Convert(val)
-	if err != nil {
-		return err
-	}
-	g.varVals[name].Set(convVal)
+	g.varVals[name].Set(val)
 	return nil
 }
 

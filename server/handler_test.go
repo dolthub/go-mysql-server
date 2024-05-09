@@ -1207,7 +1207,7 @@ func dummyCb(_ *sqltypes.Result, _ bool) error {
 
 const waitTimeout = 500 * time.Millisecond
 
-func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
+func checkGlobalStatVar(t *testing.T, name string, expected any) {
 	start := time.Now()
 	var globalVal interface{}
 	var ok bool
