@@ -400,7 +400,6 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding
 	schema, rowIter, err := queryExec(ctx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
