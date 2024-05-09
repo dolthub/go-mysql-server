@@ -641,8 +641,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	var database sql.Database
 	var tableResolveErr error
 	
-	// three cases here based on how many qualifiers were provided
-	if schema != "" {
+	// four cases here based on which qualifiers were provided
+	if schema != "" && db != "" {
 		// The table was identified like `db.schema.table`.
 		var err error
 		database, err = b.cat.Database(b.ctx, db)
@@ -672,6 +672,13 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
 		}
 	} else if db != "" {
+		if asOfLit != nil {
+			tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asof)
+		} else {
+			tab, database, tableResolveErr = b.cat.Table(b.ctx, db, name)
+		}
+	} else if schema != "" {
+		// TODO: revise this
 		// Only db was provided, which means an identifier of the type `db.table`.
 		// Depending on the kind of database, "db" here could mean either:
 		// 1) a database name
@@ -696,19 +703,15 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		// 	return resolvedViewScope(outScope, view, db, name)
 		// }
 		
-		schemaCat, _ := b.cat.(sql.SchemaCatalog)
+		schemaCat, ok := b.cat.(sql.SchemaCatalog)
+		if !ok {
+			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(catalog))
+		}
+		
 		if asOfLit != nil {
-			if schemaCat != nil {
-				tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, db, name, asOfLit)
-			} else {
-				tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asof)
-			}
+			tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, db, name, asOfLit)
 		} else {
-			if schemaCat != nil {
-				tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, db, name)
-			} else {
-				tab, database, tableResolveErr = b.cat.Table(b.ctx, db, name)
-			}
+			tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, db, name)
 		}
 	} else {
 		// No qualifiers, naked table name
