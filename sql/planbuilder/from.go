@@ -802,7 +802,11 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				b.ViewCtx().DbName = outerDb
 			}()
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
-			node, _, _, err := b.Parse(viewDef.CreateViewStatement, false)
+			stmt, _, _, err := sql.GlobalParser.ParseWithOptions(viewDef.CreateViewStatement, ';', false, b.parserOpts)
+			if err != nil {
+				b.handleErr(err)
+			}
+			node, err := b.BindOnly(stmt, viewDef.CreateViewStatement)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.
@@ -820,9 +824,8 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			case *plan.SubqueryAlias:
 				view = n.AsView(viewDef.CreateViewStatement)
 			default:
-				view = plan.NewSubqueryAlias(name, viewDef.TextDefinition, n).AsView(viewDef.CreateViewStatement)
+				view = plan.NewSubqueryAlias(name, create.Definition.TextDefinition, n).AsView(viewDef.CreateViewStatement)
 			}
-
 		}
 	}
 	// If we didn't find the view from the database directly, use the in-session registry

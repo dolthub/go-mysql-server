@@ -146,6 +146,7 @@ type Engine struct {
 	mu                *sync.Mutex
 	Version           sql.AnalyzerVersion
 	EventScheduler    *eventscheduler.EventScheduler
+	Parser            sql.Parser
 }
 
 type ColumnWithRawDefault struct {
@@ -184,6 +185,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
+		Parser:            sql.NewMysqlParser(),
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret
@@ -200,8 +202,8 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-	parsed, err := planbuilder.Parse(ctx, e.Analyzer.Catalog, query)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	parsed, _, _, err := binder.Parse(query, false)
 	if err != nil {
 		return nil, err
 	}
@@ -213,10 +215,8 @@ func (e *Engine) PrepareQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
-
-	sqlMode := sql.LoadSqlMode(ctx)
-	stmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+	query = sql.RemoveSpaceAndDelimiter(query, ';')
+	stmt, _, err := e.Parser.ParseOneWithOptions(query, sql.LoadSqlMode(ctx).ParserOptions())
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
 	node, err := binder.BindOnly(stmt, query)
 
 	if err != nil {
@@ -361,7 +361,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
 	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
 	if err != nil {
@@ -455,9 +455,9 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 		return nil, errors.New("parsed statement must not be nil")
 	}
 
-	query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
@@ -511,7 +511,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 	}
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
 	if preparedDataFound {
 		parsed = preparedAst
 		binder.SetBindings(bindings)
@@ -530,7 +530,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		// todo(max): improve name resolution so we can cache post name-binding.
 		// this involves expression memoization, which currently screws up aggregation
 		// and order by aliases
-		prepStmt, _, err := sqlparser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+		prepStmt, _, err := e.Parser.ParseOneWithOptions(query, sqlMode.ParserOptions())
 		if err != nil {
 			return nil, err
 		}
@@ -538,7 +538,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		if !ok {
 			return nil, fmt.Errorf("expected *sqlparser.Prepare, found %T", prepStmt)
 		}
-		cacheStmt, _, err := sqlparser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
+		cacheStmt, _, err := e.Parser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
 		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
 			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
 			if err != nil {
@@ -548,7 +548,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 			if !ok {
 				return nil, fmt.Errorf("expected string, found %T", val)
 			}
-			cacheStmt, _, err = sqlparser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
+			cacheStmt, _, err = e.Parser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
 			if err != nil {
 				return nil, err
 			}
@@ -574,7 +574,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
 	var bound sql.Node
 	if parsed == nil {
-		bound, err = binder.ParseOne(query)
+		bound, _, _, err = binder.Parse(query, false)
 		if err != nil {
 			clearAutocommitErr := clearAutocommitTransaction(ctx)
 			if clearAutocommitErr != nil {
