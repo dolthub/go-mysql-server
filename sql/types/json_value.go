@@ -15,6 +15,7 @@
 package types
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -54,6 +55,21 @@ type JSONBytes interface {
 	GetBytes() ([]byte, error)
 }
 
+func MarshallJsonValue(value interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	// Prevents special characters like <, >, or & from being escaped.
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(value)
+	if err != nil {
+		return nil, err
+	}
+	// json.Encoder appends a newline character so we trim it.
+	// SELECT cast('6\n' as JSON) returns only 6 in MySQL.
+	out := bytes.TrimRight(buffer.Bytes(), "\n")
+	return out, err
+}
+
 // JSONBytes returns or generates a byte array for the JSON representation of the underlying sql.JSONWrapper
 func MarshallJson(jsonWrapper sql.JSONWrapper) ([]byte, error) {
 	if bytes, ok := jsonWrapper.(JSONBytes); ok {
@@ -63,7 +79,7 @@ func MarshallJson(jsonWrapper sql.JSONWrapper) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-	return json.Marshal(val)
+	return MarshallJsonValue(val)
 }
 
 type JsonObject = map[string]interface{}
@@ -142,6 +158,8 @@ type LazyJSONDocument struct {
 
 var _ sql.JSONWrapper = &LazyJSONDocument{}
 var _ JSONBytes = &LazyJSONDocument{}
+var _ fmt.Stringer = &LazyJSONDocument{}
+var _ driver.Valuer = &LazyJSONDocument{}
 
 func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
 	return &LazyJSONDocument{
@@ -163,6 +181,20 @@ func (j *LazyJSONDocument) ToInterface() (interface{}, error) {
 
 func (j *LazyJSONDocument) GetBytes() ([]byte, error) {
 	return j.Bytes, nil
+}
+
+// Value implements driver.Valuer for interoperability with other go libraries
+func (j *LazyJSONDocument) Value() (driver.Value, error) {
+	return StringifyJSON(j)
+}
+
+// LazyJSONDocument implements the fmt.Stringer interface.
+func (j *LazyJSONDocument) String() string {
+	s, err := StringifyJSON(j)
+	if err != nil {
+		return fmt.Sprintf("error while stringifying JSON: %s", err.Error())
+	}
+	return s
 }
 
 func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {

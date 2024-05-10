@@ -47,6 +47,7 @@ type Builder struct {
 	bindCtx         *BindvarContext
 	insertActive    bool
 	nesting         int
+	parser          sql.Parser
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -101,9 +102,16 @@ type ProcContext struct {
 	DbName string
 }
 
-func New(ctx *sql.Context, cat sql.Catalog) *Builder {
+// New takes ctx, catalog and parser. If the parser is nil, then default parser is mysql parser.
+func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
 	sqlMode := sql.LoadSqlMode(ctx)
-	return &Builder{ctx: ctx, cat: cat, parserOpts: sqlMode.ParserOptions(), f: &factory{}}
+	return &Builder{
+		ctx:        ctx,
+		cat:        cat,
+		parserOpts: sqlMode.ParserOptions(),
+		f:          &factory{},
+		parser:     p,
+	}
 }
 
 func (b *Builder) Initialize(ctx *sql.Context, cat sql.Catalog, opts ast.ParserOptions) {
