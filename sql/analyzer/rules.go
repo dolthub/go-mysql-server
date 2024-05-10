@@ -14,6 +14,27 @@
 
 package analyzer
 
+func init() {
+	OnceAfterAll = []Rule{
+		{assignExecIndexesId, assignExecIndexes},
+		// resolveInsertRows inserts a projection wrapping values that cannot be seen by fixup
+		{resolveInsertRowsId, resolveInsertRows},
+		{applyTriggersId, applyTriggers},
+		{applyProceduresId, applyProcedures},
+		{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
+		{wrapWithRollbackId, wrapWritesWithRollback},
+		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
+		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
+
+		{backtickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
+
+		{AutocommitId, addAutocommitNode},
+		{TrackProcessId, trackProcess},
+		{parallelizeId, parallelize},
+		{clearWarningsId, clearWarnings},
+	}
+}
+
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
@@ -91,21 +112,4 @@ var DefaultValidationRules = []Rule{
 	{validateAggregationsId, validateAggregations},
 }
 
-var OnceAfterAll = []Rule{
-	{assignExecIndexesId, assignExecIndexes},
-	// resolveInsertRows inserts a projection wrapping values that cannot be seen by fixup
-	{resolveInsertRowsId, resolveInsertRows},
-	{applyTriggersId, applyTriggers},
-	{applyProceduresId, applyProcedures},
-	{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
-	{wrapWithRollbackId, wrapWritesWithRollback},
-	{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
-	{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-
-	{backtickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
-
-	{AutocommitId, addAutocommitNode},
-	{TrackProcessId, trackProcess},
-	{parallelizeId, parallelize},
-	{clearWarningsId, clearWarnings},
-}
+var OnceAfterAll []Rule
