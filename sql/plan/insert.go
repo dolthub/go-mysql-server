@@ -67,7 +67,9 @@ type InsertInto struct {
 	OnDupExprs            []sql.Expression
 	checks                sql.CheckConstraints
 	Ignore                bool
-	SkipSourceAnalyze     bool
+	// LiteralValueSource is set to |true| when |Source| is
+	// a |Values| node with only literal expressions.
+	LiteralValueSource bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)

@@ -523,39 +523,8 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 	a.LogNode(n)
 
 	batches := a.Batches
-	switch n := n.(type) {
-	case *plan.Commit:
-		batches = nil
-	case *plan.StartTransaction:
-		batches = nil
-	case *plan.InsertInto:
-		if n.SkipSourceAnalyze {
-			batches = []*Batch{
-				{
-					Desc:       "short insert analyze",
-					Iterations: 1,
-					Rules: []Rule{
-						{
-							Id:    applyFKsId,
-							Apply: applyForeignKeys,
-						},
-						{
-							Id:    validatePrivilegesId,
-							Apply: validatePrivileges,
-						},
-						{
-							Id:    validateReadOnlyDatabaseId,
-							Apply: validateReadOnlyDatabase,
-						},
-						{
-							Id:    validateReadOnlyTransactionId,
-							Apply: validateReadOnlyTransaction,
-						},
-					},
-				},
-				batches[len(batches)-1],
-			}
-		}
+	if b, ok := getBatchesForNode(n); ok {
+		batches = b
 	}
 
 	for _, batch := range batches {

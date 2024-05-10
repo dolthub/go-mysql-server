@@ -85,7 +85,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if rt != nil {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
-	srcScope, requiresAnalyze := b.insertRowsToNode(inScope, i.Rows, columns, i.Table.Name.String(), sch)
+	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, i.Rows, columns, i.Table.Name.String(), sch)
 
 	// TODO: on duplicate expressions need to reference both VALUES and
 	//  derived columns equally in ON DUPLICATE UPDATE expressions.
@@ -111,7 +111,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dest := destScope.node
 
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
-	ins.SkipSourceAnalyze = !requiresAnalyze
+	ins.LiteralValueSource = srcLiteralOnly
 
 	b.validateInsert(ins)
 
@@ -125,13 +125,12 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	return
 }
 
-func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, requiresAnalyze bool) {
-	requiresAnalyze = true
+func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
 	switch v := ir.(type) {
 	case ast.SelectStatement:
 		outScope = b.buildSelectStmt(inScope, v)
 	case *ast.AliasedValues:
-		outScope, requiresAnalyze = b.buildInsertValues(inScope, v, columnNames, tableName, destSchema)
+		outScope, literalOnly = b.buildInsertValues(inScope, v, columnNames, tableName, destSchema)
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
@@ -139,7 +138,7 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 	return
 }
 
-func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, requiresSourceAnalyze bool) {
+func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
 
 	for i, columnName := range columnNames {
@@ -172,6 +171,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 		}
 	}
 
+	literalOnly = true
 	exprTuples := make([][]sql.Expression, len(v.Values))
 	for i, vt := range v.Values {
 		// noExprs is an edge case where we fill VALUES with nil expressions
@@ -210,7 +210,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 					exprs[j] = b.buildScalar(inScope, e)
 				}
 			default:
-				requiresSourceAnalyze = true
+				literalOnly = false
 				exprs[j] = b.buildScalar(inScope, e)
 			}
 		}
