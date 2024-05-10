@@ -151,13 +151,13 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 	delete(pl.byQueryPid, pid)
 	p := pl.procs[id]
 
-	processTime := time.Now().Sub(p.StartedAt)
-	longQueryTime := getLongQueryTime()
-	if longQueryTime > 0 && processTime.Seconds() > longQueryTime {
-		sql.IncrementStatusVariable(ctx, "Slow_queries", 1)
-	}
-
 	if p != nil && p.QueryPid == pid {
+		processTime := time.Now().Sub(p.StartedAt)
+		longQueryTime := getLongQueryTime()
+		if longQueryTime > 0 && processTime.Seconds() > longQueryTime {
+			sql.IncrementStatusVariable(ctx, "Slow_queries", 1)
+		}
+
 		sql.IncrementStatusVariable(ctx, "Threads_running", -1)
 		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
