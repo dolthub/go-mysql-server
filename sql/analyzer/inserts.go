@@ -49,7 +49,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 
 		source := insert.Source
 		// TriggerExecutor has already been analyzed
-		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
+		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok && !insert.LiteralValueSource {
 			// Analyze the source of the insert independently
 			if _, ok := insert.Source.(*plan.Values); ok {
 				scope = scope.NewScope(plan.NewProject(
