@@ -83,6 +83,7 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 
 	h.sm.AddConn(c)
 	updateMaxUsedConnectionsStatusVariable()
+	sql.StatusVariables.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
@@ -757,16 +758,18 @@ func getThreadsConnected() uint64 {
 	return threadsConnected
 }
 
-// updateMaxUsedConnectionsStatusVariable updates the Max_used_connections and Max_used_connections_time status
-// variables if the current number of connected threads is greater than the current value of Max_used_connections.
+// updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
+// variables if the current number of connected threads is greater than the current
+// value of Max_used_connections.
 func updateMaxUsedConnectionsStatusVariable() {
 	go func() {
 		maxUsedConnections := getMaxUsedConnections()
 		threadsConnected := getThreadsConnected()
 		if threadsConnected > maxUsedConnections {
 			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
-			sql.StatusVariables.SetGlobal("Max_used_connections_time",
-				time.Now().Format("2006-01-02 15:04:05"))
+			// TODO: When Max_used_connections is updated, we should also update
+			//       Max_used_connections_time with the current time, but our status
+			//       variables support currently only supports Uint values.
 		}
 	}()
 }

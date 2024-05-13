@@ -886,7 +886,6 @@ func TestSchemaToFields(t *testing.T) {
 // metadata for TEXT types, including honoring the character_set_results session variable. This is tested
 // here, instead of in string type unit tests, because of the dependency on system variables being loaded.
 func TestHandlerMaxTextResponseBytes(t *testing.T) {
-	variables.InitSystemVariables()
 	session := sql.NewBaseSession()
 	ctx := sql.NewContext(
 		context.Background(),
@@ -1372,7 +1371,6 @@ func TestStatusVariableMaxUsedConnections(t *testing.T) {
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Max_used_connections", uint64(1))
-	checkMaxUsedConnectionsTimeForRecentTime(t)
 
 	conn2 := newConn(2)
 	handler.NewConnection(conn2)
@@ -1380,7 +1378,6 @@ func TestStatusVariableMaxUsedConnections(t *testing.T) {
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Max_used_connections", uint64(2))
-	checkMaxUsedConnectionsTimeForRecentTime(t)
 
 	conn3 := newConn(3)
 	handler.NewConnection(conn3)
@@ -1388,7 +1385,6 @@ func TestStatusVariableMaxUsedConnections(t *testing.T) {
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
-	checkMaxUsedConnectionsTimeForRecentTime(t)
 
 	conn3.Close()
 	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
@@ -1503,6 +1499,55 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 
 	wg.Wait()
 	checkGlobalStatVar(t, "Threads_running", uint64(0))
+}
+
+func TestStatusVariableComSelect(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	checkGlobalStatVar(t, "Com_select", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_select", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_select", uint64(0))
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "select 1 from dual", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "select 1 from dual", dummyCb)
+	}
+
+	checkGlobalStatVar(t, "Com_select", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_select", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_select", uint64(3))
 }
 
 func TestStatusVariableComDelete(t *testing.T) {
@@ -1650,39 +1695,4 @@ func TestStatusVariableComUpdate(t *testing.T) {
 	checkGlobalStatVar(t, "Com_update", uint64(8))
 	checkSessionStatVar(t, sess1, "Com_update", uint64(5))
 	checkSessionStatVar(t, sess2, "Com_update", uint64(3))
-}
-
-// checkMaxUsedConnectionsTimeForRecentTime checks that the Max_used_connections_time status variable is set to a
-// non-empty value with a time in the format "2006-01-02 15:04:05", and with a time value that is within the past
-// 10 seconds. Because status variables are updated asynchronously for performance reasons, this function will
-// make multiple attempts to read the updated status variable value before failing.
-func checkMaxUsedConnectionsTimeForRecentTime(t *testing.T) {
-	for range 10 {
-		time.Sleep(100 * time.Millisecond)
-
-		_, value, ok := sql.StatusVariables.GetGlobal("Max_used_connections_time")
-		require.True(t, ok, "unable to find Max_used_connections_time status variable")
-
-		stringValue, ok := value.(string)
-		require.True(t, ok, "unexpected type for Max_used_connections_time status variable: %T", value)
-
-		if stringValue == "" {
-			continue
-		}
-
-		parsedTime, err := time.Parse("2006-01-02 15:04:05", stringValue)
-		require.NoError(t, err)
-
-		// Create a new time, in UTC, without actually converting the time value
-		now := time.Now()
-		utcNow := time.Date(now.Year(), now.Month(), now.Day(),
-			now.Hour(), now.Minute(), now.Second(), 0, time.UTC)
-
-		timeDifference := utcNow.Sub(parsedTime)
-		if timeDifference.Seconds() < 10 {
-			return
-		}
-	}
-
-	require.Fail(t, "unable to find Max_used_connections_time status variable set to recent time")
 }
