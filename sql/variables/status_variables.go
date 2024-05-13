@@ -108,6 +108,8 @@ func init() {
 	InitStatusVariables()
 }
 
+// InitStatusVariables initializes the global status variables in sql.StatusVariables. If they have already
+// been initialized, this function will reset their values back to their defaults, which is useful for testing.
 func InitStatusVariables() {
 	if sql.StatusVariables == nil {
 		globalVars := &globalStatusVariables{

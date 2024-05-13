@@ -1413,6 +1413,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(0))
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
@@ -1420,10 +1421,12 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(1))
+	checkGlobalStatVar(t, "Connections", uint64(1))
 
 	handler.sm.RemoveConn(conn1)
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(1))
 
 	conns := make([]*mysql.Conn, 10)
 	for i := 0; i < 10; i++ {
@@ -1434,6 +1437,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(10))
+	checkGlobalStatVar(t, "Connections", uint64(11))
 
 	for i := 0; i < 10; i++ {
 		handler.sm.RemoveConn(conns[i])
@@ -1441,6 +1445,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(11))
 }
 
 func TestStatusVariableThreadsRunning(t *testing.T) {
@@ -1462,6 +1467,7 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(0))
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
@@ -1481,9 +1487,11 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	}()
 
 	checkGlobalStatVar(t, "Threads_running", uint64(1))
+	checkGlobalStatVar(t, "Connections", uint64(2))
 
 	wg.Wait()
 	checkGlobalStatVar(t, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(2))
 
 	wg.Add(2)
 	go func() {
@@ -1496,9 +1504,11 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	}()
 
 	checkGlobalStatVar(t, "Threads_running", uint64(2))
+	checkGlobalStatVar(t, "Connections", uint64(2))
 
 	wg.Wait()
 	checkGlobalStatVar(t, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(2))
 }
 
 func TestStatusVariableComSelect(t *testing.T) {
