@@ -161,6 +161,58 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select count(i) from mytable`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [count(mytable.i):0!null as count(i)]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i):0!null as COUNT(mytable.i)]\n" +
+			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [count(mytable.i) as count(i)]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i) as COUNT(mytable.i)]\n" +
+			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [count(mytable.i) as count(i)]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i) as COUNT(mytable.i)]\n" +
+			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
+			"",
+	},
+	{
+		Query: `select count(pk1) from two_pk`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [count(two_pk.pk1):0!null as count(pk1)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(two_pk.pk1:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [count(two_pk.pk1) as count(pk1)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(two_pk.pk1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [count(two_pk.pk1) as count(pk1)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(two_pk.pk1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1]\n" +
+			"",
+	},
+	{
 		Query: `select x from xy where y in (select x from xy where x in (select y from xy));`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:1!null]\n" +
