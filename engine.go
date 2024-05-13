@@ -390,6 +390,10 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, err
 	}
 
+	if plan.NodeRepresentsSelect(analyzed) {
+		sql.IncrementStatusVariable(ctx, "Com_select", 1)
+	}
+
 	if bindCtx := binder.BindCtx(); bindCtx != nil {
 		if unused := bindCtx.UnusedBindings(); len(unused) > 0 {
 			return nil, nil, fmt.Errorf("invalid arguments. expected: %d, found: %d", len(bindCtx.Bindings)-len(unused), len(bindCtx.Bindings))
