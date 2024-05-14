@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -200,6 +201,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
 		// TODO: implement truncation here
+		value = strings.Trim(value, numericCutSet)
 		if len(value) == 0 {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 		}
