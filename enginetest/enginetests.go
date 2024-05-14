@@ -583,6 +583,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, tt queries.Quer
 func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
 	t.Run(name, func(t *testing.T) {
 		ctx := NewContext(harness)
+
 		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 		require.NoError(t, err)
 

@@ -16,8 +16,6 @@ package planbuilder
 
 import (
 	goerrors "errors"
-	"strings"
-	"unicode"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
@@ -34,75 +32,16 @@ const maxAnalysisIterations = 8
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
 // Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
-func Parse(ctx *sql.Context, cat sql.Catalog, query string) (ret sql.Node, err error) {
-	sqlMode := sql.LoadSqlMode(ctx)
-	var parserOpts ast.ParserOptions
-	if err != nil {
-		parserOpts = ast.ParserOptions{}
-	} else {
-		parserOpts = sqlMode.ParserOptions()
-	}
-	return ParseWithOptions(ctx, cat, query, parserOpts)
+func Parse(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, error) {
+	return ParseWithOptions(ctx, cat, query, sql.LoadSqlMode(ctx).ParserOptions())
 }
 
-func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (ret sql.Node, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case parseErr:
-				err = r.err
-			default:
-				panic(r)
-			}
-		}
-	}()
-	ret, _, _, err = parse(ctx, cat, query, false, options)
-	return
-}
-
-func ParseOne(ctx *sql.Context, cat sql.SchemaCatalog, query string) (sql.Node, string, string, error) {
-	sqlMode := sql.LoadSqlMode(ctx)
-	return parse(ctx, cat, query, true, sqlMode.ParserOptions())
-}
-
-func parse(ctx *sql.Context, cat sql.Catalog, query string, multi bool, options ast.ParserOptions) (sql.Node, string, string, error) {
-	span, ctx := ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
-	defer span.End()
-
-	s := RemoveSpaceAndDelimiter(query, ';')
-
-	var stmt ast.Statement
-	var err error
-	var parsed string
-	var remainder string
-
-	parsed = s
-	if !multi {
-		stmt, err = ast.ParseWithOptions(s, options)
-	} else {
-		var ri int
-		stmt, ri, err = ast.ParseOneWithOptions(s, options)
-		if ri != 0 && ri < len(s) {
-			parsed = s[:ri]
-			parsed = RemoveSpaceAndDelimiter(parsed, ';')
-			remainder = s[ri:]
-		}
-		return nil, parsed, remainder, err
-	}
-
-	if err != nil {
-		if goerrors.Is(err, ast.ErrEmpty) {
-			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-			return plan.NothingImpl, parsed, remainder, nil
-		}
-		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
-	}
-
-	b := New(ctx, cat)
+func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (sql.Node, error) {
+	// TODO: need correct parser
+	b := New(ctx, cat, sql.NewMysqlParser())
 	b.SetParserOptions(options)
-	outScope := b.build(nil, stmt, s)
-
-	return outScope.node, parsed, remainder, err
+	node, _, _, err := b.Parse(query, false)
+	return node, err
 }
 
 func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
@@ -124,23 +63,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	span, ctx := b.ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
-	s := RemoveSpaceAndDelimiter(query, ';')
-
-	var stmt ast.Statement
-
-	parsed = s
-	if !multi {
-		stmt, err = ast.ParseWithOptions(s, b.parserOpts)
-	} else {
-		var ri int
-		stmt, ri, err = ast.ParseOneWithOptions(s, b.parserOpts)
-		if ri != 0 && ri < len(s) {
-			parsed = s[:ri]
-			parsed = RemoveSpaceAndDelimiter(parsed, ';')
-			remainder = s[ri:]
-		}
-	}
-
+	stmt, parsed, remainder, err := b.parser.ParseWithOptions(query, ';', multi, b.parserOpts)
 	if err != nil {
 		if goerrors.Is(err, ast.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
@@ -149,14 +72,9 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}
 
-	outScope := b.build(nil, stmt, s)
+	outScope := b.build(nil, stmt, parsed)
 
 	return outScope.node, parsed, remainder, err
-}
-
-func (b *Builder) ParseOne(query string) (ret sql.Node, err error) {
-	ret, _, _, err = b.Parse(query, false)
-	return ret, err
 }
 
 func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err error) {
@@ -172,39 +90,4 @@ func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err erro
 	}()
 	outScope := b.build(nil, stmt, s)
 	return outScope.node, err
-}
-
-func ParseOnly(ctx *sql.Context, query string, multi bool) (ast.Statement, string, string, error) {
-	sqlMode := sql.LoadSqlMode(ctx)
-	options := sqlMode.ParserOptions()
-
-	s := RemoveSpaceAndDelimiter(query, ';')
-
-	var stmt ast.Statement
-	var parsed string
-	var remainder string
-	var err error
-
-	parsed = s
-	if !multi {
-		stmt, err = ast.ParseWithOptions(s, options)
-	} else {
-		var ri int
-		stmt, ri, err = ast.ParseOneWithOptions(s, options)
-		if ri != 0 && ri < len(s) {
-			parsed = s[:ri]
-			parsed = RemoveSpaceAndDelimiter(parsed, ';')
-			remainder = s[ri:]
-		}
-	}
-	return stmt, query, remainder, err
-}
-
-// RemoveSpaceAndDelimiter removes space characters and given delimiter characters from the given query.
-func RemoveSpaceAndDelimiter(query string, d rune) string {
-	query = strings.TrimSpace(query)
-	// trim spaces and empty statements
-	return strings.TrimRightFunc(query, func(r rune) bool {
-		return r == d || unicode.IsSpace(r)
-	})
 }

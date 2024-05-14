@@ -40,11 +40,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-var errConnectionNotFound = errors.NewKind("connection not found: %c")
 
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
 var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout")
@@ -85,6 +82,8 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	h.sm.AddConn(c)
+	updateMaxUsedConnectionsStatusVariable()
+	sql.StatusVariables.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
@@ -357,7 +356,7 @@ func (h *Handler) doQuery(
 	if parsed == nil {
 		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 		if mode == MultiStmtModeOn && !inPreparedCache {
-			parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
+			parsed, prequery, remainder, err = h.e.Parser.Parse(ctx, query, true)
 			if prequery != "" {
 				query = prequery
 			}
@@ -725,6 +724,55 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
+// getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
+// this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
+// logged and 0 will be returned.
+func getMaxUsedConnections() uint64 {
+	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+	if !ok {
+		logrus.Errorf("unable to find Max_used_connections status variable")
+		return 0
+	}
+	maxUsedConnections, ok := maxUsedConnectionsValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Max_used_connections status variable: %T", maxUsedConnectionsValue)
+		return 0
+	}
+	return maxUsedConnections
+}
+
+// getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
+// variable. If any error is encountered, it will be logged and 0 will be returned.
+func getThreadsConnected() uint64 {
+	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+	if !ok {
+		logrus.Errorf("unable to find Threads_connected status variable")
+		return 0
+	}
+	threadsConnected, ok := threadsConnectedValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Threads_connected status variable: %T", threadsConnectedValue)
+		return 0
+	}
+	return threadsConnected
+}
+
+// updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
+// variables if the current number of connected threads is greater than the current
+// value of Max_used_connections.
+func updateMaxUsedConnectionsStatusVariable() {
+	go func() {
+		maxUsedConnections := getMaxUsedConnections()
+		threadsConnected := getThreadsConnected()
+		if threadsConnected > maxUsedConnections {
+			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			// TODO: When Max_used_connections is updated, we should also update
+			//       Max_used_connections_time with the current time, but our status
+			//       variables support currently only supports Uint values.
+		}
+	}()
+}
+
 func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
 	var err error
@@ -736,28 +784,6 @@ func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, er
 		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
 		if s != nil {
 			o[i], err = s[i].Type.SQL(ctx, nil, v)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return o, nil
-}
-
-func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row))
-	var err error
-	for i := 0; i < row.Len(); i++ {
-		v := row.GetField(i)
-		if v.IsNull() {
-			o[i] = sqltypes.NULL
-			continue
-		}
-
-		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if s != nil {
-			o[i], err = s[i].Type.(sql.Type2).SQL2(v)
 			if err != nil {
 				return nil, err
 			}

@@ -231,7 +231,7 @@ func (h MySqlProxy) processQuery(
 		if ri != 0 && ri < len(query) {
 			remainder = query[ri:]
 			query = query[:ri]
-			query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+			query = sql.RemoveSpaceAndDelimiter(query, ';')
 		}
 	}
 

@@ -1387,17 +1387,26 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 	}
 
 	newSch := schema.Copy()
-	for _, part := range partitionTableColumns(newSch) {
-		start := part[0]
-		end := part[1]
-		subScope := inScope.replace()
-		for i := start; i < end; i++ {
-			subScope.addColumn(inScope.cols[i])
+	partitions := partitionTableColumns(newSch)
+	if len(partitions) == 1 {
+		for _, col := range newSch {
+			col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
+			col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+			col.OnUpdate = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 		}
-		for _, col := range newSch[start:end] {
-			col.Default = b.resolveColumnDefaultExpression(subScope, col, col.Default)
-			col.Generated = b.resolveColumnDefaultExpression(subScope, col, col.Generated)
-			col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
+	} else {
+		for _, part := range partitions {
+			start := part[0]
+			end := part[1]
+			subScope := inScope.replace()
+			for i := start; i < end; i++ {
+				subScope.addColumn(inScope.cols[i])
+			}
+			for _, col := range newSch[start:end] {
+				col.Default = b.resolveColumnDefaultExpression(subScope, col, col.Default)
+				col.Generated = b.resolveColumnDefaultExpression(subScope, col, col.Generated)
+				col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
+			}
 		}
 	}
 	return newSch
@@ -1441,7 +1450,7 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 		return b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, columnDef.Type, columnDef.Nullable)
 	}
 
-	parsed, err := ast.Parse(fmt.Sprintf("SELECT %s", def))
+	parsed, err := b.parser.ParseSimple(fmt.Sprintf("SELECT %s", def))
 	if err != nil {
 		err := fmt.Errorf("%w: %s", sql.ErrInvalidColumnDefaultValue.New(def), err)
 		b.handleErr(err)
