@@ -173,7 +173,6 @@ func getSchema(rows [][]sql.Expression) sql.Schema {
 					s[i].Nullable = val.IsNullable()
 				}
 			}
-
 		}
 	}
 

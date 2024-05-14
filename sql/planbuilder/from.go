@@ -346,8 +346,16 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				// Parser should enforce this, but just to be safe
 				b.handleErr(sql.ErrUnsupportedSyntax.New("every derived table must have an alias"))
 			}
-			exprTuples := make([][]sql.Expression, len(e.Rows))
+			rowLen := len(e.Rows)
+			exprTuples := make([][]sql.Expression, rowLen)
+			var tupLen int
+			if rowLen > 0 {
+				tupLen = len(e.Rows[0])
+			}
 			for i, vt := range e.Rows {
+				if len(vt) != tupLen {
+					b.handleErr(sql.ErrColValCountMismatch.New(i + 1))
+				}
 				exprs := make([]sql.Expression, len(vt))
 				exprTuples[i] = exprs
 				for j, e := range vt {
