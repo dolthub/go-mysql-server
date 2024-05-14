@@ -10627,7 +10627,7 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErrStr: "DOUBLE out of range for COT",
 	},
 	{
-		Query: `SELECT * FROM (values row(1,2), row(1,2,3)) t`,
+		Query:       `SELECT * FROM (values row(1,2), row(1,2,3)) t`,
 		ExpectedErr: sql.ErrColValCountMismatch,
 	},
 }
