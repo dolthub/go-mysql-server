@@ -9686,14 +9686,14 @@ from typestable`,
 	},
 	{
 		SkipServerEngine: true,
-		Query: "select cast('\\0123\\0' as decimal(10,3));",
+		Query:            "select cast('\\0123\\0' as decimal(10,3));",
 		Expected: []sql.Row{
 			{"0"},
 		},
 	},
 	{
 		SkipServerEngine: true,
-		Query: "select cast(' \t \n\\0123 \t ' as decimal(10,3));",
+		Query:            "select cast(' \t \n\\0123 \t ' as decimal(10,3));",
 		Expected: []sql.Row{
 			{"0"},
 		},
