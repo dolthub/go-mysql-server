@@ -292,6 +292,9 @@ var (
 
 	// ErrDatabaseSchemaExists is returned when CREATE SCHEMA attempts to create a schema that already exists.
 	ErrDatabaseSchemaExists = errors.NewKind("can't create schema %s; schema exists")
+	
+	// ErrDatabaseNoDatabaseSchemaSelectedCreate is returned when CREATE TABLE is called without a schema selected and one is required.
+	ErrDatabaseNoDatabaseSchemaSelectedCreate = errors.NewKind("no schema has been selected to create in")
 
 	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
 	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
