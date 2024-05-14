@@ -309,6 +309,9 @@ var (
 	// list with a different number of columns than the schema of the table.
 	ErrColumnCountMismatch = errors.NewKind("In definition of view, derived table or common table expression, SELECT list and column names list have different column counts")
 
+	// ErrColValCountMismatch is returned when not all rows in values constructor are of equal length.
+	ErrColValCountMismatch = errors.NewKind("Column count doesn't match value count at row %d")
+
 	// ErrUuidUnableToParse is returned when a UUID is unable to be parsed.
 	ErrUuidUnableToParse = errors.NewKind("unable to parse '%s' to UUID: %s")
 
