@@ -17,7 +17,8 @@ package expression
 import (
 	"encoding/hex"
 	"fmt"
-	"strconv"
+	"github.com/shopspring/decimal"
+"strconv"
 	"strings"
 	"time"
 
