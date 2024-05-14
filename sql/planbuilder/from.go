@@ -640,7 +640,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	var tab sql.Table
 	var database sql.Database
 	var tableResolveErr error
-	
+
 	// four cases here based on which qualifiers were provided
 	if schema != "" && db != "" {
 		// The table was identified like `db.schema.table`.
@@ -685,7 +685,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		// 2) a schema name, and the database is the current database
 		// Unlike the case above, where we have both a database and schema qualifier, we don't know whether this qualifier
 		// refers to a schema name or a database name. So we have to defer to the integrator's DatabaseProvider to tell us.
-	
+
 		// Catalog is a term of art from the SQL standard, used here to refer to the top-level database object
 		catalog := b.ctx.GetCurrentDatabase()
 		if b.ViewCtx().DbName != "" {
@@ -698,16 +698,16 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		// if err != nil {
 		// 	b.handleErr(err)
 		// }
-		// 
+		//
 		// if view := b.resolveView(name, database, asOfLit); view != nil {
 		// 	return resolvedViewScope(outScope, view, db, name)
 		// }
-		
+
 		schemaCat, ok := b.cat.(sql.SchemaCatalog)
 		if !ok {
 			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(catalog))
 		}
-		
+
 		if asOfLit != nil {
 			tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, schema, name, asOfLit)
 		} else {
@@ -737,7 +737,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
 		}
 	}
-	
+
 	if tableResolveErr != nil {
 		if sql.ErrDatabaseNotFound.Is(tableResolveErr) {
 			if db == "" {
@@ -753,7 +753,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			}
 			return outScope, false
 		} else {
-			b.handleErr(tableResolveErr)	
+			b.handleErr(tableResolveErr)
 		}
 	}
 
@@ -761,7 +761,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	if tab == nil {
 		return outScope, false
 	}
-	
+
 	// TODO: this is maybe too broad for this method, we don't need this for some statements
 	if tab.Schema().HasVirtualColumns() {
 		tab = b.buildVirtualTableScan(db, tab)

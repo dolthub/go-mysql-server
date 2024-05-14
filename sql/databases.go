@@ -35,7 +35,7 @@ type DatabaseProvider interface {
 	AllDatabases(ctx *Context) []Database
 }
 
-// SchemaDatabaseProvider is a DatabaseProvider that can resolve a database using a name and schema. 
+// SchemaDatabaseProvider is a DatabaseProvider that can resolve a database using a name and schema.
 type SchemaDatabaseProvider interface {
 	DatabaseProvider
 	// SchemaDatabase is called to resolve a DatabaseSchema when only the schema is provided in an identifier.

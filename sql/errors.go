@@ -292,7 +292,7 @@ var (
 
 	// ErrDatabaseSchemaExists is returned when CREATE SCHEMA attempts to create a schema that already exists.
 	ErrDatabaseSchemaExists = errors.NewKind("can't create schema %s; schema exists")
-	
+
 	// ErrDatabaseNoDatabaseSchemaSelectedCreate is returned when CREATE TABLE is called without a schema selected and one is required.
 	ErrDatabaseNoDatabaseSchemaSelectedCreate = errors.NewKind("no schema has been selected to create in")
 
