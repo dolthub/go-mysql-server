@@ -797,6 +797,12 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 		case decimal.Decimal:
 			// The exact expected decimal type value cannot be defined in enginetests,
 			// so convert the result to string format, which is the value we get on sql shell.
+			if i < len(sch) {
+				if decType, isDecType := sch[i].Type.(types.DecimalType_); isDecType {
+					vw = decType.DecimalValueStringFixed(x)
+					break
+				}
+			}
 			vw = x.StringFixed(x.Exponent() * -1)
 		default:
 			vw = v
