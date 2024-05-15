@@ -340,7 +340,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
 		d, _, err := dt.Convert(value)
 		if err != nil {
-			return "0", nil
+			return dt.Zero(), nil
 		}
 		return d, nil
 	case ConvertToFloat:
