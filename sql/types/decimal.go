@@ -329,6 +329,7 @@ func (t DecimalType_) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t DecimalType_) Zero() interface{} {
+	// The zero value should have the same scale as the type
 	return decimal.New(0, -int32(t.scale))
 }
 
