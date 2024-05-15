@@ -9732,6 +9732,13 @@ from typestable`,
 			{float32(0)},
 		},
 	},
+
+	{
+		Query: "select 'abc' like NULL",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
