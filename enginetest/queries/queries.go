@@ -9629,6 +9629,13 @@ from typestable`,
 			{time.Date(1999, 11, 30, 0, 0, 0, 0, time.UTC)},
 		},
 	},
+
+	{
+		Query: "select 'abc' like NULL",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
