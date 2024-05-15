@@ -9631,6 +9631,109 @@ from typestable`,
 	},
 
 	{
+		Query: "select cast(' \t 123 \t ' as signed);",
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Query: "select cast('\n123\n' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast(' \t 123 \t ' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(123)},
+		},
+	},
+	{
+		Query: "select cast('\n123\n' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"123.456"},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"0.000"},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"0.000"},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as double);",
+		Expected: []sql.Row{
+			{123.456},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as double);",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as double);",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as float);",
+		Expected: []sql.Row{
+			{float32(123.456)},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as float);",
+		Expected: []sql.Row{
+			{float32(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as float);",
+		Expected: []sql.Row{
+			{float32(0)},
+		},
+	},
+
+	{
 		Query: "select 'abc' like NULL",
 		Expected: []sql.Row{
 			{nil},
