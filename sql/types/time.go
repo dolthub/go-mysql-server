@@ -451,7 +451,7 @@ func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, m
 			(int64(hours) * microsecondsPerHour)))
 }
 
-func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) {
+func (t Timespan) TimespanToUnits() (isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) {
 	isNegative = t < 0
 	absV := int64Abs(int64(t))
 	hours = int16(absV / microsecondsPerHour)
@@ -463,7 +463,7 @@ func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8,
 
 // String returns the Timespan formatted as a string (such as for display purposes).
 func (t Timespan) String() string {
-	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
+	isNegative, hours, minutes, seconds, microseconds := t.TimespanToUnits()
 	sign := ""
 	if isNegative {
 		sign = "-"

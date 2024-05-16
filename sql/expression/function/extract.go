@@ -100,11 +100,25 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// TODO: should also check other time types
+	right, _, err = types.Time.Convert(right)
+	if err != nil {
+		ctx.Warn(1292, err.Error())
+		return nil, nil
+	}
+	ts, isTimespan := right.(types.Timespan)
+	if isTimespan {
+		_, hrs, secs, mins, mics := ts.TimespanToUnits()
+		print(hrs, secs, mins, mics)
+	}
+
 	right, err = types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(right)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
+
+
 
 	dateTime, ok := right.(time.Time)
 	if !ok {
