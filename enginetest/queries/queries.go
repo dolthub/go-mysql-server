@@ -6303,6 +6303,18 @@ Select * from (
 		Expected: []sql.Row{{31}},
 	},
 	{
+		Query:    "SELECT EXTRACT(YEAR FROM '23:59:59') = EXTRACT(YEAR FROM NOW())",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT EXTRACT(HOUR_SECOND FROM '23:59:59')",
+		Expected: []sql.Row{{235959}},
+	},
+	{
+		Query:    "SELECT EXTRACT(HOUR_SECOND FROM TIME '23:59:59')",
+		Expected: []sql.Row{{235959}},
+	},
+	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00'`,
 		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},

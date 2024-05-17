@@ -1,4 +1,4 @@
-// Copyright 2023 Dolthub, Inc.
+// Copyright 2023-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@ package function
 
 import (
 	"testing"
+	"time"
+
 
 	"github.com/stretchr/testify/require"
 
@@ -231,4 +233,131 @@ func TestExtract(t *testing.T) {
 		require.Equal(1, len(ctx.Warnings()))
 		require.Equal(1292, ctx.Warnings()[0].Code)
 	})
+}
+
+func TestExtractWithTime(t *testing.T) {
+	now := time.Date(2001, 2, 3, 4, 5, 6, 7, time.UTC)
+	data := "12:34:56.778899"
+	testCases := []struct {
+		name     string
+		unit     string
+		expected interface{}
+		skip     bool
+	}{
+		{
+			name:     "get year",
+			unit:     "YEAR",
+			expected:  now.Year(),
+		},
+		{
+			name:     "get quarter",
+			unit:     "QUARTER",
+			expected: 1,
+		},
+		{
+			name:     "get month",
+			unit:     "MONTH",
+			expected: 2,
+		},
+		{
+			name:     "get week",
+			unit:     "WEEK",
+			expected: 5,
+		},
+		{
+			name:     "get day",
+			unit:     "DAY",
+			expected: 3,
+		},
+		{
+			name:     "get hour",
+			unit:     "HOUR",
+			expected: 12,
+		},
+		{
+			name:     "get minute",
+			unit:     "MINUTE",
+			expected: 34,
+		},
+		{
+			name:     "get second",
+			unit:     "SECOND",
+			expected: 56,
+		},
+		{
+			name:     "get microsecond",
+			unit:     "MICROSECOND",
+			expected: 778899,
+		},
+		{
+			name:     "get year_month",
+			unit:     "YEAR_MONTH",
+			expected: now.Year() * 100 + int(now.Month()),
+		},
+		{
+			name:     "get day_hour",
+			unit:     "DAY_HOUR",
+			expected: now.Day() * 100 + 12,
+		},
+		{
+			name:     "get day_minute",
+			unit:     "DAY_MINUTE",
+			expected: now.Day() * 10000 + 1234,
+		},
+		{
+			name:     "get day_second",
+			unit:     "DAY_SECOND",
+			expected: now.Day() * 1_000_000 + 123456,
+		},
+		{
+			name:     "get day_microsecond",
+			unit:     "DAY_MICROSECOND",
+			expected: now.Day() * 1_000_000_000_000 + 123456778899,
+		},
+		{
+			name:     "get hour_minute",
+			unit:     "HOUR_MINUTE",
+			expected: 1234,
+		},
+		{
+			name:     "get hour_second",
+			unit:     "HOUR_SECOND",
+			expected: 123456,
+		},
+		{
+			name:     "get hour_microsecond",
+			unit:     "HOUR_MICROSECOND",
+			expected: 123456778899,
+		},
+		{
+			name:     "get minute_second",
+			unit:     "MINUTE_SECOND",
+			expected: 3456,
+		},
+		{
+			name:     "get minute_microsecond",
+			unit:     "MINUTE_MICROSECOND",
+			expected: 3456778899,
+		},
+		{
+			name:     "get second_microsecond",
+			unit:     "SECOND_MICROSECOND",
+			expected: 56778899,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+			}
+			require := require.New(t)
+			f := NewExtract(expression.NewLiteral(tt.unit, types.LongText), expression.NewLiteral(data, types.LongText))
+			ctx := sql.NewEmptyContext()
+			ctx.SetQueryTime(now)
+			v, err := f.Eval(ctx, nil)
+			require.NoError(err)
+			require.Equal(tt.expected, v)
+		})
+	}
 }
