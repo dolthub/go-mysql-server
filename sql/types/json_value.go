@@ -16,6 +16,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -52,6 +53,7 @@ func StringifyJSON(jsonWrapper sql.JSONWrapper) (string, error) {
 
 // JSONBytes are values which can be represented as JSON.
 type JSONBytes interface {
+	sql.JSONWrapper
 	GetBytes() ([]byte, error)
 }
 
@@ -85,7 +87,16 @@ func MarshallJson(jsonWrapper sql.JSONWrapper) ([]byte, error) {
 type JsonObject = map[string]interface{}
 type JsonArray = []interface{}
 
+type SearchableJSON interface {
+	sql.JSONWrapper
+	Lookup(ctx context.Context, path string) (sql.JSONWrapper, error)
+}
+
+// MutableJSON is a JSON value that can be efficiently modified. These modifications return the new value, but they
+// are not required to preserve the state of the original value. If you want to preserve the old value, call |Clone|
+// first and modify the clone, which is guaranteed to not affect the original.
 type MutableJSON interface {
+	sql.JSONWrapper
 	// Insert Adds the value at the given path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
 	Insert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
@@ -109,6 +120,7 @@ type JSONDocument struct {
 
 var _ sql.JSONWrapper = JSONDocument{}
 var _ MutableJSON = JSONDocument{}
+var _ SearchableJSON = JSONDocument{}
 
 func (doc JSONDocument) ToInterface() (interface{}, error) {
 	return doc.Val, nil
@@ -135,6 +147,14 @@ func (doc JSONDocument) String() string {
 	return result
 }
 
+func (doc JSONDocument) Lookup(ctx context.Context, path string) (sql.JSONWrapper, error) {
+	return lookupJson(doc.Val, path)
+}
+
+func (doc JSONDocument) Clone() sql.JSONWrapper {
+	return &JSONDocument{Val: DeepCopyJson(doc.Val)}
+}
+
 // LazyJSONDocument is an implementation of sql.JSONWrapper that wraps a JSON string and defers deserializing
 // it unless needed. This is more efficient for queries that interact with JSON values but don't care about their structure.
 type LazyJSONDocument struct {
@@ -159,6 +179,11 @@ func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
 			return val, nil
 		}),
 	}
+}
+
+// Clone implements sql.JSONWrapper.
+func (j *LazyJSONDocument) Clone() sql.JSONWrapper {
+	return NewLazyJSONDocument(j.Bytes)
 }
 
 func (j *LazyJSONDocument) ToInterface() (interface{}, error) {
@@ -189,6 +214,30 @@ func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
 		return j, nil
 	}
 
+	if searchableJson, ok := j.(SearchableJSON); ok {
+		ctx := context.Background()
+		return searchableJson.Lookup(ctx, path)
+	}
+
+	r, err := j.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	if j == nil {
+		return nil, nil
+	}
+
+	return lookupJson(r, path)
+}
+
+func lookupJson(j interface{}, path string) (SearchableJSON, error) {
+	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
+	// to always result in sql NULL, except in the case of the identity lookup
+	// $.
+	if j == nil {
+		return nil, nil
+	}
+
 	c, err := jsonpath.Compile(path)
 	if err != nil {
 		// Until we throw out jsonpath, let's at least make this error better.
@@ -202,22 +251,14 @@ func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
 		return nil, err
 	}
 
-	r, err := j.ToInterface()
-	if err != nil {
-		return nil, err
-	}
-	if r == nil {
-		return nil, nil
-	}
-
 	// For non-object, non-array candidates, if the path is not "$", return SQL NULL
-	_, isObject := r.(JsonObject)
-	_, isArray := r.(JsonArray)
+	_, isObject := j.(JsonObject)
+	_, isArray := j.(JsonArray)
 	if !isObject && !isArray {
 		return nil, nil
 	}
 
-	val, err := c.Lookup(r)
+	val, err := c.Lookup(j)
 	if err != nil {
 		if strings.Contains(err.Error(), "key error") {
 			// A missing key results in a SQL null
