@@ -29,7 +29,7 @@ var ErrPathWildcard = fmt.Errorf("Path expressions may not contain the * and ** 
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
 func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.MutableJSON, error) {
 	doc, err := getJSONDocumentFromRow(ctx, row, json)
-	if err != nil || doc == nil || doc.Val == nil {
+	if err != nil || doc == nil {
 		return nil, err
 	}
 
@@ -42,7 +42,7 @@ func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (type
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
 func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.JSONWrapper, error) {
 	doc, err := getJSONDocumentFromRow(ctx, row, json)
-	if err != nil || doc == nil || doc.Val == nil {
+	if err != nil || doc == nil {
 		return nil, err
 	}
 
