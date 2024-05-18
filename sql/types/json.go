@@ -135,7 +135,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	// If we read the JSON from a table, pass through the bytes to avoid a deserialization and reserialization round-trip.
 	// This is kind of a hack, and it means that reading JSON from tables no longer matches MySQL byte-for-byte.
 	// But its worth it to avoid the round-trip, which can be very slow.
-	if j, ok := v.(*LazyJSONDocument); ok {
+	if j, ok := v.(JSONBytes); ok {
 		str, err := MarshallJson(j)
 		if err != nil {
 			return sqltypes.NULL, err
