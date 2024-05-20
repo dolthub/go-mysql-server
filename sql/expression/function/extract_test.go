@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -247,7 +246,7 @@ func TestExtractWithTime(t *testing.T) {
 		{
 			name:     "get year",
 			unit:     "YEAR",
-			expected:  now.Year(),
+			expected: now.Year(),
 		},
 		{
 			name:     "get quarter",
@@ -292,27 +291,27 @@ func TestExtractWithTime(t *testing.T) {
 		{
 			name:     "get year_month",
 			unit:     "YEAR_MONTH",
-			expected: now.Year() * 100 + int(now.Month()),
+			expected: now.Year()*100 + int(now.Month()),
 		},
 		{
 			name:     "get day_hour",
 			unit:     "DAY_HOUR",
-			expected: now.Day() * 100 + 12,
+			expected: now.Day()*100 + 12,
 		},
 		{
 			name:     "get day_minute",
 			unit:     "DAY_MINUTE",
-			expected: now.Day() * 10000 + 1234,
+			expected: now.Day()*10000 + 1234,
 		},
 		{
 			name:     "get day_second",
 			unit:     "DAY_SECOND",
-			expected: now.Day() * 1_000_000 + 123456,
+			expected: now.Day()*1_000_000 + 123456,
 		},
 		{
 			name:     "get day_microsecond",
 			unit:     "DAY_MICROSECOND",
-			expected: now.Day() * 1_000_000_000_000 + 123456778899,
+			expected: now.Day()*1_000_000_000_000 + 123456778899,
 		},
 		{
 			name:     "get hour_minute",

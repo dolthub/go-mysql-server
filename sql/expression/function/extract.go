@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"time"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // Extract takes out the specified unit(s) from the time expression.
@@ -121,7 +122,7 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		_, h, mins, s, microsecs := ts.TimespanToUnits()
 		currTime := ctx.QueryTime()
 		y, m, d := currTime.Date()
-		dateTime = time.Date(y, m, d, int(h), int(mins), int(s), int(microsecs) * 1000, currTime.Location())
+		dateTime = time.Date(y, m, d, int(h), int(mins), int(s), int(microsecs)*1000, currTime.Location())
 	}
 
 	switch unit {
