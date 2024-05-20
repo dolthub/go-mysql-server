@@ -565,6 +565,8 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 		escape = b.buildScalar(inScope, c.Escape)
 	}
 
+	// TODO: make a switch for ALL, ANY, SOME
+
 	switch strings.ToLower(c.Operator) {
 	case ast.RegexpStr:
 		return expression.NewRegexp(left, right)
