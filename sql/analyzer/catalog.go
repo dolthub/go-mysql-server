@@ -315,7 +315,7 @@ func (c *Catalog) TableWithSchema(ctx *sql.Context, dbName, schemaName, tableNam
 		return nil, nil, err
 	}
 	if !ok {
-		return nil, nil, sql.ErrDatabaseNotFound.New(schemaName)
+		return nil, nil, sql.ErrDatabaseSchemaNotFound.New(schemaName)
 	}
 
 	tbl, ok, err := schemaDatabase.GetTableInsensitive(ctx, tableName)
