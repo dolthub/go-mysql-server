@@ -241,6 +241,8 @@ func (d *BaseDatabase) AddTable(name string, t MemTable) {
 
 // DeleteTable deletes a table from the database.
 func (d *BaseDatabase) DeleteTable(name string) {
+	d.tablesMu.Lock()
+	defer d.tablesMu.Unlock()
 	delete(d.tables, name)
 }
 
