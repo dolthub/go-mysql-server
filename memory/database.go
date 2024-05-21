@@ -302,7 +302,7 @@ func (d *BaseDatabase) DropTable(ctx *sql.Context, name string) error {
 
 	SessionFromContext(ctx).dropTable(t.(*Table).data)
 
-	delete(d.tables, name)
+	d.DeleteTable(name)
 	return nil
 }
 
@@ -338,8 +338,8 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 	}
 	memTbl.data.tableName = newName
 
-	d.tables[newName] = memTbl
-	delete(d.tables, oldName)
+	d.AddTable(newName, memTbl)
+	d.DeleteTable(oldName)
 	sess.putTable(memTbl.data)
 
 	return nil
