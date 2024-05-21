@@ -229,7 +229,7 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 	}
 
 	db.Revisions[strings.ToLower(name)][asOf] = t
-	db.tables[name] = t.(MemTable)
+	db.AddTable(name, t.(MemTable))
 }
 
 // AddTable adds a new table to the database.
@@ -248,7 +248,9 @@ func (d *BaseDatabase) DeleteTable(name string) {
 
 // CreateTable creates a table with the given name and schema
 func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID, comment string) error {
+	d.tablesMu.RLock()
 	_, ok := d.tables[name]
+	d.tablesMu.RUnlock()
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
 	}
