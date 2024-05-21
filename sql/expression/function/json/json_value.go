@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/jsonpath"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -96,9 +95,13 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	jsonData, err := GetJSONFromWrapperOrCoercibleString(js)
+	js, _, err = types.JSON.Convert(js)
 	if err != nil {
 		return nil, err
+	}
+	searchable, ok := js.(sql.JSONWrapper)
+	if !ok {
+		return fmt.Errorf("expected types.JSONValue, found: %T", js), nil
 	}
 
 	path, err := j.Path.Eval(ctx, row)
@@ -106,21 +109,10 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	res, err := jsonpath.JsonPathLookup(jsonData, path.(string))
-	if err != nil {
+	var res interface{}
+	res, err = types.LookupJSONValue(searchable, path.(string))
+	if err != nil || res == nil {
 		return nil, err
-	}
-
-	switch r := res.(type) {
-	case nil:
-		return nil, nil
-	case []interface{}:
-		if len(r) == 0 {
-			return nil, nil
-		}
-		res = types.JSONDocument{Val: res}
-	case map[string]interface{}:
-		res = types.JSONDocument{Val: res}
 	}
 
 	if j.Typ != nil {
