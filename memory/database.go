@@ -35,6 +35,7 @@ type Database struct {
 type MemoryDatabase interface {
 	sql.Database
 	AddTable(name string, t MemTable)
+	DeleteTable(name string)
 	Database() *BaseDatabase
 }
 
@@ -234,6 +235,11 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 // AddTable adds a new table to the database.
 func (d *BaseDatabase) AddTable(name string, t MemTable) {
 	d.tables[name] = t
+}
+
+// DeleteTable deletes a table from the database.
+func (d *BaseDatabase) DeleteTable(name string) {
+	delete(d.tables, name)
 }
 
 // CreateTable creates a table with the given name and schema
