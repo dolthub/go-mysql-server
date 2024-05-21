@@ -90,7 +90,7 @@ var (
 	ErrDatabaseCollationsNotSupported = errors.NewKind("database %s does not support collation operations")
 
 	// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
-	ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
+	ErrTableCreatedNotFound = errors.NewKind("table %q was created but could not be found")
 
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
