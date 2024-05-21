@@ -140,7 +140,7 @@ func (d *BaseDatabase) putTable(t *Table) {
 	for name, table := range d.tables {
 		if strings.ToLower(name) == lowerName {
 			t.name = table.Name()
-			d.tables[name] = t
+			d.AddTable(name, t)
 			return
 		}
 	}
@@ -258,7 +258,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		table.EnablePrimaryKeyIndexes()
 	}
 
-	d.tables[name] = table
+	d.AddTable(name, table)
 	sess := SessionFromContext(ctx)
 	sess.putTable(table.data)
 
@@ -289,7 +289,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 		}
 	}
 
-	d.tables[name] = table
+	d.AddTable(name, table)
 	return nil
 }
 
