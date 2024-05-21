@@ -250,6 +250,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
 		if err != nil {
 			b.handleErr(err)
+			return nil
 		}
 		if sqlExpr, ok := expr.(sql.Expression); ok {
 			return sqlExpr

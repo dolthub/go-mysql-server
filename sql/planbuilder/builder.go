@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -354,6 +355,8 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 		return b.buildExecute(inScope, n)
 	case *ast.Deallocate:
 		return b.buildDeallocate(inScope, n)
+	case ast.InjectedStatement:
+		return b.buildInjectedStatement(inScope, n)
 	}
 	return
 }
@@ -390,6 +393,26 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 	}
 
 	return plan.NewVirtualColumnTable(tab, projections)
+}
+
+// buildInjectedStatement returns the sql.Node encapsulated by the injected statement.
+func (b *Builder) buildInjectedStatement(inScope *scope, n ast.InjectedStatement) (outScope *scope) {
+	resolvedChildren := make([]any, len(n.Children))
+	for i, child := range n.Children {
+		resolvedChildren[i] = b.buildScalar(inScope, child)
+	}
+	stmt, err := n.Statement.WithResolvedChildren(resolvedChildren)
+	if err != nil {
+		b.handleErr(err)
+		return nil
+	}
+	if sqlNode, ok := stmt.(sql.ExecSourceRel); ok {
+		outScope = inScope.push()
+		outScope.node = sqlNode
+		return outScope
+	}
+	b.handleErr(fmt.Errorf("Injected statement does not resolve to a valid node"))
+	return nil
 }
 
 // assignColumnIndexes fixes the column indexes in the expression to match the schema given
