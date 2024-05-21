@@ -137,13 +137,16 @@ func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sq
 // putTable writes the table given into database storage. A table with this name must already be present.
 func (d *BaseDatabase) putTable(t *Table) {
 	lowerName := strings.ToLower(t.name)
+	d.tablesMu.RLock()
 	for name, table := range d.tables {
 		if strings.ToLower(name) == lowerName {
+			d.tablesMu.RUnlock()
 			t.name = table.Name()
 			d.AddTable(name, t)
 			return
 		}
 	}
+	d.tablesMu.RUnlock()
 	panic(fmt.Sprintf("table %s not found", t.name))
 }
 
