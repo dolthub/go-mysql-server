@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"sync"
 )
 
 // Database is an in-memory database.
@@ -60,6 +61,7 @@ type BaseDatabase struct {
 	events            []sql.EventDefinition
 	primaryKeyIndexes bool
 	collation         sql.CollationID
+	tablesMu          *sync.RWMutex
 }
 
 var _ MemoryDatabase = (*Database)(nil)
@@ -76,9 +78,10 @@ func NewDatabase(name string) *Database {
 // NewViewlessDatabase creates a new database that doesn't persist views. Used only for testing. Use NewDatabase.
 func NewViewlessDatabase(name string) *BaseDatabase {
 	return &BaseDatabase{
-		name:   name,
-		tables: map[string]MemTable{},
-		fkColl: newForeignKeyCollection(),
+		name:     name,
+		tables:   map[string]MemTable{},
+		fkColl:   newForeignKeyCollection(),
+		tablesMu: &sync.RWMutex{},
 	}
 }
 
