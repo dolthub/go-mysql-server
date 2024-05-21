@@ -173,6 +173,17 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 
 		return rf
+	case *ast.AllExpr:
+		sq := b.buildScalar(inScope, v.Subquery)
+		allExpr, err := plan.NewAllExpr(sq)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return allExpr
+	//case *ast.AnyExpr:
+	//	return b.buildAnyExpr(inScope, v)
+	//case *ast.SomeExpr:
+	//	return b.buildSomeExpr(inScope, v)
 
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
@@ -565,7 +576,8 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 		escape = b.buildScalar(inScope, c.Escape)
 	}
 
-	// TODO: make a switch for ALL, ANY, SOME
+	// TODO: make a switch for ALL, ANY, SOME? Maybe just handle inside of each expression?
+
 
 	switch strings.ToLower(c.Operator) {
 	case ast.RegexpStr:
@@ -573,7 +585,13 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 	case ast.NotRegexpStr:
 		return expression.NewNot(expression.NewRegexp(left, right))
 	case ast.EqualStr:
-		return expression.NewEquals(left, right)
+		switch r := right.(type) {
+		case *plan.AllExpr:
+			return plan.NewAll(ast.EqualStr, left, r.Sq)
+		default:
+			return expression.NewEquals(left, right)
+		}
+
 	case ast.LessThanStr:
 		return expression.NewLessThan(left, right)
 	case ast.LessEqualStr:
