@@ -234,6 +234,8 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 
 // AddTable adds a new table to the database.
 func (d *BaseDatabase) AddTable(name string, t MemTable) {
+	d.tablesMu.Lock()
+	defer d.tablesMu.Unlock()
 	d.tables[name] = t
 }
 
