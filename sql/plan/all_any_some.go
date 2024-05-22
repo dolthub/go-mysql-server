@@ -113,7 +113,9 @@ func (a *All) IsNullable() bool {
 
 // Eval implements the Expression interface.
 func (a *All) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// TODO: this assumes right will always be Subquery, it's possible the left will be as well
 	sq := a.Right.(*Subquery)
+	// this catches multiple column errors
 	rows, err := sq.EvalMultiple(ctx, row)
 	if err != nil {
 		return nil, err

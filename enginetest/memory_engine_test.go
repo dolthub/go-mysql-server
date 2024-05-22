@@ -206,12 +206,25 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name:        "test script",
 			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{},
+			Assertions:  []queries.ScriptTestAssertion{
+				{
+					Query: "select 1 = all(select 1);",
+					Expected: []sql.Row{
+						{true},
+					},
+				},
+				{
+					Query: "select 1 = all(select 2);",
+					Expected: []sql.Row{
+						{false},
+					},
+				},
+			},
 		},
 	}
 
