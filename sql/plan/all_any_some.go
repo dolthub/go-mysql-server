@@ -56,7 +56,7 @@ func (a *AllExpr) IsNullable() bool {
 }
 
 // Eval implements the Expression interface.
-func (a *AllExpr) Eval(ctx *sql.Context, row sql.Row) ( interface{},  error) {
+func (a *AllExpr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	panic("all expr is a placeholder")
 }
 
@@ -66,18 +66,16 @@ func (a *AllExpr) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (a *AllExpr) WithChildren(children ...sql.Expression) ( sql.Expression,  error) {
+func (a *AllExpr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	panic("all expr is a placeholder")
 }
 
-
 // All is an expression that checks an expression is inside a list of expressions.
 type All struct {
-	Comparator string    // TODO: make this an enum
-	Left  sql.Expression // TODO: expression?
-	Right sql.Expression
+	Comparator string         // TODO: make this an enum
+	Left       sql.Expression // TODO: expression?
+	Right      sql.Expression
 }
-
 
 var _ sql.Expression = (*All)(nil)
 var _ sql.CollationCoercible = (*All)(nil)
@@ -86,8 +84,8 @@ var _ sql.CollationCoercible = (*All)(nil)
 func NewAll(cmp string, left, right sql.Expression) *All {
 	return &All{
 		Comparator: cmp,
-		Left:  left,
-		Right: right,
+		Left:       left,
+		Right:      right,
 	}
 }
 

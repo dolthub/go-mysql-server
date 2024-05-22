@@ -578,7 +578,6 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 
 	// TODO: make a switch for ALL, ANY, SOME? Maybe just handle inside of each expression?
 
-
 	switch strings.ToLower(c.Operator) {
 	case ast.RegexpStr:
 		return expression.NewRegexp(left, right)
