@@ -19,11 +19,12 @@ import (
 	"strings"
 	"time"
 
+	"sync"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"sync"
 )
 
 // Database is an in-memory database.
