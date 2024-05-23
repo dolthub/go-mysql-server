@@ -806,7 +806,7 @@ func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, er
 			continue
 		}
 		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if s != nil {
+		if len(s) > 0 {
 			o[i], err = s[i].Type.SQL(ctx, nil, v)
 			if err != nil {
 				return nil, err
