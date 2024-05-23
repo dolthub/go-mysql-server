@@ -388,7 +388,6 @@ func (h *Handler) doQuery(
 	ctx.GetLogger().Tracef("beginning execution")
 
 	oCtx := ctx
-	eg, ctx := ctx.NewErrgroup()
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
@@ -413,141 +412,14 @@ func (h *Handler) doQuery(
 
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
-		row, err := rowIter.Next(ctx)
-		if err != nil {
-			return remainder, err
-		}
-		_, err = rowIter.Next(ctx)
-		if err != io.EOF {
-			return remainder, fmt.Errorf("result schema iterator returned more than one row")
-		}
-		if err := rowIter.Close(ctx); err != nil {
-			return remainder, err
-		}
-		r = resultFromOkResult(row[0].(types.OkResult))
+		r, err = resultForOkIter(ctx, rowIter)
 	} else if schema == nil {
-		if _, err := rowIter.Next(ctx); err != io.EOF {
-			return remainder, fmt.Errorf("result schema iterator returned more than zero rows")
-		}
-		if err := rowIter.Close(ctx); err != nil {
-			return remainder, err
-		}
-		r = &sqltypes.Result{Fields: resultFields}
+		r, err = resultForEmptyIter(ctx, rowIter, resultFields)
 	} else {
-		var rowChan chan sql.Row
-
-		rowChan = make(chan sql.Row, 512)
-
-		wg := sync.WaitGroup{}
-		wg.Add(2)
-		// Read rows off the row iterator and send them to the row channel.
-		eg.Go(func() error {
-			defer wg.Done()
-			defer close(rowChan)
-			for {
-				select {
-				case <-ctx.Done():
-					return nil
-				default:
-					row, err := rowIter.Next(ctx)
-					if err == io.EOF {
-						return nil
-					}
-					if err != nil {
-						return err
-					}
-					select {
-					case rowChan <- row:
-					case <-ctx.Done():
-						return nil
-					}
-				}
-			}
-		})
-
-		pollCtx, cancelF := ctx.NewSubContext()
-		eg.Go(func() error {
-			return h.pollForClosedConnection(pollCtx, c)
-		})
-
-		// Default waitTime is one minute if there is no timeout configured, in which case
-		// it will loop to iterate again unless the socket died by the OS timeout or other problems.
-		// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
-		// call Handler.CloseConnection()
-		waitTime := 1 * time.Minute
-		if h.readTimeout > 0 {
-			waitTime = h.readTimeout
-		}
-		timer := time.NewTimer(waitTime)
-		defer timer.Stop()
-
-		// reads rows from the channel, converts them to wire format,
-		// and calls |callback| to give them to vitess.
-		eg.Go(func() error {
-			defer cancelF()
-			defer wg.Done()
-			for {
-				if r == nil {
-					r = &sqltypes.Result{Fields: resultFields}
-				}
-				if r.RowsAffected == rowsBatch {
-					if err := callback(r, more); err != nil {
-						return err
-					}
-					r = nil
-					processedAtLeastOneBatch = true
-					continue
-				}
-
-				select {
-				case <-ctx.Done():
-					return nil
-				case row, ok := <-rowChan:
-					if !ok {
-						return nil
-					}
-					if types.IsOkResult(row) {
-						if len(r.Rows) > 0 {
-							panic("Got OkResult mixed with RowResult")
-						}
-						r = resultFromOkResult(row[0].(types.OkResult))
-						continue
-					}
-
-					outputRow, err := rowToSQL(ctx, schema, row)
-					if err != nil {
-						return err
-					}
-
-					ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-					r.Rows = append(r.Rows, outputRow)
-					r.RowsAffected++
-				case <-timer.C:
-					if h.readTimeout != 0 {
-						// Cancel and return so Vitess can call the CloseConnection callback
-						ctx.GetLogger().Tracef("connection timeout")
-						return ErrRowTimeout.New()
-					}
-				}
-				if !timer.Stop() {
-					<-timer.C
-				}
-				timer.Reset(waitTime)
-			}
-		})
-
-		// Close() kills this PID in the process list,
-		// wait until all rows have be sent over the wire
-		eg.Go(func() error {
-			wg.Wait()
-			return rowIter.Close(ctx)
-		})
-
-		err = eg.Wait()
-		if err != nil {
-			ctx.GetLogger().WithError(err).Warn("error running query")
-			return remainder, err
-		}
+		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(ctx, c, schema, rowIter, callback, resultFields, more)
+	}
+	if err != nil {
+		return remainder, err
 	}
 
 	// errGroup context is now canceled
@@ -577,6 +449,162 @@ func (h *Handler) doQuery(
 	}
 
 	return remainder, callback(r, more)
+}
+
+// resultForOkIter reads a maximum of one result row from a result iterator.
+func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+	row, err := iter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, err = iter.Next(ctx)
+	if err != io.EOF {
+		return nil, fmt.Errorf("result schema iterator returned more than one row")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+	return resultFromOkResult(row[0].(types.OkResult)), nil
+}
+
+// resultForEmptyIter ensures that an expected empty iterator returns no rows.
+func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+	if _, err := iter.Next(ctx); err != io.EOF {
+		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// resultForDefaultIter reads batches of rows from the iterator
+// and writes results into the callback function.
+func (h *Handler) resultForDefaultIter(
+	ctx *sql.Context,
+	c *mysql.Conn,
+	schema sql.Schema,
+	iter sql.RowIter,
+	callback func(*sqltypes.Result, bool) error,
+	resultFields []*querypb.Field,
+	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, err error) {
+	eg, ctx := ctx.NewErrgroup()
+
+	var rowChan chan sql.Row
+
+	rowChan = make(chan sql.Row, 512)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	// Read rows off the row iterator and send them to the row channel.
+	eg.Go(func() error {
+		defer wg.Done()
+		defer close(rowChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				row, err := iter.Next(ctx)
+				if err == io.EOF {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				select {
+				case rowChan <- row:
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		}
+	})
+
+	pollCtx, cancelF := ctx.NewSubContext()
+	eg.Go(func() error {
+		return h.pollForClosedConnection(pollCtx, c)
+	})
+
+	// Default waitTime is one minute if there is no timeout configured, in which case
+	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
+	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
+	// call Handler.CloseConnection()
+	waitTime := 1 * time.Minute
+	if h.readTimeout > 0 {
+		waitTime = h.readTimeout
+	}
+	timer := time.NewTimer(waitTime)
+	defer timer.Stop()
+
+	// reads rows from the channel, converts them to wire format,
+	// and calls |callback| to give them to vitess.
+	eg.Go(func() error {
+		defer cancelF()
+		defer wg.Done()
+		for {
+			if r == nil {
+				r = &sqltypes.Result{Fields: resultFields}
+			}
+			if r.RowsAffected == rowsBatch {
+				if err := callback(r, more); err != nil {
+					return err
+				}
+				r = nil
+				processedAtLeastOneBatch = true
+				continue
+			}
+
+			select {
+			case <-ctx.Done():
+				return nil
+			case row, ok := <-rowChan:
+				if !ok {
+					return nil
+				}
+				if types.IsOkResult(row) {
+					if len(r.Rows) > 0 {
+						panic("Got OkResult mixed with RowResult")
+					}
+					r = resultFromOkResult(row[0].(types.OkResult))
+					continue
+				}
+
+				outputRow, err := rowToSQL(ctx, schema, row)
+				if err != nil {
+					return err
+				}
+
+				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+				r.Rows = append(r.Rows, outputRow)
+				r.RowsAffected++
+			case <-timer.C:
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
+				}
+			}
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(waitTime)
+		}
+	})
+
+	// Close() kills this PID in the process list,
+	// wait until all rows have be sent over the wire
+	eg.Go(func() error {
+		wg.Wait()
+		return iter.Close(ctx)
+	})
+
+	err = eg.Wait()
+	if err != nil {
+		ctx.GetLogger().WithError(err).Warn("error running query")
+		return
+	}
+	return
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
