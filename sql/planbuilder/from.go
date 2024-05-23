@@ -681,7 +681,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		}
 	} else if db != "" {
 		if asOfLit != nil {
-			tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asof)
+			tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
 		} else {
 			tab, database, tableResolveErr = b.cat.Table(b.ctx, db, name)
 		}
