@@ -936,6 +936,8 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERNoSuchTable
 	case ErrDatabaseExists.Is(err):
 		code = mysql.ERDbCreateExists
+	case ErrDatabaseNotFound.Is(err):
+		code = mysql.ERBadDb
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
 	case ErrInvalidOperandColumns.Is(err):
