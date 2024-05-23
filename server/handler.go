@@ -90,7 +90,12 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
-	return h.sm.SetDB(c, schemaName)
+	err := h.sm.SetDB(c, schemaName)
+	if err != nil {
+		logrus.WithField("database", schemaName).Errorf("unable to process ComInitDB: %s", err.Error())
+		err = sql.CastSQLError(err)
+	}
+	return err
 }
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
