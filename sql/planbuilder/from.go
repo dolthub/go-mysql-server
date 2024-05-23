@@ -634,6 +634,37 @@ func (b *Builder) buildResolvedTableForTablename(inScope *scope, tableName ast.T
 
 func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
+	
+	if db == "" {
+		db = b.ctx.GetCurrentDatabase()
+		if b.ViewCtx().DbName != "" {
+			db = b.ViewCtx().DbName
+		}
+
+		if db == "" {
+			b.handleErr(sql.ErrNoDatabaseSelected.New())
+		}
+	}
+
+	database, err := b.cat.Database(b.ctx, db)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	if schema != "" {
+		scd, ok := database.(sql.SchemaDatabase)
+		if !ok {
+			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
+		}
+		var schemaFound bool
+		database, schemaFound, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !schemaFound {
+			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
+		}
+	}
 
 	var asOfLit interface{}
 	if asof != nil {
@@ -644,120 +675,17 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		asOfLit = asof
 	}
 
-	// Resolve the table. This returns early if the name refers to a view instead.
+	if view := b.resolveView(name, database, asOfLit); view != nil {
+		// TODO: Schema name
+		return resolvedViewScope(outScope, view, db, name)
+	}
+
 	var tab sql.Table
-	var database sql.Database
 	var tableResolveErr error
-
-	// four cases here based on which qualifiers were provided
-	if schema != "" && db != "" {
-		// The table was identified like `db.schema.table`.
-		var err error
-		database, err = b.cat.Database(b.ctx, db)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		scd, ok := database.(sql.SchemaDatabase)
-		if !ok {
-			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
-		}
-		var schemaFound bool
-		database, schemaFound, err = scd.GetSchema(b.ctx, schema)
-		if err != nil {
-			b.handleErr(err)
-		}
-		if !schemaFound {
-			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
-		}
-
-		if view := b.resolveView(name, database, asOfLit); view != nil {
-			return resolvedViewScope(outScope, view, db, name)
-		}
-
-		if asOfLit != nil {
-			tab, database, tableResolveErr = b.cat.DatabaseTableAsOf(b.ctx, database, name, asOfLit)
-		} else {
-			tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
-		}
-	} else if db != "" {
-		var err error
-		database, err = b.cat.Database(b.ctx, db)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		if view := b.resolveView(name, database, asOfLit); view != nil {
-			return resolvedViewScope(outScope, view, db, name)
-		}
-
-		if asOfLit != nil {
-			tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
-		} else {
-			tab, database, tableResolveErr = b.cat.Table(b.ctx, db, name)
-		}
-	} else if schema != "" {
-		db = b.ctx.GetCurrentDatabase()
-		if b.ViewCtx().DbName != "" {
-			db = b.ViewCtx().DbName
-		}
-		
-		if db == "" {
-			b.handleErr(sql.ErrNoDatabaseSelected.New())
-		}
-
-		var err error
-		database, err = b.cat.Database(b.ctx, db)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		scd, ok := database.(sql.SchemaDatabase)
-		if !ok {
-			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
-		}
-		
-		var schemaFound bool
-		database, schemaFound, err = scd.GetSchema(b.ctx, schema)
-		if err != nil {
-			b.handleErr(err)
-		}
-		if !schemaFound {
-			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
-		}
-
-		if view := b.resolveView(name, database, asOfLit); view != nil {
-			return resolvedViewScope(outScope, view, db, name)
-		}
-
-		if asOfLit != nil {
-			tab, database, tableResolveErr = b.cat.DatabaseTableAsOf(b.ctx, database, name, asOfLit)
-		} else {
-			tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
-		}
+	if asOfLit != nil {
+		tab, database, tableResolveErr = b.cat.DatabaseTableAsOf(b.ctx, database, name, asOfLit)
 	} else {
-		// No qualifiers, naked table name
-		db = b.ctx.GetCurrentDatabase()
-		if b.ViewCtx().DbName != "" {
-			db = b.ViewCtx().DbName
-		}
-
-		var err error
-		database, err = b.cat.Database(b.ctx, db)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		// TODO: Schemas
-		if view := b.resolveView(name, database, asOfLit); view != nil {
-			return resolvedViewScope(outScope, view, db, name)
-		}
-
-		if asOfLit != nil {
-			tab, database, tableResolveErr = b.cat.DatabaseTableAsOf(b.ctx, database, name, asOfLit)
-		} else {
-			tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
-		}
+		tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
 	}
 
 	if tableResolveErr != nil {
