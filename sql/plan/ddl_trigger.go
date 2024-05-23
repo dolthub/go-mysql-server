@@ -16,12 +16,12 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type TriggerOrder struct {
