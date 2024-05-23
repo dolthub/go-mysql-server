@@ -662,12 +662,13 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		if !ok {
 			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
 		}
-		database, ok, err = scd.GetSchema(b.ctx, schema)
+		var schemaFound bool
+		database, schemaFound, err = scd.GetSchema(b.ctx, schema)
 		if err != nil {
 			b.handleErr(err)
 		}
-		if !ok {
-			b.handleErr(sql.ErrDatabaseNotFound.New(schema))
+		if !schemaFound {
+			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
 		}
 
 		if view := b.resolveView(name, database, asOfLit); view != nil {
@@ -680,46 +681,59 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
 		}
 	} else if db != "" {
+		var err error
+		database, err = b.cat.Database(b.ctx, db)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		if view := b.resolveView(name, database, asOfLit); view != nil {
+			return resolvedViewScope(outScope, view, db, name)
+		}
+
 		if asOfLit != nil {
 			tab, database, tableResolveErr = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
 		} else {
 			tab, database, tableResolveErr = b.cat.Table(b.ctx, db, name)
 		}
 	} else if schema != "" {
-		// TODO: revise this
-		// Only db was provided, which means an identifier of the type `db.table`.
-		// Depending on the kind of database, "db" here could mean either:
-		// 1) a database name
-		// 2) a schema name, and the database is the current database
-		// Unlike the case above, where we have both a database and schema qualifier, we don't know whether this qualifier
-		// refers to a schema name or a database name. So we have to defer to the integrator's DatabaseProvider to tell us.
-
-		// Catalog is a term of art from the SQL standard, used here to refer to the top-level database object
-		catalog := b.ctx.GetCurrentDatabase()
+		db = b.ctx.GetCurrentDatabase()
 		if b.ViewCtx().DbName != "" {
-			catalog = b.ViewCtx().DbName
+			db = b.ViewCtx().DbName
+		}
+		
+		if db == "" {
+			b.handleErr(sql.ErrNoDatabaseSelected.New())
 		}
 
-		// TODO: handle resolving views the same way
-		// var err error
-		// database, err = b.cat.Database(b.ctx, db)
-		// if err != nil {
-		// 	b.handleErr(err)
-		// }
-		//
-		// if view := b.resolveView(name, database, asOfLit); view != nil {
-		// 	return resolvedViewScope(outScope, view, db, name)
-		// }
+		var err error
+		database, err = b.cat.Database(b.ctx, db)
+		if err != nil {
+			b.handleErr(err)
+		}
 
-		schemaCat, ok := b.cat.(sql.SchemaCatalog)
+		scd, ok := database.(sql.SchemaDatabase)
 		if !ok {
-			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(catalog))
+			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
+		}
+		
+		var schemaFound bool
+		database, schemaFound, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !schemaFound {
+			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
+		}
+
+		if view := b.resolveView(name, database, asOfLit); view != nil {
+			return resolvedViewScope(outScope, view, db, name)
 		}
 
 		if asOfLit != nil {
-			tab, database, tableResolveErr = schemaCat.TableWithSchemaAsOf(b.ctx, catalog, schema, name, asOfLit)
+			tab, database, tableResolveErr = b.cat.DatabaseTableAsOf(b.ctx, database, name, asOfLit)
 		} else {
-			tab, database, tableResolveErr = schemaCat.TableWithSchema(b.ctx, catalog, schema, name)
+			tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
 		}
 	} else {
 		// No qualifiers, naked table name
