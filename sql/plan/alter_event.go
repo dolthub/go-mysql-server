@@ -184,7 +184,7 @@ func (a *AlterEvent) Resolved() bool {
 
 // Schema implements the sql.Node interface.
 func (a *AlterEvent) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 func (a *AlterEvent) IsReadOnly() bool {

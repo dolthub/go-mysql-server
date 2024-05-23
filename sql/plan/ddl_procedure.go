@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -85,7 +87,7 @@ func (c *CreateProcedure) IsReadOnly() bool {
 
 // Schema implements the sql.Node interface.
 func (c *CreateProcedure) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 // Children implements the sql.Node interface.
