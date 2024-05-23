@@ -565,6 +565,15 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 	return left, right
 }
 
+func isAllAnySome(expr sql.Expression) bool {
+	switch expr.(type) {
+	case *plan.All/*, *plan.Any, *plan.Some*/:
+		return true
+	default:
+		return false
+	}
+}
+
 func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
@@ -574,6 +583,12 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 	var escape sql.Expression = nil
 	if c.Escape != nil {
 		escape = b.buildScalar(inScope, c.Escape)
+	}
+
+	// TODO: ensure that ALL, ANY, SOME are always on the right side
+	// if left is ALL, ANY, SOME and right isn't then swap
+	if !isAllAnySome(right) && isAllAnySome(left) {
+		left, right = right, left
 	}
 
 	// TODO: make a switch for ALL, ANY, SOME? Maybe just handle inside of each expression?

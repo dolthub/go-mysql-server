@@ -210,20 +210,102 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			Name:        "test script",
-			SetUpScript: []string{},
+			SetUpScript: []string{
+				"create table t (i int, j int);",
+				"insert into t values (1, 10), (3, 10), (5, 10);",
+			},
 			Assertions:  []queries.ScriptTestAssertion{
+				//{
+				//	Query: "select 1 = all(select 1, 2);",
+				//	ExpectedErr: sql.ErrInvalidOperandColumns,
+				//},
+				//
+				//{
+				//	Query: "select 1 = all(select 1);",
+				//	Expected: []sql.Row{
+				//		{true},
+				//	},
+				//},
+				//{
+				//	Query: "select 1 = all(select 2);",
+				//	Expected: []sql.Row{
+				//		{false},
+				//	},
+				//},
 				{
-					Query: "select 1 = all(select 1);",
+					Query: "select all(select 1) = 1;",
 					Expected: []sql.Row{
 						{true},
 					},
 				},
+				//{
+				//	Query: "select all(select 1) = 2;",
+				//	Expected: []sql.Row{
+				//		{false},
+				//	},
+				//},
+				//{
+				//	Query: "select all(select 1) = all(select 1);",
+				//	Expected: []sql.Row{
+				//		{true},
+				//	},
+				//},
+				//{
+				//	Query: "select all(select 1) = all(select 2);",
+				//	Expected: []sql.Row{
+				//		{false},
+				//	},
+				//},
+				//
+				//{
+				//	Query: "select 10 = all(select * from t);",
+				//	ExpectedErr: sql.ErrInvalidOperandColumns,
+				//},
+				//{
+				//	Query: "select 10 = all(select i from t);",
+				//	Expected: []sql.Row{
+				//		{false},
+				//	},
+				//},
+				//{
+				//	Query: "select 10 = all(select j from t);",
+				//	Expected: []sql.Row{
+				//		{true},
+				//	},
+				//},
+				//
+				//{
+				//	Query: "select 1 = all(select * from (values row(1), row(1), row(1)) t);",
+				//	Expected: []sql.Row{
+				//		{true},
+				//	},
+				//},
 				{
-					Query: "select 1 = all(select 2);",
+					Query: "select all(select * from (values row(1), row(2), row(3)) t) = 1;",
 					Expected: []sql.Row{
 						{false},
 					},
 				},
+				//{
+				//	Query: "select all(select * from (values row(1), row(1), row(1)) t) = 1;",
+				//	Expected: []sql.Row{
+				//		{true},
+				//	},
+				//},
+				//{
+				//	Query: "select 1 = all(select * from (values row(1), row(2), row(3)) t);",
+				//	Expected: []sql.Row{
+				//		{false},
+				//	},
+				//},
+				//{
+				//	Query: "select all(select * from (values row(1), row(1), row(1)) t) = all(select * from (values row(1), row(1), row(1)) t);",
+				//	ExpectedErr: sql.ErrExpectedSingleRow,
+				//},
+
+
+
+
 			},
 		},
 	}
