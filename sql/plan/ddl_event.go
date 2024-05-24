@@ -104,7 +104,7 @@ func (c *CreateEvent) IsReadOnly() bool {
 
 // Schema implements the sql.Node interface.
 func (c *CreateEvent) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 // Children implements the sql.Node interface.
@@ -611,7 +611,7 @@ func (d *DropEvent) String() string {
 
 // Schema implements the sql.Node interface.
 func (d *DropEvent) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 func (d *DropEvent) IsReadOnly() bool {

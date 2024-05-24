@@ -73,11 +73,13 @@ func NewInto(
 	}
 }
 
+var emptySch = make(sql.Schema, 0)
+
 // Schema implements the Node interface.
 func (i *Into) Schema() sql.Schema {
 	// SELECT INTO does not return results directly (only through SQL vars or files),
 	// so it's result schema is always empty.
-	return nil
+	return emptySch
 }
 
 func (i *Into) IsReadOnly() bool {
