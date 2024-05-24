@@ -57,7 +57,8 @@ func TestInsert(t *testing.T) {
 		{f1, sql.Row{json, "$.c.*", "test"}, nil, ErrPathWildcard},                                                // path contains * wildcard
 		{f1, sql.Row{json, "$.c.**", "test"}, nil, ErrPathWildcard},                                               // path contains ** wildcard
 		{f1, sql.Row{json, "$", 10.1}, json, nil},                                                                 // whole document no opt
-		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                                   // null document returns null
+		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                                   // sql-null document returns sql-null
+		{f1, sql.Row{"null", "$", 42.7}, "null", nil},                                                             // json-null document returns json-null
 		{f1, sql.Row{json, nil, 10}, nil, nil},                                                                    // if any path is null, return null
 
 		// mysql> select JSON_INSERT(JSON_ARRAY(), "$[2]", 1 , "$[2]", 2 ,"$[2]", 3 ,"$[2]", 4);
