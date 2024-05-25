@@ -255,7 +255,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query:          `select json_length(json_extract(x, "$.a")) from xy`,
-				ExpectedErrStr: "failed to extract from expression 'xy.x'; object is not map",
+				ExpectedErrStr: "invalid data type for JSON data in argument 1 to function json_extract; a JSON string or JSON type is required",
 			},
 			{
 				Query: `select json_length(json_extract(y, "$.a")) from xy`,

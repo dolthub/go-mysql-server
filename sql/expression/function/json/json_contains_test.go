@@ -96,8 +96,8 @@ func TestJSONContains(t *testing.T) {
 
 		// Path Tests
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("Invalid JSON path expression. Path must start with '$', but received: 'FOO'")},
-		{f, sql.Row{1, nil, "$.a"}, nil, errors.New("Invalid argument to 1")},
-		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, errors.New("Invalid argument to 2")},
+		{f, sql.Row{1, nil, "$.a"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_contains")},
+		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, sql.ErrInvalidJSONArgument.New(2, "json_contains")},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, json, "$.foo"}, nil, nil},
@@ -128,9 +128,9 @@ func TestJSONContains(t *testing.T) {
 		{f2, sql.Row{`["apple", "orange", "banana"]`, `"orange"`}, true, nil},
 		{f2, sql.Row{`"hello"`, `"hello"`}, true, nil},
 		{f2, sql.Row{"{}", "{}"}, true, nil},
-		{f2, sql.Row{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New("hello")},
-		{f2, sql.Row{"[1,2", "[1]"}, nil, sql.ErrInvalidJSONText.New("[1,2")},
-		{f2, sql.Row{"[1,2]", "[1"}, nil, sql.ErrInvalidJSONText.New("[1")},
+		{f2, sql.Row{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "hello")},
+		{f2, sql.Row{"[1,2", "[1]"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "[1,2")},
+		{f2, sql.Row{"[1,2]", "[1"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", "[1")},
 	}
 
 	for _, tt := range testCases {
@@ -140,7 +140,7 @@ func TestJSONContains(t *testing.T) {
 			if tt.err == nil {
 				require.NoError(err)
 			} else {
-				require.Equal(err.Error(), tt.err.Error())
+				require.Equal(tt.err.Error(), err.Error())
 			}
 
 			require.Equal(tt.expected, result)
