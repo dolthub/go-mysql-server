@@ -19,12 +19,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // JsonValue selects data from a json document using a json path and
@@ -88,7 +86,7 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	js, err := getSearchableJSONVal(ctx, row, j.JSON)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_value", 1, err)
 	}
 	// If the document is SQL NULL, the result is SQL NULL
 	if js == nil {
@@ -157,13 +155,11 @@ func (j *JsonValue) String() string {
 	return fmt.Sprintf("json_value(%s)", strings.Join(parts, ", "))
 }
 
-var InvalidJsonArgument = errors.NewKind("invalid data type for JSON data in argument 1 to function json_value; a JSON string or JSON type is required")
-
 // GetJSONFromWrapperOrCoercibleString takes a valid argument for JSON functions (either a JSON wrapper type or a string)
 // and unwraps the JSON, or coerces the string into JSON. The return value can return any type that can be stored in
 // a JSON column, not just maps. For a complete list, see
 // https://dev.mysql.com/doc/refman/8.3/en/json-attribute-functions.html#function_json-type
-func GetJSONFromWrapperOrCoercibleString(js interface{}) (jsonData interface{}, err error) {
+func GetJSONFromWrapperOrCoercibleString(js interface{}, functionName string, argumentPosition int) (jsonData interface{}, err error) {
 	// The first parameter can be either JSON or a string.
 	switch jsType := js.(type) {
 	case string:
@@ -178,6 +174,6 @@ func GetJSONFromWrapperOrCoercibleString(js interface{}) (jsonData interface{}, 
 	case sql.JSONWrapper:
 		return jsType.ToInterface()
 	default:
-		return nil, InvalidJsonArgument.New()
+		return nil, sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
 	}
 }

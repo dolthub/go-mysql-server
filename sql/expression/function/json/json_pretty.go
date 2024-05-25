@@ -78,7 +78,7 @@ func (j *JSONPretty) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.Child)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_pretty", 1, err)
 	}
 	if doc == nil {
 		return nil, nil

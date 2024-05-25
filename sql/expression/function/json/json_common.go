@@ -15,14 +15,22 @@
 package json
 
 import (
+	goJson "encoding/json"
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrInvalidPath = fmt.Errorf("Invalid JSON path expression")
 var ErrPathWildcard = fmt.Errorf("Path expressions may not contain the * and ** tokens")
+
+type invalidJson string
+
+var _ error = invalidJson("")
+
+func (err invalidJson) Error() string {
+	return "invalid json"
+}
 
 // getMutableJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
 // you are free to use the mutation functions on the returned value.
@@ -68,17 +76,14 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
 
-	doc, ok := converted.(types.JSONDocument)
-	if !ok {
-		// This should never happen, but just in case.
-		val, err := js.(sql.JSONWrapper).ToInterface()
-		if err != nil {
-			return nil, err
-		}
-		doc = types.JSONDocument{Val: val}
+func getJsonFunctionError(functionName string, argumentPosition int, err error) error {
+	if sql.ErrInvalidArgument.Is(err) {
+		return sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
 	}
-
-	return &doc, nil
+	if ij, ok := err.(invalidJson); ok {
+		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, string(ij))
+	}
+	return err
 }
 
 // pathValPair is a helper struct for use by functions which take json paths paired with a json value. eg. JSON_SET, JSON_INSERT, etc.

@@ -110,7 +110,7 @@ func (j *JSONMergePatch) IsNullable() bool {
 func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	initDoc, err := getJSONDocumentFromRow(ctx, row, j.JSONs[0])
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_merge_patch", 1, err)
 	}
 	if initDoc == nil {
 		return nil, nil
@@ -121,7 +121,7 @@ func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		var doc *types.JSONDocument
 		doc, err = getJSONDocumentFromRow(ctx, row, json)
 		if err != nil {
-			return nil, err
+			return nil, getJsonFunctionError("json_merge_patch", i+2, err)
 		}
 		if doc == nil {
 			return nil, nil

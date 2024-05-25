@@ -78,7 +78,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	js, err := getSearchableJSONVal(ctx, row, j.JSON)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_extract", 1, err)
 	}
 	// If the document is SQL NULL, the result is SQL NULL
 	if js == nil {

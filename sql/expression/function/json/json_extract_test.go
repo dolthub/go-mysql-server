@@ -92,6 +92,9 @@ func TestJSONExtract(t *testing.T) {
 		{f2, sql.Row{json, `$.f.key'with'squotes`}, types.JSONDocument{Val: float64(3)}, nil},
 		{f2, sql.Row{json, `$.f."key'with'squotes"`}, types.JSONDocument{Val: float64(3)}, nil},
 
+		// Error when the document isn't JSON or a coercible string
+		{f2, sql.Row{1, `$.f`}, nil, sql.ErrInvalidJSONArgument.New(1, "json_extract")},
+
 		// TODO: Fix these. They work in mysql
 		//{f2, sql.Row{json, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},
 		//{f2, sql.Row{json, `$.f.key\'with\'squotes`}, sql.JSONDocument{Val: 3}, nil},
@@ -108,12 +111,11 @@ func TestJSONExtract(t *testing.T) {
 		t.Run(tt.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err == nil {
-				require.NoError(err)
+			if tt.err != nil {
+				require.ErrorContainsf(err, tt.err.Error(), "Expected error \"%v\" but received \"%v\"", tt.err, err)
 			} else {
-				require.Error(tt.err, err)
+				require.NoError(err)
 			}
-
 			require.Equal(tt.expected, result)
 		})
 	}

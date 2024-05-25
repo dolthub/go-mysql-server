@@ -185,7 +185,7 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	left, err := getJSONDocumentFromRow(ctx, row, j.Left)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_overlaps", 1, err)
 	}
 	if left == nil {
 		return nil, nil
@@ -193,7 +193,7 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	right, err := getJSONDocumentFromRow(ctx, row, j.Right)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_overlaps", 2, err)
 	}
 	if right == nil {
 		return nil, nil
