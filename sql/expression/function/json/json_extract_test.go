@@ -47,7 +47,7 @@ func TestJSONExtract(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	json := map[string]interface{}{
+	json := types.JSONDocument{Val: map[string]interface{}{
 		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
 		"b": map[string]interface{}{
 			"c": "foo",
@@ -58,13 +58,13 @@ func TestJSONExtract(t *testing.T) {
 			[]interface{}{float64(3), float64(4)},
 		},
 		"f": map[string]interface{}{
-			`key.with.dots`:        0,
-			`key with spaces`:      1,
-			`key"with"dquotes`:     2,
-			`key'with'squotes`:     3,
-			`key\with\backslashes`: 4,
+			`key.with.dots`:        float64(0),
+			`key with spaces`:      float64(1),
+			`key"with"dquotes`:     float64(2),
+			`key'with'squotes`:     float64(3),
+			`key\with\backslashes`: float64(4),
 		},
-	}
+	}}
 
 	testCases := []struct {
 		f        sql.Expression

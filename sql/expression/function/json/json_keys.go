@@ -105,7 +105,11 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	js, err := jsonpath.JsonPathLookup(doc.Val, path.(string))
+	val, err := doc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	js, err := jsonpath.JsonPathLookup(val, path.(string))
 	if err != nil {
 		if errors.Is(err, jsonpath.ErrKeyError) {
 			return nil, nil

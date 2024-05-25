@@ -190,6 +190,10 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if left == nil {
 		return nil, nil
 	}
+	leftVal, err := left.ToInterface()
+	if err != nil {
+		return nil, err
+	}
 
 	right, err := getJSONDocumentFromRow(ctx, row, j.Right)
 	if err != nil {
@@ -198,8 +202,12 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if right == nil {
 		return nil, nil
 	}
+	rightVal, err := right.ToInterface()
+	if err != nil {
+		return nil, err
+	}
 
-	return overlaps(left.Val, right.Val), nil
+	return overlaps(leftVal, rightVal), nil
 }
 
 // Children implements sql.Expression

@@ -88,7 +88,12 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return "NULL", nil
 	}
 
-	switch v := doc.Val.(type) {
+	val, err := doc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+
+	switch v := val.(type) {
 	case nil:
 		return "NULL", nil
 	case bool:

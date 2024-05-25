@@ -124,9 +124,13 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		return nil, nil
 	}
 
-	result := types.DeepCopyJson(initDoc.Val)
-	for _, json := range j.JSONs[1:] {
-		var doc *types.JSONDocument
+	val, err := initDoc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	result := types.DeepCopyJson(val)
+	for i, json := range j.JSONs[1:] {
+		var doc sql.JSONWrapper
 		doc, err = getJSONDocumentFromRow(ctx, row, json)
 		if err != nil {
 			return nil, getJsonFunctionError("json_merge_preserve", i+2, err)
@@ -134,7 +138,11 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		if doc == nil {
 			return nil, nil
 		}
-		result = merge(result, doc.Val, false)
+		val, err = doc.ToInterface()
+		if err != nil {
+			return nil, err
+		}
+		result = merge(result, val, false)
 	}
 	return types.JSONDocument{Val: result}, nil
 }

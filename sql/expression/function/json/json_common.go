@@ -41,7 +41,11 @@ func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (type
 		return nil, err
 	}
 
-	mutable := types.DeepCopyJson(doc.Val)
+	val, err := doc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	mutable := types.DeepCopyJson(val)
 	return types.JSONDocument{Val: mutable}, nil
 }
 
@@ -49,32 +53,37 @@ func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (type
 // so it is intended to be used for read-only operations.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
 func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.JSONWrapper, error) {
-	doc, err := getJSONDocumentFromRow(ctx, row, json)
-	if err != nil || doc == nil {
-		return nil, err
-	}
-
-	return *doc, nil
+	return getJSONDocumentFromRow(ctx, row, json)
 }
 
 // getJSONDocumentFromRow returns a JSONDocument from the given row and expression. Helper function only intended to be
 // used by functions in this file.
-func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) (*types.JSONDocument, error) {
+func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.JSONWrapper, error) {
 	js, err := json.Eval(ctx, row)
 	if err != nil || js == nil {
 		return nil, err
 	}
 
-	var converted interface{}
-	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, sql.JSONWrapper:
-		converted, _, err = types.JSON.Convert(js)
+	var jsonData interface{}
+
+	switch jsType := js.(type) {
+	case string:
+		// When coercing a string into a JSON object, don't use LazyJSONDocument; actually unmarshall it.
+		// This guarantees that we validate and normalize the JSON.
+		strData, _, err := types.LongBlob.Convert(js)
 		if err != nil {
-			return nil, sql.ErrInvalidJSONText.New(js)
+			return nil, err
 		}
+		if err = goJson.Unmarshal(strData.([]byte), &jsonData); err != nil {
+			return nil, invalidJson(jsType)
+		}
+		return types.JSONDocument{Val: jsonData}, nil
+	case sql.JSONWrapper:
+		return jsType, nil
 	default:
 		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
+}
 
 func getJsonFunctionError(functionName string, argumentPosition int, err error) error {
 	if sql.ErrInvalidArgument.Is(err) {

@@ -83,7 +83,11 @@ func (j *JSONPretty) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if doc == nil {
 		return nil, nil
 	}
-	res, err := json.MarshalIndent(doc.Val, "", "  ")
+	val, err := doc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	res, err := json.MarshalIndent(val, "", "  ")
 	if err != nil {
 		return nil, err
 	}

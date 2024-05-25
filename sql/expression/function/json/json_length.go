@@ -98,7 +98,11 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, strErr
 	}
 
-	res, err := jsonpath.JsonPathLookup(doc.Val, path)
+	val, err := doc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	res, err := jsonpath.JsonPathLookup(val, path)
 	if err != nil {
 		if errors.Is(err, jsonpath.ErrKeyError) {
 			return nil, nil
