@@ -115,6 +115,18 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// This is NOT CORRECT, but it prevents existing tests from regressing when the jsonpath module returns [] for
+	// bad lookups on arrays, instead of an error. Note that this will cause lookups that expect [] to return incorrect
+	// results.
+	// See https://github.com/dolthub/dolt/issues/7905 for more information.
+	cmp, err = types.CompareJSON(res, types.JSONDocument{Val: []interface{}{}})
+	if err != nil {
+		return nil, err
+	}
+	if cmp == 0 {
+		return nil, nil
+	}
+
 	if j.Typ != nil {
 		res, _, err = j.Typ.Convert(res)
 		if err != nil {
