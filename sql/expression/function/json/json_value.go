@@ -86,19 +86,21 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.JsonValue")
 	defer span.End()
 
-	js, err := j.JSON.Eval(ctx, row)
+	js, err := getSearchableJSONVal(ctx, row, j.JSON)
 	if err != nil {
 		return nil, err
 	}
-	//  sql NULLs, should result in sql NULLs.
+	// If the document is SQL NULL, the result is SQL NULL
 	if js == nil {
 		return nil, nil
 	}
 
-	js, _, err = types.JSON.Convert(js)
-	if err != nil {
-		return nil, err
+	// json NULLs also result in sql NULLs.
+	cmp, err := types.CompareJSON(js, types.JSONDocument{Val: nil})
+	if cmp == 0 {
+		return nil, nil
 	}
+
 	searchable, ok := js.(sql.JSONWrapper)
 	if !ok {
 		return fmt.Errorf("expected types.JSONValue, found: %T", js), nil

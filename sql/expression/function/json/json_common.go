@@ -46,7 +46,7 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 		return nil, err
 	}
 
-	return doc, nil
+	return *doc, nil
 }
 
 // getJSONDocumentFromRow returns a JSONDocument from the given row and expression. Helper function only intended to be

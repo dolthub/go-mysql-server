@@ -73,7 +73,10 @@ func TestJSONExtract(t *testing.T) {
 		err      error
 	}{
 		//{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
+		{f2, sql.Row{nil, "$"}, nil, nil},
 		{f2, sql.Row{nil, "$.b.c"}, nil, nil},
+		{f2, sql.Row{"null", "$"}, types.JSONDocument{Val: nil}, nil},
+		{f2, sql.Row{"null", "$.b.c"}, nil, nil},
 		{f2, sql.Row{json, "$.foo"}, nil, nil},
 		{f2, sql.Row{json, "$.b.c"}, types.JSONDocument{Val: "foo"}, nil},
 		{f3, sql.Row{json, "$.b.c", "$.b.d"}, types.JSONDocument{Val: []interface{}{"foo", true}}, nil},

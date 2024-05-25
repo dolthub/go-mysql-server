@@ -135,20 +135,6 @@ func (doc JSONDocument) String() string {
 	return result
 }
 
-// Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
-// it returns a bool
-func (doc JSONDocument) Contains(candidate sql.JSONWrapper) (val interface{}, err error) {
-	candidateVal, err := candidate.ToInterface()
-	if err != nil {
-		return nil, err
-	}
-	return ContainsJSON(doc.Val, candidateVal)
-}
-
-func (doc JSONDocument) Extract(path string) (sql.JSONWrapper, error) {
-	return LookupJSONValue(doc, path)
-}
-
 // LazyJSONDocument is an implementation of sql.JSONWrapper that wraps a JSON string and defers deserializing
 // it unless needed. This is more efficient for queries that interact with JSON values but don't care about their structure.
 type LazyJSONDocument struct {
@@ -212,14 +198,18 @@ func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
 		return nil, err
 	}
 
-	// Lookup(obj) throws an error if obj is nil. We want lookups on a json null
-	// to always result in sql NULL, except in the case of the identity lookup
-	// $.
 	r, err := j.ToInterface()
 	if err != nil {
 		return nil, err
 	}
 	if r == nil {
+		return nil, nil
+	}
+
+	// For non-object, non-array candidates, if the path is not "$", return SQL NULL
+	_, isObject := r.(JsonObject)
+	_, isArray := r.(JsonArray)
+	if !isObject && !isArray {
 		return nil, nil
 	}
 
@@ -263,9 +253,9 @@ func ConcatenateJSONValues(ctx *sql.Context, vals ...sql.JSONWrapper) (sql.JSONW
 	return JSONDocument{Val: arr}, nil
 }
 
-func ContainsJSON(a, b interface{}) (interface{}, error) {
-	if a == nil || b == nil {
-		return nil, nil
+func ContainsJSON(a, b interface{}) (bool, error) {
+	if a == nil {
+		return b == nil, nil
 	}
 
 	switch a := a.(type) {

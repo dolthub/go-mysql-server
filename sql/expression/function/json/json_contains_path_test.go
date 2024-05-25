@@ -92,6 +92,9 @@ func TestJSONContainsPath(t *testing.T) {
 		{twoPath, sql.Row{`{"a": 1}`, "all", `$.x`, nil}, false, nil}, // Match MySQL behavior, not docs.
 		{twoPath, sql.Row{`{"a": 1}`, `all`, `$.a`, nil}, nil, nil},
 
+		// JSON NULL documents do NOT result in NULL output.
+		{onePath, sql.Row{`null`, `all`, `$.a`}, false, nil},
+
 		// Error cases
 		{onePath, sql.Row{`{"a": 1}`, `None`, `$.a`}, nil, errors.New("The oneOrAll argument to json_contains_path may take these values: 'one' or 'all'")},
 		{onePath, sql.Row{`{"a": 1`, `One`, `$.a`}, nil, errors.New(`Invalid JSON text: {"a": 1`)},

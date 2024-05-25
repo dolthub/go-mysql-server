@@ -91,6 +91,8 @@ func TestJSONContains(t *testing.T) {
 		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `"foo"`}, false, nil},
 		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"a\": {\"foo\": [1]}}"}, true, nil},
 		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"foo\": [1]}"}, false, nil},
+		{f2, sql.Row{`null`, `null`}, true, nil},
+		{f2, sql.Row{`null`, `1`}, false, nil},
 
 		// Path Tests
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("Invalid JSON path expression. Path must start with '$', but received: 'FOO'")},
@@ -109,6 +111,15 @@ func TestJSONContains(t *testing.T) {
 		{f, sql.Row{json, goodMap, "$.e"}, false, nil}, // The path statement selects an array, which does not contain goodMap
 		{f, sql.Row{json, badMap, "$"}, false, nil},    // false due to key name difference
 		{f, sql.Row{json, goodMap, "$"}, true, nil},
+		// The only allowed path for a scalar document is "$"
+		{f, sql.Row{`null`, `10`, "$"}, false, nil},
+		{f, sql.Row{`null`, `null`, "$"}, true, nil},
+		{f, sql.Row{`10`, `10`, "$"}, true, nil},
+		{f, sql.Row{`10`, `null`, "$"}, false, nil},
+		{f, sql.Row{`null`, `10`, "$.b"}, nil, nil},
+		{f, sql.Row{`10`, `null`, "$.b"}, nil, nil},
+		// JSON_CONTAINS can successfully look up JSON NULL with a path
+		{f, sql.Row{`{"a": null}`, `null`, "$.a"}, true, nil},
 
 		// Miscellaneous Tests
 		{f2, sql.Row{json, `[1, 2]`}, false, nil}, // When testing containment against a map, scalars and arrays always return false
