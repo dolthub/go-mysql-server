@@ -31,6 +31,7 @@ type DeleteFrom struct {
 	// single source table, targets do NOT need to be explicitly specified and will not be set here. For DELETE FROM JOIN
 	// statements, targets MUST be explicitly specified by the user and will be populated here.
 	explicitTargets []sql.Node
+	RefsSingleRel   bool
 }
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)
