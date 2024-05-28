@@ -459,6 +459,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	}
 
 	del := plan.NewDeleteFrom(outScope.node, targets)
+	del.RefsSingleRel = !outScope.refsSubquery
 	outScope.node = del
 	return
 }
@@ -469,6 +470,8 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	sql.IncrementStatusVariable(b.ctx, "Com_update", 1)
 
 	outScope = b.buildFrom(inScope, u.TableExprs)
+
+	_, foundJoin := outScope.node.(*plan.JoinNode)
 
 	// default expressions only resolve to target table
 	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
@@ -497,8 +500,14 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	ignore := u.Ignore != ""
 	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
 
+	update.IsJoin = foundJoin
+	update.HasSingleRel = !outScope.refsSubquery
+
 	var checks []*sql.CheckConstraint
 	if join, ok := outScope.node.(*plan.JoinNode); ok {
+		// TODO this doesn't work, a lot of the time the top node
+		// is a filter. This would have to go before we build the
+		// filter/accessory nodes. But that errors for a lot of queries.
 		source := plan.NewUpdateSource(
 			join,
 			ignore,

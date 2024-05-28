@@ -30,8 +30,10 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 // Update is a node for updating rows on tables.
 type Update struct {
 	UnaryNode
-	checks sql.CheckConstraints
-	Ignore bool
+	checks       sql.CheckConstraints
+	Ignore       bool
+	IsJoin       bool
+	HasSingleRel bool
 }
 
 var _ sql.Node = (*Update)(nil)

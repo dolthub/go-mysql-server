@@ -41,6 +41,15 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		if n.LiteralValueSource && len(n.Checks()) == 0 && len(n.OnDupExprs) == 0 {
 			return n, transform.SameTree, nil
 		}
+	case *plan.Update:
+		if n.HasSingleRel && !n.IsJoin {
+			return quickAssign(n), transform.NewTree, nil
+		}
+	case *plan.DeleteFrom:
+		if n.RefsSingleRel && !n.HasExplicitTargets() {
+			return quickAssign(n), transform.NewTree, nil
+		}
+
 	default:
 	}
 	ret, _, err := assignIndexesHelper(n, s)
@@ -50,6 +59,19 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	return ret, transform.NewTree, nil
 }
 
+// quickAssign assumes all expressions are from one table source
+// and execution indices will be offset-1 from the expression ids.
+func quickAssign(n sql.Node) sql.Node {
+	ret, _, _ := transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *expression.GetField:
+			return e.WithIndex(int(e.Id()) - 1), transform.NewTree, nil
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
+	return ret
+}
 func assignIndexesHelper(n sql.Node, inScope *idxScope) (sql.Node, *idxScope, error) {
 	// copy scope, otherwise parent/lateral edits have non-local effects
 	outScope := inScope.copy()
