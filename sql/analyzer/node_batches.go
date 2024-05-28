@@ -53,20 +53,20 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 					Iterations: 1,
 					Rules: []Rule{
 						{
-							Id:    applyFKsId,
-							Apply: applyForeignKeys,
-						},
-						{
-							Id:    validatePrivilegesId,
-							Apply: validatePrivileges,
-						},
-						{
 							Id:    validateReadOnlyDatabaseId,
 							Apply: validateReadOnlyDatabase,
 						},
 						{
 							Id:    validateReadOnlyTransactionId,
 							Apply: validateReadOnlyTransaction,
+						},
+						{
+							Id:    applyFKsId,
+							Apply: applyForeignKeys,
+						},
+						{
+							Id:    validatePrivilegesId,
+							Apply: validatePrivileges,
 						},
 						{
 							Id:    optimizeJoinsId,
@@ -93,6 +93,14 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 					Iterations: 1,
 					Rules: []Rule{
 						{
+							Id:    validateReadOnlyDatabaseId,
+							Apply: validateReadOnlyDatabase,
+						},
+						{
+							Id:    validateReadOnlyTransactionId,
+							Apply: validateReadOnlyTransaction,
+						},
+						{
 							Id:    processTruncateId,
 							Apply: processTruncate,
 						},
@@ -103,14 +111,6 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 						{
 							Id:    validatePrivilegesId,
 							Apply: validatePrivileges,
-						},
-						{
-							Id:    validateReadOnlyDatabaseId,
-							Apply: validateReadOnlyDatabase,
-						},
-						{
-							Id:    validateReadOnlyTransactionId,
-							Apply: validateReadOnlyTransaction,
 						},
 						{
 							Id:    optimizeJoinsId,
