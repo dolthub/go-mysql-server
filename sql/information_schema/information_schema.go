@@ -1810,7 +1810,12 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		autoInc        interface{}
 	)
 
-	for _, db := range cat.AllDatabases(ctx) {
+	databases, err := allDatabases(ctx, cat)
+	if err != nil {
+		return nil, err
+	}
+	
+	for _, db := range databases {
 		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
 		} else {
@@ -1863,6 +1868,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				}
 			}
 
+			// TODO: use different values for databases that support schemas
 			rows = append(rows, Row{
 				"def",          // table_catalog
 				db.Name(),      // table_schema
@@ -1927,6 +1933,27 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	}
 
 	return RowsToRowIter(rows...), nil
+}
+
+// allDatabases expands all databases in the catlog to include all schemas if present
+func allDatabases(ctx *Context, cat Catalog) ([]Database, error) {
+	var dbs []Database
+	for _, db := range cat.AllDatabases(ctx) {
+		sdb, ok := db.(SchemaDatabase)
+		if ok {
+			schemas, err := sdb.AllSchemas(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, schema := range schemas {
+				dbs = append(dbs, schema)
+			}
+		} else {
+			dbs = append(dbs, db)
+		}
+	}
+	return dbs, nil
 }
 
 // tablesExtensionsRowIter implements the sql.RowIter for the information_schema.TABLES_EXTENSIONS table.
