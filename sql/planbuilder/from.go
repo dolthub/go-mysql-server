@@ -634,7 +634,7 @@ func (b *Builder) buildResolvedTableForTablename(inScope *scope, tableName ast.T
 
 func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
-	
+
 	if db == "" {
 		db = b.ctx.GetCurrentDatabase()
 		if b.ViewCtx().DbName != "" {
