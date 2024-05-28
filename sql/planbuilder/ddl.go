@@ -73,7 +73,7 @@ func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
 			b.handleErr(err)
 		}
 		if !ok {
-			b.handleErr(sql.ErrDatabaseNotFound.New(schema))
+			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
 		}
 	}
 

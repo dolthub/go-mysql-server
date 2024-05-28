@@ -635,10 +635,35 @@ func (b *Builder) buildResolvedTableForTablename(inScope *scope, tableName ast.T
 func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, asof *ast.AsOf) (outScope *scope, ok bool) {
 	outScope = inScope.push()
 
-	if db == "" && b.ViewCtx().DbName != "" {
-		db = b.ViewCtx().DbName
-	} else if db == "" {
+	if db == "" {
 		db = b.ctx.GetCurrentDatabase()
+		if b.ViewCtx().DbName != "" {
+			db = b.ViewCtx().DbName
+		}
+
+		if db == "" {
+			b.handleErr(sql.ErrNoDatabaseSelected.New())
+		}
+	}
+
+	database, err := b.cat.Database(b.ctx, db)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	if schema != "" {
+		scd, ok := database.(sql.SchemaDatabase)
+		if !ok {
+			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
+		}
+		var schemaFound bool
+		database, schemaFound, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !schemaFound {
+			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
+		}
 	}
 
 	var asOfLit interface{}
@@ -650,71 +675,40 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		asOfLit = asof
 	}
 
-	var tab sql.Table
-	var database sql.Database
-	var err error
-	database, err = b.cat.Database(b.ctx, db)
-	if err != nil {
-		b.handleErr(err)
-	}
-
-	// Handle schema-level qualifier if present
-	// TODO: schema resolution is more complicated than this and is usually implicit
-	if schema != "" {
-		scd, ok := database.(sql.SchemaDatabase)
-		if !ok {
-			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
-		}
-		database, ok, err = scd.GetSchema(b.ctx, schema)
-		if err != nil {
-			b.handleErr(err)
-		}
-		if !ok {
-			b.handleErr(sql.ErrDatabaseNotFound.New(schema))
-		}
-	}
-
 	if view := b.resolveView(name, database, asOfLit); view != nil {
-		outScope.node = view
-		tabId := outScope.addTable(strings.ToLower(view.Schema()[0].Name))
-		var cols sql.ColSet
-		for _, c := range view.Schema() {
-			id := outScope.newColumn(scopeColumn{
-				db:          db,
-				table:       name,
-				col:         strings.ToLower(c.Name),
-				originalCol: c.Name,
-				typ:         c.Type,
-				nullable:    c.Nullable,
-			})
-			cols.Add(sql.ColumnId(id))
-		}
-		if tin, ok := view.(plan.TableIdNode); ok {
-			// TODO should *sql.View implement TableIdNode?
-			outScope.node = tin.WithId(tabId).WithColumns(cols)
-		}
-
-		return outScope, true
+		// TODO: Schema name
+		return resolvedViewScope(outScope, view, db, name)
 	}
 
+	var tab sql.Table
+	var tableResolveErr error
 	if asOfLit != nil {
-		tab, database, err = b.cat.TableAsOf(b.ctx, db, name, asOfLit)
+		tab, database, tableResolveErr = b.cat.DatabaseTableAsOf(b.ctx, database, name, asOfLit)
 	} else {
-		tab, _, err = database.GetTableInsensitive(b.ctx, name)
+		tab, _, tableResolveErr = b.cat.DatabaseTable(b.ctx, database, name)
 	}
-	if err != nil {
-		if sql.ErrDatabaseNotFound.Is(err) {
+
+	if tableResolveErr != nil {
+		if sql.ErrDatabaseNotFound.Is(tableResolveErr) {
 			if db == "" {
-				err = sql.ErrNoDatabaseSelected.New()
+				b.handleErr(sql.ErrNoDatabaseSelected.New())
 			}
+			b.handleErr(tableResolveErr)
+		} else if sql.ErrTableNotFound.Is(tableResolveErr) {
+			// If we're in a trigger context, it's ok for a table to be unresolved
+			if b.TriggerCtx().Active && !b.TriggerCtx().Call {
+				outScope.node = plan.NewUnresolvedTable(name, db)
+				b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, name)
+				return outScope, true
+			}
+			return outScope, false
+		} else {
+			b.handleErr(tableResolveErr)
 		}
-		b.handleErr(err)
-	} else if tab == nil {
-		if b.TriggerCtx().Active && !b.TriggerCtx().Call {
-			outScope.node = plan.NewUnresolvedTable(name, db)
-			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, name)
-			return outScope, true
-		}
+	}
+
+	// If we haven't resolved the table at this point, report that and give up
+	if tab == nil {
 		return outScope, false
 	}
 
@@ -783,6 +777,29 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		if err != nil {
 			b.handleErr(err)
 		}
+	}
+
+	return outScope, true
+}
+
+func resolvedViewScope(outScope *scope, view sql.Node, db string, name string) (*scope, bool) {
+	outScope.node = view
+	tabId := outScope.addTable(strings.ToLower(view.Schema()[0].Name))
+	var cols sql.ColSet
+	for _, c := range view.Schema() {
+		id := outScope.newColumn(scopeColumn{
+			db:          db,
+			table:       name,
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
+		})
+		cols.Add(sql.ColumnId(id))
+	}
+	if tin, ok := view.(plan.TableIdNode); ok {
+		// TODO should *sql.View implement TableIdNode?
+		outScope.node = tin.WithId(tabId).WithColumns(cols)
 	}
 
 	return outScope, true

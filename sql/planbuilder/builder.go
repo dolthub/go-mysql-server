@@ -115,13 +115,6 @@ func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
 	}
 }
 
-func (b *Builder) Initialize(ctx *sql.Context, cat sql.Catalog, opts ast.ParserOptions) {
-	b.ctx = ctx
-	b.cat = cat
-	b.f.ctx = ctx
-	b.parserOpts = opts
-}
-
 func (b *Builder) SetDebug(val bool) {
 	b.f.debug = val
 }
@@ -368,8 +361,7 @@ func (b *Builder) build(inScope *scope, stmt ast.Statement, query string) (outSc
 	return
 }
 
-// buildVirtualTableScan returns a ProjectNode for a table that has virtual columns, projecting the values of any
-// generated columns
+// buildVirtualTableScan returns a VirtualColumnTable for a table with virtual columns.
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
 	schema := tab.Schema()

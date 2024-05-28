@@ -49,6 +49,9 @@ var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout
 // ErrConnectionWasClosed will be returned if we try to use a previously closed connection
 var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
+// set this to true to get verbose error logging on every query (print a stack trace for most errors)
+var verboseErrorLogging = false
+
 const rowsBatch = 128
 
 var tcpCheckerSleepDuration time.Duration = 5 * time.Second
@@ -403,10 +406,12 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding
 	schema, rowIter, err := queryExec(ctx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
+		if verboseErrorLogging {
+			fmt.Printf("Err: %+v", err)
+		}
 		return remainder, err
 	}
 
@@ -607,7 +612,9 @@ func (h *Handler) resultForDefaultIter(
 	err = eg.Wait()
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
-		return
+		if verboseErrorLogging {
+			fmt.Printf("Err: %+v", err)
+		}
 	}
 	return
 }

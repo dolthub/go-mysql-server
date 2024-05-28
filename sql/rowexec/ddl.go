@@ -996,7 +996,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		return sql.RowsToRowIter(), err
 	}
 	if !ok {
-		return sql.RowsToRowIter(), sql.ErrTableCreatedNotFound.New()
+		return sql.RowsToRowIter(), sql.ErrTableCreatedNotFound.New(n.Name())
 	}
 
 	if autoIncVal, hasAutoIncOpt := n.TableOpts["auto_increment"]; hasAutoIncOpt {
