@@ -1814,7 +1814,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	for _, db := range databases {
 		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
