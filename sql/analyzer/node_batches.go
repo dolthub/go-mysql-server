@@ -72,6 +72,10 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 							Id:    optimizeJoinsId,
 							Apply: optimizeJoins,
 						},
+						{
+							Id:    applyHashInId,
+							Apply: applyHashIn,
+						},
 					},
 				},
 				{
@@ -88,6 +92,10 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 					Desc:       "simpleDelete",
 					Iterations: 1,
 					Rules: []Rule{
+						{
+							Id:    processTruncateId,
+							Apply: processTruncate,
+						},
 						{
 							Id:    applyFKsId,
 							Apply: applyForeignKeys,
@@ -107,6 +115,10 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 						{
 							Id:    optimizeJoinsId,
 							Apply: optimizeJoins,
+						},
+						{
+							Id:    applyHashInId,
+							Apply: applyHashIn,
 						},
 					},
 				},

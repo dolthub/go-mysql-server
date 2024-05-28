@@ -42,11 +42,11 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			return n, transform.SameTree, nil
 		}
 	case *plan.Update:
-		if n.HasSingleRel && !n.IsJoin {
+		if n.HasSingleRel && !n.IsJoin && !relIsProjected(n.Child) {
 			return quickAssign(n), transform.NewTree, nil
 		}
 	case *plan.DeleteFrom:
-		if n.RefsSingleRel && !n.HasExplicitTargets() {
+		if n.RefsSingleRel && !n.HasExplicitTargets() && !relIsProjected(n.Child) {
 			return quickAssign(n), transform.NewTree, nil
 		}
 
@@ -57,6 +57,26 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		return n, transform.SameTree, err
 	}
 	return ret, transform.NewTree, nil
+}
+
+func relIsProjected(n sql.Node) bool {
+	proj := true
+	transform.Inspect(n, func(node sql.Node) bool {
+		var table sql.Table
+		switch n := n.(type) {
+		case *plan.IndexedTableAccess:
+			table = n.Table
+		case *plan.ResolvedTable:
+			table = n.Table
+		default:
+		}
+		if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() == nil {
+			proj = false
+			return false
+		}
+		return true
+	})
+	return proj
 }
 
 // quickAssign assumes all expressions are from one table source
