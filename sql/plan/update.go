@@ -34,6 +34,7 @@ type Update struct {
 	Ignore       bool
 	IsJoin       bool
 	HasSingleRel bool
+	IsProcNested bool
 }
 
 var _ sql.Node = (*Update)(nil)
