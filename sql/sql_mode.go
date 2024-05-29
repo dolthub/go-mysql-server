@@ -30,13 +30,13 @@ const (
 	NoAutoValueOnZero    = "NO_AUTO_VALUE_ON_ZERO"
 	NoEngineSubstitution = "NO_ENGINE_SUBSTITUTION"
 	StrictTransTables    = "STRICT_TRANS_TABLES"
-	defaultSqlMode       = "no_engine_substitution,only_full_group_by,strict_trans_tables"
+	DefaultSqlMode       = "no_engine_substitution,only_full_group_by,strict_trans_tables"
 )
 
 var defaultMode *SqlMode
 
 func init() {
-	elements := strings.Split(defaultSqlMode, ",")
+	elements := strings.Split(DefaultSqlMode, ",")
 	sort.Strings(elements)
 	modes := map[string]struct{}{}
 	for _, element := range elements {
@@ -44,7 +44,7 @@ func init() {
 	}
 	defaultMode = &SqlMode{
 		modes:      modes,
-		modeString: strings.ToUpper(strings.Join(elements, ",")),
+		modeString: strings.ToUpper(DefaultSqlMode),
 	}
 }
 
@@ -75,7 +75,7 @@ func LoadSqlMode(ctx *Context) *SqlMode {
 // NewSqlModeFromString returns a new SqlMode instance, constructed from the specified |sqlModeString| that
 // has a comma delimited list of SQL modes (e.g. "ONLY_FULLY_GROUP_BY,ANSI_QUOTES").
 func NewSqlModeFromString(sqlModeString string) *SqlMode {
-	if strings.EqualFold(sqlModeString, defaultSqlMode) {
+	if strings.EqualFold(sqlModeString, DefaultSqlMode) {
 		return defaultMode
 	}
 	sqlModeString = strings.ToLower(sqlModeString)
