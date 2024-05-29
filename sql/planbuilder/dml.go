@@ -460,6 +460,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 
 	del := plan.NewDeleteFrom(outScope.node, targets)
 	del.RefsSingleRel = !outScope.refsSubquery
+	del.IsProcNested = b.procCtx != nil
 	outScope.node = del
 	return
 }
@@ -502,6 +503,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 
 	update.IsJoin = foundJoin
 	update.HasSingleRel = !outScope.refsSubquery
+	update.IsProcNested = b.procCtx != nil
 
 	var checks []*sql.CheckConstraint
 	if join, ok := outScope.node.(*plan.JoinNode); ok {
