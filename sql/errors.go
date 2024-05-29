@@ -108,7 +108,10 @@ var (
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
 	// ErrInvalidJSONText is returned when a JSON string cannot be parsed or unmarshalled
-	ErrInvalidJSONText = errors.NewKind("Invalid JSON text: %s")
+	ErrInvalidJSONText = errors.NewKind("Invalid JSON text in argument %d to function %s: \"%s\"")
+
+	// ErrInvalidJSONArgument is returned when a JSON function is called with a parameter that is not JSON or a string
+	ErrInvalidJSONArgument = errors.NewKind("invalid data type for JSON data in argument %d to function %s; a JSON string or JSON type is required")
 
 	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")

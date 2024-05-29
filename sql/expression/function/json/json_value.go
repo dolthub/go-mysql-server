@@ -19,9 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/jsonpath"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -87,18 +85,24 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.JsonValue")
 	defer span.End()
 
-	js, err := j.JSON.Eval(ctx, row)
+	js, err := getSearchableJSONVal(ctx, row, j.JSON)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_value", 1, err)
 	}
-	//  sql NULLs, should result in sql NULLs.
+	// If the document is SQL NULL, the result is SQL NULL
 	if js == nil {
 		return nil, nil
 	}
 
-	jsonData, err := GetJSONFromWrapperOrCoercibleString(js)
-	if err != nil {
-		return nil, err
+	// json NULLs also result in sql NULLs.
+	cmp, err := types.CompareJSON(js, types.JSONDocument{Val: nil})
+	if cmp == 0 {
+		return nil, nil
+	}
+
+	searchable, ok := js.(sql.JSONWrapper)
+	if !ok {
+		return fmt.Errorf("expected types.JSONValue, found: %T", js), nil
 	}
 
 	path, err := j.Path.Eval(ctx, row)
@@ -106,21 +110,22 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	res, err := jsonpath.JsonPathLookup(jsonData, path.(string))
-	if err != nil {
+	var res interface{}
+	res, err = types.LookupJSONValue(searchable, path.(string))
+	if err != nil || res == nil {
 		return nil, err
 	}
 
-	switch r := res.(type) {
-	case nil:
+	// This is NOT CORRECT, but it prevents existing tests from regressing when the jsonpath module returns [] for
+	// bad lookups on arrays, instead of an error. Note that this will cause lookups that expect [] to return incorrect
+	// results.
+	// See https://github.com/dolthub/dolt/issues/7905 for more information.
+	cmp, err = types.CompareJSON(res, types.JSONDocument{Val: []interface{}{}})
+	if err != nil {
+		return nil, err
+	}
+	if cmp == 0 {
 		return nil, nil
-	case []interface{}:
-		if len(r) == 0 {
-			return nil, nil
-		}
-		res = types.JSONDocument{Val: res}
-	case map[string]interface{}:
-		res = types.JSONDocument{Val: res}
 	}
 
 	if j.Typ != nil {
@@ -163,13 +168,11 @@ func (j *JsonValue) String() string {
 	return fmt.Sprintf("json_value(%s)", strings.Join(parts, ", "))
 }
 
-var InvalidJsonArgument = errors.NewKind("invalid data type for JSON data in argument 1 to function json_value; a JSON string or JSON type is required")
-
 // GetJSONFromWrapperOrCoercibleString takes a valid argument for JSON functions (either a JSON wrapper type or a string)
 // and unwraps the JSON, or coerces the string into JSON. The return value can return any type that can be stored in
 // a JSON column, not just maps. For a complete list, see
 // https://dev.mysql.com/doc/refman/8.3/en/json-attribute-functions.html#function_json-type
-func GetJSONFromWrapperOrCoercibleString(js interface{}) (jsonData interface{}, err error) {
+func GetJSONFromWrapperOrCoercibleString(js interface{}, functionName string, argumentPosition int) (jsonData interface{}, err error) {
 	// The first parameter can be either JSON or a string.
 	switch jsType := js.(type) {
 	case string:
@@ -184,6 +187,6 @@ func GetJSONFromWrapperOrCoercibleString(js interface{}) (jsonData interface{}, 
 	case sql.JSONWrapper:
 		return jsType.ToInterface()
 	default:
-		return nil, InvalidJsonArgument.New()
+		return nil, sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
 	}
 }

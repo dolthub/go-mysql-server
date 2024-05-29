@@ -73,7 +73,8 @@ func (j JSONArrayAppend) IsNullable() bool {
 func (j JSONArrayAppend) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
 	if err != nil || doc == nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_array_append", 1, err)
+
 	}
 
 	pairs := make([]pathValPair, 0, len(j.pathVals)/2)

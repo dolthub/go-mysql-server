@@ -28,17 +28,20 @@ func TestJSONPretty(t *testing.T) {
 	testCases := []struct {
 		arg sql.Expression
 		exp interface{}
-		err bool
+		err error
 	}{
 		{
 			arg: expression.NewLiteral(``, types.Text),
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_pretty", ""),
 		},
 		{
 			arg: expression.NewLiteral(`badjson`, types.Text),
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_pretty", "badjson"),
 		},
-
+		{
+			arg: expression.NewLiteral(1, types.Int64),
+			err: sql.ErrInvalidJSONArgument.New(1, "json_pretty"),
+		},
 		{
 			arg: expression.NewLiteral(nil, types.Null),
 			exp: nil,
@@ -112,8 +115,9 @@ func TestJSONPretty(t *testing.T) {
 			require := require.New(t)
 			f := NewJSONPretty(tt.arg)
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 				return
 			}
 			require.NoError(err)

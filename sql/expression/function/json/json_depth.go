@@ -108,13 +108,17 @@ func (j *JSONDepth) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_depth", 1, err)
 	}
 	if doc == nil {
 		return nil, nil
 	}
 
-	d, err := depth(doc.Val)
+	val, err := doc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	d, err := depth(val)
 	if err != nil {
 		return nil, err
 	}

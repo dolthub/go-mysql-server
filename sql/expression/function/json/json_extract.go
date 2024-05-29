@@ -76,18 +76,13 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.JSONExtract")
 	defer span.End()
 
-	js, err := j.JSON.Eval(ctx, row)
+	js, err := getSearchableJSONVal(ctx, row, j.JSON)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_extract", 1, err)
 	}
-	//  sql NULLs, should result in sql NULLs.
+	// If the document is SQL NULL, the result is SQL NULL
 	if js == nil {
-		return nil, err
-	}
-
-	js, _, err = types.JSON.Convert(js)
-	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	searchable, ok := js.(sql.JSONWrapper)

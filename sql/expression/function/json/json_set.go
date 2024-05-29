@@ -123,7 +123,7 @@ func (j *JSONSet) IsNullable() bool {
 func (j *JSONSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.JSONDoc)
 	if err != nil || doc == nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_set", 1, err)
 	}
 
 	pairs := make([]pathValPair, 0, len(j.PathAndVals)/2)

@@ -91,11 +91,15 @@ func TestJSONContains(t *testing.T) {
 		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `"foo"`}, false, nil},
 		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"a\": {\"foo\": [1]}}"}, true, nil},
 		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"foo\": [1]}"}, false, nil},
+		{f2, sql.Row{`null`, `null`}, true, nil},
+		{f2, sql.Row{`null`, `1`}, false, nil},
 
 		// Path Tests
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("Invalid JSON path expression. Path must start with '$', but received: 'FOO'")},
-		{f, sql.Row{1, nil, "$.a"}, nil, errors.New("Invalid argument to 1")},
-		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, errors.New("Invalid argument to 2")},
+		{f, sql.Row{1, nil, "$.a"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_contains")},
+		{f, sql.Row{`{"a"`, nil, "$.a"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", `{"a"`)},
+		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, sql.ErrInvalidJSONArgument.New(2, "json_contains")},
+		{f, sql.Row{json, `}"a"`, "$.e[0][*]"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", `}"a"`)},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, json, "$.foo"}, nil, nil},
@@ -109,6 +113,15 @@ func TestJSONContains(t *testing.T) {
 		{f, sql.Row{json, goodMap, "$.e"}, false, nil}, // The path statement selects an array, which does not contain goodMap
 		{f, sql.Row{json, badMap, "$"}, false, nil},    // false due to key name difference
 		{f, sql.Row{json, goodMap, "$"}, true, nil},
+		// The only allowed path for a scalar document is "$"
+		{f, sql.Row{`null`, `10`, "$"}, false, nil},
+		{f, sql.Row{`null`, `null`, "$"}, true, nil},
+		{f, sql.Row{`10`, `10`, "$"}, true, nil},
+		{f, sql.Row{`10`, `null`, "$"}, false, nil},
+		{f, sql.Row{`null`, `10`, "$.b"}, nil, nil},
+		{f, sql.Row{`10`, `null`, "$.b"}, nil, nil},
+		// JSON_CONTAINS can successfully look up JSON NULL with a path
+		{f, sql.Row{`{"a": null}`, `null`, "$.a"}, true, nil},
 
 		// Miscellaneous Tests
 		{f2, sql.Row{json, `[1, 2]`}, false, nil}, // When testing containment against a map, scalars and arrays always return false
@@ -117,9 +130,9 @@ func TestJSONContains(t *testing.T) {
 		{f2, sql.Row{`["apple", "orange", "banana"]`, `"orange"`}, true, nil},
 		{f2, sql.Row{`"hello"`, `"hello"`}, true, nil},
 		{f2, sql.Row{"{}", "{}"}, true, nil},
-		{f2, sql.Row{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New("hello")},
-		{f2, sql.Row{"[1,2", "[1]"}, nil, sql.ErrInvalidJSONText.New("[1,2")},
-		{f2, sql.Row{"[1,2]", "[1"}, nil, sql.ErrInvalidJSONText.New("[1")},
+		{f2, sql.Row{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "hello")},
+		{f2, sql.Row{"[1,2", "[1]"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "[1,2")},
+		{f2, sql.Row{"[1,2]", "[1"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", "[1")},
 	}
 
 	for _, tt := range testCases {
@@ -129,7 +142,8 @@ func TestJSONContains(t *testing.T) {
 			if tt.err == nil {
 				require.NoError(err)
 			} else {
-				require.Equal(err.Error(), tt.err.Error())
+				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 			}
 
 			require.Equal(tt.expected, result)
