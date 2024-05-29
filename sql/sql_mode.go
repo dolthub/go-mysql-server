@@ -30,13 +30,13 @@ const (
 	NoAutoValueOnZero    = "NO_AUTO_VALUE_ON_ZERO"
 	NoEngineSubstitution = "NO_ENGINE_SUBSTITUTION"
 	StrictTransTables    = "STRICT_TRANS_TABLES"
-	DefaultSqlMode       = "no_engine_substitution,only_full_group_by,strict_trans_tables"
+	DefaultSqlMode       = "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"
 )
 
 var defaultMode *SqlMode
 
 func init() {
-	elements := strings.Split(DefaultSqlMode, ",")
+	elements := strings.Split(strings.ToLower(DefaultSqlMode), ",")
 	sort.Strings(elements)
 	modes := map[string]struct{}{}
 	for _, element := range elements {
@@ -44,7 +44,7 @@ func init() {
 	}
 	defaultMode = &SqlMode{
 		modes:      modes,
-		modeString: strings.ToUpper(DefaultSqlMode),
+		modeString: DefaultSqlMode,
 	}
 }
 
