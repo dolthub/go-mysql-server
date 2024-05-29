@@ -195,6 +195,10 @@ func LookupJSONValue(j sql.JSONWrapper, path string) (sql.JSONWrapper, error) {
 		if err.Error() == "should start with '$'" {
 			err = fmt.Errorf("Invalid JSON path expression. Path must start with '$', but received: '%s'", path)
 		}
+		// jsonpath poorly handles unmatched [] in paths.
+		if strings.Contains(err.Error(), "len(tail) should") {
+			return nil, fmt.Errorf("Invalid JSON path expression. Missing ']'")
+		}
 		return nil, err
 	}
 

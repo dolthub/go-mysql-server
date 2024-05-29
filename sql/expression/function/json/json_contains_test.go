@@ -97,7 +97,9 @@ func TestJSONContains(t *testing.T) {
 		// Path Tests
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("Invalid JSON path expression. Path must start with '$', but received: 'FOO'")},
 		{f, sql.Row{1, nil, "$.a"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_contains")},
+		{f, sql.Row{`{"a"`, nil, "$.a"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", `{"a"`)},
 		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, sql.ErrInvalidJSONArgument.New(2, "json_contains")},
+		{f, sql.Row{json, `}"a"`, "$.e[0][*]"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", `}"a"`)},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, json, "$.foo"}, nil, nil},
@@ -140,6 +142,7 @@ func TestJSONContains(t *testing.T) {
 			if tt.err == nil {
 				require.NoError(err)
 			} else {
+				require.Error(err)
 				require.Equal(tt.err.Error(), err.Error())
 			}
 

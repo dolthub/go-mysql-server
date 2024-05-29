@@ -94,6 +94,7 @@ func TestJSONExtract(t *testing.T) {
 
 		// Error when the document isn't JSON or a coercible string
 		{f2, sql.Row{1, `$.f`}, nil, sql.ErrInvalidJSONArgument.New(1, "json_extract")},
+		{f2, sql.Row{`}`, `$.f`}, nil, sql.ErrInvalidJSONText.New(1, "json_extract", "}")},
 
 		// TODO: Fix these. They work in mysql
 		//{f2, sql.Row{json, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},

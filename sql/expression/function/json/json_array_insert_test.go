@@ -59,6 +59,9 @@ func TestArrayInsert(t *testing.T) {
 		{f1, sql.Row{json, "foo", "test"}, nil, ErrInvalidPath},
 		{f1, sql.Row{json, "$.c.*", "test"}, nil, ErrPathWildcard},
 		{f1, sql.Row{json, "$.c.**", "test"}, nil, ErrPathWildcard},
+		{f1, sql.Row{1, "$", "test"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_array_insert")},
+		{f1, sql.Row{`}`, "$", "test"}, nil, sql.ErrInvalidJSONText.New(1, "json_array_insert", `}`)},
+
 		{f1, sql.Row{json, "$", 10.1}, nil, fmt.Errorf("Path expression is not a path to a cell in an array: $")},
 		{f1, sql.Row{nil, "$", 42.7}, nil, nil},
 		{f1, sql.Row{json, nil, 10}, nil, nil},
@@ -103,7 +106,8 @@ func TestArrayInsert(t *testing.T) {
 				req.Equal(expect, result)
 			} else {
 				req.Nil(result)
-				req.Error(tstC.err, err)
+				req.Error(err)
+				req.Equal(tstC.err.Error(), err.Error())
 			}
 		})
 	}

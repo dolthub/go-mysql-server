@@ -105,11 +105,7 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := doc.ToInterface()
-	if err != nil {
-		return nil, err
-	}
-	js, err := jsonpath.JsonPathLookup(val, path.(string))
+	js, err := types.LookupJSONValue(doc, *path)
 	if err != nil {
 		if errors.Is(err, jsonpath.ErrKeyError) {
 			return nil, nil
@@ -117,7 +113,16 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	switch v := js.(type) {
+	if js == nil {
+		return nil, nil
+	}
+
+	val, err := js.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+
+	switch v := val.(type) {
 	case map[string]any:
 		res := make([]string, 0)
 		for k := range v {

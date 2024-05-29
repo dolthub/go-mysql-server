@@ -289,7 +289,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			} else if newPath == nil {
 				return nil, nil
 			} else {
-				path = newPath.(string)
+				path = *newPath
 			}
 			paths = append(paths, path)
 		}

@@ -17,9 +17,6 @@ package json
 import (
 	"fmt"
 
-	"github.com/dolthub/jsonpath"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -98,19 +95,21 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, strErr
 	}
 
-	val, err := doc.ToInterface()
+	res, err := types.LookupJSONValue(doc, path)
 	if err != nil {
-		return nil, err
-	}
-	res, err := jsonpath.JsonPathLookup(val, path)
-	if err != nil {
-		if errors.Is(err, jsonpath.ErrKeyError) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
-	switch v := res.(type) {
+	if res == nil {
+		return nil, nil
+	}
+
+	val, err := res.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+
+	switch v := val.(type) {
 	case nil:
 		return nil, nil
 	case []interface{}:

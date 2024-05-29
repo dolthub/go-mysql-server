@@ -37,7 +37,7 @@ func TestJSONKeys(t *testing.T) {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
 		{
 			f:   f1,
@@ -52,7 +52,7 @@ func TestJSONKeys(t *testing.T) {
 		{
 			f:   f1,
 			row: sql.Row{1},
-			err: true,
+			err: sql.ErrInvalidJSONArgument.New(1, "json_keys"),
 		},
 		{
 			f:   f1,
@@ -72,7 +72,7 @@ func TestJSONKeys(t *testing.T) {
 		{
 			f:   f1,
 			row: sql.Row{`badjson`},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_keys", "badjson"),
 		},
 		{
 			f:   f1,
@@ -98,7 +98,7 @@ func TestJSONKeys(t *testing.T) {
 		{
 			f:   f2,
 			row: sql.Row{`{"a": [1, false]}`, 123},
-			err: true,
+			err: fmt.Errorf("Invalid JSON path expression"),
 		},
 		{
 			f:   f2,
@@ -133,7 +133,7 @@ func TestJSONKeys(t *testing.T) {
 		{
 			f:   f2,
 			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$["},
-			err: true,
+			err: fmt.Errorf("Invalid JSON path expression. Missing ']'"),
 		},
 	}
 
@@ -145,8 +145,9 @@ func TestJSONKeys(t *testing.T) {
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 			} else {
 				require.NoError(err)
 			}

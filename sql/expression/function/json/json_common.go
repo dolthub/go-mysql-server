@@ -103,7 +103,7 @@ type pathValPair struct {
 }
 
 // buildPath builds a path from the given row and expression
-func buildPath(ctx *sql.Context, pathExp sql.Expression, row sql.Row) (interface{}, error) {
+func buildPath(ctx *sql.Context, pathExp sql.Expression, row sql.Row) (*string, error) {
 	path, err := pathExp.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -111,10 +111,11 @@ func buildPath(ctx *sql.Context, pathExp sql.Expression, row sql.Row) (interface
 	if path == nil {
 		return nil, nil
 	}
-	if _, ok := path.(string); !ok {
-		return "", ErrInvalidPath
+	if s, ok := path.(string); ok {
+		return &s, nil
+	} else {
+		return nil, ErrInvalidPath
 	}
-	return path.(string), nil
 }
 
 // buildPathValue builds a pathValPair from the given row and expressions. This is a common pattern in json methods to have
@@ -137,5 +138,5 @@ func buildPathValue(ctx *sql.Context, pathExp sql.Expression, valExp sql.Express
 		jsonVal = types.JSONDocument{Val: val}
 	}
 
-	return &pathValPair{path.(string), jsonVal}, nil
+	return &pathValPair{*path, jsonVal}, nil
 }

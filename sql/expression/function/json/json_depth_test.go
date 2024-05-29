@@ -34,27 +34,27 @@ func TestJSONDepth(t *testing.T) {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
 		{
 			f:   f1,
 			row: sql.Row{``},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_depth", ``),
 		},
 		{
 			f:   f1,
 			row: sql.Row{`badjson`},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_depth", `badjson`),
 		},
 		{
 			f:   f1,
 			row: sql.Row{true},
-			err: true,
+			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
 		},
 		{
 			f:   f1,
 			row: sql.Row{1},
-			err: true,
+			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
 		},
 
 		{
@@ -157,8 +157,9 @@ func TestJSONDepth(t *testing.T) {
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 				return
 			}
 			require.NoError(err)
