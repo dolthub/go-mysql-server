@@ -54,7 +54,7 @@ var OnceBeforeDefault = []Rule{
 	{resolveUnionsId, resolveUnions},
 	{resolveDescribeQueryId, resolveDescribeQuery}, //TODO
 	{validateCreateTriggerId, validateCreateTrigger},
-	{validateColumnDefaultsId, validateColumnDefaults},
+	{ValidateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
@@ -64,6 +64,12 @@ var OnceBeforeDefault = []Rule{
 	{pushNotFiltersId, pushNotFilters},         //TODO inline?
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
+
+// AlwaysBeforeDefault contains the rules to be applied just once before the
+// DefaultRules. These are an extension of the OnceBeforeDefault rules that
+// will always apply to nodes, unlike the OnceBeforeDefault rules that may
+// be excluded depending on the node. This is only used by integrators.
+var AlwaysBeforeDefault []Rule
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
@@ -105,7 +111,7 @@ var DefaultValidationRules = []Rule{
 	{validateGroupById, validateGroupBy},
 	{validateSchemaSourceId, validateSchemaSource},
 	{validateIndexCreationId, validateIndexCreation},
-	{validateOperandsId, validateOperands},
+	{ValidateOperandsId, validateOperands},
 	{validateIntervalUsageId, validateIntervalUsage},
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
