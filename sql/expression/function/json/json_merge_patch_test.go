@@ -32,7 +32,7 @@ func TestJSONMergePatch(t *testing.T) {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
 		{
 			f:   f2,
@@ -130,6 +130,26 @@ func TestJSONMergePatch(t *testing.T) {
 			row: sql.Row{`{"a": 1, "b": 2}`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `"single value"`},
 			exp: types.MustJSON(`"single value"`),
 		},
+		{
+			f:   f3,
+			row: sql.Row{1, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
+			err: sql.ErrInvalidJSONArgument.New(1, "json_merge_patch"),
+		},
+		{
+			f:   f3,
+			row: sql.Row{`{"a": {"one": false, "two": 2.55, "e": 8}}`, 1, `{"a": 1, "b": 2}`},
+			err: sql.ErrInvalidJSONArgument.New(2, "json_merge_patch"),
+		},
+		{
+			f:   f3,
+			row: sql.Row{`{`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
+			err: sql.ErrInvalidJSONText.New(1, "json_merge_patch", "{"),
+		},
+		{
+			f:   f3,
+			row: sql.Row{`{"a": {"one": false, "two": 2.55, "e": 8}}`, `}`, `{"a": 1, "b": 2}`},
+			err: sql.ErrInvalidJSONText.New(2, "json_merge_patch", "}"),
+		},
 	}
 
 	for _, tt := range testCases {
@@ -140,8 +160,9 @@ func TestJSONMergePatch(t *testing.T) {
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			res, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 				return
 			}
 			require.NoError(err)

@@ -53,28 +53,33 @@ func TestJSONSearch(t *testing.T) {
 		f    sql.Expression
 		row  sql.Row
 		exp  interface{}
-		err  bool
+		err  error
 		skip bool
 	}{
 		{
 			f:   f3,
+			row: sql.Row{1, "one", "abc"},
+			err: sql.ErrInvalidJSONArgument.New(1, "json_search"),
+		},
+		{
+			f:   f3,
 			row: sql.Row{"", "one", "abc"},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_search", ""),
 		},
 		{
 			f:   f3,
 			row: sql.Row{json, "NotOneOrAll", "abc"},
-			err: true,
+			err: errOneOrAll,
 		},
 		{
 			f:   f3,
 			row: sql.Row{json, "one ", "abc"},
-			err: true,
+			err: errOneOrAll,
 		},
 		{
 			f:   f4,
 			row: sql.Row{json, "one", "abc", "badescape"},
-			err: true,
+			err: errBadEscape,
 		},
 
 		{
@@ -246,8 +251,9 @@ func TestJSONSearch(t *testing.T) {
 			}
 			require := require.New(t)
 			res, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 				return
 			}
 			require.NoError(err)

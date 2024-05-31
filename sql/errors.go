@@ -90,7 +90,7 @@ var (
 	ErrDatabaseCollationsNotSupported = errors.NewKind("database %s does not support collation operations")
 
 	// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
-	ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
+	ErrTableCreatedNotFound = errors.NewKind("table %q was created but could not be found")
 
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
@@ -108,7 +108,10 @@ var (
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
 	// ErrInvalidJSONText is returned when a JSON string cannot be parsed or unmarshalled
-	ErrInvalidJSONText = errors.NewKind("Invalid JSON text: %s")
+	ErrInvalidJSONText = errors.NewKind("Invalid JSON text in argument %d to function %s: \"%s\"")
+
+	// ErrInvalidJSONArgument is returned when a JSON function is called with a parameter that is not JSON or a string
+	ErrInvalidJSONArgument = errors.NewKind("invalid data type for JSON data in argument %d to function %s; a JSON string or JSON type is required")
 
 	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
@@ -292,6 +295,9 @@ var (
 
 	// ErrDatabaseSchemaExists is returned when CREATE SCHEMA attempts to create a schema that already exists.
 	ErrDatabaseSchemaExists = errors.NewKind("can't create schema %s; schema exists")
+
+	// ErrDatabaseNoDatabaseSchemaSelectedCreate is returned when CREATE TABLE is called without a schema selected and one is required.
+	ErrDatabaseNoDatabaseSchemaSelectedCreate = errors.NewKind("no schema has been selected to create in")
 
 	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
 	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
@@ -936,6 +942,8 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERNoSuchTable
 	case ErrDatabaseExists.Is(err):
 		code = mysql.ERDbCreateExists
+	case ErrDatabaseNotFound.Is(err):
+		code = mysql.ERBadDb
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
 	case ErrInvalidOperandColumns.Is(err):

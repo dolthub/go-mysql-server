@@ -257,7 +257,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		c.ProcName.Name.String(),
 		params,
 		asOf,
-		&b.cat)
+		b.cat)
 	return outScope
 }
 

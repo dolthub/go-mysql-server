@@ -260,6 +260,11 @@ func TestHandlerErrors(t *testing.T) {
 			query:             "INSERT INTO `test`.`test_table` (`id`, `id`, `v`) VALUES (1, 2, 3)",
 			expectedErrorCode: mysql.ERFieldSpecifiedTwice,
 		},
+		{
+			name:              "use database that doesn't exist'",
+			query:             "USE does_not_exist_db;",
+			expectedErrorCode: mysql.ERBadDb,
+		},
 	}
 
 	handler.ComInitDB(dummyConn, "test")

@@ -47,7 +47,7 @@ func TestJSONExtract(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	json := map[string]interface{}{
+	json := types.JSONDocument{Val: map[string]interface{}{
 		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
 		"b": map[string]interface{}{
 			"c": "foo",
@@ -58,13 +58,13 @@ func TestJSONExtract(t *testing.T) {
 			[]interface{}{float64(3), float64(4)},
 		},
 		"f": map[string]interface{}{
-			`key.with.dots`:        0,
-			`key with spaces`:      1,
-			`key"with"dquotes`:     2,
-			`key'with'squotes`:     3,
-			`key\with\backslashes`: 4,
+			`key.with.dots`:        float64(0),
+			`key with spaces`:      float64(1),
+			`key"with"dquotes`:     float64(2),
+			`key'with'squotes`:     float64(3),
+			`key\with\backslashes`: float64(4),
 		},
-	}
+	}}
 
 	testCases := []struct {
 		f        sql.Expression
@@ -73,7 +73,10 @@ func TestJSONExtract(t *testing.T) {
 		err      error
 	}{
 		//{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
+		{f2, sql.Row{nil, "$"}, nil, nil},
 		{f2, sql.Row{nil, "$.b.c"}, nil, nil},
+		{f2, sql.Row{"null", "$"}, types.JSONDocument{Val: nil}, nil},
+		{f2, sql.Row{"null", "$.b.c"}, nil, nil},
 		{f2, sql.Row{json, "$.foo"}, nil, nil},
 		{f2, sql.Row{json, "$.b.c"}, types.JSONDocument{Val: "foo"}, nil},
 		{f3, sql.Row{json, "$.b.c", "$.b.d"}, types.JSONDocument{Val: []interface{}{"foo", true}}, nil},
@@ -88,6 +91,10 @@ func TestJSONExtract(t *testing.T) {
 		{f2, sql.Row{json, `$.f.key with spaces`}, types.JSONDocument{Val: float64(1)}, nil},
 		{f2, sql.Row{json, `$.f.key'with'squotes`}, types.JSONDocument{Val: float64(3)}, nil},
 		{f2, sql.Row{json, `$.f."key'with'squotes"`}, types.JSONDocument{Val: float64(3)}, nil},
+
+		// Error when the document isn't JSON or a coercible string
+		{f2, sql.Row{1, `$.f`}, nil, sql.ErrInvalidJSONArgument.New(1, "json_extract")},
+		{f2, sql.Row{`}`, `$.f`}, nil, sql.ErrInvalidJSONText.New(1, "json_extract", "}")},
 
 		// TODO: Fix these. They work in mysql
 		//{f2, sql.Row{json, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},
@@ -105,12 +112,11 @@ func TestJSONExtract(t *testing.T) {
 		t.Run(tt.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err == nil {
-				require.NoError(err)
+			if tt.err != nil {
+				require.ErrorContainsf(err, tt.err.Error(), "Expected error \"%v\" but received \"%v\"", tt.err, err)
 			} else {
-				require.Error(tt.err, err)
+				require.NoError(err)
 			}
-
 			require.Equal(tt.expected, result)
 		})
 	}

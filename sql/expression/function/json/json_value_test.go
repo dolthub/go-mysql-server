@@ -15,6 +15,7 @@
 package json
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -35,6 +36,7 @@ func TestJsonValue(t *testing.T) {
 		typ  sql.Type
 		path string
 		exp  interface{}
+		err  error
 	}{
 		{row: sql.Row{`null`}, exp: nil},
 		{row: sql.Row{`1`}, exp: "1"},
@@ -46,12 +48,14 @@ func TestJsonValue(t *testing.T) {
 		{row: sql.Row{`[1, false]`}, path: "$[0]", exp: "1"},
 		{row: sql.Row{`[1, {"a": 1}]`}, path: "$[1].a", typ: types.Int64, exp: int64(1)},
 		{row: sql.Row{`[1, {"a": 1}]`}, path: "$[1]", typ: types.JSON, exp: types.MustJSON(`{"a": 1}`)},
+		{row: sql.Row{1}, path: `$.f`, err: sql.ErrInvalidJSONArgument.New(1, "json_value")},
+		{row: sql.Row{`}`}, path: `$.f`, err: sql.ErrInvalidJSONText.New(1, "json_value", "}")},
 	}
 
 	for _, tt := range tests {
 		args := make([]string, len(tt.row))
 		for i, a := range tt.row {
-			args[i] = a.(string)
+			args[i] = fmt.Sprint(a)
 		}
 		if tt.path == "" {
 			tt.path = "$"
@@ -71,8 +75,14 @@ func TestJsonValue(t *testing.T) {
 			f, _ := NewJsonValue(args...)
 			require := require.New(t)
 			// any error case will result in output of 'false' value
-			result, _ := f.Eval(sql.NewEmptyContext(), tt.row)
-			require.Equal(tt.exp, result)
+			result, err := f.Eval(sql.NewEmptyContext(), tt.row)
+			if tt.err == nil {
+				require.NoError(err)
+				require.Equal(tt.exp, result)
+			} else {
+				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
+			}
 		})
 	}
 }

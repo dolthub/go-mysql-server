@@ -17,8 +17,6 @@ package queries
 import (
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -183,7 +181,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       `select json_value(cast(12.34 as decimal), '$', 'json')`,
-				ExpectedErr: json.InvalidJsonArgument,
+				ExpectedErr: sql.ErrInvalidJSONArgument,
 			},
 			{
 				Query: `select json_type(json_value(cast(cast(12.34 as decimal) as json), '$', 'json'))`,
@@ -257,7 +255,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query:          `select json_length(json_extract(x, "$.a")) from xy`,
-				ExpectedErrStr: "failed to extract from expression 'xy.x'; object is not map",
+				ExpectedErrStr: "invalid data type for JSON data in argument 1 to function json_extract; a JSON string or JSON type is required",
 			},
 			{
 				Query: `select json_length(json_extract(y, "$.a")) from xy`,
