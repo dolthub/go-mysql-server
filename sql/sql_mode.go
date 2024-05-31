@@ -75,7 +75,7 @@ func LoadSqlMode(ctx *Context) *SqlMode {
 // NewSqlModeFromString returns a new SqlMode instance, constructed from the specified |sqlModeString| that
 // has a comma delimited list of SQL modes (e.g. "ONLY_FULLY_GROUP_BY,ANSI_QUOTES").
 func NewSqlModeFromString(sqlModeString string) *SqlMode {
-	if strings.EqualFold(sqlModeString, DefaultSqlMode) {
+	if sqlModeString == DefaultSqlMode {
 		return defaultMode
 	}
 	sqlModeString = strings.ToLower(sqlModeString)

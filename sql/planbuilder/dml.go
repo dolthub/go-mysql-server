@@ -87,20 +87,23 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, i.Rows, columns, i.Table.Name.String(), sch)
 
-	// TODO: on duplicate expressions need to reference both VALUES and
-	//  derived columns equally in ON DUPLICATE UPDATE expressions.
-	combinedScope := inScope.replace()
-	for i, c := range destScope.cols {
-		combinedScope.newColumn(c)
-		if len(srcScope.cols) == len(destScope.cols) {
-			combinedScope.newColumn(srcScope.cols[i])
-		} else {
-			// check for VALUES refs
-			c.table = OnDupValuesPrefix
+	var onDupExprs []sql.Expression
+	if len(i.OnDup) > 0 {
+		// TODO: on duplicate expressions need to reference both VALUES and
+		//  derived columns equally in ON DUPLICATE UPDATE expressions.
+		combinedScope := inScope.replace()
+		for i, c := range destScope.cols {
 			combinedScope.newColumn(c)
+			if len(srcScope.cols) == len(destScope.cols) {
+				combinedScope.newColumn(srcScope.cols[i])
+			} else {
+				// check for VALUES refs
+				c.table = OnDupValuesPrefix
+				combinedScope.newColumn(c)
+			}
 		}
+		onDupExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
 	}
-	onDupExprs := b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
 
 	ignore := false
 	// TODO: make this a bool in vitess
