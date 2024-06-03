@@ -15,10 +15,12 @@
 package json
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestInsert(t *testing.T) {

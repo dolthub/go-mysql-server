@@ -16,14 +16,15 @@ package json
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/stretchr/testify/require"
-	"strconv"
-
-	"strings"
-	"testing"
 )
 
 type prepareJsonValue = func(*testing.T, string) interface{}
