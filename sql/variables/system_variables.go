@@ -1398,6 +1398,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemUintType("max_allowed_packet", 1024, 1073741824),
 		Default:           int64(1073741824),
 	},
+	"max_binlog_size": &sql.MysqlSystemVariable{
+		Name:              "max_binlog_size",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemUintType("max_binlog_size", 4096, 1073741824),
+		Default:           int64(1073741824),
+	},
 	"max_connect_errors": &sql.MysqlSystemVariable{
 		Name:              "max_connect_errors",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
