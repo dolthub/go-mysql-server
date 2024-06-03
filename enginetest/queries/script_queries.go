@@ -7206,7 +7206,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @dt;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56 +0000 UTC"},
+					{"2001-02-03 12:34:56.000000"},
 				},
 			},
 			{
@@ -7220,7 +7220,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @ts;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56 +0000 UTC"},
+					{"2001-02-03 12:34:56.000000"},
 				},
 			},
 			{
