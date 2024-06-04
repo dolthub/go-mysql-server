@@ -916,6 +916,31 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Rename index",
+		SetUpScript: []string{
+			"create table t (i int, KEY myIndex (`i`))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t rename index myIndex to mySecondIndex;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show indexes from t;",
+				Expected: []sql.Row{{"t", 1, "mySecondIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
+			},
+			{
+				// Index names are case-insensitive
+				Query:    "alter table t rename index MYsecondindEX to anotherIndex;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show indexes from t;",
+				Expected: []sql.Row{{"t", 1, "anotherIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
+			},
+		},
+	},
+	{
 		Name: "alter column and rename table work within same transaction",
 		SetUpScript: []string{
 			"create table t (i int)",

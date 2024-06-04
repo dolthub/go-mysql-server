@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -386,7 +387,7 @@ func (td *TableData) sortRows() {
 
 func (td *TableData) sortSecondaryIndexes() {
 	for idxName, idxStorage := range td.secondaryIndexStorage {
-		idx := td.indexes[string(idxName)].(*Index)
+		idx := td.indexes[strings.ToLower(string(idxName))].(*Index)
 		fieldIndexes := idx.columnIndexes(td.schema.Schema)
 		types := make([]sql.Type, len(fieldIndexes))
 		for i, idx := range fieldIndexes {
