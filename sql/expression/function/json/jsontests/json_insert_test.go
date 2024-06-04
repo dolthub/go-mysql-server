@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"testing"
@@ -21,10 +21,11 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 )
 
 func TestInsert(t *testing.T) {
-	_, err := NewJSONInsert()
+	_, err := json.NewJSONInsert()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	for _, format := range jsonFormatTests {
