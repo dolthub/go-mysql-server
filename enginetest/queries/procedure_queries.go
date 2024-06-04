@@ -2245,7 +2245,6 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
-
 	{
 		Name: "String literals with escaped chars",
 		SetUpScript: []string{
@@ -2265,6 +2264,24 @@ var ProcedureCallTests = []ScriptTest{
 			{
 				Query:    "CALL stan('quarantined')",
 				Expected: []sql.Row{{"stan's bar:quarantined"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/pull/7947/
+		Name: "Call a procedure that needs subqueries resolved in an if condition",
+		SetUpScript: []string{
+			`CREATE PROCEDURE populate_if_empty()
+				BEGIN
+					IF (SELECT 0) = 0 THEN
+						SELECT 'hi';
+					END IF;
+				END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL populate_if_empty();",
+				Expected: []sql.Row{{"hi"}},
 			},
 		},
 	},
