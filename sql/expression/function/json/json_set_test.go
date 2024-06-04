@@ -133,15 +133,3 @@ func TestJSONSet(t *testing.T) {
 		})
 	}
 }
-
-func buildGetFieldExpressions(t *testing.T, construct func(...sql.Expression) (sql.Expression, error), argCount int) sql.Expression {
-	expressions := make([]sql.Expression, 0, argCount)
-	for i := 0; i < argCount; i++ {
-		expressions = append(expressions, expression.NewGetField(i, types.LongText, "arg"+strconv.Itoa(i), false))
-	}
-
-	result, err := construct(expressions...)
-	require.NoError(t, err)
-
-	return result
-}
