@@ -209,6 +209,10 @@ func (s *Statistic) IndexClass() sql.IndexClass {
 	return sql.IndexClass(s.IdxClass)
 }
 
+func (s *Statistic) Clone() sql.JSONWrapper {
+	return s
+}
+
 func (s *Statistic) ToInterface() (interface{}, error) {
 	typs := make([]string, len(s.Typs))
 	for i, t := range s.Typs {

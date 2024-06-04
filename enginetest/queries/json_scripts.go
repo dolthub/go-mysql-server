@@ -933,4 +933,19 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "json mutations don't modify objects that could be seen by other expressions",
+		SetUpScript: []string{
+			"create table t (pk int primary key, col1 json);",
+			"insert into t values (1, '{}');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, json_insert(col1, '$.x', 1), json_insert(col1, '$.y', 2) from t order by pk;",
+				Expected: []sql.Row{
+					{1, types.MustJSON("{\"x\":1}"), types.MustJSON("{\"y\":2}")},
+				},
+			},
+		},
+	},
 }
