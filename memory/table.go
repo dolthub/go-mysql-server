@@ -1911,7 +1911,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 			name += column.Name + "_"
 		}
 	}
-	if data.indexes[name] != nil {
+	if data.indexes[strings.ToLower(name)] != nil {
 		return nil, sql.ErrDuplicateKey.New(name)
 	}
 
@@ -1975,7 +1975,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	}
 
 	// Store the computed index name in the case of an empty index name being passed in
-	data.indexes[index.ID()] = index
+	data.indexes[strings.ToLower(index.ID())] = index
 	sess.putTable(data)
 
 	return nil
@@ -2001,16 +2001,19 @@ func (t *Table) DropIndex(ctx *sql.Context, name string) error {
 }
 
 // RenameIndex implements sql.IndexAlterableTable
-func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName string) error {
+func (t *Table) RenameIndex(ctx *sql.Context, oldName string, newName string) error {
 	data := t.sessionTableData(ctx)
 
-	if fromIndexName == toIndexName {
+	lowerCaseOldName := strings.ToLower(oldName)
+	lowerCaseNewName := strings.ToLower(newName)
+
+	if oldName == newName {
 		return nil
 	}
-	if idx, ok := data.indexes[fromIndexName]; ok {
-		delete(data.indexes, fromIndexName)
-		data.indexes[toIndexName] = idx
-		idx.(*Index).Name = toIndexName
+	if idx, ok := data.indexes[lowerCaseOldName]; ok {
+		delete(data.indexes, lowerCaseOldName)
+		data.indexes[lowerCaseNewName] = idx
+		idx.(*Index).Name = newName
 	}
 	return nil
 }
@@ -2044,7 +2047,8 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 		KeyColumns:           keyCols,
 	}
 
-	data.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
+	// TODO: We should store the computed index name in the case of an empty index name being passed in
+	data.indexes[strings.ToLower(index.ID())] = index
 	sess.putTable(data)
 
 	return nil
@@ -2400,7 +2404,7 @@ func (t *Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool,
 
 func (t *Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
 	data := t.sessionTableData(ctx)
-	_, ok := data.indexes[indexDef.Name]
+	_, ok := data.indexes[strings.ToLower(indexDef.Name)]
 	if !ok {
 		return nil, sql.ErrIndexNotFound.New(indexDef.Name)
 	}
