@@ -122,6 +122,40 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "issue 7958, update join uppercase table name validation",
+		SetUpScript: []string{
+			`
+CREATE TABLE targetTable_test (
+    source_id int PRIMARY KEY,
+    value int
+);`,
+			`
+CREATE TABLE sourceTable_test (
+    id int PRIMARY KEY,
+    value int
+);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE targetTable_test
+    JOIN sourceTable_test
+    SET
+        targetTable_test.value = sourceTable_test.value
+    WHERE sourceTable_test.id = targetTable_test.source_id;
+`,
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 0,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  0,
+						Updated:  0,
+						Warnings: 0,
+					},
+				}}},
+			},
+		},
+	},
+	{
 		Name: "GMS issue 2369",
 		SetUpScript: []string{
 			`CREATE TABLE table1 (

@@ -5,6 +5,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"strings"
 )
 
 // modifyUpdateExpressionsForJoin searches for a JOIN for UPDATE query and updates the child of the original update
@@ -88,7 +89,7 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 		switch e := e.(type) {
 		case *expression.SetField:
 			gf := e.LeftChild.(*expression.GetField)
-			ret[gf.Table()] = struct{}{}
+			ret[strings.ToLower(gf.Table())] = struct{}{}
 			return false
 		}
 

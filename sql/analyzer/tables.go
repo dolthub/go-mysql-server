@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"strings"
 )
 
 // Returns the underlying table name for the node given
@@ -123,11 +124,11 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			ret[n.Table.Name()] = n
+			ret[strings.ToLower(n.Table.Name())] = n
 		case *plan.IndexedTableAccess:
 			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
-				ret[rt.Name()] = rt
+				ret[strings.ToLower(rt.Name())] = rt
 				return false
 			}
 		case *plan.TableAlias:
