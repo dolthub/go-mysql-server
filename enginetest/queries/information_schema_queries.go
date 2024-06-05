@@ -236,6 +236,20 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query: `SHOW FULL COLUMNS FROM mytable FROM mydb`,
+		Expected: []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
+		},
+	},
+	{
+		Query: `SHOW FULL COLUMNS FROM othertable in foo`,
+		Expected: []sql.Row{
+			{"text", "varchar(20)", "utf8mb4_0900_bin", "NO", "PRI", nil, "", "", ""},
+			{"number", "mediumint", nil, "YES", "", nil, "", "", ""},
+		},
+	},
+	{
 		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
 		Expected: []sql.Row{
 			{"mytable"},
@@ -321,6 +335,23 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SHOW INDEXES FROM mytaBLE`,
+		ExpectedColumns: sql.Schema{
+			&sql.Column{Name: "Table", Type: types.LongText},
+			&sql.Column{Name: "Non_unique", Type: types.Int32},
+			&sql.Column{Name: "Key_name", Type: types.LongText},
+			&sql.Column{Name: "Seq_in_index", Type: types.Uint32},
+			&sql.Column{Name: "Column_name", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Collation", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Cardinality", Type: types.Int64},
+			&sql.Column{Name: "Sub_part", Type: types.Int64, Nullable: true},
+			&sql.Column{Name: "Packed", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Null", Type: types.LongText},
+			&sql.Column{Name: "Index_type", Type: types.LongText},
+			&sql.Column{Name: "Comment", Type: types.LongText},
+			&sql.Column{Name: "Index_comment", Type: types.LongText},
+			&sql.Column{Name: "Visible", Type: types.LongText},
+			&sql.Column{Name: "Expression", Type: types.LongText, Nullable: true},
+		},
 		Expected: []sql.Row{
 			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
@@ -328,6 +359,18 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM othertable FROM foo`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM foo.othertable`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{

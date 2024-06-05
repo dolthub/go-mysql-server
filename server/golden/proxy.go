@@ -229,14 +229,14 @@ func (h MySqlProxy) processQuery(
 	sqlCtx := sql.NewContext(ctx)
 	var remainder string
 	if isMultiStatement {
-		_, ri, err := sqlparser.ParseOne(query)
+		_, ri, err := sqlparser.ParseOne(ctx, query)
 		if err != nil {
 			return "", err
 		}
 		if ri != 0 && ri < len(query) {
 			remainder = query[ri:]
 			query = query[:ri]
-			query = planbuilder.RemoveSpaceAndDelimiter(query, ';')
+			query = sql.RemoveSpaceAndDelimiter(query, ';')
 		}
 	}
 

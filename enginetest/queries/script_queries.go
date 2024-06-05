@@ -3144,6 +3144,133 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "describe and show columns with various keys and constraints",
+		SetUpScript: []string{
+			"create table t1 (i int not null, unique key (i));",
+			"create table t2 (i int not null, j int not null, unique key (j), unique key(i));",
+			"create table t3 (i int not null, j int, unique key (i, j));",
+			"create table t4 (i int not null, j int primary key, unique key (i));",
+			"create table t5 (i int not null, j int not null, unique key (j, i), unique key (i));",
+			"create table t6 (i int not null, j int not null, unique key (i), unique key (j, i));",
+			"create table t7 (pk int primary key, i int, j int not null, unique key (i), unique key (j, i));",
+			"create table t8 (pk int primary key, i int, j int, k int, unique key (i, j, k), unique key (i), unique key (j), unique key(k));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  UNIQUE KEY `i` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "show columns from t1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Skip:  true, // supposed to be the first index defined, not in order of columns
+				Query: "describe t2;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "UNI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "describe t3;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "MUL", nil, ""},
+					{"j", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "describe t4;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "UNI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				// MySQL reads indexes in the order that they were created, while we sort by idx name
+				// https://github.com/dolthub/dolt/issues/2289
+				Skip:  true,
+				Query: "describe t5;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "describe t6;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"j", "int", "NO", "MUL", nil, ""},
+				},
+			},
+			{
+				Query: "describe t7;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "UNI", nil, ""},
+					{"j", "int", "NO", "MUL", nil, ""},
+				},
+			},
+			{
+				Skip:  true, // for some reason MUL takes priority over UNI for i
+				Query: "describe t8;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "MUL", nil, ""},
+					{"j", "int", "YES", "UNI", nil, ""},
+					{"k", "int", "YES", "UNI", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"uk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with multiple KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
+			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"mk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/3065
 		Name: "join index lookups do not handle filters",
 		SetUpScript: []string{
@@ -7079,7 +7206,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @dt;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56 +0000 UTC"},
+					{"2001-02-03 12:34:56.000000"},
 				},
 			},
 			{
@@ -7093,7 +7220,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @ts;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56 +0000 UTC"},
+					{"2001-02-03 12:34:56.000000"},
 				},
 			},
 			{
@@ -7413,40 +7540,6 @@ var PreparedScriptTests = []ScriptTest{
 }
 
 var BrokenScriptTests = []ScriptTest{
-	{
-		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
-			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"uk1", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name: "ALTER TABLE MODIFY column with multiple KEYS",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
-			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"mk1", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
 	{
 		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",
 		SetUpScript: []string{

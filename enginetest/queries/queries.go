@@ -774,6 +774,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select count(i) from mytable",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
 		// Assert that SYSDATE() returns different times on each call in a query (unlike NOW())
 		// Using the maximum precision for fractional seconds, lets us see a difference.
 		Query:    "select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);",
@@ -7870,55 +7876,55 @@ Select * from (
 	{
 		Query: `SHOW STATUS LIKE 'aborted\_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Bytes_sent'`,
 		Expected: []sql.Row{
-			{"Bytes_sent", 0},
+			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Bytes_sent'`,
 		Expected: []sql.Row{
-			{"Bytes_sent", 0},
+			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Com\_stmt\_%'`,
 		Expected: []sql.Row{
-			{"Com_stmt_close", 0},
-			{"Com_stmt_execute", 0},
-			{"Com_stmt_fetch", 0},
-			{"Com_stmt_prepare", 0},
-			{"Com_stmt_reprepare", 0},
-			{"Com_stmt_reset", 0},
-			{"Com_stmt_send_long_data", 0},
+			{"Com_stmt_close", uint64(0)},
+			{"Com_stmt_execute", uint64(0)},
+			{"Com_stmt_fetch", uint64(0)},
+			{"Com_stmt_prepare", uint64(0)},
+			{"Com_stmt_reprepare", uint64(0)},
+			{"Com_stmt_reset", uint64(0)},
+			{"Com_stmt_send_long_data", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
 		Expected: []sql.Row{
-			{"Com_stmt_close", 0},
-			{"Com_stmt_execute", 0},
-			{"Com_stmt_fetch", 0},
-			{"Com_stmt_prepare", 0},
-			{"Com_stmt_reprepare", 0},
-			{"Com_stmt_reset", 0},
-			{"Com_stmt_send_long_data", 0},
+			{"Com_stmt_close", uint64(0)},
+			{"Com_stmt_execute", uint64(0)},
+			{"Com_stmt_fetch", uint64(0)},
+			{"Com_stmt_prepare", uint64(0)},
+			{"Com_stmt_reprepare", uint64(0)},
+			{"Com_stmt_reset", uint64(0)},
+			{"Com_stmt_send_long_data", uint64(0)},
 		},
 	},
 	{
@@ -9623,6 +9629,116 @@ from typestable`,
 			{time.Date(1999, 11, 30, 0, 0, 0, 0, time.UTC)},
 		},
 	},
+
+	{
+		Query: "select cast(' \t 123 \t ' as signed);",
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Query: "select cast('\n123\n' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast(' \t 123 \t ' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(123)},
+		},
+	},
+	{
+		Query: "select cast('\n123\n' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"123.456"},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"0.000"},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"0.000"},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as double);",
+		Expected: []sql.Row{
+			{123.456},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as double);",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as double);",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as float);",
+		Expected: []sql.Row{
+			{float32(123.456)},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as float);",
+		Expected: []sql.Row{
+			{float32(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as float);",
+		Expected: []sql.Row{
+			{float32(0)},
+		},
+	},
+
+	{
+		Query: "select 'abc' like NULL",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -10412,7 +10528,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `CREATE TABLE test (pk int, primary key(pk, noexist))`,
-		ExpectedErr: sql.ErrUnknownIndexColumn,
+		ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 	},
 	{
 		Query:       `CREATE TABLE test (pk int auto_increment, pk2 int auto_increment, primary key (pk))`,
@@ -10625,6 +10741,10 @@ var ErrorQueries = []QueryErrorTest{
 	{
 		Query:          `select cot(0)`,
 		ExpectedErrStr: "DOUBLE out of range for COT",
+	},
+	{
+		Query:       `SELECT * FROM (values row(1,2), row(1,2,3)) t`,
+		ExpectedErr: sql.ErrColValCountMismatch,
 	},
 }
 

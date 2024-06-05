@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -644,13 +645,17 @@ func (i *spanIter) Close(ctx *Context) error {
 	return i.iter.Close(ctx)
 }
 
-func defaultLastQueryInfo() map[string]any {
-	return map[string]any{
-		RowCount:       int64(0),
-		FoundRows:      int64(1), // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
-		LastInsertId:   int64(0),
-		LastInsertUuid: "",
-	}
+func defaultLastQueryInfo() map[string]*atomic.Value {
+	ret := make(map[string]*atomic.Value)
+	ret[RowCount] = &atomic.Value{}
+	ret[RowCount].Store(int64(0))
+	ret[FoundRows] = &atomic.Value{}
+	ret[FoundRows].Store(int64(1)) // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issue)
+	ret[LastInsertId] = &atomic.Value{}
+	ret[LastInsertId].Store(int64(0))
+	ret[LastInsertUuid] = &atomic.Value{}
+	ret[LastInsertUuid].Store("")
+	return ret
 }
 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html

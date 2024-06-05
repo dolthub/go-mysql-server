@@ -17,6 +17,7 @@ package sqle
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -71,9 +72,7 @@ func (pl *ProcessList) Processes() []sql.Process {
 func (pl *ProcessList) AddConnection(id uint32, addr string) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-	go func() {
-		sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
-	}()
+	sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
 	pl.procs[id] = &sql.Process{
 		Connection: id,
 		Command:    sql.ProcessCommandConnect,
@@ -101,9 +100,7 @@ func (pl *ProcessList) RemoveConnection(connID uint32) {
 	defer pl.mu.Unlock()
 	p := pl.procs[connID]
 	if p != nil {
-		go func() {
-			sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
-		}()
+		sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
 		if p.Kill != nil {
 			p.Kill()
 		}
@@ -153,7 +150,14 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 	pid := ctx.Pid()
 	delete(pl.byQueryPid, pid)
 	p := pl.procs[id]
+
 	if p != nil && p.QueryPid == pid {
+		processTime := time.Now().Sub(p.StartedAt)
+		longQueryTime := getLongQueryTime()
+		if longQueryTime > 0 && processTime.Seconds() > longQueryTime {
+			sql.IncrementStatusVariable(ctx, "Slow_queries", 1)
+		}
+
 		sql.IncrementStatusVariable(ctx, "Threads_running", -1)
 		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
@@ -321,4 +325,20 @@ func (pl *ProcessList) Kill(connID uint32) {
 		logrus.Infof("kill query: pid %d", p.QueryPid)
 		p.Kill()
 	}
+}
+
+// getLongQueryTime returns the value of the long_query_time system variable. If any errors are encountered loading
+// the value, then an error is logged and 0 is returned.
+func getLongQueryTime() float64 {
+	_, longQueryTimeValue, ok := sql.SystemVariables.GetGlobal("long_query_time")
+	if !ok {
+		logrus.Errorf("unable to find long_query_time system variable")
+		return 0
+	}
+	longQueryTime, ok := longQueryTimeValue.(float64)
+	if !ok {
+		logrus.Errorf(fmt.Sprintf("unexpected type for value of long_query_time system variable: %T", longQueryTimeValue))
+		return 0
+	}
+	return longQueryTime
 }

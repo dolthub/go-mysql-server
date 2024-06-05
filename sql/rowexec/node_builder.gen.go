@@ -220,6 +220,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildCachedResults(ctx, n, row)
 	case *plan.CreateDB:
 		return b.buildCreateDB(ctx, n, row)
+	case *plan.CreateSchema:
+		return b.buildCreateSchema(ctx, n, row)
 	case *plan.Revoke:
 		return b.buildRevoke(ctx, n, row)
 	case *plan.DeclareCondition:

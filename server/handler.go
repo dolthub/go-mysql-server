@@ -40,17 +40,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-var errConnectionNotFound = errors.NewKind("connection not found: %c")
 
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
 var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout")
 
 // ErrConnectionWasClosed will be returned if we try to use a previously closed connection
 var ErrConnectionWasClosed = errors.NewKind("connection was closed")
+
+// set this to true to get verbose error logging on every query (print a stack trace for most errors)
+var verboseErrorLogging = false
 
 const rowsBatch = 128
 
@@ -85,13 +85,20 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	h.sm.AddConn(c)
+	updateMaxUsedConnectionsStatusVariable()
+	sql.StatusVariables.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
-	return h.sm.SetDB(c, schemaName)
+	err := h.sm.SetDB(c, schemaName)
+	if err != nil {
+		logrus.WithField("database", schemaName).Errorf("unable to process ComInitDB: %s", err.Error())
+		err = sql.CastSQLError(err)
+	}
+	return err
 }
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
@@ -361,7 +368,7 @@ func (h *Handler) doQuery(
 	if parsed == nil {
 		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(sqlCtx.Session.ID(), query)
 		if mode == MultiStmtModeOn && !inPreparedCache {
-			parsed, prequery, remainder, err = planbuilder.ParseOnly(sqlCtx, query, true)
+			parsed, prequery, remainder, err = h.e.Parser.Parse(sqlCtx, query, true)
 			if prequery != "" {
 				query = prequery
 			}
@@ -391,8 +398,7 @@ func (h *Handler) doQuery(
 
 	sqlCtx.GetLogger().Tracef("beginning execution")
 
-	oCtx := sqlCtx
-	eg, sqlCtx := sqlCtx.NewErrgroup()
+	oCtx := ctx
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
@@ -403,134 +409,34 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding
 	schema, rowIter, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
+		if verboseErrorLogging {
+			fmt.Printf("Err: %+v", err)
+		}
 		return remainder, err
 	}
 
-	var rowChan chan sql.Row
-
-	rowChan = make(chan sql.Row, 512)
-
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	// Read rows off the row iterator and send them to the row channel.
-	eg.Go(func() error {
-		defer wg.Done()
-		defer close(rowChan)
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				row, err := rowIter.Next(sqlCtx)
-				if err == io.EOF {
-					return nil
-				}
-				if err != nil {
-					return err
-				}
-				select {
-				case rowChan <- row:
-				case <-ctx.Done():
-					return nil
-				}
-			}
-		}
-	})
-
-	pollCtx, cancelF := sqlCtx.NewSubContext()
-	eg.Go(func() error {
-		return h.pollForClosedConnection(pollCtx, c)
-	})
-
-	// Default waitTime is one minute if there is no timeout configured, in which case
-	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
-	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
-	// call Handler.CloseConnection()
-	waitTime := 1 * time.Minute
-	if h.readTimeout > 0 {
-		waitTime = h.readTimeout
-	}
-	timer := time.NewTimer(waitTime)
-	defer timer.Stop()
-
+	// create result before goroutines to avoid |ctx| racing
+	resultFields := schemaToFields(sqlCtx, schema)
 	var r *sqltypes.Result
 	var processedAtLeastOneBatch bool
 
-	// reads rows from the channel, converts them to wire format,
-	// and calls |callback| to give them to vitess.
-	eg.Go(func() error {
-		defer cancelF()
-		defer wg.Done()
-		for {
-			if r == nil {
-				r = &sqltypes.Result{Fields: schemaToFields(sqlCtx, schema)}
-			}
-
-			if r.RowsAffected == rowsBatch {
-				if err := callback(r, more); err != nil {
-					return err
-				}
-				r = nil
-				processedAtLeastOneBatch = true
-				continue
-			}
-
-			select {
-			case <-ctx.Done():
-				return nil
-			case row, ok := <-rowChan:
-				if !ok {
-					return nil
-				}
-				if types.IsOkResult(row) {
-					if len(r.Rows) > 0 {
-						panic("Got OkResult mixed with RowResult")
-					}
-					r = resultFromOkResult(row[0].(types.OkResult))
-					continue
-				}
-
-				outputRow, err := rowToSQL(sqlCtx, schema, row)
-				if err != nil {
-					return err
-				}
-
-				sqlCtx.GetLogger().Tracef("spooling result row %s", outputRow)
-				r.Rows = append(r.Rows, outputRow)
-				r.RowsAffected++
-			case <-timer.C:
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					sqlCtx.GetLogger().Tracef("connection timeout")
-					return ErrRowTimeout.New()
-				}
-			}
-			if !timer.Stop() {
-				<-timer.C
-			}
-			timer.Reset(waitTime)
-		}
-	})
-
-	// Close() kills this PID in the process list,
-	// wait until all rows have be sent over the wire
-	eg.Go(func() error {
-		wg.Wait()
-		return rowIter.Close(sqlCtx)
-	})
-
-	err = eg.Wait()
+	// zero/single return schema use spooling shortcut
+	if types.IsOkResultSchema(schema) {
+		r, err = resultForOkIter(sqlCtx, rowIter)
+	} else if schema == nil {
+		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
+	} else {
+		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
+	}
 	if err != nil {
-		sqlCtx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
 
 	// errGroup context is now canceled
-	sqlCtx = oCtx
+	ctx = oCtx
 
 	if err = setConnStatusFlags(sqlCtx, c); err != nil {
 		return remainder, err
@@ -556,6 +462,164 @@ func (h *Handler) doQuery(
 	}
 
 	return remainder, callback(r, more)
+}
+
+// resultForOkIter reads a maximum of one result row from a result iterator.
+func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+	row, err := iter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, err = iter.Next(ctx)
+	if err != io.EOF {
+		return nil, fmt.Errorf("result schema iterator returned more than one row")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+	return resultFromOkResult(row[0].(types.OkResult)), nil
+}
+
+// resultForEmptyIter ensures that an expected empty iterator returns no rows.
+func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+	if _, err := iter.Next(ctx); err != io.EOF {
+		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// resultForDefaultIter reads batches of rows from the iterator
+// and writes results into the callback function.
+func (h *Handler) resultForDefaultIter(
+	ctx *sql.Context,
+	c *mysql.Conn,
+	schema sql.Schema,
+	iter sql.RowIter,
+	callback func(*sqltypes.Result, bool) error,
+	resultFields []*querypb.Field,
+	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, err error) {
+	eg, ctx := ctx.NewErrgroup()
+
+	var rowChan chan sql.Row
+
+	rowChan = make(chan sql.Row, 512)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	// Read rows off the row iterator and send them to the row channel.
+	eg.Go(func() error {
+		defer wg.Done()
+		defer close(rowChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				row, err := iter.Next(ctx)
+				if err == io.EOF {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				select {
+				case rowChan <- row:
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		}
+	})
+
+	pollCtx, cancelF := ctx.NewSubContext()
+	eg.Go(func() error {
+		return h.pollForClosedConnection(pollCtx, c)
+	})
+
+	// Default waitTime is one minute if there is no timeout configured, in which case
+	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
+	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
+	// call Handler.CloseConnection()
+	waitTime := 1 * time.Minute
+	if h.readTimeout > 0 {
+		waitTime = h.readTimeout
+	}
+	timer := time.NewTimer(waitTime)
+	defer timer.Stop()
+
+	// reads rows from the channel, converts them to wire format,
+	// and calls |callback| to give them to vitess.
+	eg.Go(func() error {
+		defer cancelF()
+		defer wg.Done()
+		for {
+			if r == nil {
+				r = &sqltypes.Result{Fields: resultFields}
+			}
+			if r.RowsAffected == rowsBatch {
+				if err := callback(r, more); err != nil {
+					return err
+				}
+				r = nil
+				processedAtLeastOneBatch = true
+				continue
+			}
+
+			select {
+			case <-ctx.Done():
+				return nil
+			case row, ok := <-rowChan:
+				if !ok {
+					return nil
+				}
+				if types.IsOkResult(row) {
+					if len(r.Rows) > 0 {
+						panic("Got OkResult mixed with RowResult")
+					}
+					r = resultFromOkResult(row[0].(types.OkResult))
+					continue
+				}
+
+				outputRow, err := rowToSQL(ctx, schema, row)
+				if err != nil {
+					return err
+				}
+
+				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+				r.Rows = append(r.Rows, outputRow)
+				r.RowsAffected++
+			case <-timer.C:
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
+				}
+			}
+			if !timer.Stop() {
+				<-timer.C
+			}
+			timer.Reset(waitTime)
+		}
+	})
+
+	// Close() kills this PID in the process list,
+	// wait until all rows have be sent over the wire
+	eg.Go(func() error {
+		wg.Wait()
+		return iter.Close(ctx)
+	})
+
+	err = eg.Wait()
+	if err != nil {
+		ctx.GetLogger().WithError(err).Warn("error running query")
+		if verboseErrorLogging {
+			fmt.Printf("Err: %+v", err)
+		}
+	}
+	return
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
@@ -729,6 +793,55 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
+// getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
+// this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
+// logged and 0 will be returned.
+func getMaxUsedConnections() uint64 {
+	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+	if !ok {
+		logrus.Errorf("unable to find Max_used_connections status variable")
+		return 0
+	}
+	maxUsedConnections, ok := maxUsedConnectionsValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Max_used_connections status variable: %T", maxUsedConnectionsValue)
+		return 0
+	}
+	return maxUsedConnections
+}
+
+// getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
+// variable. If any error is encountered, it will be logged and 0 will be returned.
+func getThreadsConnected() uint64 {
+	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+	if !ok {
+		logrus.Errorf("unable to find Threads_connected status variable")
+		return 0
+	}
+	threadsConnected, ok := threadsConnectedValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Threads_connected status variable: %T", threadsConnectedValue)
+		return 0
+	}
+	return threadsConnected
+}
+
+// updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
+// variables if the current number of connected threads is greater than the current
+// value of Max_used_connections.
+func updateMaxUsedConnectionsStatusVariable() {
+	go func() {
+		maxUsedConnections := getMaxUsedConnections()
+		threadsConnected := getThreadsConnected()
+		if threadsConnected > maxUsedConnections {
+			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			// TODO: When Max_used_connections is updated, we should also update
+			//       Max_used_connections_time with the current time, but our status
+			//       variables support currently only supports Uint values.
+		}
+	}()
+}
+
 func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
 	var err error
@@ -738,30 +851,8 @@ func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, er
 			continue
 		}
 		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if s != nil {
+		if len(s) > 0 {
 			o[i], err = s[i].Type.SQL(ctx, nil, v)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return o, nil
-}
-
-func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row))
-	var err error
-	for i := 0; i < row.Len(); i++ {
-		v := row.GetField(i)
-		if v.IsNull() {
-			o[i] = sqltypes.NULL
-			continue
-		}
-
-		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if s != nil {
-			o[i], err = s[i].Type.(sql.Type2).SQL2(v)
 			if err != nil {
 				return nil, err
 			}

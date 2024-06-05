@@ -37,11 +37,10 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
-	dbName := i.Table.Qualifier.String()
-	tableName := i.Table.Name.String()
-	destScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+
+	destScope, ok := b.buildResolvedTableForTablename(inScope, i.Table, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
+		b.handleErr(sql.ErrTableNotFound.New(i.Table.Name.String()))
 	}
 	var db sql.Database
 	var rt *plan.ResolvedTable
@@ -56,9 +55,9 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	}
 	if rt == nil {
 		if b.TriggerCtx().Active && !b.TriggerCtx().Call {
-			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, tableName)
+			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, i.Table.Name.String())
 		} else {
-			err := fmt.Errorf("expected resolved table: %s", tableName)
+			err := fmt.Errorf("expected resolved table: %s", i.Table.Name.String())
 			b.handleErr(err)
 		}
 	}
@@ -86,22 +85,25 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if rt != nil {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
-	srcScope := b.insertRowsToNode(inScope, i.Rows, columns, tableName, sch)
+	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, i.Rows, columns, i.Table.Name.String(), sch)
 
-	// TODO: on duplicate expressions need to reference both VALUES and
-	//  derived columns equally in ON DUPLICATE UPDATE expressions.
-	combinedScope := inScope.replace()
-	for i, c := range destScope.cols {
-		combinedScope.newColumn(c)
-		if len(srcScope.cols) == len(destScope.cols) {
-			combinedScope.newColumn(srcScope.cols[i])
-		} else {
-			// check for VALUES refs
-			c.table = OnDupValuesPrefix
+	var onDupExprs []sql.Expression
+	if len(i.OnDup) > 0 {
+		// TODO: on duplicate expressions need to reference both VALUES and
+		//  derived columns equally in ON DUPLICATE UPDATE expressions.
+		combinedScope := inScope.replace()
+		for i, c := range destScope.cols {
 			combinedScope.newColumn(c)
+			if len(srcScope.cols) == len(destScope.cols) {
+				combinedScope.newColumn(srcScope.cols[i])
+			} else {
+				// check for VALUES refs
+				c.table = OnDupValuesPrefix
+				combinedScope.newColumn(c)
+			}
 		}
+		onDupExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
 	}
-	onDupExprs := b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
 
 	ignore := false
 	// TODO: make this a bool in vitess
@@ -112,6 +114,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	dest := destScope.node
 
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
+	ins.LiteralValueSource = srcLiteralOnly
 
 	b.validateInsert(ins)
 
@@ -125,12 +128,12 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	return
 }
 
-func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope) {
+func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
 	switch v := ir.(type) {
 	case ast.SelectStatement:
-		return b.buildSelectStmt(inScope, v)
+		outScope = b.buildSelectStmt(inScope, v)
 	case *ast.AliasedValues:
-		outScope = b.buildInsertValues(inScope, v, columnNames, tableName, destSchema)
+		outScope, literalOnly = b.buildInsertValues(inScope, v, columnNames, tableName, destSchema)
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(ir))
 		b.handleErr(err)
@@ -138,7 +141,7 @@ func (b *Builder) insertRowsToNode(inScope *scope, ir ast.InsertRows, columnName
 	return
 }
 
-func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope) {
+func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, columnNames []string, tableName string, destSchema sql.Schema) (outScope *scope, literalOnly bool) {
 	columnDefaultValues := make([]*sql.ColumnDefaultValue, len(columnNames))
 
 	for i, columnName := range columnNames {
@@ -171,6 +174,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 		}
 	}
 
+	literalOnly = true
 	exprTuples := make([][]sql.Expression, len(v.Values))
 	for i, vt := range v.Values {
 		// noExprs is an edge case where we fill VALUES with nil expressions
@@ -209,6 +213,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 					exprs[j] = b.buildScalar(inScope, e)
 				}
 			default:
+				literalOnly = false
 				exprs[j] = b.buildScalar(inScope, e)
 			}
 		}
@@ -389,7 +394,7 @@ func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
 	// expect col reference only
 	switch e := e.(type) {
 	case *ast.ColName:
-		dbName := strings.ToLower(e.Qualifier.Qualifier.String())
+		dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
 		tblName := strings.ToLower(e.Qualifier.Name.String())
 		colName := strings.ToLower(e.Name.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
@@ -432,10 +437,6 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 		targets = make([]sql.Node, len(d.Targets))
 		for i, tableName := range d.Targets {
 			tabName := tableName.Name.String()
-			dbName := tableName.Qualifier.String()
-			if dbName == "" {
-				dbName = b.ctx.GetCurrentDatabase()
-			}
 			var target sql.Node
 			if _, ok := outScope.tables[tabName]; ok {
 				transform.InspectUp(outScope.node, func(n sql.Node) bool {
@@ -450,7 +451,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 					return false
 				})
 			} else {
-				tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
+				tableScope, ok := b.buildResolvedTableForTablename(inScope, tableName, nil)
 				if !ok {
 					b.handleErr(sql.ErrTableNotFound.New(tabName))
 				}
@@ -461,6 +462,8 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	}
 
 	del := plan.NewDeleteFrom(outScope.node, targets)
+	del.RefsSingleRel = !outScope.refsSubquery
+	del.IsProcNested = b.ProcCtx().DbName != ""
 	outScope.node = del
 	return
 }
@@ -471,6 +474,8 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	sql.IncrementStatusVariable(b.ctx, "Com_update", 1)
 
 	outScope = b.buildFrom(inScope, u.TableExprs)
+
+	_, foundJoin := outScope.node.(*plan.JoinNode)
 
 	// default expressions only resolve to target table
 	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
@@ -499,8 +504,15 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	ignore := u.Ignore != ""
 	update := plan.NewUpdate(outScope.node, ignore, updateExprs)
 
+	update.IsJoin = foundJoin
+	update.HasSingleRel = !outScope.refsSubquery
+	update.IsProcNested = b.ProcCtx().DbName != ""
+
 	var checks []*sql.CheckConstraint
 	if join, ok := outScope.node.(*plan.JoinNode); ok {
+		// TODO this doesn't work, a lot of the time the top node
+		// is a filter. This would have to go before we build the
+		// filter/accessory nodes. But that errors for a lot of queries.
 		source := plan.NewUpdateSource(
 			join,
 			ignore,
@@ -732,8 +744,7 @@ func (b *Builder) loadChecksFromTable(inScope *scope, table sql.Table) []*sql.Ch
 }
 
 func (b *Builder) buildCheckConstraint(inScope *scope, check *sql.CheckDefinition) *sql.CheckConstraint {
-	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
-	parsed, err := ast.Parse(parseStr)
+	parsed, err := b.parser.ParseSimple(fmt.Sprintf("select %s", check.CheckExpression))
 	if err != nil {
 		b.handleErr(err)
 	}

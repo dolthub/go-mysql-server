@@ -33,7 +33,7 @@ type Grant struct {
 	WithGrantOption bool
 	As              *GrantUserAssumption
 	MySQLDb         sql.Database
-	Catalog         *sql.Catalog
+	Catalog         sql.Catalog
 }
 
 var _ sql.Node = (*Grant)(nil)
@@ -171,7 +171,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 
 			adminOnly := false
 			if n.Catalog != nil {
-				proc, err := (*n.Catalog).ExternalStoredProcedure(ctx, n.PrivilegeLevel.TableRoutine, -1)
+				proc, err := n.Catalog.ExternalStoredProcedure(ctx, n.PrivilegeLevel.TableRoutine, -1)
 				if proc != nil && err == nil && proc.AdminOnly {
 					adminOnly = true
 				}

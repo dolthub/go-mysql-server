@@ -191,7 +191,7 @@ func (ieb *IfElseBlock) DebugString() string {
 // Schema implements the sql.Node interface.
 func (ieb *IfElseBlock) Schema() sql.Schema {
 	// NOTE: nil schema causes no result for over the wire clients
-	return nil
+	return emptySch
 }
 
 // Children implements the sql.Node interface.

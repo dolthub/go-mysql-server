@@ -15,7 +15,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"reflect"
 
@@ -116,7 +115,7 @@ func (t JsonType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t JsonType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
+func (t JsonType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return uint32(MaxJsonFieldByteLength*sql.Collation_Default.CharacterSet().MaxLength()) - 1
 }
 
@@ -131,30 +130,30 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		return sqltypes.NULL, nil
 	}
 
-	// Convert to jsonType
-	jsVal, _, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.NULL, err
-	}
-	js := jsVal.(sql.JSONWrapper)
-
 	var val []byte
-	switch j := js.(type) {
-	case JSONStringer:
-		str, err := j.JSONString()
+
+	// If we read the JSON from a table, pass through the bytes to avoid a deserialization and reserialization round-trip.
+	// This is kind of a hack, and it means that reading JSON from tables no longer matches MySQL byte-for-byte.
+	// But its worth it to avoid the round-trip, which can be very slow.
+	if j, ok := v.(*LazyJSONDocument); ok {
+		str, err := MarshallJson(j)
+		if err != nil {
+			return sqltypes.NULL, err
+		}
+		val = AppendAndSliceBytes(dest, str)
+	} else {
+		// Convert to jsonType
+		jsVal, _, err := t.Convert(v)
+		if err != nil {
+			return sqltypes.NULL, err
+		}
+		js := jsVal.(sql.JSONWrapper)
+
+		str, err := StringifyJSON(js)
 		if err != nil {
 			return sqltypes.NULL, err
 		}
 		val = AppendAndSliceString(dest, str)
-	default:
-		jsonBytes, err := json.Marshal(js.ToInterface())
-		if err != nil {
-			return sqltypes.NULL, err
-		}
-
-		jsonBytes = bytes.ReplaceAll(jsonBytes, []byte(",\""), []byte(", \""))
-		jsonBytes = bytes.ReplaceAll(jsonBytes, []byte("\":"), []byte("\": "))
-		val = AppendAndSliceBytes(dest, jsonBytes)
 	}
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil

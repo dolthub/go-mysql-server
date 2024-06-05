@@ -36,7 +36,7 @@ func TestJsonLength(t *testing.T) {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
 		{
 			f:   f1,
@@ -82,7 +82,7 @@ func TestJsonLength(t *testing.T) {
 		{
 			f:   f2,
 			row: sql.Row{`{"a": [1, false]}`, 123},
-			err: true,
+			err: fmt.Errorf("Invalid JSON path expression. Path must start with '$', but received: '123'"),
 		},
 		{
 			f:   f2,
@@ -114,6 +114,16 @@ func TestJsonLength(t *testing.T) {
 			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
 			exp: nil,
 		},
+		{
+			f:   f2,
+			row: sql.Row{1, "$.d"},
+			err: sql.ErrInvalidJSONArgument.New(1, "json_length"),
+		},
+		{
+			f:   f2,
+			row: sql.Row{"asdf", "$.d"},
+			err: sql.ErrInvalidJSONText.New(1, "json_length", "asdf"),
+		},
 	}
 
 	for _, tt := range testCases {
@@ -125,8 +135,9 @@ func TestJsonLength(t *testing.T) {
 			require := require.New(t)
 			// any error case will result in output of 'false' value
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 			} else {
 				require.NoError(err)
 			}

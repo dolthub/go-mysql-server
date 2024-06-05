@@ -492,12 +492,13 @@ func injectBindVarsAndPrepare(
 		}
 	}
 
-	resPlan, err := planbuilder.ParseWithOptions(ctx, e.EngineAnalyzer().Catalog, q, sqlMode.ParserOptions())
+	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
+	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
+	resPlan, err := b.BindOnly(parsed, q)
 	if err != nil {
 		return q, nil, err
 	}
 
-	b := planbuilder.New(ctx, sql.MapCatalog{})
 	_, isInsert := resPlan.(*plan.InsertInto)
 	bindVars := make(map[string]*querypb.BindVariable)
 	var bindCnt int
@@ -819,7 +820,10 @@ func widenJSONValues(val interface{}) sql.JSONWrapper {
 		js = types.MustJSON(str)
 	}
 
-	doc := js.ToInterface()
+	doc, err := js.ToInterface()
+	if err != nil {
+		panic(err)
+	}
 
 	if _, ok := js.(sql.Statistic); ok {
 		// avoid comparing time values in statistics

@@ -150,7 +150,7 @@ func (t YearType_) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t YearType_) MaxTextResponseByteLength(_ *sql.Context) uint32 {
+func (t YearType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return 4
 }
 

@@ -36,11 +36,102 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
+	switch n := n.(type) {
+	case *plan.InsertInto:
+		if n.LiteralValueSource && len(n.Checks()) == 0 && len(n.OnDupExprs) == 0 {
+			return n, transform.SameTree, nil
+		}
+	case *plan.Update:
+		if n.HasSingleRel && !n.IsJoin && scope.IsEmpty() && !n.IsProcNested {
+			// joins, subqueries, triggers, and procedures preclude fast indexing
+			if cols, ok := relIsProjected(n.Child); !ok {
+				// simplest case, no projection
+				return offsetAssignIndexes(n), transform.NewTree, nil
+			} else if cols.Len() > 0 {
+				// if projection column set is valid, use that to assign
+				return projAssignIndexes(n, cols), transform.NewTree, nil
+			}
+		}
+	case *plan.DeleteFrom:
+		if n.RefsSingleRel && !n.HasExplicitTargets() && scope.IsEmpty() && !n.IsProcNested {
+			// joins, subqueries, triggers, and procedures preclude fast indexing
+			return offsetAssignIndexes(n), transform.NewTree, nil
+		}
+
+	default:
+	}
 	ret, _, err := assignIndexesHelper(n, s)
 	if err != nil {
 		return n, transform.SameTree, err
 	}
 	return ret, transform.NewTree, nil
+}
+
+// relIsProjected returns a relation's column set and whether
+// the set is projected from the underlying table source.
+func relIsProjected(n sql.Node) (sql.ColSet, bool) {
+	proj := true
+	var cols sql.ColSet
+	transform.Inspect(n, func(n sql.Node) bool {
+		var table sql.Table
+		switch n := n.(type) {
+		case *plan.IndexedTableAccess:
+			table = n.Table
+			cols = n.Columns()
+		case *plan.ResolvedTable:
+			table = n.Table
+			cols = n.Columns()
+		default:
+		}
+		if _, ok := table.(*plan.VirtualColumnTable); ok {
+			cols = sql.ColSet{}
+		}
+		pt, ok := table.(sql.ProjectedTable)
+		if ok {
+			if pt.Projections() == nil {
+				proj = false
+			}
+			return false
+		}
+		return true
+	})
+	return cols, proj
+}
+
+// offsetAssignIndexes assumes all expressions are from one table source
+// and execution indices will be offset-1 from the expression ids.
+func offsetAssignIndexes(n sql.Node) sql.Node {
+	ret, _, _ := transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *expression.GetField:
+			return e.WithIndex(int(e.Id()) - 1), transform.NewTree, nil
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
+	return ret
+}
+
+// projAssignIndexes performs a quick execution index assignment
+// for a projected update/delete expression. We assume projected
+// expressions have few columns.
+func projAssignIndexes(n sql.Node, cols sql.ColSet) sql.Node {
+	ret, _, _ := transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *expression.GetField:
+			idx := 0
+			for i, ok := cols.Next(1); ok; i, ok = cols.Next(i + 1) {
+				if i == e.Id() {
+					return e.WithIndex(idx), transform.NewTree, nil
+				}
+				idx++
+			}
+			return e, transform.SameTree, fmt.Errorf("column not found: %s", e)
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
+	return ret
 }
 
 func assignIndexesHelper(n sql.Node, inScope *idxScope) (sql.Node, *idxScope, error) {
