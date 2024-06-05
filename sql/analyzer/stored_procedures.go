@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -53,7 +54,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			for _, procedure := range procedures {
 				var procToRegister *plan.Procedure
 				var parsedProcedure sql.Node
-				b := planbuilder.New(ctx, a.Catalog)
+				b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
 				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
 				if err != nil {
@@ -132,9 +133,15 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			// Blocks may have expressions declared directly on them, so we explicitly check the block node for variables
+			// Blocks may have expressions declared directly on them, so we explicitly analyze the block node for variables
+			rulesToRun := []RuleId{resolveVariablesId}
+			// If a block node also has expressions (e.g. IfConditional), then we need to run the
+			// finalizeSubqueries analyzer rule in case the expressions contain any subqueries.
+			if _, ok := child.(sql.Expressioner); ok {
+				rulesToRun = append(rulesToRun, finalizeSubqueriesId)
+			}
 			newChild, _, err = a.analyzeWithSelector(ctx, newChild, scope, SelectAllBatches, func(id RuleId) bool {
-				return id == resolveVariablesId
+				return slices.Contains(rulesToRun, id)
 			})
 		case *plan.Call:
 			if skipCall {
@@ -283,7 +290,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return nil, transform.SameTree, err
 			}
 			var parsedProcedure sql.Node
-			b := planbuilder.New(ctx, a.Catalog)
+			b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
 			b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 			if call.AsOf() != nil {
 				asOf, err := call.AsOf().Eval(ctx, nil)

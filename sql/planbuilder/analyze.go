@@ -40,33 +40,27 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 		b.handleErr(err)
 	}
 
-	dbName := strings.ToLower(n.Tables[0].Qualifier.String())
-	if dbName == "" {
-		if defaultDb == "" {
-			err := sql.ErrNoDatabaseSelected.New()
-			b.handleErr(err)
-		}
-		dbName = defaultDb
+	if strings.ToLower(n.Tables[0].DbQualifier.String()) == "" && defaultDb == "" {
+		b.handleErr(sql.ErrNoDatabaseSelected.New())
 	}
-	tableName := strings.ToLower(n.Tables[0].Name.String())
 
-	tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+	tableScope, ok := b.buildTablescan(inScope, n.Tables[0], nil)
 	if !ok {
-		err := sql.ErrTableNotFound.New(tableName)
+		err := sql.ErrTableNotFound.New(strings.ToLower(n.Tables[0].Name.String()))
 		b.handleErr(err)
 	}
 	_, ok = tableScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("can only update statistics for base tables, found %s: %s", tableName, tableScope.node)
+		err := fmt.Errorf("can only update statistics for base tables, found %s: %s", strings.ToLower(n.Tables[0].Name.String()), tableScope.node)
 		b.handleErr(err)
 	}
 
 	columns := make([]string, len(n.Columns))
 	types := make([]sql.Type, len(n.Columns))
 	for i, c := range n.Columns {
-		col, ok := tableScope.resolveColumn(dbName, tableName, c.Lowered(), false, false)
+		col, ok := tableScope.resolveColumn(strings.ToLower(n.Tables[0].DbQualifier.String()), strings.ToLower(n.Tables[0].Name.String()), c.Lowered(), false, false)
 		if !ok {
-			err := sql.ErrTableColumnNotFound.New(tableName, c.Lowered())
+			err := sql.ErrTableColumnNotFound.New(strings.ToLower(n.Tables[0].Name.String()), c.Lowered())
 			b.handleErr(err)
 		}
 		columns[i] = col.col
@@ -76,10 +70,18 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 	switch n.Action {
 	case ast.UpdateStr:
 		sch := tableScope.node.Schema()
-		return b.buildAnalyzeUpdate(inScope, n, dbName, tableName, sch, columns, types)
+		return b.buildAnalyzeUpdate(inScope, n, strings.ToLower(n.Tables[0].DbQualifier.String()), strings.ToLower(n.Tables[0].Name.String()), sch, columns, types)
 	case ast.DropStr:
 		outScope = inScope.push()
-		outScope.node = plan.NewDropHistogram(dbName, tableName, columns).WithProvider(b.cat)
+		dbName := n.Tables[0].DbQualifier.String()
+		if dbName == "" {
+			dbName = b.ctx.GetCurrentDatabase()
+		}
+		if dbName == "" {
+			b.handleErr(sql.ErrNoDatabaseSelected.New())
+		}
+
+		outScope.node = plan.NewDropHistogram(strings.ToLower(dbName), strings.ToLower(n.Tables[0].Name.String()), columns).WithProvider(b.cat)
 	default:
 		err := fmt.Errorf("invalid ANALYZE action: %s, expected UPDATE or DROP", n.Action)
 		b.handleErr(err)
@@ -89,19 +91,15 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 
 func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query string) (outScope *scope) {
 	outScope = inScope.push()
-	defaultDb := b.ctx.GetCurrentDatabase()
+	currentDb := b.ctx.GetCurrentDatabase()
 	tables := make([]sql.Table, len(n.Tables))
 	for i, table := range n.Tables {
-		dbName := table.Qualifier.String()
-		if dbName == "" {
-			if defaultDb == "" {
-				err := sql.ErrNoDatabaseSelected.New()
-				b.handleErr(err)
-			}
-			dbName = defaultDb
+		if table.DbQualifier.String() == "" && currentDb == "" {
+			b.handleErr(sql.ErrNoDatabaseSelected.New())
 		}
+
 		tableName := strings.ToLower(table.Name.String())
-		tableScope, ok := b.buildTablescan(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildTablescan(inScope, table, nil)
 		if !ok {
 			err := sql.ErrTableNotFound.New(tableName)
 			b.handleErr(err)
@@ -115,11 +113,18 @@ func (b *Builder) buildAnalyzeTables(inScope *scope, n *ast.Analyze, query strin
 		tables[i] = rt.Table
 	}
 	analyze := plan.NewAnalyze(tables)
-	outScope.node = analyze.WithDb(defaultDb).WithStats(b.cat)
+	outScope.node = analyze.WithDb(currentDb).WithStats(b.cat)
 	return
 }
 
 func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tableName string, sch sql.Schema, columns []string, types []sql.Type) (outScope *scope) {
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+	if dbName == "" {
+		b.handleErr(sql.ErrNoDatabaseSelected.New())
+	}
+
 	outScope = inScope.push()
 	statisticJ := new(stats.StatisticJSON)
 	using := b.buildScalar(inScope, n.Using)
@@ -150,7 +155,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 
 	statistic := statisticJ.ToStatistic()
 
-	statistic.SetQualifier(sql.NewStatQualifier(dbName, tableName, strings.ToLower(indexName)))
+	statistic.SetQualifier(sql.NewStatQualifier(strings.ToLower(dbName), tableName, strings.ToLower(indexName)))
 	statistic.SetColumns(columns)
 	statistic.SetTypes(types)
 

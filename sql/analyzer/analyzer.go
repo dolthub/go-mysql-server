@@ -79,9 +79,12 @@ type Builder struct {
 // NewBuilder creates a new Builder from a specific catalog.
 // This builder allow us add custom Rules and modify some internal properties.
 func NewBuilder(pro sql.DatabaseProvider) *Builder {
+	allBeforeDefault := make([]Rule, len(OnceBeforeDefault)+len(AlwaysBeforeDefault))
+	copy(allBeforeDefault, OnceBeforeDefault)
+	copy(allBeforeDefault[len(OnceBeforeDefault):], AlwaysBeforeDefault)
 	return &Builder{
 		provider:        pro,
-		onceBeforeRules: OnceBeforeDefault,
+		onceBeforeRules: allBeforeDefault,
 		defaultRules:    DefaultRules,
 		onceAfterRules:  OnceAfterDefault,
 		validationRules: DefaultValidationRules,
@@ -521,7 +524,13 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 	)
 	a.Log("starting analysis of node of type: %T", n)
 	a.LogNode(n)
-	for _, batch := range a.Batches {
+
+	batches := a.Batches
+	if b, ok := getBatchesForNode(n, batches); ok {
+		batches = b
+	}
+
+	for _, batch := range batches {
 		if batchSelector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)
 			n, same, err = batch.Eval(ctx, a, n, scope, ruleSelector)

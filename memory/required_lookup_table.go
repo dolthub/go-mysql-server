@@ -98,7 +98,6 @@ func (s RequiredLookupTable) PartitionRows(ctx *sql.Context, partition sql.Parti
 		return nil, fmt.Errorf("table requires index lookup")
 	}
 	return s.IntSequenceTable.PartitionRows(ctx, partition)
-
 }
 
 func (s RequiredLookupTable) GetIndexes(ctx *sql.Context) (indexes []sql.Index, err error) {

@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -67,7 +68,7 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 	}
 
 	if len(ins.ColumnNames) > 0 {
-		err := validateColumns(table.Name(), columnNames, dstSchema, ins.Source)
+		err := validateInsertColumns(table.Name(), columnNames, dstSchema, ins.Source)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -94,26 +95,60 @@ func existsNonZeroValueCount(values sql.Node) bool {
 	return false
 }
 
-func validateColumns(tableName string, columnNames []string, dstSchema sql.Schema, source sql.Node) error {
-	dstColNames := make(map[string]*sql.Column)
-	for _, dstCol := range dstSchema {
-		dstColNames[strings.ToLower(dstCol.Name)] = dstCol
+// validateInsertColumns performs two checks. The first is insert and destination column
+// names. The insert column name must be valid, and we reject duplicate/conflicting
+// column names. The second check validates that we are not trying to modify a
+// read-only column (generated), which depends on first pairing source/destination
+// columns.
+func validateInsertColumns(tableName string, columnNames []string, dstSchema sql.Schema, source sql.Node) error {
+	type namePos struct {
+		name string
+		pos  int
+		gen  bool
 	}
-	usedNames := make(map[string]struct{})
-	for i, columnName := range columnNames {
-		dstCol, exists := dstColNames[columnName]
-		if !exists {
-			return sql.ErrUnknownColumn.New(columnName, tableName)
+
+	insCols := make([]namePos, len(columnNames))
+	for i, c := range columnNames {
+		insCols[i] = namePos{name: strings.ToLower(c), pos: i}
+	}
+	destCols := make([]namePos, len(dstSchema))
+	for i, c := range dstSchema {
+		destCols[i] = namePos{name: strings.ToLower(c.Name), pos: i, gen: c.Generated != nil}
+	}
+
+	sort.Slice(insCols, func(i, j int) bool {
+		return insCols[i].name < insCols[j].name
+	})
+	sort.Slice(destCols, func(i, j int) bool {
+		return destCols[i].name < destCols[j].name
+	})
+
+	// XXX: This is written a perf critical way, specifically
+	// to avoid building hash maps.
+
+	var i, j int
+	for i < len(insCols) && j < len(destCols) {
+		if insCols[i].name != destCols[j].name {
+			// we could go do a > check here, but we need to check
+			// after exiting the loop anyways
+			j++
+			continue
 		}
-		if dstCol.Generated != nil && !validGeneratedColumnValue(i, source) {
-			return sql.ErrGeneratedColumnValue.New(dstCol.Name, tableName)
+
+		if destCols[j].gen && !validGeneratedColumnValue(insCols[i].pos, source) {
+			return sql.ErrGeneratedColumnValue.New(destCols[j].name, tableName)
 		}
-		if _, exists := usedNames[columnName]; !exists {
-			usedNames[columnName] = struct{}{}
-		} else {
-			return sql.ErrColumnSpecifiedTwice.New(columnName)
+
+		i++
+		j++
+		if i < len(insCols) && insCols[i-1].name == insCols[i].name {
+			return sql.ErrColumnSpecifiedTwice.New(insCols[i].name)
 		}
 	}
+	if i < len(columnNames) {
+		return sql.ErrUnknownColumn.New(insCols[i].name, tableName)
+	}
+
 	return nil
 }
 

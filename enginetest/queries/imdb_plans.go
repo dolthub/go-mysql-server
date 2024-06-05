@@ -58,7 +58,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -273,7 +273,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -485,7 +485,7 @@ WHERE ci.note LIKE '%(voice)%'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1990 (smallint)\n" +
+			"         │   │   └─ 1990 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -980,7 +980,7 @@ WHERE cn.country_code !='[pl]'
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ Eq\n" +
 			"         │   │   │   ├─ t.production_year:2\n" +
-			"         │   │   │   └─ 1998 (smallint)\n" +
+			"         │   │   │   └─ 1998 (int)\n" +
 			"         │   │   └─ t.title LIKE '%Money%'\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
@@ -1253,7 +1253,7 @@ WHERE cn.country_code !='[pl]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1950 (smallint)\n" +
+			"         │   │   └─ 1950 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -1534,7 +1534,7 @@ WHERE cn.country_code !='[pl]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1950 (smallint)\n" +
+			"         │   │   └─ 1950 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -2082,7 +2082,7 @@ WHERE cn.country_code ='[us]'
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ GreaterThan\n" +
 			"         │   │   │   ├─ t.production_year:2\n" +
-			"         │   │   │   └─ 2000 (smallint)\n" +
+			"         │   │   │   └─ 2000 (int)\n" +
 			"         │   │   └─ Or\n" +
 			"         │   │       ├─ AND\n" +
 			"         │   │       │   ├─ GreaterThanOrEqual\n" +
@@ -3826,7 +3826,7 @@ WHERE it1.info = 'countries'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -4116,7 +4116,7 @@ WHERE it1.info = 'countries'
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ GreaterThan\n" +
 			"         │   │   │   ├─ t.production_year:3\n" +
-			"         │   │   │   └─ 2010 (smallint)\n" +
+			"         │   │   │   └─ 2010 (int)\n" +
 			"         │   │   └─ Or\n" +
 			"         │   │       ├─ Or\n" +
 			"         │   │       │   ├─ t.title LIKE '%murder%'\n" +
@@ -4411,7 +4411,7 @@ WHERE it1.info = 'countries'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -4695,7 +4695,7 @@ WHERE cn.country_code = '[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -5296,7 +5296,7 @@ WHERE cn.country_code = '[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1990 (smallint)\n" +
+			"         │   │   └─ 1990 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -5586,7 +5586,7 @@ WHERE cn.country_code = '[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1990 (smallint)\n" +
+			"         │   │   └─ 1990 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -5862,10 +5862,10 @@ WHERE cn.country_code ='[us]'
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ GreaterThanOrEqual\n" +
 			"         │   │   │   ├─ t.episode_nr:2\n" +
-			"         │   │   │   └─ 50 (tinyint)\n" +
+			"         │   │   │   └─ 50 (int)\n" +
 			"         │   │   └─ LessThan\n" +
 			"         │   │       ├─ t.episode_nr:2\n" +
-			"         │   │       └─ 100 (tinyint)\n" +
+			"         │   │       └─ 100 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -6348,7 +6348,7 @@ WHERE cn.country_code ='[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ LessThan\n" +
 			"         │   │   ├─ t.episode_nr:2\n" +
-			"         │   │   └─ 100 (tinyint)\n" +
+			"         │   │   └─ 100 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -6596,10 +6596,10 @@ WHERE cn.country_code ='[us]'
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ GreaterThanOrEqual\n" +
 			"         │   │   │   ├─ t.episode_nr:2\n" +
-			"         │   │   │   └─ 5 (tinyint)\n" +
+			"         │   │   │   └─ 5 (int)\n" +
 			"         │   │   └─ LessThan\n" +
 			"         │   │       ├─ t.episode_nr:2\n" +
-			"         │   │       └─ 100 (tinyint)\n" +
+			"         │   │       └─ 100 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -9583,7 +9583,7 @@ WHERE ci.note IN ('(voice)',
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -9918,7 +9918,7 @@ WHERE ci.note IN ('(voice)',
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -10563,7 +10563,7 @@ WHERE ct.kind = 'production companies'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -10736,7 +10736,7 @@ WHERE ct.kind = 'production companies'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -10936,7 +10936,7 @@ WHERE cct1.kind = 'cast'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 1950 (smallint)\n" +
+			"         │   │   └─ 1950 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -11259,7 +11259,7 @@ WHERE cct1.kind = 'cast'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -11590,7 +11590,7 @@ WHERE cct1.kind = 'cast'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -12904,7 +12904,7 @@ WHERE cn.country_code != '[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2008 (smallint)\n" +
+			"         │   │   └─ 2008 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -13291,7 +13291,7 @@ WHERE cn.country_code != '[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2009 (smallint)\n" +
+			"         │   │   └─ 2009 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -13684,7 +13684,7 @@ WHERE cn.country_code != '[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -14075,7 +14075,7 @@ WHERE cn.country_code != '[us]'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -14444,7 +14444,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -14802,7 +14802,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -15164,7 +15164,7 @@ WHERE cct1.kind = 'complete+verified'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 1990 (smallint)\n" +
+			"         │   │   └─ 1990 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -15527,7 +15527,7 @@ WHERE ci.note IN ('(voice)',
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -15943,7 +15943,7 @@ WHERE ci.note IN ('(voice)',
 			"         │   │   ├─ AND\n" +
 			"         │   │   │   ├─ GreaterThan\n" +
 			"         │   │   │   │   ├─ t.production_year:2\n" +
-			"         │   │   │   │   └─ 2010 (smallint)\n" +
+			"         │   │   │   │   └─ 2010 (int)\n" +
 			"         │   │   │   └─ GreaterThanOrEqual\n" +
 			"         │   │   │       ├─ t.title:1!null\n" +
 			"         │   │   │       └─ Kung Fu Panda (longtext)\n" +
@@ -16675,7 +16675,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   │   ├─ AND\n" +
 			"         │   │   │   ├─ GreaterThan\n" +
 			"         │   │   │   │   ├─ t.production_year:2\n" +
-			"         │   │   │   │   └─ 2010 (smallint)\n" +
+			"         │   │   │   │   └─ 2010 (int)\n" +
 			"         │   │   │   └─ GreaterThanOrEqual\n" +
 			"         │   │   │       ├─ t.title:1!null\n" +
 			"         │   │   │       └─ Vampire (longtext)\n" +
@@ -17341,7 +17341,7 @@ WHERE cct1.kind = 'cast'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -17739,7 +17739,7 @@ WHERE cct1.kind = 'cast'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -18142,7 +18142,7 @@ WHERE cct1.kind = 'cast'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -18970,7 +18970,7 @@ WHERE cct1.kind IN ('cast',
 			"         ├─ Filter\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1998 (smallint)\n" +
+			"         │   │   └─ 1998 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -19856,7 +19856,7 @@ WHERE cct1.kind = 'crew'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -20351,7 +20351,7 @@ WHERE cct1.kind = 'crew'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -20852,7 +20852,7 @@ WHERE cct1.kind = 'cast'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:3\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -23702,7 +23702,7 @@ WHERE cct1.kind IN ('cast',
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -24142,7 +24142,7 @@ WHERE cct1.kind IN ('cast',
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ GreaterThan\n" +
 			"         │   │   │   ├─ t.production_year:2\n" +
-			"         │   │   │   └─ 2000 (smallint)\n" +
+			"         │   │   │   └─ 2000 (int)\n" +
 			"         │   │   └─ Or\n" +
 			"         │   │       ├─ Or\n" +
 			"         │   │       │   ├─ t.title LIKE '%Freddy%'\n" +
@@ -25416,7 +25416,7 @@ WHERE ci.note IN ('(writer)',
 			"         │   ├─ AND\n" +
 			"         │   │   ├─ GreaterThan\n" +
 			"         │   │   │   ├─ t.production_year:2\n" +
-			"         │   │   │   └─ 2000 (smallint)\n" +
+			"         │   │   │   └─ 2000 (int)\n" +
 			"         │   │   └─ Or\n" +
 			"         │   │       ├─ Or\n" +
 			"         │   │       │   ├─ t.title LIKE '%Freddy%'\n" +
@@ -27014,7 +27014,7 @@ WHERE cn1.country_code = '[nl]'
 			"         ├─ Filter\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ t2.production_year:3\n" +
-			"         │   │   └─ 2007 (smallint)\n" +
+			"         │   │   └─ 2007 (int)\n" +
 			"         │   └─ TableAlias(t2)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -27873,7 +27873,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -28009,7 +28009,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -28154,7 +28154,7 @@ WHERE k.keyword LIKE '%sequel%'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1990 (smallint)\n" +
+			"         │   │   └─ 1990 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -28294,7 +28294,7 @@ WHERE it.info ='rating'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -28463,7 +28463,7 @@ WHERE it.info ='rating'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -28632,7 +28632,7 @@ WHERE it.info ='rating'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1990 (smallint)\n" +
+			"         │   │   └─ 1990 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -28808,7 +28808,7 @@ WHERE ct.kind = 'production companies'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2005 (smallint)\n" +
+			"         │   │   └─ 2005 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -28981,7 +28981,7 @@ WHERE ct.kind = 'production companies'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -29163,7 +29163,7 @@ WHERE ct.kind = 'production companies'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 1990 (smallint)\n" +
+			"         │   │   └─ 1990 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -29335,7 +29335,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2010 (smallint)\n" +
+			"         │   │   └─ 2010 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -29503,7 +29503,7 @@ WHERE k.keyword IN ('superhero',
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2014 (smallint)\n" +
+			"         │   │   └─ 2014 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -29664,7 +29664,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2014 (smallint)\n" +
+			"         │   │   └─ 2014 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -29832,7 +29832,7 @@ WHERE k.keyword IN ('superhero',
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -29993,7 +29993,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -30160,7 +30160,7 @@ WHERE k.keyword IN ('superhero',
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ t.production_year:2\n" +
-			"         │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ 2000 (int)\n" +
 			"         │   └─ TableAlias(t)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +

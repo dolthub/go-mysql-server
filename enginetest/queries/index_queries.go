@@ -4192,4 +4192,49 @@ var IndexQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "secondary index errors",
+		SetUpScript: []string{
+			"create table json_tbl (pk int primary key, i int, j json);",
+			"create table idx_tbl (pk int primary key, j int, index(j));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create index idx on json_tbl(j)",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create index idx on json_tbl(i, j)",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create index idx on json_tbl(j, i)",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "alter table idx_tbl modify column j json;",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create table t1 (i int primary key, j json, index(j));",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create table t2 (i int, j json, index(i, j));",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create table t3 (i int, j json, index(j, i));",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				// Ensure the above statements did not create tables without indexes
+				Query: "show tables;",
+				Expected: []sql.Row{
+					{"json_tbl"},
+					{"idx_tbl"},
+				},
+			},
+		},
+	},
 }

@@ -31,8 +31,6 @@ func init() {
 	escapeSeq[uint8('\t')] = []byte("\\t")
 	escapeSeq[uint8('"')] = []byte("\\\"")
 	escapeSeq[uint8('\\')] = []byte("\\\\")
-
-	decimal.MarshalJSONWithoutQuotes = true
 }
 
 type NoCopyBuilder struct {
@@ -317,8 +315,10 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 		writer.Write([]byte(val.Format(time.RFC3339)))
 		writer.Write([]byte{'"'})
 		return nil
+	case decimal.Decimal:
+		writer.Write([]byte(val.String()))
+		return nil
 	case json.Marshaler:
-		decimal.MarshalJSONWithoutQuotes = true
 		bytes, err := val.MarshalJSON()
 		if err != nil {
 			return err

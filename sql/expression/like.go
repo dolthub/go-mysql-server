@@ -94,25 +94,21 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var lm LikeMatcher
+	right, escape, err := l.evalRight(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if right == nil {
+		return nil, nil
+	}
 	if !l.cached {
 		// for non-cached regex every time create a new matcher
-		right, escape, rerr := l.evalRight(ctx, row)
-		if rerr != nil {
-			return nil, rerr
-		}
-		if right == nil {
-			return nil, nil
-		}
 		collation, _ := l.CollationCoercibility(ctx)
 		lm, err = ConstructLikeMatcher(collation, *right, escape)
 	} else {
 		l.once.Do(func() {
-			right, escape, err := l.evalRight(ctx, row)
 			l.pool = &sync.Pool{
 				New: func() interface{} {
-					if err != nil || right == nil {
-						return likeMatcherErrTuple{LikeMatcher{}, err}
-					}
 					collation, _ := l.CollationCoercibility(ctx)
 					m, e := ConstructLikeMatcher(collation, *right, escape)
 					return likeMatcherErrTuple{m, e}

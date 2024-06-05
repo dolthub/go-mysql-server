@@ -92,9 +92,12 @@ func TestJSONContainsPath(t *testing.T) {
 		{twoPath, sql.Row{`{"a": 1}`, "all", `$.x`, nil}, false, nil}, // Match MySQL behavior, not docs.
 		{twoPath, sql.Row{`{"a": 1}`, `all`, `$.a`, nil}, nil, nil},
 
+		// JSON NULL documents do NOT result in NULL output.
+		{onePath, sql.Row{`null`, `all`, `$.a`}, false, nil},
+
 		// Error cases
 		{onePath, sql.Row{`{"a": 1}`, `None`, `$.a`}, nil, errors.New("The oneOrAll argument to json_contains_path may take these values: 'one' or 'all'")},
-		{onePath, sql.Row{`{"a": 1`, `One`, `$.a`}, nil, errors.New(`Invalid JSON text: {"a": 1`)},
+		{onePath, sql.Row{`{"a": 1`, `One`, `$.a`}, nil, sql.ErrInvalidJSONText.New(1, "json_contains_path", `{"a": 1`)},
 		{threePath, sql.Row{`{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`, `one`, 42, `$.c.d.e`, `$.x`}, nil, errors.New(`Invalid JSON path expression. Path must start with '$', but received: '42'`)},
 	}
 
@@ -102,10 +105,10 @@ func TestJSONContainsPath(t *testing.T) {
 		t.Run(testcase.fCall.String(), func(t *testing.T) {
 			require := require.New(t)
 			result, err := testcase.fCall.Eval(sql.NewEmptyContext(), testcase.input)
-			if testcase.err == nil {
-				require.NoError(err)
+			if testcase.err != nil {
+				require.ErrorContainsf(err, testcase.err.Error(), "Expected error \"%v\" but received \"%v\"", testcase.err, err)
 			} else {
-				require.Equal(err.Error(), testcase.err.Error())
+				require.NoError(err)
 			}
 
 			require.Equal(testcase.expected, result)

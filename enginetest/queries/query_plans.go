@@ -161,6 +161,58 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select count(i) from mytable`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [count(mytable.i):0!null as count(i)]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i):0!null as COUNT(mytable.i)]\n" +
+			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [count(mytable.i) as count(i)]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i) as COUNT(mytable.i)]\n" +
+			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [count(mytable.i) as count(i)]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [mytable.COUNT(mytable.i) as COUNT(mytable.i)]\n" +
+			"     └─ table_count(mytable) as COUNT(mytable.i)\n" +
+			"",
+	},
+	{
+		Query: `select count(pk1) from two_pk`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [count(two_pk.pk1):0!null as count(pk1)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(two_pk.pk1:0!null)\n" +
+			"     ├─ group: \n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [count(two_pk.pk1) as count(pk1)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(two_pk.pk1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [count(two_pk.pk1) as count(pk1)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(two_pk.pk1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1]\n" +
+			"",
+	},
+	{
 		Query: `select x from xy where y in (select x from xy where x in (select y from xy));`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:1!null]\n" +
@@ -1013,7 +1065,7 @@ WHERE
 			"             └─ Filter\n" +
 			"                 ├─ LessThan\n" +
 			"                 │   ├─ stock1.s_quantity:2\n" +
-			"                 │   └─ 15 (tinyint)\n" +
+			"                 │   └─ 15 (smallint)\n" +
 			"                 └─ IndexedTableAccess(stock1)\n" +
 			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
 			"                     ├─ static: [{[5, 5], [NULL, ∞)}]\n" +
@@ -1094,10 +1146,10 @@ WHERE
 			"         │   │   └─ 2 (tinyint)\n" +
 			"         │   └─ Eq\n" +
 			"         │       ├─ customer1.c_id:0!null\n" +
-			"         │       └─ 2327 (smallint)\n" +
+			"         │       └─ 2327 (int)\n" +
 			"         └─ IndexedTableAccess(customer1)\n" +
 			"             ├─ index: [customer1.c_w_id,customer1.c_d_id,customer1.c_id]\n" +
-			"             ├─ keys: [warehouse1.w_id:0!null 2 (tinyint) 2327 (smallint)]\n" +
+			"             ├─ keys: [warehouse1.w_id:0!null 2 (tinyint) 2327 (int)]\n" +
 			"             ├─ colSet: (1-21)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -1755,7 +1807,7 @@ Select * from (
 			"                 │       └─ Filter\n" +
 			"                 │           ├─ Eq\n" +
 			"                 │           │   ├─ xy.x:0!null\n" +
-			"                 │           │   └─ 1 (tinyint)\n" +
+			"                 │           │   └─ 1 (int)\n" +
 			"                 │           └─ SubqueryAlias\n" +
 			"                 │               ├─ name: cte\n" +
 			"                 │               ├─ outerVisibility: true\n" +
@@ -2273,7 +2325,7 @@ Select * from (
 			" │   │           └─ tableId: 3\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ uv.u:0!null\n" +
-			" │       └─ 1 (tinyint)\n" +
+			" │       └─ 1 (int)\n" +
 			" ├─ ProcessTable\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: uv\n" +
@@ -3255,7 +3307,7 @@ Select * from (
 			" │           ├─ AND\n" +
 			" │           │   ├─ Eq\n" +
 			" │           │   │   ├─ xy.y:1\n" +
-			" │           │   │   └─ 1 (tinyint)\n" +
+			" │           │   │   └─ 1 (int)\n" +
 			" │           │   └─ Eq\n" +
 			" │           │       ├─ uv.u:5!null\n" +
 			" │           │       └─ xy.x:0!null\n" +
@@ -3279,7 +3331,7 @@ Select * from (
 			"         │           ├─ AND\n" +
 			"         │           │   ├─ Eq\n" +
 			"         │           │   │   ├─ xy.y:3\n" +
-			"         │           │   │   └─ 1 (tinyint)\n" +
+			"         │           │   │   └─ 1 (int)\n" +
 			"         │           │   └─ Eq\n" +
 			"         │           │       ├─ uv.u:4!null\n" +
 			"         │           │       └─ xy.x:2!null\n" +
@@ -3390,7 +3442,7 @@ Select * from (
 			"         │       └─ Filter\n" +
 			"         │           ├─ Eq\n" +
 			"         │           │   ├─ xy.y:1\n" +
-			"         │           │   └─ 1 (tinyint)\n" +
+			"         │           │   └─ 1 (int)\n" +
 			"         │           └─ Table\n" +
 			"         │               ├─ name: \n" +
 			"         │               ├─ columns: []\n" +
@@ -3406,7 +3458,7 @@ Select * from (
 			"             │       └─ Filter\n" +
 			"             │           ├─ Eq\n" +
 			"             │           │   ├─ xy.y:3\n" +
-			"             │           │   └─ 1 (tinyint)\n" +
+			"             │           │   └─ 1 (int)\n" +
 			"             │           └─ Table\n" +
 			"             │               ├─ name: \n" +
 			"             │               ├─ columns: []\n" +
@@ -3506,7 +3558,7 @@ Select * from (
 			" │       └─ Filter\n" +
 			" │           ├─ Eq\n" +
 			" │           │   ├─ xy.y:1\n" +
-			" │           │   └─ 1 (tinyint)\n" +
+			" │           │   └─ 1 (int)\n" +
 			" │           └─ Table\n" +
 			" │               ├─ name: \n" +
 			" │               ├─ columns: []\n" +
@@ -3522,7 +3574,7 @@ Select * from (
 			"     │       └─ Filter\n" +
 			"     │           ├─ Eq\n" +
 			"     │           │   ├─ xy.y:3\n" +
-			"     │           │   └─ 1 (tinyint)\n" +
+			"     │           │   └─ 1 (int)\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: \n" +
 			"     │               ├─ columns: []\n" +
@@ -4645,10 +4697,10 @@ Select * from (
 			" ├─ Or\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ ab.a:2!null\n" +
-			" │   │   └─ 1 (tinyint)\n" +
+			" │   │   └─ 1 (int)\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ s.a:0!null\n" +
-			" │       └─ 1 (tinyint)\n" +
+			" │       └─ 1 (int)\n" +
 			" ├─ TableAlias(s)\n" +
 			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
@@ -6441,11 +6493,11 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t2.i:0!null\n" +
-			"         │   └─ 1 (tinyint)\n" +
+			"         │   └─ 1 (bigint)\n" +
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ keys: [1 (bigint)]\n" +
 			"                 ├─ colSet: (3,4)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -6592,7 +6644,7 @@ inner join pq on true
 			" │   │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
 			" │   └─ LessThanOrEqual\n" +
 			" │       ├─ one_pk_two_idx.v2:2\n" +
-			" │       └─ 2 (tinyint)\n" +
+			" │       └─ 2 (bigint)\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1]\n" +
 			"     ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
@@ -6689,7 +6741,7 @@ inner join pq on true
 			"                 └─ Filter\n" +
 			"                     ├─ Eq\n" +
 			"                     │   ├─ mytable.i:0!null\n" +
-			"                     │   └─ 2 (tinyint)\n" +
+			"                     │   └─ 2 (bigint)\n" +
 			"                     └─ IndexedTableAccess(mytable)\n" +
 			"                         ├─ index: [mytable.i,mytable.s]\n" +
 			"                         ├─ static: [{[2, 2], [NULL, ∞)}]\n" +
@@ -6750,7 +6802,7 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [i:0!null, s:1!null]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [t1.i:0!null, hello (longtext)]\n" +
+			"             ├─ columns: [t1.i:0!null, hello (longtext) as hello]\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ Eq\n" +
 			"                 │   ├─ t1.i:0!null\n" +
@@ -6767,11 +6819,11 @@ inner join pq on true
 			"                 └─ Filter\n" +
 			"                     ├─ Eq\n" +
 			"                     │   ├─ t2.i:0!null\n" +
-			"                     │   └─ 1 (tinyint)\n" +
+			"                     │   └─ 1 (bigint)\n" +
 			"                     └─ TableAlias(t2)\n" +
 			"                         └─ IndexedTableAccess(mytable)\n" +
 			"                             ├─ index: [mytable.i]\n" +
-			"                             ├─ keys: [1 (tinyint)]\n" +
+			"                             ├─ keys: [1 (bigint)]\n" +
 			"                             ├─ colSet: (5,6)\n" +
 			"                             ├─ tableId: 3\n" +
 			"                             └─ Table\n" +
@@ -6799,11 +6851,11 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t2.i:0!null\n" +
-			"         │   └─ 1 (tinyint)\n" +
+			"         │   └─ 1 (bigint)\n" +
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ keys: [1 (bigint)]\n" +
 			"                 ├─ colSet: (3,4)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -6865,11 +6917,11 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t2.i:0!null\n" +
-			"         │   └─ 1 (tinyint)\n" +
+			"         │   └─ 1 (bigint)\n" +
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ keys: [1 (bigint)]\n" +
 			"                 ├─ colSet: (3,4)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -6931,11 +6983,11 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t2.i:0!null\n" +
-			"         │   └─ 1 (tinyint)\n" +
+			"         │   └─ 1 (bigint)\n" +
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ keys: [1 (bigint)]\n" +
 			"                 ├─ colSet: (3,4)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -6997,11 +7049,11 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ t2.i:0!null\n" +
-			"         │   └─ 1 (tinyint)\n" +
+			"         │   └─ 1 (bigint)\n" +
 			"         └─ TableAlias(t2)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ keys: [1 (tinyint)]\n" +
+			"                 ├─ keys: [1 (bigint)]\n" +
 			"                 ├─ colSet: (3,4)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -8045,7 +8097,7 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [i:0!null, s:1!null]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [(sub.i:0!null + 10 (tinyint)), ot.s2:3!null]\n" +
+			"             ├─ columns: [(sub.i:0!null + 10 (tinyint)) as sub.i + 10, ot.s2:3!null]\n" +
 			"             └─ HashJoin\n" +
 			"                 ├─ Eq\n" +
 			"                 │   ├─ sub.i:0!null\n" +
@@ -8128,7 +8180,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i, selfjoin.i]\n" +
-			" └─ SemiJoin (estimated cost=154.500 rows=3)\n" +
+			" └─ SemiJoin (estimated cost=4.515 rows=1)\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
 			"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 			"     │   ├─ IndexedTableAccess(mytable)\n" +
@@ -8147,7 +8199,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i, selfjoin.i]\n" +
-			" └─ SemiJoin (estimated cost=154.500 rows=3) (actual rows=1 loops=1)\n" +
+			" └─ SemiJoin (estimated cost=4.515 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
 			"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
 			"     │   ├─ IndexedTableAccess(mytable)\n" +
@@ -9421,7 +9473,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ GreaterThan\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
-			" │   │   └─ 2 (tinyint)\n" +
+			" │   │   └─ 2 (bigint)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
@@ -9680,7 +9732,7 @@ inner join pq on true
 			" │   ├─ left: true (tinyint(1))\n" +
 			" │   └─ right: TUPLE(GreaterThan\n" +
 			" │       ├─ mytable.i:0!null\n" +
-			" │       └─ 3 (tinyint)\n" +
+			" │       └─ 3 (bigint)\n" +
 			" │      )\n" +
 			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
@@ -9769,7 +9821,7 @@ inner join pq on true
 			"     │   │   └─ b.i:0!null\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ a.i:1!null\n" +
-			"     │       └─ 1 (tinyint)\n" +
+			"     │       └─ 1 (bigint)\n" +
 			"     ├─ TableAlias(b)\n" +
 			"     │   └─ ProcessTable\n" +
 			"     │       └─ Table\n" +
@@ -9780,7 +9832,7 @@ inner join pq on true
 			"             ├─ TableAlias(a)\n" +
 			"             │   └─ IndexedTableAccess(mytable)\n" +
 			"             │       ├─ index: [mytable.i]\n" +
-			"             │       ├─ keys: [1 (tinyint)]\n" +
+			"             │       ├─ keys: [1 (bigint)]\n" +
 			"             │       ├─ colSet: (1,2)\n" +
 			"             │       ├─ tableId: 1\n" +
 			"             │       └─ Table\n" +
@@ -10139,7 +10191,7 @@ inner join pq on true
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ c.i:0!null\n" +
-			"             │   └─ 2 (tinyint)\n" +
+			"             │   └─ 2 (bigint)\n" +
 			"             └─ TableAlias(c)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
@@ -10232,7 +10284,7 @@ inner join pq on true
 			"     │   │   │   └─ d.s:0!null\n" +
 			"     │   │   └─ Eq\n" +
 			"     │   │       ├─ c.i:1!null\n" +
-			"     │   │       └─ 2 (tinyint)\n" +
+			"     │   │       └─ 2 (bigint)\n" +
 			"     │   ├─ TableAlias(d)\n" +
 			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
@@ -10243,7 +10295,7 @@ inner join pq on true
 			"     │           ├─ TableAlias(c)\n" +
 			"     │           │   └─ IndexedTableAccess(mytable)\n" +
 			"     │           │       ├─ index: [mytable.i]\n" +
-			"     │           │       ├─ keys: [2 (tinyint)]\n" +
+			"     │           │       ├─ keys: [2 (bigint)]\n" +
 			"     │           │       ├─ colSet: (5,6)\n" +
 			"     │           │       ├─ tableId: 3\n" +
 			"     │           │       └─ Table\n" +
@@ -10838,7 +10890,7 @@ inner join pq on true
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ c.i:0!null\n" +
-			"             │   └─ 2 (tinyint)\n" +
+			"             │   └─ 2 (bigint)\n" +
 			"             └─ TableAlias(c)\n" +
 			"                 └─ IndexedTableAccess(mytable)\n" +
 			"                     ├─ index: [mytable.i]\n" +
@@ -10931,7 +10983,7 @@ inner join pq on true
 			"     │   │   │   └─ d.s:0!null\n" +
 			"     │   │   └─ Eq\n" +
 			"     │   │       ├─ c.i:1!null\n" +
-			"     │   │       └─ 2 (tinyint)\n" +
+			"     │   │       └─ 2 (bigint)\n" +
 			"     │   ├─ TableAlias(d)\n" +
 			"     │   │   └─ ProcessTable\n" +
 			"     │   │       └─ Table\n" +
@@ -10942,7 +10994,7 @@ inner join pq on true
 			"     │           ├─ TableAlias(c)\n" +
 			"     │           │   └─ IndexedTableAccess(mytable)\n" +
 			"     │           │       ├─ index: [mytable.i]\n" +
-			"     │           │       ├─ keys: [2 (tinyint)]\n" +
+			"     │           │       ├─ keys: [2 (bigint)]\n" +
 			"     │           │       ├─ colSet: (5,6)\n" +
 			"     │           │       ├─ tableId: 3\n" +
 			"     │           │       └─ Table\n" +
@@ -14137,7 +14189,7 @@ inner join pq on true
 			"     │   └─ one_pk.pk:2!null\n" +
 			"     ├─ sel: GreaterThan\n" +
 			"     │   ├─ one_pk.pk:2!null\n" +
-			"     │   └─ 0 (tinyint)\n" +
+			"     │   └─ 0 (smallint)\n" +
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
 			"     │   ├─ static: [{[NULL, ∞)}]\n" +
@@ -14250,7 +14302,7 @@ inner join pq on true
 			" └─ Filter\n" +
 			"     ├─ GreaterThan\n" +
 			"     │   ├─ niltable.i2:2\n" +
-			"     │   └─ 1 (tinyint)\n" +
+			"     │   └─ 1 (bigint)\n" +
 			"     └─ LeftOuterMergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
 			"         │   ├─ one_pk.pk:0!null\n" +
@@ -14310,7 +14362,7 @@ inner join pq on true
 			" └─ Filter\n" +
 			"     ├─ GreaterThan\n" +
 			"     │   ├─ niltable.i:1!null\n" +
-			"     │   └─ 1 (tinyint)\n" +
+			"     │   └─ 1 (bigint)\n" +
 			"     └─ LeftOuterMergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
 			"         │   ├─ one_pk.pk:0!null\n" +
@@ -14374,7 +14426,7 @@ inner join pq on true
 			"     ├─ Filter\n" +
 			"     │   ├─ GreaterThan\n" +
 			"     │   │   ├─ one_pk.c1:1\n" +
-			"     │   │   └─ 10 (tinyint)\n" +
+			"     │   │   └─ 10 (smallint)\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
@@ -14493,7 +14545,7 @@ inner join pq on true
 			"     ├─ Filter\n" +
 			"     │   ├─ GreaterThan\n" +
 			"     │   │   ├─ one_pk.pk:0!null\n" +
-			"     │   │   └─ 1 (tinyint)\n" +
+			"     │   │   └─ 1 (smallint)\n" +
 			"     │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │       ├─ index: [one_pk.pk]\n" +
 			"     │       ├─ static: [{[NULL, ∞)}]\n" +
@@ -14597,7 +14649,7 @@ inner join pq on true
 			" └─ Filter\n" +
 			"     ├─ GreaterThan\n" +
 			"     │   ├─ one_pk.pk:2!null\n" +
-			"     │   └─ 0 (tinyint)\n" +
+			"     │   └─ 0 (smallint)\n" +
 			"     └─ LeftOuterMergeJoin\n" +
 			"         ├─ cmp: Eq\n" +
 			"         │   ├─ niltable.i:0!null\n" +
@@ -15597,7 +15649,7 @@ inner join pq on true
 			"         ├─ Filter\n" +
 			"         │   ├─ GreaterThan\n" +
 			"         │   │   ├─ one_pk.pk:0!null\n" +
-			"         │   │   └─ 1 (tinyint)\n" +
+			"         │   │   └─ 1 (smallint)\n" +
 			"         │   └─ IndexedTableAccess(one_pk)\n" +
 			"         │       ├─ index: [one_pk.pk]\n" +
 			"         │       ├─ static: [{[NULL, ∞)}]\n" +
@@ -15773,7 +15825,7 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ one_pk.pk:2!null\n" +
-			"         │   └─ 0 (tinyint)\n" +
+			"         │   └─ 0 (smallint)\n" +
 			"         └─ LeftOuterMergeJoin\n" +
 			"             ├─ cmp: Eq\n" +
 			"             │   ├─ niltable.i:0!null\n" +
@@ -15839,7 +15891,7 @@ inner join pq on true
 			"         │   └─ one_pk.pk:2!null\n" +
 			"         ├─ sel: GreaterThan\n" +
 			"         │   ├─ one_pk.pk:2!null\n" +
-			"         │   └─ 0 (tinyint)\n" +
+			"         │   └─ 0 (smallint)\n" +
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
 			"         │   ├─ static: [{[NULL, ∞)}]\n" +
@@ -16446,7 +16498,7 @@ inner join pq on true
 			"         └─ Filter\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ one_pk.c1:1\n" +
-			"             │   └─ 10 (tinyint)\n" +
+			"             │   └─ 10 (smallint)\n" +
 			"             └─ ProcessTable\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: one_pk\n" +
@@ -16732,7 +16784,7 @@ inner join pq on true
 			"     │               │   │   └─ mt.i:0!null\n" +
 			"     │               │   └─ GreaterThan\n" +
 			"     │               │       ├─ mt.i:0!null\n" +
-			"     │               │       └─ 2 (tinyint)\n" +
+			"     │               │       └─ 2 (bigint)\n" +
 			"     │               └─ IndexedTableAccess(othertable)\n" +
 			"     │                   ├─ index: [othertable.i2]\n" +
 			"     │                   ├─ keys: [mt.i:0!null]\n" +
@@ -17049,10 +17101,10 @@ inner join pq on true
 			"     ├─ Or\n" +
 			"     │   ├─ LessThan\n" +
 			"     │   │   ├─ othertable.i2:1!null\n" +
-			"     │   │   └─ 2 (tinyint)\n" +
+			"     │   │   └─ 2 (bigint)\n" +
 			"     │   └─ GreaterThan\n" +
 			"     │       ├─ othertable.i2:1!null\n" +
-			"     │       └─ 2 (tinyint)\n" +
+			"     │       └─ 2 (bigint)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
 			"         └─ Sort(othertable.i2:1!null ASC nullsFirst)\n" +
@@ -17367,7 +17419,7 @@ inner join pq on true
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ a.z:2!null\n" +
-			"         │   └─ 2 (tinyint)\n" +
+			"         │   └─ 2 (bigint)\n" +
 			"         └─ TableAlias(a)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: invert_pk\n" +
@@ -17995,7 +18047,7 @@ inner join pq on true
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ b.pk:2!null\n" +
-			"     │   └─ 0 (tinyint)\n" +
+			"     │   └─ 0 (bigint)\n" +
 			"     └─ LeftOuterHashJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ b.pk:2!null\n" +
@@ -18003,7 +18055,7 @@ inner join pq on true
 			"         ├─ Filter\n" +
 			"         │   ├─ Eq\n" +
 			"         │   │   ├─ c.v2:1\n" +
-			"         │   │   └─ 0 (tinyint)\n" +
+			"         │   │   └─ 0 (bigint)\n" +
 			"         │   └─ TableAlias(c)\n" +
 			"         │       └─ ProcessTable\n" +
 			"         │           └─ Table\n" +
@@ -18098,7 +18150,7 @@ inner join pq on true
 			"     │   └─ Filter\n" +
 			"     │       ├─ Eq\n" +
 			"     │       │   ├─ a.v2:1\n" +
-			"     │       │   └─ 1 (tinyint)\n" +
+			"     │       │   └─ 1 (bigint)\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ ProcessTable\n" +
 			"     │               └─ Table\n" +
@@ -19339,7 +19391,7 @@ inner join pq on true
 		ExpectedPlan: "Filter\n" +
 			" ├─ LessThan\n" +
 			" │   ├─ one_pk_three_idx.pk:0!null\n" +
-			" │   └─ 1 (tinyint)\n" +
+			" │   └─ 1 (bigint)\n" +
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     ├─ index: [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3]\n" +
 			"     ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
@@ -19370,10 +19422,10 @@ inner join pq on true
 			" ├─ AND\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ one_pk_three_idx.v1:1\n" +
-			" │   │   └─ 1 (tinyint)\n" +
+			" │   │   └─ 1 (bigint)\n" +
 			" │   └─ Eq\n" +
 			" │       ├─ one_pk_three_idx.v2:2\n" +
-			" │       └─ 1 (tinyint)\n" +
+			" │       └─ 1 (bigint)\n" +
 			" └─ IndexedTableAccess(one_pk_three_idx)\n" +
 			"     ├─ index: [one_pk_three_idx.pk]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
@@ -21055,7 +21107,7 @@ inner join pq on true
 			"                     └─ Filter\n" +
 			"                         ├─ LessThan\n" +
 			"                         │   ├─ a.x:0!null\n" +
-			"                         │   └─ 10 (tinyint)\n" +
+			"                         │   └─ 10 (bigint)\n" +
 			"                         └─ RecursiveTable(a)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -22266,7 +22318,7 @@ With c as (
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ 3 (tinyint)\n" +
+			"     │   └─ 3 (bigint)\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
@@ -22318,7 +22370,7 @@ With c as (
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ mytable.i:0!null\n" +
-			"         │   └─ 3 (tinyint)\n" +
+			"         │   └─ 3 (bigint)\n" +
 			"         └─ Limit(1)\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
@@ -22373,7 +22425,7 @@ With c as (
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ 3 (tinyint)\n" +
+			"     │   └─ 3 (bigint)\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
@@ -22433,7 +22485,7 @@ With c as (
 			"     └─ Filter\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ mytable.i:0!null\n" +
-			"         │   └─ 3 (tinyint)\n" +
+			"         │   └─ 3 (bigint)\n" +
 			"         └─ Limit(1)\n" +
 			"             └─ IndexedTableAccess(mytable)\n" +
 			"                 ├─ index: [mytable.i]\n" +
@@ -22664,7 +22716,7 @@ With c as (
 			"         └─ Filter\n" +
 			"             ├─ GreaterThan\n" +
 			"             │   ├─ mytable.i:0!null\n" +
-			"             │   └─ 1 (tinyint)\n" +
+			"             │   └─ 1 (bigint)\n" +
 			"             └─ Limit(1)\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: mytable\n" +
@@ -22722,7 +22774,7 @@ With c as (
 			"     ├─ NOT\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.i:1!null\n" +
-			"     │       └─ 0 (tinyint)\n" +
+			"     │       └─ 0 (bigint)\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
@@ -22797,7 +22849,7 @@ With c as (
 			"     ├─ NOT\n" +
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.i:1!null\n" +
-			"     │       └─ 0 (tinyint)\n" +
+			"     │       └─ 0 (bigint)\n" +
 			"     └─ Limit(1)\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
@@ -22872,7 +22924,7 @@ With c as (
 			" │   └─ Filter\n" +
 			" │       ├─ GreaterThanOrEqual\n" +
 			" │       │   ├─ one_pk.pk:0!null\n" +
-			" │       │   └─ 2 (tinyint)\n" +
+			" │       │   └─ 2 (smallint)\n" +
 			" │       └─ Limit(1)\n" +
 			" │           └─ IndexedTableAccess(one_pk)\n" +
 			" │               ├─ index: [one_pk.pk]\n" +
@@ -23010,7 +23062,7 @@ WHERE keyless.c0 IN (
 			"         │                   │           │   └─ Filter\n" +
 			"         │                   │           │       ├─ Eq\n" +
 			"         │                   │           │       │   ├─ t1.c0:2\n" +
-			"         │                   │           │       │   └─ 0 (tinyint)\n" +
+			"         │                   │           │       │   └─ 0 (bigint)\n" +
 			"         │                   │           │       └─ TableAlias(t1)\n" +
 			"         │                   │           │           └─ Table\n" +
 			"         │                   │           │               ├─ name: keyless\n" +
@@ -23205,7 +23257,7 @@ WHERE keyless.c0 IN (
 			"         │                   │           │   └─ Filter\n" +
 			"         │                   │           │       ├─ Eq\n" +
 			"         │                   │           │       │   ├─ t1.c0:2\n" +
-			"         │                   │           │       │   └─ 0 (tinyint)\n" +
+			"         │                   │           │       │   └─ 0 (bigint)\n" +
 			"         │                   │           │       └─ TableAlias(t1)\n" +
 			"         │                   │           │           └─ Table\n" +
 			"         │                   │           │               ├─ name: keyless\n" +

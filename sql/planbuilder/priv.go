@@ -348,7 +348,7 @@ func (b *Builder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (ou
 		WithGrantOption: n.WithGrantOption,
 		As:              gau,
 		MySQLDb:         b.resolveDb("mysql"),
-		Catalog:         &b.cat,
+		Catalog:         b.cat,
 	}
 
 	return outScope

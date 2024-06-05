@@ -34,23 +34,38 @@ func TestJSONOverlaps(t *testing.T) {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
 		// errors
 		{
 			f:   f2,
 			row: sql.Row{``},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", ``),
 		},
 		{
 			f:   f2,
 			row: sql.Row{``, ``},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", ``),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`asdf`, `badjson`},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", `asdf`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{}`, `badjson`},
+			err: sql.ErrInvalidJSONText.New(2, "json_overlaps", `badjson`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{1, `{}`},
+			err: sql.ErrInvalidJSONArgument.New(1, "json_overlaps"),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{}`, 1},
+			err: sql.ErrInvalidJSONArgument.New(2, "json_overlaps"),
 		},
 
 		// nulls
@@ -227,8 +242,9 @@ func TestJSONOverlaps(t *testing.T) {
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 			} else {
 				require.NoError(err)
 			}

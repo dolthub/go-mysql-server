@@ -260,6 +260,11 @@ func TestHandlerErrors(t *testing.T) {
 			query:             "INSERT INTO `test`.`test_table` (`id`, `id`, `v`) VALUES (1, 2, 3)",
 			expectedErrorCode: mysql.ERFieldSpecifiedTwice,
 		},
+		{
+			name:              "use database that doesn't exist'",
+			query:             "USE does_not_exist_db;",
+			expectedErrorCode: mysql.ERBadDb,
+		},
 	}
 
 	handler.ComInitDB(dummyConn, "test")
@@ -886,7 +891,6 @@ func TestSchemaToFields(t *testing.T) {
 // metadata for TEXT types, including honoring the character_set_results session variable. This is tested
 // here, instead of in string type unit tests, because of the dependency on system variables being loaded.
 func TestHandlerMaxTextResponseBytes(t *testing.T) {
-	variables.InitSystemVariables()
 	session := sql.NewBaseSession()
 	ctx := sql.NewContext(
 		context.Background(),
@@ -1207,7 +1211,7 @@ func dummyCb(_ *sqltypes.Result, _ bool) error {
 
 const waitTimeout = 500 * time.Millisecond
 
-func checkGlobalStatVar(t *testing.T, name string, expected uint64) {
+func checkGlobalStatVar(t *testing.T, name string, expected any) {
 	start := time.Now()
 	var globalVal interface{}
 	var ok bool
@@ -1345,6 +1349,56 @@ func TestStatusVariableQuestions(t *testing.T) {
 	checkSessionStatVar(t, sess4, "Questions", uint64(1))
 }
 
+func TestStatusVariableMaxUsedConnections(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	checkGlobalStatVar(t, "Max_used_connections", uint64(0))
+	checkGlobalStatVar(t, "Max_used_connections_time", "")
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Max_used_connections", uint64(1))
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Max_used_connections", uint64(2))
+
+	conn3 := newConn(3)
+	handler.NewConnection(conn3)
+	err = handler.ComInitDB(conn3, "test")
+	require.NoError(t, err)
+
+	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+
+	conn3.Close()
+	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+	conn2.Close()
+	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+	conn1.Close()
+	checkGlobalStatVar(t, "Max_used_connections", uint64(3))
+}
+
 func TestStatusVariableThreadsConnected(t *testing.T) {
 	variables.InitStatusVariables()
 
@@ -1364,6 +1418,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(0))
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
@@ -1371,10 +1426,12 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(1))
+	checkGlobalStatVar(t, "Connections", uint64(1))
 
 	handler.sm.RemoveConn(conn1)
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(1))
 
 	conns := make([]*mysql.Conn, 10)
 	for i := 0; i < 10; i++ {
@@ -1385,6 +1442,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(10))
+	checkGlobalStatVar(t, "Connections", uint64(11))
 
 	for i := 0; i < 10; i++ {
 		handler.sm.RemoveConn(conns[i])
@@ -1392,6 +1450,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_connected", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(11))
 }
 
 func TestStatusVariableThreadsRunning(t *testing.T) {
@@ -1413,6 +1472,7 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(0))
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)
@@ -1432,9 +1492,11 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	}()
 
 	checkGlobalStatVar(t, "Threads_running", uint64(1))
+	checkGlobalStatVar(t, "Connections", uint64(2))
 
 	wg.Wait()
 	checkGlobalStatVar(t, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(2))
 
 	wg.Add(2)
 	go func() {
@@ -1447,9 +1509,60 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	}()
 
 	checkGlobalStatVar(t, "Threads_running", uint64(2))
+	checkGlobalStatVar(t, "Connections", uint64(2))
 
 	wg.Wait()
 	checkGlobalStatVar(t, "Threads_running", uint64(0))
+	checkGlobalStatVar(t, "Connections", uint64(2))
+}
+
+func TestStatusVariableComSelect(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ComInitDB(conn1, "test")
+	require.NoError(t, err)
+	sess1 := handler.sm.sessions[1]
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	err = handler.ComInitDB(conn2, "test")
+	require.NoError(t, err)
+	sess2 := handler.sm.sessions[2]
+
+	checkGlobalStatVar(t, "Com_select", uint64(0))
+	checkSessionStatVar(t, sess1, "Com_select", uint64(0))
+	checkSessionStatVar(t, sess2, "Com_select", uint64(0))
+
+	// have session 1 call delete 5 times
+	for i := 0; i < 5; i++ {
+		handler.ComQuery(conn1, "select 1 from dual", dummyCb)
+	}
+
+	// have session 2 call delete 3 times
+	for i := 0; i < 3; i++ {
+		handler.ComQuery(conn2, "select 1 from dual", dummyCb)
+	}
+
+	checkGlobalStatVar(t, "Com_select", uint64(8))
+	checkSessionStatVar(t, sess1, "Com_select", uint64(5))
+	checkSessionStatVar(t, sess2, "Com_select", uint64(3))
 }
 
 func TestStatusVariableComDelete(t *testing.T) {

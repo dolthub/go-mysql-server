@@ -206,7 +206,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	doc, err := getJSONDocumentFromRow(ctx, row, j.JSON)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_search", 1, err)
 	}
 	if doc == nil {
 		return nil, nil
@@ -289,16 +289,21 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			} else if newPath == nil {
 				return nil, nil
 			} else {
-				path = newPath.(string)
+				path = *newPath
 			}
 			paths = append(paths, path)
 		}
 	}
 
+	val, err := doc.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+
 	seen := make(map[string]struct{})
 	var results []string
 	for _, path := range paths {
-		js, err := jsonpath.JsonPathLookup(doc.Val, path)
+		js, err := jsonpath.JsonPathLookup(val, path)
 		if err != nil && !errors.Is(err, jsonpath.ErrKeyError) {
 			return nil, err
 		}

@@ -15,7 +15,6 @@
 package variables
 
 import (
-	"sync"
 	"sync/atomic"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,7 +23,6 @@ import (
 
 // globalStatusVariables is the underlying type of sql.StatusVariables.
 type globalStatusVariables struct {
-	mutex   *sync.RWMutex
 	varVals map[string]sql.StatusVarValue
 }
 
@@ -32,13 +30,12 @@ var _ sql.StatusVariableRegistry = (*globalStatusVariables)(nil)
 
 // NewSessionMap implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
-	g.mutex.RLock()
-	defer g.mutex.RUnlock()
 	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Variable().GetScope() == sql.StatusVariableScope_Global {
 			continue
 		}
+		// TODO: This currently limits us to only supporting Uint64 status variables
 		switch val := v.Variable().GetDefault().(type) {
 		case atomic.Uint64:
 			sessionMap[k] = &sql.MutableStatusVarValue{
@@ -57,22 +54,18 @@ func (g *globalStatusVariables) NewSessionMap() map[string]sql.StatusVarValue {
 
 // NewGlobalMap implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) NewGlobalMap() map[string]sql.StatusVarValue {
-	g.mutex.RLock()
-	defer g.mutex.RUnlock()
-	sessionMap := make(map[string]sql.StatusVarValue, len(g.varVals))
+	globalMap := make(map[string]sql.StatusVarValue, len(g.varVals))
 	for k, v := range g.varVals {
 		if v.Variable().GetScope() == sql.StatusVariableScope_Session {
 			continue
 		}
-		sessionMap[k] = v.Copy()
+		globalMap[k] = v.Copy()
 	}
-	return sessionMap
+	return globalMap
 }
 
 // GetGlobal implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, interface{}, bool) {
-	g.mutex.RLock()
-	defer g.mutex.RUnlock()
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return nil, nil, false
@@ -82,12 +75,15 @@ func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, inte
 
 // SetGlobal implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
-		return sql.ErrUnknownSystemVariable.New(name)
+		return sql.ErrUnknownStatusVariable.New(name)
 	}
+
+	// TODO: We're currently hardcoding a Uint64 conversion here, which prevents us from supporting
+	//       non-uint64 status variables. This should really use the type of the status variable as
+	//       type to convert to, but because those are systemInt without the correct bounds configured,
+	//       that conversion will fail with an out of bounds error.
 	convVal, _, err := types.Uint64.Convert(val)
 	if err != nil {
 		return err
@@ -98,8 +94,6 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 
 // IncrementGlobal implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) IncrementGlobal(name string, val int) error {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return sql.ErrUnknownSystemVariable.New(name)
@@ -114,10 +108,11 @@ func init() {
 	InitStatusVariables()
 }
 
+// InitStatusVariables initializes the global status variables in sql.StatusVariables. If they have already
+// been initialized, this function will reset their values back to their defaults, which is useful for testing.
 func InitStatusVariables() {
 	if sql.StatusVariables == nil {
 		globalVars := &globalStatusVariables{
-			mutex:   &sync.RWMutex{},
 			varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
 		}
 		for _, sysVar := range statusVars {

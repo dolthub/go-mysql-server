@@ -3,6 +3,8 @@ package types
 import (
 	"testing"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 func TestMarshalToMySqlString(t *testing.T) {
@@ -98,6 +100,11 @@ newlines
 	"nested_escapedQuotes": "here \"you\" go"
 }`},
 			expected: `["{\n\t\"nested\": \"json\",\n\t\"nested_escapedQuotes\": \"here \\\"you\\\" go\"\n}"]`,
+		},
+		{
+			name:     "decimal",
+			val:      decimal.New(123, -2),
+			expected: "1.23",
 		},
 	}
 

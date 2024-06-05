@@ -25,15 +25,14 @@ import (
 )
 
 func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
-	dbName := strings.ToLower(d.Table.Qualifier.String())
+	dbName := strings.ToLower(d.Table.DbQualifier.String())
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 
-	tableName := strings.ToLower(d.Table.Name.String())
-	destScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+	destScope, ok := b.buildResolvedTableForTablename(inScope, d.Table, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
+		b.handleErr(sql.ErrTableNotFound.New(d.Table.Name.String()))
 	}
 	var db sql.Database
 	var rt *plan.ResolvedTable
@@ -48,9 +47,9 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	}
 	if rt == nil {
 		if b.TriggerCtx().Active && !b.TriggerCtx().Call {
-			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, tableName)
+			b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, d.Table.Name.String())
 		} else {
-			err := fmt.Errorf("expected resolved table: %s", tableName)
+			err := fmt.Errorf("expected resolved table: %s", d.Table.Name.String())
 			b.handleErr(err)
 		}
 	}

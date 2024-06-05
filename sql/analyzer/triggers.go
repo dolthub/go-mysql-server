@@ -166,7 +166,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
-		b := planbuilder.New(ctx, a.Catalog)
+		b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
 		prevActive := b.TriggerCtx().Active
 		b.TriggerCtx().Active = true
 		defer func() {

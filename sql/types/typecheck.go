@@ -110,8 +110,14 @@ func IsSigned(t sql.Type) bool {
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
 func IsText(t sql.Type) bool {
-	_, ok := t.(StringType)
-	return ok
+	if _, ok := t.(StringType); ok {
+		return ok
+	}
+	if extendedType, ok := t.(ExtendedType); ok {
+		_, isString := extendedType.Zero().(string)
+		return isString
+	}
+	return false
 }
 
 // IsTextBlob checks if t is one of the TEXTs or BLOBs.

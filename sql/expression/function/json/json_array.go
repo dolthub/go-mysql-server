@@ -113,7 +113,10 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		switch v := val.(type) {
 		case sql.JSONWrapper:
-			val = v.ToInterface()
+			val, err = v.ToInterface()
+			if err != nil {
+				return nil, err
+			}
 		case []byte:
 			val = string(v)
 		}

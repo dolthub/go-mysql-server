@@ -107,7 +107,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 }
 
 func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
-	statistics, err := statsProv.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), strings.ToLower(rt.Name()))
+	statistics, err := statsProv.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), rt.UnderlyingTable())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1442,7 +1442,7 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider
 	var rowCount uint64
 	var avgSize uint64
 
-	rowCount, _ = statsProv.RowCount(ctx, idx.Database(), idx.Table())
+	rowCount, _ = statsProv.RowCount(ctx, idx.Database(), iat)
 
 	if st, ok := iat.(sql.StatisticsTable); ok {
 		rCnt, _, err := st.RowCount(ctx)

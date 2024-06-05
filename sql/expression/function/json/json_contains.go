@@ -120,7 +120,7 @@ func (j *JSONContains) IsNullable() bool {
 func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_contains", 1, err)
 	}
 	if target == nil {
 		return nil, nil
@@ -128,7 +128,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate)
 	if err != nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_contains", 2, err)
 	}
 	if candidate == nil {
 		return nil, nil
@@ -162,7 +162,15 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	// Now determine whether the candidate value exists in the target
-	return types.ContainsJSON(target.ToInterface(), candidate.ToInterface())
+	targetVal, err := target.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	candidateVal, err := candidate.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	return types.ContainsJSON(targetVal, candidateVal)
 }
 
 func (j *JSONContains) Children() []sql.Expression {

@@ -150,7 +150,6 @@ var SQLLogicJoinTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// Syntax error
-				Skip:  true,
 				Query: "INSERT INTO xy (VALUES ROW(1, 1))",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},

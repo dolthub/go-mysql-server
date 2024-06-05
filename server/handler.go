@@ -40,17 +40,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-var errConnectionNotFound = errors.NewKind("connection not found: %c")
 
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
 var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout")
 
 // ErrConnectionWasClosed will be returned if we try to use a previously closed connection
 var ErrConnectionWasClosed = errors.NewKind("connection was closed")
+
+// set this to true to get verbose error logging on every query (print a stack trace for most errors)
+var verboseErrorLogging = false
 
 const rowsBatch = 128
 
@@ -85,13 +85,20 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	h.sm.AddConn(c)
+	updateMaxUsedConnectionsStatusVariable()
+	sql.StatusVariables.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
-	return h.sm.SetDB(c, schemaName)
+	err := h.sm.SetDB(c, schemaName)
+	if err != nil {
+		logrus.WithField("database", schemaName).Errorf("unable to process ComInitDB: %s", err.Error())
+		err = sql.CastSQLError(err)
+	}
+	return err
 }
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
@@ -357,7 +364,7 @@ func (h *Handler) doQuery(
 	if parsed == nil {
 		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 		if mode == MultiStmtModeOn && !inPreparedCache {
-			parsed, prequery, remainder, err = planbuilder.ParseOnly(ctx, query, true)
+			parsed, prequery, remainder, err = h.e.Parser.Parse(ctx, query, true)
 			if prequery != "" {
 				query = prequery
 			}
@@ -389,7 +396,6 @@ func (h *Handler) doQuery(
 	ctx.GetLogger().Tracef("beginning execution")
 
 	oCtx := ctx
-	eg, ctx := ctx.NewErrgroup()
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
@@ -400,15 +406,99 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	// TODO (next): this method needs a function param that produces the following elements, rather than hard-coding
 	schema, rowIter, err := queryExec(ctx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
+		if verboseErrorLogging {
+			fmt.Printf("Err: %+v", err)
+		}
 		return remainder, err
 	}
 
 	// create result before goroutines to avoid |ctx| racing
 	resultFields := schemaToFields(ctx, schema)
+	var r *sqltypes.Result
+	var processedAtLeastOneBatch bool
+
+	// zero/single return schema use spooling shortcut
+	if types.IsOkResultSchema(schema) {
+		r, err = resultForOkIter(ctx, rowIter)
+	} else if schema == nil {
+		r, err = resultForEmptyIter(ctx, rowIter, resultFields)
+	} else {
+		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(ctx, c, schema, rowIter, callback, resultFields, more)
+	}
+	if err != nil {
+		return remainder, err
+	}
+
+	// errGroup context is now canceled
+	ctx = oCtx
+
+	if err = setConnStatusFlags(ctx, c); err != nil {
+		return remainder, err
+	}
+
+	switch len(r.Rows) {
+	case 0:
+		if len(r.Info) > 0 {
+			ctx.GetLogger().Tracef("returning result %s", r.Info)
+		} else {
+			ctx.GetLogger().Tracef("returning empty result")
+		}
+	case 1:
+		ctx.GetLogger().Tracef("returning result %v", r)
+	}
+
+	ctx.GetLogger().Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
+
+	// processedAtLeastOneBatch means we already called callback() at least
+	// once, so no need to call it if RowsAffected == 0.
+	if r != nil && (r.RowsAffected == 0 && processedAtLeastOneBatch) {
+		return remainder, nil
+	}
+
+	return remainder, callback(r, more)
+}
+
+// resultForOkIter reads a maximum of one result row from a result iterator.
+func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+	row, err := iter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	_, err = iter.Next(ctx)
+	if err != io.EOF {
+		return nil, fmt.Errorf("result schema iterator returned more than one row")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+	return resultFromOkResult(row[0].(types.OkResult)), nil
+}
+
+// resultForEmptyIter ensures that an expected empty iterator returns no rows.
+func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+	if _, err := iter.Next(ctx); err != io.EOF {
+		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// resultForDefaultIter reads batches of rows from the iterator
+// and writes results into the callback function.
+func (h *Handler) resultForDefaultIter(
+	ctx *sql.Context,
+	c *mysql.Conn,
+	schema sql.Schema,
+	iter sql.RowIter,
+	callback func(*sqltypes.Result, bool) error,
+	resultFields []*querypb.Field,
+	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, err error) {
+	eg, ctx := ctx.NewErrgroup()
 
 	var rowChan chan sql.Row
 
@@ -425,7 +515,7 @@ func (h *Handler) doQuery(
 			case <-ctx.Done():
 				return nil
 			default:
-				row, err := rowIter.Next(ctx)
+				row, err := iter.Next(ctx)
 				if err == io.EOF {
 					return nil
 				}
@@ -456,9 +546,6 @@ func (h *Handler) doQuery(
 	}
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
-
-	var r *sqltypes.Result
-	var processedAtLeastOneBatch bool
 
 	// reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
@@ -519,42 +606,17 @@ func (h *Handler) doQuery(
 	// wait until all rows have be sent over the wire
 	eg.Go(func() error {
 		wg.Wait()
-		return rowIter.Close(ctx)
+		return iter.Close(ctx)
 	})
 
 	err = eg.Wait()
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
-		return remainder, err
-	}
-
-	// errGroup context is now canceled
-	ctx = oCtx
-
-	if err = setConnStatusFlags(ctx, c); err != nil {
-		return remainder, err
-	}
-
-	switch len(r.Rows) {
-	case 0:
-		if len(r.Info) > 0 {
-			ctx.GetLogger().Tracef("returning result %s", r.Info)
-		} else {
-			ctx.GetLogger().Tracef("returning empty result")
+		if verboseErrorLogging {
+			fmt.Printf("Err: %+v", err)
 		}
-	case 1:
-		ctx.GetLogger().Tracef("returning result %v", r)
 	}
-
-	ctx.GetLogger().Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
-
-	// processedAtLeastOneBatch means we already called callback() at least
-	// once, so no need to call it if RowsAffected == 0.
-	if r != nil && (r.RowsAffected == 0 && processedAtLeastOneBatch) {
-		return remainder, nil
-	}
-
-	return remainder, callback(r, more)
+	return
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
@@ -726,6 +788,55 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
+// getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
+// this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
+// logged and 0 will be returned.
+func getMaxUsedConnections() uint64 {
+	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+	if !ok {
+		logrus.Errorf("unable to find Max_used_connections status variable")
+		return 0
+	}
+	maxUsedConnections, ok := maxUsedConnectionsValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Max_used_connections status variable: %T", maxUsedConnectionsValue)
+		return 0
+	}
+	return maxUsedConnections
+}
+
+// getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
+// variable. If any error is encountered, it will be logged and 0 will be returned.
+func getThreadsConnected() uint64 {
+	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+	if !ok {
+		logrus.Errorf("unable to find Threads_connected status variable")
+		return 0
+	}
+	threadsConnected, ok := threadsConnectedValue.(uint64)
+	if !ok {
+		logrus.Errorf("unexpected type for Threads_connected status variable: %T", threadsConnectedValue)
+		return 0
+	}
+	return threadsConnected
+}
+
+// updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
+// variables if the current number of connected threads is greater than the current
+// value of Max_used_connections.
+func updateMaxUsedConnectionsStatusVariable() {
+	go func() {
+		maxUsedConnections := getMaxUsedConnections()
+		threadsConnected := getThreadsConnected()
+		if threadsConnected > maxUsedConnections {
+			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			// TODO: When Max_used_connections is updated, we should also update
+			//       Max_used_connections_time with the current time, but our status
+			//       variables support currently only supports Uint values.
+		}
+	}()
+}
+
 func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
 	var err error
@@ -735,30 +846,8 @@ func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, er
 			continue
 		}
 		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if s != nil {
+		if len(s) > 0 {
 			o[i], err = s[i].Type.SQL(ctx, nil, v)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return o, nil
-}
-
-func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row))
-	var err error
-	for i := 0; i < row.Len(); i++ {
-		v := row.GetField(i)
-		if v.IsNull() {
-			o[i] = sqltypes.NULL
-			continue
-		}
-
-		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if s != nil {
-			o[i], err = s[i].Type.(sql.Type2).SQL2(v)
 			if err != nil {
 				return nil, err
 			}

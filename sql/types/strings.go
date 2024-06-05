@@ -15,7 +15,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -372,20 +371,17 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 			return "", nil
 		}
 		val = s.Decimal.String()
-
-	case JSONStringer:
-		var err error
-		val, err = s.JSONString()
+	case JSONDocument:
+		jsonString, err := StringifyJSON(s)
 		if err != nil {
 			return "", err
 		}
-		val, err = strings.Unquote(val)
+		val, err = strings.Unquote(jsonString)
 		if err != nil {
 			return "", err
 		}
 	case sql.JSONWrapper:
-		jsonInterface := s.ToInterface()
-		jsonBytes, err := json.Marshal(jsonInterface)
+		jsonBytes, err := MarshallJson(s)
 		if err != nil {
 			return "", err
 		}
