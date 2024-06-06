@@ -428,6 +428,10 @@ type updateJoinRowHandler struct {
 	updaterMap   map[string]sql.RowUpdater
 }
 
+func (u *updateJoinRowHandler) handleRowsMatched(_ sql.Row) {
+	u.rowsMatched += 1
+}
+
 func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	oldJoinRow := row[:len(row)/2]
 	newJoinRow := row[len(row)/2:]
@@ -436,7 +440,7 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	tableToNewRow := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
 	for tableName, _ := range u.updaterMap {
-		u.rowsMatched++ // TODO: This currently returns the incorrect answer
+		//u.rowsMatched++ // TODO: This currently returns the incorrect answer
 		tableOldRow := tableToOldRow[tableName]
 		tableNewRow := tableToNewRow[tableName]
 		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
