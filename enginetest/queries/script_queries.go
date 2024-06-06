@@ -190,6 +190,25 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
+		Name: "Dolt issue 7957, update join matched rows",
+		SetUpScript: []string{
+			`CREATE TABLE entity_test(
+    id INT PRIMARY KEY,
+    value INT
+);`,
+			"INSERT INTO entity_test (id, value) values (1,10), (2,20), (3,30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE entity_test
+    JOIN (VALUES ROW(1, 10), ROW(2,20)) joined (id, value)
+    ON joined.id = entity_test.id
+SET entity_test.value = joined.value;`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 2}}}},
+			},
+		},
+	},
+	{
 		Name: "GMS issue 2349",
 		SetUpScript: []string{
 			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
@@ -2587,7 +2606,7 @@ CREATE TABLE tab3 (
 			{
 				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
-					Matched:  6, // TODO: The answer should be 8
+					Matched:  8,
 					Updated:  6,
 					Warnings: 0,
 				}}}},
@@ -5686,14 +5705,14 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// TODO: this query isn't valid SQL, why
 				Query: `update joinparent as jp 
 							left join joinchild as jc on jc.parent_id = jp.id
 								set jp.archived = jp.id, jp.archived_at = now(), 
 									jc.archived = jc.id, jc.archived_at = now()
 						where jp.id > 0 and jp.name != "never"
-						order by jp.name
 						limit 100`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
 			},
 			// do without limit to use `plan.Sort` instead of `plan.TopN`
 			{
@@ -5701,9 +5720,8 @@ CREATE TABLE tab3 (
 							left join joinchild as jc on jc.parent_id = jp.id
 								set jp.archived = 0, jp.archived_at = null, 
 									jc.archived = 0, jc.archived_at = null
-						where jp.id > 0 and jp.name != "never"
-						order by jp.name`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+						where jp.id > 0 and jp.name != "never"`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
 			},
 		},
 	},

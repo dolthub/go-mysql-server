@@ -367,6 +367,23 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 		}
 
 		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: plan.RecreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
+		var iter = rowIter
+		var done bool
+		for !done {
+			switch i := iter.(type) {
+			case *plan.TableEditorIter:
+				iter = i.InnerIter()
+			case *updateIter:
+				iter = i.childIter
+			case *updateJoinIter:
+				i.accumulator = rowHandler.(*updateJoinRowHandler)
+				done = true
+			case *projectIter:
+				iter = i.childIter
+			default:
+				return nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
+			}
+		}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", n.RowUpdateType))
 	}
