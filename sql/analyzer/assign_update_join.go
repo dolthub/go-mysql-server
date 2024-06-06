@@ -1,6 +1,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -88,7 +90,7 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 		switch e := e.(type) {
 		case *expression.SetField:
 			gf := e.LeftChild.(*expression.GetField)
-			ret[gf.Table()] = struct{}{}
+			ret[strings.ToLower(gf.Table())] = struct{}{}
 			return false
 		}
 
