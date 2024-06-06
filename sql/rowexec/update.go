@@ -238,7 +238,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				cache.Put(hash, struct{}{})
 
 				// updateJoin counts matched rows from join output
-				u.accumulator.handleRowsMatched(oldTableRow)
+				u.accumulator.handleRowMatched()
 
 				continue
 			} else if err != nil {
