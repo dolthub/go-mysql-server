@@ -316,7 +316,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.ValuesFuncExpr:
 		if b.insertActive {
 			if v.Name.Qualifier.Name.String() == "" {
-				v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
+				v.Name.Qualifier.Name = ast.NewTableIdent(b.insertTableAlias)
+				if len(b.insertColumnAliases) > 0 {
+					v.Name.Name = ast.NewColIdent(b.insertColumnAliases[v.Name.Name.String()])
+				}
 			}
 			dbName := strings.ToLower(v.Name.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(v.Name.Qualifier.Name.String())
