@@ -99,7 +99,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		if len(aliasedValues.Columns) > 0 {
 			inScope.insertColumnAliases = make(map[string]string)
 			for i, destColumn := range columns {
-				sourceColumn := aliasedValues.Columns[i].String()
+				sourceColumn := aliasedValues.Columns[i].Lowered()
 				inScope.insertColumnAliases[destColumn] = sourceColumn
 			}
 		}
