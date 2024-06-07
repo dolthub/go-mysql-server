@@ -151,7 +151,7 @@ func (doc JSONDocument) Lookup(ctx context.Context, path string) (sql.JSONWrappe
 	return lookupJson(doc.Val, path)
 }
 
-func (doc JSONDocument) Clone() sql.JSONWrapper {
+func (doc JSONDocument) Clone(context.Context) sql.JSONWrapper {
 	return &JSONDocument{Val: DeepCopyJson(doc.Val)}
 }
 
@@ -182,7 +182,7 @@ func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
 }
 
 // Clone implements sql.JSONWrapper.
-func (j *LazyJSONDocument) Clone() sql.JSONWrapper {
+func (j *LazyJSONDocument) Clone(context.Context) sql.JSONWrapper {
 	return NewLazyJSONDocument(j.Bytes)
 }
 

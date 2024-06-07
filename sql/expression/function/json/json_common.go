@@ -15,6 +15,7 @@
 package json
 
 import (
+	"context"
 	goJson "encoding/json"
 	"fmt"
 
@@ -42,7 +43,7 @@ func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (type
 		return nil, err
 	}
 
-	return mutableJsonDoc(doc)
+	return mutableJsonDoc(ctx, doc)
 }
 
 // getSearchableJSONVal returns a SearchableJSONValue from the given row and expression. The underlying value is not copied
@@ -92,10 +93,10 @@ func getJsonFunctionError(functionName string, argumentPosition int, err error) 
 }
 
 // mutableJsonDoc returns a copy of |wrapper| that can be safely mutated.
-func mutableJsonDoc(wrapper sql.JSONWrapper) (types.MutableJSON, error) {
+func mutableJsonDoc(ctx context.Context, wrapper sql.JSONWrapper) (types.MutableJSON, error) {
 	// Call Clone() even if |wrapper| isn't mutable. This is because some implementations (like LazyJsonDocument)
 	// cache and reuse the result of ToInterface(), and mutating this map may cause unintended behavior.
-	clonedJsonWrapper := wrapper.Clone()
+	clonedJsonWrapper := wrapper.Clone(ctx)
 
 	if mutable, ok := clonedJsonWrapper.(types.MutableJSON); ok {
 		return mutable, nil

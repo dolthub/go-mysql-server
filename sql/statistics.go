@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -142,7 +143,7 @@ func (h Histogram) IsEmpty() bool {
 	return len(h) == 0
 }
 
-func (h Histogram) Clone() JSONWrapper {
+func (h Histogram) Clone(context.Context) JSONWrapper {
 	return h
 }
 
@@ -220,7 +221,7 @@ type HistogramBucket interface {
 // by minimizing the need to unmarshall a JSONWrapper into a JSONDocument.
 type JSONWrapper interface {
 	// Clone creates a new value that can be mutated without affecting the original.
-	Clone() JSONWrapper
+	Clone(ctx context.Context) JSONWrapper
 	// ToInterface converts a JSONWrapper to an interface{} of simple types
 	ToInterface() (interface{}, error)
 }

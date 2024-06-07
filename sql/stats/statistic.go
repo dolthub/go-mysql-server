@@ -19,6 +19,7 @@ package stats
 // interfaces defined in |sql|, but the separation is necessary for import conflicts.
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"time"
@@ -209,7 +210,7 @@ func (s *Statistic) IndexClass() sql.IndexClass {
 	return sql.IndexClass(s.IdxClass)
 }
 
-func (s *Statistic) Clone() sql.JSONWrapper {
+func (s *Statistic) Clone(context.Context) sql.JSONWrapper {
 	return s
 }
 
