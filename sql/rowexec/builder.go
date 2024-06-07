@@ -32,6 +32,5 @@ type BaseBuilder struct{}
 
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
 	defer trace.StartRegion(ctx, "ExecBuilder.Build").End()
-
 	return b.buildNodeExec(ctx, n, r)
 }

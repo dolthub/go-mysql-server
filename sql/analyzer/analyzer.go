@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime/trace"
 	"strings"
 
 	"github.com/pmezard/go-difflib/difflib"
@@ -509,6 +510,7 @@ const maxBatchRecursion = 100
 
 func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan.Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze")
+	defer trace.StartRegion(ctx, "Analyzer.analyzeWithSelector").End()
 
 	if scope.RecursionDepth() > maxBatchRecursion {
 		return n, transform.SameTree, ErrMaxAnalysisIters.New(maxBatchRecursion)

@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	trace2 "runtime/trace"
 	"sync"
 	"time"
 
@@ -466,6 +467,8 @@ func (h *Handler) doQuery(
 
 // resultForOkIter reads a maximum of one result row from a result iterator.
 func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+	defer trace2.StartRegion(ctx, "Handler.resultForOkIter").End()
+
 	row, err := iter.Next(ctx)
 	if err != nil {
 		return nil, err
@@ -482,6 +485,7 @@ func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, erro
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
 func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+	defer trace2.StartRegion(ctx, "Handler.resultForEmptyIter").End()
 	if _, err := iter.Next(ctx); err != io.EOF {
 		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
 	}
@@ -501,6 +505,8 @@ func (h *Handler) resultForDefaultIter(
 	callback func(*sqltypes.Result, bool) error,
 	resultFields []*querypb.Field,
 	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, err error) {
+	defer trace2.StartRegion(ctx, "Handler.resultForDefaultIter").End()
+
 	eg, ctx := ctx.NewErrgroup()
 
 	var rowChan chan sql.Row
