@@ -1939,6 +1939,9 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 func allDatabases(ctx *Context, cat Catalog) ([]Database, error) {
 	var dbs []Database
 	for _, db := range cat.AllDatabases(ctx) {
+		if privDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
+			db = privDatabase.Unwrap()
+		}
 		sdb, ok := db.(SchemaDatabase)
 		if ok {
 			schemas, err := sdb.AllSchemas(ctx)
