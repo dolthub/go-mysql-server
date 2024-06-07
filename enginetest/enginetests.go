@@ -4053,6 +4053,214 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 			},
 		},
+		{
+			Name: "Insert on duplicate key with row alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner,status=new_nodes.status",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id1"),
+						"v2": mustBuildBindVariable("milo"),
+						"v3": mustBuildBindVariable("on"),
+						"v4": mustBuildBindVariable(2),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner,status=new_nodes.status",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id2"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("off"),
+						"v4": mustBuildBindVariable(3),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "milo", "on", 1},
+						{"id2", "dabe", "off", 3},
+					},
+				},
+			},
+		},
+		{
+			Name: "Out-of-order Insert on duplicate key with row alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    color varchar(10),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 'red', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(color,timestamp,owner,id) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("green"),
+						"v2": mustBuildBindVariable(2),
+						"v3": mustBuildBindVariable("dabe"),
+						"v4": mustBuildBindVariable("id1"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(color,timestamp,owner,id) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("blue"),
+						"v2": mustBuildBindVariable(3),
+						"v3": mustBuildBindVariable("dabe"),
+						"v4": mustBuildBindVariable("id2"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "dabe", "off", "green", 1},
+						{"id2", "dabe", nil, "blue", 3},
+					},
+				},
+			},
+		},
+		{
+			Name: "Insert on duplicate key with row and column alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    color varchar(10),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 'red', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(id,owner,status,color,timestamp) values(?, ?, ?, ?, ?) as new_nodes(new_id, new_owner, new_status, new_color, new_timestamp) on duplicate key update owner=new_nodes.new_owner,status=new_status,color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id1"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("on"),
+						"v4": mustBuildBindVariable("green"),
+						"v5": mustBuildBindVariable(2),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(id,owner,status,color,timestamp) values(?, ?, ?, ?, ?) as new_nodes(new_id, new_owner, new_status, new_color, new_timestamp) on duplicate key update owner=new_nodes.new_owner,status=new_status,color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id2"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("off"),
+						"v4": mustBuildBindVariable("blue"),
+						"v5": mustBuildBindVariable(3),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "dabe", "on", "green", 1},
+						{"id2", "dabe", "off", "blue", 3},
+					},
+				},
+			},
+		},
+		{
+			Name: "Out-of-order Insert on duplicate key with row and column alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    color varchar(10),
+			    size varchar(10),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 'red', 'large', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(size,color,timestamp,owner,id) values(?, ?, ?, ?, ?) as new_nodes(new_size,new_color,new_timestamp,new_owner,new_id) on duplicate key update size=new_size, owner=new_nodes.new_owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("medium"),
+						"v2": mustBuildBindVariable("green"),
+						"v3": mustBuildBindVariable(2),
+						"v4": mustBuildBindVariable("dabe"),
+						"v5": mustBuildBindVariable("id1"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(size,color,timestamp,owner,id) values(?, ?, ?, ?, ?) as new_nodes(new_size,new_color,new_timestamp,new_owner,new_id) on duplicate key update size=new_size, owner=new_nodes.new_owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("small"),
+						"v2": mustBuildBindVariable("blue"),
+						"v3": mustBuildBindVariable(3),
+						"v4": mustBuildBindVariable("dabe"),
+						"v5": mustBuildBindVariable("id2"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "dabe", "off", "green", "medium", 1},
+						{"id2", "dabe", nil, "blue", "small", 3},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		TestScript(t, harness, tt)

@@ -425,7 +425,20 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 		for oldRowIdx, c := range n.Destination.Schema() {
 			rightSchema[oldRowIdx] = c
 			newRowIdx := len(n.Destination.Schema()) + oldRowIdx
-			if _, ok := n.Source.(*plan.Values); !ok && len(n.Destination.Schema()) == len(n.Source.Schema()) {
+			if values, ok := n.Source.(*plan.Values); ok {
+				// The source table is either named via VALUES(...) AS ... or has
+				// the default value planbuilder.OnDupValuesPrefix
+				newC := c.Copy()
+				newC.Source = values.AliasName
+				if values.ColumnNames != nil {
+					newC.Name = values.ColumnNames[newC.Name]
+				}
+				rightSchema[newRowIdx] = newC
+			} else if len(n.Destination.Schema()) != len(n.Source.Schema()) {
+				newC := c.Copy()
+				newC.Source = planbuilder.OnDupValuesPrefix
+				rightSchema[newRowIdx] = newC
+			} else {
 				// find source index that aligns with dest column
 				var matched bool
 				for j, sourceCol := range n.ColumnNames {
@@ -441,10 +454,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 					//  define the columns upfront.
 					rightSchema[newRowIdx] = n.Source.Schema()[oldRowIdx]
 				}
-			} else {
-				newC := c.Copy()
-				newC.Source = planbuilder.OnDupValuesPrefix
-				rightSchema[newRowIdx] = newC
 			}
 		}
 		rightScope := &idxScope{}
