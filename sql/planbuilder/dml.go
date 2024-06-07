@@ -90,17 +90,17 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	// We need to give a table name to the scope of the values being inserted. We use the row alias if provided, otherwise go with a default.
 	// If the row alias also provided column names, we create a map from the destination names to the aliases. This will allow us to
 	// rewrite VALUES() function expressions to use the new column names.
-	b.insertTableAlias = OnDupValuesPrefix
+	inScope.insertTableAlias = OnDupValuesPrefix
 	if aliasedValues, ok := insertRows.(*ast.AliasedValues); ok {
 		valueTableName := aliasedValues.As.String()
 		if valueTableName != "" {
-			b.insertTableAlias = valueTableName
+			inScope.insertTableAlias = valueTableName
 		}
 		if len(aliasedValues.Columns) > 0 {
-			b.insertColumnAliases = make(map[string]string)
+			inScope.insertColumnAliases = make(map[string]string)
 			for i, destColumn := range columns {
 				sourceColumn := aliasedValues.Columns[i].String()
-				b.insertColumnAliases[destColumn] = sourceColumn
+				inScope.insertColumnAliases[destColumn] = sourceColumn
 			}
 		}
 	}
@@ -112,15 +112,17 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		// TODO: on duplicate expressions need to reference both VALUES and
 		//  derived columns equally in ON DUPLICATE UPDATE expressions.
 		combinedScope := inScope.replace()
+		combinedScope.insertTableAlias = inScope.insertTableAlias
+		combinedScope.insertColumnAliases = inScope.insertColumnAliases
 		for i, c := range destScope.cols {
 			combinedScope.newColumn(c)
 			if len(srcScope.cols) == len(destScope.cols) {
 				combinedScope.newColumn(srcScope.cols[i])
 			} else {
 				// The to-be-inserted values can be referenced via the provided alias.
-				c.table = b.insertTableAlias
-				if len(b.insertColumnAliases) > 0 {
-					aliasColumnName := b.insertColumnAliases[c.col]
+				c.table = combinedScope.insertTableAlias
+				if len(combinedScope.insertColumnAliases) > 0 {
+					aliasColumnName := combinedScope.insertColumnAliases[c.col]
 					c.col = aliasColumnName
 					c.originalCol = aliasColumnName
 				}
@@ -242,7 +244,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 	}
 
 	outScope = inScope.push()
-	outScope.node = plan.NewValuesWithAlias(v.As.String(), b.insertColumnAliases, exprTuples)
+	outScope.node = plan.NewValuesWithAlias(v.As.String(), inScope.insertColumnAliases, exprTuples)
 	return
 }
 

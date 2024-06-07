@@ -34,23 +34,21 @@ var BinderFactory = &sync.Pool{New: func() interface{} {
 }}
 
 type Builder struct {
-	ctx                 *sql.Context
-	cat                 sql.Catalog
-	parserOpts          ast.ParserOptions
-	f                   *factory
-	currentDatabase     sql.Database
-	colId               columnId
-	tabId               sql.TableId
-	multiDDL            bool
-	viewCtx             *ViewContext
-	procCtx             *ProcContext
-	triggerCtx          *TriggerContext
-	bindCtx             *BindvarContext
-	insertActive        bool
-	insertTableAlias    string
-	insertColumnAliases map[string]string
-	nesting             int
-	parser              sql.Parser
+	ctx             *sql.Context
+	cat             sql.Catalog
+	parserOpts      ast.ParserOptions
+	f               *factory
+	currentDatabase sql.Database
+	colId           columnId
+	tabId           sql.TableId
+	multiDDL        bool
+	viewCtx         *ViewContext
+	procCtx         *ProcContext
+	triggerCtx      *TriggerContext
+	bindCtx         *BindvarContext
+	insertActive    bool
+	nesting         int
+	parser          sql.Parser
 }
 
 // BindvarContext holds bind variable replacement literals.
