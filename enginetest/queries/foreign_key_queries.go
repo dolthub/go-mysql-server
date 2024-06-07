@@ -32,7 +32,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_named` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -44,7 +44,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE sibling;",
-				Expected: []sql.Row{{"sibling", "CREATE TABLE `sibling` (\n  `id` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`id`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"sibling", "CREATE TABLE `sibling` (\n  `id` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_named` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -233,7 +233,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
@@ -241,7 +241,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `v1` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:       "ALTER TABLE child DROP FOREIGN KEY fk_name;",
@@ -291,7 +291,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "RENAME TABLE child TO new_child;",
@@ -299,7 +299,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SHOW CREATE TABLE new_child;",
-				Expected: []sql.Row{{"new_child", "CREATE TABLE `new_child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"new_child", "CREATE TABLE `new_child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -419,7 +419,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1_new` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `v1` (`v1_new`),\n  CONSTRAINT `fk1` FOREIGN KEY (`v1_new`) REFERENCES `parent` (`v1_new`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1_new` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk1` (`v1_new`),\n  CONSTRAINT `fk1` FOREIGN KEY (`v1_new`) REFERENCES `parent` (`v1_new`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -1356,7 +1356,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE delayed_child;",
-				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `fk_delayed` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_parent;",
@@ -1408,7 +1408,7 @@ var ForeignKeyTests = []ScriptTest{
 				ExpectedErr: sql.ErrAddForeignKeyDuplicateColumn,
 			},
 			{
-				Query:       "ALTER TABLE valid_delayed_child drop index i",
+				Query:       "ALTER TABLE valid_delayed_child drop index valid_fk",
 				ExpectedErr: sql.ErrForeignKeyDropIndex,
 			},
 		},
@@ -1424,7 +1424,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE delayed_child;",
-				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `v1` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `fk_delayed` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_child;",
@@ -1590,7 +1590,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  `fk1` int NOT NULL,\n" +
 						"  `fk2` int NOT NULL,\n" +
 						"  PRIMARY KEY (`fk2`,`fk1`,`id`),\n" +
-						"  KEY `fk1fk2` (`fk1`,`fk2`),\n" +
+						"  KEY `fk` (`fk1`,`fk2`),\n" +
 						"  UNIQUE KEY `id` (`id`),\n" +
 						"  CONSTRAINT `fk` FOREIGN KEY (`fk1`,`fk2`) REFERENCES `parent` (`fk1`,`fk2`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -1678,7 +1678,7 @@ var ForeignKeyTests = []ScriptTest{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int NOT NULL,\n  `J` int,\n" +
 						"  PRIMARY KEY (`i`),\n" +
-						"  KEY `J` (`J`),\n" +
+						"  KEY `fk1` (`J`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`J`) REFERENCES `t1` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -1701,7 +1701,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  `I` int NOT NULL,\n" +
 						"  `j` int,\n" +
 						"  PRIMARY KEY (`I`),\n" +
-						"  KEY `j` (`j`),\n" +
+						"  KEY `fk2` (`j`),\n" +
 						"  CONSTRAINT `fk2` FOREIGN KEY (`j`) REFERENCES `t2` (`I`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -1722,7 +1722,7 @@ var ForeignKeyTests = []ScriptTest{
 					{"t3", "CREATE TABLE `t3` (\n" +
 						"  `i` int NOT NULL,\n  `j` int,\n" +
 						"  PRIMARY KEY (`i`),\n" +
-						"  KEY `j` (`j`),\n" +
+						"  KEY `fk3` (`j`),\n" +
 						"  CONSTRAINT `fk3` FOREIGN KEY (`j`) REFERENCES `t3` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -2119,7 +2119,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  `pk2` int NOT NULL,\n" +
 						"  `pk3` int NOT NULL,\n" +
 						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
-						"  KEY `fk1pk2` (`fk1`,`pk2`),\n" +
+						"  KEY `fk1` (`fk1`,`pk2`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`fk1`,`pk2`) REFERENCES `parent1` (`fk1`,`pk2`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -2155,7 +2155,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  `pk2` int NOT NULL,\n" +
 						"  `pk3` int NOT NULL,\n" +
 						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
-						"  KEY `fk1pk2pk1` (`fk1`,`pk2`,`pk1`),\n" +
+						"  KEY `fk2` (`fk1`,`pk2`,`pk1`),\n" +
 						"  CONSTRAINT `fk2` FOREIGN KEY (`fk1`,`pk2`,`pk1`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -2197,7 +2197,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  `pk2` int NOT NULL,\n" +
 						"  `pk3` int NOT NULL,\n" +
 						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
-						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  KEY `fk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
 						"  CONSTRAINT `fk3` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -2221,7 +2221,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  `pk2` int NOT NULL,\n" +
 						"  `pk3` int NOT NULL,\n" +
 						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
-						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  KEY `fk4` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
 						"  KEY `idx4` (`fk1`,`pk2`),\n" +
 						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -2242,7 +2242,7 @@ var ForeignKeyTests = []ScriptTest{
 						"  `pk2` int NOT NULL,\n" +
 						"  `pk3` int NOT NULL,\n" +
 						"  PRIMARY KEY (`pk1`,`pk2`,`pk3`),\n" +
-						"  KEY `fk1pk2pk1pk3` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
+						"  KEY `fk4` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
 						"  KEY `idx4` (`fk1`,`pk2`),\n" +
 						"  CONSTRAINT `fk4` FOREIGN KEY (`fk1`,`pk2`,`pk1`,`pk3`) REFERENCES `parent1` (`fk1`,`pk2`,`pk1`,`pk3`),\n" +
 						"  CONSTRAINT `fk5` FOREIGN KEY (`fk1`) REFERENCES `parent1` (`fk1`)\n" +

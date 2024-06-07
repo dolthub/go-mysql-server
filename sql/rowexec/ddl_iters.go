@@ -1818,7 +1818,8 @@ func generateIndexName(ctx *sql.Context, idxAltable sql.IndexAlterableTable, idx
 			indexMap[strings.ToLower(index.ID())] = struct{}{}
 		}
 	}
-	indexName := strings.Join(idxColNames, "")
+	// MySQL names the index by the first column in the definition
+	indexName := idxColNames[0]
 	if _, ok := indexMap[strings.ToLower(indexName)]; !ok {
 		return indexName, nil
 	}
