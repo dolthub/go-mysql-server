@@ -15,8 +15,9 @@
 package rowexec
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"runtime/trace"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var DefaultBuilder = &BaseBuilder{}
