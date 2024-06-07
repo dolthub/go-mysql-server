@@ -2520,6 +2520,67 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/7960
+		Name: "Naming automatically created FK indexes",
+		SetUpScript: []string{
+			`CREATE TABLE child1 (
+				id int NOT NULL,
+				v1 int DEFAULT NULL,
+				v2 int DEFAULT NULL,
+				PRIMARY KEY (id),
+				KEY fk_name (v1),
+				KEY (id, v1)
+			);`,
+			`CREATE TABLE parent1(
+					a_id1 INT,
+					a_id2 INT,
+					a_id3 INT,
+					CONSTRAINT fk_b_a FOREIGN KEY (a_id2, a_id3) REFERENCES child1 (id, v1)
+				);`,
+			`CREATE TABLE parent2 (
+				v1 int NOT NULL,
+				v2 int NOT NULL,
+				v3 int NOT NULL,
+				v4 int NOT NULL,
+				v5 int NOT NULL,
+				PRIMARY KEY (v1),
+				KEY fk1 (v4),
+				KEY v2 (v5)
+			);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// When an explicit name is provided for a foreign key, the same name is used for the generated index
+				Query: "SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_NAME='parent1' ORDER BY INDEX_NAME, SEQ_IN_INDEX;",
+				Expected: []sql.Row{
+					{"parent1", "fk_b_a", "a_id2", 1},
+					{"parent1", "fk_b_a", "a_id3", 2},
+				},
+			},
+			{
+				// When an explicit name is provided for a foreign key, and that name is already used for a key in the
+				// table, MySQL throws an error saying that the index name is already in use.
+				Query:       "ALTER TABLE parent2 ADD CONSTRAINT `fk1` FOREIGN KEY (v2) REFERENCES child1(v1);",
+				ExpectedErr: sql.ErrDuplicateKey,
+			},
+			{
+				// When no name is provided for a foreign key, the index created automaticaly will be named after the
+				// first column in the key. If that name is already in use, MySQL appends a number to the name.
+				Query:    "ALTER TABLE parent2 ADD FOREIGN KEY (v2) REFERENCES child1(v1);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_NAME='parent2' ORDER BY INDEX_NAME, SEQ_IN_INDEX;",
+				Expected: []sql.Row{
+					{"parent2", "fk1", "v4", 1},
+					{"parent2", "PRIMARY", "v1", 1},
+					{"parent2", "v2", "v5", 1},
+					{"parent2", "v2_2", "v2", 1},
+				},
+			},
+		},
+	},
 }
 
 var CreateForeignKeyTests = []ScriptTest{

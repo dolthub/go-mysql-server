@@ -4065,43 +4065,6 @@ var IndexPrefixQueries = []ScriptTest{
 
 var IndexQueries = []ScriptTest{
 	{
-		// https://github.com/dolthub/dolt/issues/7960
-		Name: "Generated index names",
-		SetUpScript: []string{
-			`CREATE TABLE a_test (id1 INT, id2 INT, id3 INT, PRIMARY KEY (id1, id2), KEY (id2, id3));`,
-			`CREATE TABLE b_test(
-					a_id1 INT,
-					a_id2 INT,
-					a_id3 INT,
-					FOREIGN KEY (a_id1, a_id2) REFERENCES a_test (id1, id2),
-					CONSTRAINT fk_b_a FOREIGN KEY (a_id2, a_id3) REFERENCES a_test (id2, id3)
-				);`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				// Composite keys are named after the first column in the key
-				Query: "SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_NAME='a_test' ORDER BY INDEX_NAME, SEQ_IN_INDEX;",
-				Expected: []sql.Row{
-					{"a_test", "id2", "id2", 1},
-					{"a_test", "id2", "id3", 2},
-					{"a_test", "PRIMARY", "id1", 1},
-					{"a_test", "PRIMARY", "id2", 2},
-				},
-			},
-			{
-				// When an explicit name is provided for a foreign key, the same name is used for the generated index
-				// TODO: This should probably live with the foreign key tests
-				Query: "SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_NAME='b_test' ORDER BY INDEX_NAME, SEQ_IN_INDEX;",
-				Expected: []sql.Row{
-					{"b_test", "a_id1", "a_id1", 1},
-					{"b_test", "a_id1", "a_id2", 2},
-					{"b_test", "fk_b_a", "a_id2", 1},
-					{"b_test", "fk_b_a", "a_id3", 2},
-				},
-			},
-		},
-	},
-	{
 		Name: "unique key violation prevents insert",
 		SetUpScript: []string{
 			"create table users (id varchar(26) primary key, namespace varchar(50), name varchar(50));",

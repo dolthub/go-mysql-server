@@ -299,7 +299,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			// MySQL names the index after the first column in the foreign key
 			indexName = fkDef.Columns[0]
 			if _, ok = indexMap[strings.ToLower(indexName)]; ok {
-				for i := 0; true; i++ {
+				for i := 2; true; i++ {
 					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
 					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
 						indexName = newIndexName
@@ -309,8 +309,11 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			}
 		} else {
 			// If the FK constraint name was explicitly provided, use that as the index name to match MySQL's behavior
-			// TODO: Handle conflicts (and test)
 			indexName = fkDef.Name
+			// If there is a collision with an existing key name, MySQL throws a duplicate key error
+			if _, exists := indexMap[strings.ToLower(indexName)]; exists {
+				return sql.ErrDuplicateKey.New(indexName)
+			}
 		}
 		err = tbl.CreateIndexForForeignKey(ctx, sql.IndexDef{
 			Name:       indexName,
