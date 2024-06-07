@@ -233,6 +233,9 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 
+	// If no name was explicitly provided, we'll generate one
+	generateConstraintName := len(fkDef.Name) == 0
+
 	// Check if the current foreign key name has already been used. Rather than checking the table first (which is the
 	// highest cost part of creating a foreign key), we'll check the name if it needs to be checked. If the foreign key
 	// was previously added, we don't need to check the name.
@@ -242,7 +245,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			return err
 		}
 
-		if len(fkDef.Name) == 0 {
+		if generateConstraintName {
 			// find the next available name
 			// negative numbers behave weirdly
 			fkNamePrefix := fmt.Sprintf("%s_ibfk_", strings.ToLower(tbl.Name()))
@@ -290,14 +293,26 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		for _, index := range indexes {
 			indexMap[strings.ToLower(index.ID())] = struct{}{}
 		}
-		indexName := strings.Join(fkDef.Columns, "")
-		if _, ok = indexMap[strings.ToLower(indexName)]; ok {
-			for i := 0; true; i++ {
-				newIndexName := fmt.Sprintf("%s_%d", indexName, i)
-				if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
-					indexName = newIndexName
-					break
+
+		var indexName string
+		if generateConstraintName {
+			// MySQL names the index after the first column in the foreign key
+			indexName = fkDef.Columns[0]
+			if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+				for i := 2; true; i++ {
+					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
+						indexName = newIndexName
+						break
+					}
 				}
+			}
+		} else {
+			// If the FK constraint name was explicitly provided, use that as the index name to match MySQL's behavior
+			indexName = fkDef.Name
+			// If there is a collision with an existing key name, MySQL throws a duplicate key error
+			if _, exists := indexMap[strings.ToLower(indexName)]; exists {
+				return sql.ErrDuplicateKey.New(indexName)
 			}
 		}
 		err = tbl.CreateIndexForForeignKey(ctx, sql.IndexDef{

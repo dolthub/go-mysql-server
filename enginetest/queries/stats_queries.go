@@ -238,7 +238,7 @@ analyze table xy update histogram on (x,y) using data
 			{
 				Query:           "select * from xy where x > 4 and y = 1 and w = 'a'",
 				Expected:        []sql.Row{},
-				ExpectedIndexes: []string{"yw"},
+				ExpectedIndexes: []string{"y"},
 			},
 		},
 	},

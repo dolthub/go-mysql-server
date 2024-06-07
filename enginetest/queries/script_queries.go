@@ -248,12 +248,12 @@ create table t (
 			{
 				Query:           "select * from t where to_ = 'L1' and from_ = 'L2'",
 				Expected:        []sql.Row{},
-				ExpectedIndexes: []string{"to_from_"},
+				ExpectedIndexes: []string{"to_"},
 			},
 			{
 				Query:           "select * from t where BIN_TO_UUID(id) = '0' and  to_ = 'L1' and from_ = 'L2'",
 				Expected:        []sql.Row{},
-				ExpectedIndexes: []string{"to_from_"},
+				ExpectedIndexes: []string{"to_"},
 			},
 		},
 	},
