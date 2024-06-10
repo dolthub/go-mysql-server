@@ -442,7 +442,7 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 4, Updated: 1, Warnings: 0}}}},
 		SelectQuery:         "SELECT * FROM one_pk;",
 		ExpectedSelect: []sql.Row{
-			sql.NewRow(1, 10,11, 12, 13, 14),
+			sql.NewRow(1, 10, 11, 12, 13, 14),
 			sql.NewRow(2, 20, 21, 22, 23, 24),
 			sql.NewRow(3, 30, 31, 32, 33, 34),
 			sql.NewRow(10, 0, 1, 2, 3, 4),
