@@ -343,6 +343,8 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateBinary(sqltypes.VarBinary, 3), []byte{01, 02, 03, 04}, nil, true},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 3), []byte("abcd"), nil, true},
 		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: nil}, "null", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: map[string]interface{}{"a": 1}}, `{"a": 1}`, false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), NewLazyJSONDocument([]byte(`{"a":1}`)), `{"a": 1}`, false},
 	}
 
 	for _, test := range tests {
