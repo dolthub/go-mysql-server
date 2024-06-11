@@ -65,6 +65,7 @@ var jsonFormatTests = []jsonFormatTest{
 }
 
 type testCase struct {
+	name     string
 	f        sql.Expression
 	row      sql.Row
 	expected interface{}
@@ -91,31 +92,154 @@ func JsonInsertTestCases(t *testing.T, prepare prepareJsonValue) []testCase {
 	f2 := buildGetFieldExpressions(t, json.NewJSONInsert, 5)
 
 	return []testCase{
-		{f1, sql.Row{jsonInput, "$.A", 10.1}, `{"A": 10.1, "a": 1, "b": [2, 3], "c": {"d": "foo"}}`, nil},                                                   // insert at beginning of top-level object
-		{f1, sql.Row{jsonInput, "$.z", 10.1}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"}, "z": 10.1}`, nil},                                                   // insert at end of top-level object
-		{f1, sql.Row{jsonInput, "$.bb", 10.1}, `{"a": 1, "b": [2, 3], "bb": 10.1, "c": {"d": "foo"}}`, nil},                                                 // insert in middle of top-level object
-		{f1, sql.Row{jsonInput, "$.bb.cc", 10.1}, jsonInput, nil},                                                                                           // insert to non-existent path is a no-op
-		{f1, sql.Row{jsonInput, "$.a", 10.1}, jsonInput, nil},                                                                                               // insert existing does nothing
-		{f1, sql.Row{jsonInput, "$.c.d", "test"}, jsonInput, nil},                                                                                           // insert existing nested does nothing
-		{f2, sql.Row{jsonInput, "$.a", 10.1, "$.e", "new"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`, nil},                                      // insert multiple, one change.
-		{f1, sql.Row{jsonInput, "$.a.e", "test"}, jsonInput, nil},                                                                                           // insert nested does nothing
-		{f1, sql.Row{jsonInput, "$.c.e", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": "foo","e":"test"}}`, nil},                                               // insert nested in existing struct
-		{f1, sql.Row{jsonInput, "$.c[5]", 4.1}, `{"a": 1, "b": [2, 3], "c": [{"d": "foo"}, 4.1]}`, nil},                                                     // insert struct with indexing out of range
-		{f1, sql.Row{jsonInput, "$.b[0]", 4.1}, jsonInput, nil},                                                                                             // insert element in array does nothing
-		{f1, sql.Row{jsonInput, "$.b[5]", 4.1}, `{"a": 1, "b": [2, 3, 4.1], "c": {"d": "foo"}}`, nil},                                                       // insert element in array out of range
-		{f1, sql.Row{jsonInput, "$.b.c", 4}, jsonInput, nil},                                                                                                // insert nested in array does nothing
-		{f1, sql.Row{jsonInput, "$.a[0]", 4.1}, jsonInput, nil},                                                                                             // struct as array does nothing
-		{f1, sql.Row{jsonInput, "$[0]", 4.1}, jsonInput, nil},                                                                                               // struct does nothing.
-		{f1, sql.Row{jsonInput, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 2 of $.[0]")},      // improper struct indexing
-		{f1, sql.Row{jsonInput, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")},                                  // invalid path
-		{f1, sql.Row{jsonInput, "$.c.*", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.*")},   // path contains * wildcard
-		{f1, sql.Row{jsonInput, "$.c.**", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.**")}, // path contains ** wildcard
-		{f1, sql.Row{1, "$.c.**", "test"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_insert")},                                                           // path contains ** wildcard
-		{f1, sql.Row{`()`, "$.c.**", "test"}, nil, sql.ErrInvalidJSONText.New(1, "json_insert", "()")},                                                      // path contains ** wildcard
-		{f1, sql.Row{jsonInput, "$", 10.1}, jsonInput, nil},                                                                                                 // whole document no opt
-		{f1, sql.Row{nil, "$", 42.7}, nil, nil},                                                                                                             // sql-null document returns sql-null
-		{f1, sql.Row{"null", "$", 42.7}, "null", nil},                                                                                                       // json-null document returns json-null
-		{f1, sql.Row{jsonInput, nil, 10}, nil, nil},                                                                                                         // if any path is null, return null
+		{
+			name:     "insert into beginning of top-level object",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.A", 10.1},
+			expected: `{"A": 10.1, "a": 1, "b": [2, 3], "c": {"d": "foo"}}`,
+		},
+		{
+			name:     "insert at end of top-level object",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.z", 10.1},
+			expected: `{"a": 1, "b": [2, 3], "c": {"d": "foo"}, "z": 10.1}`,
+		},
+		{
+			name:     "insert in middle of top-level object",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.bb", 10.1},
+			expected: `{"a": 1, "b": [2, 3], "bb": 10.1, "c": {"d": "foo"}}`,
+		},
+		{
+			name:     "insert to non-existent path is a no-op",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.bb.cc", 10.1},
+			expected: jsonInput,
+		},
+		{
+			name:     "insert existing does nothing",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.a", 10.1},
+			expected: jsonInput,
+		},
+		{
+			name:     "insert existing nested does nothing",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.c.d", "test"},
+			expected: jsonInput,
+		},
+		{
+			name:     "insert multiple, one change",
+			f:        f2,
+			row:      sql.Row{jsonInput, "$.a", 10.1, "$.e", "new"},
+			expected: `{"a": 1, "b": [2, 3], "c": {"d": "foo"},"e":"new"}`,
+		},
+		{
+			name:     "insert nested does nothing",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.a.e", "test"},
+			expected: jsonInput,
+		},
+		{
+			name:     "insert nested in existing struct",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.c.e", "test"},
+			expected: `{"a": 1, "b": [2, 3], "c": {"d": "foo","e":"test"}}`,
+		},
+		{
+			name:     "insert struct with indexing out of range",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.c[5]", 4.1},
+			expected: `{"a": 1, "b": [2, 3], "c": [{"d": "foo"}, 4.1]}`},
+		{
+			name:     "insert element in array does nothing",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.b[0]", 4.1},
+			expected: jsonInput,
+		},
+		{
+			name:     "insert element in array out of range",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.b[5]", 4.1},
+			expected: `{"a": 1, "b": [2, 3, 4.1], "c": {"d": "foo"}}`,
+		},
+		{
+			name:     "insert nested in array does nothing",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.b.c", 4},
+			expected: jsonInput,
+		},
+		{
+			name:     "struct as array does nothing",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$.a[0]", 4.1},
+			expected: jsonInput,
+		},
+		{
+			name:     "struct does nothing",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$[0]", 4.1},
+			expected: jsonInput,
+		},
+		{
+			name: "improper struct indexing",
+			f:    f1,
+			row:  sql.Row{jsonInput, "$.[0]", 4.1},
+			err:  fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 2 of $.[0]"),
+		},
+		{
+			name: "invalid path",
+			f:    f1,
+			row:  sql.Row{jsonInput, "foo", "test"},
+			err:  fmt.Errorf("Invalid JSON path expression. Path must start with '$'"),
+		},
+		{
+			name: "path contains * wildcard",
+			f:    f1,
+			row:  sql.Row{jsonInput, "$.c.*", "test"},
+			err:  fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.*"),
+		},
+		{
+			name: "path contains ** wildcard",
+			f:    f1,
+			row:  sql.Row{jsonInput, "$.c.**", "test"},
+			err:  fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.**"),
+		},
+		{
+			name: "path contains ** wildcard",
+			f:    f1,
+			row:  sql.Row{1, "$.c.**", "test"},
+			err:  sql.ErrInvalidJSONArgument.New(1, "json_insert"),
+		},
+		{
+			name: "path contains ** wildcard",
+			f:    f1,
+			row:  sql.Row{`()`, "$.c.**", "test"},
+			err:  sql.ErrInvalidJSONText.New(1, "json_insert", "()"),
+		},
+		{
+			name:     "whole document no opt",
+			f:        f1,
+			row:      sql.Row{jsonInput, "$", 10.1},
+			expected: jsonInput,
+		},
+		{
+			name:     "sql-null document returns sql-null",
+			f:        f1,
+			row:      sql.Row{nil, "$", 42.7},
+			expected: nil,
+		},
+		{
+			name:     "json-null document returns json-null",
+			f:        f1,
+			row:      sql.Row{"null", "$", 42.7},
+			expected: "null",
+		},
+		{
+			name: "if any path is null, return null",
+			f:    f1,
+			row:  sql.Row{jsonInput, nil, 10},
+		},
 
 		// mysql> select JSON_INSERT(JSON_ARRAY(), "$[2]", 1 , "$[2]", 2 ,"$[2]", 3 ,"$[2]", 4);
 		// +------------------------------------------------------------------------+
@@ -123,13 +247,13 @@ func JsonInsertTestCases(t *testing.T, prepare prepareJsonValue) []testCase {
 		// +------------------------------------------------------------------------+
 		// | [1, 2, 3]                                                              |
 		// +------------------------------------------------------------------------+
-		{buildGetFieldExpressions(t, json.NewJSONInsert, 9),
-			sql.Row{`[]`,
+		{f: buildGetFieldExpressions(t, json.NewJSONInsert, 9),
+			row: sql.Row{`[]`,
 				"$[2]", 1.1, // [] -> [1.1]
 				"$[2]", 2.2, // [1.1] -> [1.1,2.2]
 				"$[2]", 3.3, // [1.1, 2.2] -> [1.1, 2.2, 3.3]
 				"$[2]", 4.4}, // [1.1, 2.2, 3.3] -> [1.1, 2.2, 3.3]
-			`[1.1, 2.2, 3.3]`, nil},
+			expected: `[1.1, 2.2, 3.3]`},
 	}
 }
 
@@ -142,7 +266,7 @@ func RunJsonTests(t *testing.T, testCases []testCase) {
 			}
 		}
 
-		t.Run(tstC.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
+		t.Run(tstC.name+"."+tstC.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
 			req := require.New(t)
 			result, err := tstC.f.Eval(sql.NewEmptyContext(), tstC.row)
 			if tstC.err == nil {
