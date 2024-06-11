@@ -198,4 +198,57 @@ CREATE TABLE tab1 (
 			},
 		},
 	},
+	{
+		Name: "views with defaults",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int default 100);",
+			"insert into t(i) values (1);",
+			"create view v as select * from t;",
+			"create view v1 as select i, j + 10 as jj from t;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show full columns from v;",
+				Expected: []sql.Row{
+					{"i", "int", nil, "NO", "", nil, "", "", ""},
+					{"j", "int", nil, "YES", "", "100", "", "", ""},
+				},
+			},
+			{
+				Query: "show columns from v;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "", nil, ""},
+					{"j", "int", "YES", "", "100", ""},
+				},
+			},
+			{
+				Query: "describe v;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "", nil, ""},
+					{"j", "int", "YES", "", "100", ""},
+				},
+			},
+			{
+				Query: "show full columns from v1;",
+				Expected: []sql.Row{
+					{"i", "int", nil, "NO", "", nil, "", "", ""},
+					{"jj", "bigint", nil, "YES", "", nil, "", "", ""},
+				},
+			},
+			{
+				Query: "show columns from v1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "", nil, ""},
+					{"jj", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "describe v1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "", nil, ""},
+					{"jj", "bigint", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
 }
