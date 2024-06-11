@@ -155,7 +155,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		if pks != nil {
 			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
 		}
-		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
+		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt.Schema())
 
 	}
 	return
@@ -716,13 +716,9 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	switch t := table.(type) {
 	case *plan.ResolvedTable:
 		show.Indexes = b.getInfoSchemaIndexes(t)
-		node = b.modifySchemaTarget(tableScope, show, t)
+		node = b.modifySchemaTarget(tableScope, show, t.Schema())
 	case *plan.SubqueryAlias:
-		var err error
-		node, err = show.WithTargetSchema(t.Schema())
-		if err != nil {
-			b.handleErr(err)
-		}
+		node = b.modifySchemaTarget(tableScope, show, t.Schema())
 	default:
 	}
 
