@@ -382,6 +382,12 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 				iter = i.childIter
 			case *plan.CheckpointingTableEditorIter:
 				iter = i.InnerIter()
+			case *triggerIter:
+				iter = i.child
+				if uji, ok := i.child.(*updateJoinIter); ok {
+					uji.accumulator = rowHandler.(*updateJoinRowHandler)
+					done = true
+				}
 			default:
 				return nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
 			}
@@ -394,6 +400,10 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 		iter:             rowIter,
 		updateRowHandler: rowHandler,
 	}, nil
+}
+
+func findUpdateIter(iter sql.RowIter) () {
+
 }
 
 func findInsertIter(rowIter sql.RowIter) (*insertIter, error) {
