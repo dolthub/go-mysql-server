@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,34 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestJSONExtract(t *testing.T) {
-	f2, err := NewJSONExtract(
+func JsonExtractTestCases(t *testing.T, prepare prepareJsonValue) []testCase {
+	f2, err := json.NewJSONExtract(
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
-	f3, err := NewJSONExtract(
+	f3, err := json.NewJSONExtract(
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 		expression.NewGetField(2, types.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
 
-	f4, err := NewJSONExtract(
+	f4, err := json.NewJSONExtract(
 		expression.NewGetField(0, types.LongText, "arg1", false),
 		expression.NewGetField(1, types.LongText, "arg2", false),
 		expression.NewGetField(2, types.LongText, "arg3", false),
@@ -47,7 +47,7 @@ func TestJSONExtract(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	json := types.JSONDocument{Val: map[string]interface{}{
+	var jsonDocument sql.JSONWrapper = types.JSONDocument{Val: map[string]interface{}{
 		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
 		"b": map[string]interface{}{
 			"c": "foo",
@@ -65,65 +65,50 @@ func TestJSONExtract(t *testing.T) {
 			`key\with\backslashes`: float64(4),
 		},
 	}}
+	// Workaround for https://github.com/dolthub/dolt/issues/7998
+	// Otherwise, converting this to a string will create invalid JSON
+	jsonBytes, err := types.MarshallJson(jsonDocument)
+	require.NoError(t, err)
+	jsonInput := prepare(t, jsonBytes)
 
-	testCases := []struct {
-		f        sql.Expression
-		row      sql.Row
-		expected interface{}
-		err      error
-	}{
+	return []testCase{
 		//{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
-		{f2, sql.Row{nil, "$"}, nil, nil},
-		{f2, sql.Row{nil, "$.b.c"}, nil, nil},
-		{f2, sql.Row{"null", "$"}, types.JSONDocument{Val: nil}, nil},
-		{f2, sql.Row{"null", "$.b.c"}, nil, nil},
-		{f2, sql.Row{json, "$.foo"}, nil, nil},
-		{f2, sql.Row{json, "$.b.c"}, types.JSONDocument{Val: "foo"}, nil},
-		{f3, sql.Row{json, "$.b.c", "$.b.d"}, types.JSONDocument{Val: []interface{}{"foo", true}}, nil},
-		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, types.JSONDocument{Val: []interface{}{
+		{f: f2, row: sql.Row{nil, "$"}},
+		{f: f2, row: sql.Row{nil, "$.b.c"}},
+		{f: f2, row: sql.Row{"null", "$"}, expected: types.JSONDocument{Val: nil}},
+		{f: f2, row: sql.Row{"null", "$.b.c"}},
+		{f: f2, row: sql.Row{jsonInput, "$.foo"}},
+		{f: f2, row: sql.Row{jsonInput, "$.b.c"}, expected: types.JSONDocument{Val: "foo"}},
+		{f: f3, row: sql.Row{jsonInput, "$.b.c", "$.b.d"}, expected: types.JSONDocument{Val: []interface{}{"foo", true}}},
+		{f: f4, row: sql.Row{jsonInput, "$.b.c", "$.b.d", "$.e[0][*]"}, expected: types.JSONDocument{Val: []interface{}{
 			"foo",
 			true,
 			[]interface{}{1., 2.},
-		}}, nil},
+		}}},
 
-		{f2, sql.Row{json, `$.f."key.with.dots"`}, types.JSONDocument{Val: float64(0)}, nil},
-		{f2, sql.Row{json, `$.f."key with spaces"`}, types.JSONDocument{Val: float64(1)}, nil},
-		{f2, sql.Row{json, `$.f.key with spaces`}, types.JSONDocument{Val: float64(1)}, nil},
-		{f2, sql.Row{json, `$.f.key'with'squotes`}, types.JSONDocument{Val: float64(3)}, nil},
-		{f2, sql.Row{json, `$.f."key'with'squotes"`}, types.JSONDocument{Val: float64(3)}, nil},
+		{f: f2, row: sql.Row{jsonInput, `$.f."key.with.dots"`}, expected: types.JSONDocument{Val: float64(0)}},
+		{f: f2, row: sql.Row{jsonInput, `$.f."key with spaces"`}, expected: types.JSONDocument{Val: float64(1)}},
+		{f: f2, row: sql.Row{jsonInput, `$.f.key with spaces`}, expected: types.JSONDocument{Val: float64(1)}},
+		{f: f2, row: sql.Row{jsonInput, `$.f.key'with'squotes`}, expected: types.JSONDocument{Val: float64(3)}},
+		{f: f2, row: sql.Row{jsonInput, `$.f."key'with'squotes"`}, expected: types.JSONDocument{Val: float64(3)}},
 
 		// Error when the document isn't JSON or a coercible string
-		{f2, sql.Row{1, `$.f`}, nil, sql.ErrInvalidJSONArgument.New(1, "json_extract")},
-		{f2, sql.Row{`}`, `$.f`}, nil, sql.ErrInvalidJSONText.New(1, "json_extract", "}")},
+		{f: f2, row: sql.Row{1, `$.f`}, err: sql.ErrInvalidJSONArgument.New(1, "json_extract")},
+		{f: f2, row: sql.Row{`}`, `$.f`}, err: sql.ErrInvalidJSONText.New(1, "json_extract", "}")},
 
 		// TODO: Fix these. They work in mysql
-		//{f2, sql.Row{json, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},
-		//{f2, sql.Row{json, `$.f.key\'with\'squotes`}, sql.JSONDocument{Val: 3}, nil},
-		//{f2, sql.Row{json, `$.f.key\\with\\backslashes`}, sql.JSONDocument{Val: 4}, nil},
-		//{f2, sql.Row{json, `$.f."key\\with\\backslashes"`}, sql.JSONDocument{Val: 4}, nil},
-	}
-
-	for _, tt := range testCases {
-		var paths []string
-		for _, path := range tt.row[1:] {
-			paths = append(paths, path.(string))
-		}
-
-		t.Run(tt.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
-			require := require.New(t)
-			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err != nil {
-				require.ErrorContainsf(err, tt.err.Error(), "Expected error \"%v\" but received \"%v\"", tt.err, err)
-			} else {
-				require.NoError(err)
-			}
-			require.Equal(tt.expected, result)
-		})
+		//{f2, sql.Row{jsonInput, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},
+		//{f2, sql.Row{jsonInput, `$.f.key\'with\'squotes`}, sql.JSONDocument{Val: 3}, nil},
+		//{f2, sql.Row{jsonInput, `$.f.key\\with\\backslashes`}, sql.JSONDocument{Val: 4}, nil},
+		//{f2, sql.Row{jsonInput, `$.f."key\\with\\backslashes"`}, sql.JSONDocument{Val: 4}, nil},
 	}
 }
 
-func TestJSONExtractAsterisk(t *testing.T) {
-	jsonStr := `
+func testJSONExtractAsterisk(t *testing.T, prepare prepareJsonValue) {
+	t.Run("json extract with asterisk", func(t *testing.T) {
+		require := require.New(t)
+
+		jsonStr := prepare(t, `
 {
 	"key1": "abc",
 	"key2": 123,
@@ -133,14 +118,11 @@ func TestJSONExtractAsterisk(t *testing.T) {
 		"b": 2,
 		"c": 3
 	}
-}`
-	f, err := NewJSONExtract(
-		expression.NewLiteral(jsonStr, types.LongText),
-		expression.NewLiteral("$.*", types.LongText))
-	require.NoError(t, err)
-
-	t.Run("json extract with asterisk", func(t *testing.T) {
-		require := require.New(t)
+}`)
+		f, err := json.NewJSONExtract(
+			expression.NewLiteral(jsonStr, types.LongText),
+			expression.NewLiteral("$.*", types.LongText))
+		require.NoError(err)
 
 		result, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)

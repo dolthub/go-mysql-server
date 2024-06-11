@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -20,34 +20,32 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestJsonValue(t *testing.T) {
-	_, err := NewJSONValid()
-	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
+func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 
 	tests := []struct {
-		row  sql.Row
-		typ  sql.Type
-		path string
-		exp  interface{}
-		err  error
+		row      sql.Row
+		typ      sql.Type
+		path     string
+		expected interface{}
+		err      error
 	}{
-		{row: sql.Row{`null`}, exp: nil},
-		{row: sql.Row{`1`}, exp: "1"},
-		{row: sql.Row{`[1]`}, exp: `[1]`},
-		{row: sql.Row{`{"a": "fjsadflkd"}`}, exp: `{"a": "fjsadflkd"}`},
-		{row: sql.Row{`[1, false]`}, exp: `[1, false]`},
-		{row: sql.Row{`[1, false]`}, path: "$[0]", typ: types.Int64, exp: int64(1)},
-		{row: sql.Row{`[1, false]`}, path: "$[0]", typ: types.Uint64, exp: uint64(1)},
-		{row: sql.Row{`[1, false]`}, path: "$[0]", exp: "1"},
-		{row: sql.Row{`[1, {"a": 1}]`}, path: "$[1].a", typ: types.Int64, exp: int64(1)},
-		{row: sql.Row{`[1, {"a": 1}]`}, path: "$[1]", typ: types.JSON, exp: types.MustJSON(`{"a": 1}`)},
+		{row: sql.Row{prepare(t, `null`)}, expected: nil},
+		{row: sql.Row{prepare(t, `1`)}, expected: "1"},
+		{row: sql.Row{prepare(t, `[1]`)}, expected: `[1]`},
+		{row: sql.Row{prepare(t, `{"a": "fjsadflkd"}`)}, expected: `{"a": "fjsadflkd"}`},
+		{row: sql.Row{prepare(t, `[1, false]`)}, expected: `[1, false]`},
+		{row: sql.Row{prepare(t, `[1, false]`)}, path: "$[0]", typ: types.Int64, expected: int64(1)},
+		{row: sql.Row{prepare(t, `[1, false]`)}, path: "$[0]", typ: types.Uint64, expected: uint64(1)},
+		{row: sql.Row{prepare(t, `[1, false]`)}, path: "$[0]", expected: "1"},
+		{row: sql.Row{prepare(t, `[1, {"a": 1}]`)}, path: "$[1].a", typ: types.Int64, expected: int64(1)},
+		{row: sql.Row{prepare(t, `[1, {"a": 1}]`)}, path: "$[1]", typ: types.JSON, expected: types.MustJSON(`{"a": 1}`)},
 		{row: sql.Row{1}, path: `$.f`, err: sql.ErrInvalidJSONArgument.New(1, "json_value")},
 		{row: sql.Row{`}`}, path: `$.f`, err: sql.ErrInvalidJSONText.New(1, "json_value", "}")},
 	}
@@ -72,13 +70,19 @@ func TestJsonValue(t *testing.T) {
 			if tt.typ != nil {
 				args = append(args, expression.NewLiteral(tt.typ.Zero(), tt.typ))
 			}
-			f, _ := NewJsonValue(args...)
+			f, _ := json.NewJsonValue(args...)
 			require := require.New(t)
 			// any error case will result in output of 'false' value
 			result, err := f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err == nil {
 				require.NoError(err)
-				require.Equal(tt.exp, result)
+				if tt.typ == types.JSON {
+					cmp, err := types.JSON.Compare(tt.expected, result)
+					require.NoError(err)
+					require.Equal(0, cmp)
+				} else {
+					require.Equal(tt.expected, result)
+				}
 			} else {
 				require.Error(err)
 				require.Equal(tt.err.Error(), err.Error())
