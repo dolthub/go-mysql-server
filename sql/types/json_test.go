@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -803,11 +804,12 @@ var JsonInsertTests = []JsonMutationTest{
 }
 
 func TestJsonInsert(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonInsertTests {
 		t.Run("JSON insert: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Insert(test.path, val)
+			res, changed, err := doc.Insert(ctx, test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
