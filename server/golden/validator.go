@@ -91,6 +91,10 @@ func (v Validator) ConnectionClosed(c *mysql.Conn) {
 	v.golden.ConnectionClosed(c)
 }
 
+func (v Validator) ConnectionAborted(c *mysql.Conn, reason string) error {
+	return nil
+}
+
 func (v Validator) ComMultiQuery(
 	c *mysql.Conn,
 	query string,
