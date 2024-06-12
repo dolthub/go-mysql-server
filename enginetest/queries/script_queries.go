@@ -153,6 +153,23 @@ CREATE TABLE sourceTable_test (
 					},
 				}}},
 			},
+			{
+				Query: `UPDATE targetTable_test
+    JOIN sourceTable_test
+    ON sourceTAble_test.id = TARGETTABLE_test.source_id
+    SET
+        TARGETTABLE_test.value = SourceTable_test.value;
+`,
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 0,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  0,
+						Updated:  0,
+						Warnings: 0,
+					},
+				}}},
+			},
 		},
 	},
 	{
