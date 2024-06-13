@@ -41,6 +41,8 @@ type MySqlProxy struct {
 	conns   map[uint32]proxyConn
 }
 
+var _ mysql.Handler = MySqlProxy{}
+
 func (h MySqlProxy) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
 	return sqlparser.ParserOptions{}, nil
 }
@@ -77,8 +79,6 @@ func NewMySqlProxyHandler(logger *logrus.Logger, connStr string) (MySqlProxy, er
 		conns:   make(map[uint32]proxyConn),
 	}, nil
 }
-
-var _ mysql.Handler = MySqlProxy{}
 
 func newConn(connStr string, connId uint32, lgr *logrus.Logger) (conn proxyConn, err error) {
 	l := logrus.NewEntry(lgr).WithField("dsn", connStr).WithField(sql.ConnectionIdLogField, connId)
@@ -164,6 +164,11 @@ func (h MySqlProxy) ConnectionClosed(c *mysql.Conn) {
 		lgr.Errorf("Error closing connection")
 	}
 	delete(h.conns, c.ConnectionID)
+}
+
+// ConnectionAborted implements mysql.Handler.
+func (h MySqlProxy) ConnectionAborted(c *mysql.Conn, reason string) error {
+	return nil
 }
 
 // ComMultiQuery implements mysql.Handler.
