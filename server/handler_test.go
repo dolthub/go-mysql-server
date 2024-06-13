@@ -1349,6 +1349,32 @@ func TestStatusVariableQuestions(t *testing.T) {
 	checkSessionStatVar(t, sess4, "Questions", uint64(1))
 }
 
+func TestStatusVariableAbortedConnects(t *testing.T) {
+	variables.InitStatusVariables()
+
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	checkGlobalStatVar(t, "Aborted_connects", uint64(0))
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	err := handler.ConnectionAborted(conn1, "test")
+	require.NoError(t, err)
+	checkGlobalStatVar(t, "Aborted_connects", uint64(1))
+}
+
 func TestStatusVariableMaxUsedConnections(t *testing.T) {
 	variables.InitStatusVariables()
 
