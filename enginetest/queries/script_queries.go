@@ -6568,6 +6568,76 @@ where
 			},
 		},
 	},
+	{
+		Name: "test parenthesized tables",
+		SetUpScript: []string{
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (j int);",
+			"insert into t2 values (1), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from (t1)",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1 as t11)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (t1) join t2 where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from t1 join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1) join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from ((((t1)))) join ((((t2)))) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1 as t11) join (t2 as t22) where t11.i = t22.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

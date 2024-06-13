@@ -394,16 +394,10 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 		return b.buildJSONTable(inScope, t)
 
 	case *ast.ParenTableExpr:
-		if len(t.Exprs) == 1 {
-			switch j := t.Exprs[0].(type) {
-			case *ast.JoinTableExpr:
-				return b.buildJoin(inScope, j)
-			default:
-				b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
-			}
-		} else {
+		if len(t.Exprs) != 1 {
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
 		}
+		return b.buildDataSource(inScope, t.Exprs[0])
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
 	}
