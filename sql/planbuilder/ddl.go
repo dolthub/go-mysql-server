@@ -526,14 +526,14 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 
 		for _, s := range outScopes {
 			if ts, ok := s.node.(sql.SchemaTarget); ok {
-				s.node = b.modifySchemaTarget(s, ts, rt)
+				s.node = b.modifySchemaTarget(s, ts, rt.Schema())
 			}
 		}
 		pkt, _ := rt.Table.(sql.PrimaryKeyTable)
 		if pkt != nil {
 			for _, s := range outScopes {
 				if ts, ok := s.node.(sql.PrimaryKeySchemaTarget); ok {
-					s.node = b.modifySchemaTarget(inScope, ts, rt)
+					s.node = b.modifySchemaTarget(inScope, ts, rt.Schema())
 					ts.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
 				}
 			}
@@ -837,7 +837,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 		}
 
 		createIndex := plan.NewAlterCreateIndex(table.SqlDatabase, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
-		outScope.node = b.modifySchemaTarget(inScope, createIndex, table)
+		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema())
 		return
 	case ast.DropStr:
 		if ddl.IndexSpec.Type == ast.PrimaryStr {
@@ -923,7 +923,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 			if strings.EqualFold(c.Name, ddl.DefaultSpec.Column.String()) {
 				defaultExpr := b.convertDefaultExpression(inScope, ddl.DefaultSpec.Value, c.Type, c.Nullable)
 				defSet := plan.NewAlterDefaultSet(table.Database(), table, ddl.DefaultSpec.Column.String(), defaultExpr)
-				outScope.node = b.modifySchemaTarget(inScope, defSet, table)
+				outScope.node = b.modifySchemaTarget(inScope, defSet, table.Schema())
 				return
 			}
 		}
@@ -1357,8 +1357,9 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 	}
 }
 
-func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *plan.ResolvedTable) sql.Node {
-	targSchema := b.resolveSchemaDefaults(inScope, rt.Schema())
+// modifySchemaTarget resolves the schema defaults and sets the target schema for the node.
+func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql.Schema) sql.Node {
+	targSchema := b.resolveSchemaDefaults(inScope, sch)
 	ret, err := n.WithTargetSchema(targSchema)
 	if err != nil {
 		b.handleErr(err)

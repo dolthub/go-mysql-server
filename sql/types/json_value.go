@@ -99,7 +99,7 @@ type MutableJSON interface {
 	sql.JSONWrapper
 	// Insert Adds the value at the given path, only if it is not present. Updated value returned, and bool indicating if
 	// a change was made.
-	Insert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Insert(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
 	Remove(path string) (MutableJSON, bool, error)
 	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
@@ -748,7 +748,7 @@ func jsonObjectDeterministicOrder(a, b JsonObject, inter []string) (int, error) 
 	return strings.Compare(aa, bb), nil
 }
 
-func (doc JSONDocument) Insert(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Insert(_ context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(path, val, INSERT)
 }

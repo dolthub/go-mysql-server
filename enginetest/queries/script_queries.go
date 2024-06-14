@@ -153,6 +153,23 @@ CREATE TABLE sourceTable_test (
 					},
 				}}},
 			},
+			{
+				Query: `UPDATE targetTable_test
+    JOIN sourceTable_test
+    ON sourceTAble_test.id = TARGETTABLE_test.source_id
+    SET
+        TARGETTABLE_test.value = SourceTable_test.value;
+`,
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 0,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  0,
+						Updated:  0,
+						Warnings: 0,
+					},
+				}}},
+			},
 		},
 	},
 	{
@@ -6547,6 +6564,76 @@ where
 						"  KEY `i_3` (`i`),\n" +
 						"  KEY `i_4` (`i`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "test parenthesized tables",
+		SetUpScript: []string{
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (j int);",
+			"insert into t2 values (1), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from (t1)",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1 as t11)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (t1) join t2 where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from t1 join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1) join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from ((((t1)))) join ((((t2)))) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1 as t11) join (t2 as t22) where t11.i = t22.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
 				},
 			},
 		},

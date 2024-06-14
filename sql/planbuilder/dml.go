@@ -575,7 +575,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 
 	rowUpdatersByTable := make(map[string]sql.RowUpdater)
 	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
-		resolvedTable, ok := resolvedTables[tableToBeUpdated]
+		resolvedTable, ok := resolvedTables[strings.ToLower(tableToBeUpdated)]
 		if !ok {
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
@@ -606,16 +606,16 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			ret[n.Table.Name()] = n
+			ret[strings.ToLower(n.Table.Name())] = n
 		case *plan.IndexedTableAccess:
 			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
-				ret[rt.Name()] = rt
+				ret[strings.ToLower(rt.Name())] = rt
 			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
-				ret[n.Name()] = rt
+				ret[strings.ToLower(n.Name())] = rt
 			}
 		default:
 		}
