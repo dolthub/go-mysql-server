@@ -342,10 +342,6 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			outScope.node = sq.WithScopeMapping(scopeMapping).WithColumns(colSet).WithId(tabId)
 			return
 		case *ast.ValuesStatement:
-			if t.As.IsEmpty() {
-				// Parser should enforce this, but just to be safe
-				b.handleErr(sql.ErrUnsupportedSyntax.New("every derived table must have an alias"))
-			}
 			rowLen := len(e.Rows)
 			exprTuples := make([][]sql.Expression, rowLen)
 			var tupLen int
