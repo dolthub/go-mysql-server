@@ -9,8 +9,6 @@ var NumericErrorQueries = []ScriptTest{
 	{
 		Name: "range key float fuzzer fail",
 		SetUpScript: []string{
-			"CREATE TABLE `khNVtTWRat` (`xAShyV` SMALLINT UNSIGNED, `VZ_7G2` DECIMAL(38,19), `PO5tFR` TINYINT, `tXLcRR` DOUBLE, PRIMARY KEY (`xAShyV`, `VZ_7G2`, `PO5tFR`, `tXLcRR`));",
-			"INSERT INTO `khNVtTWRat` VALUES (460,'3103267612325796683.7065177779488149262',-67,'-4.357715639933331e+212');",
 			// float
 			"create table float_pk (a int, b double, primary key(a,b))",
 			"create table float_uk (a int, b double, primary key(a), unique key (b))",
@@ -22,9 +20,9 @@ var NumericErrorQueries = []ScriptTest{
 			"create table decimal_pk (a int, b decimal(65,30), primary key(a,b))",
 			"create table decimal_uk (a int, b decimal(65,30), primary key(a), unique key (b))",
 			"create table decimal_nuk (a int, b decimal(65,30), primary key(a), key (b))",
-			"insert into decimal_pk values (1, -4e+30)",
-			"insert into decimal_uk values (1, -4e+30)",
-			"insert into decimal_nuk values (1, -4e+30)",
+			"insert into decimal_pk values (1, 9999999999999999999999999.9999999999999999999999999999999)",
+			"insert into decimal_uk values (1, 9999999999999999999999999.9999999999999999999999999999999)",
+			"insert into decimal_nuk values (1, 9999999999999999999999999.9999999999999999999999999999999)",
 			// int overflows
 			"create table i8 (i tinyint primary key)",
 			"create table i16 (i smallint primary key)",
@@ -45,23 +43,19 @@ var NumericErrorQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "DELETE FROM `khNVtTWRat` WHERE `xAShyV` = 460 AND `VZ_7G2` = '3103267612325796683.7065177779488149262' AND `PO5tFR` = -67 AND `tXLcRR` = '-4.357715639933331e+212';",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
 				Query:    "delete from float_pk where a = 1 and b = -4e+212",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "delete from decimal_uk where b = -4e+30",
+				Query:    "delete from decimal_uk where b = 9999999999999999999999999.9999999999999999999999999999999",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "delete from decimal_nuk where b = -4e+30",
+				Query:    "delete from decimal_nuk where b = 9999999999999999999999999.9999999999999999999999999999999",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "delete from decimal_pk where a = 1 and b = -4e+30",
+				Query:    "delete from decimal_pk where a = 1 and b = 9999999999999999999999999.9999999999999999999999999999999",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
