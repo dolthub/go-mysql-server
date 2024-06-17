@@ -1586,7 +1586,7 @@ END`,
 		},
 	},
 	{
-		Name: "Conditional expression doesn't have body columns in its scope",
+		Name: "Conditional expression where body has its own columns",
 		SetUpScript: []string{
 			"CREATE TABLE test (id INT);",
 		},
@@ -1615,7 +1615,68 @@ END;`,
 			},
 		},
 	},
-
+	{
+		Name: "Nested subquery in conditional expression where body has its own columns",
+		SetUpScript: []string{
+			"CREATE TABLE test (id INT);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE PROCEDURE populate(IN val INT)
+BEGIN
+	IF (SELECT COUNT(*) FROM test where (select t2.id from test t2 where t2.id = test.id) = val) = 0 THEN
+        INSERT INTO test (id) VALUES (val);
+    END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "CALL populate(1);",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+				}}},
+			},
+			{
+				Query: "SELECT * FROM test;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "Conditional expression with else doesn't have body columns in its scope",
+		SetUpScript: []string{
+			"CREATE TABLE test (id INT);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE PROCEDURE populate(IN val INT)
+BEGIN
+	IF (SELECT COUNT(*) FROM test where id = val) = 0 THEN
+        INSERT INTO test (id) VALUES (val);
+    ELSE
+		SELECT 0;
+    END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "CALL populate(1);",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+				}}},
+			},
+			{
+				Query: "SELECT * FROM test;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
 	{
 		Name: "HANDLERs ignore variables declared after them",
 		SetUpScript: []string{
