@@ -1606,6 +1606,7 @@ END;`,
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 				}}},
+				SkipResultCheckOnServerEngine: true,
 			},
 			{
 				Query: "SELECT * FROM test;",
@@ -1636,6 +1637,7 @@ END;`,
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 				}}},
+				SkipResultCheckOnServerEngine: true,
 			},
 			{
 				Query: "SELECT * FROM test;",
@@ -1668,6 +1670,7 @@ END;`,
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
 				}}},
+				SkipResultCheckOnServerEngine: true,
 			},
 			{
 				Query: "SELECT * FROM test;",
