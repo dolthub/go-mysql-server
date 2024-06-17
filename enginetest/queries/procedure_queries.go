@@ -1586,7 +1586,7 @@ END`,
 		},
 	},
 	{
-		Name: "Conditional expression doesn't have body columns in its scope. (issues/7994)",
+		Name: "Conditional expression doesn't have body columns in its scope",
 		SetUpScript: []string{
 			"CREATE TABLE test (id INT);",
 		},
@@ -1602,8 +1602,10 @@ END;`,
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query:    "CALL populate(1);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Query: "CALL populate(1);",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+				}}},
 			},
 			{
 				Query: "SELECT * FROM test;",
