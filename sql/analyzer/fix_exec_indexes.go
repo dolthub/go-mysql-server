@@ -349,6 +349,16 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		s.childScopes = append(s.childScopes, dScope)
 	case *plan.Procedure, *plan.CreateTable:
 		// do nothing
+
+	case *plan.IfConditional:
+		for _, c := range n.Children() {
+			// Don't append the child scope because it's not visible from the conditional expression.
+			newC, _, err := assignIndexesHelper(c, s)
+			if err != nil {
+				return err
+			}
+			s.children = append(s.children, newC)
+		}
 	default:
 		for _, c := range n.Children() {
 			newC, cScope, err := assignIndexesHelper(c, s)

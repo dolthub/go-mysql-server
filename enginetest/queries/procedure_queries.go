@@ -1586,6 +1586,35 @@ END`,
 		},
 	},
 	{
+		Name: "Conditional expression doesn't have body columns in its scope. (issues/7994)",
+		SetUpScript: []string{
+			"CREATE TABLE test (id INT);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE PROCEDURE populate(IN val INT)
+BEGIN
+	IF (SELECT COUNT(*) FROM test where id = val) = 0 THEN
+        INSERT INTO test (id) VALUES (val);
+    END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "CALL populate(1);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "SELECT * FROM test;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+
+	{
 		Name: "HANDLERs ignore variables declared after them",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
