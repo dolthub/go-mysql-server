@@ -689,7 +689,7 @@ func (r *relBase) Cost() float64 {
 
 func DescribeStats(r RelExpr) *sql.DescribeStats {
 	return &sql.DescribeStats{
-		EstimatedRowCount: r.Group().RelProps.GetStats().RowCount(),
+		EstimatedRowCount: uint64(r.Group().RelProps.GetStats().RowCount()),
 		Cost:              r.Cost(),
 	}
 }

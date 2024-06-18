@@ -23,7 +23,7 @@ import (
 // An SqlHeap is a min-heap of ints.
 type SqlHeap struct {
 	vals []sql.Row
-	cnts []uint64
+	cnts []float64
 	k    int
 }
 
@@ -37,14 +37,14 @@ func NewHeapRow(r sql.Row, cnt int) HeapRow {
 }
 
 func NewSqlHeap(k int) *SqlHeap {
-	return &SqlHeap{vals: make([]sql.Row, 0), cnts: make([]uint64, 0), k: k}
+	return &SqlHeap{vals: make([]sql.Row, 0), cnts: make([]float64, 0), k: k}
 }
 
 func (h SqlHeap) Array() []sql.Row {
 	return h.vals
 }
 
-func (h SqlHeap) Counts() []uint64 {
+func (h SqlHeap) Counts() []float64 {
 	return h.cnts
 }
 
@@ -62,7 +62,7 @@ func (h *SqlHeap) Push(x any) {
 	// not just its contents.
 	hr := x.(HeapRow)
 	h.vals = append(h.vals, hr.Row)
-	h.cnts = append(h.cnts, uint64(hr.Count))
+	h.cnts = append(h.cnts, float64(hr.Count))
 	if len(h.vals) > h.k {
 		heap.Pop(h)
 	}

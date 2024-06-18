@@ -169,7 +169,7 @@ func nilSafeCmp(typ sql.Type, left, right interface{}) (int, error) {
 	}
 }
 
-func GetNewCounts(buckets []sql.HistogramBucket) (rowCount uint64, distinctCount uint64, nullCount uint64) {
+func GetNewCounts(buckets []sql.HistogramBucket) (rowCount, distinctCount, nullCount float64) {
 	if len(buckets) == 0 {
 		return 0, 0, 0
 	}
@@ -186,9 +186,9 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 	if len(buckets) == 0 {
 		return statistic
 	}
-	var rowCount uint64
-	var distinctCount uint64
-	var nullCount uint64
+	var rowCount float64
+	var distinctCount float64
+	var nullCount float64
 	for _, b := range buckets {
 		rowCount += b.RowCount()
 		distinctCount += b.DistinctCount()

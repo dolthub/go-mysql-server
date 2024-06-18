@@ -16,6 +16,7 @@ package stats
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -166,9 +167,9 @@ func TestBinAlignment(t *testing.T) {
 				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 23, DistinctCnt: 23, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: float64(23) + float64(1)/float64(3), DistinctCnt: float64(23) + float64(1)/float64(3), BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: float64(3) + float64(1)/float64(3), DistinctCnt: float64(10) / float64(3), BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: float64(3) + float64(1)/float64(3), DistinctCnt: float64(10) / float64(3), BoundVal: sql.Row{40}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
 				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
@@ -188,8 +189,8 @@ func TestBinAlignment(t *testing.T) {
 				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{60}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 26, DistinctCnt: 26, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: 26.0 + float64(2/3), DistinctCnt: 26.0 + float64(2/3), BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 3.0 + float64(1/3), DistinctCnt: 3.0 + float64(1/3), BoundVal: sql.Row{40}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
 				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
@@ -331,10 +332,10 @@ func TestJoin(t *testing.T) {
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 11, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 11, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []float64{5, 5}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{2}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{2}}, McvsCnt: []float64{4}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
 				&Bucket{RowCnt: 29, DistinctCnt: 6, BoundVal: sql.Row{10}, BoundCnt: 1},
@@ -342,10 +343,10 @@ func TestJoin(t *testing.T) {
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []float64{5, 5}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{3}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{3}}, McvsCnt: []float64{4}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
 				&Bucket{RowCnt: 20, DistinctCnt: 6, BoundVal: sql.Row{10}, BoundCnt: 1},
@@ -353,10 +354,10 @@ func TestJoin(t *testing.T) {
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []float64{5, 5}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{3}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{3}}, McvsCnt: []float64{4}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
 				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
@@ -430,10 +431,10 @@ func TestJoin(t *testing.T) {
 				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.Row{30}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 33, DistinctCnt: 3, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 16, DistinctCnt: 2, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 12, DistinctCnt: 2, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 16, DistinctCnt: 2, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 33.0 + float64(1/3), DistinctCnt: 3, BoundVal: sql.Row{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 16.0 + float64(2/3), DistinctCnt: 2, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 12.0 + float64(1/2), DistinctCnt: 2, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 16. + float64(2/3), DistinctCnt: 2, BoundVal: sql.Row{30}, BoundCnt: 1},
 			},
 		},
 	}
@@ -455,20 +456,22 @@ func TestJoin(t *testing.T) {
 	}
 }
 
+const floatDiff = 1e6
+
 func compareHist(t *testing.T, exp, cmp sql.Histogram) {
 	if len(exp) != len(cmp) {
 		t.Errorf("histograms not same length: %d != %d\n%s\n%s\n", len(exp), len(cmp), exp.DebugString(), cmp.DebugString())
 	}
 	for i, b := range exp {
 		require.Equalf(t, b.UpperBound(), cmp[i].UpperBound(), "bound not equal: %v != %v\n%s\n%s", b.UpperBound(), cmp[i].UpperBound(), exp.DebugString(), cmp.DebugString())
-		if b.RowCount() != cmp[i].RowCount() {
-			t.Errorf("histograms row count not equal: %d != %d\n%s\n%s", b.RowCount(), cmp[i].RowCount(), exp.DebugString(), cmp.DebugString())
+		if math.Abs(b.RowCount()-cmp[i].RowCount()) > floatDiff {
+			t.Errorf("histograms row count not equal: %.1f != %.1f\n%s\n%s", b.RowCount(), cmp[i].RowCount(), exp.DebugString(), cmp.DebugString())
 		}
-		if b.DistinctCount() != cmp[i].DistinctCount() {
-			t.Errorf("histograms distinct not equal: %d != %d\n%s\n%s", b.DistinctCount(), cmp[i].DistinctCount(), exp.DebugString(), cmp.DebugString())
+		if math.Abs(b.DistinctCount()-cmp[i].DistinctCount()) > floatDiff {
+			t.Errorf("histograms distinct not equal: %.1f != %.1f\n%s\n%s", b.DistinctCount(), cmp[i].DistinctCount(), exp.DebugString(), cmp.DebugString())
 		}
-		if b.NullCount() != cmp[i].NullCount() {
-			t.Errorf("histograms null not equal: %d != %d\n%s\n%s", b.NullCount(), cmp[i].NullCount(), exp.DebugString(), cmp.DebugString())
+		if math.Abs(b.NullCount()-cmp[i].NullCount()) > floatDiff {
+			t.Errorf("histograms null not equal: %.1f != %.1f\n%s\n%s", b.NullCount(), cmp[i].NullCount(), exp.DebugString(), cmp.DebugString())
 		}
 	}
 }

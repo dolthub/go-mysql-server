@@ -48,10 +48,10 @@ func InterpolateNewCounts(from, to sql.Statistic) sql.Statistic {
 			newMcvs[i] = uint64(math.Max(1, float64(cnt)*filterSelectivity))
 		}
 		newHist[i] = NewHistogramBucket(
-			uint64(math.Max(1, float64(h.RowCount())*filterSelectivity)),
-			uint64(math.Max(1, float64(h.DistinctCount())*filterSelectivity)),
-			uint64(math.Max(1, float64(h.NullCount())*filterSelectivity)),
-			uint64(math.Max(1, float64(h.BoundCount())*filterSelectivity)),
+			math.Max(1, float64(h.RowCount())*filterSelectivity),
+			math.Max(1, float64(h.DistinctCount())*filterSelectivity),
+			math.Max(1, float64(h.NullCount())*filterSelectivity),
+			math.Max(1, float64(h.BoundCount())*filterSelectivity),
 			h.UpperBound(),
 			h.McvCounts(),
 			h.Mcvs())

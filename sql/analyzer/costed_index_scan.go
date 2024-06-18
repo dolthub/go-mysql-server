@@ -370,7 +370,7 @@ type indexCoster struct {
 	// bestStat is the lowest cardinality indexScan option
 	bestStat sql.Statistic
 	bestHist []sql.HistogramBucket
-	bestCnt  uint64
+	bestCnt  float64
 	// bestFilters is the set of conjunctions used to create bestStat
 	bestFilters sql.FastIntSet
 	// bestConstant are the constant best filters
@@ -1474,7 +1474,7 @@ func uniformDistStatisticsForIndex(ctx *sql.Context, statsProv sql.StatsProvider
 		sch = iat.Schema()
 	}
 
-	return newUniformDistStatistic(dbName, tableName, sch, idx, rowCount, avgSize)
+	return newUniformDistStatistic(dbName, tableName, sch, idx, float64(rowCount), float64(avgSize))
 }
 
 func indexFds(tableName string, sch sql.Schema, idx sql.Index) (*sql.FuncDepSet, sql.ColSet, error) {
@@ -1517,15 +1517,15 @@ func indexFds(tableName string, sch sql.Schema, idx sql.Index) (*sql.FuncDepSet,
 	return sql.NewTablescanFDs(all, strictKeys, laxKeys, notNull), idxCols, nil
 }
 
-func newUniformDistStatistic(dbName, tableName string, sch sql.Schema, idx sql.Index, rowCount, avgSize uint64) (sql.Statistic, error) {
+func newUniformDistStatistic(dbName, tableName string, sch sql.Schema, idx sql.Index, rowCount, avgSize float64) (sql.Statistic, error) {
 	tablePrefix := fmt.Sprintf("%s.", tableName)
 
 	distinctCount := rowCount
 	if !idx.IsUnique() {
-		distinctCount = uint64(float64(distinctCount) * dummyNotUniqueDistinct)
+		distinctCount = float64(distinctCount) * dummyNotUniqueDistinct
 	}
 
-	nullCount := uint64(float64(distinctCount) * dummyNotUniqueNull)
+	nullCount := float64(distinctCount) * dummyNotUniqueNull
 
 	var cols []string
 	var types []sql.Type

@@ -355,10 +355,10 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 	}
 
 	var histogram []sql.HistogramBucket
-	rowsPerBucket := int(cnt) / buckets
+	rowsPerBucket := float64(int(cnt) / buckets)
 	currentBucket := &stats.Bucket{DistinctCnt: 1}
 	mcvCnt := 3
-	currentCnt := 0
+	currentCnt := 0.0
 	mcvs := stats.NewSqlHeap(mcvCnt)
 	for i, row := range keyVals {
 		currentCnt++
@@ -366,14 +366,14 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 		if i > 0 {
 			if cmp(i, i-1) != 0 {
 				currentBucket.DistinctCnt++
-				heap.Push(mcvs, stats.NewHeapRow(keyVals[i-1], currentCnt))
+				heap.Push(mcvs, stats.NewHeapRow(keyVals[i-1], int(currentCnt)))
 				currentCnt = 1
 			}
 		}
-		if currentBucket.RowCnt > uint64(rowsPerBucket) {
+		if currentBucket.RowCnt > rowsPerBucket {
 			currentBucket.BoundVal = row
-			currentBucket.BoundCnt = uint64(currentCnt)
-			heap.Push(mcvs, stats.NewHeapRow(row, currentCnt))
+			currentBucket.BoundCnt = currentCnt
+			heap.Push(mcvs, stats.NewHeapRow(row, int(currentCnt)))
 			currentBucket.McvVals = mcvs.Array()
 			currentBucket.McvsCnt = mcvs.Counts()
 			histogram = append(histogram, currentBucket)
@@ -383,7 +383,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 		}
 	}
 	currentBucket.BoundVal = keyVals[len(keyVals)-1]
-	currentBucket.BoundCnt = uint64(currentCnt)
+	currentBucket.BoundCnt = currentCnt
 	currentBucket.McvVals = mcvs.Array()
 	currentBucket.McvsCnt = mcvs.Counts()
 	histogram = append(histogram, currentBucket)

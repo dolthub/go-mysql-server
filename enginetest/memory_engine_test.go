@@ -110,12 +110,12 @@ func TestLateralJoin(t *testing.T) {
 	enginetest.TestLateralJoinQueries(t, enginetest.NewDefaultMemoryHarness())
 }
 
-// TestJoinPlanning runs join-specific tests for merge
+// TestJoinPlanning tests that certain costing optimizations are applied
 func TestJoinPlanning(t *testing.T) {
 	enginetest.TestJoinPlanning(t, enginetest.NewDefaultMemoryHarness())
 }
 
-// TestJoinOps runs join-specific tests for merge
+// TestJoinOps runs correctness queries with all join operators
 func TestJoinOps(t *testing.T) {
 	enginetest.TestJoinOps(t, enginetest.NewDefaultMemoryHarness(), enginetest.DefaultJoinOpTests)
 }
