@@ -402,7 +402,7 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	}, nil
 }
 
-func findUpdateIter(iter sql.RowIter) () {
+func findUpdateIter(iter sql.RowIter) {
 
 }
 
