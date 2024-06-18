@@ -35,29 +35,28 @@ var ErrJoinStringStatistics = errors.New("joining string histograms is unsupport
 // numeric types are supported.
 func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error) {
 	cmp := func(row1, row2 sql.Row) (int, error) {
-		var keyCmp int
+		var cmp int
+		var err error
 		for i := 0; i < prefixCnt; i++ {
-			k1, _, err := s1.Types()[i].Promote().Convert(row1[i])
-			if err != nil {
-				return 0, fmt.Errorf("incompatible types")
+			if s1.Types()[i].Equals(s2.Types()[i]) {
+				cmp, err = s1.Types()[i].Compare(row1[i], row2[i])
+			} else {
+				k1 := row1[i]
+				k2, _, err := s1.Types()[i].Convert(row2[i])
+				if err != nil {
+					return 0, fmt.Errorf("incompatible types")
+				}
+				cmp, err = s1.Types()[i].Compare(k1, k2)
 			}
-
-			k2, _, err := s2.Types()[i].Promote().Convert(row2[i])
-			if err != nil {
-				return 0, fmt.Errorf("incompatible types")
-			}
-
-			cmp, err := s1.Types()[i].Promote().Compare(k1, k2)
 			if err != nil {
 				return 0, err
 			}
 			if cmp == 0 {
 				continue
 			}
-			keyCmp = cmp
 			break
 		}
-		return keyCmp, nil
+		return cmp, nil
 	}
 
 	s1Buckets, err := mergeOverlappingBuckets(s1.Histogram(), s1.Types())
@@ -541,10 +540,6 @@ func mergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type) ([]sql.H
 			k++
 			break
 		}
-		mcvs, mcvCnts, err := mergeMcvs(h[i].Mcvs(), h[i-1].Mcvs(), h[i].McvCounts(), h[i-1].McvCounts(), cmp)
-		if err != nil {
-			return nil, err
-		}
 		for ; i < len(h) && h[i].DistinctCount() == 1; i++ {
 			eq, err := cmp(h[k].UpperBound(), h[i].UpperBound())
 			if err != nil {
@@ -559,8 +554,8 @@ func mergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type) ([]sql.H
 				h[k].NullCount()+h[i].NullCount(),
 				h[k].BoundCount()+h[i].BoundCount(),
 				h[k].UpperBound(),
-				mcvCnts,
-				mcvs)
+				h[k].McvCounts(),
+				h[k].Mcvs())
 		}
 		k++
 	}
