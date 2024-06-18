@@ -83,11 +83,15 @@ func (l *Loop) Resolved() bool {
 
 // WithChildren implements the interface sql.Node.
 func (l *Loop) WithChildren(children ...sql.Node) (sql.Node, error) {
+	newBlock, err := l.Block.WithChildren(children...)
+	if err != nil {
+		return nil, err
+	}
 	return &Loop{
 		Label:          l.Label,
 		Condition:      l.Condition,
 		OnceBeforeEval: l.OnceBeforeEval,
-		Block:          NewBlock(children),
+		Block:          newBlock.(*Block),
 	}, nil
 }
 
@@ -108,6 +112,15 @@ func (l *Loop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		OnceBeforeEval: l.OnceBeforeEval,
 		Block:          l.Block,
 	}, nil
+}
+
+// WithParamReference implements the expression.ProcedureReferencable interface
+func (l *Loop) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
+	nl := *l
+	newBlock := *nl.Block
+	newBlock.Pref = pRef
+	nl.Block = &newBlock
+	return &nl
 }
 
 // CheckPrivileges implements the interface sql.Node.
