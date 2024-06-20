@@ -209,11 +209,11 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test script",
+			Name: "test script",
 			SetUpScript: []string{
 				"create temporary table t1 (a int, b int);",
 			},
-			Assertions:  []queries.ScriptTestAssertion{},
+			Assertions: []queries.ScriptTestAssertion{},
 		},
 	}
 
