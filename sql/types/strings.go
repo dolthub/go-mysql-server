@@ -45,9 +45,10 @@ const (
 
 var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
-	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
-	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
-	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation: %v")
+	ErrLengthTooLarge       = errors.NewKind("length is %v but max allowed is %v")
+	ErrLengthBeyondLimit    = errors.NewKind("string '%v' is too large for column '%v'")
+	ErrBinaryCollation      = errors.NewKind("binary types must have the binary collation: %v")
+	ErrIncorrectStringValue = errors.NewKind("incorrect string value: '%v'")
 
 	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, TinyTextBlobMax)
 	Text       = MustCreateStringWithDefaults(sqltypes.Text, TextBlobMax)
@@ -361,6 +362,10 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 	case string:
 		val = s
 	case []byte:
+		// TODO: add exceptions for certain collations?
+		if !IsBinaryType(t) && !utf8.Valid(s) {
+			return "", ErrIncorrectStringValue.New(s)
+		}
 		val = string(s)
 	case time.Time:
 		val = s.Format(sql.TimestampDatetimeLayout)
