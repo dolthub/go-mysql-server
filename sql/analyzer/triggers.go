@@ -401,19 +401,12 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.UpdateStr:
-		scopeNode := plan.NewProject(
-			[]sql.Expression{expression.NewStar()},
-			plan.NewCrossJoin(
-				plan.NewTableAlias("old", getResolvedTable(n)),
-				plan.NewTableAlias("new", getResolvedTable(n)),
-			),
-		)
-		// TODO: do something different for update join
+		// Update Joins need to be handled differently
+		var scopeNode *plan.Project
 		if updateNode, isUpdate := n.(*plan.Update); isUpdate {
 			if updateJoin, isUpdateJoin := updateNode.Child.(*plan.UpdateJoin); isUpdateJoin {
 				if updateSrc, isUpdateSrc := updateJoin.Child.(*plan.UpdateSource); isUpdateSrc {
 					if proj, isProj := updateSrc.Child.(*plan.Project); isProj {
-						//scopeNode = proj
 						scopeNode = plan.NewProject(
 							[]sql.Expression{expression.NewStar()},
 							plan.NewCrossJoin(
@@ -424,6 +417,15 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					}
 				}
 			}
+		}
+		if scopeNode == nil {
+			scopeNode = plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewCrossJoin(
+					plan.NewTableAlias("old", getResolvedTable(n)),
+					plan.NewTableAlias("new", getResolvedTable(n)),
+				),
+			)
 		}
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)

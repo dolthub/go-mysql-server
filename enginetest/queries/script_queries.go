@@ -226,6 +226,132 @@ SET entity_test.value = joined.value;`,
 		},
 	},
 	{
+		Name: "update join with update trigger different value",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int, k int);",
+			"insert into t values (1, 2, 3);",
+			"create trigger trig before update on t for each row begin set new.j = 999; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 999, 30}},
+			},
+			{
+				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 999, 30}},
+			},
+		},
+	},
+	{
+		Name: "update join with update trigger same value",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int, k int);",
+			"insert into t values (1, 2, 3);",
+			"create trigger trig before update on t for each row begin set new.k = 999; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 2, 999}},
+			},
+			{
+				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 2, 999}},
+			},
+		},
+	},
+	{
+		Name: "update join with update trigger where condition",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int, k int);",
+			"insert into t values (1, 2, 3);",
+			"create trigger trig before update on t for each row begin set new.k = 999; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30 where t.i = 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 2, 999}},
+			},
+			{
+				// TODO: should throw can't update error
+				Skip:     true,
+				Query:    "update t join (select i, j, k from t) as tt set t.k = 30 where t.i = 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+		},
+	},
+	{
+		Name: "update join with update trigger if condition",
+		SetUpScript: []string{
+			"CREATE TABLE test_users (\n" +
+			"    `id` int NOT NULL AUTO_INCREMENT,\n" +
+			"    `username` varchar(255) NOT NULL,\n" +
+			"    `password` varchar(60) NOT NULL,\n" +
+			"    `deleted` tinyint(1) DEFAULT '0',\n" +
+			"    `favorite_number` INT,\n" +
+			"    PRIMARY KEY (`id`)\n" +
+			");",
+
+			"CREATE TRIGGER test_on_delete_users\n" +
+			"    BEFORE UPDATE ON test_users\n" +
+			"    FOR EACH ROW\n" +
+			"BEGIN\n" +
+			"    IF NEW.`deleted` THEN\n" +
+			"        SET NEW.`password` = '';\n" +
+			"    END IF;\n" +
+			"END ",
+
+			"INSERT INTO test_users (username, password, deleted, favorite_number) VALUES ('john', 'doe', 0, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE test_users JOIN (SELECT 1 FROM test_users) AS tu SET test_users.favorite_number = 42;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from test_users;",
+				Expected: []sql.Row{{1, "john", "doe", 0, 42}},
+			},
+			{
+				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.favorite_number = 420;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from test_users;",
+				Expected: []sql.Row{{1, "john", "doe", 0, 420}},
+			},
+			{
+				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.deleted = 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from test_users;",
+				Expected: []sql.Row{{1, "john", "", 1, 420}},
+			},
+		},
+	},
+	{
 		Name: "GMS issue 2349",
 		SetUpScript: []string{
 			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
