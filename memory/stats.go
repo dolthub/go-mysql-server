@@ -145,7 +145,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			for _, v := range keyVals[i*offset] {
 				upperBound = append(upperBound, v)
 			}
-			buckets[i] = stats.NewHistogramBucket(uint64(perBucket), uint64(perBucket), 0, 1, upperBound, nil, nil)
+			buckets[i] = stats.NewHistogramBucket(float64(perBucket), float64(perBucket), 0, 1, upperBound, nil, nil)
 		}
 
 		// columns and types
@@ -161,7 +161,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			return err
 		}
 
-		stat := stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
+		stat := stats.NewStatistic(float64(rowCount), float64(rowCount), 0, float64(dataLen), time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
 
 		// functional dependencies
 		fds, idxCols, err := stats.IndexFds(table.Name(), sch, indexes[strings.ToLower(qual.Index())])
@@ -270,7 +270,7 @@ func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []s
 
 func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
-	var cnt uint64
+	var cnt float64
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
 			if stats.RowCount() > cnt {
@@ -278,12 +278,12 @@ func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint
 			}
 		}
 	}
-	return cnt, nil
+	return uint64(cnt), nil
 }
 
 func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	pref := fmt.Sprintf("%s.%s", db, table)
-	var size uint64
+	var size float64
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
 			if stats.AvgSize() > size {
@@ -291,7 +291,7 @@ func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (ui
 			}
 		}
 	}
-	return size, nil
+	return uint64(size), nil
 }
 
 func (s *StatsProv) DropDbStats(ctx *sql.Context, db string, flush bool) error {

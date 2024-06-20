@@ -30,7 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []sql.HistogramBucket, class sql.IndexClass, lowerBound sql.Row) *Statistic {
+func NewStatistic(rowCount, distinctCount, nullCount, avgSize float64, createdAt time.Time, qualifier sql.StatQualifier, columns []string, types []sql.Type, histogram []sql.HistogramBucket, class sql.IndexClass, lowerBound sql.Row) *Statistic {
 	return &Statistic{
 		RowCnt:      rowCount,
 		DistinctCnt: distinctCount,
@@ -47,10 +47,10 @@ func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt 
 }
 
 type Statistic struct {
-	RowCnt      uint64            `json:"row_count"`
-	DistinctCnt uint64            `json:"distinct_count"`
-	NullCnt     uint64            `json:"null_count"`
-	AvgRowSize  uint64            `json:"avg_size"`
+	RowCnt      float64           `json:"row_count"`
+	DistinctCnt float64           `json:"distinct_count"`
+	NullCnt     float64           `json:"null_count"`
+	AvgRowSize  float64           `json:"avg_size"`
 	Created     time.Time         `json:"created_at"`
 	Qual        sql.StatQualifier `json:"qualifier"`
 	Cols        []string          `json:"columns"`
@@ -85,7 +85,7 @@ func (j *StatisticJSON) ToStatistic() *Statistic {
 	for _, b := range j.Hist {
 		hist = append(hist, b)
 	}
-	return NewStatistic(j.RowCnt, j.DistinctCnt, j.NullCnt, j.AvgRowSize, j.Created, j.Qual, j.Cols, j.Typs, hist, sql.IndexClass(j.IdxClass), j.LowerBnd)
+	return NewStatistic(float64(j.RowCnt), float64(j.DistinctCnt), float64(j.NullCnt), float64(j.AvgRowSize), j.Created, j.Qual, j.Cols, j.Typs, hist, sql.IndexClass(j.IdxClass), j.LowerBnd)
 }
 
 var _ sql.JSONWrapper = (*Statistic)(nil)
@@ -127,19 +127,19 @@ func (s *Statistic) SetQualifier(q sql.StatQualifier) {
 	s.Qual = q
 }
 
-func (s *Statistic) RowCount() uint64 {
+func (s *Statistic) RowCount() float64 {
 	return s.RowCnt
 }
 
-func (s *Statistic) DistinctCount() uint64 {
+func (s *Statistic) DistinctCount() float64 {
 	return s.DistinctCnt
 }
 
-func (s *Statistic) NullCount() uint64 {
+func (s *Statistic) NullCount() float64 {
 	return s.NullCnt
 }
 
-func (s *Statistic) AvgSize() uint64 {
+func (s *Statistic) AvgSize() float64 {
 	return s.AvgRowSize
 }
 
@@ -163,25 +163,25 @@ func (s *Statistic) Histogram() sql.Histogram {
 	return s.Hist
 }
 
-func (s *Statistic) WithDistinctCount(i uint64) sql.Statistic {
+func (s *Statistic) WithDistinctCount(i float64) sql.Statistic {
 	ret := *s
 	ret.DistinctCnt = i
 	return &ret
 }
 
-func (s *Statistic) WithRowCount(i uint64) sql.Statistic {
+func (s *Statistic) WithRowCount(i float64) sql.Statistic {
 	ret := *s
 	ret.RowCnt = i
 	return &ret
 }
 
-func (s *Statistic) WithNullCount(i uint64) sql.Statistic {
+func (s *Statistic) WithNullCount(i float64) sql.Statistic {
 	ret := *s
 	ret.NullCnt = i
 	return &ret
 }
 
-func (s *Statistic) WithAvgSize(i uint64) sql.Statistic {
+func (s *Statistic) WithAvgSize(i float64) sql.Statistic {
 	ret := *s
 	ret.AvgRowSize = i
 	return &ret
@@ -266,7 +266,7 @@ func ParseTypeStrings(typs []string) ([]sql.Type, error) {
 	return ret, nil
 }
 
-func NewHistogramBucket(rowCount, distinctCount, nullCount, boundCount uint64, boundValue sql.Row, mcvCounts []uint64, mcvs []sql.Row) *Bucket {
+func NewHistogramBucket(rowCount, distinctCount, nullCount, boundCount float64, boundValue sql.Row, mcvCounts []float64, mcvs []sql.Row) *Bucket {
 	return &Bucket{
 		RowCnt:      rowCount,
 		DistinctCnt: distinctCount,
@@ -279,30 +279,30 @@ func NewHistogramBucket(rowCount, distinctCount, nullCount, boundCount uint64, b
 }
 
 type Bucket struct {
-	RowCnt      uint64    `json:"row_count"`
-	DistinctCnt uint64    `json:"distinct_count"`
-	NullCnt     uint64    `json:"null_count"`
-	McvsCnt     []uint64  `json:"mcv_counts"`
-	BoundCnt    uint64    `json:"bound_count"`
+	RowCnt      float64   `json:"row_count"`
+	DistinctCnt float64   `json:"distinct_count"`
+	NullCnt     float64   `json:"null_count"`
+	McvsCnt     []float64 `json:"mcv_counts"`
+	BoundCnt    float64   `json:"bound_count"`
 	BoundVal    sql.Row   `json:"upper_bound"`
 	McvVals     []sql.Row `json:"mcvs"`
 }
 
 var _ sql.HistogramBucket = (*Bucket)(nil)
 
-func (b Bucket) RowCount() uint64 {
+func (b Bucket) RowCount() float64 {
 	return b.RowCnt
 }
 
-func (b Bucket) DistinctCount() uint64 {
+func (b Bucket) DistinctCount() float64 {
 	return b.DistinctCnt
 }
 
-func (b Bucket) NullCount() uint64 {
+func (b Bucket) NullCount() float64 {
 	return b.NullCnt
 }
 
-func (b Bucket) BoundCount() uint64 {
+func (b Bucket) BoundCount() float64 {
 	return b.BoundCnt
 }
 
@@ -310,7 +310,7 @@ func (b Bucket) UpperBound() sql.Row {
 	return b.BoundVal
 }
 
-func (b Bucket) McvCounts() []uint64 {
+func (b Bucket) McvCounts() []float64 {
 	return b.McvsCnt
 }
 

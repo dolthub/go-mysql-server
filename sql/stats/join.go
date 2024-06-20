@@ -88,37 +88,41 @@ func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error
 // high fraction of the index.
 func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.Row) (int, error)) ([]sql.HistogramBucket, error) {
 	var newBuckets []sql.HistogramBucket
-	newCnt := uint64(0)
 	for i := range left {
 		l := left[i]
 		r := right[i]
-		lDistinct := float64(l.DistinctCount())
-		rDistinct := float64(r.DistinctCount())
+		lDistinct := l.DistinctCount()
+		rDistinct := r.DistinctCount()
 
-		lRows := float64(l.RowCount())
-		rRows := float64(r.RowCount())
+		lRows := l.RowCount()
+		rRows := r.RowCount()
 
-		var rows uint64
+		var rows float64
 
 		// mcvs counted in isolation
 		// todo: should we assume non-match MCVs in smaller set
 		// contribute MCV count * average frequency from the larger?
-		var mcvMatch int
-		for i, key1 := range l.Mcvs() {
-			for j, key2 := range r.Mcvs() {
-				v, err := cmp(key1, key2)
-				if err != nil {
-					return nil, err
-				}
-				if v == 0 {
-					rows += l.McvCounts()[i] * r.McvCounts()[j]
-					lRows -= float64(l.McvCounts()[i])
-					rRows -= float64(r.McvCounts()[j])
-					lDistinct--
-					rDistinct--
-					mcvMatch++
-					break
-				}
+		var mcvMatch float64
+		var i, j int
+		for i < len(l.Mcvs()) && j < len(r.Mcvs()) {
+			v, err := cmp(l.Mcvs()[i], r.Mcvs()[j])
+			if err != nil {
+				return nil, err
+			}
+			switch v {
+			case 0:
+				rows += l.McvCounts()[i] * r.McvCounts()[j]
+				lRows -= float64(l.McvCounts()[i])
+				rRows -= float64(r.McvCounts()[j])
+				lDistinct--
+				rDistinct--
+				mcvMatch++
+				i++
+				j++
+			case -1:
+				i++
+			case +1:
+				j++
 			}
 		}
 
@@ -133,20 +137,16 @@ func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.R
 		minDistinct := math.Min(lDistinct, rDistinct)
 
 		if maxDistinct > 0 {
-			rows += uint64(float64(lRows*rRows) / float64(maxDistinct))
+			rows += lRows * rRows / maxDistinct
 		}
 
-		newCnt += rows
-
 		// TODO: something smarter with MCVs
-		mcvs := append(l.Mcvs(), r.Mcvs()...)
-		mcvCounts := append(l.McvCounts(), r.McvCounts()...)
 
 		newBucket := NewHistogramBucket(
 			rows,
-			uint64(minDistinct)+uint64(mcvMatch), // matched mcvs contribute back to result distinct count
-			uint64(float64(l.NullCount()*r.NullCount())/float64(maxDistinct)),
-			l.BoundCount()*r.BoundCount(), l.UpperBound(), mcvCounts, mcvs)
+			minDistinct+mcvMatch, // matched mcvs contribute back to result distinct count
+			0,
+			l.BoundCount(), l.UpperBound(), nil, nil)
 		newBuckets = append(newBuckets, newBucket)
 	}
 	return newBuckets, nil
@@ -326,9 +326,9 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 					}
 
 					nextR = NewHistogramBucket(
-						uint64(float64(nextR.RowCount())+float64(peekR.RowCount())),
-						uint64(float64(nextR.DistinctCount())+float64(peekR.DistinctCount())),
-						uint64(float64(nextR.NullCount())+float64(peekR.NullCount())),
+						nextR.RowCount()+peekR.RowCount(),
+						nextR.DistinctCount()+peekR.DistinctCount(),
+						nextR.NullCount()+peekR.NullCount(),
 						peekR.BoundCount(), peekR.UpperBound(), peekR.McvCounts(), peekR.Mcvs())
 				}
 
@@ -353,16 +353,16 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 
 				// lastL -> nextR
 				firstHalf := NewHistogramBucket(
-					uint64(float64(nextR.RowCount())+float64(peekR.RowCount())*cutFrac),
-					uint64(float64(nextR.DistinctCount())+float64(peekR.DistinctCount())*cutFrac),
-					uint64(float64(nextR.NullCount())+float64(peekR.NullCount())*cutFrac),
+					nextR.RowCount()+peekR.RowCount()*cutFrac,
+					nextR.DistinctCount()+peekR.DistinctCount()*cutFrac,
+					nextR.NullCount()+peekR.NullCount()*cutFrac,
 					1, nextL.UpperBound(), nil, nil)
 
 				// nextR -> nextL
 				secondHalf := NewHistogramBucket(
-					uint64(float64(peekR.RowCount())*(1-cutFrac)),
-					uint64(float64(peekR.DistinctCount())*(1-cutFrac)),
-					uint64(float64(peekR.NullCount())*(1-cutFrac)),
+					peekR.RowCount()*(1-cutFrac),
+					peekR.DistinctCount()*(1-cutFrac),
+					peekR.NullCount()*(1-cutFrac),
 					peekR.BoundCount(),
 					peekR.UpperBound(),
 					peekR.McvCounts(),
@@ -389,16 +389,16 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 
 			// lastL -> nextR
 			firstHalf := NewHistogramBucket(
-				uint64(float64(nextL.RowCount())*(1-cutFrac)),
-				uint64(float64(nextL.DistinctCount())*(1-cutFrac)),
-				uint64(float64(nextL.NullCount())*(1-cutFrac)),
+				nextL.RowCount()*(1-cutFrac),
+				nextL.DistinctCount()*(1-cutFrac),
+				nextL.NullCount()*(1-cutFrac),
 				1, nextR.UpperBound(), nil, nil)
 
 			// nextR -> nextL
 			secondHalf := NewHistogramBucket(
-				uint64(float64(nextL.RowCount())*cutFrac),
-				uint64(float64(nextL.DistinctCount())*cutFrac),
-				uint64(float64(nextL.NullCount())*cutFrac),
+				nextL.RowCount()*cutFrac,
+				nextL.DistinctCount()*cutFrac,
+				nextL.NullCount()*cutFrac,
 				nextL.BoundCount(),
 				nextL.UpperBound(),
 				nextL.McvCounts(),
@@ -450,9 +450,9 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 				peekL := leftStack[len(leftStack)-1]
 				leftStack = leftStack[:len(leftStack)-1]
 				nextL = NewHistogramBucket(
-					uint64(float64(nextL.RowCount())+float64(peekL.RowCount())),
-					uint64(float64(nextL.DistinctCount())+float64(peekL.DistinctCount())),
-					uint64(float64(nextL.NullCount())+float64(peekL.NullCount())),
+					nextL.RowCount()+peekL.RowCount(),
+					nextL.DistinctCount()+peekL.DistinctCount(),
+					nextL.NullCount()+peekL.NullCount(),
 					peekL.BoundCount(), peekL.UpperBound(), peekL.McvCounts(), peekL.Mcvs())
 			}
 			leftRes = append(leftRes, nextL)
@@ -469,7 +469,7 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 
 // mergeMcvs combines two sets of most common values, merging the bound keys
 // with the same value and keeping the top k of the merge result.
-func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []uint64, cmp func(sql.Row, sql.Row) (int, error)) ([]sql.Row, []uint64, error) {
+func mergeMcvs(mcvs1, mcvs2 []sql.Row, mcvCnts1, mcvCnts2 []float64, cmp func(sql.Row, sql.Row) (int, error)) ([]sql.Row, []float64, error) {
 	if len(mcvs1) < len(mcvs2) {
 		// mcvs2 is low
 		mcvs1, mcvs2 = mcvs2, mcvs1

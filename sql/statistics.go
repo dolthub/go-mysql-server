@@ -65,10 +65,10 @@ const (
 type Statistic interface {
 	JSONWrapper
 	MutableStatistic
-	RowCount() uint64
-	DistinctCount() uint64
-	NullCount() uint64
-	AvgSize() uint64
+	RowCount() float64
+	DistinctCount() float64
+	NullCount() float64
+	AvgSize() float64
 	CreatedAt() time.Time
 	Columns() []string
 	Types() []Type
@@ -84,10 +84,10 @@ type MutableStatistic interface {
 	WithColSet(ColSet) Statistic
 	WithFuncDeps(*FuncDepSet) Statistic
 	WithHistogram(Histogram) (Statistic, error)
-	WithDistinctCount(uint64) Statistic
-	WithRowCount(uint64) Statistic
-	WithNullCount(uint64) Statistic
-	WithAvgSize(uint64) Statistic
+	WithDistinctCount(float64) Statistic
+	WithRowCount(float64) Statistic
+	WithNullCount(float64) Statistic
+	WithAvgSize(float64) Statistic
 	WithLowerBound(Row) Statistic
 }
 
@@ -206,12 +206,12 @@ func (h Histogram) DebugString() string {
 // HistogramBucket contains statistics for a fragment of an
 // index's keyspace.
 type HistogramBucket interface {
-	RowCount() uint64
-	DistinctCount() uint64
-	NullCount() uint64
-	BoundCount() uint64
+	RowCount() float64
+	DistinctCount() float64
+	NullCount() float64
+	BoundCount() float64
 	UpperBound() Row
-	McvCounts() []uint64
+	McvCounts() []float64
 	// Mcvs are the "most common values" (keys) in the index
 	Mcvs() []Row
 }

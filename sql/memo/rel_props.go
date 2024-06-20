@@ -399,7 +399,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		// If so, then the odds that a random element of each set matches can be computed as:
 		selectivity := 1.0 / float64(distinct)
 		card := float64(left.RowCount()*right.RowCount()) * selectivity
-		return &stats.Statistic{RowCnt: uint64(card)}
+		return &stats.Statistic{RowCnt: card}
 
 	case *Max1Row:
 		stat = &stats.Statistic{RowCnt: 1}
@@ -415,15 +415,15 @@ func statsForRel(rel RelExpr) sql.Statistic {
 				return rel.Stats
 			} else if rel.Stats.RowCount() > 0 {
 				// don't accidentally round to zero
-				newRows := uint64(math.Max(1, float64(rel.Stats.RowCount())/2))
-				newDistinct := uint64(math.Max(1, float64(rel.Stats.DistinctCount())/2))
+				newRows := math.Max(1, float64(rel.Stats.RowCount())/2)
+				newDistinct := math.Max(1, float64(rel.Stats.DistinctCount())/2)
 				return rel.Stats.WithRowCount(newRows).WithDistinctCount(newDistinct)
 			}
 		}
 		stat = &stats.Statistic{RowCnt: 1}
 
 	case *Values:
-		stat = &stats.Statistic{RowCnt: uint64(len(rel.Table.ExpressionTuples))}
+		stat = &stats.Statistic{RowCnt: float64(len(rel.Table.ExpressionTuples))}
 
 	case *TableFunc:
 		// todo: have table function do their own row count estimations
@@ -449,7 +449,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		}
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
 			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, table); err == nil {
-				return &stats.Statistic{RowCnt: card}
+				return &stats.Statistic{RowCnt: float64(card)}
 				break
 			}
 		}
@@ -457,7 +457,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 
 	case *Filter:
 		card := float64(rel.Child.RelProps.GetStats().RowCount()) * defaultFilterSelectivity
-		stat = &stats.Statistic{RowCnt: uint64(card)}
+		stat = &stats.Statistic{RowCnt: float64(card)}
 
 	case *Project:
 		stat = rel.Child.RelProps.GetStats()
