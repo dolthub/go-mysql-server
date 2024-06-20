@@ -489,6 +489,13 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return 0, nil
 	}
 
+	// https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_unix-timestamp
+	// When the date argument is a TIMESTAMP column,
+	// UNIX_TIMESTAMP() returns the internal timestamp value directly,
+	// with no implicit “string-to-Unix-timestamp” conversion.
+	if ut.Date.Type().Equals(types.Timestamp) {
+		return toUnixTimestamp(date.(time.Time))
+	}
 	// The function above returns the time value in UTC time zone.
 	// Instead, it should use the current session time zone.
 

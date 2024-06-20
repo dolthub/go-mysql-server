@@ -2518,6 +2518,23 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "unix_timestamp with non UTC timezone",
+		SetUpScript: []string{
+			"SET @@SESSION.time_zone = 'UTC';",
+			"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `datetime_col` datetime,   `timestamp_col` timestamp,   PRIMARY KEY (`i`) )",
+			"insert into datetime_table(i,datetime_col,timestamp_col)values(1, '1970-01-02 00:00:00', '1970-01-02 00:00:00')",
+			"SET @@SESSION.time_zone = 'Asia/Shanghai';", // +8:00
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT unix_timestamp(timestamp_col), unix_timestamp(datetime_col) from datetime_table",
+				Expected: []sql.Row{
+					{float64(86400), float64(57600)},
+				},
+			},
+		},
+	},
+	{
 		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
 			"SET @@SESSION.time_zone = 'UTC';",
