@@ -401,20 +401,18 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.UpdateStr:
-		// Update Joins need to be handled differently
+		// The scopeNode for an UpdateJoin should contain every node in the updateSource as new and old.
 		var scopeNode *plan.Project
 		if updateNode, isUpdate := n.(*plan.Update); isUpdate {
 			if updateJoin, isUpdateJoin := updateNode.Child.(*plan.UpdateJoin); isUpdateJoin {
 				if updateSrc, isUpdateSrc := updateJoin.Child.(*plan.UpdateSource); isUpdateSrc {
-					if proj, isProj := updateSrc.Child.(*plan.Project); isProj {
-						scopeNode = plan.NewProject(
-							[]sql.Expression{expression.NewStar()},
-							plan.NewCrossJoin(
-								plan.NewSubqueryAlias("old", "", proj),
-								plan.NewSubqueryAlias("new", "", proj),
-							),
-						)
-					}
+					scopeNode = plan.NewProject(
+						[]sql.Expression{expression.NewStar()},
+						plan.NewCrossJoin(
+							plan.NewSubqueryAlias("old", "", updateSrc.Child),
+							plan.NewSubqueryAlias("new", "", updateSrc.Child),
+						),
+					)
 				}
 			}
 		}
