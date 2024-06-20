@@ -6655,6 +6655,39 @@ where
 			},
 		},
 	},
+	{
+		Name: "invalid utf8 encoding strings",
+		SetUpScript: []string{
+			"create table t (c char(10), v varchar(10), txt text, b blob, bi binary(10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t(c) values (X'9876543210');",
+				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+			},
+			{
+				Query: "insert into t(v) values (X'9876543210');",
+				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+			},
+			{
+				Query: "insert into t(txt) values (X'9876543210');",
+				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+			},
+			{
+				Query: "insert into t(b) values (X'9876543210');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into t(bi) values (X'9876543210');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+		},
+	},
+
 }
 
 var SpatialScriptTests = []ScriptTest{
