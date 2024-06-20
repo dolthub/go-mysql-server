@@ -402,10 +402,6 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	}, nil
 }
 
-func findUpdateIter(iter sql.RowIter) () {
-
-}
-
 func findInsertIter(rowIter sql.RowIter) (*insertIter, error) {
 	var insertItr *insertIter
 	switch rowIter := rowIter.(type) {

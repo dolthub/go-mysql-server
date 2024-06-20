@@ -408,6 +408,23 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				plan.NewTableAlias("new", getResolvedTable(n)),
 			),
 		)
+		// TODO: do something different for update join
+		if updateNode, isUpdate := n.(*plan.Update); isUpdate {
+			if updateJoin, isUpdateJoin := updateNode.Child.(*plan.UpdateJoin); isUpdateJoin {
+				if updateSrc, isUpdateSrc := updateJoin.Child.(*plan.UpdateSource); isUpdateSrc {
+					if proj, isProj := updateSrc.Child.(*plan.Project); isProj {
+						//scopeNode = proj
+						scopeNode = plan.NewProject(
+							[]sql.Expression{expression.NewStar()},
+							plan.NewCrossJoin(
+								plan.NewSubqueryAlias("old", "", proj),
+								plan.NewSubqueryAlias("new", "", proj),
+							),
+						)
+					}
+				}
+			}
+		}
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.DeleteStr:
