@@ -278,7 +278,7 @@ SET entity_test.value = joined.value;`,
 		},
 	},
 	{
-		Name: "update join with update trigger where condition",
+		Name: "update join with update trigger",
 		SetUpScript: []string{
 			"create table t (i int primary key, j int, k int);",
 			"insert into t values (1, 2, 3);",
@@ -298,6 +298,14 @@ SET entity_test.value = joined.value;`,
 				Skip:     true,
 				Query:    "update t join (select i, j, k from t) as tt set t.k = 30 where t.i = 1;",
 				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1 offset 1;",
+				Expected: []sql.Row{{newUpdateResult(0, 0)}},
 			},
 		},
 	},
