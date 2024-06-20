@@ -305,22 +305,22 @@ SET entity_test.value = joined.value;`,
 		Name: "update join with update trigger if condition",
 		SetUpScript: []string{
 			"CREATE TABLE test_users (\n" +
-			"    `id` int NOT NULL AUTO_INCREMENT,\n" +
-			"    `username` varchar(255) NOT NULL,\n" +
-			"    `password` varchar(60) NOT NULL,\n" +
-			"    `deleted` tinyint(1) DEFAULT '0',\n" +
-			"    `favorite_number` INT,\n" +
-			"    PRIMARY KEY (`id`)\n" +
-			");",
+				"    `id` int NOT NULL AUTO_INCREMENT,\n" +
+				"    `username` varchar(255) NOT NULL,\n" +
+				"    `password` varchar(60) NOT NULL,\n" +
+				"    `deleted` tinyint(1) DEFAULT '0',\n" +
+				"    `favorite_number` INT,\n" +
+				"    PRIMARY KEY (`id`)\n" +
+				");",
 
 			"CREATE TRIGGER test_on_delete_users\n" +
-			"    BEFORE UPDATE ON test_users\n" +
-			"    FOR EACH ROW\n" +
-			"BEGIN\n" +
-			"    IF NEW.`deleted` THEN\n" +
-			"        SET NEW.`password` = '';\n" +
-			"    END IF;\n" +
-			"END ",
+				"    BEFORE UPDATE ON test_users\n" +
+				"    FOR EACH ROW\n" +
+				"BEGIN\n" +
+				"    IF NEW.`deleted` THEN\n" +
+				"        SET NEW.`password` = '';\n" +
+				"    END IF;\n" +
+				"END ",
 
 			"INSERT INTO test_users (username, password, deleted, favorite_number) VALUES ('john', 'doe', 0, 0);",
 		},
