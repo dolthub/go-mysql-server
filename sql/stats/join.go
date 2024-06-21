@@ -88,7 +88,6 @@ func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error
 // high fraction of the index.
 func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.Row) (int, error)) ([]sql.HistogramBucket, error) {
 	var newBuckets []sql.HistogramBucket
-	newCnt := uint64(0)
 	for i := range left {
 		l := left[i]
 		r := right[i]
@@ -104,21 +103,26 @@ func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.R
 		// todo: should we assume non-match MCVs in smaller set
 		// contribute MCV count * average frequency from the larger?
 		var mcvMatch int
-		for i, key1 := range l.Mcvs() {
-			for j, key2 := range r.Mcvs() {
-				v, err := cmp(key1, key2)
-				if err != nil {
-					return nil, err
-				}
-				if v == 0 {
-					rows += l.McvCounts()[i] * r.McvCounts()[j]
-					lRows -= float64(l.McvCounts()[i])
-					rRows -= float64(r.McvCounts()[j])
-					lDistinct--
-					rDistinct--
-					mcvMatch++
-					break
-				}
+		var i, j int
+		for i < len(l.Mcvs()) && j < len(r.Mcvs()) {
+			v, err := cmp(l.Mcvs()[i], r.Mcvs()[j])
+			if err != nil {
+				return nil, err
+			}
+			switch v {
+			case 0:
+				rows += l.McvCounts()[i] * r.McvCounts()[j]
+				lRows -= float64(l.McvCounts()[i])
+				rRows -= float64(r.McvCounts()[j])
+				lDistinct--
+				rDistinct--
+				mcvMatch++
+				i++
+				j++
+			case -1:
+				i++
+			case +1:
+				j++
 			}
 		}
 
@@ -136,17 +140,11 @@ func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.R
 			rows += uint64(float64(lRows*rRows) / float64(maxDistinct))
 		}
 
-		newCnt += rows
-
-		// TODO: something smarter with MCVs
-		mcvs := append(l.Mcvs(), r.Mcvs()...)
-		mcvCounts := append(l.McvCounts(), r.McvCounts()...)
-
 		newBucket := NewHistogramBucket(
 			rows,
 			uint64(minDistinct)+uint64(mcvMatch), // matched mcvs contribute back to result distinct count
-			uint64(float64(l.NullCount()*r.NullCount())/float64(maxDistinct)),
-			l.BoundCount()*r.BoundCount(), l.UpperBound(), mcvCounts, mcvs)
+			0,
+			l.BoundCount(), l.UpperBound(), nil, nil)
 		newBuckets = append(newBuckets, newBucket)
 	}
 	return newBuckets, nil
