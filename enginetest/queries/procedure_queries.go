@@ -1289,6 +1289,67 @@ END;`,
 		},
 	},
 	{
+		Name: "DECLARE CONTINUE HANDLER",
+		SetUpScript: []string{
+			"CREATE TABLE t1(id CHAR(16) primary key, data INT)",
+			"CREATE TABLE t2(i INT)",
+			"CREATE TABLE t3(id CHAR(16) primary key, data INT)",
+			`CREATE PROCEDURE curdemo()
+BEGIN
+  DECLARE done INT DEFAULT FALSE;
+  DECLARE a CHAR(16);
+  DECLARE b, c INT;
+  DECLARE cur1 CURSOR FOR SELECT id,data FROM t1;
+  DECLARE cur2 CURSOR FOR SELECT i FROM t2;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+  OPEN cur1;
+  OPEN cur2;
+
+  read_loop: LOOP
+    FETCH cur1 INTO a, b;
+    FETCH cur2 INTO c;
+    IF done THEN
+      LEAVE read_loop;
+    END IF;
+    IF b < c THEN
+      INSERT INTO t3 VALUES (a,b);
+    ELSE
+      INSERT INTO t3 VALUES (a,c);
+    END IF;
+  END LOOP;
+
+  CLOSE cur1;
+  CLOSE cur2;
+  SELECT "success";
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL curdemo()",
+				Expected: []sql.Row{{"success"}},
+			},
+			{
+				Query:    "SELECT * from t3",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "INSERT INTO t1 values ('a', 10), ('b', 20)",
+			},
+			{
+				Query: "INSERT INTO t2 values (15), (15)",
+			},
+			{
+				Query:    "CALL curdemo()",
+				Expected: []sql.Row{{"success"}},
+			},
+			{
+				Query:    "SELECT * from t3",
+				Expected: []sql.Row{{"a", 10}, {"b", 15}},
+			},
+		},
+	},
+	{
 		Name: "DECLARE HANDLERs exit according to the block they were declared in",
 		SetUpScript: []string{
 			`DROP TABLE IF EXISTS t1;`,

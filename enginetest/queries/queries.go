@@ -7545,6 +7545,19 @@ Select * from (
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query: "select cast(X'9876543210' as char(10))",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select cast(X'9876543210' as binary)",
+		Expected: []sql.Row{
+			{[]uint8{0x98, 0x76, 0x54, 0x32, 0x10}},
+		},
+	},
+
+	{
 		Query:    "SELECT 1/0 FROM dual",
 		Expected: []sql.Row{{nil}},
 	},
