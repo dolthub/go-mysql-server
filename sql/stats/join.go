@@ -102,7 +102,7 @@ func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.R
 		// mcvs counted in isolation
 		// todo: should we assume non-match MCVs in smaller set
 		// contribute MCV count * average frequency from the larger?
-		var mcvMatch float64
+		var mcvMatch int
 		var i, j int
 		for i < len(l.Mcvs()) && j < len(r.Mcvs()) {
 			v, err := cmp(l.Mcvs()[i], r.Mcvs()[j])
