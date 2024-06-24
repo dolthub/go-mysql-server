@@ -939,6 +939,50 @@ var CreateTableScriptTests = []ScriptTest{
 	},
 }
 
+var CreateTableInSubroutineTests = []ScriptTest{
+	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
+	{
+		// Skipped because Dolt doesn't support this, although MySQL does.
+		Name: "procedure contains CREATE TABLE AS",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE PROCEDURE foo() CREATE TABLE bar AS SELECT 1;",
+				Skip:  true,
+			},
+			{
+				Query: "CALL foo();",
+				Skip:  true,
+			},
+			{
+				Query:    "SELECT * from bar;",
+				Expected: []sql.Row{{1}},
+				Skip:     true,
+			},
+		},
+	},
+	{
+		Name: "event contains CREATE TABLE AS",
+		//TODO: Verify that event executes correctly. (https://github.com/dolthub/dolt/issues/8053)
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE TABLE bar AS SELECT 1;",
+			},
+		},
+	},
+	{
+		Name: "trigger contains CREATE TABLE AS",
+		//TODO: Verify that trigger executes correctly. (https://github.com/dolthub/dolt/issues/8053)
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
+			},
+		},
+	},
+}
+
 var CreateTableAutoIncrementTests = []ScriptTest{
 	{
 		Name:        "create table with non primary auto_increment column",

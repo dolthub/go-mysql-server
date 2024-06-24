@@ -28,7 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	var triggerOrder *plan.TriggerOrder
 	if c.TriggerSpec.Order != nil {
@@ -38,7 +38,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 		}
 	} else {
 		//TODO: fix vitess->sql.y, in CREATE TRIGGER, if trigger_order_opt evaluates to empty then SubStatementPositionStart swallows the first token of the body
-		beforeSwallowedToken := strings.LastIndexFunc(strings.TrimRightFunc(query[:c.SubStatementPositionStart], unicode.IsSpace), unicode.IsSpace)
+		beforeSwallowedToken := strings.LastIndexFunc(strings.TrimRightFunc(fullQuery[:c.SubStatementPositionStart], unicode.IsSpace), unicode.IsSpace)
 		if beforeSwallowedToken != -1 {
 			c.SubStatementPositionStart = beforeSwallowedToken
 		}
@@ -84,8 +84,8 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 	triggerScope.addColumns(newScope.cols)
 	triggerScope.addColumns(oldScope.cols)
 
-	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	bodyScope := b.build(triggerScope, c.TriggerSpec.Body, bodyStr)
+	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+	bodyScope := b.buildSubquery(triggerScope, c.TriggerSpec.Body, bodyStr, fullQuery)
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
 
 	db := b.resolveDbForTable(c.Table)
@@ -112,7 +112,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, query string, c *ast.DDL) (
 		triggerOrder,
 		tableScope.node,
 		bodyScope.node,
-		query,
+		subQuery,
 		bodyStr,
 		b.ctx.QueryTime(),
 		definer,
@@ -128,7 +128,7 @@ func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
 	return definer
 }
 
-func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	var params []plan.ProcedureParam
 	for _, param := range c.ProcedureSpec.Params {
 		var direction plan.ProcedureParamDirection
@@ -194,9 +194,9 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 		// outer procedure parameters.
 		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
 	}
-	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
-	bodyScope := b.build(inScope, c.ProcedureSpec.Body, bodyStr)
+	bodyScope := b.buildSubquery(inScope, c.ProcedureSpec.Body, bodyStr, fullQuery)
 
 	var db sql.Database = nil
 	dbName := c.ProcedureSpec.ProcName.Qualifier.String()
@@ -218,13 +218,13 @@ func (b *Builder) buildCreateProcedure(inScope *scope, query string, c *ast.DDL)
 		characteristics,
 		bodyScope.node,
 		comment,
-		query,
+		subQuery,
 		bodyStr,
 	)
 	return outScope
 }
 
-func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	eventSpec := c.EventSpec
 	dbName := strings.ToLower(eventSpec.EventName.Qualifier.String())
@@ -252,8 +252,8 @@ func (b *Builder) buildCreateEvent(inScope *scope, query string, c *ast.DDL) (ou
 		status = sql.EventStatus_DisableOnSlave
 	}
 
-	bodyStr := strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	bodyScope := b.build(inScope, c.EventSpec.Body, bodyStr)
+	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+	bodyScope := b.buildSubquery(inScope, c.EventSpec.Body, bodyStr, fullQuery)
 
 	var at, starts, ends *plan.OnScheduleTimestamp
 	var everyInterval *expression.Interval
@@ -319,7 +319,7 @@ func (b *Builder) buildAlterUser(inScope *scope, _ string, c *ast.DDL) (outScope
 	return outScope
 }
 
-func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildAlterEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	eventSpec := c.EventSpec
 
 	var database sql.Database
@@ -396,8 +396,8 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 		newComment = string(eventSpec.Comment.Val)
 	}
 	if alterDefinition {
-		newDefinitionStr = strings.TrimSpace(query[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-		defScope := b.build(inScope, c.EventSpec.Body, newDefinitionStr)
+		newDefinitionStr = strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+		defScope := b.buildSubquery(inScope, c.EventSpec.Body, newDefinitionStr, fullQuery)
 		newDefinition = defScope.node
 	}
 
@@ -432,14 +432,14 @@ func (b *Builder) buildAlterEvent(inScope *scope, query string, c *ast.DDL) (out
 	return
 }
 
-func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	selectStr := c.SubStatementStr
 	if selectStr == "" {
-		if c.SubStatementPositionEnd > len(query) {
+		if c.SubStatementPositionEnd > len(fullQuery) {
 			b.handleErr(fmt.Errorf("unable to get sub statement"))
 		}
-		selectStr = query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
+		selectStr = fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd]
 	}
 
 	selectStatement, ok := c.ViewSpec.ViewExpr.(ast.SelectStatement)
@@ -470,6 +470,6 @@ func (b *Builder) buildCreateView(inScope *scope, query string, c *ast.DDL) (out
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
-	outScope.node = plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.OrReplace, query, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
+	outScope.node = plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
 	return outScope
 }

@@ -2033,6 +2033,9 @@ func TestTriggers(t *testing.T, harness Harness) {
 	for _, script := range queries.TriggerTests {
 		TestScript(t, harness, script)
 	}
+	for _, script := range queries.TriggerCreateInSubroutineTests {
+		TestScript(t, harness, script)
+	}
 
 	harness.Setup(setup.MydbData)
 	e := mustNewEngine(t, harness)
@@ -2321,6 +2324,11 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 			TestScript(t, harness, script)
 		}
 	})
+	t.Run("create tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureCreateInSubroutineTests {
+			TestScript(t, harness, script)
+		}
+	})
 	t.Run("drop tests", func(t *testing.T) {
 		for _, script := range queries.ProcedureDropTests {
 			TestScript(t, harness, script)
@@ -2384,6 +2392,9 @@ func TestEvents(t *testing.T, h Harness) {
 	for _, script := range queries.EventTests {
 		TestScript(t, h, script)
 	}
+	for _, script := range queries.EventCreateInSubroutineTests {
+		TestScript(t, h, script)
+	}
 }
 
 func TestTriggerErrors(t *testing.T, harness Harness) {
@@ -2445,6 +2456,10 @@ func TestViews(t *testing.T, harness Harness) {
 	// Newer Tests should be put in view_queries.go
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.ViewScripts {
+		TestScript(t, harness, script)
+	}
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ViewCreateInSubroutineTests {
 		TestScript(t, harness, script)
 	}
 }
@@ -2548,6 +2563,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	}
 
 	for _, script := range queries.CreateTableScriptTests {
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.CreateTableInSubroutineTests {
 		TestScript(t, harness, script)
 	}
 
