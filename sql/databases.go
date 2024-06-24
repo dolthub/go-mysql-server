@@ -35,13 +35,6 @@ type DatabaseProvider interface {
 	AllDatabases(ctx *Context) []Database
 }
 
-// SchemaDatabaseProvider is a DatabaseProvider that can resolve a database using a name and schema.
-type SchemaDatabaseProvider interface {
-	DatabaseProvider
-	// SchemaDatabase is called to resolve a DatabaseSchema when only the schema is provided in an identifier.
-	SchemaDatabase(ctx *Context, dbName, schemeName string) (DatabaseSchema, bool, error)
-}
-
 // MutableDatabaseProvider is a DatabaseProvider that can create and drop databases.
 type MutableDatabaseProvider interface {
 	DatabaseProvider
@@ -103,6 +96,8 @@ type SchemaDatabase interface {
 // (and in MySQL, database and Schema are synonymous). Some providers may have additional schemas.
 type DatabaseSchema interface {
 	Database
+	// SchemaName returns the schema name for Doltgres, or database name if empty for Dolt.
+	SchemaName() string
 }
 
 // Databaser is a node that contains a reference to a database.

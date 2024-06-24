@@ -1816,6 +1816,10 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	}
 
 	for _, db := range databases {
+		schemaName := db.Name()
+		if sdb, ok := db.(DatabaseSchema); ok {
+			schemaName = sdb.SchemaName()
+		}
 		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
 		} else {
@@ -1871,7 +1875,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			// TODO: use different values for databases that support schemas
 			rows = append(rows, Row{
 				"def",          // table_catalog
-				db.Name(),      // table_schema
+				schemaName,     // table_schema
 				t.Name(),       // table_name
 				tableType,      // table_type
 				engine,         // engine
@@ -1907,27 +1911,27 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		for _, view := range views {
 			rows = append(rows, Row{
-				"def",     // table_catalog
-				db.Name(), // table_schema
-				view.Name, // table_name
-				"VIEW",    // table_type
-				nil,       // engine
-				nil,       // version (protocol, always 10)
-				nil,       // row_format
-				nil,       // table_rows
-				nil,       // avg_row_length
-				nil,       // data_length
-				nil,       // max_data_length
-				nil,       // max_data_length
-				nil,       // data_free
-				nil,       // auto_increment
-				y2k,       // create_time
-				nil,       // update_time
-				nil,       // check_time
-				nil,       // table_collation
-				nil,       // checksum
-				nil,       // create_options
-				"VIEW",    // table_comment
+				"def",      // table_catalog
+				schemaName, // table_schema
+				view.Name,  // table_name
+				"VIEW",     // table_type
+				nil,        // engine
+				nil,        // version (protocol, always 10)
+				nil,        // row_format
+				nil,        // table_rows
+				nil,        // avg_row_length
+				nil,        // data_length
+				nil,        // max_data_length
+				nil,        // max_data_length
+				nil,        // data_free
+				nil,        // auto_increment
+				y2k,        // create_time
+				nil,        // update_time
+				nil,        // check_time
+				nil,        // table_collation
+				nil,        // checksum
+				nil,        // create_options
+				"VIEW",     // table_comment
 			})
 		}
 	}
