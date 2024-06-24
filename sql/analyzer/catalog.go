@@ -26,11 +26,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/performance_schema"
 )
 
 type Catalog struct {
 	MySQLDb       *mysql_db.MySQLDb
 	InfoSchema    sql.Database
+	PerfSchema    sql.Database
 	StatsProvider sql.StatsProvider
 
 	DbProvider       sql.DatabaseProvider
@@ -68,6 +70,7 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
 		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
 		InfoSchema:       information_schema.NewInformationSchemaDatabase(),
+		PerfSchema:       performance_schema.NewPerformanceSchemaDatabase(),
 		DbProvider:       provider,
 		builtInFunctions: function.NewRegistry(),
 		StatsProvider:    memory.NewStatsProv(),
@@ -107,7 +110,7 @@ func (c *Catalog) WithTableFunctions(fns ...sql.TableFunction) (sql.TableFunctio
 
 func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	var dbs []sql.Database
-	dbs = append(dbs, c.InfoSchema)
+	dbs = append(dbs, c.InfoSchema, c.PerfSchema)
 
 	if c.MySQLDb.Enabled() {
 		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).AllDatabases(ctx)...)
@@ -171,11 +174,14 @@ func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
-	if strings.ToLower(db) == "information_schema" {
+	switch {
+	case strings.ToLower(db) == "information_schema":
 		return c.InfoSchema, nil
-	} else if c.MySQLDb.Enabled() {
+	case strings.ToLower(db) == "performance_schema":
+		return c.PerfSchema, nil
+	case c.MySQLDb.Enabled():
 		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).Database(ctx, db)
-	} else {
+	default:
 		return c.DbProvider.Database(ctx, db)
 	}
 }
