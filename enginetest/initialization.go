@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"github.com/dolthub/go-mysql-server/sql/performance_schema"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -97,6 +98,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	// Almost no tests require an information schema that can be updated, but test setup makes it difficult to not
 	// provide everywhere
 	a.Catalog.InfoSchema = information_schema.NewInformationSchemaDatabase()
+	a.Catalog.PerfSchema = performance_schema.NewPerformanceSchemaDatabase()
 
 	engine := sqle.New(a, new(sqle.Config))
 
