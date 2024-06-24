@@ -389,10 +389,6 @@ func (d dummyDB) GetTableNames(ctx *Context) ([]string, error) {
 	return tblNames, nil
 }
 
-func (d dummyDB) SchemaName() string {
-	return d.name
-}
-
 type dummyTable struct {
 	Table
 	name string

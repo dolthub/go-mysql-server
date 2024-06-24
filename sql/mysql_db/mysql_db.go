@@ -756,10 +756,6 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 	}, nil
 }
 
-func (db *MySQLDb) SchemaName() string {
-	return "mysql"
-}
-
 // AuthMethod implements the interface mysql.AuthServer.
 func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 	if !db.Enabled() {

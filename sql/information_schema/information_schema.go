@@ -1816,8 +1816,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	}
 
 	for _, db := range databases {
-		schemaName := db.SchemaName()
-		if schemaName == InformationSchemaDatabaseName {
+		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
 		} else {
 			tableType = "BASE TABLE"
@@ -1829,7 +1828,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			tableCollation = t.Collation().String()
 			comment := ""
-			if schemaName != InformationSchemaDatabaseName {
+			if db.Name() != InformationSchemaDatabaseName {
 				if st, ok := t.(StatisticsTable); ok {
 					tableRows, _, err = st.RowCount(ctx)
 					if err != nil {
@@ -1872,7 +1871,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			// TODO: use different values for databases that support schemas
 			rows = append(rows, Row{
 				"def",          // table_catalog
-				schemaName,     // table_schema
+				db.Name(),      // table_schema
 				t.Name(),       // table_name
 				tableType,      // table_type
 				engine,         // engine
@@ -1908,27 +1907,27 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		for _, view := range views {
 			rows = append(rows, Row{
-				"def",      // table_catalog
-				schemaName, // table_schema
-				view.Name,  // table_name
-				"VIEW",     // table_type
-				nil,        // engine
-				nil,        // version (protocol, always 10)
-				nil,        // row_format
-				nil,        // table_rows
-				nil,        // avg_row_length
-				nil,        // data_length
-				nil,        // max_data_length
-				nil,        // max_data_length
-				nil,        // data_free
-				nil,        // auto_increment
-				y2k,        // create_time
-				nil,        // update_time
-				nil,        // check_time
-				nil,        // table_collation
-				nil,        // checksum
-				nil,        // create_options
-				"VIEW",     // table_comment
+				"def",     // table_catalog
+				db.Name(), // table_schema
+				view.Name, // table_name
+				"VIEW",    // table_type
+				nil,       // engine
+				nil,       // version (protocol, always 10)
+				nil,       // row_format
+				nil,       // table_rows
+				nil,       // avg_row_length
+				nil,       // data_length
+				nil,       // max_data_length
+				nil,       // max_data_length
+				nil,       // data_free
+				nil,       // auto_increment
+				y2k,       // create_time
+				nil,       // update_time
+				nil,       // check_time
+				nil,       // table_collation
+				nil,       // checksum
+				nil,       // create_options
+				"VIEW",    // table_comment
 			})
 		}
 	}
@@ -2681,7 +2680,6 @@ func NewInformationSchemaDatabase() Database {
 // Name implements the sql.Database interface.
 func (db *informationSchemaDatabase) Name() string { return db.name }
 
-// GetTableInsensitive implements the sql.Database interface.
 func (db *informationSchemaDatabase) GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error) {
 	// The columns table has dynamic information that can't be cached across queries
 	if strings.ToLower(tblName) == ColumnsTableName {
@@ -2692,7 +2690,6 @@ func (db *informationSchemaDatabase) GetTableInsensitive(ctx *Context, tblName s
 	return tbl, ok, nil
 }
 
-// GetTableNames implements the sql.Database interface.
 func (db *informationSchemaDatabase) GetTableNames(ctx *Context) ([]string, error) {
 	tblNames := make([]string, 0, len(db.tables))
 	for k := range db.tables {
@@ -2700,11 +2697,6 @@ func (db *informationSchemaDatabase) GetTableNames(ctx *Context) ([]string, erro
 	}
 
 	return tblNames, nil
-}
-
-// SchemaName implements the sql.DatabaseSchema interface.
-func (t *informationSchemaDatabase) SchemaName() string {
-	return InformationSchemaDatabaseName
 }
 
 // Name implements the sql.Table interface.
