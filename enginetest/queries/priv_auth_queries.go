@@ -1617,6 +1617,7 @@ var UserPrivTests = []UserPrivilegeTest{
 					{"information_schema"},
 					{"mydb"},
 					{"mysql"},
+					{"performance_schema"},
 				},
 			},
 		},

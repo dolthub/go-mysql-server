@@ -5550,7 +5550,7 @@ Select * from (
 	},
 	{
 		Query:    `SHOW DATABASES`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}, {"performance_schema"}},
 	},
 	{
 		Query:    `SHOW DATABASES LIKE 'information_schema'`,
@@ -5562,7 +5562,7 @@ Select * from (
 	},
 	{
 		Query:    `SHOW SCHEMAS`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
+		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}, {"performance_schema"}},
 	},
 	{
 		Query: `SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
@@ -5570,6 +5570,7 @@ Select * from (
 			{"information_schema", "utf8mb4", "utf8mb4_0900_bin"},
 			{"mydb", "utf8mb4", "utf8mb4_0900_bin"},
 			{"foo", "utf8mb4", "utf8mb4_0900_bin"},
+			{"performance_schema", "utf8mb4", "utf8mb4_0900_bin"},
 		},
 	},
 	{
