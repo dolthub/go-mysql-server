@@ -44,6 +44,10 @@ func (d *DummyResolvedDB) GetTableInsensitive(ctx *sql.Context, tblName string) 
 
 func (d *DummyResolvedDB) GetTableNames(ctx *sql.Context) ([]string, error) { return nil, nil }
 
+func (d *DummyResolvedDB) SchemaName() string {
+	return d.name
+}
+
 func (d *DummyResolvedDB) AddTable(name string, t sql.Table) {}
 
 func (d *DummyResolvedDB) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID, comment string) error {

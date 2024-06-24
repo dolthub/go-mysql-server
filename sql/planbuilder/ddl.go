@@ -1668,3 +1668,6 @@ func (d dummyDb) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Tabl
 func (d dummyDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return nil, nil
 }
+func (d dummyDb) SchemaName() string {
+	return d.name
+}

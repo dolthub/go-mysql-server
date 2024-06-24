@@ -76,6 +76,10 @@ func (d Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return tableNames, nil
 }
 
+func (d Database) SchemaName() string {
+	return d.name
+}
+
 // CreateTable implements the interface sql.TableCreator.
 func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID, comment string) error {
 	colStmts := make([]string, len(schema.Schema))

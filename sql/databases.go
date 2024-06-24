@@ -80,6 +80,8 @@ type Database interface {
 	// GetTableNames returns the table names of every table in the database. It does not return the names of temporary
 	// tables
 	GetTableNames(ctx *Context) ([]string, error)
+	// SchemaName returns the schema name for Doltgres and the database name for Dolt.
+	SchemaName() string
 }
 
 // SchemaDatabase is a database comprising multiple schemas that can each be queried for tables.
@@ -416,4 +418,8 @@ func (UnresolvedDatabase) GetTableInsensitive(ctx *Context, tblName string) (Tab
 
 func (UnresolvedDatabase) GetTableNames(ctx *Context) ([]string, error) {
 	return []string{}, nil
+}
+
+func (d UnresolvedDatabase) SchemaName() string {
+	return string(d)
 }

@@ -165,6 +165,10 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return tblNames, nil
 }
 
+func (d *BaseDatabase) SchemaName() string {
+	return d.name
+}
+
 func (d *BaseDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTableName string, parentIndexName string) (fulltext.IndexTableNames, error) {
 	d.tablesMu.RLock()
 	defer d.tablesMu.RUnlock()

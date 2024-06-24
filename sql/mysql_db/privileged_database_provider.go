@@ -218,6 +218,10 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 	return tablesWithAccess, nil
 }
 
+func (pdb PrivilegedDatabase) SchemaName() string {
+	return pdb.db.SchemaName()
+}
+
 // GetTableInsensitiveAsOf returns a new sql.VersionedDatabase.
 func (pdb PrivilegedDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName string, asOf interface{}) (sql.Table, bool, error) {
 	db, ok := pdb.db.(sql.VersionedDatabase)
