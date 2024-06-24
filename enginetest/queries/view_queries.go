@@ -252,3 +252,47 @@ CREATE TABLE tab1 (
 		},
 	},
 }
+
+var ViewCreateInSubroutineTests = []ScriptTest{
+	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
+	{
+		// Skipped because we return an error even though MySQL supports this.
+		Name: "procedure contains CREATE VIEW AS",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE PROCEDURE foo() CREATE VIEW bar AS SELECT 1;",
+				Skip:  true,
+			},
+			{
+				Query: "CALL foo();",
+				Skip:  true,
+			},
+			{
+				Query:    "SELECT * from bar;",
+				Expected: []sql.Row{{1}},
+				Skip:     true,
+			},
+		},
+	},
+	{
+		Name: "event contains CREATE VIEW AS",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Tests that the query doesn't panic.
+				Query: "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE VIEW bar AS SELECT 1;",
+			},
+		},
+	},
+	{
+		Name: "trigger contains CREATE VIEW AS",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Tests that the query doesn't panic.
+				Query: "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
+			},
+		},
+	},
+}

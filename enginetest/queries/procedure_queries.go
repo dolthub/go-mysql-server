@@ -2786,6 +2786,45 @@ var ProcedureShowCreate = []ScriptTest{
 	},
 }
 
+var ProcedureCreateInSubroutineTests = []ScriptTest{
+	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
+	{
+		Name: "procedure must not contain CREATE PROCEDURE",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE PROCEDURE foo() CREATE PROCEDURE bar() SELECT 0;",
+				// MySQL output: "Can't create a PROCEDURE from within another stored routine",
+				ExpectedErrStr: "creating procedures in stored procedures is currently unsupported and will be added in a future release",
+			},
+		},
+	},
+	{
+		Name: "event must not contain CREATE PROCEDURE",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE PROCEDURE bar() SELECT 1;",
+				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
+				Skip:           true,
+			},
+		},
+	},
+	{
+		Name: "trigger must not contain CREATE PROCEDURE",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE PROCEDURE bar() SELECT 1; END",
+				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
+				Skip:           true,
+			},
+		},
+	},
+}
+
 var NoDbProcedureTests = []ScriptTestAssertion{
 	{
 		Query:    "SHOW databases;",
