@@ -57,3 +57,7 @@ func (db performanceSchemaDatabase) GetTableNames(ctx *sql.Context) ([]string, e
 
 	return tblNames, nil
 }
+
+func (db performanceSchemaDatabase) SchemaName() string {
+	return db.name
+}
