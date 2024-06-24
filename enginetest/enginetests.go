@@ -772,7 +772,7 @@ func TestReadOnly(t *testing.T, harness Harness, testStoredProcedures bool) {
 
 	for _, query := range writingQueries {
 		t.Run(query, func(t *testing.T) {
-			AssertErr(t, e, harness, query, sql.ErrReadOnly)
+			AssertErr(t, e, harness, query, nil, sql.ErrReadOnly)
 		})
 	}
 }
@@ -1147,7 +1147,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				t.Skip()
 			}
 			if tt.err != nil {
-				AssertErrWithCtx(t, e, harness, ctx, tt.query, tt.err)
+				AssertErrWithCtx(t, e, harness, ctx, tt.query, nil, tt.err)
 				return
 			}
 			// in case there are any residual files from previous runs
@@ -1171,8 +1171,8 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	file.Close()
 	defer os.Remove(exists)
 
-	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", sql.ErrFileExists)
-	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable LIMIT 1 INTO DUMPFILE './exists.txt'", sql.ErrFileExists)
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", nil, sql.ErrFileExists)
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable LIMIT 1 INTO DUMPFILE './exists.txt'", nil, sql.ErrFileExists)
 }
 
 func TestReplaceInto(t *testing.T, harness Harness) {
@@ -1330,7 +1330,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
 			"FOREIGN KEY (v1) REFERENCES t2parent (v1))")
-		AssertErrWithCtx(t, e, harness, ctx, "TRUNCATE t2parent", sql.ErrTruncateReferencedFromForeignKey)
+		AssertErrWithCtx(t, e, harness, ctx, "TRUNCATE t2parent", nil, sql.ErrTruncateReferencedFromForeignKey)
 	})
 
 	t.Run("ON DELETE Triggers", func(t *testing.T) {
@@ -1823,11 +1823,11 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 
 				if assertion.ExpectedErr != nil {
 					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, assertion.ExpectedErr)
+						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, assertion.ExpectedErr)
 					})
 				} else if assertion.ExpectedErrStr != "" {
 					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
+						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, nil, assertion.ExpectedErrStr)
 					})
 				} else {
 					t.Run(assertion.Query, func(t *testing.T) {
@@ -1892,7 +1892,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 			ctx.SetCurrentDatabase(rootCtx.GetCurrentDatabase())
 			if script.ExpectedErr != nil {
 				t.Run(lastQuery, func(t *testing.T) {
-					AssertErrWithCtx(t, engine, harness, ctx, lastQuery, script.ExpectedErr)
+					AssertErrWithCtx(t, engine, harness, ctx, lastQuery, nil, script.ExpectedErr)
 				})
 			} else if script.ExpectingErr {
 				t.Run(lastQuery, func(t *testing.T) {
@@ -2352,7 +2352,7 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 					}
 					TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
 				} else if script.ExpectedErr != nil {
-					AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
+					AssertErrWithCtx(t, e, harness, ctx, script.Query, script.Bindings, script.ExpectedErr)
 				}
 			})
 		}
@@ -2461,7 +2461,7 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 	_, ok := db.(sql.ViewDatabase)
 	require.True(t, ok, "expected sql.ViewDatabase")
 
-	AssertErr(t, e, harness, "create view recursiveView AS select * from recursiveView", sql.ErrTableNotFound)
+	AssertErr(t, e, harness, "create view recursiveView AS select * from recursiveView", nil, sql.ErrTableNotFound)
 }
 
 func TestViewsPrepared(t *testing.T, harness Harness) {
@@ -2822,9 +2822,9 @@ func TestRenameTable(t *testing.T, harness Harness) {
 
 		t.Skip("broken")
 		TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", sql.ErrTableNotFound)
+		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", nil, sql.ErrTableNotFound)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT COUNT(*) FROM mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		AssertErrWithCtx(t, e, harness, ctx, "RENAME TABLE mydb.emptytable2 TO emptytable3", sql.ErrNoDatabaseSelected)
+		AssertErrWithCtx(t, e, harness, ctx, "RENAME TABLE mydb.emptytable2 TO emptytable3", nil, sql.ErrNoDatabaseSelected)
 	})
 }
 
@@ -3649,8 +3649,8 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, "s"},
 	}, nil, nil)
 
-	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", expression.ErrInvalidOffset)
-	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", expression.ErrInvalidOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", nil, expression.ErrInvalidOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", nil, expression.ErrInvalidOffset)
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2 (a int, b int, c int)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t2 VALUES (1,1,1), (3,2,2), (7,4,5)")
@@ -3767,8 +3767,8 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`, []sql.Row{{1}, {1}, {1}, {1}, {1}, {0}, {2}, {2}, {0}, {0}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY preceding and interval '2' DAY following) FROM c order by x`, []sql.Row{{4}, {4}, {4}, {5}, {2}, {2}, {4}, {4}, {4}, {4}}, nil, nil)
 
-	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", aggregation.ErrRangeInvalidOrderBy)
-	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", sql.ErrInvalidValue)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", nil, aggregation.ErrRangeInvalidOrderBy)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", nil, sql.ErrInvalidValue)
 }
 
 func TestNamedWindows(t *testing.T, harness Harness) {
@@ -3788,10 +3788,10 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT row_number() over (w3) FROM a WINDOW w3 as (w2), w2 as (w1), w1 as (partition by z order by x) order by x`, []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}, {int64(5)}, {int64(6)}}, nil, nil)
 
 	// errors
-	AssertErr(t, e, harness, "SELECT sum(y) over (w1 partition by x) FROM a WINDOW w1 as (partition by z) order by x", sql.ErrInvalidWindowInheritance)
-	AssertErr(t, e, harness, "SELECT sum(y) over (w1 order by x) FROM a WINDOW w1 as (order by z) order by x", sql.ErrInvalidWindowInheritance)
-	AssertErr(t, e, harness, "SELECT sum(y) over (w1 rows unbounded preceding) FROM a WINDOW w1 as (range unbounded preceding) order by x", sql.ErrInvalidWindowInheritance)
-	AssertErr(t, e, harness, "SELECT sum(y) over (w3) FROM a WINDOW w1 as (w2), w2 as (w3), w3 as (w1) order by x", sql.ErrCircularWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w1 partition by x) FROM a WINDOW w1 as (partition by z) order by x", nil, sql.ErrInvalidWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w1 order by x) FROM a WINDOW w1 as (order by z) order by x", nil, sql.ErrInvalidWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w1 rows unbounded preceding) FROM a WINDOW w1 as (range unbounded preceding) order by x", nil, sql.ErrInvalidWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w3) FROM a WINDOW w1 as (w2), w2 as (w3), w3 as (w1) order by x", nil, sql.ErrCircularWindowInheritance)
 
 	// TODO parser needs to differentiate between window replacement and copying -- window frames can't be copied
 	//AssertErr(t, e, harness, "SELECT sum(y) over w FROM a WINDOW (w) as (partition by z order by x rows unbounded preceding) order by x", sql.ErrInvalidWindowInheritance)
@@ -4282,13 +4282,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				"create table test (v varchar(10))",
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				//{
-				//	Query: "insert into test values (?)",
-				//	Bindings: map[string]*query.BindVariable{
-				//		"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
-				//	},
-				//	ExpectedErrStr: "incorrect string value: '[153 152 151]'",
-				//},
+				{
+					Query: "insert into test values (?)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": sqltypes.BytesBindVariable([]byte{0x99, 0x98, 0x97}),
+					},
+					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+				},
 				{
 					Query: "insert into test values (?)",
 					Bindings: map[string]*query.BindVariable{
@@ -4349,7 +4349,7 @@ func TestVariableErrors(t *testing.T, harness Harness) {
 	defer e.Close()
 	for _, test := range queries.VariableErrorTests {
 		t.Run(test.Query, func(t *testing.T) {
-			AssertErr(t, e, harness, test.Query, test.ExpectedErr)
+			AssertErr(t, e, harness, test.Query, nil, test.ExpectedErr)
 		})
 	}
 }
@@ -4643,9 +4643,9 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 	ctx.SetCurrentDatabase("")
 
-	AssertErrWithCtx(t, e, harness, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
-	AssertErrWithCtx(t, e, harness, ctx, "show tables", sql.ErrNoDatabaseSelected)
-	AssertErrWithCtx(t, e, harness, ctx, "show triggers", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "create table a (b int primary key)", nil, sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "show tables", nil, sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "show triggers", nil, sql.ErrNoDatabaseSelected)
 
 	_, _, err := e.Query(ctx, "ROLLBACK")
 	require.NoError(t, err)
@@ -4886,9 +4886,9 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 					sql.RunWithNowFunc(func() time.Time { return queries.Dec15_1_30 }, func() error {
 						ctx.SetQueryTime(queries.Dec15_1_30)
 						if assertion.ExpectedErr != nil {
-							AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+							AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErr)
 						} else if assertion.ExpectedErrStr != "" {
-							AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+							AssertErr(t, e, harness, assertion.Query, nil, nil, assertion.ExpectedErrStr)
 						} else {
 							var expected = assertion.Expected
 							if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
