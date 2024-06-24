@@ -85,6 +85,13 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
 		}
 		outScope.node = showRep
+	case "binary logs":
+		outScope = inScope.push()
+		showRep := plan.NewShowBinlogs()
+		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryCatalog); ok && binCat.HasBinlogPrimaryController() {
+			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
+		}
+		outScope.node = showRep
 	case "replica status":
 		outScope = inScope.push()
 		showRep := plan.NewShowReplicaStatus()

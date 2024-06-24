@@ -251,6 +251,38 @@ var UserPrivTests = []UserPrivilegeTest{
 				Expected: []sql.Row{},
 			},
 
+			// SHOW BINARY LOGS
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "replica-client",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOGS;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOGS;",
+				Expected: []sql.Row{},
+			},
+
 			// SHOW BINARY LOG STATUS
 			{
 				User:        "user",
