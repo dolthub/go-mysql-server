@@ -362,10 +362,6 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 	case string:
 		val = s
 	case []byte:
-		// TODO: add exceptions for certain collations?
-		if !IsBinaryType(t) && !utf8.Valid(s) {
-			return "", ErrIncorrectStringValue.New(s)
-		}
 		val = string(s)
 	case time.Time:
 		val = s.Format(sql.TimestampDatetimeLayout)
@@ -414,6 +410,11 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 
 	if s.baseType == sqltypes.Binary {
 		val += strings2.Repeat(string([]byte{0}), int(s.maxCharLength)-len(val))
+	}
+
+	// TODO: add exceptions for certain collations?
+	if !IsBinaryType(t) && !utf8.Valid([]byte(val)) {
+		return "", ErrIncorrectStringValue.New([]byte(val))
 	}
 
 	return val, nil
