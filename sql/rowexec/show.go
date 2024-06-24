@@ -719,6 +719,35 @@ func (b *BaseBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateT
 	}, nil
 }
 
+func (b *BaseBuilder) buildShowBinlogs(ctx *sql.Context, n *plan.ShowBinlogs, _ sql.Row) (sql.RowIter, error) {
+	if n.PrimaryController == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	logFiles, err := n.PrimaryController.ListBinaryLogs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(logFiles) == 0 {
+		return sql.RowsToRowIter(), nil
+	}
+
+	rows := make([]sql.Row, len(logFiles))
+	for i, logFile := range logFiles {
+		encrypted := "No"
+		if logFile.Encrypted {
+			encrypted = "Yes"
+		}
+		rows[i] = sql.Row{
+			logFile.Name, // Log_name
+			logFile.Size, // File_size
+			encrypted,    // Encrypted
+		}
+	}
+
+	return sql.RowsToRowIter(rows...), nil
+}
+
 func (b *BaseBuilder) buildShowBinlogStatus(ctx *sql.Context, n *plan.ShowBinlogStatus, row sql.Row) (sql.RowIter, error) {
 	if n.PrimaryController == nil {
 		return sql.RowsToRowIter(), nil

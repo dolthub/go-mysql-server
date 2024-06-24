@@ -91,11 +91,18 @@ type BinlogPrimaryController interface {
 	// ListBinaryLogs is called when the SHOW BINARY LOGS statement is executed. The integrator should return a list
 	// of the binary logs currently being managed. Note that this function will be expanded
 	// with an additional response parameter once it is wired up to the SQL engine.
-	ListBinaryLogs(ctx *sql.Context) error
+	ListBinaryLogs(ctx *sql.Context) ([]BinaryLogFileMetadata, error)
 
 	// GetBinaryLogStatus is called when the SHOW BINARY LOG STATUS statement is executed. The integrator should return
 	// the current status of all available (i.e. non-purged) binary logs.
 	GetBinaryLogStatus(ctx *sql.Context) ([]BinaryLogStatus, error)
+}
+
+// BinaryLogFileMetadata holds high level metadata about a binary log file, used for the `SHOW BINARY LOGS` statement.
+type BinaryLogFileMetadata struct {
+	Name      string
+	Size      uint64
+	Encrypted bool
 }
 
 // BinaryLogStatus holds the data for one row of results from the `SHOW BINARY LOG STATUS` statement (or the deprecated
