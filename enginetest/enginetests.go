@@ -4276,6 +4276,28 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 			},
 		},
+		{
+			Name: "inserts should trigger string conversion errors",
+			SetUpScript: []string{
+				"create table test (v varchar(10))",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				//{
+				//	Query: "insert into test values (?)",
+				//	Bindings: map[string]*query.BindVariable{
+				//		"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
+				//	},
+				//	ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+				//},
+				{
+					Query: "insert into test values (?)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": sqltypes.StringBindVariable(string([]byte{0x99, 0x98, 0x97})),
+					},
+					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		TestScript(t, harness, tt)
