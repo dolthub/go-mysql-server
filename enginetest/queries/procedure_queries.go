@@ -2828,7 +2828,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 var NoDbProcedureTests = []ScriptTestAssertion{
 	{
 		Query:    "SHOW databases;",
-		Expected: []sql.Row{{"information_schema"}, {"mydb"}, {"mysql"}, {"performance_schema"}},
+		Expected: []sql.Row{{"information_schema"}, {"mydb"}, {"mysql"}},
 	},
 	{
 		Query:    "SELECT database();",

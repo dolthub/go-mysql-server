@@ -782,7 +782,7 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	},
 	{
 		Query:    "SELECT * FROM information_schema.schemata_extensions",
-		Expected: []sql.Row{{"def", "information_schema", ""}, {"def", "performance_schema", ""}, {"def", "foo", ""}, {"def", "mydb", ""}},
+		Expected: []sql.Row{{"def", "information_schema", ""}, {"def", "foo", ""}, {"def", "mydb", ""}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.columns_extensions where table_name = 'mytable'`,
