@@ -1819,8 +1819,10 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		catalogName := "def"
 		schemaName := db.Name()
 		if sdb, ok := db.(DatabaseSchema); ok {
-			catalogName = sdb.Name()
-			schemaName = sdb.SchemaName()
+			if sn := sdb.SchemaName(); sn != "" {
+				catalogName = sdb.Name()
+				schemaName = sn
+			}
 		}
 		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
