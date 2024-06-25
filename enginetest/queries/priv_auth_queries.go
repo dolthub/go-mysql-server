@@ -2198,6 +2198,57 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "information schema is queryable",
+		SetUpScript: []string{
+			"CREATE DATABASE testdb;",
+			"CREATE USER testadmin@'%';",
+			"GRANT ALL ON testdb.* TO testadmin@'%';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    "USE testdb;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events)) as all_found;`,
+				Expected: []sql.Row{{1.0}},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `(SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events);`,
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM dual) UNION (SELECT 1 as found FROM dual)) as all_found;`,
+				Expected: []sql.Row{{1.0}},
+			},
+			{
+				User: "testadmin",
+				Host: "%",
+				Query: `SELECT SUM(found)
+FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'testdb')
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.views WHERE table_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.table_constraints WHERE table_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.triggers WHERE event_object_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.routines WHERE routine_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.events WHERE event_schema = 'testdb' LIMIT 1)) as all_found;`,
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
