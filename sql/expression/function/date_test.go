@@ -268,7 +268,7 @@ func TestUnixTimestamp(t *testing.T) {
 	var ut sql.Expression
 	var expected interface{}
 	ut = &UnixTimestamp{nil}
-	expected = float64(date.Unix())
+	expected = date.Unix()
 	result, err := ut.Eval(ctx2, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
@@ -276,7 +276,7 @@ func TestUnixTimestamp(t *testing.T) {
 
 	ut, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", types.LongText))
 	require.NoError(err)
-	expected = float64(time.Date(2018, 5, 2, 0, 0, 0, 0, time.UTC).Unix())
+	expected = time.Date(2018, 5, 2, 0, 0, 0, 0, time.UTC).Unix()
 	result, err = ut.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
