@@ -132,13 +132,13 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `CREATE TABLE t1 (i int primary key, j int auto_increment, k int, unique(j,k))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` int NOT NULL AUTO_INCREMENT,\n  `k` int,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `jk` (`j`,`k`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` int NOT NULL AUTO_INCREMENT,\n  `k` int,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `j` (`j`,`k`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 (i int primary key, j int auto_increment, k int, index (j,k))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE t1",
-		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` int NOT NULL AUTO_INCREMENT,\n  `k` int,\n  PRIMARY KEY (`i`),\n  KEY `jk` (`j`,`k`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `j` int NOT NULL AUTO_INCREMENT,\n  `k` int,\n  PRIMARY KEY (`i`),\n  KEY `j` (`j`,`k`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery: `CREATE TABLE t1 (
@@ -171,19 +171,19 @@ var CreateTableQueries = []WriteQueryTest{
 		WriteQuery:          `create table t1 (i int primary key, b1 blob, b2 blob, index(b1(123), b2(456)))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         `show create table t1`,
-		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  KEY `b1b2` (`b1`(123),`b2`(456))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  KEY `b1` (`b1`(123),`b2`(456))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `create table t1 (i int primary key, b1 blob, b2 blob, unique index(b1(123), b2(456)))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         `show create table t1`,
-		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `b1b2` (`b1`(123),`b2`(456))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `b1` (`b1`(123),`b2`(456))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `create table t1 (i int primary key, b1 blob, b2 blob, index(b1(10)), index(b2(20)), index(b1(123), b2(456)))`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         `show create table t1`,
-		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  KEY `b1` (`b1`(10)),\n  KEY `b1b2` (`b1`(123),`b2`(456)),\n  KEY `b2` (`b2`(20))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob,\n  `b2` blob,\n  PRIMARY KEY (`i`),\n  KEY `b1` (`b1`(10)),\n  KEY `b1_2` (`b1`(123),`b2`(456)),\n  KEY `b2` (`b2`(20))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `CREATE TABLE t1 as select * from mytable`,
@@ -934,6 +934,50 @@ var CreateTableScriptTests = []ScriptTest{
 						"  `u` int\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
+			},
+		},
+	},
+}
+
+var CreateTableInSubroutineTests = []ScriptTest{
+	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
+	{
+		// Skipped because Dolt doesn't support this, although MySQL does.
+		Name: "procedure contains CREATE TABLE AS",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE PROCEDURE foo() CREATE TABLE bar AS SELECT 1;",
+				Skip:  true,
+			},
+			{
+				Query: "CALL foo();",
+				Skip:  true,
+			},
+			{
+				Query:    "SELECT * from bar;",
+				Expected: []sql.Row{{1}},
+				Skip:     true,
+			},
+		},
+	},
+	{
+		Name: "event contains CREATE TABLE AS",
+		//TODO: Verify that event executes correctly. (https://github.com/dolthub/dolt/issues/8053)
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE TABLE bar AS SELECT 1;",
+			},
+		},
+	},
+	{
+		Name: "trigger contains CREATE TABLE AS",
+		//TODO: Verify that trigger executes correctly. (https://github.com/dolthub/dolt/issues/8053)
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE TABLE bar AS SELECT 1; END;",
 			},
 		},
 	},

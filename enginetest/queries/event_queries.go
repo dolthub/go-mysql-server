@@ -307,3 +307,43 @@ var EventTests = []ScriptTest{
 		},
 	},
 }
+
+var EventCreateInSubroutineTests = []ScriptTest{
+	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
+	{
+		Name: "procedure must not contain CREATE EVENT",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE PROCEDURE foo() CREATE EVENT bar ON SCHEDULE EVERY 1 YEAR DO SELECT 1;",
+				ExpectedErrStr: "Recursion of EVENT DDL statements is forbidden when body is present",
+				Skip:           true,
+			},
+		},
+	},
+	{
+		Name: "event must not contain CREATE EVENT",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE EVENT bar ON SCHEDULE EVERY 1 YEAR DO SELECT 1;",
+				ExpectedErrStr: "Recursion of EVENT DDL statements is forbidden when body is present",
+				Skip:           true,
+			},
+		},
+	},
+	{
+		Name: "trigger must not contain CREATE EVENT",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE EVENT bar ON SCHEDULE EVERY 1 YEAR DO SELECT 1; END",
+				ExpectedErrStr: "Recursion of EVENT DDL statements is forbidden when body is present",
+				Skip:           true,
+			},
+		},
+	},
+}

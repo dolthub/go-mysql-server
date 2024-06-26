@@ -23,7 +23,6 @@ import (
 type BeginEndBlock struct {
 	*Block
 	Label string
-	Pref  *expression.ProcedureReference
 }
 
 // NewBeginEndBlock creates a new *BeginEndBlock node.
@@ -95,7 +94,9 @@ func (b *BeginEndBlock) CollationCoercibility(ctx *sql.Context) (collation sql.C
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (b *BeginEndBlock) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nb := *b
-	nb.Pref = pRef
+	newBlock := *nb.Block
+	newBlock.Pref = pRef
+	nb.Block = &newBlock
 	return &nb
 }
 

@@ -238,6 +238,9 @@ func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 		Database: CheckPrivilegeNameForDatabase(t.SqlDatabase),
 		Table:    t.Table.Name(),
 	}
+	if subject.Database == sql.InformationSchemaDatabaseName {
+		return true
+	}
 	return opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select))
 }

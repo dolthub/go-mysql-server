@@ -405,7 +405,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  `a` bigint,\n" +
 				"  `b` varchar(20),\n" +
 				"  PRIMARY KEY (`pk`),\n" +
-				"  KEY `ab` (`a`,`b`),\n" +
+				"  KEY `fk1` (`a`,`b`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
@@ -790,7 +790,7 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	},
 	{
 		Query:    `SELECT * FROM information_schema.table_constraints_extensions where table_name = 'fk_tbl'`,
-		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "ab", "fk_tbl", nil, nil}},
+		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,

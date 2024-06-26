@@ -377,6 +377,17 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 	})
 }
 
+func getUpdateJoinSource(n sql.Node) *plan.UpdateSource {
+	if updateNode, isUpdate := n.(*plan.Update); isUpdate {
+		if updateJoin, isUpdateJoin := updateNode.Child.(*plan.UpdateJoin); isUpdateJoin {
+			if updateSrc, isUpdateSrc := updateJoin.Child.(*plan.UpdateSource); isUpdateSrc {
+				return updateSrc
+			}
+		}
+	}
+	return nil
+}
+
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
 func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
@@ -401,13 +412,26 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.UpdateStr:
-		scopeNode := plan.NewProject(
-			[]sql.Expression{expression.NewStar()},
-			plan.NewCrossJoin(
-				plan.NewTableAlias("old", getResolvedTable(n)),
-				plan.NewTableAlias("new", getResolvedTable(n)),
-			),
-		)
+		var scopeNode *plan.Project
+		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
+			resTbl := getResolvedTable(n)
+			scopeNode = plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewCrossJoin(
+					plan.NewTableAlias("old", resTbl),
+					plan.NewTableAlias("new", resTbl),
+				),
+			)
+		} else {
+			// The scopeNode for an UpdateJoin should contain every node in the updateSource as new and old.
+			scopeNode = plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewCrossJoin(
+					plan.NewSubqueryAlias("old", "", updateSrc.Child),
+					plan.NewSubqueryAlias("new", "", updateSrc.Child),
+				),
+			)
+		}
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
 	case sqlparser.DeleteStr:

@@ -343,6 +343,22 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateBinary(sqltypes.VarBinary, 3), []byte{01, 02, 03, 04}, nil, true},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 3), []byte("abcd"), nil, true},
 		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: nil}, "null", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: map[string]interface{}{"a": 1}}, `{"a": 1}`, false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), NewLazyJSONDocument([]byte(`{"a":1}`)), `{"a": 1}`, false},
+
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), []byte{0x98, 0x76, 0x54}, nil, true},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), []byte{0x98, 0x76, 0x54}, nil, true},
+		{MustCreateStringWithDefaults(sqltypes.Text, 10), []byte{0x98, 0x76, 0x54}, nil, true},
+		{MustCreateBinary(sqltypes.Binary, 10), []byte{0x98, 0x76, 0x54}, []byte{0x98, 0x76, 0x54, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, false},
+		{MustCreateBinary(sqltypes.VarBinary, 10), []byte{0x98, 0x76, 0x54}, []byte{0x98, 0x76, 0x54}, false},
+		{MustCreateBinary(sqltypes.Blob, 10), []byte{0x98, 0x76, 0x54}, []byte{0x98, 0x76, 0x54}, false},
+
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), string([]byte{0x98, 0x76, 0x54}), nil, true},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), string([]byte{0x98, 0x76, 0x54}), nil, true},
+		{MustCreateStringWithDefaults(sqltypes.Text, 10), string([]byte{0x98, 0x76, 0x54}), nil, true},
+		{MustCreateBinary(sqltypes.Binary, 10), string([]byte{0x98, 0x76, 0x54}), []byte{0x98, 0x76, 0x54, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, false},
+		{MustCreateBinary(sqltypes.VarBinary, 10), string([]byte{0x98, 0x76, 0x54}), []byte{0x98, 0x76, 0x54}, false},
+		{MustCreateBinary(sqltypes.Blob, 10), string([]byte{0x98, 0x76, 0x54}), []byte{0x98, 0x76, 0x54}, false},
 	}
 
 	for _, test := range tests {

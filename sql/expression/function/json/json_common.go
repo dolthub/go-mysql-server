@@ -15,6 +15,7 @@
 package json
 
 import (
+	"context"
 	goJson "encoding/json"
 	"fmt"
 
@@ -42,15 +43,10 @@ func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (type
 		return nil, err
 	}
 
-	val, err := doc.ToInterface()
-	if err != nil {
-		return nil, err
-	}
-	mutable := types.DeepCopyJson(val)
-	return types.JSONDocument{Val: mutable}, nil
+	return mutableJsonDoc(ctx, doc)
 }
 
-// getSearchableJSONVal returns a SearchableJSONValue from the given row and expression. The underling value is not copied
+// getSearchableJSONVal returns a SearchableJSONValue from the given row and expression. The underlying value is not copied
 // so it is intended to be used for read-only operations.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
 func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.JSONWrapper, error) {
@@ -94,6 +90,23 @@ func getJsonFunctionError(functionName string, argumentPosition int, err error) 
 		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, string(ij))
 	}
 	return err
+}
+
+// mutableJsonDoc returns a copy of |wrapper| that can be safely mutated.
+func mutableJsonDoc(ctx context.Context, wrapper sql.JSONWrapper) (types.MutableJSON, error) {
+	// Call Clone() even if |wrapper| isn't mutable. This is because some implementations (like LazyJsonDocument)
+	// cache and reuse the result of ToInterface(), and mutating this map may cause unintended behavior.
+	clonedJsonWrapper := wrapper.Clone(ctx)
+
+	if mutable, ok := clonedJsonWrapper.(types.MutableJSON); ok {
+		return mutable, nil
+	}
+
+	val, err := clonedJsonWrapper.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	return &types.JSONDocument{Val: val}, nil
 }
 
 // pathValPair is a helper struct for use by functions which take json paths paired with a json value. eg. JSON_SET, JSON_INSERT, etc.

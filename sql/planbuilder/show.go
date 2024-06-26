@@ -85,6 +85,13 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
 		}
 		outScope.node = showRep
+	case "binary logs":
+		outScope = inScope.push()
+		showRep := plan.NewShowBinlogs()
+		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryCatalog); ok && binCat.HasBinlogPrimaryController() {
+			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
+		}
+		outScope.node = showRep
 	case "replica status":
 		outScope = inScope.push()
 		showRep := plan.NewShowReplicaStatus()
@@ -155,7 +162,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		if pks != nil {
 			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
 		}
-		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
+		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt.Schema())
 
 	}
 	return
@@ -716,13 +723,9 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	switch t := table.(type) {
 	case *plan.ResolvedTable:
 		show.Indexes = b.getInfoSchemaIndexes(t)
-		node = b.modifySchemaTarget(tableScope, show, t)
+		node = b.modifySchemaTarget(tableScope, show, t.Schema())
 	case *plan.SubqueryAlias:
-		var err error
-		node, err = show.WithTargetSchema(t.Schema())
-		if err != nil {
-			b.handleErr(err)
-		}
+		node = b.modifySchemaTarget(tableScope, show, t.Schema())
 	default:
 	}
 

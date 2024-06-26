@@ -138,7 +138,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			// If a block node also has expressions (e.g. IfConditional), then we need to run the
 			// finalizeSubqueries analyzer rule in case the expressions contain any subqueries.
 			if _, ok := child.(sql.Expressioner); ok {
-				rulesToRun = append(rulesToRun, finalizeSubqueriesId)
+				rulesToRun = append(rulesToRun, finalizeSubqueriesId, assignExecIndexesId)
 			}
 			newChild, _, err = a.analyzeWithSelector(ctx, newChild, scope, SelectAllBatches, func(id RuleId) bool {
 				return slices.Contains(rulesToRun, id)

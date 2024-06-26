@@ -16,12 +16,14 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Block represents a collection of statements that should be executed in sequence.
 type Block struct {
 	statements []sql.Node
 	rowIterSch sql.Schema // This is set during RowIter, as the schema is unknown until iterating over the statements.
+	Pref       *expression.ProcedureReference
 }
 
 // RepresentsBlock is an interface that defines whether a node contains a Block node, or contains multiple child
@@ -121,6 +123,13 @@ func (b *Block) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nb := *b
 	nb.statements = children
 	return &nb, nil
+}
+
+// WithParamReference implements the expression.ProcedureReferencable interface
+func (b *Block) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
+	nb := *b
+	nb.Pref = pRef
+	return &nb
 }
 
 // CheckPrivileges implements the interface sql.Node.

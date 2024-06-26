@@ -53,7 +53,6 @@ func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 }
 
 var _ sql.Catalog = (*Catalog)(nil)
-var _ sql.SchemaCatalog = (*Catalog)(nil)
 var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
 var _ binlogreplication.BinlogPrimaryCatalog = (*Catalog)(nil)
 
@@ -298,67 +297,6 @@ func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName
 	}
 
 	return tbl, versionedDb, nil
-}
-
-func (c *Catalog) TableWithSchema(ctx *sql.Context, dbName, schemaName, tableName string) (sql.Table, sql.DatabaseSchema, error) {
-	sdbp, ok := c.DbProvider.(sql.SchemaDatabaseProvider)
-	if !ok {
-		// schemaName is the only explicitly provided qualifier in this case
-		return c.Table(ctx, schemaName, tableName)
-	}
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	schemaDatabase, ok, err := sdbp.SchemaDatabase(ctx, dbName, schemaName)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !ok {
-		return nil, nil, sql.ErrDatabaseSchemaNotFound.New(schemaName)
-	}
-
-	tbl, ok, err := schemaDatabase.GetTableInsensitive(ctx, tableName)
-	if err != nil {
-		return nil, nil, err
-	} else if !ok {
-		return nil, nil, suggestSimilarTables(schemaDatabase, ctx, tableName)
-	}
-
-	return tbl, schemaDatabase, nil
-}
-
-func (c *Catalog) TableWithSchemaAsOf(ctx *sql.Context, dbName, schemaName, tableName string, asOf any) (sql.Table, sql.DatabaseSchema, error) {
-	sdbp, ok := c.DbProvider.(sql.SchemaDatabaseProvider)
-	if !ok {
-		// schemaName is the only explicitly provided qualifier in this case
-		return c.TableAsOf(ctx, schemaName, tableName, asOf)
-	}
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	schemaDatabase, ok, err := sdbp.SchemaDatabase(ctx, dbName, schemaName)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !ok {
-		return nil, nil, sql.ErrDatabaseNotFound.New(schemaName)
-	}
-
-	versionedDb, ok := schemaDatabase.(sql.VersionedDatabase)
-	if !ok {
-		return nil, nil, sql.ErrAsOfNotSupported.New(schemaDatabase.Name())
-	}
-
-	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
-	if err != nil {
-		return nil, nil, err
-	} else if !ok {
-		return nil, nil, suggestSimilarTables(schemaDatabase, ctx, tableName)
-	}
-
-	return tbl, schemaDatabase, nil
 }
 
 // RegisterFunction registers the functions given, adding them to the built-in functions.

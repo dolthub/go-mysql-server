@@ -134,6 +134,8 @@ func (b *BaseBuilder) buildIfElseBlock(ctx *sql.Context, n *plan.IfElseBlock, ro
 	}, nil
 }
 
+var exitBlockError = fmt.Errorf("exit block")
+
 func (b *BaseBuilder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock, row sql.Row) (sql.RowIter, error) {
 	n.Pref.PushScope()
 	rowIter, err := b.buildNodeExec(ctx, n.Block, row)
@@ -144,38 +146,8 @@ func (b *BaseBuilder) buildBeginEndBlock(ctx *sql.Context, n *plan.BeginEndBlock
 			} else {
 				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
 			}
-		} else {
-			scope := n.Pref.InnermostScope
-			for i := len(scope.Handlers) - 1; i >= 0; i-- {
-				if !scope.Handlers[i].Cond.Matches(err) {
-					continue
-				}
-				originalScope := n.Pref.InnermostScope
-				defer func() {
-					n.Pref.InnermostScope = originalScope
-				}()
-				n.Pref.InnermostScope = scope
-				handlerRefVal := scope.Handlers[i]
-
-				handlerRowIter, err := b.buildNodeExec(ctx, handlerRefVal.Stmt, nil)
-				if err != nil {
-					return sql.RowsToRowIter(), err
-				}
-				defer handlerRowIter.Close(ctx)
-
-				for {
-					_, err := handlerRowIter.Next(ctx)
-					if err == io.EOF {
-						break
-					} else if err != nil {
-						return sql.RowsToRowIter(), err
-					}
-				}
-				if scope.Handlers[i].Action == expression.DeclareHandlerAction_Exit {
-					return sql.RowsToRowIter(), nil
-				}
-				return sql.RowsToRowIter(), io.EOF
-			}
+		} else if err == exitBlockError {
+			return sql.RowsToRowIter(), nil
 		}
 		if errors.Is(err, io.EOF) {
 			return sql.RowsToRowIter(), nil

@@ -93,6 +93,10 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
+func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
+	return sql.StatusVariables.IncrementGlobal("Aborted_connects", 1)
+}
+
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 	err := h.sm.SetDB(c, schemaName)
 	if err != nil {

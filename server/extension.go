@@ -136,12 +136,18 @@ type interceptorHandler struct {
 	h mysql.Handler
 }
 
+var _ mysql.Handler = (*interceptorHandler)(nil)
+
 func (ih *interceptorHandler) NewConnection(c *mysql.Conn) {
 	ih.h.NewConnection(c)
 }
 
 func (ih *interceptorHandler) ConnectionClosed(c *mysql.Conn) {
 	ih.h.ConnectionClosed(c)
+}
+
+func (ih *interceptorHandler) ConnectionAborted(c *mysql.Conn, reason string) error {
+	return ih.h.ConnectionAborted(c, reason)
 }
 
 func (ih *interceptorHandler) ComInitDB(c *mysql.Conn, schemaName string) error {

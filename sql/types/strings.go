@@ -45,9 +45,10 @@ const (
 
 var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
-	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
-	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
-	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation: %v")
+	ErrLengthTooLarge       = errors.NewKind("length is %v but max allowed is %v")
+	ErrLengthBeyondLimit    = errors.NewKind("string '%v' is too large for column '%v'")
+	ErrBinaryCollation      = errors.NewKind("binary types must have the binary collation: %v")
+	ErrIncorrectStringValue = errors.NewKind("incorrect string value: '%v'")
 
 	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, TinyTextBlobMax)
 	Text       = MustCreateStringWithDefaults(sqltypes.Text, TextBlobMax)
@@ -371,21 +372,12 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 			return "", nil
 		}
 		val = s.Decimal.String()
-	case JSONDocument:
+	case sql.JSONWrapper:
 		jsonString, err := StringifyJSON(s)
 		if err != nil {
 			return "", err
 		}
 		val, err = strings.Unquote(jsonString)
-		if err != nil {
-			return "", err
-		}
-	case sql.JSONWrapper:
-		jsonBytes, err := MarshallJson(s)
-		if err != nil {
-			return "", err
-		}
-		val, err = strings.Unquote(string(jsonBytes))
 		if err != nil {
 			return "", err
 		}
@@ -418,6 +410,11 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 
 	if s.baseType == sqltypes.Binary {
 		val += strings2.Repeat(string([]byte{0}), int(s.maxCharLength)-len(val))
+	}
+
+	// TODO: add exceptions for certain collations?
+	if !IsBinaryType(t) && !utf8.Valid([]byte(val)) {
+		return "", ErrIncorrectStringValue.New([]byte(val))
 	}
 
 	return val, nil
@@ -488,34 +485,44 @@ func (t StringType) Promote() sql.Type {
 
 // SQL implements Type interface.
 func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+	var err error
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
 	var val []byte
 	if IsBinaryType(t) {
-		v, _, err := t.Convert(v)
+		v, _, err = t.Convert(v)
 		if err != nil {
 			return sqltypes.Value{}, err
 		}
 		val = AppendAndSliceBytes(dest, v.([]byte))
 	} else {
-		v, err := ConvertToString(v, t)
-		if err != nil {
-			return sqltypes.Value{}, err
+		var valueString string
+		if json, ok := v.(JSONBytes); ok {
+			jsonBytes, err := json.GetBytes()
+			if err != nil {
+				return sqltypes.Value{}, err
+			}
+			valueString = string(jsonBytes)
+		} else {
+			valueString, err = ConvertToString(v, t)
+			if err != nil {
+				return sqltypes.Value{}, err
+			}
 		}
 		resultCharset := ctx.GetCharacterSetResults()
 		if resultCharset == sql.CharacterSet_Unspecified || resultCharset == sql.CharacterSet_binary {
 			resultCharset = t.collation.CharacterSet()
 		}
-		encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(v))
+		encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(valueString))
 		if !ok {
-			snippet := v
+			snippet := valueString
 			if len(snippet) > 50 {
 				snippet = snippet[:50]
 			}
 			snippet = strings2.ToValidUTF8(snippet, string(utf8.RuneError))
-			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(v), snippet)
+			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(valueString), snippet)
 		}
 		val = AppendAndSliceBytes(dest, encodedBytes)
 	}
