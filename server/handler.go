@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	trace2 "runtime/trace"
 	"sync"
 	"time"
 
@@ -107,20 +108,20 @@ func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
 // with the given [c.ConnectionID].
-func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error) {
+func (h *Handler) ComPrepare(ctx context.Context, c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error) {
 	logrus.WithField("query", query).
 		WithField("paramsCount", prepare.ParamsCount).
 		WithField("statementId", prepare.StatementID).Debugf("preparing query")
 
-	ctx, err := h.sm.NewContextWithQuery(c, query)
+	sqlCtx, err := h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
 		return nil, err
 	}
 	var analyzed sql.Node
 	if analyzer.PreparedStmtDisabled {
-		analyzed, err = h.e.AnalyzeQuery(ctx, query)
+		analyzed, err = h.e.AnalyzeQuery(sqlCtx, query)
 	} else {
-		analyzed, err = h.e.PrepareQuery(ctx, query)
+		analyzed, err = h.e.PrepareQuery(sqlCtx, query)
 	}
 	if err != nil {
 		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
@@ -133,7 +134,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.Prepare
 		return nil, nil
 	}
 
-	return schemaToFields(ctx, analyzed.Schema()), nil
+	return schemaToFields(sqlCtx, analyzed.Schema()), nil
 }
 
 // These nodes will eventually return an OK result, but their intermediate forms here return a different schema
@@ -146,17 +147,17 @@ func nodeReturnsOkResultSchema(node sql.Node) bool {
 	return false
 }
 
-func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) (mysql.ParsedQuery, []*querypb.Field, error) {
+func (h *Handler) ComPrepareParsed(ctx context.Context, c *mysql.Conn, query string, parsed sqlparser.Statement, prepare *mysql.PrepareData) (mysql.ParsedQuery, []*querypb.Field, error) {
 	logrus.WithField("query", query).
 		WithField("paramsCount", prepare.ParamsCount).
 		WithField("statementId", prepare.StatementID).Debugf("preparing query")
 
-	ctx, err := h.sm.NewContextWithQuery(c, query)
+	sqlCtx, err := h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	analyzed, err := h.e.PrepareParsedQuery(ctx, query, query, parsed)
+	analyzed, err := h.e.PrepareParsedQuery(sqlCtx, query, query, parsed)
 	if err != nil {
 		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
 		err := sql.CastSQLError(err)
@@ -169,14 +170,14 @@ func (h *Handler) ComPrepareParsed(c *mysql.Conn, query string, parsed sqlparser
 	if !(nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema())) {
 		fields = nil
 	} else {
-		fields = schemaToFields(ctx, analyzed.Schema())
+		fields = schemaToFields(sqlCtx, analyzed.Schema())
 	}
 
 	return analyzed, fields, nil
 }
 
-func (h *Handler) ComBind(c *mysql.Conn, query string, parsedQuery mysql.ParsedQuery, prepare *mysql.PrepareData) (mysql.BoundQuery, []*querypb.Field, error) {
-	ctx, err := h.sm.NewContextWithQuery(c, query)
+func (h *Handler) ComBind(ctx context.Context, c *mysql.Conn, query string, parsedQuery mysql.ParsedQuery, prepare *mysql.PrepareData) (mysql.BoundQuery, []*querypb.Field, error) {
+	sqlCtx, err := h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,25 +187,25 @@ func (h *Handler) ComBind(c *mysql.Conn, query string, parsedQuery mysql.ParsedQ
 		return nil, nil, fmt.Errorf("parsedQuery must be a sqlparser.Statement, but got %T", parsedQuery)
 	}
 
-	queryPlan, err := h.e.BoundQueryPlan(ctx, query, stmt, prepare.BindVars)
+	queryPlan, err := h.e.BoundQueryPlan(sqlCtx, query, stmt, prepare.BindVars)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return queryPlan, schemaToFields(ctx, queryPlan.Schema()), nil
+	return queryPlan, schemaToFields(sqlCtx, queryPlan.Schema()), nil
 }
 
-func (h *Handler) ComExecuteBound(c *mysql.Conn, query string, boundQuery mysql.BoundQuery, callback mysql.ResultSpoolFn) error {
+func (h *Handler) ComExecuteBound(ctx context.Context, conn *mysql.Conn, query string, boundQuery mysql.BoundQuery, callback mysql.ResultSpoolFn) error {
 	plan, ok := boundQuery.(sql.Node)
 	if !ok {
 		return fmt.Errorf("boundQuery must be a sql.Node, but got %T", boundQuery)
 	}
 
-	return h.errorWrappedComExec(c, query, plan, callback)
+	return h.errorWrappedComExec(ctx, conn, query, plan, callback)
 }
 
-func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
+func (h *Handler) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+	_, err := h.errorWrappedDoQuery(ctx, c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
 	})
 	return err
@@ -239,7 +240,7 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
-	ctx, err := h.sm.NewContext(c)
+	ctx, err := h.sm.NewContext(context.Background(), c, "")
 	if err != nil {
 		return sqlparser.ParserOptions{}, err
 	}
@@ -265,7 +266,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 // maybeReleaseAllLocks makes a best effort attempt to release all locks on the given connection. If the attempt fails,
 // an error is logged but not returned.
 func (h *Handler) maybeReleaseAllLocks(c *mysql.Conn) {
-	if ctx, err := h.sm.NewContextWithQuery(c, ""); err != nil {
+	if ctx, err := h.sm.NewContextWithQuery(context.Background(), c, ""); err != nil {
 		logrus.Errorf("unable to release all locks on session close: %s", err)
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	} else {
@@ -280,31 +281,34 @@ func (h *Handler) maybeReleaseAllLocks(c *mysql.Conn) {
 }
 
 func (h *Handler) ComMultiQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	callback mysql.ResultSpoolFn,
 ) (string, error) {
-	return h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOn, nil, callback)
+	return h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOn, nil, callback)
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
 func (h *Handler) ComQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(c, query, nil, MultiStmtModeOff, nil, callback)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOff, nil, callback)
 	return err
 }
 
 // ComParsedQuery executes a pre-parsed SQL query on the SQLe engine.
 func (h *Handler) ComParsedQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(c, query, parsed, MultiStmtModeOff, nil, callback)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, parsed, MultiStmtModeOff, nil, callback)
 	return err
 }
 
@@ -347,6 +351,7 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 
 func (h *Handler) doQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
@@ -356,7 +361,7 @@ func (h *Handler) doQuery(
 	bindings map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
-	ctx, err := h.sm.NewContext(c)
+	sqlCtx, err := h.sm.NewContext(ctx, c, query)
 	if err != nil {
 		return "", err
 	}
@@ -366,16 +371,15 @@ func (h *Handler) doQuery(
 	var remainder string
 	var prequery string
 	if parsed == nil {
-		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(sqlCtx.Session.ID(), query)
 		if mode == MultiStmtModeOn && !inPreparedCache {
-			parsed, prequery, remainder, err = h.e.Parser.Parse(ctx, query, true)
+			parsed, prequery, remainder, err = h.e.Parser.Parse(sqlCtx, query, true)
 			if prequery != "" {
 				query = prequery
 			}
 		}
 	}
 
-	ctx = ctx.WithQuery(query)
 	more := remainder != ""
 
 	var queryStr string
@@ -390,29 +394,29 @@ func (h *Handler) doQuery(
 	}
 
 	if queryStr != "" {
-		ctx.SetLogger(ctx.GetLogger().WithField("query", queryStr))
+		sqlCtx.SetLogger(sqlCtx.GetLogger().WithField("query", queryStr))
 	}
-	ctx.GetLogger().Debugf("Starting query")
+	sqlCtx.GetLogger().Debugf("Starting query")
 
-	finish := observeQuery(ctx, query)
+	finish := observeQuery(sqlCtx, query)
 	defer finish(err)
 
-	ctx.GetLogger().Tracef("beginning execution")
+	sqlCtx.GetLogger().Tracef("beginning execution")
 
 	oCtx := ctx
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
-	ctx, err = ctx.ProcessList.BeginQuery(ctx, query)
+	ctx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
 	defer func() {
 		if err != nil && ctx != nil {
-			ctx.ProcessList.EndQuery(ctx)
+			sqlCtx.ProcessList.EndQuery(sqlCtx)
 		}
 	}()
 
-	schema, rowIter, err := queryExec(ctx, query, parsed, analyzedPlan, bindings)
+	schema, rowIter, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings)
 	if err != nil {
-		ctx.GetLogger().WithError(err).Warn("error running query")
+		sqlCtx.GetLogger().WithError(err).Warn("error running query")
 		if verboseErrorLogging {
 			fmt.Printf("Err: %+v", err)
 		}
@@ -420,17 +424,17 @@ func (h *Handler) doQuery(
 	}
 
 	// create result before goroutines to avoid |ctx| racing
-	resultFields := schemaToFields(ctx, schema)
+	resultFields := schemaToFields(sqlCtx, schema)
 	var r *sqltypes.Result
 	var processedAtLeastOneBatch bool
 
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
-		r, err = resultForOkIter(ctx, rowIter)
+		r, err = resultForOkIter(sqlCtx, rowIter)
 	} else if schema == nil {
-		r, err = resultForEmptyIter(ctx, rowIter, resultFields)
+		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(ctx, c, schema, rowIter, callback, resultFields, more)
+		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
 	}
 	if err != nil {
 		return remainder, err
@@ -439,22 +443,22 @@ func (h *Handler) doQuery(
 	// errGroup context is now canceled
 	ctx = oCtx
 
-	if err = setConnStatusFlags(ctx, c); err != nil {
+	if err = setConnStatusFlags(sqlCtx, c); err != nil {
 		return remainder, err
 	}
 
 	switch len(r.Rows) {
 	case 0:
 		if len(r.Info) > 0 {
-			ctx.GetLogger().Tracef("returning result %s", r.Info)
+			sqlCtx.GetLogger().Tracef("returning result %s", r.Info)
 		} else {
-			ctx.GetLogger().Tracef("returning empty result")
+			sqlCtx.GetLogger().Tracef("returning empty result")
 		}
 	case 1:
-		ctx.GetLogger().Tracef("returning result %v", r)
+		sqlCtx.GetLogger().Tracef("returning result %v", r)
 	}
 
-	ctx.GetLogger().Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
+	sqlCtx.GetLogger().Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
 
 	// processedAtLeastOneBatch means we already called callback() at least
 	// once, so no need to call it if RowsAffected == 0.
@@ -467,6 +471,8 @@ func (h *Handler) doQuery(
 
 // resultForOkIter reads a maximum of one result row from a result iterator.
 func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
+	defer trace2.StartRegion(ctx, "Handler.resultForOkIter").End()
+
 	row, err := iter.Next(ctx)
 	if err != nil {
 		return nil, err
@@ -483,6 +489,7 @@ func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, erro
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
 func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+	defer trace2.StartRegion(ctx, "Handler.resultForEmptyIter").End()
 	if _, err := iter.Next(ctx); err != io.EOF {
 		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
 	}
@@ -502,6 +509,8 @@ func (h *Handler) resultForDefaultIter(
 	callback func(*sqltypes.Result, bool) error,
 	resultFields []*querypb.Field,
 	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, err error) {
+	defer trace2.StartRegion(ctx, "Handler.resultForDefaultIter").End()
+
 	eg, ctx := ctx.NewErrgroup()
 
 	var rowChan chan sql.Row
@@ -654,6 +663,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 
 // Call doQuery and cast known errors to SQLError
 func (h *Handler) errorWrappedDoQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	parsed sqlparser.Statement,
@@ -666,7 +676,7 @@ func (h *Handler) errorWrappedDoQuery(
 		h.sel.QueryStarted()
 	}
 
-	remainder, err := h.doQuery(c, query, parsed, nil, mode, h.executeQuery, bindings, callback)
+	remainder, err := h.doQuery(ctx, c, query, parsed, nil, mode, h.executeQuery, bindings, callback)
 	if err != nil {
 		err = sql.CastSQLError(err)
 	}
@@ -680,6 +690,7 @@ func (h *Handler) errorWrappedDoQuery(
 
 // Call doQuery and cast known errors to SQLError
 func (h *Handler) errorWrappedComExec(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
 	analyzedPlan sql.Node,
@@ -690,7 +701,7 @@ func (h *Handler) errorWrappedComExec(
 		h.sel.QueryStarted()
 	}
 
-	_, err := h.doQuery(c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
+	_, err := h.doQuery(ctx, c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
 
 	if err != nil {
 		err = sql.CastSQLError(err)

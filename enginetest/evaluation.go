@@ -470,7 +470,7 @@ func injectBindVarsAndPrepare(
 	q string,
 ) (string, map[string]*querypb.BindVariable, error) {
 	sqlMode := sql.LoadSqlMode(ctx)
-	stmt, err := sqlparser.ParseWithOptions(q, sqlMode.ParserOptions())
+	parsed, err := sqlparser.ParseWithOptions(ctx, q, sqlMode.ParserOptions())
 	if err != nil {
 		// cannot prepare empty statement, can query
 		if err.Error() == "empty statement" {
@@ -479,7 +479,7 @@ func injectBindVarsAndPrepare(
 		return q, nil, sql.ErrSyntaxError.New(err)
 	}
 
-	switch p := stmt.(type) {
+	switch p := parsed.(type) {
 	case *sqlparser.Load, *sqlparser.Prepare, *sqlparser.Execute:
 		// LOAD DATA query cannot be used as PREPARED STATEMENT
 		return q, nil, nil
@@ -494,7 +494,7 @@ func injectBindVarsAndPrepare(
 
 	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
 	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
-	resPlan, err := b.BindOnly(stmt, q)
+	resPlan, err := b.BindOnly(parsed, q)
 	if err != nil {
 		return q, nil, err
 	}
@@ -543,7 +543,7 @@ func injectBindVarsAndPrepare(
 		default:
 		}
 		return true, nil
-	}, stmt)
+	}, parsed)
 	if err != nil {
 		return "", nil, err
 	}
@@ -552,8 +552,8 @@ func injectBindVarsAndPrepare(
 	}
 
 	buf := sqlparser.NewTrackedBuffer(nil)
-	stmt.Format(buf)
-	e.EnginePreparedDataCache().CacheStmt(ctx.Session.ID(), buf.String(), stmt)
+	parsed.Format(buf)
+	e.EnginePreparedDataCache().CacheStmt(ctx.Session.ID(), buf.String(), parsed)
 
 	_, isDatabaser := resPlan.(sql.Databaser)
 

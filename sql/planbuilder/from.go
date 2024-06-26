@@ -817,7 +817,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				b.ViewCtx().DbName = outerDb
 			}()
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
-			stmt, _, _, err := sql.GlobalParser.ParseWithOptions(viewDef.CreateViewStatement, ';', false, b.parserOpts)
+			stmt, _, _, err := sql.GlobalParser.ParseWithOptions(b.ctx, viewDef.CreateViewStatement, ';', false, b.parserOpts)
 			if err != nil {
 				b.handleErr(err)
 			}

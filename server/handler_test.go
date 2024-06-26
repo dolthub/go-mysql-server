@@ -149,7 +149,7 @@ func TestHandlerOutput(t *testing.T) {
 			var lenLastBatch int
 			var lastRowsAffected uint64
 			handler.ComInitDB(test.conn, "test")
-			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result, more bool) error {
+			err := handler.ComQuery(context.Background(), test.conn, test.query, func(res *sqltypes.Result, more bool) error {
 				callsToCallback++
 				lenLastBatch = len(res.Rows)
 				lastRowsAffected = res.RowsAffected
@@ -167,7 +167,7 @@ func TestHandlerOutput(t *testing.T) {
 	t.Run("sum aggregation type is correct", func(t *testing.T) {
 		handler.ComInitDB(dummyConn, "test")
 		var result *sqltypes.Result
-		err := handler.ComQuery(dummyConn, "select sum(1) from test", func(res *sqltypes.Result, more bool) error {
+		err := handler.ComQuery(context.Background(), dummyConn, "select sum(1) from test", func(res *sqltypes.Result, more bool) error {
 			result = res
 			return nil
 		})
@@ -180,7 +180,7 @@ func TestHandlerOutput(t *testing.T) {
 	t.Run("avg aggregation type is correct", func(t *testing.T) {
 		handler.ComInitDB(dummyConn, "test")
 		var result *sqltypes.Result
-		err := handler.ComQuery(dummyConn, "select avg(1) from test", func(res *sqltypes.Result, more bool) error {
+		err := handler.ComQuery(context.Background(), dummyConn, "select avg(1) from test", func(res *sqltypes.Result, more bool) error {
 			result = res
 			return nil
 		})
@@ -193,7 +193,7 @@ func TestHandlerOutput(t *testing.T) {
 	t.Run("if() type is correct", func(t *testing.T) {
 		handler.ComInitDB(dummyConn, "test")
 		var result *sqltypes.Result
-		err := handler.ComQuery(dummyConn, "select if(1, 123, 'def')", func(res *sqltypes.Result, more bool) error {
+		err := handler.ComQuery(context.Background(), dummyConn, "select if(1, 123, 'def')", func(res *sqltypes.Result, more bool) error {
 			result = res
 			return nil
 		})
@@ -202,7 +202,7 @@ func TestHandlerOutput(t *testing.T) {
 		require.Equal(t, sqltypes.Text, result.Rows[0][0].Type())
 		require.Equal(t, []byte("123"), result.Rows[0][0].ToBytes())
 
-		err = handler.ComQuery(dummyConn, "select if(0, 123, 456)", func(res *sqltypes.Result, more bool) error {
+		err = handler.ComQuery(context.Background(), dummyConn, "select if(0, 123, 456)", func(res *sqltypes.Result, more bool) error {
 			result = res
 			return nil
 		})
@@ -269,7 +269,7 @@ func TestHandlerErrors(t *testing.T) {
 
 	handler.ComInitDB(dummyConn, "test")
 	for _, setupCommand := range setupCommands {
-		err := handler.ComQuery(dummyConn, setupCommand, func(res *sqltypes.Result, more bool) error {
+		err := handler.ComQuery(context.Background(), dummyConn, setupCommand, func(res *sqltypes.Result, more bool) error {
 			return nil
 		})
 		require.NoError(t, err)
@@ -277,7 +277,7 @@ func TestHandlerErrors(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := handler.ComQuery(dummyConn, test.query, func(res *sqltypes.Result, more bool) error {
+			err := handler.ComQuery(context.Background(), dummyConn, test.query, func(res *sqltypes.Result, more bool) error {
 				return nil
 			})
 			require.NotNil(t, err)
@@ -322,11 +322,11 @@ func TestHandlerComResetConnection(t *testing.T) {
 	}
 
 	// Create a prepared statement, a table lock, and a user var in the current session
-	_, err := handler.ComPrepare(dummyConn, prepareData.PrepareStmt, prepareData)
+	_, err := handler.ComPrepare(context.Background(), dummyConn, prepareData.PrepareStmt, prepareData)
 	require.NoError(t, err)
 	_, cached := e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
 	require.True(t, cached)
-	err = handler.ComQuery(dummyConn, "SET @userVar = 42;", func(res *sqltypes.Result, more bool) error {
+	err = handler.ComQuery(context.Background(), dummyConn, "SET @userVar = 42;", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(t, err)
@@ -337,14 +337,14 @@ func TestHandlerComResetConnection(t *testing.T) {
 
 	// Assert that the session is clean – the selected database should not change, and all session state
 	// such as user vars, session vars, prepared statements, table locks, and temporary tables should be cleared.
-	err = handler.ComQuery(dummyConn, "SELECT database()", func(res *sqltypes.Result, more bool) error {
+	err = handler.ComQuery(context.Background(), dummyConn, "SELECT database()", func(res *sqltypes.Result, more bool) error {
 		require.Equal(t, "test", res.Rows[0][0].ToString())
 		return nil
 	})
 	require.NoError(t, err)
 	_, cached = e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
 	require.False(t, cached)
-	err = handler.ComQuery(dummyConn, "SELECT @userVar;", func(res *sqltypes.Result, more bool) error {
+	err = handler.ComQuery(context.Background(), dummyConn, "SELECT @userVar;", func(res *sqltypes.Result, more bool) error {
 		require.True(t, res.Rows[0][0].IsNull())
 		return nil
 	})
@@ -407,7 +407,7 @@ func TestHandlerComPrepare(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(dummyConn, "test")
-			schema, err := handler.ComPrepare(dummyConn, test.statement, samplePrepareData)
+			schema, err := handler.ComPrepare(context.Background(), dummyConn, test.statement, samplePrepareData)
 			if test.expectedErr == nil {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, schema)
@@ -472,7 +472,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(dummyConn, "test")
-			schema, err := handler.ComPrepare(dummyConn, test.prepare.PrepareStmt, samplePrepareData)
+			schema, err := handler.ComPrepare(context.Background(), dummyConn, test.prepare.PrepareStmt, samplePrepareData)
 			require.NoError(t, err)
 			require.Equal(t, test.schema, schema)
 
@@ -491,7 +491,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 				}
 				return nil
 			}
-			err = handler.ComStmtExecute(dummyConn, test.prepare, callback)
+			err = handler.ComStmtExecute(context.Background(), dummyConn, test.prepare, callback)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, res)
 		})
@@ -550,7 +550,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(dummyConn, "test")
-			schema, err := handler.ComPrepare(dummyConn, test.prepare.PrepareStmt, samplePrepareData)
+			schema, err := handler.ComPrepare(context.Background(), dummyConn, test.prepare.PrepareStmt, samplePrepareData)
 			require.NoError(t, err)
 			require.Equal(t, test.schema, schema)
 
@@ -569,7 +569,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				}
 				return nil
 			}
-			err = handler.ComStmtExecute(dummyConn, test.prepare, callback)
+			err = handler.ComStmtExecute(context.Background(), dummyConn, test.prepare, callback)
 			require.NoError(t, err)
 			require.Equal(t, test.expected, res)
 		})
@@ -643,7 +643,7 @@ func TestServerEventListener(t *testing.T) {
 	err := handler.sm.SetDB(conn1, "test")
 	require.NoError(err)
 
-	err = handler.ComQuery(conn1, "SELECT 1", cb)
+	err = handler.ComQuery(context.Background(), conn1, "SELECT 1", cb)
 	require.NoError(err)
 	require.Equal(listener.Queries, 1)
 	require.Equal(listener.Successes, 1)
@@ -655,13 +655,13 @@ func TestServerEventListener(t *testing.T) {
 	require.Equal(listener.Disconnects, 0)
 
 	handler.ComInitDB(conn2, "test")
-	err = handler.ComQuery(conn2, "select 1", cb)
+	err = handler.ComQuery(context.Background(), conn2, "select 1", cb)
 	require.NoError(err)
 	require.Equal(listener.Queries, 2)
 	require.Equal(listener.Successes, 2)
 	require.Equal(listener.Failures, 0)
 
-	err = handler.ComQuery(conn1, "select bad_col from bad_table with illegal syntax", cb)
+	err = handler.ComQuery(context.Background(), conn1, "select bad_col from bad_table with illegal syntax", cb)
 	require.Error(err)
 	require.Equal(listener.Queries, 3)
 	require.Equal(listener.Successes, 2)
@@ -677,7 +677,7 @@ func TestServerEventListener(t *testing.T) {
 
 	conn3 := newConn(3)
 	query := "SELECT ?"
-	_, err = handler.ComPrepare(conn3, query, samplePrepareData)
+	_, err = handler.ComPrepare(context.Background(), conn3, query, samplePrepareData)
 	require.NoError(err)
 	require.Equal(1, len(e.PreparedDataCache.CachedStatementsForSession(conn3.ConnectionID)))
 	require.NotNil(e.PreparedDataCache.GetCachedStmt(conn3.ConnectionID, query))
@@ -715,7 +715,7 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.sm.sessions, 0)
 
 	handler.ComInitDB(conn2, "test")
-	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result, more bool) error {
+	err := handler.ComQuery(context.Background(), conn2, "KILL QUERY 1", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -726,12 +726,12 @@ func TestHandlerKill(t *testing.T) {
 
 	err = handler.sm.SetDB(conn1, "test")
 	require.NoError(err)
-	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
+	ctx1, err := handler.sm.NewContextWithQuery(context.Background(), conn1, "SELECT 1")
 	require.NoError(err)
 	ctx1, err = handler.e.ProcessList.BeginQuery(ctx1, "SELECT 1")
 	require.NoError(err)
 
-	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result, more bool) error {
+	err = handler.ComQuery(context.Background(), conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -876,7 +876,7 @@ func TestSchemaToFields(t *testing.T) {
 	conn := newConn(1)
 	handler.NewConnection(conn)
 
-	ctx, err := handler.sm.NewContextWithQuery(conn, "SELECT 1")
+	ctx, err := handler.sm.NewContextWithQuery(context.Background(), conn, "SELECT 1")
 	require.NoError(err)
 
 	fields := schemaToFields(ctx, schema)
@@ -971,18 +971,18 @@ func TestHandlerTimeout(t *testing.T) {
 	noTimeOutHandler.NewConnection(connNoTimeout)
 
 	timeOutHandler.ComInitDB(connTimeout, "test")
-	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
+	err := timeOutHandler.ComQuery(context.Background(), connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.EqualError(err, "row read wait bigger than connection timeout (errno 1105) (sqlstate HY000)")
 
-	err = timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result, more bool) error {
+	err = timeOutHandler.ComQuery(context.Background(), connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
 
 	noTimeOutHandler.ComInitDB(connNoTimeout, "test")
-	err = noTimeOutHandler.ComQuery(connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
+	err = noTimeOutHandler.ComQuery(context.Background(), connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -1021,7 +1021,7 @@ func TestOkClosedConnection(t *testing.T) {
 
 	q := fmt.Sprintf("SELECT SLEEP(%d)", (tcpCheckerSleepDuration * 4 / time.Second))
 	h.ComInitDB(c, "test")
-	err = h.ComQuery(c, q, func(res *sqltypes.Result, more bool) error {
+	err = h.ComQuery(context.Background(), c, q, func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -1090,7 +1090,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(test.conn, "test")
 			var rowsAffected uint64
-			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result, more bool) error {
+			err := handler.ComQuery(context.Background(), test.conn, test.query, func(res *sqltypes.Result, more bool) error {
 				rowsAffected = uint64(res.RowsAffected)
 				return nil
 			})
@@ -1269,7 +1269,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	// Call ComQuery 5 times
 	for i := 0; i < 5; i++ {
-		err = handler.ComQuery(conn1, "SELECT 1", dummyCb)
+		err = handler.ComQuery(context.Background(), conn1, "SELECT 1", dummyCb)
 		require.NoError(t, err)
 	}
 
@@ -1284,7 +1284,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 
 	// Get 5 syntax errors
 	for i := 0; i < 5; i++ {
-		err = handler.ComQuery(conn2, "syntax error", dummyCb)
+		err = handler.ComQuery(context.Background(), conn2, "syntax error", dummyCb)
 		require.Error(t, err)
 	}
 
@@ -1298,14 +1298,14 @@ func TestStatusVariableQuestions(t *testing.T) {
 	require.NoError(t, err)
 	sess3 := handler.sm.sessions[3]
 
-	err = handler.ComQuery(conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
+	err = handler.ComQuery(context.Background(), conn3, "create procedure p() begin select 1; select 2; select 3; end", dummyCb)
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Questions", uint64(11))
 	checkSessionStatVar(t, sess3, "Questions", uint64(1))
 
 	// Calling stored procedure with multiple queries only increment Questions once.
-	err = handler.ComQuery(conn3, "call p()", dummyCb)
+	err = handler.ComQuery(context.Background(), conn3, "call p()", dummyCb)
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Questions", uint64(12))
@@ -1336,14 +1336,14 @@ func TestStatusVariableQuestions(t *testing.T) {
 		},
 	}
 
-	_, err = handler.ComPrepare(conn4, prepare.PrepareStmt, samplePrepareData)
+	_, err = handler.ComPrepare(context.Background(), conn4, prepare.PrepareStmt, samplePrepareData)
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Questions", uint64(12))
 	checkSessionStatVar(t, sess4, "Questions", uint64(0))
 
 	// Execute does increment Questions
-	err = handler.ComStmtExecute(conn4, prepare, func(*sqltypes.Result) error { return nil })
+	err = handler.ComStmtExecute(context.Background(), conn4, prepare, func(*sqltypes.Result) error { return nil })
 	require.NoError(t, err)
 
 	checkGlobalStatVar(t, "Questions", uint64(13))
@@ -1515,7 +1515,7 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		handler.ComQuery(conn1, "select sleep(1)", dummyCb)
+		handler.ComQuery(context.Background(), conn1, "select sleep(1)", dummyCb)
 	}()
 
 	checkGlobalStatVar(t, "Threads_running", uint64(1))
@@ -1528,11 +1528,11 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		handler.ComQuery(conn1, "select sleep(1)", dummyCb)
+		handler.ComQuery(context.Background(), conn1, "select sleep(1)", dummyCb)
 	}()
 	go func() {
 		defer wg.Done()
-		handler.ComQuery(conn2, "select sleep(1)", dummyCb)
+		handler.ComQuery(context.Background(), conn2, "select sleep(1)", dummyCb)
 	}()
 
 	checkGlobalStatVar(t, "Threads_running", uint64(2))
@@ -1579,12 +1579,12 @@ func TestStatusVariableComSelect(t *testing.T) {
 
 	// have session 1 call delete 5 times
 	for i := 0; i < 5; i++ {
-		handler.ComQuery(conn1, "select 1 from dual", dummyCb)
+		handler.ComQuery(context.Background(), conn1, "select 1 from dual", dummyCb)
 	}
 
 	// have session 2 call delete 3 times
 	for i := 0; i < 3; i++ {
-		handler.ComQuery(conn2, "select 1 from dual", dummyCb)
+		handler.ComQuery(context.Background(), conn2, "select 1 from dual", dummyCb)
 	}
 
 	checkGlobalStatVar(t, "Com_select", uint64(8))
@@ -1628,12 +1628,12 @@ func TestStatusVariableComDelete(t *testing.T) {
 
 	// have session 1 call delete 5 times
 	for i := 0; i < 5; i++ {
-		handler.ComQuery(conn1, "DELETE FROM doesnotmatter", dummyCb)
+		handler.ComQuery(context.Background(), conn1, "DELETE FROM doesnotmatter", dummyCb)
 	}
 
 	// have session 2 call delete 3 times
 	for i := 0; i < 3; i++ {
-		handler.ComQuery(conn2, "DELETE FROM doesnotmatter", dummyCb)
+		handler.ComQuery(context.Background(), conn2, "DELETE FROM doesnotmatter", dummyCb)
 	}
 
 	checkGlobalStatVar(t, "Com_delete", uint64(8))
@@ -1677,12 +1677,12 @@ func TestStatusVariableComInsert(t *testing.T) {
 
 	// have session 1 call delete 5 times
 	for i := 0; i < 5; i++ {
-		handler.ComQuery(conn1, "insert into blahblah values ()", dummyCb)
+		handler.ComQuery(context.Background(), conn1, "insert into blahblah values ()", dummyCb)
 	}
 
 	// have session 2 call delete 3 times
 	for i := 0; i < 3; i++ {
-		handler.ComQuery(conn2, "insert into blahblah values ()", dummyCb)
+		handler.ComQuery(context.Background(), conn2, "insert into blahblah values ()", dummyCb)
 	}
 
 	checkGlobalStatVar(t, "Com_insert", uint64(8))
@@ -1726,12 +1726,12 @@ func TestStatusVariableComUpdate(t *testing.T) {
 
 	// have session 1 call delete 5 times
 	for i := 0; i < 5; i++ {
-		handler.ComQuery(conn1, "update t set i = 10", dummyCb)
+		handler.ComQuery(context.Background(), conn1, "update t set i = 10", dummyCb)
 	}
 
 	// have session 2 call delete 3 times
 	for i := 0; i < 3; i++ {
-		handler.ComQuery(conn2, "update t set i = 10", dummyCb)
+		handler.ComQuery(context.Background(), conn2, "update t set i = 10", dummyCb)
 	}
 
 	checkGlobalStatVar(t, "Com_update", uint64(8))

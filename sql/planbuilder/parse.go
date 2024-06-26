@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	goerrors "errors"
+	trace2 "runtime/trace"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
@@ -45,6 +46,7 @@ func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options a
 }
 
 func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remainder string, err error) {
+	defer trace2.StartRegion(b.ctx, "ParseOnly").End()
 	b.nesting++
 	if b.nesting > maxAnalysisIterations {
 		return nil, "", "", ErrMaxAnalysisIters.New(maxAnalysisIterations)
@@ -63,7 +65,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 	span, ctx := b.ctx.Span("parse", trace.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
-	stmt, parsed, remainder, err := b.parser.ParseWithOptions(query, ';', multi, b.parserOpts)
+	stmt, parsed, remainder, err := b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
 	if err != nil {
 		if goerrors.Is(err, ast.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
@@ -78,6 +80,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 }
 
 func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err error) {
+	defer trace2.StartRegion(b.ctx, "BindOnly").End()
 	defer func() {
 		if r := recover(); r != nil {
 			switch r := r.(type) {
@@ -88,6 +91,7 @@ func (b *Builder) BindOnly(stmt ast.Statement, s string) (ret sql.Node, err erro
 			}
 		}
 	}()
+
 	outScope := b.build(nil, stmt, s)
 	return outScope.node, err
 }
