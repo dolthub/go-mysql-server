@@ -2449,6 +2449,45 @@ end;
 	},
 }
 
+var TriggerCreateInSubroutineTests = []ScriptTest{
+	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
+	{
+		Name: "procedure must not contain CREATE TRIGGER",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE PROCEDURE foo() CREATE PROCEDURE bar() SELECT 0;",
+				// MySQL's error message: "Can't create a PROCEDURE from within another stored routine",
+				ExpectedErrStr: "creating procedures in stored procedures is currently unsupported and will be added in a future release",
+			},
+		},
+	},
+	{
+		Name: "event must not contain CREATE TRIGGER",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE PROCEDURE bar() SELECT 1;",
+				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
+				Skip:           true,
+			},
+		},
+	},
+	{
+		Name: "trigger must not contain CREATE TRIGGER",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE PROCEDURE bar() SELECT 1; END",
+				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
+				Skip:           true,
+			},
+		},
+	},
+}
+
 // RollbackTriggerTests are trigger tests that require rollback logic to work correctly
 var RollbackTriggerTests = []ScriptTest{
 	// Insert Queries that fail, test trigger reverts

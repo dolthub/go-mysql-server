@@ -113,21 +113,21 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	return
 }
 
-func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
 		if c.TriggerSpec != nil {
-			return b.buildCreateTrigger(inScope, query, c)
+			return b.buildCreateTrigger(inScope, subQuery, fullQuery, c)
 		}
 		if c.ProcedureSpec != nil {
-			return b.buildCreateProcedure(inScope, query, c)
+			return b.buildCreateProcedure(inScope, subQuery, fullQuery, c)
 		}
 		if c.EventSpec != nil {
-			return b.buildCreateEvent(inScope, query, c)
+			return b.buildCreateEvent(inScope, subQuery, fullQuery, c)
 		}
 		if c.ViewSpec != nil {
-			return b.buildCreateView(inScope, query, c)
+			return b.buildCreateView(inScope, subQuery, fullQuery, c)
 		}
 		return b.buildCreateTable(inScope, c)
 	case ast.DropStr:
@@ -170,9 +170,9 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 		return b.buildDropTable(inScope, c)
 	case ast.AlterStr:
 		if c.EventSpec != nil {
-			return b.buildAlterEvent(inScope, query, c)
+			return b.buildAlterEvent(inScope, subQuery, fullQuery, c)
 		} else if !c.User.IsEmpty() {
-			return b.buildAlterUser(inScope, query, c)
+			return b.buildAlterUser(inScope, subQuery, c)
 		}
 		b.handleErr(sql.ErrUnsupportedFeature.New(ast.String(c)))
 	case ast.RenameStr:

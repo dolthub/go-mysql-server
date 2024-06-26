@@ -122,9 +122,9 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 				}
 
 				if assertion.ExpectedErr != nil {
-					AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+					AssertErr(t, e, harness, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
 				} else if assertion.ExpectedErrStr != "" {
-					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
+					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
 				} else if assertion.ExpectedWarning != 0 {
 					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
@@ -278,9 +278,9 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 			}
 
 			if assertion.ExpectedErr != nil {
-				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.ExpectedErr)
+				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
 			} else if assertion.ExpectedErrStr != "" {
-				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
+				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
 			} else if assertion.ExpectedWarning != 0 {
 				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
 					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
@@ -470,7 +470,7 @@ func injectBindVarsAndPrepare(
 	q string,
 ) (string, map[string]*querypb.BindVariable, error) {
 	sqlMode := sql.LoadSqlMode(ctx)
-	stmt, err := sqlparser.ParseWithOptions(q, sqlMode.ParserOptions())
+	parsed, err := sqlparser.ParseWithOptions(ctx, q, sqlMode.ParserOptions())
 	if err != nil {
 		// cannot prepare empty statement, can query
 		if err.Error() == "empty statement" {
@@ -479,7 +479,7 @@ func injectBindVarsAndPrepare(
 		return q, nil, sql.ErrSyntaxError.New(err)
 	}
 
-	switch p := stmt.(type) {
+	switch p := parsed.(type) {
 	case *sqlparser.Load, *sqlparser.Prepare, *sqlparser.Execute:
 		// LOAD DATA query cannot be used as PREPARED STATEMENT
 		return q, nil, nil
@@ -494,7 +494,7 @@ func injectBindVarsAndPrepare(
 
 	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
 	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
-	resPlan, err := b.BindOnly(stmt, q)
+	resPlan, err := b.BindOnly(parsed, q)
 	if err != nil {
 		return q, nil, err
 	}
@@ -543,7 +543,7 @@ func injectBindVarsAndPrepare(
 		default:
 		}
 		return true, nil
-	}, stmt)
+	}, parsed)
 	if err != nil {
 		return "", nil, err
 	}
@@ -552,8 +552,8 @@ func injectBindVarsAndPrepare(
 	}
 
 	buf := sqlparser.NewTrackedBuffer(nil)
-	stmt.Format(buf)
-	e.EnginePreparedDataCache().CacheStmt(ctx.Session.ID(), buf.String(), stmt)
+	parsed.Format(buf)
+	e.EnginePreparedDataCache().CacheStmt(ctx.Session.ID(), buf.String(), parsed)
 
 	_, isDatabaser := resPlan.(sql.Databaser)
 
@@ -884,8 +884,8 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 }
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
-func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	AssertErrWithCtx(t, e, harness, NewContext(harness), query, expectedErrKind, errStrs...)
+func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
+	AssertErrWithCtx(t, e, harness, NewContext(harness), query, bindings, expectedErrKind, errStrs...)
 }
 
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
@@ -908,9 +908,9 @@ func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query s
 }
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
-func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx = ctx.WithQuery(query)
-	_, iter, err := e.Query(ctx, query)
+	_, iter, err := e.QueryWithBindings(ctx, query, nil, bindings)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
 	}
@@ -1116,7 +1116,7 @@ func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTe
 		}
 		e := mustNewEngine(t, h)
 		defer e.Close()
-		AssertErr(t, e, h, tt.Query, nil)
+		AssertErr(t, e, h, tt.Query, nil, nil)
 	})
 }
 
@@ -1130,9 +1130,9 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 		e := mustNewEngine(t, h)
 		defer e.Close()
 		if tt.ExpectedErrStr == "" {
-			AssertErr(t, e, h, tt.Query, tt.ExpectedErr)
+			AssertErr(t, e, h, tt.Query, nil, tt.ExpectedErr)
 		} else {
-			AssertErr(t, e, h, tt.Query, tt.ExpectedErr, tt.ExpectedErrStr)
+			AssertErr(t, e, h, tt.Query, nil, tt.ExpectedErr, tt.ExpectedErrStr)
 		}
 
 	})

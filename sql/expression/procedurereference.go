@@ -28,23 +28,27 @@ type ProcedureReference struct {
 	InnermostScope *procedureScope
 	height         int
 }
+
 type procedureScope struct {
 	Parent    *procedureScope
 	variables map[string]*procedureVariableReferenceValue
 	Cursors   map[string]*procedureCursorReferenceValue
 	Handlers  []*procedureHandlerReferenceValue
 }
+
 type procedureVariableReferenceValue struct {
 	Name       string
 	Value      interface{}
 	SqlType    sql.Type
 	HasBeenSet bool
 }
+
 type procedureCursorReferenceValue struct {
 	Name       string
 	SelectStmt sql.Node
 	RowIter    sql.RowIter
 }
+
 type procedureHandlerReferenceValue struct {
 	Stmt        sql.Node
 	IsExit      bool
