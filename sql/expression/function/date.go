@@ -456,7 +456,7 @@ func (ut *UnixTimestamp) IsNullable() bool {
 }
 
 func (ut *UnixTimestamp) Type() sql.Type {
-	return types.Int64
+	return types.Float64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -519,7 +519,8 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 func toUnixTimestamp(t time.Time) (interface{}, error) {
-	return t.Unix(), nil
+	ret, _, err := types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
+	return ret, err
 }
 
 func (ut *UnixTimestamp) String() string {
