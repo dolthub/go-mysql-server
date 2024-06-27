@@ -282,6 +282,23 @@ func TestUnixTimestamp(t *testing.T) {
 	require.Equal(expected, result)
 	require.Equal(uint16(0), ctx.WarningCount())
 
+	ut, err = NewUnixTimestamp(expression.NewLiteral("2024-01-15 20:52:59.99", types.LongText))
+	require.NoError(err)
+	testTime := time.Date(2024, 1, 15, 20, 52, 59, 990000000, time.UTC)
+	expected = float64(testTime.Unix()) + (float64(testTime.Nanosecond()) / float64(1000000000))
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(expected, result)
+	require.Equal(uint16(0), ctx.WarningCount())
+
+	ut, err = NewUnixTimestamp(expression.NewLiteral("3001-01-19", types.LongText))
+	require.NoError(err)
+	expected = float64(0)
+	result, err = ut.Eval(ctx, nil)
+	require.NoError(err)
+	require.Equal(expected, result)
+	require.Equal(uint16(0), ctx.WarningCount())
+
 	ut, err = NewUnixTimestamp(expression.NewLiteral(nil, types.Null))
 	require.NoError(err)
 	expected = nil

@@ -470,7 +470,7 @@ func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expressio
 
 func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if ut.Date == nil {
-		return toUnixTimestamp(ctx.QueryTime())
+		return toUnixTimestamp(ctx.QueryTime().Round(time.Second))
 	}
 
 	date, err := ut.Date.Eval(ctx, row)
@@ -519,6 +519,10 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 func toUnixTimestamp(t time.Time) (interface{}, error) {
+	if !t.Before(time.Date(3001, 01, 19, 0, 0, 0, 0, time.UTC)) {
+		return float64(0), nil
+	}
+
 	ret, _, err := types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
 	return ret, err
 }
