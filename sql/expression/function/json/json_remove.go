@@ -116,7 +116,7 @@ func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		doc, _, err = doc.Remove(*path)
+		doc, _, err = doc.Remove(ctx, *path)
 		if err != nil {
 			return nil, err
 		}

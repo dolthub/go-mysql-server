@@ -38,6 +38,18 @@ func TestJsonInsert(t *testing.T) {
 	}
 }
 
+func TestJsonRemove(t *testing.T) {
+	_, err := json.NewJSONRemove()
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
+
+	for _, format := range jsonFormatTests {
+		t.Run(format.name, func(t *testing.T) {
+			testCases := JsonRemoveTestCases(t, format.prepareFunc)
+			RunJsonTests(t, testCases)
+		})
+	}
+}
+
 func TestJsonExtract(t *testing.T) {
 	_, err := json.NewJSONExtract()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
