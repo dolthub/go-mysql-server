@@ -420,9 +420,9 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 		case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
 			dest = strconv.AppendUint(dest, mustUint64(vt), 10)
 		case sqltypes.Float32:
-			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 32)
+			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'f', -1, 32)
 		case sqltypes.Float64:
-			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 64)
+			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'f', -1, 64)
 		default:
 			panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "number"))
 		}
