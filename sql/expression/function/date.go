@@ -16,14 +16,17 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-"github.com/shopspring/decimal"
-"strings"
+	"strings"
 	"time"
 
-		"github.com/dolthub/go-mysql-server/sql"
+	"github.com/shopspring/decimal"
+
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 )
 
 // NewAddDate returns a new function expression, or an error if one couldn't be created. The ADDDATE
@@ -585,15 +588,15 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	// ConvertTimeZone function is used to get the value in +07:00 TZ
 	// It will return the correct value of '2023-09-25 00:02:57 +00:00',
 	// which is equivalent of '2023-09-25 07:02:57 +07:00'.
-	//stz, err := SessionTimeZone(ctx)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//ctz, ok := gmstime.ConvertTimeZone(date.(time.Time), stz, "UTC")
-	//if ok {
-	//	date = ctz
-	//}
+	stz, err := SessionTimeZone(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ctz, ok := gmstime.ConvertTimeZone(date.(time.Time), stz, "UTC")
+	if ok {
+		date = ctz
+	}
 
 	return toUnixTimestamp(date.(time.Time), ut.Type()), nil
 }

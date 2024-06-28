@@ -210,7 +210,9 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			Name:        "test script",
-			SetUpScript: []string{},
+			SetUpScript: []string{
+				"set time_zone = 'UTC';",
+			},
 			Assertions:  []queries.ScriptTestAssertion{
 				{
 					Query: "select unix_timestamp('2000-01-01 12:00:00');",
