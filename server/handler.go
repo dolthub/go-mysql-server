@@ -517,10 +517,17 @@ func (h *Handler) resultForDefaultIter(
 
 	rowChan = make(chan sql.Row, 512)
 
+	pan2err := func() {
+		if recoveredPanic := recover(); recoveredPanic != nil {
+			err = fmt.Errorf("handler caught panic: %v", recoveredPanic)
+		}
+	}
+	
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	// Read rows off the row iterator and send them to the row channel.
 	eg.Go(func() error {
+		defer pan2err()
 		defer wg.Done()
 		defer close(rowChan)
 		for {
@@ -546,6 +553,7 @@ func (h *Handler) resultForDefaultIter(
 
 	pollCtx, cancelF := ctx.NewSubContext()
 	eg.Go(func() error {
+		defer pan2err()
 		return h.pollForClosedConnection(pollCtx, c)
 	})
 
@@ -563,6 +571,7 @@ func (h *Handler) resultForDefaultIter(
 	// reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
+		defer pan2err()
 		defer cancelF()
 		defer wg.Done()
 		for {
@@ -618,6 +627,7 @@ func (h *Handler) resultForDefaultIter(
 	// Close() kills this PID in the process list,
 	// wait until all rows have be sent over the wire
 	eg.Go(func() error {
+		defer pan2err()
 		wg.Wait()
 		return iter.Close(ctx)
 	})
