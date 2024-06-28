@@ -241,14 +241,25 @@ func TestUnixTimestamp(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	_, err := NewUnixTimestamp()
+	utimestamp, err := NewUnixTimestamp()
 	require.NoError(err)
+	require.Equal(types.Int64, utimestamp.Type())
 
-	_, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", types.LongText))
+	utimestamp, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", types.LongText))
 	require.NoError(err)
+	require.Equal(types.Int64, utimestamp.Type())
 
-	_, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", types.LongText))
+	utimestamp, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", types.LongText))
 	require.NoError(err)
+	require.Equal(types.Int64, utimestamp.Type())
+
+	utimestamp, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02 20:00:00", types.LongText))
+	require.NoError(err)
+	require.Equal(types.Int64, utimestamp.Type())
+
+	utimestamp, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02 20:00:00.99999", types.LongText))
+	require.NoError(err)
+	require.Equal(types.MustCreateDecimalType(19, 6), utimestamp.Type())
 
 	_, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", types.LongText), expression.NewLiteral("2018-05-02", types.LongText))
 	require.Error(err)
@@ -267,7 +278,7 @@ func TestUnixTimestamp(t *testing.T) {
 
 	var ut sql.Expression
 	var expected interface{}
-	ut = &UnixTimestamp{nil}
+	ut = &UnixTimestamp{Date: nil}
 	expected = float64(date.Unix())
 	result, err := ut.Eval(ctx2, nil)
 	require.NoError(err)
