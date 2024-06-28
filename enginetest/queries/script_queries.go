@@ -6836,7 +6836,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select i, unix_timestamp(v) from t1",
+				Query: "select i, unix_timestamp(v) from t1",
 				Expected: []sql.Row{
 					{0, "946755296.000000"},
 					{1, "946755296.100000"},
