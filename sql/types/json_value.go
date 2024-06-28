@@ -264,6 +264,10 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 			// A missing key results in a SQL null
 			return nil, nil
 		}
+		if strings.Contains(err.Error(), "index out of range") {
+			// A array index out of bounds results in a SQL null
+			return nil, nil
+		}
 		return nil, err
 	}
 
