@@ -304,7 +304,7 @@ func TestUnixTimestamp(t *testing.T) {
 
 	ut, err = NewUnixTimestamp(expression.NewLiteral("3001-01-19", types.LongText))
 	require.NoError(err)
-	expected = float64(0)
+	expected = int64(0)
 	result, err = ut.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal(expected, result)

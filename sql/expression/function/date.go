@@ -558,7 +558,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 
 func toUnixTimestamp(t time.Time) (interface{}, error) {
 	if !t.Before(time.Date(3001, 01, 19, 0, 0, 0, 0, time.UTC)) {
-		return 0, nil
+		return int64(0), nil
 	}
 
 	ret, _, err := types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
