@@ -206,17 +206,136 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name:        "test script",
 			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{},
+			Assertions:  []queries.ScriptTestAssertion{
+				{
+					Query: "select unix_timestamp('2000-01-01 12:00:00');",
+					Expected: []sql.Row{
+						{946728000},
+					},
+				},
+				{
+					Query: "select unix_timestamp('2000-01-01 12:00:00.1');",
+					Expected: []sql.Row{
+						{"946728000.1"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('2000-01-01 12:00:00.12');",
+					Expected: []sql.Row{
+						{"946728000.12"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('2000-01-01 12:00:00.123');",
+					Expected: []sql.Row{
+						{"946728000.123"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('2000-01-01 12:00:00.1234');",
+					Expected: []sql.Row{
+						{"946728000.1234"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('2000-01-01 12:00:00.12345');",
+					Expected: []sql.Row{
+						{"946728000.12345"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('2000-01-01 12:00:00.123456');",
+					Expected: []sql.Row{
+						{"946728000.123456"},
+					},
+				},
+				{
+					Skip: true, // we can't tell if trailing zeros are from string or rounding
+					Query: "select unix_timestamp('2000-01-01 12:00:00.123000');",
+					Expected: []sql.Row{
+						{"946728000.123000"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('1970-01-01 00:00:01');",
+					Expected: []sql.Row{
+						{1},
+					},
+				},
+				{
+					Query: "select unix_timestamp('1970-01-01 00:00:00.123');",
+					Expected: []sql.Row{
+						{"0.000"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('1970-01-01 00:00:00.123456');",
+					Expected: []sql.Row{
+						{"0.000000"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('1970-01-01 00:00:01.123456');",
+					Expected: []sql.Row{
+						{"1.123456"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('3001-01-18 23:59:59.999999');",
+					Expected: []sql.Row{
+						{"32536771199.999999"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('3001-01-18 23:59:59.123');",
+					Expected: []sql.Row{
+						{"32536771199.123"},
+					},
+				},
+				{
+					Query: "select unix_timestamp('3001-01-19 00:00:00');",
+					Expected: []sql.Row{
+						{0},
+					},
+				},
+				{
+					Query: "select unix_timestamp('3001-01-19 00:00:00.123456');",
+					Expected: []sql.Row{
+						{0},
+					},
+				},
+
+				//{
+				//	Query: "select unix_timestamp(now());",
+				//	Expected: []sql.Row{
+				//		{"123456"},
+				//	},
+				//},
+				//{
+				//	Query: "select unix_timestamp(now(3));",
+				//	Expected: []sql.Row{
+				//		{"123456"},
+				//	},
+				//},
+				//{
+				//	Query: "select unix_timestamp(now(6));",
+				//	Expected: []sql.Row{
+				//		{"123456"},
+				//	},
+				//},
+
+			},
 		},
 	}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		//harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
