@@ -424,15 +424,19 @@ var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
 
 const MaxUnixTimeMicroSecs = 32536771199999999
 
-func hasGetField(expr sql.Expression) bool {
-	var hasGf bool
+// noEval returns true if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
+func noEval(expr sql.Expression) bool {
+	var hasBadExpr bool
 	transform.InspectExpr(expr, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.GetField); ok {
-			hasGf = true
+		switch e.(type) {
+		case *expression.GetField:
+			hasBadExpr = true
+		case *ConvertTz:
+			hasBadExpr = true
 		}
-		return hasGf
+		return hasBadExpr
 	})
-	return hasGf
+	return hasBadExpr
 }
 
 func getNowExpr(expr sql.Expression) *Now {
@@ -447,6 +451,28 @@ func getNowExpr(expr sql.Expression) *Now {
 	return now
 }
 
+func evalNowType(now *Now) sql.Type {
+	if now.prec == nil {
+		return types.Int64
+	}
+	if noEval(now.prec) {
+		return types.MustCreateDecimalType(19, 6)
+	}
+	prec, pErr := now.prec.Eval(nil, nil)
+	if pErr != nil {
+		return nil
+	}
+	scale, ok := types.CoalesceInt(prec)
+	if !ok {
+		return nil
+	}
+	typ, tErr := types.CreateDecimalType(19, uint8(scale))
+	if tErr != nil {
+		return nil
+	}
+	return typ
+}
+
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
@@ -456,29 +482,11 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	arg := args[0]
-	if now := getNowExpr(arg); now != nil  {
-		if now.prec == nil {
-			return &UnixTimestamp{Date: arg, typ: types.Int64}, nil
-		}
-		if hasGetField(now.prec) {
-			return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
-		}
-		prec, pErr := now.prec.Eval(nil, nil)
-		if pErr != nil {
-			return &UnixTimestamp{Date: arg}, nil
-		}
-		scale, ok := types.CoalesceInt(prec)
-		if !ok {
-			return &UnixTimestamp{Date: arg}, nil
-		}
-		typ, tErr := types.CreateDecimalType(19, uint8(scale))
-		if tErr != nil {
-			return nil, tErr
-		}
-		return &UnixTimestamp{Date: arg, typ: typ}, nil
-	}
-	if hasGetField(arg) {
+	if noEval(arg) {
 		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
+	}
+	if now := getNowExpr(arg); now != nil  {
+		return &UnixTimestamp{Date: arg, typ: evalNowType(now)}, nil
 	}
 
 	// evaluate arg to determine return type
@@ -569,7 +577,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
 		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String())
-		return 0, nil
+		return int64(0), nil
 	}
 
 	// https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_unix-timestamp
@@ -604,18 +612,21 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
 	unixMicro := t.UnixMicro()
 	if unixMicro > MaxUnixTimeMicroSecs {
-		return 0
+		return int64(0)
 	}
 	if unixMicro < 1e6 {
 		return resType.Zero()
 	}
 	if types.IsDecimal(resType) {
-		// drop trailing zeroes
-		exp := int32(-6)
-		for ; unixMicro%10 == 0; unixMicro /= 10 {
-			exp++
+		// scale decimal
+		scale := int32(resType.(types.DecimalType_).Scale())
+		for i := 6 - scale; i > 0; i-- {
+			unixMicro /= 10
 		}
-		return decimal.New(unixMicro, exp)
+		res := decimal.New(unixMicro, -scale)
+		str := res.String()
+		if str == "" {}
+		return res
 	}
 	return unixMicro / 1e6
 }

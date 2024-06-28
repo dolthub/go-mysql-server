@@ -901,10 +901,11 @@ var JsonRemoveTests = []JsonMutationTest{
 }
 
 func TestJsonRemove(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonRemoveTests {
 		t.Run("JSON remove: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
-			res, changed, err := doc.Remove(test.path)
+			res, changed, err := doc.Remove(ctx, test.path)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1348,8 +1349,9 @@ func TestJsonInsertErrors(t *testing.T) {
 func TestRemoveRoot(t *testing.T) {
 	// Fairly special case situation which doesn't mesh with our other tests. MySQL returns a specfic message when you
 	// attempt to remove the root document.
+	ctx := context.Background()
 	doc := MustJSON(`{"a": 1, "b": 2}`)
-	_, changed, err := doc.Remove("$")
+	_, changed, err := doc.Remove(ctx, "$")
 
 	require.Error(t, err)
 	assert.Equal(t, "The path expression '$' is not allowed in this context.", err.Error())
