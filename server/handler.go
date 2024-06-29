@@ -522,7 +522,7 @@ func (h *Handler) resultForDefaultIter(
 			err = fmt.Errorf("handler caught panic: %v", recoveredPanic)
 		}
 	}
-	
+
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	// Read rows off the row iterator and send them to the row channel.
