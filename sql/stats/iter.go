@@ -78,6 +78,7 @@ func (s *statsIter) updateIndexMeta() {
 		typesB.WriteString(sep + t.String())
 		sep = ","
 	}
+	s.types = dStat.Types()
 	s.typesStr = typesB.String()
 	s.lowerBoundStr = StringifyKey(dStat.LowerBound(), dStat.Types())
 	s.colsStr = strings.Join(dStat.Columns(), ",")
