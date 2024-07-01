@@ -59,6 +59,8 @@ func JsonContainsPathTestCases(t *testing.T, prepare prepareJsonValue) []testCas
 		{f: onePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `all`, `$.e`}, expected: false},
 		{f: onePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `All`, `$.c.d`}, expected: true},
 
+		{f: onePath, row: sql.Row{prepare(t, `[]`), `one`, `$[1]`}, expected: false},
+
 		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `one`, `$.a`, `$.e`}, expected: true},
 		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `ALL`, `$.a`, `$.e`}, expected: false},
 
