@@ -79,6 +79,11 @@ func JsonExtractTestCases(t *testing.T, prepare prepareJsonValue) []testCase {
 		{f: f2, row: sql.Row{"null", "$.b.c"}},
 		{f: f2, row: sql.Row{jsonInput, "$.foo"}},
 		{f: f2, row: sql.Row{jsonInput, "$.b.c"}, expected: types.JSONDocument{Val: "foo"}},
+		{
+			f:        f2,
+			row:      sql.Row{prepare(t, `[{"a": 1, "b": 2}, {"a": 3, "b": 4}]`), "$[*].a"},
+			expected: types.JSONDocument{Val: []interface{}{1, 3}},
+		},
 		{f: f3, row: sql.Row{jsonInput, "$.b.c", "$.b.d"}, expected: types.JSONDocument{Val: []interface{}{"foo", true}}},
 		{f: f4, row: sql.Row{jsonInput, "$.b.c", "$.b.d", "$.e[0][*]"}, expected: types.JSONDocument{Val: []interface{}{
 			"foo",

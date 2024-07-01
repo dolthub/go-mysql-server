@@ -46,6 +46,12 @@ func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 		{row: sql.Row{prepare(t, `[1, false]`)}, path: "$[0]", expected: "1"},
 		{row: sql.Row{prepare(t, `[1, {"a": 1}]`)}, path: "$[1].a", typ: types.Int64, expected: int64(1)},
 		{row: sql.Row{prepare(t, `[1, {"a": 1}]`)}, path: "$[1]", typ: types.JSON, expected: types.MustJSON(`{"a": 1}`)},
+		{
+			row:      sql.Row{prepare(t, `[{"a": 1, "b": 2}, {"a": 3, "b": 4}]`)},
+			path:     "$[*].a",
+			typ:      types.JSON,
+			expected: types.MustJSON(`[1, 3]`),
+		},
 		{row: sql.Row{1}, path: `$.f`, err: sql.ErrInvalidJSONArgument.New(1, "json_value")},
 		{row: sql.Row{`}`}, path: `$.f`, err: sql.ErrInvalidJSONText.New(1, "json_value", "}")},
 	}
