@@ -240,7 +240,7 @@ func TestDateSub(t *testing.T) {
 
 func TestUnixTimestamp(t *testing.T) {
 	currTime := time.Date(1999, 11, 5, 12, 34, 56, 123456000, time.UTC)
-	tests := []struct{
+	tests := []struct {
 		name string
 		args []sql.Expression
 		typ  sql.Type
@@ -420,7 +420,6 @@ func TestUnixTimestamp(t *testing.T) {
 			typ:  types.MustCreateDecimalType(19, 6),
 			exp:  decimal.New(941805296123456, -6),
 		},
-
 	}
 
 	for _, test := range tests {

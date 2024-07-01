@@ -21,12 +21,11 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 )
 
 // NewAddDate returns a new function expression, or an error if one couldn't be created. The ADDDATE
@@ -485,7 +484,7 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if noEval(arg) {
 		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
 	}
-	if now := getNowExpr(arg); now != nil  {
+	if now := getNowExpr(arg); now != nil {
 		return &UnixTimestamp{Date: arg, typ: evalNowType(now)}, nil
 	}
 
@@ -500,9 +499,9 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		return &UnixTimestamp{Date: arg}, nil
 	}
 	unixMicro := date.(time.Time).UnixMicro()
-	if unixMicro % 1e6 > 0 {
+	if unixMicro%1e6 > 0 {
 		scale := uint8(6)
-		for ; unixMicro % 10 == 0; unixMicro /= 10 {
+		for ; unixMicro%10 == 0; unixMicro /= 10 {
 			scale--
 		}
 		typ, tErr := types.CreateDecimalType(19, scale)
@@ -625,7 +624,8 @@ func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
 		}
 		res := decimal.New(unixMicro, -scale)
 		str := res.String()
-		if str == "" {}
+		if str == "" {
+		}
 		return res
 	}
 	return unixMicro / 1e6

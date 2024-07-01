@@ -6839,7 +6839,7 @@ where
 			{
 				// TODO: server engine is not respecting timezone
 				SkipResultCheckOnServerEngine: true,
-				Query:    "select i, unix_timestamp(v) from t1",
+				Query: "select i, unix_timestamp(v) from t1",
 				Expected: []sql.Row{
 					{0, "946730096.000000"},
 					{1, "946730096.100000"},
