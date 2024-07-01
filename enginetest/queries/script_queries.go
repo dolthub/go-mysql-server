@@ -2663,7 +2663,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "SELECT unix_timestamp(timestamp_col), unix_timestamp(datetime_col) from datetime_table",
 				Expected: []sql.Row{
-					{float64(86400), float64(57600)},
+					{"86400.000000", "57600.000000"},
 				},
 			},
 		},
@@ -4666,11 +4666,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{float64(1695600177)}},
+				Expected: []sql.Row{{1695600177}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP(CONVERT_TZ('2023-09-25 07:02:57', '+00:00', @@session.time_zone));",
-				Expected: []sql.Row{{float64(1695625377)}},
+				Expected: []sql.Row{{"1695625377.000000"}},
 			},
 			{
 				Query:    "SET time_zone = '+00:00';",
@@ -4678,7 +4678,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{float64(1695625377)}},
+				Expected: []sql.Row{{1695625377}},
 			},
 			{
 				Query:    "SET time_zone = '-06:00';",
@@ -4686,7 +4686,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{float64(1695646977)}},
+				Expected: []sql.Row{{1695646977}},
 			},
 		},
 	},
@@ -6817,6 +6817,37 @@ where
 				Query: "insert into t(bi) values (X'9876543210');",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+		},
+	},
+
+	{
+		Name: "unix_timestamp script tests",
+		SetUpScript: []string{
+			"set time_zone = 'UTC';",
+			"create table t1 (i int primary key, v varchar(100));",
+			"insert into t1 values (0, '2000-01-01 12:34:56');",
+			"insert into t1 values (1, '2000-01-01 12:34:56.1');",
+			"insert into t1 values (2, '2000-01-01 12:34:56.12');",
+			"insert into t1 values (3, '2000-01-01 12:34:56.123');",
+			"insert into t1 values (4, '2000-01-01 12:34:56.1234');",
+			"insert into t1 values (5, '2000-01-01 12:34:56.12345');",
+			"insert into t1 values (6, '2000-01-01 12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// TODO: server engine is not respecting timezone
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select i, unix_timestamp(v) from t1",
+				Expected: []sql.Row{
+					{0, "946730096.000000"},
+					{1, "946730096.100000"},
+					{2, "946730096.120000"},
+					{3, "946730096.123000"},
+					{4, "946730096.123400"},
+					{5, "946730096.123450"},
+					{6, "946730096.123456"},
 				},
 			},
 		},
