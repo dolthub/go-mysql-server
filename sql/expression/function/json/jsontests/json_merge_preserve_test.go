@@ -16,13 +16,13 @@ package jsontests
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 

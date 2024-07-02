@@ -15,13 +15,13 @@
 package jsontests
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 )
 
 func TestValid(t *testing.T) {

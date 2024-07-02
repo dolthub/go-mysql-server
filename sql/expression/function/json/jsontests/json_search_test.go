@@ -16,7 +16,6 @@ package jsontests
 
 import (
 	"fmt"
-	json "github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"strings"
 	"testing"
 
@@ -25,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	json "github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
