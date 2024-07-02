@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,10 +25,10 @@ import (
 )
 
 func TestValid(t *testing.T) {
-	_, err := NewJSONValid()
+	_, err := json.NewJSONValid()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJSONValid, 1)
+	f1 := buildGetFieldExpressions(t, json.NewJSONValid, 1)
 
 	testCases := []struct {
 		f        sql.Expression

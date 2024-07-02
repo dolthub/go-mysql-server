@@ -12,26 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"strings"
 	"testing"
 
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestJSONType(t *testing.T) {
-	_, err := NewJSONType()
+func TestJSONDepth(t *testing.T) {
+	_, err := json.NewJSONDepth()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJSONType, 1)
+	f1 := buildGetFieldExpressions(t, json.NewJSONDepth, 1)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
@@ -41,122 +40,113 @@ func TestJSONType(t *testing.T) {
 		{
 			f:   f1,
 			row: sql.Row{``},
-			err: sql.ErrInvalidJSONText.New(1, "json_type", ""),
+			err: sql.ErrInvalidJSONText.New(1, "json_depth", ``),
 		},
 		{
 			f:   f1,
 			row: sql.Row{`badjson`},
-			err: sql.ErrInvalidJSONText.New(1, "json_type", "badjson"),
+			err: sql.ErrInvalidJSONText.New(1, "json_depth", `badjson`),
 		},
 		{
 			f:   f1,
 			row: sql.Row{true},
-			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
+			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
 		},
 		{
 			f:   f1,
 			row: sql.Row{1},
-			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
-		},
-		{
-			f:   f1,
-			row: sql.Row{1.5},
-			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
-		},
-		{
-			f:   f1,
-			row: sql.Row{decimal.New(15, -1)},
-			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
+			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
 		},
 
 		{
 			f:   f1,
 			row: sql.Row{nil},
-			exp: "NULL",
+			exp: nil,
 		},
 
 		{
 			f:   f1,
 			row: sql.Row{`null`},
-			exp: "NULL",
+			exp: 1,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`1`},
-			exp: "INTEGER",
+			exp: 1,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`true`},
-			exp: "BOOLEAN",
+			exp: 1,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`123.456`},
-			exp: "DOUBLE",
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`"abcdef"`},
+			exp: 1,
 		},
 
 		{
 			f:   f1,
 			row: sql.Row{`[]`},
-			exp: "ARRAY",
+			exp: 1,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`{}`},
-			exp: "OBJECT",
+			exp: 1,
 		},
 
 		{
 			f:   f1,
+			row: sql.Row{`[null]`},
+			exp: 2,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{"a": null}`},
+			exp: 2,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[1]`},
+			exp: 2,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{"a": 1}`},
+			exp: 2,
+		},
+		{
+			f:   f1,
 			row: sql.Row{`[1, 2, 3]`},
-			exp: "ARRAY",
+			exp: 2,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
-			exp: "OBJECT",
+			exp: 2,
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{nil}},
-			exp: "NULL",
+			row: sql.Row{`{"a": 1, "b": [1, 2, 3]}`},
+			exp: 3,
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{uint64(1)}},
-			exp: "UNSIGNED INTEGER",
+			row: sql.Row{`[0, {"a": 1, "b": 2}]`},
+			exp: 3,
 		},
+
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{int64(1)}},
-			exp: "INTEGER",
-		},
-		{
-			f:   f1,
-			row: sql.Row{types.JSONDocument{true}},
-			exp: "BOOLEAN",
-		},
-		{
-			f:   f1,
-			row: sql.Row{types.JSONDocument{123.456}},
-			exp: "DOUBLE",
-		},
-		{
-			f:   f1,
-			row: sql.Row{types.JSONDocument{decimal.New(123456, -3)}},
-			exp: "DECIMAL",
-		},
-		{
-			f:   f1,
-			row: sql.Row{types.JSONDocument{[]interface{}{}}},
-			exp: "ARRAY",
-		},
-		{
-			f:   f1,
-			row: sql.Row{types.JSONDocument{map[string]interface{}{}}},
-			exp: "OBJECT",
+			row: sql.Row{`{"a": 1, "b": {"aa": 1, "bb": {"aaa": 1, "bbb": {"aaaa": 1}}}}`},
+			exp: 5,
 		},
 	}
 
@@ -171,9 +161,9 @@ func TestJSONType(t *testing.T) {
 			if tt.err != nil {
 				require.Error(err)
 				require.Equal(tt.err.Error(), err.Error())
-			} else {
-				require.NoError(err)
+				return
 			}
+			require.NoError(err)
 			require.Equal(tt.exp, result)
 		})
 	}
