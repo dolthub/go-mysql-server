@@ -181,7 +181,7 @@ CREATE TABLE sourceTable_test (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select (select count(*) from dolt_statistics) > 0",
+				Query:    "select (select count(*) from information_schema.statistics) > 0",
 				Expected: []sql.Row{{true}},
 			},
 			{
