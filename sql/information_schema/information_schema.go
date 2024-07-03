@@ -771,6 +771,7 @@ var viewRoutineUsageSchema = Schema{
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ViewRoutineUsageTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ViewRoutineUsageTableName},
 	{Name: "SPECIFIC_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ViewRoutineUsageTableName},
+	{Name: "SPECIFIC_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ViewRoutineUsageTableName},
 	{Name: "SPECIFIC_TABLE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: ViewRoutineUsageTableName},
 }
 
