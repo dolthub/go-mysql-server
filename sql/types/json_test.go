@@ -613,11 +613,12 @@ var JsonSetTests = []JsonMutationTest{
 }
 
 func TestJsonSet(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonSetTests {
 		t.Run("JSON set: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Set(test.path, val)
+			res, changed, err := doc.Set(ctx, test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1067,11 +1068,12 @@ var JsonReplaceTests = []JsonMutationTest{
 }
 
 func TestJsonReplace(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonReplaceTests {
 		t.Run("JSON replace: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Replace(test.path, val)
+			res, changed, err := doc.Replace(ctx, test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1301,11 +1303,12 @@ var JsonPathParseErrTests = []parseErrTest{
 }
 
 func TestJsonPathErrors(t *testing.T) {
+	ctx := context.Background()
 	doc := MustJSON(`{"a": {"b": 2} , "c": [1, 2, 3]}`)
 
 	for _, test := range JsonPathParseErrTests {
 		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
-			_, changed, err := doc.Set(test.path, MustJSON(`{"a": 42}`))
+			_, changed, err := doc.Set(ctx, test.path, MustJSON(`{"a": 42}`))
 			assert.Equal(t, false, changed)
 			require.Error(t, err)
 			assert.Equal(t, test.expectErrStr, err.Error())

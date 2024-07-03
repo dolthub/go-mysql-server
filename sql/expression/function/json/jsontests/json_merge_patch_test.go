@@ -1,4 +1,4 @@
-// Copyright 2022-2024 Dolthub, Inc.
+// Copyright 2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -22,14 +22,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestJSONMergePreserve(t *testing.T) {
-	f2 := buildGetFieldExpressions(t, NewJSONMergePreserve, 2)
-	f3 := buildGetFieldExpressions(t, NewJSONMergePreserve, 3)
-	f4 := buildGetFieldExpressions(t, NewJSONMergePreserve, 4)
-
+func TestJSONMergePatch(t *testing.T) {
+	f2 := buildGetFieldExpressions(t, json.NewJSONMergePatch, 2)
+	f3 := buildGetFieldExpressions(t, json.NewJSONMergePatch, 3)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
@@ -44,32 +43,32 @@ func TestJSONMergePreserve(t *testing.T) {
 		{
 			f:   f2,
 			row: sql.Row{`null`, `null`},
-			exp: types.MustJSON(`[null, null]`),
+			exp: types.MustJSON(`null`),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`1`, `true`},
-			exp: types.MustJSON(`[1, true]`),
+			exp: types.MustJSON(`true`),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`"abc"`, `"def"`},
-			exp: types.MustJSON(`["abc", "def"]`),
+			exp: types.MustJSON(`"def"`),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`[1, 2]`, `null`},
-			exp: types.MustJSON(`[1, 2, null]`),
+			exp: types.MustJSON(`null`),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`[1, 2]`, `{"id": 47}`},
-			exp: types.MustJSON(`[1, 2, {"id": 47}]`),
+			exp: types.MustJSON(`{"id": 47}`),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`[1, 2]`, `[true, false]`},
-			exp: types.MustJSON(`[1, 2, true, false]`),
+			exp: types.MustJSON(`[true, false]`),
 		},
 		{
 			f:   f2,
@@ -79,7 +78,7 @@ func TestJSONMergePreserve(t *testing.T) {
 		{
 			f:   f2,
 			row: sql.Row{`{"id": 123}`, `{"id": null}`},
-			exp: types.MustJSON(`{"id": [123, null]}`),
+			exp: types.MustJSON(`{}`),
 		},
 		{
 			f: f2,
@@ -114,57 +113,43 @@ func TestJSONMergePreserve(t *testing.T) {
 					}, 
 					"Victim": "Lisa", 
 					"Suspect": {
-						"Name": "Bart",
-						"Age": 10,
-						"Hobbies": ["Skateboarding", "Mischief", "Trouble"], 
+						"Age": 10, 
+						"Name": "Bart", 
+						"Hobbies": ["Trouble"], 
 						"Parents": ["Marge", "Homer"]
 					}, 
 					"Witnesses": ["Maggie", "Ned"]
 			}`),
 		},
 		{
-			f: f3,
-			row: sql.Row{
-				`{"a": 1, "b": 2}`,
-				`{"a": 3, "c": 4}`,
-				`{"a": 5, "d": 6}`,
-			},
-			exp: types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`),
-		},
-		{
-			f: f4,
-			row: sql.Row{
-				`{"a": 1, "b": 2}`,
-				`{"a": 3, "c": 4}`,
-				`{"a": 5, "d": 6}`,
-				`{"a": 3, "e": 8}`,
-			},
-			exp: types.MustJSON(`{"a": [1, 3, 5, 3], "b": 2, "c": 4, "d": 6, "e": 8}`),
+			f:   f3,
+			row: sql.Row{`{"a": 1, "b": 2}`, `{"a": 3, "c": 4}`, `{"a": 5, "d": 6}`},
+			exp: types.MustJSON(`{"a": 5, "b": 2, "c": 4, "d": 6}`),
 		},
 		{
 			f:   f3,
 			row: sql.Row{`{"a": 1, "b": 2}`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `"single value"`},
-			exp: types.MustJSON(`[{"a": [1, {"e": 8, "one": false, "two": 2.55}], "b": 2}, "single value"]`),
+			exp: types.MustJSON(`"single value"`),
 		},
 		{
 			f:   f3,
 			row: sql.Row{1, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
-			err: sql.ErrInvalidJSONArgument.New(1, "json_merge_preserve"),
+			err: sql.ErrInvalidJSONArgument.New(1, "json_merge_patch"),
 		},
 		{
 			f:   f3,
 			row: sql.Row{`{"a": {"one": false, "two": 2.55, "e": 8}}`, 1, `{"a": 1, "b": 2}`},
-			err: sql.ErrInvalidJSONArgument.New(2, "json_merge_preserve"),
+			err: sql.ErrInvalidJSONArgument.New(2, "json_merge_patch"),
 		},
 		{
 			f:   f3,
 			row: sql.Row{`{`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
-			err: sql.ErrInvalidJSONText.New(1, "json_merge_preserve", "{"),
+			err: sql.ErrInvalidJSONText.New(1, "json_merge_patch", "{"),
 		},
 		{
 			f:   f3,
 			row: sql.Row{`{"a": {"one": false, "two": 2.55, "e": 8}}`, `}`, `{"a": 1, "b": 2}`},
-			err: sql.ErrInvalidJSONText.New(2, "json_merge_preserve", "}"),
+			err: sql.ErrInvalidJSONText.New(2, "json_merge_patch", "}"),
 		},
 	}
 

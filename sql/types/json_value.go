@@ -103,9 +103,9 @@ type MutableJSON interface {
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
 	Remove(ctx context.Context, path string) (MutableJSON, bool, error)
 	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Set(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
-	Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Replace(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayInsert inserts into the array object referenced by the given path. If the path does not exist, no modification is made.
 	ArrayInsert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayAppend appends to an  array object referenced by the given path. If the path does not exist, no modification is made,
@@ -766,12 +766,12 @@ func (doc JSONDocument) Remove(ctx context.Context, path string) (MutableJSON, b
 	return doc.unwrapAndExecute(path, nil, REMOVE)
 }
 
-func (doc JSONDocument) Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Set(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(path, val, SET)
 }
 
-func (doc JSONDocument) Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Replace(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(path, val, REPLACE)
 }

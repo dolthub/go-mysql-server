@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -24,14 +24,15 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONType(t *testing.T) {
-	_, err := NewJSONType()
+	_, err := json.NewJSONType()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJSONType, 1)
+	f1 := buildGetFieldExpressions(t, json.NewJSONType, 1)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row

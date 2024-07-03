@@ -1,4 +1,4 @@
-// Copyright 2024 Dolthub, Inc.
+// Copyright 2023 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -23,13 +23,16 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 )
 
-func TestJSONDepth(t *testing.T) {
-	_, err := NewJSONDepth()
+func TestJsonLength(t *testing.T) {
+	_, err := json.NewJSONValid()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJSONDepth, 1)
+	f1 := buildGetFieldExpressions(t, json.NewJsonLength, 1)
+	f2 := buildGetFieldExpressions(t, json.NewJsonLength, 2)
+
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
@@ -38,35 +41,8 @@ func TestJSONDepth(t *testing.T) {
 	}{
 		{
 			f:   f1,
-			row: sql.Row{``},
-			err: sql.ErrInvalidJSONText.New(1, "json_depth", ``),
-		},
-		{
-			f:   f1,
-			row: sql.Row{`badjson`},
-			err: sql.ErrInvalidJSONText.New(1, "json_depth", `badjson`),
-		},
-		{
-			f:   f1,
-			row: sql.Row{true},
-			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
-		},
-		{
-			f:   f1,
-			row: sql.Row{1},
-			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
-		},
-
-		{
-			f:   f1,
-			row: sql.Row{nil},
-			exp: nil,
-		},
-
-		{
-			f:   f1,
 			row: sql.Row{`null`},
-			exp: 1,
+			exp: nil,
 		},
 		{
 			f:   f1,
@@ -75,77 +51,79 @@ func TestJSONDepth(t *testing.T) {
 		},
 		{
 			f:   f1,
-			row: sql.Row{`true`},
-			exp: 1,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`123.456`},
-			exp: 1,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`"abcdef"`},
-			exp: 1,
-		},
-
-		{
-			f:   f1,
-			row: sql.Row{`[]`},
-			exp: 1,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`{}`},
-			exp: 1,
-		},
-
-		{
-			f:   f1,
-			row: sql.Row{`[null]`},
-			exp: 2,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`{"a": null}`},
-			exp: 2,
-		},
-		{
-			f:   f1,
 			row: sql.Row{`[1]`},
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`"fjsadflkd"`},
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[1, false]`},
+			exp: 2,
+		},
+		{
+			f:   f1,
+			row: sql.Row{`[1, {"a": 1}]`},
 			exp: 2,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`{"a": 1}`},
-			exp: 2,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`[1, 2, 3]`},
-			exp: 2,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
-			exp: 2,
+			exp: 1,
 		},
 
 		{
-			f:   f1,
-			row: sql.Row{`{"a": 1, "b": [1, 2, 3]}`},
-			exp: 3,
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, nil},
+			exp: nil,
 		},
 		{
-			f:   f1,
-			row: sql.Row{`[0, {"a": 1, "b": 2}]`},
-			exp: 3,
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, 123},
+			err: fmt.Errorf("Invalid JSON path expression. Path must start with '$', but received: '123'"),
 		},
-
 		{
-			f:   f1,
-			row: sql.Row{`{"a": 1, "b": {"aa": 1, "bb": {"aaa": 1, "bbb": {"aaaa": 1}}}}`},
-			exp: 5,
+			f:   f2,
+			row: sql.Row{`{"a": [1, false]}`, "$.a"},
+			exp: 2,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": [1, {"a": 1}]}`, "$.a"},
+			exp: 2,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b"},
+			exp: 2,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b[0]"},
+			exp: 1,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.c.d"},
+			exp: 1,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
+			exp: nil,
+		},
+		{
+			f:   f2,
+			row: sql.Row{1, "$.d"},
+			err: sql.ErrInvalidJSONArgument.New(1, "json_length"),
+		},
+		{
+			f:   f2,
+			row: sql.Row{"asdf", "$.d"},
+			err: sql.ErrInvalidJSONText.New(1, "json_length", "asdf"),
 		},
 	}
 
@@ -156,13 +134,14 @@ func TestJSONDepth(t *testing.T) {
 		}
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
+			// any error case will result in output of 'false' value
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err != nil {
 				require.Error(err)
 				require.Equal(tt.err.Error(), err.Error())
-				return
+			} else {
+				require.NoError(err)
 			}
-			require.NoError(err)
 			require.Equal(tt.exp, result)
 		})
 	}
