@@ -266,7 +266,7 @@ func ParseTypeStrings(typs []string) ([]sql.Type, error) {
 	return ret, nil
 }
 
-func NewHistogramBucket(rowCount, distinctCount, nullCount, boundCount uint64, boundValue sql.Row, mcvCounts []uint64, mcvs []sql.Row) *Bucket {
+func NewHistogramBucket(rowCount, distinctCount, nullCount, boundCount uint64, boundValue sql.Row, mcvCounts []uint64, mcvs []sql.Row) sql.HistogramBucket {
 	return &Bucket{
 		RowCnt:      rowCount,
 		DistinctCnt: distinctCount,

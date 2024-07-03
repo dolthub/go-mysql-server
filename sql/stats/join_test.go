@@ -70,7 +70,7 @@ func TestBinMerge(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("bin merge %d", i), func(t *testing.T) {
-			cmp, err := mergeOverlappingBuckets(tt.inp, []sql.Type{types.Int64})
+			cmp, err := MergeOverlappingBuckets(tt.inp, []sql.Type{types.Int64}, NewHistogramBucket)
 			require.NoError(t, err)
 			compareHist(t, tt.exp, cmp)
 		})
