@@ -518,17 +518,18 @@ func MergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type, newB Buc
 	}
 	// |k| is the write position, |i| is the compare position
 	// |k| <= |i|
+	var ret []sql.HistogramBucket
 	i := 0
 	k := 0
 	for i < len(h) {
-		h[k] = h[i]
+		ret = append(ret, h[i])
 		i++
 		if i >= len(h) {
 			k++
 			break
 		}
 		for ; i < len(h) && h[i].DistinctCount() == 1; i++ {
-			eq, err := cmp(h[k].UpperBound(), h[i].UpperBound())
+			eq, err := cmp(ret[k].UpperBound(), h[i].UpperBound())
 			if err != nil {
 				return nil, err
 			}
@@ -536,18 +537,18 @@ func MergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type, newB Buc
 				break
 			}
 
-			h[k] = newB(
-				h[k].RowCount()+h[i].RowCount(),
-				h[k].DistinctCount(),
-				h[k].NullCount()+h[i].NullCount(),
-				h[k].BoundCount()+h[i].BoundCount(),
-				h[k].UpperBound(),
-				h[k].McvCounts(),
-				h[k].Mcvs())
+			ret[k] = newB(
+				ret[k].RowCount()+h[i].RowCount(),
+				ret[k].DistinctCount(),
+				ret[k].NullCount()+h[i].NullCount(),
+				ret[k].BoundCount()+h[i].BoundCount(),
+				ret[k].UpperBound(),
+				ret[k].McvCounts(),
+				ret[k].Mcvs())
 		}
 		k++
 	}
-	return h[:k], nil
+	return ret, nil
 }
 
 type sjState int8
