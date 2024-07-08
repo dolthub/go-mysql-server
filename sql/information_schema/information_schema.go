@@ -802,10 +802,10 @@ func characterSetsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedCharsets {
 		rows = append(rows, Row{
-			c.String(),
-			c.DefaultCollation().Name(),
-			c.Description(),
-			uint64(c.MaxLength()),
+			c.String(),                  // character_set_name
+			c.DefaultCollation().Name(), // default_collation_name
+			c.Description(),             // description
+			uint64(c.MaxLength()),       // maxlen
 		})
 	}
 	return RowsToRowIter(rows...), nil
@@ -815,6 +815,7 @@ func characterSetsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -834,7 +835,12 @@ func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				for _, checkDefinition := range checkDefinitions {
-					rows = append(rows, Row{"def", db.Name(), checkDefinition.Name, checkDefinition.CheckExpression})
+					rows = append(rows, Row{
+						catalogName,                     // constraint_catalog
+						schemaName,                      // constraint_schema
+						checkDefinition.Name,            // constraint_name
+						checkDefinition.CheckExpression, // check_clause
+					})
 				}
 			}
 		}
@@ -849,8 +855,8 @@ func collationCharacterSetApplicabilityRowIter(ctx *Context, c Catalog) (RowIter
 	collIter := NewCollationsIterator()
 	for c, ok := collIter.Next(); ok; c, ok = collIter.Next() {
 		rows = append(rows, Row{
-			c.Name,
-			c.CharacterSet.String(),
+			c.Name,                  // collation_name
+			c.CharacterSet.String(), // character_set_name
 		})
 	}
 	return RowsToRowIter(rows...), nil
@@ -862,13 +868,13 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	collIter := NewCollationsIterator()
 	for c, ok := collIter.Next(); ok; c, ok = collIter.Next() {
 		rows = append(rows, Row{
-			c.Name,
-			c.CharacterSet.Name(),
-			uint64(c.ID),
-			c.ID.IsDefault(),
-			c.ID.IsCompiled(),
-			c.ID.SortLength(),
-			c.ID.PadAttribute(),
+			c.Name,                // collation_name
+			c.CharacterSet.Name(), // character_set_name
+			uint64(c.ID),          // id
+			c.ID.IsDefault(),      // is_default
+			c.ID.IsCompiled(),     // is_compiled
+			c.ID.SortLength(),     // sortlen
+			c.ID.PadAttribute(),   // pad_attribute
 		})
 	}
 	return RowsToRowIter(rows...), nil
@@ -904,7 +910,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					db.Name(),                          // table_schema
 					t.Name(),                           // table_name
 					strings.Join(stats.Columns(), ","), // column_name
-					stats,
+					stats,                              // histogram
 				})
 			}
 			return true, nil
@@ -921,17 +927,17 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases(ctx) {
-		dbName := db.Name()
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			tblName := t.Name()
 			for _, col := range t.Schema() {
 				rows = append(rows, Row{
-					"def",    // table_catalog
-					dbName,   // table_schema
-					tblName,  // table_name
-					col.Name, // column_name
-					nil,      // engine_attribute // TODO: reserved for future use
-					nil,      // secondary_engine_attribute // TODO: reserved for future use
+					catalogName, // table_catalog
+					schemaName,  // table_schema
+					tblName,     // table_name
+					col.Name,    // column_name
+					nil,         // engine_attribute // TODO: reserved for future use
+					nil,         // secondary_engine_attribute // TODO: reserved for future use
 				})
 			}
 			return true, nil
@@ -948,12 +954,12 @@ func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
 		rows = append(rows, Row{
-			c.String(),
-			c.Support(),
-			c.Comment(),
-			c.Transactions(),
-			c.XA(),
-			c.Savepoints(),
+			c.String(),       // engine
+			c.Support(),      // support
+			c.Comment(),      // comment
+			c.Transactions(), // transactions
+			c.XA(),           // xa
+			c.Savepoints(),   // savepoints
 		})
 	}
 	return RowsToRowIter(rows...), nil
@@ -970,8 +976,9 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
 
 	for _, db := range c.AllDatabases(ctx) {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
-		dbName := db.Name()
+
 		eventDb, ok := db.(EventDatabase)
 		if ok {
 			eventDefs, _, err := eventDb.GetEvents(ctx)
@@ -1023,11 +1030,11 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				created := ed.CreatedAt.Format(EventDateSpaceTimeFormat)
 				lastAltered := ed.LastAltered.Format(EventDateSpaceTimeFormat)
 				lastExecuted := ed.LastExecuted.Format(EventDateSpaceTimeFormat)
-				// TODO: timezone should use e.TimezoneOffest, but is always 'SYSTEM' for now.
+				// TODO: timezone should use e.TimezoneOffset, but is always 'SYSTEM' for now.
 
 				rows = append(rows, Row{
-					"def",                // event_catalog
-					dbName,               // event_schema
+					catalogName,          // event_catalog
+					schemaName,           // event_schema
 					ed.Name,              // event_name
 					ed.Definer,           // definer
 					"SYSTEM",             // time_zone
@@ -1062,6 +1069,8 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
+
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -1094,7 +1103,20 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					for i, colName := range colNames {
 						ordinalPosition := i + 1 // Ordinal Positions starts at one
 
-						rows = append(rows, Row{"def", db.Name(), index.ID(), "def", db.Name(), tbl.Name(), colName, ordinalPosition, nil, nil, nil, nil})
+						rows = append(rows, Row{
+							catalogName,     // constraint_catalog
+							schemaName,      // constraint_schema
+							index.ID(),      // constraint_name
+							catalogName,     // table_catalog
+							schemaName,      // table_schema
+							tbl.Name(),      // table_name
+							colName,         // column_name
+							ordinalPosition, // ordinal_position
+							nil,             // position_in_unique_constraint
+							nil,             // referenced_table_schema
+							nil,             // referenced_table_name
+							nil,             // referenced_column_name
+						})
 					}
 				}
 			}
@@ -1115,7 +1137,20 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						referencedTableName := fk.ParentTable
 						referencedColumnName := strings.Replace(fk.ParentColumns[j], "`", "", -1) // get rid of backticks
 
-						rows = append(rows, Row{"def", db.Name(), fk.Name, "def", db.Name(), tbl.Name(), colName, ordinalPosition, ordinalPosition, referencedSchema, referencedTableName, referencedColumnName})
+						rows = append(rows, Row{
+							catalogName,          // constraint_catalog
+							schemaName,           // constraint_schema
+							fk.Name,              // constraint_name
+							catalogName,          // table_catalog
+							schemaName,           // table_schema
+							tbl.Name(),           // table_name
+							colName,              // column_name
+							ordinalPosition,      // ordinal_position
+							ordinalPosition,      // position_in_unique_constraint
+							referencedSchema,     // referenced_table_schema
+							referencedTableName,  // referenced_table_name
+							referencedColumnName, // referenced_column_name
+						})
 					}
 				}
 			}
@@ -1177,6 +1212,7 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -1244,10 +1280,10 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					}
 
 					rows = append(rows, Row{
-						"def",               // constraint_catalog
-						db.Name(),           // constraint_schema
+						catalogName,         // constraint_catalog
+						schemaName,          // constraint_schema
 						fk.Name,             // constraint_name
-						"def",               // unique_constraint_catalog
+						catalogName,         // unique_constraint_catalog
 						referencedSchema,    // unique_constraint_schema
 						uniqueConstName,     // unique_constraint_name
 						"NONE",              // match_option
@@ -1333,16 +1369,30 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// getCatalogAndSchemaNames gets the catalog and schema names for a Database or DatabaseSchema.
+func getCatalogAndSchemaNames(db Database) (string, string) {
+	catalogName := "def"
+	schemaName := db.Name()
+	if sdb, ok := db.(DatabaseSchema); ok {
+		if sn := sdb.SchemaName(); sn != "" {
+			catalogName = sdb.Name()
+			schemaName = sn
+		}
+	}
+	return catalogName, schemaName
+}
+
 // schemataRowIter implements the sql.RowIter for the information_schema.SCHEMATA table.
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases(ctx)
 
 	var rows []Row
 	for _, db := range dbs {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		collation := plan.GetDatabaseCollation(ctx, db)
 		rows = append(rows, Row{
-			"def",                             // catalog_name
-			db.Name(),                         // schema_name
+			catalogName,                       // catalog_name
+			schemaName,                        // schema_name
 			collation.CharacterSet().String(), // default_character_set_name
 			collation.String(),                // default_collation_name
 			nil,                               // sql_path
@@ -1357,6 +1407,7 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		var readOnly string
 		if rodb, ok := db.(ReadOnlyDatabase); ok {
 			if rodb.IsReadOnly() {
@@ -1364,9 +1415,9 @@ func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			}
 		}
 		rows = append(rows, Row{
-			"def",     // catalog_name
-			db.Name(), // schema_name
-			readOnly,  // options
+			catalogName, // catalog_name
+			schemaName,  // schema_name
+			readOnly,    // options
 		})
 	}
 
@@ -1377,7 +1428,7 @@ func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases(ctx) {
-		dbName := db.Name()
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			tblName := t.Name()
@@ -1400,13 +1451,13 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				}
 
 				rows = append(rows, Row{
-					"def",    // table_catalog
-					dbName,   // table_schema
-					tblName,  // table_name
-					colName,  // column_name
-					srsName,  // srs_name
-					srsId,    // srs_id
-					typeName, // geometry_type_name
+					catalogName, // table_catalog
+					schemaName,  // table_schema
+					tblName,     // table_name
+					colName,     // column_name
+					srsName,     // srs_name
+					srsId,       // srs_id
+					typeName,    // geometry_type_name
 				})
 			}
 			return true, nil
@@ -1457,6 +1508,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases(ctx)
 
 	for _, db := range dbs {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		tableNames, tErr := db.GetTableNames(ctx)
 		if tErr != nil {
 			return nil, tErr
@@ -1529,11 +1581,11 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// TODO: we currently don't support expression index such as ((i * 20))
 
 							rows = append(rows, Row{
-								"def",        // table_catalog
-								db.Name(),    // table_schema
+								catalogName,  // table_catalog
+								schemaName,   // table_schema
 								tbl.Name(),   // table_name
 								nonUnique,    // non_unique		NOT NULL
-								db.Name(),    // index_schema
+								schemaName,   // index_schema
 								indexName,    // index_name
 								seqInIndex,   // seq_in_index	NOT NULL
 								colName,      // column_name
@@ -1562,6 +1614,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -1586,7 +1639,15 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					if !checkDefinition.Enforced {
 						enforced = "NO"
 					}
-					rows = append(rows, Row{"def", db.Name(), checkDefinition.Name, db.Name(), tbl.Name(), "CHECK", enforced})
+					rows = append(rows, Row{
+						catalogName,          // constraint_catalog
+						schemaName,           // constraint_schema
+						checkDefinition.Name, // constraint_name
+						schemaName,           // table_schema
+						tbl.Name(),           // table_name
+						"CHECK",              // constraint_type
+						enforced,             // enforced
+					})
 				}
 			}
 
@@ -1611,7 +1672,15 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 					}
 
-					rows = append(rows, Row{"def", db.Name(), index.ID(), db.Name(), tbl.Name(), outputType, "YES"})
+					rows = append(rows, Row{
+						catalogName, // constraint_catalog
+						schemaName,  // constraint_schema
+						index.ID(),  // constraint_name
+						schemaName,  // table_schema
+						tbl.Name(),  // table_name
+						outputType,  // constraint_type
+						"YES",       // enforced
+					})
 				}
 			}
 
@@ -1624,7 +1693,15 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				for _, fk := range fks {
-					rows = append(rows, Row{"def", db.Name(), fk.Name, db.Name(), tbl.Name(), "FOREIGN KEY", "YES"})
+					rows = append(rows, Row{
+						catalogName,   // constraint_catalog
+						schemaName,    // constraint_schema
+						fk.Name,       // constraint_name
+						schemaName,    // table_schema
+						tbl.Name(),    // table_name
+						"FOREIGN KEY", // constraint_type
+						"YES",         // enforced
+					})
 				}
 			}
 		}
@@ -1637,7 +1714,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
-		dbName := db.Name()
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -1661,12 +1738,12 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 
 				for _, index := range indexes {
 					rows = append(rows, Row{
-						"def",
-						dbName,
-						index.ID(),
-						tblName,
-						nil,
-						nil,
+						catalogName, // constraint_catalog
+						schemaName,  // constraint_schema
+						index.ID(),  // constraint_name
+						tblName,     // table_name
+						nil,         // engine_attribute
+						nil,         // secondary_engine_attribute
 					})
 				}
 			}
@@ -1816,14 +1893,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	}
 
 	for _, db := range databases {
-		catalogName := "def"
-		schemaName := db.Name()
-		if sdb, ok := db.(DatabaseSchema); ok {
-			if sn := sdb.SchemaName(); sn != "" {
-				catalogName = sdb.Name()
-				schemaName = sn
-			}
-		}
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		if db.Name() == InformationSchemaDatabaseName {
 			tableType = "SYSTEM VIEW"
 		} else {
@@ -1943,7 +2013,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// allDatabases expands all databases in the catlog to include all schemas if present
+// allDatabases expands all databases in the catalog to include all schemas if present
 func allDatabases(ctx *Context, cat Catalog) ([]Database, error) {
 	var dbs []Database
 	for _, db := range cat.AllDatabases(ctx) {
@@ -1971,14 +2041,14 @@ func allDatabases(ctx *Context, cat Catalog) ([]Database, error) {
 func tablesExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases(ctx) {
-		dbName := db.Name()
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			rows = append(rows, Row{
-				"def",    // table_catalog
-				dbName,   // table_schema
-				t.Name(), // table_name
-				nil,      // engine_attribute // TODO: reserved for future use
-				nil,      // secondary_engine_attribute // TODO: reserved for future use
+				catalogName, // table_catalog
+				schemaName,  // table_schema
+				t.Name(),    // table_name
+				nil,         // engine_attribute // TODO: reserved for future use
+				nil,         // secondary_engine_attribute // TODO: reserved for future use
 			})
 			return true, nil
 		})
@@ -2010,6 +2080,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		triggerDb, ok := db.(TriggerDatabase)
 		if ok {
+			catalogName, schemaName := getCatalogAndSchemaNames(triggerDb)
 			privDbSet := privSet.Database(db.Name())
 			hasDbTriggerPriv := privDbSet.Has(PrivilegeType_Trigger)
 			triggers, err := triggerDb.GetTriggers(ctx)
@@ -2080,12 +2151,12 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					// To see information about a table's triggers, you must have the TRIGGER privilege for the table.
 					if hasGlobalTriggerPriv || hasDbTriggerPriv || privTblSet.Has(PrivilegeType_Trigger) {
 						rows = append(rows, Row{
-							"def",                   // trigger_catalog
-							triggerDb.Name(),        // trigger_schema
+							catalogName,             // trigger_catalog
+							schemaName,              // trigger_schema
 							triggerPlan.TriggerName, // trigger_name
 							triggerEvent,            // event_manipulation
-							"def",                   // event_object_catalog
-							triggerDb.Name(),        // event_object_schema
+							catalogName,             // event_object_catalog
+							schemaName,              // event_object_schema
 							tableName,               // event_object_table
 							int64(order + 1),        // action_order
 							nil,                     // action_condition
@@ -2212,8 +2283,8 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	}
 	hasGlobalShowViewPriv := privSet.Has(PrivilegeType_ShowView)
 	for _, db := range catalog.AllDatabases(ctx) {
-		dbName := db.Name()
-		privDbSet := privSet.Database(dbName)
+		catalogName, schemaName := getCatalogAndSchemaNames(db)
+		privDbSet := privSet.Database(db.Name())
 		hasDbShowViewPriv := privDbSet.Has(PrivilegeType_ShowView)
 
 		views, err := viewsInDatabase(ctx, db)
@@ -2260,8 +2331,8 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			}
 
 			rows = append(rows, Row{
-				"def",        // table_catalog
-				dbName,       // table_schema
+				catalogName,  // table_catalog
+				schemaName,   // table_schema
 				view.Name,    // table_name
 				viewDef,      // view_definition
 				checkOpt,     // check_option
