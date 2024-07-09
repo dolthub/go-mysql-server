@@ -293,6 +293,7 @@ func (b *BaseBuilder) buildTriggerBeginEndBlock(ctx *sql.Context, n *plan.Trigge
 		statements: n.Children(),
 		row:        row,
 		once:       &sync.Once{},
+		b:          b,
 	}, nil
 }
 
@@ -308,6 +309,7 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 		triggerEvent:   n.TriggerEvent,
 		executionLogic: n.Right(),
 		ctx:            ctx,
+		b:              b,
 	}, nil
 }
 
