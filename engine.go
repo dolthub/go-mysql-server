@@ -169,10 +169,14 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	ls := sql.NewLockSubsystem()
 
 	emptyCtx := sql.NewEmptyContext()
-	a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
-		Name: "version",
-		Fn:   function.NewVersion(cfg.VersionPostfix),
-	})
+
+	if fn, err := a.Catalog.Function(emptyCtx, "version"); fn == nil || err != nil {
+		a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
+			Name: "version",
+			Fn:   function.NewVersion(cfg.VersionPostfix),
+		})
+	}
+
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
 	ret := &Engine{

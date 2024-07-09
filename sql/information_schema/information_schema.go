@@ -1946,7 +1946,6 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				}
 			}
 
-			// TODO: use different values for databases that support schemas
 			rows = append(rows, Row{
 				catalogName,    // table_catalog
 				schemaName,     // table_schema
