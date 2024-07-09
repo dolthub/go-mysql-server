@@ -2064,7 +2064,8 @@ type dbWithNames struct {
 	schemaName  string
 }
 
-// allDatabases expands all databases in the catalog to include all schemas in the current database if present
+// allDatabases expands all databases in the catalog to include all schemas if
+// present. For Postgres, it will only return the schemas for the current database.
 func allDatabases(ctx *Context, cat Catalog, privCheck bool) ([]dbWithNames, error) {
 	var dbs []dbWithNames
 
@@ -2078,31 +2079,35 @@ func allDatabases(ctx *Context, cat Catalog, privCheck bool) ([]dbWithNames, err
 		}
 
 		sdb, ok := db.(SchemaDatabase)
-		if ok && currentDB == db.Name() {
+		if ok {
 			var schemaDbs []dbWithNames
-
 			schemas, err := sdb.AllSchemas(ctx)
 			if err != nil {
 				return nil, err
 			}
 
 			for _, schema := range schemas {
-				schemaDbs = append(schemaDbs, dbWithNames{schema, schema.Name(), schema.SchemaName()})
+				if schema.SchemaName() != "" && db.Name() == currentDB {
+					schemaDbs = append(schemaDbs, dbWithNames{schema, schema.Name(), schema.SchemaName()})
+				} else {
+					dbs = append(dbs, dbWithNames{schema, "def", schema.Name()})
+				}
 			}
 
-			// TODO: For some reason information_schema is not included in the schema list
-			infoSchemaDB, err := cat.Database(ctx, InformationSchemaDatabaseName)
-			if err != nil {
-				return nil, err
-			}
-			schemaDbs = append(schemaDbs, dbWithNames{infoSchemaDB, sdb.Name(), InformationSchemaDatabaseName})
+			if len(schemaDbs) > 0 {
+				// TODO: information_schema should be included in the schema list
+				infoSchemaDB, err := cat.Database(ctx, InformationSchemaDatabaseName)
+				if err != nil {
+					return nil, err
+				}
+				schemaDbs = append(schemaDbs, dbWithNames{infoSchemaDB, sdb.Name(), InformationSchemaDatabaseName})
 
-			return schemaDbs, nil
+				return schemaDbs, nil
+			}
 		} else {
 			dbs = append(dbs, dbWithNames{db, "def", db.Name()})
 		}
 	}
-
 	return dbs, nil
 }
 
