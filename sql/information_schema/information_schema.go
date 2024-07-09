@@ -815,7 +815,7 @@ func characterSetsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -896,7 +896,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		return RowsToRowIter(rows...), nil
 	}
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -938,7 +938,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, cat)
+	databases, err := allDatabases(ctx, cat, false)
 	if err != nil {
 		return nil, err
 	}
@@ -991,7 +991,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	}
 	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1089,7 +1089,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1236,7 +1236,7 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1400,7 +1400,7 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 // schemataRowIter implements the sql.RowIter for the information_schema.SCHEMATA table.
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
-	dbs, err := allDatabases(ctx, c)
+	dbs, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1430,7 +1430,7 @@ func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1456,7 +1456,7 @@ func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, cat)
+	databases, err := allDatabases(ctx, cat, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1538,7 +1538,7 @@ func stUnitsOfMeasureRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1649,7 +1649,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1754,7 +1754,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1932,7 +1932,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		autoInc        interface{}
 	)
 
-	databases, err := allDatabases(ctx, cat)
+	databases, err := allDatabases(ctx, cat, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2065,35 +2065,40 @@ type dbWithNames struct {
 }
 
 // allDatabases expands all databases in the catalog to include all schemas in the current database if present
-func allDatabases(ctx *Context, cat Catalog) ([]dbWithNames, error) {
+func allDatabases(ctx *Context, cat Catalog, privCheck bool) ([]dbWithNames, error) {
 	var dbs []dbWithNames
 
-	currentDB, err := cat.Database(ctx, ctx.GetCurrentDatabase())
-	if err != nil {
-		return nil, err
-	}
+	currentDB := ctx.GetCurrentDatabase()
 
-	if schDB, ok := currentDB.(SchemaDatabase); ok {
-		schemas, err := schDB.AllSchemas(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, schema := range schemas {
-			dbs = append(dbs, dbWithNames{schema, schema.Name(), schema.SchemaName()})
-		}
-
-		// TODO: For some reason information_schema is not included in the schema list
-		infoSchemaDB, err := cat.Database(ctx, InformationSchemaDatabaseName)
-		if err != nil {
-			return nil, err
-		}
-		dbs = append(dbs, dbWithNames{infoSchemaDB, schDB.Name(), InformationSchemaDatabaseName})
-	} else {
-		for _, db := range cat.AllDatabases(ctx) {
+	for _, db := range cat.AllDatabases(ctx) {
+		if privCheck {
 			if privDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
 				db = privDatabase.Unwrap()
 			}
+		}
+
+		sdb, ok := db.(SchemaDatabase)
+		if ok && currentDB == db.Name() {
+			var schemaDbs []dbWithNames
+
+			schemas, err := sdb.AllSchemas(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, schema := range schemas {
+				schemaDbs = append(schemaDbs, dbWithNames{schema, schema.Name(), schema.SchemaName()})
+			}
+
+			// TODO: For some reason information_schema is not included in the schema list
+			infoSchemaDB, err := cat.Database(ctx, InformationSchemaDatabaseName)
+			if err != nil {
+				return nil, err
+			}
+			schemaDbs = append(schemaDbs, dbWithNames{infoSchemaDB, sdb.Name(), InformationSchemaDatabaseName})
+
+			return schemaDbs, nil
+		} else {
 			dbs = append(dbs, dbWithNames{db, "def", db.Name()})
 		}
 	}
@@ -2105,7 +2110,7 @@ func allDatabases(ctx *Context, cat Catalog) ([]dbWithNames, error) {
 func tablesExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 
-	databases, err := allDatabases(ctx, cat)
+	databases, err := allDatabases(ctx, cat, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2146,7 +2151,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	}
 	hasGlobalTriggerPriv := privSet.Has(PrivilegeType_Trigger)
 
-	databases, err := allDatabases(ctx, c)
+	databases, err := allDatabases(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2357,7 +2362,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	}
 	hasGlobalShowViewPriv := privSet.Has(PrivilegeType_ShowView)
 
-	databases, err := allDatabases(ctx, catalog)
+	databases, err := allDatabases(ctx, catalog, false)
 	if err != nil {
 		return nil, err
 	}
