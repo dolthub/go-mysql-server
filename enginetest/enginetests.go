@@ -3915,6 +3915,14 @@ func TestVariables(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
+			Query:    "SELECT @@binlog_row_metadata",
+			Expected: []sql.Row{{"MINIMAL"}},
+		},
+		{
+			Query:    "SELECT @@binlog_row_image",
+			Expected: []sql.Row{{"FULL"}},
+		},
+		{
 			Query:    "SELECT @@select_into_buffer_size",
 			Expected: []sql.Row{{131072}},
 		},

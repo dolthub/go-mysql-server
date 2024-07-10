@@ -407,12 +407,20 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("binlog_gtid_simple_recovery"),
 		Default:           int8(1),
 	},
+	"binlog_row_image": &sql.MysqlSystemVariable{
+		Name:              "binlog_row_image",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemEnumType("binlog_row_image", "MINIMAL", "FULL", "NOBLOB"),
+		Default:           "FULL",
+	},
 	"binlog_row_metadata": &sql.MysqlSystemVariable{
 		Name:              "binlog_row_metadata",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              types.NewSystemEnumType("MINIMAL", "FULL"),
+		Type:              types.NewSystemEnumType("binlog_row_metadata", "MINIMAL", "FULL"),
 		Default:           "MINIMAL",
 	},
 	"block_encryption_mode": &sql.MysqlSystemVariable{
