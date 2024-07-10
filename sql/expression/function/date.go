@@ -19,9 +19,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -412,19 +415,103 @@ func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
 // With no argument, returns number of seconds since unix epoch for the current time.
 type UnixTimestamp struct {
 	Date sql.Expression
+	typ  sql.Type
 }
 
 var _ sql.FunctionExpression = (*UnixTimestamp)(nil)
 var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
+
+const MaxUnixTimeMicroSecs = 32536771199999999
+
+// noEval returns true if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
+func noEval(expr sql.Expression) bool {
+	var hasBadExpr bool
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		switch e.(type) {
+		case *expression.GetField:
+			hasBadExpr = true
+		case *ConvertTz:
+			hasBadExpr = true
+		}
+		return hasBadExpr
+	})
+	return hasBadExpr
+}
+
+func getNowExpr(expr sql.Expression) *Now {
+	var now *Now
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		if n, ok := e.(*Now); ok {
+			now = n
+			return true
+		}
+		return false
+	})
+	return now
+}
+
+func evalNowType(now *Now) sql.Type {
+	if now.prec == nil {
+		return types.Int64
+	}
+	if noEval(now.prec) {
+		return types.MustCreateDecimalType(19, 6)
+	}
+	prec, pErr := now.prec.Eval(nil, nil)
+	if pErr != nil {
+		return nil
+	}
+	scale, ok := types.CoalesceInt(prec)
+	if !ok {
+		return nil
+	}
+	typ, tErr := types.CreateDecimalType(19, uint8(scale))
+	if tErr != nil {
+		return nil
+	}
+	return typ
+}
 
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}
 	if len(args) == 0 {
-		return &UnixTimestamp{nil}, nil
+		return &UnixTimestamp{}, nil
 	}
-	return &UnixTimestamp{args[0]}, nil
+
+	arg := args[0]
+	if noEval(arg) {
+		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
+	}
+	if now := getNowExpr(arg); now != nil {
+		return &UnixTimestamp{Date: arg, typ: evalNowType(now)}, nil
+	}
+
+	// evaluate arg to determine return type
+	// no need to consider timezone conversions, because they have no impact on precision
+	date, err := arg.Eval(nil, nil)
+	if err != nil || date == nil {
+		return &UnixTimestamp{Date: arg}, nil
+	}
+	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	if err != nil {
+		return &UnixTimestamp{Date: arg}, nil
+	}
+	unixMicro := date.(time.Time).UnixMicro()
+	if unixMicro%1e6 > 0 {
+		scale := uint8(6)
+		for ; unixMicro%10 == 0; unixMicro /= 10 {
+			scale--
+		}
+		typ, tErr := types.CreateDecimalType(19, scale)
+		if tErr != nil {
+			return nil, tErr
+		}
+		return &UnixTimestamp{Date: arg, typ: typ}, nil
+	}
+
+	return &UnixTimestamp{Date: arg, typ: types.Int64}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -456,7 +543,10 @@ func (ut *UnixTimestamp) IsNullable() bool {
 }
 
 func (ut *UnixTimestamp) Type() sql.Type {
-	return types.Float64
+	if ut.typ == nil {
+		return types.Int64
+	}
+	return ut.typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -470,7 +560,7 @@ func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expressio
 
 func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if ut.Date == nil {
-		return toUnixTimestamp(ctx.QueryTime())
+		return toUnixTimestamp(ctx.QueryTime(), ut.Type()), nil
 	}
 
 	date, err := ut.Date.Eval(ctx, row)
@@ -486,7 +576,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
 		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String())
-		return 0, nil
+		return int64(0), nil
 	}
 
 	// https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_unix-timestamp
@@ -494,7 +584,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	// UNIX_TIMESTAMP() returns the internal timestamp value directly,
 	// with no implicit “string-to-Unix-timestamp” conversion.
 	if ut.Date.Type().Equals(types.Timestamp) {
-		return toUnixTimestamp(date.(time.Time))
+		return toUnixTimestamp(date.(time.Time), ut.Type()), nil
 	}
 	// The function above returns the time value in UTC time zone.
 	// Instead, it should use the current session time zone.
@@ -515,12 +605,30 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		date = ctz
 	}
 
-	return toUnixTimestamp(date.(time.Time))
+	return toUnixTimestamp(date.(time.Time), ut.Type()), nil
 }
 
-func toUnixTimestamp(t time.Time) (interface{}, error) {
-	ret, _, err := types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
-	return ret, err
+func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
+	unixMicro := t.UnixMicro()
+	if unixMicro > MaxUnixTimeMicroSecs {
+		return int64(0)
+	}
+	if unixMicro < 1e6 {
+		return resType.Zero()
+	}
+	if types.IsDecimal(resType) {
+		// scale decimal
+		scale := int32(resType.(types.DecimalType_).Scale())
+		for i := 6 - scale; i > 0; i-- {
+			unixMicro /= 10
+		}
+		res := decimal.New(unixMicro, -scale)
+		str := res.String()
+		if str == "" {
+		}
+		return res
+	}
+	return unixMicro / 1e6
 }
 
 func (ut *UnixTimestamp) String() string {

@@ -38,6 +38,53 @@ func TestJsonInsert(t *testing.T) {
 	}
 }
 
+func TestJsonRemove(t *testing.T) {
+	_, err := json.NewJSONRemove()
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
+
+	for _, format := range jsonFormatTests {
+		t.Run(format.name, func(t *testing.T) {
+			testCases := JsonRemoveTestCases(t, format.prepareFunc)
+			RunJsonTests(t, testCases)
+		})
+	}
+}
+
+func TestJsonReplace(t *testing.T) {
+	_, err := json.NewJSONRemove()
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
+
+	for _, format := range jsonFormatTests {
+		t.Run(format.name, func(t *testing.T) {
+			testCases := JsonReplaceTestCases(t, format.prepareFunc)
+			RunJsonTests(t, testCases)
+		})
+	}
+}
+
+func TestJsonSet(t *testing.T) {
+	_, err := json.NewJSONSet()
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
+
+	_, err = json.NewJSONSet(
+		expression.NewGetField(0, types.LongText, "arg1", false),
+	)
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
+
+	_, err = json.NewJSONSet(
+		expression.NewGetField(0, types.LongText, "arg1", false),
+		expression.NewGetField(1, types.LongText, "arg2", false),
+	)
+	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
+
+	for _, format := range jsonFormatTests {
+		t.Run(format.name, func(t *testing.T) {
+			testCases := JsonSetTestCases(t, format.prepareFunc)
+			RunJsonTests(t, testCases)
+		})
+	}
+}
+
 func TestJsonExtract(t *testing.T) {
 	_, err := json.NewJSONExtract()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))

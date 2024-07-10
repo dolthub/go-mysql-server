@@ -101,11 +101,11 @@ type MutableJSON interface {
 	// a change was made.
 	Insert(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Remove the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Remove(path string) (MutableJSON, bool, error)
+	Remove(ctx context.Context, path string) (MutableJSON, bool, error)
 	// Set the value at the given path. Updated value returned, and bool indicating if a change was made.
-	Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Set(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// Replace the value at the given path with the new value. If the path does not exist, no modification is made.
-	Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
+	Replace(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayInsert inserts into the array object referenced by the given path. If the path does not exist, no modification is made.
 	ArrayInsert(path string, val sql.JSONWrapper) (MutableJSON, bool, error)
 	// ArrayAppend appends to an  array object referenced by the given path. If the path does not exist, no modification is made,
@@ -262,6 +262,10 @@ func lookupJson(j interface{}, path string) (SearchableJSON, error) {
 	if err != nil {
 		if strings.Contains(err.Error(), "key error") {
 			// A missing key results in a SQL null
+			return nil, nil
+		}
+		if strings.Contains(err.Error(), "index out of range") {
+			// A array index out of bounds results in a SQL null
 			return nil, nil
 		}
 		return nil, err
@@ -753,7 +757,7 @@ func (doc JSONDocument) Insert(_ context.Context, path string, val sql.JSONWrapp
 	return doc.unwrapAndExecute(path, val, INSERT)
 }
 
-func (doc JSONDocument) Remove(path string) (MutableJSON, bool, error) {
+func (doc JSONDocument) Remove(ctx context.Context, path string) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	if path == "$" {
 		return nil, false, fmt.Errorf("The path expression '$' is not allowed in this context.")
@@ -762,12 +766,12 @@ func (doc JSONDocument) Remove(path string) (MutableJSON, bool, error) {
 	return doc.unwrapAndExecute(path, nil, REMOVE)
 }
 
-func (doc JSONDocument) Set(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Set(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(path, val, SET)
 }
 
-func (doc JSONDocument) Replace(path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
+func (doc JSONDocument) Replace(ctx context.Context, path string, val sql.JSONWrapper) (MutableJSON, bool, error) {
 	path = strings.TrimSpace(path)
 	return doc.unwrapAndExecute(path, val, REPLACE)
 }

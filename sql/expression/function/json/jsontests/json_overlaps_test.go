@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -23,13 +23,14 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 )
 
 func TestJSONOverlaps(t *testing.T) {
-	_, err := NewJSONOverlaps()
+	_, err := json.NewJSONOverlaps()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f2 := buildGetFieldExpressions(t, NewJSONOverlaps, 2)
+	f2 := buildGetFieldExpressions(t, json.NewJSONOverlaps, 2)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
