@@ -134,6 +134,106 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
+		name: "keyless lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int, index y_idx(y));",
+				"CREATE table ab (a int primary key, b int, c int);",
+				"insert into xy values (1,0,3), (1,0,3), (0,2,1),(0,2,1);",
+				"insert into ab values (0,1,1), (1,2,2), (2,3,3), (3,2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			// covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			// covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 3}, {0, 0, 3}, {2, 2, 1}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 3}, {0, 0, 3}, {2, 2, 1}, {2, 2, 1}},
+			},
+			// non-covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 1}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,z from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 1}, {2, 2, 1}},
+			},
+		},
+	},
+	{
+		name: "keyed lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,0,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			// covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// non-covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 0}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,x from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 0}, {2, 2, 0}},
+			},
+		},
+	},
+	{
 		name: "issue 5633, nil comparison in merge join",
 		setup: [][]string{
 			setup.MydbData[0],
