@@ -121,11 +121,11 @@ var RegexTests = []RegexTest{
 	},
 	{
 		Query:    `SELECT 20 REGEXP '^[-]?2[0-9]+$'`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    `SELECT 30 REGEXP '^[-]?2[0-9]+$'`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.Row{{0}},
 	},
 	{
 		Query:       `SELECT REGEXP_LIKE("", "(?P<foo_123");`,
