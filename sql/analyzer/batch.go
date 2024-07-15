@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"reflect"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -105,20 +103,4 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	}
 
 	return prev, allSame, nil
-}
-
-func nodesEqual(a, b sql.Node) bool {
-	if e, ok := a.(equaler); ok {
-		return e.Equal(b)
-	}
-
-	if e, ok := b.(equaler); ok {
-		return e.Equal(a)
-	}
-
-	return reflect.DeepEqual(a, b)
-}
-
-type equaler interface {
-	Equal(sql.Node) bool
 }

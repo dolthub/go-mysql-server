@@ -16,11 +16,9 @@ package expression
 
 import (
 	"fmt"
-	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -412,141 +410,6 @@ func (e *NullSafeEquals) String() string {
 
 func (e *NullSafeEquals) DebugString() string {
 	return fmt.Sprintf("(%s <=> %s)", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
-}
-
-// Regexp is a comparison that checks an expression matches a regexp.
-type Regexp struct {
-	comparison
-	pool   *sync.Pool
-	cached bool
-	once   sync.Once
-}
-
-var _ sql.Expression = (*Regexp)(nil)
-var _ sql.CollationCoercible = (*Regexp)(nil)
-
-// NewRegexp creates a new Regexp expression.
-func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
-	var cached = true
-	sql.Inspect(right, func(e sql.Expression) bool {
-		if _, ok := e.(*GetField); ok {
-			cached = false
-		}
-		return true
-	})
-
-	return &Regexp{
-		comparison: newComparison(left, right),
-		pool:       nil,
-		cached:     cached,
-		once:       sync.Once{},
-	}
-}
-
-// Eval implements the Expression interface.
-func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if types.IsText(re.Right().Type()) {
-		return re.compareRegexp(ctx, row)
-	}
-
-	result, err := re.Compare(ctx, row)
-	if err != nil {
-		if ErrNilOperand.Is(err) {
-			return nil, nil
-		}
-
-		return nil, err
-	}
-
-	return result == 0, nil
-}
-
-type matcherErrTuple struct {
-	matcher regex.DisposableMatcher
-	err     error
-}
-
-func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	left, err := re.Left().Eval(ctx, row)
-	if err != nil || left == nil {
-		return nil, err
-	}
-	left, _, err = types.LongText.Convert(left)
-	if err != nil {
-		return nil, err
-	}
-
-	var matcher regex.DisposableMatcher
-
-	if !re.cached {
-		right, rerr := re.evalRight(ctx, row)
-		if rerr != nil || right == nil {
-			return right, rerr
-		}
-		matcher, err = regex.NewDisposableMatcher(regex.Default(), *right)
-	} else {
-		re.once.Do(func() {
-			right, err := re.evalRight(ctx, row)
-			re.pool = &sync.Pool{
-				New: func() interface{} {
-					if err != nil || right == nil {
-						return matcherErrTuple{nil, err}
-					}
-					m, e := regex.NewDisposableMatcher(regex.Default(), *right)
-					return matcherErrTuple{m, e}
-				},
-			}
-		})
-		met := re.pool.Get().(matcherErrTuple)
-		matcher, err = met.matcher, met.err
-	}
-
-	if err != nil {
-		return nil, ErrInvalidRegexp.New(err.Error())
-	} else if matcher == nil {
-		return nil, nil
-	}
-
-	ok := matcher.Match(left.(string))
-
-	if !re.cached {
-		matcher.Dispose()
-	} else {
-		re.pool.Put(matcherErrTuple{matcher, nil})
-	}
-	return ok, nil
-}
-
-func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
-	right, err := re.Right().Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if right == nil {
-		return nil, nil
-	}
-	right, _, err = types.LongText.Convert(right)
-	if err != nil {
-		return nil, err
-	}
-	s := right.(string)
-	return &s, nil
-}
-
-// WithChildren implements the Expression interface.
-func (re *Regexp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(re, len(children), 2)
-	}
-	return NewRegexp(children[0], children[1]), nil
-}
-
-func (re *Regexp) String() string {
-	return fmt.Sprintf("(%s REGEXP %s)", re.Left(), re.Right())
-}
-
-func (re *Regexp) DebugString() string {
-	return fmt.Sprintf("(%s REGEXP %s)", sql.DebugString(re.Left()), sql.DebugString(re.Right()))
 }
 
 // GreaterThan is a comparison that checks an expression is greater than another.

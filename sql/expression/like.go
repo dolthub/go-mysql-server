@@ -22,14 +22,9 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-func newDefaultLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
-	return regex.NewDisposableMatcher("go", likeStr)
-}
 
 // Like performs pattern matching against two strings.
 type Like struct {

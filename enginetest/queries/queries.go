@@ -10491,8 +10491,8 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
-		Query:       `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
-		ExpectedErr: expression.ErrInvalidRegexp,
+		Query:          `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
+		ExpectedErrStr: "the given regular expression is invalid",
 	},
 	{
 		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,
