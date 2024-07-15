@@ -668,6 +668,12 @@ var (
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
 
+	// ErrUserNameTooLong is returned when a CREATE USER statement uses a name that is longer than 32 chars.
+	ErrUserNameTooLong = errors.NewKind("String '%s' is too long for user name (should be no longer than 32)")
+
+	// ErrUserHostTooLong is returned when a CREATE USER statement uses a host that is longer than 255 chars.
+	ErrUserHostTooLong = errors.NewKind("String '%s' is too long for host name (should be no longer than 255)")
+
 	// ErrUserAlterFailure is returned when attempting to alter a user and it fails for any reason.
 	ErrUserAlterFailure = errors.NewKind("Operation ALTER USER failed for %s")
 

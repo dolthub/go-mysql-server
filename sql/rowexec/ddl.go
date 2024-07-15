@@ -576,6 +576,14 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, _ sq
 			return nil, sql.ErrUserCreationFailure.New(user.UserName.String("'"))
 		}
 
+		if len(user.UserName.Name) > 32 {
+			return nil, sql.ErrUserNameTooLong.New(user.UserName.Name)
+		}
+
+		if len(user.UserName.Host) > 255 {
+			return nil, sql.ErrUserHostTooLong.New(user.UserName.Host)
+		}
+
 		plugin := "mysql_native_password"
 		password := ""
 		if user.Auth1 != nil {
