@@ -164,24 +164,36 @@ func (s *Statistic) Histogram() sql.Histogram {
 }
 
 func (s *Statistic) WithDistinctCount(i uint64) sql.Statistic {
+	if i == s.DistinctCnt {
+		return s
+	}
 	ret := *s
 	ret.DistinctCnt = i
 	return &ret
 }
 
 func (s *Statistic) WithRowCount(i uint64) sql.Statistic {
+	if i == s.RowCnt {
+		return s
+	}
 	ret := *s
 	ret.RowCnt = i
 	return &ret
 }
 
 func (s *Statistic) WithNullCount(i uint64) sql.Statistic {
+	if i == s.NullCnt {
+		return s
+	}
 	ret := *s
 	ret.NullCnt = i
 	return &ret
 }
 
 func (s *Statistic) WithAvgSize(i uint64) sql.Statistic {
+	if i == s.AvgRowSize {
+		return s
+	}
 	ret := *s
 	ret.AvgRowSize = i
 	return &ret

@@ -70,20 +70,25 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 			return n, transform.SameTree, nil
 		}
 
-		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
-			lookup, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression))
+		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
+			lookup, ok, err := is.LookupForExpression(ctx, filter.Expression)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			if lookup.IsEmpty() {
+			if ok {
+				if lookup.IsEmpty() {
+					return n, transform.SameTree, nil
+				}
+				ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+				if err != nil {
+					return n, transform.SameTree, err
+				}
+				return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
+			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
-			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
-		} else if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
+		}
+		if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
 			indexes, err := iat.GetIndexes(ctx)
 			if err != nil {
 				return n, transform.SameTree, err
@@ -288,67 +293,73 @@ func addIndexScans(m *memo.Memo) error {
 
 		indexes := filter.Child.First.(memo.SourceRel).Indexes()
 
-		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
-			lookup, err := is.LookupForExpressions(m.Ctx, filter.Filters)
+		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
+			lookup, ok, err := is.LookupForExpression(m.Ctx, expression.JoinAnd(filter.Filters...))
 			if err != nil {
 				m.HandleErr(err)
 			}
-			if lookup.IsEmpty() {
-				return nil
-			}
-			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
-			if err != nil {
-				m.HandleErr(err)
-
-			}
-			// TODO add ITA to filter group
-			// todo memoize ITA
-			// we explicitly put ITA as child of filter group for this shortcut
-			var idx *memo.Index
-			for _, i := range indexes {
-				if i.SqlIdx().ID() == lookup.Index.ID() {
-					idx = i
-					break
+			if ok {
+				if lookup.IsEmpty() {
+					return nil
 				}
-			}
-			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx, nil)
-			m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
-		} else {
-			sqlIndexes := make([]sql.Index, len(indexes))
-			for i, idx := range indexes {
-				sqlIndexes[i] = idx.SqlIdx()
-			}
-			ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters)
-			if err != nil {
-				m.HandleErr(err)
-			}
-			if ita != nil {
+				ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+				if err != nil {
+					m.HandleErr(err)
+
+				}
+				// TODO add ITA to filter group
+				// todo memoize ITA
+				// we explicitly put ITA as child of filter group for this shortcut
 				var idx *memo.Index
 				for _, i := range indexes {
-					if ita.Index().ID() == i.SqlIdx().ID() {
+					if i.SqlIdx().ID() == lookup.Index.ID() {
 						idx = i
 						break
 					}
 				}
-				var itaGrp *memo.ExprGroup
-				if len(filters) > 0 {
-					// set the indexed path as best. correct for cases where
-					// indexScan is incompatible with best join operator
-					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx, stat)
-					itaGrp.Best = itaGrp.First
-					itaGrp.Done = true
-					itaGrp.HintOk = true
-					itaGrp.Best.SetDistinct(memo.NoDistinctOp)
-					fGrp := m.MemoizeFilter(filter.Group(), itaGrp, filters)
-					fGrp.Best = fGrp.First
-					fGrp.Done = true
-					fGrp.HintOk = true
-					fGrp.Best.SetDistinct(memo.NoDistinctOp)
-				} else {
-					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx, stat)
-				}
+				itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx, nil)
+				m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
+				return nil
+			} else if is.SkipIndexCosting() {
+				return nil
 			}
 		}
+
+		sqlIndexes := make([]sql.Index, len(indexes))
+		for i, idx := range indexes {
+			sqlIndexes[i] = idx.SqlIdx()
+		}
+		ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters)
+		if err != nil {
+			m.HandleErr(err)
+		}
+		if ita != nil {
+			var idx *memo.Index
+			for _, i := range indexes {
+				if ita.Index().ID() == i.SqlIdx().ID() {
+					idx = i
+					break
+				}
+			}
+			var itaGrp *memo.ExprGroup
+			if len(filters) > 0 {
+				// set the indexed path as best. correct for cases where
+				// indexScan is incompatible with best join operator
+				itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx, stat)
+				itaGrp.Best = itaGrp.First
+				itaGrp.Done = true
+				itaGrp.HintOk = true
+				itaGrp.Best.SetDistinct(memo.NoDistinctOp)
+				fGrp := m.MemoizeFilter(filter.Group(), itaGrp, filters)
+				fGrp.Best = fGrp.First
+				fGrp.Done = true
+				fGrp.HintOk = true
+				fGrp.Best.SetDistinct(memo.NoDistinctOp)
+			} else {
+				itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx, stat)
+			}
+		}
+
 		return nil
 	})
 }

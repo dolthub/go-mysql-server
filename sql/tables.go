@@ -480,12 +480,10 @@ type MutableTableNode interface {
 // IndexSearchable lets a node use custom logic to create
 // *plan.IndexedTableAccess
 type IndexSearchable interface {
-	// SkipIndexCosting defers to an integrator for provide a suitable
-	// index lookup.
+	// SkipIndexCosting defers to an integrator for provide a suitable index lookup.
 	SkipIndexCosting() bool
-	// LookupForExpressions returns an sql.IndexLookup for an expression
-	// set.
-	LookupForExpressions(*Context, []Expression) (IndexLookup, error)
+	// LookupForExpression returns a sql.IndexLookup for an expression.
+	LookupForExpression(*Context, Expression) (IndexLookup, bool, error)
 }
 
 // IndexSearchableTable is a Table supports custom index generation.
