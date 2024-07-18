@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -100,16 +102,27 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	right, err = types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(right)
+	dateTime, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(right)
 	if err != nil {
-		ctx.Warn(1292, err.Error())
-		return nil, nil
-	}
+		if !errors.Is(err, types.ErrConvertingToTime) {
+			ctx.Warn(1292, err.Error())
+			return nil, nil
+		}
 
-	dateTime, ok := right.(time.Time)
-	if !ok {
-		ctx.Warn(1292, "invalid DateTime")
-		return nil, nil
+		// if in format of "HH:MM:SS", convert to time.Now().Date() + "HH:MM:SS"
+		right, _, err = types.Time.Convert(right)
+		if err != nil {
+			ctx.Warn(1292, err.Error())
+			return nil, nil
+		}
+		ts, isTimespan := right.(types.Timespan)
+		if !isTimespan {
+			return nil, nil
+		}
+		_, h, mins, s, microsecs := ts.TimespanToUnits()
+		currTime := ctx.QueryTime()
+		y, m, d := currTime.Date()
+		dateTime = time.Date(y, m, d, int(h), int(mins), int(s), int(microsecs)*1000, currTime.Location())
 	}
 
 	switch unit {
@@ -128,7 +141,7 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case "MONTH":
 		return int(dateTime.Month()), nil
 	case "WEEK":
-		date, err := getDate(ctx, expression.UnaryExpression{Child: td.RightChild}, row)
+		date := dateTime
 		if err != nil {
 			return nil, err
 		}
