@@ -106,6 +106,26 @@ type ServerAuthenticationTestAssertion struct {
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
 	{
+		Name: "Create user limits",
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "create user abcdefghijklmnopqrstuvwxyz0123456789@'localhost' identified by 'abc123';",
+				ExpectedErr: sql.ErrUserNameTooLong,
+			},
+			{
+				User: "root",
+				Host: "localhost",
+				Query: "create user j@'abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+					"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+					"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'" +
+					" identified by 'abc123';",
+				ExpectedErr: sql.ErrUserHostTooLong,
+			},
+		},
+	},
+	{
 		Name: "Binlog replication privileges",
 		SetUpScript: []string{
 			"CREATE USER user@localhost;",

@@ -572,9 +572,17 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 
 	switch strings.ToLower(c.Operator) {
 	case ast.RegexpStr:
-		return expression.NewRegexp(left, right)
+		regexpLike, err := function.NewRegexpLike(left, right)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return regexpLike
 	case ast.NotRegexpStr:
-		return expression.NewNot(expression.NewRegexp(left, right))
+		regexpLike, err := function.NewRegexpLike(left, right)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewNot(regexpLike)
 	case ast.EqualStr:
 		return expression.NewEquals(left, right)
 	case ast.LessThanStr:

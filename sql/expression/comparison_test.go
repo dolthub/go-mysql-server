@@ -19,7 +19,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -217,56 +216,6 @@ func TestGreaterThan(t *testing.T) {
 			}
 		}
 	}
-}
-
-func TestRegexp(t *testing.T) {
-	for _, engine := range regex.Engines() {
-		regex.SetDefault(engine)
-		t.Run(engine, testRegexpCases)
-	}
-}
-
-func testRegexpCases(t *testing.T) {
-	t.Helper()
-	require := require.New(t)
-
-	for resultType, cmpCase := range likeComparisonCases {
-		get0 := expression.NewGetField(0, resultType, "col1", true)
-		require.NotNil(get0)
-		get1 := expression.NewGetField(1, resultType, "col2", true)
-		require.NotNil(get1)
-		for cmpResult, cases := range cmpCase {
-			for _, pair := range cases {
-				eq := expression.NewRegexp(get0, get1)
-				require.NotNil(eq)
-				require.Equal(types.Boolean, eq.Type())
-
-				row := sql.NewRow(pair[0], pair[1])
-				require.NotNil(row)
-				cmp := eval(t, eq, row)
-				if cmpResult == testRegexp {
-					require.Equal(true, cmp)
-				} else if cmpResult == testNil {
-					require.Nil(cmp)
-				} else {
-					require.Equal(false, cmp)
-				}
-			}
-		}
-	}
-}
-
-func TestInvalidRegexp(t *testing.T) {
-	t.Helper()
-	require := require.New(t)
-
-	col1 := expression.NewGetField(0, types.LongText, "col1", true)
-	invalid := expression.NewLiteral("*col1", types.LongText)
-	r := expression.NewRegexp(col1, invalid)
-	row := sql.NewRow("col1")
-
-	_, err := r.Eval(sql.NewEmptyContext(), row)
-	require.Error(err)
 }
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
