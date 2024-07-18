@@ -282,6 +282,46 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
+		name: "multi pk lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table wxyz (w int, x int, y int, z int, primary key (x,w), index yw_idx(y,w));",
+				"CREATE table abcd (a int, b int, c int, d int, primary key (a,b), index ca_idx(c,a));",
+				"insert into wxyz values (1,0,0,0), (1,1,1,1), (0,2,2,1),(0,1,3,1);",
+				"insert into abcd values (0,0,0,0), (0,1,1,1), (0,2,2,1),(2,1,3,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,z from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,w from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {2, 2, 0}},
+			},
+		},
+	},
+	{
+		name: "redundant keyless index",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int, index y_idx(x,y,z));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,0,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 0}, {2, 2, 3}, {2, 2, 2}},
+			},
+		},
+	},
+	{
 		name: "issue 5633, nil comparison in merge join",
 		setup: [][]string{
 			setup.MydbData[0],
