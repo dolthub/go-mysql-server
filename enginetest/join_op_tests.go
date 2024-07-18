@@ -184,6 +184,54 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
+		name: "keyed null lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,null,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (null,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// covering
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {2, 2, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
+		name: "partial key null lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y,x));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,null,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (null,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// covering
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {2, 2, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
 		name: "keyed lookup join indexes",
 		setup: [][]string{
 			setup.MydbData[0],
