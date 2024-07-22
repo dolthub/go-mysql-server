@@ -3923,6 +3923,10 @@ func TestVariables(t *testing.T, harness Harness) {
 			Expected: []sql.Row{{"FULL"}},
 		},
 		{
+			Query:    "SELECT @@binlog_expire_logs_seconds",
+			Expected: []sql.Row{{2592000}},
+		},
+		{
 			Query:    "SELECT @@select_into_buffer_size",
 			Expected: []sql.Row{{131072}},
 		},
