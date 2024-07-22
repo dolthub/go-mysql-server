@@ -391,6 +391,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemStringType("binlog_checksum"),
 		Default:           "CRC32",
 	},
+	"binlog_expire_logs_seconds": &sql.MysqlSystemVariable{
+		Name:              "binlog_expire_logs_seconds",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemIntType("binlog_expire_logs_seconds", 0, 4294967295, false),
+		Default:           int64(2592000),
+	},
 	"binlog_format": &sql.MysqlSystemVariable{
 		Name:              "binlog_format",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),

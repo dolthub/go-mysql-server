@@ -80,7 +80,11 @@ type BinlogPrimaryController interface {
 	// current connection, |c|. |gtidSet| specifies the point at which to start replication, or if it is nil, then
 	// it indicates the complete history of all transactions should be sent over the connection. Note that unlike
 	// other methods, this method does NOT return immediately (unless an error is encountered) – the connection is
-	// left open for the duration of the replication stream, which could be days, or longer.
+	// left open for the duration of the replication stream, which could be days, or longer. For errors that are
+	// not recoverable and should not be retried, integrators should return a mysql.SQLError with the error code
+	// set to 1236 (ER_MASTER_FATAL_ERROR_READING_BINLOG). This causes the replica to display this error in the
+	// output from SHOW REPLICA STATUS and to not retry the connection. Otherwise, the error is only logged to
+	// MySQL's error log and the replica will continue retrying to connect.
 	BinlogDumpGtid(ctx *sql.Context, c *mysql.Conn, gtidSet mysql.GTIDSet) error
 
 	// ListReplicas is called when the SHOW REPLICAS statement is executed. The integrator should return a list
