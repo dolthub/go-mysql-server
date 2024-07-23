@@ -52,14 +52,14 @@ var typeToNumericPrecision = map[query.Type]int{
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
 type ColumnsTable struct {
-	name    string
-	schema  sql.Schema
-	catalog sql.Catalog
+	TableName   string
+	TableSchema sql.Schema
+	catalog     sql.Catalog
 	// allColsWithDefaultValue is the full schema of all tables in all databases. We need this during analysis in order
 	// to resolve the default values of some columns, so we pre-compute it.
 	allColsWithDefaultValue sql.Schema
 
-	rowIter func(*sql.Context, sql.Catalog, sql.Schema) (sql.RowIter, error)
+	RowIter func(*sql.Context, sql.Catalog, sql.Schema) (sql.RowIter, error)
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
@@ -67,14 +67,24 @@ var _ sql.StatisticsTable = (*ColumnsTable)(nil)
 var _ sql.Databaseable = (*ColumnsTable)(nil)
 var _ sql.DynamicColumnsTable = (*ColumnsTable)(nil)
 
+// HandleColumnsTable is used by Doltgres to inject its correct schema and row
+// iter. In Dolt, this just returns the current columns table implementation.
+var HandleColumnsTable = func() *ColumnsTable {
+	return &ColumnsTable{
+		TableName:   ColumnsTableName,
+		TableSchema: columnsSchema,
+		RowIter:     columnsRowIter,
+	}
+}
+
 // String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
-	return printTable(ColumnsTableName, columnsSchema)
+	return printTable(ColumnsTableName, c.TableSchema)
 }
 
 // Schema implements the sql.Table interface.
 func (c *ColumnsTable) Schema() sql.Schema {
-	return columnsSchema
+	return c.TableSchema
 }
 
 // Collation implements the sql.Table interface.
@@ -120,7 +130,7 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
 	}
 
-	return columnsRowIter(context, c.catalog, c.allColsWithDefaultValue)
+	return c.RowIter(context, c.catalog, c.allColsWithDefaultValue)
 }
 func (c *ColumnsTable) HasDynamicColumns() bool {
 	return true
@@ -138,17 +148,17 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 
 	var allColumns sql.Schema
 
-	databases, err := allDatabases(ctx, c.catalog, false)
+	databases, err := AllDatabases(ctx, c.catalog, false)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, db := range databases {
-		err := sql.DBTableIter(ctx, db.database, func(t sql.Table) (cont bool, err error) {
+		err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
 			tableSch := t.Schema()
 			for i := range tableSch {
 				newCol := tableSch[i].Copy()
-				newCol.DatabaseSource = db.database.Name()
+				newCol.DatabaseSource = db.Database.Name()
 				allColumns = append(allColumns, newCol)
 			}
 			return true, nil
@@ -210,7 +220,7 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 	}
 	globalPrivSetMap = getCurrentPrivSetMapForColumn(privSet.ToSlice(), globalPrivSetMap)
 
-	databases, err := allDatabases(ctx, catalog, false)
+	databases, err := AllDatabases(ctx, catalog, false)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +274,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 		datetimePrecision = 6
 	}
 
-	columnDefault := getColumnDefault(ctx, col.Default)
+	columnDefault := GetColumnDefault(ctx, col.Default)
 
 	extra := col.Extra
 	// If extra is not defined, fill it here.
@@ -315,7 +325,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 }
 
 // getRowsFromTable returns array of rows for all accessible columns of the given table.
-func getRowsFromTable(ctx *sql.Context, db dbWithNames, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
+func getRowsFromTable(ctx *sql.Context, db DbWithNames, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
 	var rows []sql.Row
 
 	privSetTbl := privSetDb.Table(t.Name())
@@ -327,7 +337,7 @@ func getRowsFromTable(ctx *sql.Context, db dbWithNames, t sql.Table, privSetDb s
 	}
 
 	tblName := t.Name()
-	for i, col := range schemaForTable(t, db.database, allColsWithDefaultValue) {
+	for i, col := range SchemaForTable(t, db.Database, allColsWithDefaultValue) {
 		var columnKey string
 		// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 		if col.PrimaryKey {
@@ -341,7 +351,7 @@ func getRowsFromTable(ctx *sql.Context, db dbWithNames, t sql.Table, privSetDb s
 			}
 		}
 
-		r := getRowFromColumn(ctx, i, col, db.catalogName, db.schemaName, tblName, columnKey, privSetTbl, curPrivSetMap)
+		r := getRowFromColumn(ctx, i, col, db.CatalogName, db.SchemaName, tblName, columnKey, privSetTbl, curPrivSetMap)
 		if r != nil {
 			rows = append(rows, r)
 		}
@@ -351,20 +361,20 @@ func getRowsFromTable(ctx *sql.Context, db dbWithNames, t sql.Table, privSetDb s
 }
 
 // getRowsFromViews returns array or rows for columns for all views for given database.
-func getRowsFromViews(ctx *sql.Context, db dbWithNames) ([]sql.Row, error) {
+func getRowsFromViews(ctx *sql.Context, db DbWithNames) ([]sql.Row, error) {
 	var rows []sql.Row
 	// TODO: View Definition is lacking information to properly fill out these table
 	// TODO: Should somehow get reference to table(s) view is referencing
 	// TODO: Each column that view references should also show up as unique entries as well
-	views, err := viewsInDatabase(ctx, db.database)
+	views, err := ViewsInDatabase(ctx, db.Database)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, view := range views {
 		rows = append(rows, sql.Row{
-			db.catalogName, // table_catalog
-			db.schemaName,  // table_schema
+			db.CatalogName, // table_catalog
+			db.SchemaName,  // table_schema
 			view.Name,      // table_name
 			"",             // column_name
 			uint32(0),      // ordinal_position
@@ -392,9 +402,9 @@ func getRowsFromViews(ctx *sql.Context, db dbWithNames) ([]sql.Row, error) {
 }
 
 // getRowsFromDatabase returns array of rows for all accessible columns of accessible table of the given database.
-func getRowsFromDatabase(ctx *sql.Context, db dbWithNames, privSet sql.PrivilegeSet, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
+func getRowsFromDatabase(ctx *sql.Context, db DbWithNames, privSet sql.PrivilegeSet, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
 	var rows []sql.Row
-	dbName := db.database.Name()
+	dbName := db.Database.Name()
 
 	privSetDb := privSet.Database(dbName)
 	curPrivSetMap := getCurrentPrivSetMapForColumn(privSetDb.ToSlice(), privSetMap)
@@ -402,7 +412,7 @@ func getRowsFromDatabase(ctx *sql.Context, db dbWithNames, privSet sql.Privilege
 		curPrivSetMap["select"] = struct{}{}
 	}
 
-	err := sql.DBTableIter(ctx, db.database, func(t sql.Table) (cont bool, err error) {
+	err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
 		rs, err := getRowsFromTable(ctx, db, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
 		if err != nil {
 			return false, err
@@ -475,8 +485,8 @@ func getIndexKeyInfo(ctx *sql.Context, t sql.Table) (map[string]string, bool, er
 	return columnKeyMap, hasPK, nil
 }
 
-// getColumnDefault returns the column default value for given sql.ColumnDefaultValue
-func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
+// GetColumnDefault returns the column default value for given sql.ColumnDefaultValue
+func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
 	if cd == nil {
 		return nil
 	}
@@ -524,7 +534,7 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 	return fmt.Sprint(v)
 }
 
-func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Schema) sql.Schema {
+func SchemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Schema) sql.Schema {
 	start, end := -1, -1
 	tableName := strings.ToLower(t.Name())
 
