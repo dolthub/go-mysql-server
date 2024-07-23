@@ -523,3 +523,55 @@ func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
 		IsSpatialLookup: true,
 	}, nil
 }
+
+// EqualityIndexBuilder is a range builder builds equality expressions
+// more quickly than the default builder
+type EqualityIndexBuilder struct {
+	idx   Index
+	rng   Range
+	empty bool
+}
+
+func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
+	return &EqualityIndexBuilder{idx: idx}
+}
+
+// Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
+func (b *EqualityIndexBuilder) Equals(_ *Context, typ Type, k interface{}) error {
+	if b.empty {
+		return nil
+	}
+	// if converting from float to int results in rounding, then it's empty range
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		f, c := floor(k), ceil(k)
+		switch k.(type) {
+		case float32, float64:
+			if f != c {
+				b.empty = true
+				return nil
+			}
+		case decimal.Decimal:
+			if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+				b.empty = true
+				return nil
+			}
+		}
+	}
+
+	var err error
+	k, _, err = typ.Convert(k)
+	if err != nil {
+		return err
+	}
+	b.rng = append(b.rng, ClosedRangeColumnExpr(k, k, typ))
+
+	return nil
+}
+
+func (b *EqualityIndexBuilder) Build(_ *Context) (IndexLookup, error) {
+	return IndexLookup{
+		Index:        b.idx,
+		Ranges:       RangeCollection{b.rng},
+		IsEmptyRange: b.empty,
+	}, nil
+}
