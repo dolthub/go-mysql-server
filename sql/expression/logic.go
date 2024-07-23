@@ -89,12 +89,12 @@ func SplitDisjunction(expr sql.Expression) []sql.Expression {
 }
 
 type LookupColumn struct {
-	col  string
-	expr sql.Expression
+	Col  string
+	Expr *Literal
 }
 
 // LookupEqualityColumns breaks AND expressions into a list equalities split into
-// (1) the column names and (2) the opposing expressions (*Literal or *GetField).
+// (1) the column names and (2) opposing *Literal expressions
 func LookupEqualityColumns(db, table string, e sql.Expression) []LookupColumn {
 	if e == nil {
 		return nil
@@ -105,17 +105,17 @@ func LookupEqualityColumns(db, table string, e sql.Expression) []LookupColumn {
 	case *Equals:
 		if gf, ok := e.Left().(*GetField); ok {
 			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
-				switch e.Right().(type) {
-				case *Literal, *GetField:
-					return []LookupColumn{{strings.ToLower(gf.name), e.Right()}}
+				switch l := e.Right().(type) {
+				case *Literal:
+					return []LookupColumn{{strings.ToLower(gf.name), l}}
 				}
 			}
 		}
 		if gf, ok := e.Right().(*GetField); ok {
 			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
-				switch e.Right().(type) {
-				case *Literal, *GetField:
-					return []LookupColumn{{strings.ToLower(gf.name), e.Left()}}
+				switch l := e.Left().(type) {
+				case *Literal:
+					return []LookupColumn{{strings.ToLower(gf.name), l}}
 				}
 			}
 		}
