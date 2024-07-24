@@ -8176,6 +8176,10 @@ var CreateDatabaseScripts = []ScriptTest{
 		Name: "CREATE DATABASE error handling",
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:       "create database `abc/def`",
+				ExpectedErr: sql.ErrInvalidDatabaseName,
+			},
+			{
 				Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},

@@ -299,6 +299,9 @@ var (
 	// ErrDatabaseNoDatabaseSchemaSelectedCreate is returned when CREATE TABLE is called without a schema selected and one is required.
 	ErrDatabaseNoDatabaseSchemaSelectedCreate = errors.NewKind("no schema has been selected to create in")
 
+	// ErrInvalidDatabaseName is returned when a database name is invalid.
+	ErrInvalidDatabaseName = errors.NewKind("invalid database name: %s")
+
 	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
 	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
 
