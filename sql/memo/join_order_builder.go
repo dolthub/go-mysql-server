@@ -749,8 +749,21 @@ func (j *joinOrderBuilder) addJoinToGroup(
 	selFilter []sql.Expression,
 	group *ExprGroup,
 ) {
-	if f, ok := group.First.(*Filter); ok {
-		group = f.Child
+	for _, ok := group.First.(JoinRel); !ok; _, ok = group.First.(JoinRel) {
+		// A top-level intermediate group is used to represent a logical
+		// join set. The intermediate group lets us track dependencies for
+		// specialized join operators, but reorder should add to the nearest
+		// join group rather than the intermediate group.
+		switch e := group.First.(type) {
+		case *Filter:
+			group = e.Child
+		case *Project:
+			group = e.Child
+		case *Distinct:
+			group = e.Child
+		default:
+			j.m.HandleErr(fmt.Errorf("failed to reorder join, unexpected intermediate expression: %T", e))
+		}
 	}
 	rel := j.constructJoin(op, left, right, joinFilter, group)
 	group.Prepend(rel)
