@@ -638,7 +638,9 @@ func (h *Handler) resultForDefaultIter(
 		if verboseErrorLogging {
 			fmt.Printf("Err: %+v", err)
 		}
+		returnErr = err
 	}
+
 	return
 }
 
