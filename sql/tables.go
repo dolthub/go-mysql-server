@@ -482,8 +482,8 @@ type MutableTableNode interface {
 type IndexSearchable interface {
 	// SkipIndexCosting defers to an integrator for provide a suitable index lookup.
 	SkipIndexCosting() bool
-	// LookupForExpression returns a sql.IndexLookup for an expression.
-	LookupForExpression(*Context, Expression) (IndexLookup, bool, error)
+	// LookupForExpressions returns a sql.IndexLookup for a set of expression.
+	LookupForExpressions(*Context, ...Expression) (IndexLookup, Expression, bool, error)
 }
 
 // IndexSearchableTable is a Table supports custom index generation.

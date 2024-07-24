@@ -71,7 +71,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 		}
 
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, ok, err := is.LookupForExpression(ctx, filter.Expression)
+			lookup, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression)...)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -79,11 +79,15 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 				if lookup.IsEmpty() {
 					return n, transform.SameTree, nil
 				}
-				ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+				var ret sql.Node
+				ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
 				if err != nil {
 					return n, transform.SameTree, err
 				}
-				return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
+				if newFilter != nil {
+					ret = plan.NewFilter(filter.Expression, ret)
+				}
+				return ret, transform.NewTree, nil
 			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
@@ -294,7 +298,7 @@ func addIndexScans(m *memo.Memo) error {
 		indexes := filter.Child.First.(memo.SourceRel).Indexes()
 
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, ok, err := is.LookupForExpression(m.Ctx, expression.JoinAnd(filter.Filters...))
+			lookup, newFilter, ok, err := is.LookupForExpressions(m.Ctx, filter.Filters...)
 			if err != nil {
 				m.HandleErr(err)
 			}
@@ -317,8 +321,20 @@ func addIndexScans(m *memo.Memo) error {
 						break
 					}
 				}
-				itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx, nil)
-				m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
+				if newFilter == nil {
+					m.MemoizeIndexScan(filter.Group(), ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1})
+				} else {
+					itaGrp := m.MemoizeIndexScan(nil, ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1})
+					itaGrp.Best = itaGrp.First
+					itaGrp.Done = true
+					itaGrp.HintOk = true
+					itaGrp.Best.SetDistinct(memo.NoDistinctOp)
+					fGrp := filter.Group()
+					m.MemoizeFilter(fGrp, itaGrp, expression.SplitConjunction(newFilter))
+					fGrp.Best = fGrp.First
+					fGrp.Done = true
+					fGrp.HintOk = true
+				}
 				return nil
 			} else if is.SkipIndexCosting() {
 				return nil
