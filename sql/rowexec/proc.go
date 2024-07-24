@@ -345,7 +345,7 @@ func (b *BaseBuilder) buildElseCaseError(ctx *sql.Context, n plan.ElseCaseError,
 }
 
 func (b *BaseBuilder) buildOpen(ctx *sql.Context, n *plan.Open, row sql.Row) (sql.RowIter, error) {
-	return &openIter{pRef: n.Pref, name: n.Name, row: row}, nil
+	return &openIter{pRef: n.Pref, name: n.Name, row: row, b: b}, nil
 }
 
 func (b *BaseBuilder) buildClose(ctx *sql.Context, n *plan.Close, row sql.Row) (sql.RowIter, error) {
