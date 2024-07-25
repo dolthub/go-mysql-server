@@ -84,7 +84,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 				if err != nil {
 					return n, transform.SameTree, err
 				}
-				
+
 				iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
 				if !ok {
 					return n, transform.SameTree, nil
