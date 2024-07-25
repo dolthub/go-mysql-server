@@ -264,11 +264,16 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		retFilters = b.leftover
 	}
 
-	bestStat, err := c.bestStat.WithHistogram(c.bestHist)
-	if err != nil {
-		return nil, nil, nil, err
+	var bestStat sql.Statistic
+	if c.bestStat.FuncDeps().HasMax1Row() {
+		bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
+	} else {
+		bestStat, err = c.bestStat.WithHistogram(c.bestHist)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		bestStat = stats.UpdateCounts(bestStat)
 	}
-	bestStat = stats.UpdateCounts(bestStat)
 
 	return ret, bestStat, retFilters, nil
 }
@@ -309,11 +314,21 @@ func addIndexScans(m *memo.Memo) error {
 				ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
 				if err != nil {
 					m.HandleErr(err)
-
 				}
-				// TODO add ITA to filter group
-				// todo memoize ITA
-				// we explicitly put ITA as child of filter group for this shortcut
+
+				iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+				if !ok {
+					return nil
+				}
+
+				var keepFilters []sql.Expression
+				if !iat.PreciseMatch() {
+					// cannot drop any filters
+					keepFilters = filter.Filters
+				} else {
+					keepFilters = expression.SplitConjunction(newFilter)
+				}
+
 				var idx *memo.Index
 				for _, i := range indexes {
 					if i.SqlIdx().ID() == lookup.Index.ID() {
@@ -321,6 +336,7 @@ func addIndexScans(m *memo.Memo) error {
 						break
 					}
 				}
+
 				if newFilter == nil {
 					m.MemoizeIndexScan(filter.Group(), ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1})
 				} else {
@@ -330,7 +346,7 @@ func addIndexScans(m *memo.Memo) error {
 					itaGrp.HintOk = true
 					itaGrp.Best.SetDistinct(memo.NoDistinctOp)
 					fGrp := filter.Group()
-					m.MemoizeFilter(fGrp, itaGrp, expression.SplitConjunction(newFilter))
+					m.MemoizeFilter(fGrp, itaGrp, keepFilters)
 					fGrp.Best = fGrp.First
 					fGrp.Done = true
 					fGrp.HintOk = true
@@ -472,10 +488,13 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	if c.bestStat == nil || rowCnt < c.bestCnt {
+	if c.bestStat == nil {
 		update = true
 		return
 	} else if c.bestStat.FuncDeps().HasMax1Row() {
+		return
+	} else if rowCnt < c.bestCnt {
+		update = true
 		return
 	} else if c.bestPrefix == 0 || prefix == 0 && c.bestPrefix != prefix {
 		// any prefix is better than no prefix
@@ -1193,10 +1212,10 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, bucket
 
 	if exact.Len()+conj.applied.Len() == filter.childCnt() {
 		// matched all filters
-		return conj.hist, conj.fds, sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
+		return conj.hist, conj.getFds(), sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
 	}
 
-	return conj.hist, conj.fds, exact.Union(conj.applied), conj.missingPrefix, nil
+	return conj.hist, conj.getFds(), exact.Union(conj.applied), conj.missingPrefix, nil
 }
 
 func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, error) {
@@ -1300,7 +1319,7 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buck
 	default:
 		conj := newConjCollector(s, buckets, ordinals)
 		conj.add(filter)
-		return conj.hist, conj.fds, true, conj.missingPrefix, nil
+		return conj.hist, conj.getFds(), true, conj.missingPrefix, nil
 	}
 }
 
@@ -1636,6 +1655,14 @@ func (c *conjCollector) add(f *iScanLeaf) error {
 		err = c.addIneq(f.Op(), f.gf.Name(), f.litValue)
 	}
 	return err
+}
+
+func (c *conjCollector) getFds() *sql.FuncDepSet {
+	const_ := sql.NewColSet()
+	c.constant.ForEach(func(i int) {
+		const_.Add(sql.ColumnId(i))
+	})
+	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, const_, nil)
 }
 
 func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error {
