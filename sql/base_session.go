@@ -40,6 +40,7 @@ type BaseSession struct {
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
 	warnings         []*Warning
+	warningLock      bool
 	warncnt          uint16
 	locks            map[string]bool
 	queriedDb        string
@@ -340,21 +341,33 @@ func (s *BaseSession) Warnings() []*Warning {
 	for i := 0; i < n; i++ {
 		warns[i] = s.warnings[n-i-1]
 	}
-
 	return warns
+}
+
+// LockWarnings locks the session warnings so that they can't be cleared
+func (s *BaseSession) LockWarnings() {
+	s.warningLock = true
+}
+
+// UnlockWarnings locks the session warnings so that they can be cleared
+func (s *BaseSession) UnlockWarnings() {
+	s.warningLock = false
 }
 
 // ClearWarnings cleans up session warnings
 func (s *BaseSession) ClearWarnings() {
-	cnt := uint16(len(s.warnings))
-	if s.warncnt == cnt {
-		if s.warnings != nil {
-			s.warnings = s.warnings[:0]
-		}
-		s.warncnt = 0
-	} else {
-		s.warncnt = cnt
+	if s.warningLock {
+		return
 	}
+	cnt := uint16(len(s.warnings))
+	if s.warncnt != cnt {
+		s.warncnt = cnt
+		return
+	}
+	if s.warnings != nil {
+		s.warnings = s.warnings[:0]
+	}
+	s.warncnt = 0
 }
 
 // WarningCount returns a number of session warnings
