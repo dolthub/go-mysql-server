@@ -2,11 +2,13 @@ package enginetest
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
-	"testing"
 )
 
 // list of types, want t1->t2 for all types
