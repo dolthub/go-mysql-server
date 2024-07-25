@@ -2486,7 +2486,7 @@ func NewInformationSchemaDatabase() Database {
 				schema: columnStatisticsSchema,
 				reader: columnStatisticsRowIter,
 			},
-			ColumnsTableName: HandleColumnsTable(),
+			ColumnsTableName: NewColumnsTable(),
 			ColumnsExtensionsTableName: &informationSchemaTable{
 				name:   ColumnsExtensionsTableName,
 				schema: columnsExtensionsSchema,
@@ -2846,7 +2846,7 @@ func (db *informationSchemaDatabase) Name() string { return db.name }
 func (db *informationSchemaDatabase) GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error) {
 	// The columns table has dynamic information that can't be cached across queries
 	if strings.ToLower(tblName) == ColumnsTableName {
-		return HandleColumnsTable(), true, nil
+		return NewColumnsTable(), true, nil
 	}
 
 	tbl, ok := GetTableInsensitive(tblName, db.tables)

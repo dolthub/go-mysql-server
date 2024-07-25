@@ -67,15 +67,18 @@ var _ sql.StatisticsTable = (*ColumnsTable)(nil)
 var _ sql.Databaseable = (*ColumnsTable)(nil)
 var _ sql.DynamicColumnsTable = (*ColumnsTable)(nil)
 
-// HandleColumnsTable is used by Doltgres to inject its correct schema and row
-// iter. In Dolt, this just returns the current columns table implementation.
-var HandleColumnsTable = func() *ColumnsTable {
+// newMySQLColumnsTable returns a ColumnsTable for MySQL.
+func newMySQLColumnsTable() *ColumnsTable {
 	return &ColumnsTable{
 		TableName:   ColumnsTableName,
 		TableSchema: columnsSchema,
 		RowIter:     columnsRowIter,
 	}
 }
+
+// NewColumnsTable is used by Doltgres to inject its correct schema and row
+// iter. In Dolt, this just returns the current columns table implementation.
+var NewColumnsTable = newMySQLColumnsTable
 
 // String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
