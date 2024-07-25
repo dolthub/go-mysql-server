@@ -353,7 +353,7 @@ func (f *FuncDepSet) simplifyCols(key ColSet, subKeys []Key) ColSet {
 	for i, ok := key.Next(1); ok; i, ok = key.Next(i + 1) {
 		ret.Remove(i)
 		plucked.Add(i)
-		notConst := f.consts.Intersection(plucked).Empty()
+		notConst := !f.consts.Contains(i)
 		if notConst && !f.inClosureOf(plucked, ret, subKeys) {
 			// plucked is novel
 			ret.Add(i)

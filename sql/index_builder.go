@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"math"
 	"strings"
 
@@ -533,14 +534,18 @@ type EqualityIndexBuilder struct {
 }
 
 func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
-	return &EqualityIndexBuilder{idx: idx}
+	return &EqualityIndexBuilder{idx: idx, rng: make(Range, len(idx.Expressions()))}
 }
 
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
-func (b *EqualityIndexBuilder) Equals(_ *Context, typ Type, k interface{}) error {
+func (b *EqualityIndexBuilder) Equals(_ *Context, i int, k interface{}) error {
 	if b.empty {
 		return nil
 	}
+	if i >= len(b.rng) {
+		return fmt.Errorf("invalid index for building index lookup")
+	}
+	typ := b.idx.ColumnExpressionTypes()[i].Type
 	// if converting from float to int results in rounding, then it's empty range
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		f, c := floor(k), ceil(k)
@@ -563,7 +568,7 @@ func (b *EqualityIndexBuilder) Equals(_ *Context, typ Type, k interface{}) error
 	if err != nil {
 		return err
 	}
-	b.rng = append(b.rng, ClosedRangeColumnExpr(k, k, typ))
+	b.rng[i] = ClosedRangeColumnExpr(k, k, typ)
 
 	return nil
 }
