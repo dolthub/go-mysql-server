@@ -909,7 +909,7 @@ func (i *indexSearchableTable) IndexWithPrefix(ctx *sql.Context, expressions []s
 	panic("implement me")
 }
 
-func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs []sql.Expression) (sql.IndexLookup, sql.Expression, bool, error) {
+func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.IndexLookup, sql.Expression, bool, error) {
 	if eq, ok := exprs[0].(*expression.Equals); ok {
 		if gf, ok := eq.Left().(*expression.GetField); ok && strings.EqualFold(gf.Name(), "x") {
 			if lit, ok := eq.Right().(*expression.Literal); ok {

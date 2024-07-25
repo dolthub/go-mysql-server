@@ -84,6 +84,17 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 				if err != nil {
 					return n, transform.SameTree, err
 				}
+				
+				iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+				if !ok {
+					return n, transform.SameTree, nil
+				}
+
+				if !iat.PreciseMatch() {
+					// cannot drop any filters
+					newFilter = filter.Expression
+				}
+
 				if newFilter != nil {
 					ret = plan.NewFilter(filter.Expression, ret)
 				}
@@ -337,7 +348,7 @@ func addIndexScans(m *memo.Memo) error {
 					}
 				}
 
-				if newFilter == nil {
+				if len(keepFilters) == 0 {
 					m.MemoizeIndexScan(filter.Group(), ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1})
 				} else {
 					itaGrp := m.MemoizeIndexScan(nil, ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1})
