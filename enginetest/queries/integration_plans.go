@@ -877,8 +877,8 @@ WHERE
 			" ├─ columns: [tizhk.id, tizhk.TVNW2, tizhk.ZHITY, tizhk.SYPKF, tizhk.IDUT2, tizhk.O6QJ3, tizhk.NO2JA, tizhk.YKSSU, tizhk.FHCYT, tizhk.QZ6VT]\n" +
 			" └─ Filter\n" +
 			"     ├─ hddvb.ETPQV IS NULL\n" +
-			"     └─ LeftOuterLookupJoin (estimated cost=8017.400 rows=1389)\n" +
-			"         ├─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
+			"     └─ LeftOuterLookupJoin (estimated cost=8316.400 rows=1389)\n" +
+			"         ├─ LookupJoin (estimated cost=16833.300 rows=5101)\n" +
 			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
@@ -922,8 +922,8 @@ WHERE
 			" ├─ columns: [tizhk.id, tizhk.TVNW2, tizhk.ZHITY, tizhk.SYPKF, tizhk.IDUT2, tizhk.O6QJ3, tizhk.NO2JA, tizhk.YKSSU, tizhk.FHCYT, tizhk.QZ6VT]\n" +
 			" └─ Filter\n" +
 			"     ├─ hddvb.ETPQV IS NULL\n" +
-			"     └─ LeftOuterLookupJoin (estimated cost=8017.400 rows=1389) (actual rows=0 loops=1)\n" +
-			"         ├─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
+			"     └─ LeftOuterLookupJoin (estimated cost=8316.400 rows=1389) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=16833.300 rows=5101) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
@@ -1079,8 +1079,8 @@ WHERE
 			" ├─ columns: [tizhk.id, tizhk.TVNW2, tizhk.ZHITY, tizhk.SYPKF, tizhk.IDUT2, tizhk.O6QJ3, tizhk.NO2JA, tizhk.YKSSU, tizhk.FHCYT, tizhk.QZ6VT]\n" +
 			" └─ Filter\n" +
 			"     ├─ hddvb.ETPQV IS NULL\n" +
-			"     └─ LeftOuterLookupJoin (estimated cost=8017.400 rows=1389)\n" +
-			"         ├─ LookupJoin (estimated cost=15846.600 rows=4802)\n" +
+			"     └─ LeftOuterLookupJoin (estimated cost=8316.400 rows=1389)\n" +
+			"         ├─ LookupJoin (estimated cost=16833.300 rows=5101)\n" +
 			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
@@ -1124,8 +1124,8 @@ WHERE
 			" ├─ columns: [tizhk.id, tizhk.TVNW2, tizhk.ZHITY, tizhk.SYPKF, tizhk.IDUT2, tizhk.O6QJ3, tizhk.NO2JA, tizhk.YKSSU, tizhk.FHCYT, tizhk.QZ6VT]\n" +
 			" └─ Filter\n" +
 			"     ├─ hddvb.ETPQV IS NULL\n" +
-			"     └─ LeftOuterLookupJoin (estimated cost=8017.400 rows=1389) (actual rows=0 loops=1)\n" +
-			"         ├─ LookupJoin (estimated cost=15846.600 rows=4802) (actual rows=0 loops=1)\n" +
+			"     └─ LeftOuterLookupJoin (estimated cost=8316.400 rows=1389) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=16833.300 rows=5101) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (tizhk.id = tizhk_1.id)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
