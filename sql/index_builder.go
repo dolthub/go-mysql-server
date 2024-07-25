@@ -574,6 +574,11 @@ func (b *EqualityIndexBuilder) Equals(_ *Context, i int, k interface{}) error {
 }
 
 func (b *EqualityIndexBuilder) Build(_ *Context) (IndexLookup, error) {
+	if b.empty {
+		for i, cet := range b.idx.ColumnExpressionTypes() {
+			b.rng[i] = EmptyRangeColumnExpr(cet.Type)
+		}
+	}
 	return IndexLookup{
 		Index:        b.idx,
 		Ranges:       RangeCollection{b.rng},

@@ -71,7 +71,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 		}
 
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression)...)
+			lookup, _, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression)...)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -314,7 +314,7 @@ func addIndexScans(m *memo.Memo) error {
 		indexes := filter.Child.First.(memo.SourceRel).Indexes()
 
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, newFilter, ok, err := is.LookupForExpressions(m.Ctx, filter.Filters...)
+			lookup, fds, newFilter, ok, err := is.LookupForExpressions(m.Ctx, filter.Filters...)
 			if err != nil {
 				m.HandleErr(err)
 			}
@@ -349,9 +349,9 @@ func addIndexScans(m *memo.Memo) error {
 				}
 
 				if len(keepFilters) == 0 {
-					m.MemoizeIndexScan(filter.Group(), ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1})
+					m.MemoizeIndexScan(filter.Group(), ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1, Fds: fds})
 				} else {
-					itaGrp := m.MemoizeIndexScan(nil, ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1})
+					itaGrp := m.MemoizeIndexScan(nil, ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1, Fds: fds})
 					itaGrp.Best = itaGrp.First
 					itaGrp.Done = true
 					itaGrp.HintOk = true
@@ -361,6 +361,7 @@ func addIndexScans(m *memo.Memo) error {
 					fGrp.Best = fGrp.First
 					fGrp.Done = true
 					fGrp.HintOk = true
+					fGrp.Best.SetDistinct(memo.NoDistinctOp)
 				}
 				return nil
 			} else if is.SkipIndexCosting() {
@@ -1669,11 +1670,7 @@ func (c *conjCollector) add(f *iScanLeaf) error {
 }
 
 func (c *conjCollector) getFds() *sql.FuncDepSet {
-	const_ := sql.NewColSet()
-	c.constant.ForEach(func(i int) {
-		const_.Add(sql.ColumnId(i))
-	})
-	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, const_, nil)
+	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, sql.NewColSetFromIntSet(c.constant), nil)
 }
 
 func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error {
