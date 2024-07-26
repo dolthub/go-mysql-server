@@ -491,6 +491,16 @@ func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefix
 	if stats.Empty(rightIdx) || stats.Empty(leftIdx) {
 		return nil, nil
 	}
+	if leftIdx.Qualifier() == rightIdx.Qualifier() {
+		expandRatio := leftIdx.RowCount() / leftIdx.DistinctCount()
+		if expandRatio == 1 {
+			return leftIdx, nil
+		} else {
+			// ths undershoots the estimate, but is directionally correct and faster
+			// than squaring every bucket
+			return leftIdx.WithRowCount(leftIdx.RowCount() * expandRatio), nil
+		}
+	}
 	// if either child is not nil, try to interpolate join index stats from child
 	if !stats.Empty(leftChild) {
 		leftIdx = stats.InterpolateNewCounts(leftIdx, leftChild)
