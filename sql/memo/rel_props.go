@@ -491,6 +491,10 @@ func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefix
 	if stats.Empty(rightIdx) || stats.Empty(leftIdx) {
 		return nil, nil
 	}
+	if leftIdx.Qualifier() == rightIdx.Qualifier() {
+		// simplifying assumption, index is unique and will not expand cardinality
+		return leftChild, nil
+	}
 	// if either child is not nil, try to interpolate join index stats from child
 	if !stats.Empty(leftChild) {
 		leftIdx = stats.InterpolateNewCounts(leftIdx, leftChild)
