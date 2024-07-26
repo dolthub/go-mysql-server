@@ -96,7 +96,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 				}
 
 				if newFilter != nil {
-					ret = plan.NewFilter(filter.Expression, ret)
+					ret = plan.NewFilter(newFilter, ret)
 				}
 				return ret, transform.NewTree, nil
 			} else if is.SkipIndexCosting() {
@@ -268,7 +268,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 
 	var retFilters []sql.Expression
 	if !iat.PreciseMatch() {
-		// cannot drop any filters
+		// cannot drop filters
 		retFilters = filters
 	} else if len(b.leftover) > 0 {
 		// excluded from tree + not included in index scan => filter above scan
@@ -1670,7 +1670,11 @@ func (c *conjCollector) add(f *iScanLeaf) error {
 }
 
 func (c *conjCollector) getFds() *sql.FuncDepSet {
-	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, sql.NewColSetFromIntSet(c.constant), nil)
+	constCols := sql.ColSet{}
+	c.constant.ForEach(func(i int) {
+		constCols.Add(sql.ColumnId(i))
+	})
+	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, constCols, nil)
 }
 
 func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error {

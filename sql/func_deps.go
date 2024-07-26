@@ -533,10 +533,10 @@ func NewFilterFDs(fds *FuncDepSet, notNull ColSet, constant ColSet, equiv [][2]C
 	return ret
 }
 
-func NewLookupFDs(fds *FuncDepSet, idxCols ColSet, notNull ColSet, constant ColSet, equiv *EquivSets) *FuncDepSet {
+func NewLookupFDs(fds *FuncDepSet, idxCols ColSet, notNull ColSet, constants ColSet, equiv *EquivSets) *FuncDepSet {
 	ret := &FuncDepSet{all: fds.All()}
 	ret.AddNotNullable(fds.notNull.Union(notNull))
-	ret.AddConstants(fds.Constants().Union(constant))
+	ret.AddConstants(fds.Constants().Union(constants))
 	for _, e := range fds.equivs.Sets() {
 		ret.AddEquivSet(e)
 	}

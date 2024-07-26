@@ -914,11 +914,11 @@ func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...s
 		if gf, ok := eq.Left().(*expression.GetField); ok && strings.EqualFold(gf.Name(), "x") {
 			if lit, ok := eq.Right().(*expression.Literal); ok {
 				ranges := sql.RangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type())}}
-				return sql.IndexLookup{Index: xIdx, Ranges: ranges}, sql.FuncDepSet{}, nil, true, nil
+				return sql.IndexLookup{Index: xIdx, Ranges: ranges}, nil, nil, true, nil
 			}
 		}
 	}
-	return sql.IndexLookup{}, sql.FuncDepSet{}, nil, false, nil
+	return sql.IndexLookup{}, nil, nil, false, nil
 }
 
 func (i *indexSearchableTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
