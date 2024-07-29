@@ -348,21 +348,7 @@ func addIndexScans(m *memo.Memo) error {
 					}
 				}
 
-				if len(keepFilters) == 0 {
-					m.MemoizeIndexScan(filter.Group(), ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1, Fds: fds})
-				} else {
-					itaGrp := m.MemoizeIndexScan(nil, ret, aliasName, idx, &stats.Statistic{RowCnt: 1, DistinctCnt: 1, Fds: fds})
-					itaGrp.Best = itaGrp.First
-					itaGrp.Done = true
-					itaGrp.HintOk = true
-					itaGrp.Best.SetDistinct(memo.NoDistinctOp)
-					fGrp := filter.Group()
-					m.MemoizeFilter(fGrp, itaGrp, keepFilters)
-					fGrp.Best = fGrp.First
-					fGrp.Done = true
-					fGrp.HintOk = true
-					fGrp.Best.SetDistinct(memo.NoDistinctOp)
-				}
+				m.MemoizeStaticIndexAccess(filter.Group(), aliasName, idx, ret, keepFilters, &stats.Statistic{RowCnt: 1, DistinctCnt: 1, Fds: fds})
 				return nil
 			} else if is.SkipIndexCosting() {
 				return nil
@@ -385,23 +371,7 @@ func addIndexScans(m *memo.Memo) error {
 					break
 				}
 			}
-			var itaGrp *memo.ExprGroup
-			if len(filters) > 0 {
-				// set the indexed path as best. correct for cases where
-				// indexScan is incompatible with best join operator
-				itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx, stat)
-				itaGrp.Best = itaGrp.First
-				itaGrp.Done = true
-				itaGrp.HintOk = true
-				itaGrp.Best.SetDistinct(memo.NoDistinctOp)
-				fGrp := m.MemoizeFilter(filter.Group(), itaGrp, filters)
-				fGrp.Best = fGrp.First
-				fGrp.Done = true
-				fGrp.HintOk = true
-				fGrp.Best.SetDistinct(memo.NoDistinctOp)
-			} else {
-				itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx, stat)
-			}
+			m.MemoizeStaticIndexAccess(filter.Group(), aliasName, idx, ita, filters, stat)
 		}
 
 		return nil
@@ -1630,7 +1600,6 @@ func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[
 	return &conjCollector{
 		stat:     s,
 		hist:     hist,
-		fds:      s.FuncDeps(),
 		ordinals: ordinals,
 		eqVals:   make([]interface{}, len(ordinals)),
 		nullable: make([]bool, len(ordinals)),
@@ -1642,7 +1611,6 @@ func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[
 type conjCollector struct {
 	stat          sql.Statistic
 	hist          []sql.HistogramBucket
-	fds           *sql.FuncDepSet
 	ordinals      map[string]int
 	missingPrefix int
 	constant      sql.FastIntSet
@@ -1704,7 +1672,7 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 
 		// truncate buckets
 		var err error
-		c.hist, c.fds, err = stats.PrefixKey(c.stat.Histogram(), c.stat.ColSet(), c.stat.Types(), c.stat.FuncDeps(), c.eqVals[:ord+1], c.nullable)
+		c.hist, err = stats.PrefixKey(c.stat.Histogram(), c.stat.Types(), c.eqVals[:ord+1])
 		if err != nil {
 			return err
 		}
