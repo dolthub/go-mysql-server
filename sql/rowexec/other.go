@@ -226,6 +226,41 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 			return nil, err
 		}
 
+		handleError := func(err error) error {
+			scope := n.Pref.InnermostScope
+			for i := len(scope.Handlers) - 1; i >= 0; i-- {
+				if !scope.Handlers[i].Cond.Matches(err) {
+					continue
+				}
+
+				handlerRefVal := scope.Handlers[i]
+
+				handlerRowIter, err := b.buildNodeExec(ctx, handlerRefVal.Stmt, nil)
+				if err != nil {
+					return err
+				}
+				defer handlerRowIter.Close(ctx)
+
+				for {
+					_, err := handlerRowIter.Next(ctx)
+					if err == io.EOF {
+						break
+					} else if err != nil {
+						return err
+					}
+				}
+				switch scope.Handlers[i].Action {
+				case expression.DeclareHandlerAction_Exit:
+					return exitBlockError
+				case expression.DeclareHandlerAction_Continue:
+					return nil
+				case expression.DeclareHandlerAction_Undo:
+					return fmt.Errorf("DECLARE UNDO HANDLER is not supported")
+				}
+			}
+			return err
+		}
+
 		err = func() error {
 			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
 			defer disposeFunc()
@@ -233,7 +268,12 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 			var isSelect bool
 			subIter, err := b.buildNodeExec(ctx, s, row)
 			if err != nil {
-				return err
+				newErr := handleError(err)
+				if newErr != nil {
+					return newErr
+				}
+
+				return nil
 			}
 			subIterNode := s
 			subIterSch := s.Schema()
@@ -262,8 +302,13 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 					}
 					break
 				} else if err != nil {
-					return err
-				} else if isSelect || !selectSeen {
+					newErr := handleError(err)
+					if newErr != nil {
+						return newErr
+					}
+				}
+
+				if isSelect || !selectSeen {
 					err = rowCache.Add(newRow)
 					if err != nil {
 						return err

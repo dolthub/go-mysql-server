@@ -15,7 +15,6 @@
 package planbuilder
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -85,22 +84,53 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	if rt != nil {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
-	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, i.Rows, columns, i.Table.Name.String(), sch)
 
-	// TODO: on duplicate expressions need to reference both VALUES and
-	//  derived columns equally in ON DUPLICATE UPDATE expressions.
-	combinedScope := inScope.replace()
-	for i, c := range destScope.cols {
-		combinedScope.newColumn(c)
-		if len(srcScope.cols) == len(destScope.cols) {
-			combinedScope.newColumn(srcScope.cols[i])
-		} else {
-			// check for VALUES refs
-			c.table = OnDupValuesPrefix
-			combinedScope.newColumn(c)
+	insertRows := i.Rows
+
+	// We need to give a table name to the scope of the values being inserted. We use the row alias if provided, otherwise go with a default.
+	// If the row alias also provided column names, we create a map from the destination names to the aliases. This will allow us to
+	// rewrite VALUES() function expressions to use the new column names.
+	inScope.insertTableAlias = OnDupValuesPrefix
+	if aliasedValues, ok := insertRows.(*ast.AliasedValues); ok {
+		valueTableName := aliasedValues.As.String()
+		if valueTableName != "" {
+			inScope.insertTableAlias = valueTableName
+		}
+		if len(aliasedValues.Columns) > 0 {
+			inScope.insertColumnAliases = make(map[string]string)
+			for i, destColumn := range columns {
+				sourceColumn := aliasedValues.Columns[i].Lowered()
+				inScope.insertColumnAliases[destColumn] = sourceColumn
+			}
 		}
 	}
-	onDupExprs := b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
+
+	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, columns, i.Table.Name.String(), sch)
+
+	var onDupExprs []sql.Expression
+	if len(i.OnDup) > 0 {
+		// TODO: on duplicate expressions need to reference both VALUES and
+		//  derived columns equally in ON DUPLICATE UPDATE expressions.
+		combinedScope := inScope.replace()
+		combinedScope.insertTableAlias = inScope.insertTableAlias
+		combinedScope.insertColumnAliases = inScope.insertColumnAliases
+		for i, c := range destScope.cols {
+			combinedScope.newColumn(c)
+			if len(srcScope.cols) == len(destScope.cols) {
+				combinedScope.newColumn(srcScope.cols[i])
+			} else {
+				// The to-be-inserted values can be referenced via the provided alias.
+				c.table = combinedScope.insertTableAlias
+				if len(combinedScope.insertColumnAliases) > 0 {
+					aliasColumnName := combinedScope.insertColumnAliases[c.col]
+					c.col = aliasColumnName
+					c.originalCol = aliasColumnName
+				}
+				combinedScope.newColumn(c)
+			}
+		}
+		onDupExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
+	}
 
 	ignore := false
 	// TODO: make this a bool in vitess
@@ -165,9 +195,6 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 					b.handleErr(err)
 				}
 			}
-
-			err := errors.New("insert row aliases are not currently supported; use the VALUES() function instead")
-			b.handleErr(err)
 		}
 	}
 
@@ -217,7 +244,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 	}
 
 	outScope = inScope.push()
-	outScope.node = plan.NewValues(exprTuples)
+	outScope.node = plan.NewValuesWithAlias(v.As.String(), inScope.insertColumnAliases, exprTuples)
 	return
 }
 
@@ -232,22 +259,6 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 		newSch[i] = schema[schema.IndexOfColName(name)]
 	}
 	return newSch
-}
-
-func (b *Builder) buildValues(inScope *scope, v ast.AliasedValues) (outScope *scope) {
-	// TODO add literals to outScope?
-	exprTuples := make([][]sql.Expression, len(v.Values))
-	for i, vt := range v.Values {
-		exprs := make([]sql.Expression, len(vt))
-		exprTuples[i] = exprs
-		for j, e := range vt {
-			exprs[j] = b.buildScalar(inScope, e)
-		}
-	}
-
-	outScope = inScope.push()
-	outScope.node = plan.NewValues(exprTuples)
-	return
 }
 
 func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
@@ -564,7 +575,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 
 	rowUpdatersByTable := make(map[string]sql.RowUpdater)
 	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
-		resolvedTable, ok := resolvedTables[tableToBeUpdated]
+		resolvedTable, ok := resolvedTables[strings.ToLower(tableToBeUpdated)]
 		if !ok {
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
@@ -595,16 +606,16 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			ret[n.Table.Name()] = n
+			ret[strings.ToLower(n.Table.Name())] = n
 		case *plan.IndexedTableAccess:
 			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
-				ret[rt.Name()] = rt
+				ret[strings.ToLower(rt.Name())] = rt
 			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
-				ret[n.Name()] = rt
+				ret[strings.ToLower(n.Name())] = rt
 			}
 		default:
 		}

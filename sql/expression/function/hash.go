@@ -118,13 +118,13 @@ func (f *SHA1) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(arg)
+	val, _, err := types.LongBlob.Convert(arg)
 	if err != nil {
 		return nil, err
 	}
 
 	h := sha1.New()
-	_, err = io.WriteString(h, val.(string))
+	_, err = io.WriteString(h, string(val.([]byte)))
 	if err != nil {
 		return nil, err
 	}

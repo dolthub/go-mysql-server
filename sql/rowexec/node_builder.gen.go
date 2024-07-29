@@ -24,7 +24,17 @@ import (
 )
 
 func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
-	iter, err := b.buildNodeExecNoAnalyze(ctx, n, row)
+	var iter sql.RowIter
+	var err error
+	if b.override != nil {
+		iter, err = b.override.Build(ctx, n, row)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if iter == nil {
+		iter, err = b.buildNodeExecNoAnalyze(ctx, n, row)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +66,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildDropHistogram(ctx, n, row)
 	case *plan.QueryProcess:
 		return b.buildQueryProcess(ctx, n, row)
+	case *plan.ShowBinlogs:
+		return b.buildShowBinlogs(ctx, n, row)
 	case *plan.ShowBinlogStatus:
 		return b.buildShowBinlogStatus(ctx, n, row)
 	case *plan.ShowReplicaStatus:

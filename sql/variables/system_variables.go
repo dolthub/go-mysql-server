@@ -391,6 +391,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemStringType("binlog_checksum"),
 		Default:           "CRC32",
 	},
+	"binlog_expire_logs_seconds": &sql.MysqlSystemVariable{
+		Name:              "binlog_expire_logs_seconds",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemIntType("binlog_expire_logs_seconds", 0, 4294967295, false),
+		Default:           int64(2592000),
+	},
 	"binlog_format": &sql.MysqlSystemVariable{
 		Name:              "binlog_format",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
@@ -407,12 +415,20 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("binlog_gtid_simple_recovery"),
 		Default:           int8(1),
 	},
+	"binlog_row_image": &sql.MysqlSystemVariable{
+		Name:              "binlog_row_image",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemEnumType("binlog_row_image", "MINIMAL", "FULL", "NOBLOB"),
+		Default:           "FULL",
+	},
 	"binlog_row_metadata": &sql.MysqlSystemVariable{
 		Name:              "binlog_row_metadata",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              types.NewSystemEnumType("MINIMAL", "FULL"),
+		Type:              types.NewSystemEnumType("binlog_row_metadata", "MINIMAL", "FULL"),
 		Default:           "MINIMAL",
 	},
 	"block_encryption_mode": &sql.MysqlSystemVariable{
@@ -1396,6 +1412,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("max_allowed_packet", 1024, 1073741824),
+		Default:           int64(1073741824),
+	},
+	"max_binlog_size": &sql.MysqlSystemVariable{
+		Name:              "max_binlog_size",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemUintType("max_binlog_size", 4096, 1073741824),
 		Default:           int64(1073741824),
 	},
 	"max_connect_errors": &sql.MysqlSystemVariable{

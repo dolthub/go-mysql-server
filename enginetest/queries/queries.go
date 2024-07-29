@@ -1639,6 +1639,149 @@ Select * from (
 		},
 	},
 	{
+		Query: "values row(1, 3), row(2, 2), row(3, 1);",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1);",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 1 asc;",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 1 desc;",
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 2},
+			{1, 3},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 2 asc;",
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 2},
+			{1, 3},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 2 desc;",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) limit 2;",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 2 limit 2;",
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 2},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+
+	{
 		Query:    "SELECT TIMEDIFF(null, '2017-11-30 22:59:59');",
 		Expected: []sql.Row{{nil}},
 	},
@@ -7402,6 +7545,19 @@ Select * from (
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query: "select cast(X'9876543210' as char(10))",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select cast(X'9876543210' as binary)",
+		Expected: []sql.Row{
+			{[]uint8{0x98, 0x76, 0x54, 0x32, 0x10}},
+		},
+	},
+
+	{
 		Query:    "SELECT 1/0 FROM dual",
 		Expected: []sql.Row{{nil}},
 	},
@@ -10335,8 +10491,8 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
-		Query:       `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
-		ExpectedErr: expression.ErrInvalidRegexp,
+		Query:          `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
+		ExpectedErrStr: "the given regular expression is invalid",
 	},
 	{
 		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,

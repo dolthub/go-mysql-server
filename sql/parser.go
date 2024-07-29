@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"context"
+	trace2 "runtime/trace"
 	"strings"
 	"unicode"
 
@@ -33,10 +35,10 @@ type Parser interface {
 	Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error)
 	// ParseWithOptions parses using given parser options and returns the parsed statement
 	// along with the query string and remainder string if it's multiple queries.
-	ParseWithOptions(query string, delimiter rune, multi bool, options ast.ParserOptions) (ast.Statement, string, string, error)
+	ParseWithOptions(ctx context.Context, query string, delimiter rune, multi bool, options ast.ParserOptions) (ast.Statement, string, string, error)
 	// ParseOneWithOptions parses the first query using specified parsing returns the parsed statement along with
 	// the index of the start of the next query.
-	ParseOneWithOptions(string, ast.ParserOptions) (ast.Statement, int, error)
+	ParseOneWithOptions(context.Context, string, ast.ParserOptions) (ast.Statement, int, error)
 }
 
 var _ Parser = &MysqlParser{}
@@ -56,19 +58,20 @@ func (m *MysqlParser) ParseSimple(query string) (ast.Statement, error) {
 
 // Parse implements Parser interface.
 func (m *MysqlParser) Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error) {
-	return m.ParseWithOptions(query, ';', multi, LoadSqlMode(ctx).ParserOptions())
+	defer trace2.StartRegion(ctx, "Parse").End()
+	return m.ParseWithOptions(ctx, query, ';', multi, LoadSqlMode(ctx).ParserOptions())
 }
 
 // ParseWithOptions implements Parser interface.
-func (m *MysqlParser) ParseWithOptions(query string, delimiter rune, multi bool, options ast.ParserOptions) (stmt ast.Statement, parsed, remainder string, err error) {
+func (m *MysqlParser) ParseWithOptions(ctx context.Context, query string, delimiter rune, multi bool, options ast.ParserOptions) (stmt ast.Statement, parsed, remainder string, err error) {
 	s := RemoveSpaceAndDelimiter(query, delimiter)
 	parsed = s
 
 	if !multi {
-		stmt, err = ast.ParseWithOptions(s, options)
+		stmt, err = ast.ParseWithOptions(ctx, s, options)
 	} else {
 		var ri int
-		stmt, ri, err = ast.ParseOneWithOptions(s, options)
+		stmt, ri, err = ast.ParseOneWithOptions(ctx, s, options)
 		if ri != 0 && ri < len(s) {
 			parsed = s[:ri]
 			parsed = RemoveSpaceAndDelimiter(parsed, delimiter)
@@ -79,8 +82,8 @@ func (m *MysqlParser) ParseWithOptions(query string, delimiter rune, multi bool,
 }
 
 // ParseOneWithOptions implements Parser interface.
-func (m *MysqlParser) ParseOneWithOptions(s string, options ast.ParserOptions) (ast.Statement, int, error) {
-	return ast.ParseOneWithOptions(s, options)
+func (m *MysqlParser) ParseOneWithOptions(ctx context.Context, s string, options ast.ParserOptions) (ast.Statement, int, error) {
+	return ast.ParseOneWithOptions(ctx, s, options)
 }
 
 // RemoveSpaceAndDelimiter removes space characters and given delimiter characters from the given query.

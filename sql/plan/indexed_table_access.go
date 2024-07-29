@@ -276,6 +276,31 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	return err == nil && !lookup.IsEmpty(), nil
 }
 
+func (i *IndexedTableAccess) IsStrictLookup() bool {
+	if !i.lb.index.IsUnique() {
+		return false
+	}
+	for _, m := range i.lb.matchesNullMask {
+		if m {
+			return false
+		}
+	}
+	if len(i.lb.keyExprs) != len(i.lb.index.Expressions()) {
+		// only partial key
+		return false
+	}
+	if strings.EqualFold(i.lb.index.ID(), "primary") {
+		return true
+	}
+	for _, e := range i.lb.keyExprs {
+		if e.IsNullable() {
+			// nullable key may not be
+			return false
+		}
+	}
+	return true
+}
+
 func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
 	if !i.lookup.IsEmpty() {

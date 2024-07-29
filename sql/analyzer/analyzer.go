@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime/trace"
 	"strings"
 
 	"github.com/pmezard/go-difflib/difflib"
@@ -79,9 +80,12 @@ type Builder struct {
 // NewBuilder creates a new Builder from a specific catalog.
 // This builder allow us add custom Rules and modify some internal properties.
 func NewBuilder(pro sql.DatabaseProvider) *Builder {
+	allBeforeDefault := make([]Rule, len(OnceBeforeDefault)+len(AlwaysBeforeDefault))
+	copy(allBeforeDefault, OnceBeforeDefault)
+	copy(allBeforeDefault[len(OnceBeforeDefault):], AlwaysBeforeDefault)
 	return &Builder{
 		provider:        pro,
-		onceBeforeRules: OnceBeforeDefault,
+		onceBeforeRules: allBeforeDefault,
 		defaultRules:    DefaultRules,
 		onceAfterRules:  OnceAfterDefault,
 		validationRules: DefaultValidationRules,
@@ -509,6 +513,7 @@ const maxBatchRecursion = 100
 
 func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan.Scope, batchSelector BatchSelector, ruleSelector RuleSelector) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze")
+	defer trace.StartRegion(ctx, "Analyzer.analyzeWithSelector").End()
 
 	if scope.RecursionDepth() > maxBatchRecursion {
 		return n, transform.SameTree, ErrMaxAnalysisIters.New(maxBatchRecursion)

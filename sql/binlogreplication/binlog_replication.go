@@ -80,7 +80,11 @@ type BinlogPrimaryController interface {
 	// current connection, |c|. |gtidSet| specifies the point at which to start replication, or if it is nil, then
 	// it indicates the complete history of all transactions should be sent over the connection. Note that unlike
 	// other methods, this method does NOT return immediately (unless an error is encountered) – the connection is
-	// left open for the duration of the replication stream, which could be days, or longer.
+	// left open for the duration of the replication stream, which could be days, or longer. For errors that are
+	// not recoverable and should not be retried, integrators should return a mysql.SQLError with the error code
+	// set to 1236 (ER_MASTER_FATAL_ERROR_READING_BINLOG). This causes the replica to display this error in the
+	// output from SHOW REPLICA STATUS and to not retry the connection. Otherwise, the error is only logged to
+	// MySQL's error log and the replica will continue retrying to connect.
 	BinlogDumpGtid(ctx *sql.Context, c *mysql.Conn, gtidSet mysql.GTIDSet) error
 
 	// ListReplicas is called when the SHOW REPLICAS statement is executed. The integrator should return a list
@@ -91,11 +95,18 @@ type BinlogPrimaryController interface {
 	// ListBinaryLogs is called when the SHOW BINARY LOGS statement is executed. The integrator should return a list
 	// of the binary logs currently being managed. Note that this function will be expanded
 	// with an additional response parameter once it is wired up to the SQL engine.
-	ListBinaryLogs(ctx *sql.Context) error
+	ListBinaryLogs(ctx *sql.Context) ([]BinaryLogFileMetadata, error)
 
 	// GetBinaryLogStatus is called when the SHOW BINARY LOG STATUS statement is executed. The integrator should return
 	// the current status of all available (i.e. non-purged) binary logs.
 	GetBinaryLogStatus(ctx *sql.Context) ([]BinaryLogStatus, error)
+}
+
+// BinaryLogFileMetadata holds high level metadata about a binary log file, used for the `SHOW BINARY LOGS` statement.
+type BinaryLogFileMetadata struct {
+	Name      string
+	Size      uint64
+	Encrypted bool
 }
 
 // BinaryLogStatus holds the data for one row of results from the `SHOW BINARY LOG STATUS` statement (or the deprecated

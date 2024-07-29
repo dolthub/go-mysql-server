@@ -327,7 +327,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.ValuesFuncExpr:
 		if b.insertActive {
 			if v.Name.Qualifier.Name.String() == "" {
-				v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
+				v.Name.Qualifier.Name = ast.NewTableIdent(inScope.insertTableAlias)
+				if len(inScope.insertColumnAliases) > 0 {
+					v.Name.Name = ast.NewColIdent(inScope.insertColumnAliases[v.Name.Name.Lowered()])
+				}
 			}
 			dbName := strings.ToLower(v.Name.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(v.Name.Qualifier.Name.String())
@@ -597,9 +600,17 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 
 	switch strings.ToLower(c.Operator) {
 	case ast.RegexpStr:
-		return expression.NewRegexp(left, right)
+		regexpLike, err := function.NewRegexpLike(left, right)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return regexpLike
 	case ast.NotRegexpStr:
-		return expression.NewNot(expression.NewRegexp(left, right))
+		regexpLike, err := function.NewRegexpLike(left, right)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewNot(regexpLike)
 	case ast.EqualStr:
 		switch r := right.(type) {
 		case *plan.AllExpr:

@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -89,6 +91,7 @@ func getTable(node sql.Node) sql.Table {
 }
 
 // Finds first ResolvedTable node that is a descendant of the node given
+// This function will not look inside SubqueryAliases
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
 	transform.Inspect(node, func(node sql.Node) bool {
@@ -99,6 +102,9 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 		}
 
 		switch n := node.(type) {
+		case *plan.SubqueryAlias:
+			// We should not be matching with ResolvedTables inside SubqueryAliases
+			return false
 		case *plan.ResolvedTable:
 			if !plan.IsDualTable(n) {
 				table = n
@@ -123,11 +129,11 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			ret[n.Table.Name()] = n
+			ret[strings.ToLower(n.Table.Name())] = n
 		case *plan.IndexedTableAccess:
 			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
-				ret[rt.Name()] = rt
+				ret[strings.ToLower(rt.Name())] = rt
 				return false
 			}
 		case *plan.TableAlias:

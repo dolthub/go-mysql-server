@@ -760,6 +760,10 @@ func TestSpatialIndexPlans(t *testing.T) {
 	enginetest.TestSpatialIndexPlans(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestNumericErrorScripts(t *testing.T) {
+	enginetest.TestNumericErrorScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestUserPrivileges(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
 	if harness.IsUsingServer() {

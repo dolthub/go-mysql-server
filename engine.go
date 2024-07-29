@@ -169,10 +169,14 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	ls := sql.NewLockSubsystem()
 
 	emptyCtx := sql.NewEmptyContext()
-	a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
-		Name: "version",
-		Fn:   function.NewVersion(cfg.VersionPostfix),
-	})
+
+	if fn, err := a.Catalog.Function(emptyCtx, "version"); fn == nil || err != nil {
+		a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
+			Name: "version",
+			Fn:   function.NewVersion(cfg.VersionPostfix),
+		})
+	}
+
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
 	ret := &Engine{
@@ -216,7 +220,7 @@ func (e *Engine) PrepareQuery(
 	query string,
 ) (sql.Node, error) {
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
-	stmt, _, err := e.Parser.ParseOneWithOptions(query, sql.LoadSqlMode(ctx).ParserOptions())
+	stmt, _, err := e.Parser.ParseOneWithOptions(ctx, query, sql.LoadSqlMode(ctx).ParserOptions())
 	if err != nil {
 		return nil, err
 	}
@@ -534,7 +538,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		// todo(max): improve name resolution so we can cache post name-binding.
 		// this involves expression memoization, which currently screws up aggregation
 		// and order by aliases
-		prepStmt, _, err := e.Parser.ParseOneWithOptions(query, sqlMode.ParserOptions())
+		prepStmt, _, err := e.Parser.ParseOneWithOptions(ctx, query, sqlMode.ParserOptions())
 		if err != nil {
 			return nil, err
 		}
@@ -542,7 +546,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		if !ok {
 			return nil, fmt.Errorf("expected *sqlparser.Prepare, found %T", prepStmt)
 		}
-		cacheStmt, _, err := e.Parser.ParseOneWithOptions(prepare.Expr, sqlMode.ParserOptions())
+		cacheStmt, _, err := e.Parser.ParseOneWithOptions(ctx, prepare.Expr, sqlMode.ParserOptions())
 		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
 			val, err := expression.NewUserVar(strings.TrimPrefix(prepare.Expr, "@")).Eval(ctx, nil)
 			if err != nil {
@@ -552,7 +556,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 			if !ok {
 				return nil, fmt.Errorf("expected string, found %T", val)
 			}
-			cacheStmt, _, err = e.Parser.ParseOneWithOptions(valStr, sqlMode.ParserOptions())
+			cacheStmt, _, err = e.Parser.ParseOneWithOptions(ctx, valStr, sqlMode.ParserOptions())
 			if err != nil {
 				return nil, err
 			}

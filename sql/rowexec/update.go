@@ -192,6 +192,7 @@ type updateJoinIter struct {
 	caches           map[string]sql.KeyValueCache
 	disposals        map[string]sql.DisposeFunc
 	joinNode         sql.Node
+	accumulator      *updateJoinRowHandler
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
@@ -235,6 +236,10 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			_, err = cache.Get(hash)
 			if errors.Is(err, sql.ErrKeyNotFound) {
 				cache.Put(hash, struct{}{})
+
+				// updateJoin counts matched rows from join output
+				u.accumulator.handleRowMatched()
+
 				continue
 			} else if err != nil {
 				return nil, err

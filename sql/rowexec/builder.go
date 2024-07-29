@@ -15,6 +15,8 @@
 package rowexec
 
 import (
+	"runtime/trace"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -27,8 +29,16 @@ type ExecBuilderFunc func(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter,
 // BaseBuilder converts a plan tree into a RowIter tree. All relational nodes
 // have a build statement. Custom source nodes that provide rows that implement
 // sql.ExecSourceRel are also built into the tree.
-type BaseBuilder struct{}
+type BaseBuilder struct {
+	// if override is provided, we try to build executor with this first
+	override sql.NodeExecBuilder
+}
 
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
+	defer trace.StartRegion(ctx, "ExecBuilder.Build").End()
 	return b.buildNodeExec(ctx, n, r)
+}
+
+func NewOverrideBuilder(override sql.NodeExecBuilder) sql.NodeExecBuilder {
+	return &BaseBuilder{override: override}
 }

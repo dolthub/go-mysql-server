@@ -17,6 +17,11 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 		if n.LiteralValueSource {
 			return []*Batch{
 				{
+					Desc:       "alwaysBeforeDefault",
+					Iterations: 1,
+					Rules:      AlwaysBeforeDefault,
+				},
+				{
 					Desc:       "simpleInsert",
 					Iterations: 1,
 					Rules: []Rule{
@@ -48,6 +53,11 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 	case *plan.Update:
 		if n.HasSingleRel && !n.IsJoin {
 			return []*Batch{
+				{
+					Desc:       "alwaysBeforeDefault",
+					Iterations: 1,
+					Rules:      AlwaysBeforeDefault,
+				},
 				{
 					Desc:       "simpleUpdate",
 					Iterations: 1,
@@ -88,6 +98,11 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 	case *plan.DeleteFrom:
 		if !n.HasExplicitTargets() && n.RefsSingleRel {
 			return []*Batch{
+				{
+					Desc:       "alwaysBeforeDefault",
+					Iterations: 1,
+					Rules:      AlwaysBeforeDefault,
+				},
 				{
 					Desc:       "simpleDelete",
 					Iterations: 1,

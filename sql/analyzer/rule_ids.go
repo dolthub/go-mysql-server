@@ -41,7 +41,7 @@ const (
 	resolveTableFunctionsId                      // resolveTableFunctions
 	resolveDeclarationsId                        // resolveDeclarations
 	resolveColumnDefaultsId                      // resolveColumnDefaults
-	validateColumnDefaultsId                     // validateColumnDefaults
+	ValidateColumnDefaultsId                     // validateColumnDefaults
 	validateCreateTriggerId                      // validateCreateTrigger
 	validateCreateProcedureId                    // validateCreateProcedure
 	resolveCreateProcedureId                     // resolveCreateProcedure
@@ -128,7 +128,7 @@ const (
 	validateGroupById           // validateGroupBy
 	validateSchemaSourceId      // validateSchemaSource
 	validateIndexCreationId     // validateIndexCreation
-	validateOperandsId          // validateOperands
+	ValidateOperandsId          // validateOperands
 	validateCaseResultTypesId   // validateCaseResultTypes
 	validateIntervalUsageId     // validateIntervalUsage
 	validateExplodeUsageId      // validateExplodeUsage

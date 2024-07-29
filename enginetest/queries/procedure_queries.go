@@ -1289,6 +1289,67 @@ END;`,
 		},
 	},
 	{
+		Name: "DECLARE CONTINUE HANDLER",
+		SetUpScript: []string{
+			"CREATE TABLE t1(id CHAR(16) primary key, data INT)",
+			"CREATE TABLE t2(i INT)",
+			"CREATE TABLE t3(id CHAR(16) primary key, data INT)",
+			`CREATE PROCEDURE curdemo()
+BEGIN
+  DECLARE done INT DEFAULT FALSE;
+  DECLARE a CHAR(16);
+  DECLARE b, c INT;
+  DECLARE cur1 CURSOR FOR SELECT id,data FROM t1;
+  DECLARE cur2 CURSOR FOR SELECT i FROM t2;
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+  OPEN cur1;
+  OPEN cur2;
+
+  read_loop: LOOP
+    FETCH cur1 INTO a, b;
+    FETCH cur2 INTO c;
+    IF done THEN
+      LEAVE read_loop;
+    END IF;
+    IF b < c THEN
+      INSERT INTO t3 VALUES (a,b);
+    ELSE
+      INSERT INTO t3 VALUES (a,c);
+    END IF;
+  END LOOP;
+
+  CLOSE cur1;
+  CLOSE cur2;
+  SELECT "success";
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL curdemo()",
+				Expected: []sql.Row{{"success"}},
+			},
+			{
+				Query:    "SELECT * from t3",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "INSERT INTO t1 values ('a', 10), ('b', 20)",
+			},
+			{
+				Query: "INSERT INTO t2 values (15), (15)",
+			},
+			{
+				Query:    "CALL curdemo()",
+				Expected: []sql.Row{{"success"}},
+			},
+			{
+				Query:    "SELECT * from t3",
+				Expected: []sql.Row{{"a", 10}, {"b", 15}},
+			},
+		},
+	},
+	{
 		Name: "DECLARE HANDLERs exit according to the block they were declared in",
 		SetUpScript: []string{
 			`DROP TABLE IF EXISTS t1;`,
@@ -1581,6 +1642,101 @@ END`,
 				Query: "SELECT * FROM person_cal_entries;",
 				Expected: []sql.Row{
 					{"d17cb898-7b9b-11ed-a1eb-0242ac120002", "cb8ba301-6c27-4bf8-b99b-617082d72621", "6140e23e-7b9b-11ed-a1eb-0242ac120002"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Conditional expression where body has its own columns",
+		SetUpScript: []string{
+			"CREATE TABLE test (id INT);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE PROCEDURE populate(IN val INT)
+BEGIN
+	IF (SELECT COUNT(*) FROM test where id = val) = 0 THEN
+        INSERT INTO test (id) VALUES (val);
+    END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "CALL populate(1);",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+				}}},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query: "SELECT * FROM test;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "Nested subquery in conditional expression where body has its own columns",
+		SetUpScript: []string{
+			"CREATE TABLE test (id INT);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE PROCEDURE populate(IN val INT)
+BEGIN
+	IF (SELECT COUNT(*) FROM test where (select t2.id from test t2 where t2.id = test.id) = val) = 0 THEN
+        INSERT INTO test (id) VALUES (val);
+    END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "CALL populate(1);",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+				}}},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query: "SELECT * FROM test;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "Conditional expression with else doesn't have body columns in its scope",
+		SetUpScript: []string{
+			"CREATE TABLE test (id INT);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+CREATE PROCEDURE populate(IN val INT)
+BEGIN
+	IF (SELECT COUNT(*) FROM test where id = val) = 0 THEN
+        INSERT INTO test (id) VALUES (val);
+    ELSE
+		SELECT 0;
+    END IF;
+END;`,
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "CALL populate(1);",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+				}}},
+				SkipResultCheckOnServerEngine: true,
+			},
+			{
+				Query: "SELECT * FROM test;",
+				Expected: []sql.Row{
+					{1},
 				},
 			},
 		},
@@ -2245,7 +2401,6 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
-
 	{
 		Name: "String literals with escaped chars",
 		SetUpScript: []string{
@@ -2265,6 +2420,24 @@ var ProcedureCallTests = []ScriptTest{
 			{
 				Query:    "CALL stan('quarantined')",
 				Expected: []sql.Row{{"stan's bar:quarantined"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/pull/7947/
+		Name: "Call a procedure that needs subqueries resolved in an if condition",
+		SetUpScript: []string{
+			`CREATE PROCEDURE populate_if_empty()
+				BEGIN
+					IF (SELECT 0) = 0 THEN
+						SELECT 'hi';
+					END IF;
+				END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL populate_if_empty();",
+				Expected: []sql.Row{{"hi"}},
 			},
 		},
 	},
@@ -2608,6 +2781,45 @@ var ProcedureShowCreate = []ScriptTest{
 			{
 				Query:       "SHOW CREATE PROCEDURE p1",
 				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+			},
+		},
+	},
+}
+
+var ProcedureCreateInSubroutineTests = []ScriptTest{
+	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
+	{
+		Name: "procedure must not contain CREATE PROCEDURE",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE PROCEDURE foo() CREATE PROCEDURE bar() SELECT 0;",
+				// MySQL output: "Can't create a PROCEDURE from within another stored routine",
+				ExpectedErrStr: "creating procedures in stored procedures is currently unsupported and will be added in a future release",
+			},
+		},
+	},
+	{
+		Name: "event must not contain CREATE PROCEDURE",
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE PROCEDURE bar() SELECT 1;",
+				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
+				Skip:           true,
+			},
+		},
+	},
+	{
+		Name: "trigger must not contain CREATE PROCEDURE",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Skipped because MySQL errors here but we don't.
+				Query:          "CREATE TRIGGER foo AFTER UPDATE ON t FOR EACH ROW BEGIN CREATE PROCEDURE bar() SELECT 1; END",
+				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
+				Skip:           true,
 			},
 		},
 	},

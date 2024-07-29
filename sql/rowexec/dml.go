@@ -293,6 +293,7 @@ func (b *BaseBuilder) buildTriggerBeginEndBlock(ctx *sql.Context, n *plan.Trigge
 		statements: n.Children(),
 		row:        row,
 		once:       &sync.Once{},
+		b:          b,
 	}, nil
 }
 
@@ -308,6 +309,7 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 		triggerEvent:   n.TriggerEvent,
 		executionLogic: n.Right(),
 		ctx:            ctx,
+		b:              b,
 	}, nil
 }
 
@@ -367,6 +369,27 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 		}
 
 		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: plan.RecreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
+		var iter = rowIter
+		var done bool
+		for !done {
+			switch i := iter.(type) {
+			case *plan.TableEditorIter:
+				iter = i.InnerIter()
+			case *updateIter:
+				iter = i.childIter
+			case *updateJoinIter:
+				i.accumulator = rowHandler.(*updateJoinRowHandler)
+				done = true
+			case *projectIter:
+				iter = i.childIter
+			case *plan.CheckpointingTableEditorIter:
+				iter = i.InnerIter()
+			case *triggerIter:
+				iter = i.child
+			default:
+				return nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
+			}
+		}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", n.RowUpdateType))
 	}

@@ -59,8 +59,8 @@ type JSONSearch struct {
 	Paths    []sql.Expression
 }
 
-var errOneOrAll = fmt.Errorf("the oneOrAll argument to json_search may take these values: 'one' or 'all'")
-var errBadEscape = fmt.Errorf("incorrect arguments to ESCAPE")
+var ErrOneOrAll = fmt.Errorf("the oneOrAll argument to json_search may take these values: 'one' or 'all'")
+var ErrBadEscape = fmt.Errorf("incorrect arguments to ESCAPE")
 
 var _ sql.FunctionExpression = &JSONSearch{}
 
@@ -231,7 +231,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case "all":
 		isOne = false
 	default:
-		return nil, errOneOrAll
+		return nil, ErrOneOrAll
 	}
 
 	search, err := j.Search.Eval(ctx, row)
@@ -260,7 +260,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			escapeStr := escapeVal.(string)
 			if len(escapeStr) > 1 {
-				return nil, errBadEscape
+				return nil, ErrBadEscape
 			}
 			if len(escapeStr) == 1 {
 				escape = rune(escapeStr[0])

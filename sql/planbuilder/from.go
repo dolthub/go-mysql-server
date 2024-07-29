@@ -342,10 +342,6 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			outScope.node = sq.WithScopeMapping(scopeMapping).WithColumns(colSet).WithId(tabId)
 			return
 		case *ast.ValuesStatement:
-			if t.As.IsEmpty() {
-				// Parser should enforce this, but just to be safe
-				b.handleErr(sql.ErrUnsupportedSyntax.New("every derived table must have an alias"))
-			}
 			rowLen := len(e.Rows)
 			exprTuples := make([][]sql.Expression, rowLen)
 			var tupLen int
@@ -394,16 +390,10 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 		return b.buildJSONTable(inScope, t)
 
 	case *ast.ParenTableExpr:
-		if len(t.Exprs) == 1 {
-			switch j := t.Exprs[0].(type) {
-			case *ast.JoinTableExpr:
-				return b.buildJoin(inScope, j)
-			default:
-				b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
-			}
-		} else {
+		if len(t.Exprs) != 1 {
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
 		}
+		return b.buildDataSource(inScope, t.Exprs[0])
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(te)))
 	}
@@ -827,7 +817,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				b.ViewCtx().DbName = outerDb
 			}()
 			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
-			stmt, _, _, err := sql.GlobalParser.ParseWithOptions(viewDef.CreateViewStatement, ';', false, b.parserOpts)
+			stmt, _, _, err := sql.GlobalParser.ParseWithOptions(b.ctx, viewDef.CreateViewStatement, ';', false, b.parserOpts)
 			if err != nil {
 				b.handleErr(err)
 			}

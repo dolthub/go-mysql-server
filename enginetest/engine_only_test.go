@@ -733,7 +733,7 @@ func TestTriggerViewWarning(t *testing.T) {
 
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil)
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "trigger on view is not supported; 'DROP TRIGGER  view_trig' to fix"}}, nil, nil)
-	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, "expected insert destination to be resolved or unresolved table")
+	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, nil, "expected insert destination to be resolved or unresolved table")
 }
 
 func TestCollationCoercion(t *testing.T) {
@@ -811,6 +811,50 @@ func TestRegex(t *testing.T) {
 				}
 			}
 		})
+	}
+	// For some reason, not all GitHub actions will find this in the queries package, so it's added here directly
+	for _, test := range []queries.ScriptTest{
+		{
+			Name: "REGEXP case sensitivity",
+			SetUpScript: []string{
+				"CREATE TABLE test1 (v1 TEXT);",
+				"CREATE TABLE test2 (v1 TEXT COLLATE utf8mb4_0900_bin);",
+				"CREATE TABLE test3 (v1 TEXT COLLATE utf8mb4_0900_ai_ci);",
+				"CREATE TABLE test4 (v1 TEXT) COLLATE utf8mb4_0900_ai_ci;",
+				"INSERT INTO test1 VALUES ('abcDEF'), ('abcdef');",
+				"INSERT INTO test2 VALUES ('abcDEF'), ('abcdef');",
+				"INSERT INTO test3 VALUES ('abcDEF'), ('abcdef');",
+				"INSERT INTO test4 VALUES ('abcDEF'), ('abcdef');",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "SELECT * FROM test1 WHERE v1 REGEXP 'def' ORDER BY v1;",
+					Expected: []sql.Row{
+						{"abcdef"},
+					},
+				},
+				{
+					Query: "SELECT * FROM test2 WHERE v1 REGEXP 'def' ORDER BY v1;",
+					Expected: []sql.Row{
+						{"abcdef"},
+					},
+				},
+				{
+					Query: "SELECT * FROM test3 WHERE v1 REGEXP 'def' ORDER BY v1;",
+					Expected: []sql.Row{
+						{"abcDEF"}, {"abcdef"},
+					},
+				},
+				{
+					Query: "SELECT * FROM test4 WHERE v1 REGEXP 'def' ORDER BY v1;",
+					Expected: []sql.Row{
+						{"abcDEF"}, {"abcdef"},
+					},
+				},
+			},
+		},
+	} {
+		enginetest.TestScript(t, harness, test)
 	}
 	// We force garbage collection twice as we have two levels of finalizers on our regex objects, and we want to make
 	// sure that neither of them panic.
