@@ -572,7 +572,7 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 
 func isAllAnySome(expr sql.Expression) bool {
 	switch expr.(type) {
-	case *plan.All/*, *plan.Any, *plan.Some*/:
+	case *plan.All /*, *plan.Any, *plan.Some*/ :
 		return true
 	default:
 		return false

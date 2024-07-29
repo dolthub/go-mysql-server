@@ -209,12 +209,12 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test script",
+			Name: "test script",
 			SetUpScript: []string{
 				"create table t (i int, j int);",
 				"insert into t values (1, 10), (3, 10), (5, 10);",
 			},
-			Assertions:  []queries.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				//{
 				//	Query: "select 1 = all(select 1, 2);",
 				//	ExpectedErr: sql.ErrInvalidOperandColumns,
@@ -302,9 +302,6 @@ func TestSingleScript(t *testing.T) {
 				//	Query: "select all(select * from (values row(1), row(1), row(1)) t) = all(select * from (values row(1), row(1), row(1)) t);",
 				//	ExpectedErr: sql.ErrExpectedSingleRow,
 				//},
-
-
-
 
 			},
 		},
