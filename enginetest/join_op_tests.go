@@ -282,7 +282,7 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
-		name: "multi pk lookup join indexes",
+		name: "multi pk lax lookup join",
 		setup: [][]string{
 			setup.MydbData[0],
 			{
@@ -300,6 +300,80 @@ var DefaultJoinOpTests = []joinOpTest{
 			{
 				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,w from wxyz join abcd on y = a",
 				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = a",
+				Expected: []sql.Row{{2, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on w = c and w = a",
+				Expected: []sql.Row{{3, 0, 0}, {2, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and y = a",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+		},
+	},
+	{
+		name: "multi pk strict lookup join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table wxyz (w int not null, x int, y int not null, z int, primary key (x,w), unique index yw_idx(y,w));",
+				"CREATE table abcd (a int not null, b int, c int not null, d int, primary key (a,b), unique index ca_idx(c,a));",
+				"insert into wxyz values (1,0,0,0), (1,1,1,1), (0,2,2,1),(0,1,3,1);",
+				"insert into abcd values (0,0,0,0), (0,1,1,1), (0,2,2,1),(2,1,3,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,z from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,w from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = a",
+				Expected: []sql.Row{{2, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on w = c and w = a",
+				Expected: []sql.Row{{3, 0, 0}, {2, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and y = a",
+				Expected: []sql.Row{{0, 0, 0}},
 			},
 		},
 	},
