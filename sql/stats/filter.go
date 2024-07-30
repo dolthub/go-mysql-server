@@ -96,20 +96,7 @@ func Intersect(b1, b2 []sql.HistogramBucket, types []sql.Type) ([]sql.HistogramB
 	return ret, nil
 }
 
-func PrefixKey(buckets []sql.HistogramBucket, idxCols sql.ColSet, types []sql.Type, oldFds *sql.FuncDepSet, key []interface{}, nullable []bool) ([]sql.HistogramBucket, *sql.FuncDepSet, error) {
-	var constant sql.ColSet
-	var notNull sql.ColSet
-	var i sql.ColumnId
-	for _, null := range nullable[:len(key)] {
-		i, _ = idxCols.Next(i + 1)
-		constant.Add(i)
-		if !null {
-			notNull.Add(i)
-		}
-	}
-
-	newFds := sql.NewFilterFDs(oldFds, oldFds.NotNull().Union(notNull), oldFds.Constants().Union(constant), nil)
-
+func PrefixKey(buckets []sql.HistogramBucket, types []sql.Type, key []interface{}) ([]sql.HistogramBucket, error) {
 	// find index of bucket >= the key
 	var searchErr error
 	lowBucket := sort.Search(len(buckets), func(i int) bool {
@@ -135,7 +122,7 @@ func PrefixKey(buckets []sql.HistogramBucket, idxCols sql.ColSet, types []sql.Ty
 		return true
 	})
 	if searchErr != nil {
-		return nil, nil, searchErr
+		return nil, searchErr
 	}
 
 	upperBucket := lowBucket
@@ -144,17 +131,17 @@ func PrefixKey(buckets []sql.HistogramBucket, idxCols sql.ColSet, types []sql.Ty
 	for equals && upperBucket < len(buckets) {
 		equals, err = keysEqual(types, buckets[upperBucket].UpperBound(), key)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		upperBucket++
 	}
 
 	ret := buckets[lowBucket:upperBucket]
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return ret, newFds, nil
+	return ret, nil
 }
 
 func nilSafeCmp(typ sql.Type, left, right interface{}) (int, error) {

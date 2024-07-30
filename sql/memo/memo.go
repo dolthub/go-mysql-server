@@ -296,11 +296,9 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expressio
 	return grp
 }
 
-// MemoizeIndexScan creates a source node that uses a specific index to
-// access data. IndexScans are either static and read a specific set of
-// ranges, or dynamic and use a lookup template that is iteratively
-// bound and executed during LOOKUP_JOINs.
-func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index, stat sql.Statistic) *ExprGroup {
+// memoizeIndexScan creates a source node that uses a specific index to
+// access data
+func (m *Memo) memoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index, stat sql.Statistic) *ExprGroup {
 	rel := &IndexScan{
 		sourceBase: &sourceBase{relBase: &relBase{}},
 		Table:      ita,
@@ -314,6 +312,28 @@ func (m *Memo) MemoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, al
 	rel.g = grp
 	grp.Prepend(rel)
 	return grp
+}
+
+// MemoizeStaticIndexAccess creates or adds a static index scan to an expression
+// group. This is distinct from memoizeIndexScan so that we can mark ITA groups
+// as done early.
+func (m *Memo) MemoizeStaticIndexAccess(grp *ExprGroup, aliasName string, idx *Index, ita *plan.IndexedTableAccess, filters []sql.Expression, stat sql.Statistic) {
+	if len(filters) > 0 {
+		// set the indexed path as best. correct for cases where
+		// indexScan is incompatible with best join operator
+		itaGrp := m.memoizeIndexScan(nil, ita, aliasName, idx, stat)
+		itaGrp.Best = itaGrp.First
+		itaGrp.Done = true
+		itaGrp.HintOk = true
+		itaGrp.Best.SetDistinct(NoDistinctOp)
+		fGrp := m.MemoizeFilter(grp, itaGrp, filters)
+		fGrp.Best = fGrp.First
+		fGrp.Done = true
+		fGrp.HintOk = true
+		fGrp.Best.SetDistinct(NoDistinctOp)
+	} else {
+		m.memoizeIndexScan(grp, ita, aliasName, idx, stat)
+	}
 }
 
 func (m *Memo) MemoizeFilter(grp, child *ExprGroup, filters []sql.Expression) *ExprGroup {

@@ -159,18 +159,17 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, tab
 	statistic.SetColumns(columns)
 	statistic.SetTypes(types)
 
-	statCols := sql.NewFastIntSet()
+	statCols := sql.ColSet{}
 	for _, c := range columns {
 		i := sch.IndexOfColName(c)
-		statCols.Add(i + 1)
+		statCols.Add(sql.ColumnId(i + 1))
 	}
 	allCols := sql.NewFastIntSet()
-	allCols.AddRange(1, len(sch)+1)
-	statColset := sql.NewColSetFromIntSet(statCols)
+	allCols.AddRange(0, len(sch))
 	allColset := sql.NewColSetFromIntSet(allCols)
 	// TODO find if underlying index has strict/lax key
 	fds := sql.NewTablescanFDs(allColset, nil, nil, allColset)
-	updatedStat := statistic.WithColSet(statColset).WithFuncDeps(fds)
+	updatedStat := statistic.WithColSet(statCols).WithFuncDeps(fds)
 	updatedStat = stats.UpdateCounts(updatedStat)
 
 	outScope.node = plan.NewUpdateHistogram(dbName, tableName, indexName, columns, updatedStat).WithProvider(b.cat)
