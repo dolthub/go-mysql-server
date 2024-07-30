@@ -26,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // NewAddDate returns a new function expression, or an error if one couldn't be created. The ADDDATE
@@ -132,20 +133,43 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	var dateVal interface{}
+	dateVal, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Add(date.(time.Time)))
+	res := types.ValidateTime(delta.Add(dateVal.(time.Time)))
+	if res == nil {
+		return nil, nil
+	}
+
 	resType := d.Type()
 	if types.IsText(resType) {
-		return res, nil
+		// If the input is a properly formatted date/datetime, the output should be the same type.
+		if dateStr, isStr := date.(string); isStr {
+			for _, layout := range types.DateOnlyLayouts {
+				if _, pErr := time.Parse(layout, dateStr); pErr != nil {
+					continue
+				}
+				return res.(time.Time).Format(sql.DateLayout), nil
+			}
+		}
+
+		ret, _, cErr := resType.Convert(res)
+		if cErr != nil {
+			return nil, cErr
+		}
+		return ret, nil
 	}
+
 	ret, _, err := resType.Convert(res)
-	return ret, err
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (d *DateAdd) String() string {
@@ -256,20 +280,43 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	var dateVal interface{}
+	dateVal, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Sub(date.(time.Time)))
+	res := types.ValidateTime(delta.Sub(dateVal.(time.Time)))
+	if res == nil {
+		return nil, nil
+	}
+
 	resType := d.Type()
 	if types.IsText(resType) {
-		return res, nil
+		// If the input is a properly formatted date/datetime, the output should be the same type.
+		if dateStr, isStr := date.(string); isStr {
+			for _, layout := range types.DateOnlyLayouts {
+				if _, pErr := time.Parse(layout, dateStr); pErr != nil {
+					continue
+				}
+				return res.(time.Time).Format(sql.DateLayout), nil
+			}
+		}
+
+		ret, _, cErr := resType.Convert(res)
+		if cErr != nil {
+			return nil, cErr
+		}
+		return ret, nil
 	}
+
 	ret, _, err := resType.Convert(res)
-	return ret, err
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (d *DateSub) String() string {
@@ -734,6 +781,20 @@ func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	return NoArgFuncWithChildren(c, children)
 }
 
+func isYmdInterval(interval *expression.Interval) bool {
+	return strings.Contains(interval.Unit, "YEAR") ||
+		strings.Contains(interval.Unit, "QUARTER") ||
+		strings.Contains(interval.Unit, "MONTH") ||
+		strings.Contains(interval.Unit, "WEEK") ||
+		strings.Contains(interval.Unit, "DAY")
+}
+
+func isHmsInterval(interval *expression.Interval) bool {
+	return strings.Contains(interval.Unit, "HOUR") ||
+		strings.Contains(interval.Unit, "MINUTE") ||
+		strings.Contains(interval.Unit, "SECOND")
+}
+
 // Determines the return type of a DateAdd/DateSub expression
 // Logic is based on https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-add
 func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Type {
@@ -750,12 +811,6 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	// set type flags
 	isInputDate := inputType == types.Date
 	isInputTime := inputType == types.Time
-	isInputDatetime := types.IsDatetimeType(inputType) || types.IsTimestampType(inputType)
-
-	// result is Datetime if expression is Datetime or Timestamp
-	if isInputDatetime {
-		return types.DatetimeMaxPrecision
-	}
 
 	// determine what kind of interval we're dealing with
 	isYmdInterval := strings.Contains(interval.Unit, "YEAR") ||
@@ -767,13 +822,26 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	isHmsInterval := strings.Contains(interval.Unit, "HOUR") ||
 		strings.Contains(interval.Unit, "MINUTE") ||
 		strings.Contains(interval.Unit, "SECOND")
+
 	isMixedInterval := isYmdInterval && isHmsInterval
+
+	var prec int
+	if dtType, ok := inputType.(sql.DatetimeType); ok {
+		if dtType.Precision() > 0 {
+			prec = 6
+		}
+	}
+	if strings.Contains(interval.Unit, "MICROSECOND") && prec < 6{
+		prec = 6
+	} else if strings.Contains(interval.Unit, "SECOND") && prec < 2 {
+		prec = 2
+	}
 
 	// handle input of Date type
 	if isInputDate {
 		if isHmsInterval || isMixedInterval {
 			// if interval contains time components, result is Datetime
-			return types.DatetimeMaxPrecision
+			return types.MustCreateDatetimeType(query.Type_DATETIME, prec)
 		} else {
 			// otherwise result is Date
 			return types.Date
@@ -784,7 +852,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 	if isInputTime {
 		if isYmdInterval || isMixedInterval {
 			// if interval contains date components, result is Datetime
-			return types.DatetimeMaxPrecision
+			return types.MustCreateDatetimeType(query.Type_DATETIME, prec)
 		} else {
 			// otherwise result is Time
 			return types.Time
@@ -798,7 +866,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 			return types.Date
 		} else {
 			// otherwise result is Datetime
-			return types.DatetimeMaxPrecision
+			return types.MustCreateDatetimeType(query.Type_DATETIME, prec)
 		}
 	}
 

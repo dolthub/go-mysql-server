@@ -41,13 +41,43 @@ func TestAddDate(t *testing.T) {
 	_, err = NewAddDate(expression.NewLiteral("2018-05-02", types.LongText))
 	require.Error(err)
 
+	var expected, result interface{}
+	var f sql.Expression
+
+	f, err = NewAddDate(
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.Date),
+		expression.NewLiteral(int64(1), types.Int64))
+	require.NoError(err)
+	expected = time.Date(2018, 5, 3, 0, 0,0, 0, time.UTC)
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 0, time.UTC), types.Datetime),
+		expression.NewLiteral(int64(1), types.Int64))
+	require.NoError(err)
+	expected = time.Date(2018, 5, 3, 12, 34,56, 0, time.UTC)
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.DatetimeMaxPrecision),
+		expression.NewLiteral(int64(1), types.Int64))
+	require.NoError(err)
+	expected = time.Date(2018, 5, 3, 12, 34,56, 123456000, time.UTC)
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
 	// If the second argument is NOT an interval, then it's assumed to be a day interval
-	f, err := NewAddDate(
+	f, err = NewAddDate(
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected := time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)
-	result, err := f.Eval(ctx, sql.Row{})
+	expected = "2018-05-03"
+	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -89,7 +119,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewLiteral("2018-05-02", types.Text),
 		expression.NewLiteral(int64(1_000_000), types.Int64))
 	require.NoError(err)
-	expected = time.Date(4756, time.March, 29, 0, 0, 0, 0, time.UTC)
+	expected = "4756-03-29"
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
