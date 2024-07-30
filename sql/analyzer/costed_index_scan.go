@@ -76,54 +76,63 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 				return n, transform.SameTree, err
 			}
 			if ok {
-				if lookup.IsEmpty() {
-					return n, transform.SameTree, nil
-				}
-				var ret sql.Node
-				ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-
-				iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
-				if !ok {
-					return n, transform.SameTree, nil
-				}
-
-				if !iat.PreciseMatch() {
-					// cannot drop any filters
-					newFilter = filter.Expression
-				}
-
-				if newFilter != nil {
-					ret = plan.NewFilter(newFilter, ret)
-				}
-				return ret, transform.NewTree, nil
+				return indexSearchableLookup(n, rt, lookup, filter.Expression, newFilter)
 			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
 		}
 		if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
-			indexes, err := iat.GetIndexes(ctx)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			ita, _, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, expression.SplitConjunction(filter.Expression))
-			if err != nil || ita == nil {
-				return n, transform.SameTree, err
-			}
-			var ret sql.Node = ita
-			if aliasName != "" {
-				ret = plan.NewTableAlias(aliasName, ret)
-			}
-			// excluded from tree + not included in index scan => filter above scan
-			if len(filters) > 0 {
-				ret = plan.NewFilter(expression.JoinAnd(filters...), ret)
-			}
-			return ret, transform.NewTree, nil
+			return costedIndexLookup(ctx, n, a.Catalog, iat, rt, aliasName, filter.Expression)
 		}
 		return n, transform.SameTree, nil
 	})
+}
+
+func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	if lookup.IsEmpty() {
+		return n, transform.SameTree, nil
+	}
+	var ret sql.Node
+	var err error
+	ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+	if !ok {
+		return n, transform.SameTree, nil
+	}
+
+	if !iat.PreciseMatch() {
+		// cannot drop any filters
+		newFilter = oldFilter
+	}
+
+	if newFilter != nil {
+		ret = plan.NewFilter(newFilter, ret)
+	}
+	return ret, transform.NewTree, nil
+}
+
+func costedIndexLookup(ctx *sql.Context, n sql.Node, cat sql.Catalog, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	indexes, err := iat.GetIndexes(ctx)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+	ita, _, filters, err := getCostedIndexScan(ctx, cat, rt, indexes, expression.SplitConjunction(oldFilter))
+	if err != nil || ita == nil {
+		return n, transform.SameTree, err
+	}
+	var ret sql.Node = ita
+	if aliasName != "" {
+		ret = plan.NewTableAlias(aliasName, ret)
+	}
+	// excluded from tree + not included in index scan => filter above scan
+	if len(filters) > 0 {
+		ret = plan.NewFilter(expression.JoinAnd(filters...), ret)
+	}
+	return ret, transform.NewTree, nil
 }
 
 func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {

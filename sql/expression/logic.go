@@ -94,8 +94,9 @@ type LookupColumn struct {
 	Eq  *Equals
 }
 
-// LookupEqualityColumns breaks AND expressions into a list equalities split into
-// (1) the column names and (2) opposing *Literal expressions
+// LookupEqualityColumn breaks AND expressions into a list of equalities split into
+// (1) the column names and (2) opposing *Literal expressions. If the expression is
+// not an equality with literal columns, return (nil, false).
 func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, bool) {
 	if e == nil {
 		return LookupColumn{}, false
@@ -104,9 +105,9 @@ func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, boo
 	case *Equals:
 		if gf, ok := e.Left().(*GetField); ok {
 			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
-				switch l := e.Right().(type) {
+				switch r := e.Right().(type) {
 				case *Literal:
-					return LookupColumn{strings.ToLower(gf.name), l, e}, true
+					return LookupColumn{strings.ToLower(gf.name), r, e}, true
 				}
 			}
 		}

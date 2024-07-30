@@ -537,8 +537,8 @@ func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
 	return &EqualityIndexBuilder{idx: idx, rng: make(Range, len(idx.Expressions()))}
 }
 
-// Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
-func (b *EqualityIndexBuilder) Equals(_ *Context, i int, k interface{}) error {
+// AddEquality represents colExpr = key. For IN expressions, pass all of them in the same AddEquality call.
+func (b *EqualityIndexBuilder) AddEquality(_ *Context, i int, k interface{}) error {
 	if b.empty {
 		return nil
 	}
