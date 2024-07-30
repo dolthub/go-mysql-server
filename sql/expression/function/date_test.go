@@ -218,7 +218,6 @@ func TestDateAdd(t *testing.T) {
 	require.NoError(err)
 
 	expected := "2018-05-03"
-
 	result, err := f.Eval(ctx, sql.Row{"2018-05-02"})
 	require.NoError(err)
 	require.Equal(expected, result)
@@ -414,8 +413,7 @@ func TestDateSub(t *testing.T) {
 	)
 	require.NoError(err)
 
-	expected := time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)
-
+	expected := "2018-05-01"
 	result, err := f.Eval(ctx, sql.Row{"2018-05-02"})
 	require.NoError(err)
 	require.Equal(expected, result)
