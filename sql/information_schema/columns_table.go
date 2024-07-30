@@ -270,11 +270,11 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 	charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(ctx, col.Type)
 
 	numericPrecision, numericScale := getColumnPrecisionAndScale(col.Type)
-	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
-		datetimePrecision = 0
-	} else if types.IsTimespan(col.Type) {
+	if types.IsTimespan(col.Type) {
 		// TODO: TIME length not yet supported
 		datetimePrecision = 6
+	} else if dtType, ok := col.Type.(sql.DatetimeType); ok {
+		datetimePrecision = dtType.Precision()
 	}
 
 	columnDefault := GetColumnDefault(ctx, col.Default)
