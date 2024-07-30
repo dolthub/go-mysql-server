@@ -190,9 +190,10 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			case plan.JoinTypeAnti:
 				cond := expression.NewLiteral(true, types.Boolean)
 				ret = plan.NewAntiJoin(ret, s.inner, cond).WithComment(comment)
-
+				ctx.QProps.Set(sql.QPropInnerJoin)
 			case plan.JoinTypeSemi:
 				ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
+				ctx.QProps.Set(sql.QPropCrossJoin)
 			default:
 				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 			}
@@ -208,8 +209,10 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		switch joinType {
 		case plan.JoinTypeAnti:
 			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
+			ctx.QProps.Set(sql.QPropInnerJoin)
 		case plan.JoinTypeSemi:
 			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
+			ctx.QProps.Set(sql.QPropInnerJoin)
 		default:
 			return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 		}

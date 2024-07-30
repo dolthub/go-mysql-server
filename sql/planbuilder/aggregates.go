@@ -165,6 +165,8 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 }
 
 func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
+	b.ctx.QProps.Set(sql.QPropAggregation)
+
 	// GROUP_BY consists of:
 	// - input arguments projection
 	// - grouping cols projection
@@ -249,8 +251,6 @@ func isAggregateFunc(name string) bool {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
-	b.ctx.QProps.Set(sql.QPropAggregation)
-
 	if len(inScope.windowFuncs) > 0 {
 		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
 		b.handleErr(err)
@@ -385,6 +385,10 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		}
 	}
 
+	if name == "count" {
+		b.ctx.QProps.Set(sql.QPropCount)
+	}
+
 	aggType := agg.Type()
 	if name == "avg" || name == "sum" {
 		aggType = types.Float64
@@ -480,8 +484,6 @@ func isWindowFunc(name string) bool {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
-	b.ctx.QProps.Set(sql.QPropAggregation)
-
 	if inScope.groupBy != nil {
 		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
 		b.handleErr(err)

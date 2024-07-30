@@ -206,6 +206,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 	}
 	db := b.resolveDb(dbName)
 
+	b.ctx.QProps.Set(sql.QPropSetDatabase)
 	var node sql.Node = plan.NewShowTriggers(db)
 
 	outScope = inScope.push()
@@ -625,6 +626,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	}
 	db := b.resolveDb(dbName)
 
+	b.ctx.QProps.Set(sql.QPropSetDatabase)
 	showTabs := plan.NewShowTables(db, s.Full, asOf)
 	for _, c := range showTabs.Schema() {
 		outScope.newColumn(scopeColumn{

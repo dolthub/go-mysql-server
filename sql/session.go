@@ -247,6 +247,13 @@ type Context struct {
 	QProps *QueryProps
 }
 
+func (c *Context) FlagIsSet(flag int) bool {
+	if c.QProps == nil {
+		return true
+	}
+	return c.QProps.IsSet(flag)
+}
+
 // ContextOption is a function to configure the context.
 type ContextOption func(*Context)
 
@@ -347,6 +354,7 @@ func NewContext(
 		Session:   nil,
 		queryTime: ctxNowFunc(),
 		tracer:    NoopTracer,
+		QProps:    &QueryProps{},
 	}
 	for _, opt := range opts {
 		opt(c)

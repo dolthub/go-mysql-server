@@ -289,6 +289,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		TableOpts: tblOpts,
 	}
 
+	b.ctx.QProps.Set(sql.QPropSetDatabase)
 	if c.OptSelect != nil {
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
 		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), c.IfNotExists, c.Temporary, selectScope.node, tableSpec)
@@ -418,6 +419,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 
 	database := b.resolveDbForTable(ct.Table)
 
+	b.ctx.QProps.Set(sql.QPropSetDatabase)
 	outScope.node = plan.NewCreateTable(database, newTableName, ct.IfNotExists, ct.Temporary, tableSpec)
 	return outScope
 }

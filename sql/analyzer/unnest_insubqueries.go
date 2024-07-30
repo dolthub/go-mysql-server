@@ -40,6 +40,10 @@ type applyJoin struct {
 // TODO decorrelate lhs too
 // TODO non-null-rejecting with dual table
 func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.SubqueryIsSet() {
+		return n, transform.SameTree, nil
+	}
+
 	switch n.(type) {
 	case *plan.DeleteFrom, *plan.InsertInto:
 		return n, transform.SameTree, nil

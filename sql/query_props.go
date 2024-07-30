@@ -23,6 +23,7 @@ const (
 	QPropScalarSubquery
 	QPropRelSubquery
 	QPropNotExpr
+	QPropCount
 	QPropCountStar
 	QPropAlterTable
 	QPropCrossJoin
