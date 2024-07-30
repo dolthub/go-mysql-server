@@ -538,14 +538,14 @@ func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
 }
 
 // AddEquality represents colExpr = key. For IN expressions, pass all of them in the same AddEquality call.
-func (b *EqualityIndexBuilder) AddEquality(_ *Context, i int, k interface{}) error {
+func (b *EqualityIndexBuilder) AddEquality(_ *Context, colIdx int, k interface{}) error {
 	if b.empty {
 		return nil
 	}
-	if i >= len(b.rng) {
+	if colIdx >= len(b.rng) {
 		return fmt.Errorf("invalid index for building index lookup")
 	}
-	typ := b.idx.ColumnExpressionTypes()[i].Type
+	typ := b.idx.ColumnExpressionTypes()[colIdx].Type
 	// if converting from float to int results in rounding, then it's empty range
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		f, c := floor(k), ceil(k)
@@ -568,7 +568,7 @@ func (b *EqualityIndexBuilder) AddEquality(_ *Context, i int, k interface{}) err
 	if err != nil {
 		return err
 	}
-	b.rng[i] = ClosedRangeColumnExpr(k, k, typ)
+	b.rng[colIdx] = ClosedRangeColumnExpr(k, k, typ)
 
 	return nil
 }
