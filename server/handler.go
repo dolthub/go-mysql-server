@@ -433,6 +433,8 @@ func (h *Handler) doQuery(
 		r, err = resultForOkIter(sqlCtx, rowIter)
 	} else if schema == nil {
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
+	} else if sqlCtx.QProps.IsSet(sql.QPropMax1Row) {
+		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
 	}
@@ -497,6 +499,33 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 		return nil, err
 	}
 	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// resultForMax1RowIter ensures that an empty iterator returns at most one row
+func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+	defer trace2.StartRegion(ctx, "Handler.resultForMax1RowIter").End()
+	row, err := iter.Next(ctx)
+	if err == io.EOF {
+		return &sqltypes.Result{Fields: resultFields}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	if _, err = iter.Next(ctx); err != io.EOF {
+		return nil, fmt.Errorf("result max1Row iterator returned more than one row")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+
+	outputRow, err := rowToSQL(ctx, schema, row)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+
+	return &sqltypes.Result{Fields: resultFields, Rows: [][]sqltypes.Value{outputRow}, RowsAffected: 1}, nil
 }
 
 // resultForDefaultIter reads batches of rows from the iterator

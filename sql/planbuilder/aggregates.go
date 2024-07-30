@@ -295,6 +295,8 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			var agg sql.Aggregation
 			agg = aggregation.NewJsonArray(expression.NewLiteral(expression.NewStar(), types.Int64))
+			b.ctx.QProps.Set(sql.QPropStar)
+
 			//if e.Distinct {
 			//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
 			//}

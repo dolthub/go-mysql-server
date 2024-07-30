@@ -261,6 +261,10 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 	bestStat = stats.UpdateCounts(bestStat)
 
+	if bestStat.FuncDeps().HasMax1Row() && !ctx.QProps.JoinIsSet() && len(lookup.Ranges) == 1 {
+		ctx.QProps.Set(sql.QPropMax1Row)
+	}
+
 	return ret, bestStat, retFilters, nil
 }
 

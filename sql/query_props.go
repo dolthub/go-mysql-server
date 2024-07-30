@@ -34,6 +34,7 @@ const (
 	QPropInnerJoin
 	QPropLimit
 	QPropInterval
+	QPropMax1Row
 )
 
 type QueryProps struct {
@@ -41,6 +42,9 @@ type QueryProps struct {
 }
 
 func (qp *QueryProps) Set(flag int) {
+	if qp == nil {
+		return
+	}
 	qp.Flags.Add(flag)
 }
 
@@ -58,4 +62,10 @@ var SubqueryFlags = NewFastIntSet(QPropScalarSubquery, QPropRelSubquery)
 
 func (qp *QueryProps) SubqueryIsSet() bool {
 	return qp.Flags.Intersects(SubqueryFlags)
+}
+
+var JoinFlags = NewFastIntSet(QPropInnerJoin, QPropCrossJoin)
+
+func (qp *QueryProps) JoinIsSet() bool {
+	return qp.Flags.Intersects(JoinFlags)
 }

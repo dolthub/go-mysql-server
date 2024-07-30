@@ -79,6 +79,9 @@ func unnestExistsSubqueries(
 	scope *plan.Scope,
 	sel RuleSelector,
 ) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.SubqueryIsSet() {
+		return n, transform.SameTree, nil
+	}
 	aliasDisambig := newAliasDisambiguator(n, scope)
 	return unnestSelectExistsHelper(ctx, scope, a, n, aliasDisambig)
 }

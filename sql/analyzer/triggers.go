@@ -407,6 +407,8 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
 	var triggerLogic sql.Node
 	var err error
+	ctx.QProps.Set(sql.QPropStar)
+
 	switch trigger.TriggerEvent {
 	case sqlparser.InsertStr:
 		scopeNode := plan.NewProject(

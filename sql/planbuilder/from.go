@@ -78,6 +78,8 @@ func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
 }
 
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
+	b.ctx.QProps.Set(sql.QPropInnerJoin)
+
 	//TODO build individual table expressions
 	// collect column  definitions
 	leftScope := b.buildDataSource(inScope, te.LeftExpr)
@@ -108,6 +110,7 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		} else if b.isLateral(te.RightExpr) {
 			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
+			b.ctx.QProps.Set(sql.QPropCrossJoin)
 			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		}
 		return

@@ -475,6 +475,10 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 	//
 	// We do not use plan.InspectExpressions here because we're treating
 	// the top-level expressions of sql.Node differently from subexpressions.
+	if !ctx.QProps.IsSet(sql.QPropStar) {
+		return n, transform.SameTree, nil
+	}
+
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		if er, ok := n.(sql.Expressioner); ok {
