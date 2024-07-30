@@ -25,6 +25,10 @@ import (
 // Subqueries are processed from the top down and a new scope level is created for each subquery when it is sent
 // to be analyzed.
 func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.SubqueryIsSet() {
+		return n, transform.SameTree, nil
+	}
+
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.End()
 
@@ -77,6 +81,10 @@ func finalizeSubqueryLateral(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 //     rule set on subquery aliases.
 //   - finalizeSubqueries runs a full analysis pass on subquery expressions and runs all rule batches except for OnceBeforeDefault.
 func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.SubqueryIsSet() {
+		return n, transform.SameTree, nil
+	}
+
 	span, ctx := ctx.Span("finalize_subqueries")
 	defer span.End()
 

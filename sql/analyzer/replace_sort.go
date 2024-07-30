@@ -175,6 +175,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 
 // replaceAgg converts aggregate functions to order by + limit 1 when possible
 func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.IsSet(sql.QPropAggregation) {
+		return node, transform.SameTree, nil
+	}
+
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		// project with groupby child
 		proj, ok := n.(*plan.Project)

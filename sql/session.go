@@ -243,6 +243,8 @@ type Context struct {
 	tracer      trace.Tracer
 	rootSpan    trace.Span
 	Version     AnalyzerVersion
+
+	QProps *QueryProps
 }
 
 // ContextOption is a function to configure the context.

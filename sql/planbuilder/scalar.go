@@ -92,6 +92,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		return b.buildIsExprToExpression(inScope, v)
 	case *ast.NotExpr:
 		c := b.buildScalar(inScope, v.Expr)
+		b.ctx.QProps.Set(sql.QPropNotExpr)
+
 		return expression.NewNot(c)
 	case *ast.SQLVal:
 		return b.ConvertVal(v)
@@ -266,6 +268,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		case ast.BetweenStr:
 			return expression.NewBetween(val, lower, upper)
 		case ast.NotBetweenStr:
+			b.ctx.QProps.Set(sql.QPropNotExpr)
 			return expression.NewNot(expression.NewBetween(val, lower, upper))
 		default:
 			return nil
@@ -289,6 +292,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		selScope := b.buildSelectStmt(sqScope, v.Select)
 		// TODO: get the original select statement, not the reconstruction
 		sq := plan.NewSubquery(selScope.node, selectString)
+		b.ctx.QProps.Set(sql.QPropScalarSubquery)
 		sq = sq.WithCorrelated(sqScope.correlated())
 		if b.TriggerCtx().Active {
 			sq = sq.WithVolatile()
@@ -298,6 +302,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		return b.buildCaseExpr(inScope, v)
 	case *ast.IntervalExpr:
 		e := b.buildScalar(inScope, v.Expr)
+		b.ctx.QProps.Set(sql.QPropInterval)
 		return expression.NewInterval(e, v.Unit)
 	case *ast.CollateExpr:
 		// handleCollateExpr is meant to handle generic text-returning expressions that should be reinterpreted as a different collation.
@@ -349,6 +354,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		selectString := ast.String(v.Subquery.Select)
 		sq := plan.NewSubquery(selScope.node, selectString)
 		sq = sq.WithCorrelated(sqScope.correlated())
+		b.ctx.QProps.Set(sql.QPropScalarSubquery)
 		return plan.NewExistsSubquery(sq)
 	case *ast.TimestampFuncExpr:
 		var (
@@ -431,6 +437,7 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 		return b.buildScalar(inScope, e.Expr)
 	case ast.BangStr:
 		c := b.buildScalar(inScope, e.Expr)
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		return expression.NewNot(c)
 	case ast.BinaryStr:
 		c := b.buildScalar(inScope, e.Expr)
@@ -582,6 +589,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 		if err != nil {
 			b.handleErr(err)
 		}
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		return expression.NewNot(regexpLike)
 	case ast.EqualStr:
 		return expression.NewEquals(left, right)
@@ -596,6 +604,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 	case ast.NullSafeEqualStr:
 		return expression.NewNullSafeEquals(left, right)
 	case ast.NotEqualStr:
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		return expression.NewNot(
 			expression.NewEquals(left, right),
 		)
@@ -604,16 +613,20 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 		case expression.Tuple:
 			return expression.NewInTuple(left, right)
 		case *plan.Subquery:
+			b.ctx.QProps.Set(sql.QPropScalarSubquery)
 			return plan.NewInSubquery(left, right)
 		default:
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
 			b.handleErr(err)
 		}
 	case ast.NotInStr:
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		switch right.(type) {
 		case expression.Tuple:
+			b.ctx.QProps.Set(sql.QPropNotExpr)
 			return expression.NewNotInTuple(left, right)
 		case *plan.Subquery:
+			b.ctx.QProps.Set(sql.QPropScalarSubquery)
 			return plan.NewNotInSubquery(left, right)
 		default:
 			err := sql.ErrUnsupportedFeature.New(fmt.Sprintf("NOT IN %T", right))
@@ -622,6 +635,7 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 	case ast.LikeStr:
 		return expression.NewLike(left, right, escape)
 	case ast.NotLikeStr:
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		return expression.NewNot(expression.NewLike(left, right, escape))
 	default:
 		err := sql.ErrUnsupportedFeature.New(c.Operator)
@@ -656,14 +670,17 @@ func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Exp
 	case ast.IsNullStr:
 		return expression.NewIsNull(e)
 	case ast.IsNotNullStr:
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		return expression.NewNot(expression.NewIsNull(e))
 	case ast.IsTrueStr:
 		return expression.NewIsTrue(e)
 	case ast.IsFalseStr:
 		return expression.NewIsFalse(e)
 	case ast.IsNotTrueStr:
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		return expression.NewNot(expression.NewIsTrue(e))
 	case ast.IsNotFalseStr:
+		b.ctx.QProps.Set(sql.QPropNotExpr)
 		return expression.NewNot(expression.NewIsFalse(e))
 	default:
 		err := sql.ErrUnsupportedSyntax.New(ast.String(c))
@@ -767,6 +784,7 @@ func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Exp
 
 func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) *expression.Interval {
 	expr := b.buildScalar(inScope, e.Expr)
+	b.ctx.QProps.Set(sql.QPropInterval)
 	return expression.NewInterval(expr, e.Unit)
 }
 

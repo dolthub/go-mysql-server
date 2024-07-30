@@ -250,6 +250,10 @@ func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
 }
 
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.IsSet(sql.QPropAggregation) {
+		return n, transform.SameTree, nil
+	}
+
 	span, ctx := ctx.Span("validate_group_by")
 	defer span.End()
 
@@ -425,6 +429,9 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 }
 
 func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.IsSet(sql.QPropInterval) {
+		return n, transform.SameTree, nil
+	}
 	var invalid bool
 	transform.InspectExpressionsWithNode(n, func(node sql.Node, e sql.Expression) bool {
 		// If it's already invalid just skip everything else.
@@ -815,6 +822,9 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // that should be supported but that currently trigger this validation because
 // aggregation expressions end up in the wrong place.
 func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.IsSet(sql.QPropAggregation) {
+		return n, transform.SameTree, nil
+	}
 	var validationErr error
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {

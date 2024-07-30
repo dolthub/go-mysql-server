@@ -16,6 +16,10 @@ import (
 // =>
 // select * from xy where x = 1 and exists (select * from uv)
 func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.SubqueryIsSet() {
+		return n, transform.SameTree, nil
+	}
+
 	switch n.(type) {
 	case *plan.TriggerBeginEndBlock:
 		return n, transform.SameTree, nil

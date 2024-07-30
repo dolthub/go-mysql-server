@@ -114,6 +114,10 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 }
 
 func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.DmlIsSet() {
+		return n, transform.SameTree, nil
+	}
+
 	// Skip this step for CreateTrigger statements
 	if _, ok := n.(*plan.CreateTrigger); ok {
 		return n, transform.SameTree, nil
@@ -431,6 +435,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					plan.NewSubqueryAlias("new", "", updateSrc.Child),
 				),
 			)
+			ctx.QProps.Set(sql.QPropRelSubquery)
 		}
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)

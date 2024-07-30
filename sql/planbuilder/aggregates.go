@@ -249,6 +249,8 @@ func isAggregateFunc(name string) bool {
 // buildAggregateFunc tags aggregate functions in the correct scope
 // and makes the aggregate available for reference by other clauses.
 func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExpr) sql.Expression {
+	b.ctx.QProps.Set(sql.QPropAggregation)
+
 	if len(inScope.windowFuncs) > 0 {
 		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
 		b.handleErr(err)
@@ -267,6 +269,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			} else {
 				agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 			}
+			b.ctx.QProps.Set(sql.QPropCountStar)
 			aggName := strings.ToLower(agg.String())
 			gf := gb.getAggRef(aggName)
 			if gf != nil {
@@ -475,6 +478,8 @@ func isWindowFunc(name string) bool {
 }
 
 func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, over *ast.WindowDef) sql.Expression {
+	b.ctx.QProps.Set(sql.QPropAggregation)
+
 	if inScope.groupBy != nil {
 		err := sql.ErrNonAggregatedColumnWithoutGroupBy.New()
 		b.handleErr(err)
@@ -491,6 +496,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			win = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
+			b.ctx.QProps.Set(sql.QPropCountStar)
 		}
 	}
 	if win == nil {

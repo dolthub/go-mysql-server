@@ -759,6 +759,7 @@ func (b *Builder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scop
 		unsupportedShow := "SHOW COUNT(*) WARNINGS"
 		b.handleErr(sql.ErrUnsupportedFeature.New(unsupportedShow))
 	}
+	b.ctx.QProps.Set(sql.QPropShowWarnings)
 	var node sql.Node
 	node = plan.ShowWarnings(b.ctx.Session.Warnings())
 	if s.Limit != nil {

@@ -157,6 +157,10 @@ func validateIdentifiers(ct *plan.CreateTable) error {
 }
 
 func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+	if !ctx.QProps.IsSet(sql.QPropAlterTable) {
+		return n, transform.SameTree, nil
+	}
+
 	var sch sql.Schema
 	var indexes []string
 	var validator sql.SchemaValidator

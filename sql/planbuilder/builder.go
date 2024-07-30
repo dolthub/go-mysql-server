@@ -106,6 +106,11 @@ type ProcContext struct {
 // New takes ctx, catalog and parser. If the parser is nil, then default parser is mysql parser.
 func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
 	sqlMode := sql.LoadSqlMode(ctx)
+
+	if ctx.QProps == nil {
+		ctx.QProps = &sql.QueryProps{Flags: sql.NewFastIntSet()}
+	}
+
 	return &Builder{
 		ctx:        ctx,
 		cat:        cat,
@@ -206,6 +211,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 	case *ast.DDL:
 		return b.buildDDL(inScope, subQuery, fullQuery, n)
 	case *ast.AlterTable:
+		b.ctx.QProps.Set(sql.QPropAlterTable)
 		return b.buildAlterTable(inScope, subQuery, n)
 	case *ast.DBDDL:
 		return b.buildDBDDL(inScope, n)

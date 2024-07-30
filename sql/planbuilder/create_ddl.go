@@ -450,6 +450,8 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	queryScope := b.buildSelectStmt(inScope, selectStatement)
 
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
+	b.ctx.QProps.Set(sql.QPropRelSubquery)
+
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
 
 	if c.ViewSpec.CheckOption == ast.ViewCheckOptionLocal {

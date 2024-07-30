@@ -301,6 +301,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			fromScope := b.buildSelectStmt(sqScope, e.Select)
 			alias := strings.ToLower(t.As.String())
 			sq := plan.NewSubqueryAlias(alias, ast.String(e.Select), fromScope.node)
+			b.ctx.QProps.Set(sql.QPropRelSubquery)
 			sq = sq.WithCorrelated(sqScope.correlated())
 			sq = sq.WithVolatile(sqScope.volatile())
 			sq.IsLateral = t.Lateral
@@ -840,6 +841,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				view = n.AsView(viewDef.CreateViewStatement)
 			default:
 				view = plan.NewSubqueryAlias(name, create.Definition.TextDefinition, n).AsView(viewDef.CreateViewStatement)
+				b.ctx.QProps.Set(sql.QPropRelSubquery)
 			}
 		}
 	}
