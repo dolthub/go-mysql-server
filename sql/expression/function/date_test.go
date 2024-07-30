@@ -71,7 +71,7 @@ func TestAddDate(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 
-	// If the second argument is NOT an interval, then it's assumed to be a day interval
+	// If the second argument is NOT an interval, then ADDDATE works exactly like DATE_ADD
 	f, err = NewAddDate(
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewLiteral(int64(1), types.Int64))
@@ -90,6 +90,70 @@ func TestAddDate(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-03"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02 12:34:56", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-03 12:34:56"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02 12:34:56.123", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-03 12:34:56.123000"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02 12:34:56.123456", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-03 12:34:56.123456"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "SECOND"))
+	require.NoError(err)
+	expected = "2018-05-02 00:00:01"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(10), types.Int64), "MICROSECOND"))
+	require.NoError(err)
+	expected = "2018-05-02 00:00:00.000010"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewAddDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "MICROSECOND"))
+	require.NoError(err)
+	expected = "2018-05-02 00:00:00.000001"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+
 	// If the interval param is NULL, then NULL is returned
 	f2, err := NewAddDate(
 		expression.NewLiteral("2018-05-02", types.LongText),
@@ -98,7 +162,12 @@ func TestAddDate(t *testing.T) {
 	require.NoError(err)
 	require.Nil(result)
 
+	f, err = NewAddDate(
+		expression.NewGetField(0, types.Int64, "foo", true),
+		expression.NewLiteral(int64(1), types.Int64))
+
 	// If the date param is NULL, then NULL is returned
+	require.NoError(err)
 	result, err = f.Eval(ctx, sql.Row{nil})
 	require.NoError(err)
 	require.Nil(result)
@@ -149,7 +218,7 @@ func TestDateAdd(t *testing.T) {
 	)
 	require.NoError(err)
 
-	expected := time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)
+	expected := "2018-05-03"
 
 	result, err := f.Eval(ctx, sql.Row{"2018-05-02"})
 	require.NoError(err)
@@ -183,13 +252,43 @@ func TestSubDate(t *testing.T) {
 	_, err = NewSubDate(expression.NewLiteral("2018-05-02", types.LongText))
 	require.Error(err)
 
+	var expected, result interface{}
+	var f sql.Expression
+
+	f, err = NewSubDate(
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.Date),
+		expression.NewLiteral(int64(1), types.Int64))
+	require.NoError(err)
+	expected = time.Date(2018, 5, 1, 0, 0,0, 0, time.UTC)
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 0, time.UTC), types.Datetime),
+		expression.NewLiteral(int64(1), types.Int64))
+	require.NoError(err)
+	expected = time.Date(2018, 5, 1, 12, 34,56, 0, time.UTC)
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.DatetimeMaxPrecision),
+		expression.NewLiteral(int64(1), types.Int64))
+	require.NoError(err)
+	expected = time.Date(2018, 5, 1, 12, 34,56, 123456000, time.UTC)
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
 	// If the second argument is NOT an interval, then it's assumed to be a day interval
-	f, err := NewSubDate(
+	f, err = NewSubDate(
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected := time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)
-	result, err := f.Eval(ctx, sql.Row{})
+	expected = "2018-05-01"
+	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -202,6 +301,70 @@ func TestSubDate(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 
+	f, err = NewSubDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-01"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral("2018-05-02 12:34:56", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-01 12:34:56"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral("2018-05-02 12:34:56.123", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-01 12:34:56.123000"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral("2018-05-02 12:34:56.123456", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
+	require.NoError(err)
+	expected = "2018-05-01 12:34:56.123456"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "SECOND"))
+	require.NoError(err)
+	expected = "2018-05-01 23:59:59"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(10), types.Int64), "MICROSECOND"))
+	require.NoError(err)
+	expected = "2018-05-01 23:59:59.999990"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+	f, err = NewSubDate(
+		expression.NewLiteral("2018-05-02", types.LongText),
+		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "MICROSECOND"))
+	require.NoError(err)
+	expected = "2018-05-01 23:59:59.999999"
+	result, err = f.Eval(ctx, sql.Row{})
+	require.NoError(err)
+	require.Equal(expected, result)
+
+
 	// If the interval param is NULL, then NULL is returned
 	f2, err := NewSubDate(
 		expression.NewLiteral("2018-05-02", types.LongText),
@@ -209,6 +372,10 @@ func TestSubDate(t *testing.T) {
 	result, err = f2.Eval(ctx, sql.Row{nil})
 	require.NoError(err)
 	require.Nil(result)
+
+	f, err = NewSubDate(
+		expression.NewGetField(0, types.Int64, "foo", true),
+		expression.NewLiteral(int64(1), types.Int64))
 
 	// If the date param is NULL, then NULL is returned
 	result, err = f.Eval(ctx, sql.Row{nil})
