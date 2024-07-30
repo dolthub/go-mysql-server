@@ -45,28 +45,28 @@ func TestAddDate(t *testing.T) {
 	var f sql.Expression
 
 	f, err = NewAddDate(
-		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.Date),
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.Date),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected = time.Date(2018, 5, 3, 0, 0,0, 0, time.UTC)
+	expected = time.Date(2018, 5, 3, 0, 0, 0, 0, time.UTC)
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
-		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 0, time.UTC), types.Datetime),
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 0, time.UTC), types.Datetime),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected = time.Date(2018, 5, 3, 12, 34,56, 0, time.UTC)
+	expected = time.Date(2018, 5, 3, 12, 34, 56, 0, time.UTC)
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
-		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.DatetimeMaxPrecision),
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.DatetimeMaxPrecision),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected = time.Date(2018, 5, 3, 12, 34,56, 123456000, time.UTC)
+	expected = time.Date(2018, 5, 3, 12, 34, 56, 123456000, time.UTC)
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
@@ -152,7 +152,6 @@ func TestAddDate(t *testing.T) {
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
-
 
 	// If the interval param is NULL, then NULL is returned
 	f2, err := NewAddDate(
@@ -256,28 +255,28 @@ func TestSubDate(t *testing.T) {
 	var f sql.Expression
 
 	f, err = NewSubDate(
-		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.Date),
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.Date),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected = time.Date(2018, 5, 1, 0, 0,0, 0, time.UTC)
+	expected = time.Date(2018, 5, 1, 0, 0, 0, 0, time.UTC)
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
-		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 0, time.UTC), types.Datetime),
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 0, time.UTC), types.Datetime),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected = time.Date(2018, 5, 1, 12, 34,56, 0, time.UTC)
+	expected = time.Date(2018, 5, 1, 12, 34, 56, 0, time.UTC)
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
-		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34,56, 123456000, time.UTC), types.DatetimeMaxPrecision),
+		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.DatetimeMaxPrecision),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
-	expected = time.Date(2018, 5, 1, 12, 34,56, 123456000, time.UTC)
+	expected = time.Date(2018, 5, 1, 12, 34, 56, 123456000, time.UTC)
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
@@ -363,7 +362,6 @@ func TestSubDate(t *testing.T) {
 	result, err = f.Eval(ctx, sql.Row{})
 	require.NoError(err)
 	require.Equal(expected, result)
-
 
 	// If the interval param is NULL, then NULL is returned
 	f2, err := NewSubDate(

@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	)
+)
 
 // NewAddDate returns a new function expression, or an error if one couldn't be created. The ADDDATE
 // function is a synonym for DATE_ADD, with the one exception that if the second argument is NOT an
