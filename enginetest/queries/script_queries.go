@@ -2145,6 +2145,68 @@ CREATE TABLE tab3 (
 					{24, 200},
 				},
 			},
+
+			{
+				Query: "insert into t(pk) values (null);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 25}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(25)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+					{25, 0},
+				},
+			},
+
+
+			{
+				Query: "insert into t(pk) values ();",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 26}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(26)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+					{25, 0},
+					{26, 0},
+				},
+			},
 		},
 	},
 	{

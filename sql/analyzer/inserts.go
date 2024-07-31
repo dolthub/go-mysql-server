@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
@@ -106,6 +107,15 @@ func existsNonZeroValueCount(values sql.Node) bool {
 	return false
 }
 
+func findColIdx(colName string, colNames []string) int {
+	for i, name := range colNames {
+		if strings.EqualFold(name, colName) {
+			return i
+		}
+	}
+	return -1
+}
+
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
 // the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
 // result in an automatically generated value for an auto_increment column.
@@ -113,51 +123,27 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	projExprs := make([]sql.Expression, len(schema))
 	autoAutoIncrement := -1
 
-	for i, f := range schema {
-		columnExplicitlySpecified := false
-		for j, col := range columnNames {
-			if !strings.EqualFold(f.Name, col) {
-				continue
-			}
-
-			switch src := insertSource.(type) {
-			case *plan.Values:
-				for ii, tup := range src.ExpressionTuples {
-					expr := tup[j]
-					if unwrap, ok := expr.(*expression.Wrapper); ok {
-						expr = unwrap.Unwrap()
-					}
-					if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
-						autoAutoIncrement = ii
-						break
-					}
-				}
-			}
-
-			projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-			columnExplicitlySpecified = true
-			break
-		}
-
-		if !columnExplicitlySpecified {
-			defaultExpr := f.Default
+	for i, col := range schema {
+		colIdx := findColIdx(col.Name, columnNames)
+		// if column was not explicitly specified, try to substitute with default or generated value
+		if colIdx == -1 {
+			defaultExpr := col.Default
 			if defaultExpr == nil {
-				defaultExpr = f.Generated
+				defaultExpr = col.Generated
+			}
+			if !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
+				return nil, -1, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
 			}
 
-			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
-				return nil, -1, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
-			}
 			var err error
-
-			colIdx := make(map[string]int)
+			colNameToIdx := make(map[string]int)
 			for i, c := range schema {
-				colIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
+				colNameToIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
 			}
 			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
-					idx, ok := colIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
+					idx, ok := colNameToIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
 					if !ok {
 						return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
 					}
@@ -170,16 +156,43 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				return nil, -1, err
 			}
 			projExprs[i] = def
+		} else {
+			projExprs[i] = expression.NewGetField(colIdx, col.Type, col.Name, col.Nullable)
 		}
 
-		if f.AutoIncrement {
+		if col.AutoIncrement {
+			// Regardless of whether the column was explicitly specified, if it is an auto increment column, we need to
+			// wrap it in an AutoIncrement expression.
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
 				return nil, -1, err
 			}
 			projExprs[i] = ai
-			if autoAutoIncrement == -1 && !columnExplicitlySpecified {
+
+			if colIdx == -1 {
+				// Not Explicitly Specified AutoIncrement Column, increment the autoAutoIncrement index immediately
 				autoAutoIncrement = 0
+			} else {
+				// Additionally, the first NULL, DEFAULT, or empty value is what the last_insert_id should be set to.
+				switch src := insertSource.(type) {
+				case *plan.Values:
+					for ii, tup := range src.ExpressionTuples {
+						expr := tup[colIdx]
+						if unwrap, ok := expr.(*expression.Wrapper); ok {
+							expr = unwrap.Unwrap()
+						}
+						if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
+							autoAutoIncrement = ii
+							break
+						}
+						if lit, isLit := expr.(*expression.Literal); isLit {
+							if types.Null.Equals(lit.Type()) {
+								autoAutoIncrement = ii
+								break
+							}
+						}
+					}
+				}
 			}
 		}
 	}
