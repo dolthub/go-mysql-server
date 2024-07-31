@@ -1998,9 +1998,9 @@ CREATE TABLE tab3 (
 		SetUpScript: []string{
 			"create table t (pk int primary key auto_increment, i int default 0)",
 		},
-		Assertions:  []ScriptTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t(pk) values (default);",
+				Query:    "insert into t(pk) values (default);",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
@@ -2017,7 +2017,7 @@ CREATE TABLE tab3 (
 			},
 
 			{
-				Query: "insert into t(pk) values (default), (default), (default), (default), (default);",
+				Query:    "insert into t(pk) values (default), (default), (default), (default), (default);",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 5, InsertID: 2}}},
 			},
 			{
@@ -2039,7 +2039,7 @@ CREATE TABLE tab3 (
 			},
 
 			{
-				Query: "insert into t(pk) values (10), (default);",
+				Query:    "insert into t(pk) values (10), (default);",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 10}}},
 			},
 			{
@@ -2090,7 +2090,7 @@ CREATE TABLE tab3 (
 			},
 
 			{
-				Query: "insert into t(i) values (100);",
+				Query:    "insert into t(i) values (100);",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 23}}},
 			},
 			{
@@ -2118,7 +2118,7 @@ CREATE TABLE tab3 (
 			},
 
 			{
-				Query: "insert into t(i, pk) values (200, default);",
+				Query:    "insert into t(i, pk) values (200, default);",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 24}}},
 			},
 			{
