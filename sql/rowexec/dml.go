@@ -79,19 +79,19 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 	insertIter := &insertIter{
-		schema:              dstSchema,
-		tableNode:           ii.Destination,
-		inserter:            inserter,
-		replacer:            replacer,
-		updater:             updater,
-		rowSource:           rowIter,
-		autoAutoIncIdx:      ii.UnspecifiedAutoIncIdx,
-		unlocker:            unlocker,
-		updateExprs:         ii.OnDupExprs,
-		insertExprs:         insertExpressions,
-		checks:              ii.Checks(),
-		ctx:                 ctx,
-		ignore:              ii.Ignore,
+		schema:         dstSchema,
+		tableNode:      ii.Destination,
+		inserter:       inserter,
+		replacer:       replacer,
+		updater:        updater,
+		rowSource:      rowIter,
+		autoAutoIncIdx: ii.UnspecifiedAutoIncIdx,
+		unlocker:       unlocker,
+		updateExprs:    ii.OnDupExprs,
+		insertExprs:    insertExpressions,
+		checks:         ii.Checks(),
+		ctx:            ctx,
+		ignore:         ii.Ignore,
 	}
 
 	var ed sql.EditOpenerCloser
