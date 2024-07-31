@@ -413,9 +413,6 @@ func isTrue(e sql.Expression) bool {
 // ref: https://en.wikipedia.org/wiki/De_Morgan%27s_laws
 // note: the output tree identity will not be accurate
 func pushNotFilters(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if !ctx.QProps.IsSet(sql.QPropNotExpr) {
-		return n, transform.SameTree, nil
-	}
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var e sql.Expression
 		var err error

@@ -27,9 +27,6 @@ func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	}
 
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
-	//if hasShowWarningsNode(n) {
-	//	return n, transform.SameTree, nil
-	//}
 	if ctx.QProps.IsSet(sql.QPropShowWarnings) {
 		return n, transform.SameTree, nil
 	}

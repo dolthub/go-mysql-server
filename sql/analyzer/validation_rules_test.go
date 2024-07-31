@@ -152,6 +152,8 @@ func TestValidateGroupByErr(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
+	ctx.QProps.Set(sql.QPropAggregation)
+
 	err = sql.SystemVariables.SetGlobal("sql_mode", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES")
 	require.NoError(err)
 	_, _, err = vr.Apply(ctx, nil, p, nil, DefaultRuleSelector)
@@ -678,7 +680,9 @@ func TestValidateIntervalUsage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			_, _, err := validateIntervalUsage(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			ctx := sql.NewEmptyContext()
+			ctx.QProps.Set(sql.QPropInterval)
+			_, _, err := validateIntervalUsage(ctx, nil, tt.node, nil, DefaultRuleSelector)
 			if tt.ok {
 				require.NoError(err)
 			} else {
