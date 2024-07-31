@@ -63,7 +63,7 @@ type InsertInto struct {
 	Source                sql.Node
 	ColumnNames           []string
 	IsReplace             bool
-	HasUnspecifiedAutoInc bool
+	UnspecifiedAutoIncIdx int
 	OnDupExprs            []sql.Expression
 	checks                sql.CheckConstraints
 	Ignore                bool
@@ -136,9 +136,138 @@ func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
-func (ii InsertInto) WithColumnNames(cols []string) *InsertInto {
-	ii.ColumnNames = cols
-	return &ii
+func (ii *InsertInto) WithColumnNames(cols []string) *InsertInto {
+	nii := *ii
+	nii.ColumnNames = cols
+	return &nii
+}
+
+// WithChildren implements the Node interface.
+func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 1)
+	}
+
+	np := *ii
+	np.Destination = children[0]
+	return &np, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{
+		Database: CheckPrivilegeNameForDatabase(ii.db),
+		Table:    getTableName(ii.Destination),
+	}
+
+	if ii.IsReplace {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Insert, sql.PrivilegeType_Delete))
+	} else {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Insert))
+	}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*InsertInto) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
+// DisjointedChildren implements the interface DisjointedChildrenNode.
+func (ii *InsertInto) DisjointedChildren() [][]sql.Node {
+	return [][]sql.Node{
+		{ii.Destination},
+		{ii.Source},
+	}
+}
+
+// WithDisjointedChildren implements the interface DisjointedChildrenNode.
+func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
+	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 2)
+	}
+	np := *ii
+	np.Destination = children[0][0]
+	np.Source = children[1][0]
+	return &np, nil
+}
+
+// WithSource sets the source node for this insert, which is analyzed separately
+func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
+	np := *ii
+	np.Source = src
+	return &np
+}
+
+// WithUnspecifiedAutoIncrementIdx sets the unspecified auto increment index for this insert operation. Inserts with
+// this property set the LAST_INSERT_ID session variable, whereas inserts that manually specify values for an
+// auto-insert column do not.
+func (ii *InsertInto) WithUnspecifiedAutoIncrementIdx(unspecifiedAutoIncrementIdx int) *InsertInto {
+	np := *ii
+	np.UnspecifiedAutoIncIdx = unspecifiedAutoIncrementIdx
+	return &np
+}
+
+func (ii *InsertInto) String() string {
+	pr := sql.NewTreePrinter()
+	if ii.IsReplace {
+		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
+	} else {
+		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
+	}
+	_ = pr.WriteChildren(ii.Destination.String(), ii.Source.String())
+	return pr.String()
+}
+
+func (ii *InsertInto) DebugString() string {
+	pr := sql.NewTreePrinter()
+	if ii.IsReplace {
+		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
+	} else {
+		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
+	}
+	_ = pr.WriteChildren(sql.DebugString(ii.Destination), sql.DebugString(ii.Source))
+	return pr.String()
+}
+
+func (ii *InsertInto) Expressions() []sql.Expression {
+	return append(ii.OnDupExprs, ii.checks.ToExpressions()...)
+}
+
+func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks))
+	}
+
+	nii := *ii
+	nii.OnDupExprs = newExprs[:len(nii.OnDupExprs)]
+
+	var err error
+	nii.checks, err = nii.checks.FromExpressions(newExprs[len(nii.OnDupExprs):])
+	if err != nil {
+		return nil, err
+	}
+
+	return &nii, nil
+}
+
+// Resolved implements the Resolvable interface.
+func (ii *InsertInto) Resolved() bool {
+	if !ii.Destination.Resolved() || !ii.Source.Resolved() {
+		return false
+	}
+	for _, updateExpr := range ii.OnDupExprs {
+		if !updateExpr.Resolved() {
+			return false
+		}
+	}
+	for _, checkExpr := range ii.checks {
+		if !checkExpr.Expr.Resolved() {
+			return false
+		}
+	}
+	return true
 }
 
 // InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
@@ -242,133 +371,6 @@ func (id *InsertDestination) CheckPrivileges(ctx *sql.Context, opChecker sql.Pri
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (id *InsertDestination) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, id.Child)
-}
-
-// WithChildren implements the Node interface.
-func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 1)
-	}
-
-	np := *ii
-	np.Destination = children[0]
-	return &np, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(ii.db),
-		Table:    getTableName(ii.Destination),
-	}
-
-	if ii.IsReplace {
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Insert, sql.PrivilegeType_Delete))
-	} else {
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Insert))
-	}
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (*InsertInto) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 7
-}
-
-// DisjointedChildren implements the interface DisjointedChildrenNode.
-func (ii *InsertInto) DisjointedChildren() [][]sql.Node {
-	return [][]sql.Node{
-		{ii.Destination},
-		{ii.Source},
-	}
-}
-
-// WithDisjointedChildren implements the interface DisjointedChildrenNode.
-func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, error) {
-	if len(children) != 2 || len(children[0]) != 1 || len(children[1]) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 2)
-	}
-	np := *ii
-	np.Destination = children[0][0]
-	np.Source = children[1][0]
-	return &np, nil
-}
-
-// WithSource sets the source node for this insert, which is analyzed separately
-func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
-	np := *ii
-	np.Source = src
-	return &np
-}
-
-// WithUnspecifiedAutoIncrement sets the unspecified auto increment flag for this insert operation. Inserts with this
-// property set the LAST_INSERT_ID session variable, whereas inserts that manually specify values for an auto-insert
-// column do not.
-func (ii *InsertInto) WithUnspecifiedAutoIncrement(unspecifiedAutoIncrement bool) *InsertInto {
-	np := *ii
-	np.HasUnspecifiedAutoInc = unspecifiedAutoIncrement
-	return &np
-}
-
-func (ii InsertInto) String() string {
-	pr := sql.NewTreePrinter()
-	if ii.IsReplace {
-		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
-	} else {
-		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
-	}
-	_ = pr.WriteChildren(ii.Destination.String(), ii.Source.String())
-	return pr.String()
-}
-
-func (ii InsertInto) DebugString() string {
-	pr := sql.NewTreePrinter()
-	if ii.IsReplace {
-		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
-	} else {
-		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
-	}
-	_ = pr.WriteChildren(sql.DebugString(ii.Destination), sql.DebugString(ii.Source))
-	return pr.String()
-}
-
-func (ii *InsertInto) Expressions() []sql.Expression {
-	return append(ii.OnDupExprs, ii.checks.ToExpressions()...)
-}
-
-func (ii InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks))
-	}
-
-	ii.OnDupExprs = newExprs[:len(ii.OnDupExprs)]
-
-	var err error
-	ii.checks, err = ii.checks.FromExpressions(newExprs[len(ii.OnDupExprs):])
-	if err != nil {
-		return nil, err
-	}
-
-	return &ii, nil
-}
-
-// Resolved implements the Resolvable interface.
-func (ii *InsertInto) Resolved() bool {
-	if !ii.Destination.Resolved() || !ii.Source.Resolved() {
-		return false
-	}
-	for _, updateExpr := range ii.OnDupExprs {
-		if !updateExpr.Resolved() {
-			return false
-		}
-	}
-	for _, checkExpr := range ii.checks {
-		if !checkExpr.Expr.Resolved() {
-			return false
-		}
-	}
-	return true
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {

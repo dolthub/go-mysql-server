@@ -82,12 +82,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, autoAutoIncrement, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, autoAutoIncIdx, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project).WithUnspecifiedAutoIncrement(autoAutoIncrement), transform.NewTree, nil
+		return insert.WithSource(project).WithUnspecifiedAutoIncrementIdx(autoAutoIncIdx), transform.NewTree, nil
 	})
 }
 
@@ -109,18 +109,34 @@ func existsNonZeroValueCount(values sql.Node) bool {
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
 // the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
 // result in an automatically generated value for an auto_increment column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, error) {
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, error) {
 	projExprs := make([]sql.Expression, len(schema))
-	autoAutoIncrement := false
+	autoAutoIncrement := -1
 
 	for i, f := range schema {
 		columnExplicitlySpecified := false
 		for j, col := range columnNames {
-			if strings.EqualFold(f.Name, col) {
-				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-				columnExplicitlySpecified = true
-				break
+			if !strings.EqualFold(f.Name, col) {
+				continue
 			}
+
+			switch src := insertSource.(type) {
+			case *plan.Values:
+				for ii, tup := range src.ExpressionTuples {
+					expr := tup[j]
+					if unwrap, ok := expr.(*expression.Wrapper); ok {
+						expr = unwrap.Unwrap()
+					}
+					if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
+						autoAutoIncrement = ii
+						break
+					}
+				}
+			}
+
+			projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
+			columnExplicitlySpecified = true
+			break
 		}
 
 		if !columnExplicitlySpecified {
@@ -130,7 +146,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			}
 
 			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
-				return nil, false, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
+				return nil, -1, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
 			var err error
 
@@ -151,7 +167,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				}
 			})
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 			projExprs[i] = def
 		}
@@ -159,12 +175,11 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		if f.AutoIncrement {
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 			projExprs[i] = ai
-
-			if !columnExplicitlySpecified {
-				autoAutoIncrement = true
+			if autoAutoIncrement == -1 {
+				autoAutoIncrement = 0
 			}
 		}
 	}
@@ -177,7 +192,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			// ColumnDefaultValue to create the UUID), then update the project to include the AutoUuid expression.
 			newExpr, identity, err := insertAutoUuidExpression(ctx, columnDefaultValue, autoUuidCol)
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 			if identity == transform.NewTree {
 				projExprs[autoUuidColIdx] = newExpr
@@ -188,7 +203,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			// the AutoUuid expression to it.
 			err := wrapAutoUuidInValuesTuples(ctx, autoUuidCol, insertSource, columnNames)
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 		}
 	}

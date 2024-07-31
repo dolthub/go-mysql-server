@@ -36,7 +36,7 @@ type insertIter struct {
 	updater             sql.RowUpdater
 	rowSource           sql.RowIter
 	lastInsertIdUpdated bool
-	hasAutoAutoIncValue bool
+	autoAutoIncIdx      int
 	unlocker            func()
 	ctx                 *sql.Context
 	insertExprs         []sql.Expression
@@ -171,6 +171,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		}
 	}
 
+	// TODO: only do this when auto increment is triggered
 	i.updateLastInsertId(ctx, row)
 
 	return row, nil
@@ -291,15 +292,14 @@ func (i *insertIter) Close(ctx *sql.Context) error {
 }
 
 func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
-	if i.lastInsertIdUpdated {
+	if i.autoAutoIncIdx < 0 {
 		return
 	}
-
-	if i.hasAutoAutoIncValue {
+	if i.autoAutoIncIdx == 0 {
 		autoIncVal := i.getAutoIncVal(row)
 		ctx.SetLastQueryInfoInt(sql.LastInsertId, autoIncVal)
-		i.lastInsertIdUpdated = true
 	}
+	i.autoAutoIncIdx--
 }
 
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {

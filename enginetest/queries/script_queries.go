@@ -1994,6 +1994,127 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "last_insert_id(default) behavior",
+		SetUpScript: []string{
+			"create table t (pk int primary key auto_increment, i int default 0)",
+		},
+		Assertions:  []ScriptTestAssertion{
+			{
+				Query: "insert into t(pk) values (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(1)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+
+			{
+				Query: "insert into t(pk) values (default), (default), (default), (default), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 5, InsertID: 2}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(2)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+				},
+			},
+
+			{
+				Query: "insert into t(pk) values (10), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(11)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+				},
+			},
+
+			{
+				Query: "insert into t(i) values (100);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(11)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{12, 100},
+				},
+			},
+
+			{
+				Query: "insert into t(i, pk) values (200, default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 5}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(13)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{12, 100},
+					{13, 200},
+				},
+			},
+		},
+	},
+	{
 		Name: "row_count() behavior",
 		SetUpScript: []string{
 			"create table b (x int primary key)",
