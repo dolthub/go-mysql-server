@@ -2063,7 +2063,7 @@ CREATE TABLE tab3 (
 			},
 
 			{
-				Query: "insert into t(pk) values (20), (default), (default);",
+				Query:    "insert into t(pk) values (20), (default), (default);",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 20}}},
 			},
 			{
@@ -2147,7 +2147,7 @@ CREATE TABLE tab3 (
 			},
 
 			{
-				Query: "insert into t(pk) values (null);",
+				Query:    "insert into t(pk) values (null);",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 25}}},
 			},
 			{
@@ -2176,9 +2176,8 @@ CREATE TABLE tab3 (
 				},
 			},
 
-
 			{
-				Query: "insert into t(pk) values ();",
+				Query:    "insert into t(pk) values ();",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 26}}},
 			},
 			{
