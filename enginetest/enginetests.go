@@ -5302,14 +5302,28 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
-			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Bindings: map[string]*query.BindVariable{
+				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
+			},
+		},
+		{
+			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]*query.BindVariable{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
-			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Bindings: map[string]*query.BindVariable{
+				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
+			},
+		},
+		{
+			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]*query.BindVariable{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},

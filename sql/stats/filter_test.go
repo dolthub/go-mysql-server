@@ -555,7 +555,7 @@ func TestPrefixKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, _, err := PrefixKey(tt.statistic.Histogram(), tt.statistic.ColSet(), tt.statistic.Typs, tt.statistic.FuncDeps(), tt.pref, make([]bool, len(tt.pref)))
+			res, err := PrefixKey(tt.statistic.Histogram(), tt.statistic.Typs, tt.pref)
 			require.NoError(t, err)
 			newStat, err := tt.statistic.WithHistogram(res)
 			require.NoError(t, err)

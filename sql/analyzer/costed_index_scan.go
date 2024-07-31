@@ -70,40 +70,69 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 			return n, transform.SameTree, nil
 		}
 
-		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
-			lookup, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression))
+		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
+			lookup, _, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression)...)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			if lookup.IsEmpty() {
+			if ok {
+				return indexSearchableLookup(n, rt, lookup, filter.Expression, newFilter)
+			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
-			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			return plan.NewFilter(filter.Expression, ret), transform.NewTree, nil
-		} else if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
-			indexes, err := iat.GetIndexes(ctx)
-			if err != nil {
-				return n, transform.SameTree, err
-			}
-			ita, _, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, expression.SplitConjunction(filter.Expression))
-			if err != nil || ita == nil {
-				return n, transform.SameTree, err
-			}
-			var ret sql.Node = ita
-			if aliasName != "" {
-				ret = plan.NewTableAlias(aliasName, ret)
-			}
-			// excluded from tree + not included in index scan => filter above scan
-			if len(filters) > 0 {
-				ret = plan.NewFilter(expression.JoinAnd(filters...), ret)
-			}
-			return ret, transform.NewTree, nil
+		}
+		if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
+			return costedIndexLookup(ctx, n, a.Catalog, iat, rt, aliasName, filter.Expression)
 		}
 		return n, transform.SameTree, nil
 	})
+}
+
+func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	if lookup.IsEmpty() {
+		return n, transform.SameTree, nil
+	}
+	var ret sql.Node
+	var err error
+	ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+
+	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+	if !ok {
+		return n, transform.SameTree, nil
+	}
+
+	if !iat.PreciseMatch() {
+		// cannot drop any filters
+		newFilter = oldFilter
+	}
+
+	if newFilter != nil {
+		ret = plan.NewFilter(newFilter, ret)
+	}
+	return ret, transform.NewTree, nil
+}
+
+func costedIndexLookup(ctx *sql.Context, n sql.Node, cat sql.Catalog, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+	indexes, err := iat.GetIndexes(ctx)
+	if err != nil {
+		return n, transform.SameTree, err
+	}
+	ita, _, filters, err := getCostedIndexScan(ctx, cat, rt, indexes, expression.SplitConjunction(oldFilter))
+	if err != nil || ita == nil {
+		return n, transform.SameTree, err
+	}
+	var ret sql.Node = ita
+	if aliasName != "" {
+		ret = plan.NewTableAlias(aliasName, ret)
+	}
+	// excluded from tree + not included in index scan => filter above scan
+	if len(filters) > 0 {
+		ret = plan.NewFilter(expression.JoinAnd(filters...), ret)
+	}
+	return ret, transform.NewTree, nil
 }
 
 func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
@@ -248,18 +277,23 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 
 	var retFilters []sql.Expression
 	if !iat.PreciseMatch() {
-		// cannot drop any filters
+		// cannot drop filters
 		retFilters = filters
 	} else if len(b.leftover) > 0 {
 		// excluded from tree + not included in index scan => filter above scan
 		retFilters = b.leftover
 	}
 
-	bestStat, err := c.bestStat.WithHistogram(c.bestHist)
-	if err != nil {
-		return nil, nil, nil, err
+	var bestStat sql.Statistic
+	if c.bestStat.FuncDeps().HasMax1Row() {
+		bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
+	} else {
+		bestStat, err = c.bestStat.WithHistogram(c.bestHist)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		bestStat = stats.UpdateCounts(bestStat)
 	}
-	bestStat = stats.UpdateCounts(bestStat)
 
 	if bestStat.FuncDeps().HasMax1Row() && !ctx.QProps.JoinIsSet() && !ctx.QProps.SubqueryIsSet() && len(lookup.Ranges) == 1 {
 		// Strict index lookup without a join or subquery scope will return
@@ -295,67 +329,67 @@ func addIndexScans(m *memo.Memo) error {
 
 		indexes := filter.Child.First.(memo.SourceRel).Indexes()
 
-		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok && is.SkipIndexCosting() {
-			lookup, err := is.LookupForExpressions(m.Ctx, filter.Filters)
+		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
+			lookup, fds, newFilter, ok, err := is.LookupForExpressions(m.Ctx, filter.Filters...)
 			if err != nil {
 				m.HandleErr(err)
 			}
-			if lookup.IsEmpty() {
-				return nil
-			}
-			ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
-			if err != nil {
-				m.HandleErr(err)
-
-			}
-			// TODO add ITA to filter group
-			// todo memoize ITA
-			// we explicitly put ITA as child of filter group for this shortcut
-			var idx *memo.Index
-			for _, i := range indexes {
-				if i.SqlIdx().ID() == lookup.Index.ID() {
-					idx = i
-					break
+			if ok {
+				if lookup.IsEmpty() {
+					return nil
 				}
-			}
-			itaGroup := m.MemoizeIndexScan(nil, ret, aliasName, idx, nil)
-			m.MemoizeFilter(filter.Group(), itaGroup, filter.Filters)
-		} else {
-			sqlIndexes := make([]sql.Index, len(indexes))
-			for i, idx := range indexes {
-				sqlIndexes[i] = idx.SqlIdx()
-			}
-			ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters)
-			if err != nil {
-				m.HandleErr(err)
-			}
-			if ita != nil {
+				ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+				if err != nil {
+					m.HandleErr(err)
+				}
+
+				iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
+				if !ok {
+					return nil
+				}
+
+				var keepFilters []sql.Expression
+				if !iat.PreciseMatch() {
+					// cannot drop any filters
+					keepFilters = filter.Filters
+				} else {
+					keepFilters = expression.SplitConjunction(newFilter)
+				}
+
 				var idx *memo.Index
 				for _, i := range indexes {
-					if ita.Index().ID() == i.SqlIdx().ID() {
+					if i.SqlIdx().ID() == lookup.Index.ID() {
 						idx = i
 						break
 					}
 				}
-				var itaGrp *memo.ExprGroup
-				if len(filters) > 0 {
-					// set the indexed path as best. correct for cases where
-					// indexScan is incompatible with best join operator
-					itaGrp = m.MemoizeIndexScan(nil, ita, aliasName, idx, stat)
-					itaGrp.Best = itaGrp.First
-					itaGrp.Done = true
-					itaGrp.HintOk = true
-					itaGrp.Best.SetDistinct(memo.NoDistinctOp)
-					fGrp := m.MemoizeFilter(filter.Group(), itaGrp, filters)
-					fGrp.Best = fGrp.First
-					fGrp.Done = true
-					fGrp.HintOk = true
-					fGrp.Best.SetDistinct(memo.NoDistinctOp)
-				} else {
-					itaGrp = m.MemoizeIndexScan(filter.Group(), ita, aliasName, idx, stat)
-				}
+
+				m.MemoizeStaticIndexAccess(filter.Group(), aliasName, idx, ret, keepFilters, &stats.Statistic{RowCnt: 1, DistinctCnt: 1, Fds: fds})
+				return nil
+			} else if is.SkipIndexCosting() {
+				return nil
 			}
 		}
+
+		sqlIndexes := make([]sql.Index, len(indexes))
+		for i, idx := range indexes {
+			sqlIndexes[i] = idx.SqlIdx()
+		}
+		ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters)
+		if err != nil {
+			m.HandleErr(err)
+		}
+		if ita != nil {
+			var idx *memo.Index
+			for _, i := range indexes {
+				if ita.Index().ID() == i.SqlIdx().ID() {
+					idx = i
+					break
+				}
+			}
+			m.MemoizeStaticIndexAccess(filter.Group(), aliasName, idx, ita, filters, stat)
+		}
+
 		return nil
 	})
 }
@@ -452,10 +486,13 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		}
 	}()
 
-	if c.bestStat == nil || rowCnt < c.bestCnt {
+	if c.bestStat == nil {
 		update = true
 		return
 	} else if c.bestStat.FuncDeps().HasMax1Row() {
+		return
+	} else if rowCnt < c.bestCnt {
+		update = true
 		return
 	} else if c.bestPrefix == 0 || prefix == 0 && c.bestPrefix != prefix {
 		// any prefix is better than no prefix
@@ -1173,10 +1210,10 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, bucket
 
 	if exact.Len()+conj.applied.Len() == filter.childCnt() {
 		// matched all filters
-		return conj.hist, conj.fds, sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
+		return conj.hist, conj.getFds(), sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
 	}
 
-	return conj.hist, conj.fds, exact.Union(conj.applied), conj.missingPrefix, nil
+	return conj.hist, conj.getFds(), exact.Union(conj.applied), conj.missingPrefix, nil
 }
 
 func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, error) {
@@ -1280,7 +1317,7 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buck
 	default:
 		conj := newConjCollector(s, buckets, ordinals)
 		conj.add(filter)
-		return conj.hist, conj.fds, true, conj.missingPrefix, nil
+		return conj.hist, conj.getFds(), true, conj.missingPrefix, nil
 	}
 }
 
@@ -1579,7 +1616,6 @@ func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[
 	return &conjCollector{
 		stat:     s,
 		hist:     hist,
-		fds:      s.FuncDeps(),
 		ordinals: ordinals,
 		eqVals:   make([]interface{}, len(ordinals)),
 		nullable: make([]bool, len(ordinals)),
@@ -1591,7 +1627,6 @@ func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[
 type conjCollector struct {
 	stat          sql.Statistic
 	hist          []sql.HistogramBucket
-	fds           *sql.FuncDepSet
 	ordinals      map[string]int
 	missingPrefix int
 	constant      sql.FastIntSet
@@ -1616,6 +1651,14 @@ func (c *conjCollector) add(f *iScanLeaf) error {
 		err = c.addIneq(f.Op(), f.gf.Name(), f.litValue)
 	}
 	return err
+}
+
+func (c *conjCollector) getFds() *sql.FuncDepSet {
+	constCols := sql.ColSet{}
+	c.constant.ForEach(func(i int) {
+		constCols.Add(sql.ColumnId(i))
+	})
+	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, constCols, nil)
 }
 
 func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error {
@@ -1645,7 +1688,7 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 
 		// truncate buckets
 		var err error
-		c.hist, c.fds, err = stats.PrefixKey(c.stat.Histogram(), c.stat.ColSet(), c.stat.Types(), c.stat.FuncDeps(), c.eqVals[:ord+1], c.nullable)
+		c.hist, err = stats.PrefixKey(c.stat.Histogram(), c.stat.Types(), c.eqVals[:ord+1])
 		if err != nil {
 			return err
 		}

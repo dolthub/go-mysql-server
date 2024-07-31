@@ -48,6 +48,10 @@ const (
 	// TimestampDatetimeLayout is the formatting string with the layout of the timestamp
 	// using the format of Go "time" package.
 	TimestampDatetimeLayout = "2006-01-02 15:04:05.999999"
+
+	// DatetimeLayoutNoTrim is the formatting string with the layout of the datetime that
+	// doesn't trim trailing zeros
+	DatetimeLayoutNoTrim = "2006-01-02 15:04:05.000000"
 )
 
 const (

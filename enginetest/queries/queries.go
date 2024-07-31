@@ -6309,7 +6309,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.Row{{"2018-05-03"}},
 	},
 	{
 		Query:    "SELECT DATE_ADD(DATE('2018-05-02'), INTERVAL 1 day)",
@@ -6321,7 +6321,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.Row{{"2018-05-01"}},
 	},
 	{
 		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",

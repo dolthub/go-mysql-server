@@ -537,7 +537,7 @@ func (h *Handler) resultForDefaultIter(
 	iter sql.RowIter,
 	callback func(*sqltypes.Result, bool) error,
 	resultFields []*querypb.Field,
-	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, err error) {
+	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, returnErr error) {
 	defer trace2.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
@@ -548,7 +548,7 @@ func (h *Handler) resultForDefaultIter(
 
 	pan2err := func() {
 		if recoveredPanic := recover(); recoveredPanic != nil {
-			err = fmt.Errorf("handler caught panic: %v", recoveredPanic)
+			returnErr = fmt.Errorf("handler caught panic: %v", recoveredPanic)
 		}
 	}
 
@@ -661,13 +661,15 @@ func (h *Handler) resultForDefaultIter(
 		return iter.Close(ctx)
 	})
 
-	err = eg.Wait()
+	err := eg.Wait()
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		if verboseErrorLogging {
 			fmt.Printf("Err: %+v", err)
 		}
+		returnErr = err
 	}
+
 	return
 }
 

@@ -181,36 +181,28 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 		Query: `SELECT s_quantity, s_data, s_dist_09 s_dist FROM stock2 WHERE s_i_id = 2532 AND s_w_id= 1 FOR UPDATE`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3 as s_dist]\n" +
-			" └─ Filter\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ stock2.s_w_id:1!null\n" +
-			"     │   └─ 1 (smallint)\n" +
-			"     └─ IndexedTableAccess(stock2)\n" +
-			"         ├─ index: [stock2.s_i_id]\n" +
-			"         ├─ static: [{[2532, 2532]}]\n" +
-			"         ├─ colSet: (1-17)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: stock2\n" +
-			"             └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ IndexedTableAccess(stock2)\n" +
+			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
+			"     ├─ colSet: (1-17)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: stock2\n" +
+			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ Filter\n" +
-			"     ├─ (stock2.s_w_id = 1)\n" +
-			"     └─ IndexedTableAccess(stock2)\n" +
-			"         ├─ index: [stock2.s_i_id]\n" +
-			"         ├─ filters: [{[2532, 2532]}]\n" +
-			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ IndexedTableAccess(stock2)\n" +
+			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
+			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ Filter\n" +
-			"     ├─ (stock2.s_w_id = 1)\n" +
-			"     └─ IndexedTableAccess(stock2)\n" +
-			"         ├─ index: [stock2.s_i_id]\n" +
-			"         ├─ filters: [{[2532, 2532]}]\n" +
-			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ IndexedTableAccess(stock2)\n" +
+			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
+			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 	},
 	{
@@ -218,18 +210,14 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET stock2.s_quantity:2 = 39 (tinyint))\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ stock2.s_w_id:1!null\n" +
-			"             │   └─ 1 (smallint)\n" +
-			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_i_id]\n" +
-			"                 ├─ static: [{[2532, 2532]}]\n" +
-			"                 ├─ colSet: (1-17)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: stock2\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
+			"         └─ IndexedTableAccess(stock2)\n" +
+			"             ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"             ├─ static: [{[1, 1], [2532, 2532]}]\n" +
+			"             ├─ colSet: (1-17)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: stock2\n" +
+			"                 └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
 			"",
 	},
 	{
@@ -281,36 +269,28 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 		Query: `SELECT s_quantity, s_data, s_dist_09 s_dist FROM stock2 WHERE s_i_id = 2532 AND s_w_id= 1 FOR UPDATE`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3 as s_dist]\n" +
-			" └─ Filter\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ stock2.s_w_id:1!null\n" +
-			"     │   └─ 1 (smallint)\n" +
-			"     └─ IndexedTableAccess(stock2)\n" +
-			"         ├─ index: [stock2.s_i_id]\n" +
-			"         ├─ static: [{[2532, 2532]}]\n" +
-			"         ├─ colSet: (1-17)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: stock2\n" +
-			"             └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ IndexedTableAccess(stock2)\n" +
+			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
+			"     ├─ colSet: (1-17)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: stock2\n" +
+			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ Filter\n" +
-			"     ├─ (stock2.s_w_id = 1)\n" +
-			"     └─ IndexedTableAccess(stock2)\n" +
-			"         ├─ index: [stock2.s_i_id]\n" +
-			"         ├─ filters: [{[2532, 2532]}]\n" +
-			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ IndexedTableAccess(stock2)\n" +
+			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
+			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [stock2.s_quantity, stock2.s_data, stock2.s_dist_09 as s_dist]\n" +
-			" └─ Filter\n" +
-			"     ├─ (stock2.s_w_id = 1)\n" +
-			"     └─ IndexedTableAccess(stock2)\n" +
-			"         ├─ index: [stock2.s_i_id]\n" +
-			"         ├─ filters: [{[2532, 2532]}]\n" +
-			"         └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
+			" └─ IndexedTableAccess(stock2)\n" +
+			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"     ├─ filters: [{[1, 1], [2532, 2532]}]\n" +
+			"     └─ columns: [s_i_id s_w_id s_quantity s_dist_09 s_data]\n" +
 			"",
 	},
 	{
@@ -318,18 +298,14 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET stock2.s_quantity:2 = 5 (tinyint))\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ stock2.s_w_id:1!null\n" +
-			"             │   └─ 1 (smallint)\n" +
-			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_i_id]\n" +
-			"                 ├─ static: [{[64568, 64568]}]\n" +
-			"                 ├─ colSet: (1-17)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: stock2\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
+			"         └─ IndexedTableAccess(stock2)\n" +
+			"             ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"             ├─ static: [{[1, 1], [64568, 64568]}]\n" +
+			"             ├─ colSet: (1-17)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: stock2\n" +
+			"                 └─ columns: [s_i_id s_w_id s_quantity s_dist_01 s_dist_02 s_dist_03 s_dist_04 s_dist_05 s_dist_06 s_dist_07 s_dist_08 s_dist_09 s_dist_10 s_ytd s_order_cnt s_remote_cnt s_data]\n" +
 			"",
 	},
 	{

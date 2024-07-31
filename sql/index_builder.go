@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"math"
 	"strings"
 
@@ -521,5 +522,66 @@ func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
 		Index:           b.idx,
 		Ranges:          RangeCollection{{b.rng}},
 		IsSpatialLookup: true,
+	}, nil
+}
+
+// EqualityIndexBuilder is a range builder builds equality expressions
+// more quickly than the default builder
+type EqualityIndexBuilder struct {
+	idx   Index
+	rng   Range
+	empty bool
+}
+
+func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
+	return &EqualityIndexBuilder{idx: idx, rng: make(Range, len(idx.Expressions()))}
+}
+
+// AddEquality represents colExpr = key. For IN expressions, pass all of them in the same AddEquality call.
+func (b *EqualityIndexBuilder) AddEquality(_ *Context, colIdx int, k interface{}) error {
+	if b.empty {
+		return nil
+	}
+	if colIdx >= len(b.rng) {
+		return fmt.Errorf("invalid index for building index lookup")
+	}
+	typ := b.idx.ColumnExpressionTypes()[colIdx].Type
+	// if converting from float to int results in rounding, then it's empty range
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		f, c := floor(k), ceil(k)
+		switch k.(type) {
+		case float32, float64:
+			if f != c {
+				b.empty = true
+				return nil
+			}
+		case decimal.Decimal:
+			if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+				b.empty = true
+				return nil
+			}
+		}
+	}
+
+	var err error
+	k, _, err = typ.Convert(k)
+	if err != nil {
+		return err
+	}
+	b.rng[colIdx] = ClosedRangeColumnExpr(k, k, typ)
+
+	return nil
+}
+
+func (b *EqualityIndexBuilder) Build(_ *Context) (IndexLookup, error) {
+	if b.empty {
+		for i, cet := range b.idx.ColumnExpressionTypes() {
+			b.rng[i] = EmptyRangeColumnExpr(cet.Type)
+		}
+	}
+	return IndexLookup{
+		Index:        b.idx,
+		Ranges:       RangeCollection{b.rng},
+		IsEmptyRange: b.empty,
 	}, nil
 }
