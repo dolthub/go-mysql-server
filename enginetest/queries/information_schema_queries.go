@@ -236,6 +236,20 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query: `SHOW FULL COLUMNS FROM mytable FROM mydb`,
+		Expected: []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
+		},
+	},
+	{
+		Query: `SHOW FULL COLUMNS FROM othertable in foo`,
+		Expected: []sql.Row{
+			{"text", "varchar(20)", "utf8mb4_0900_bin", "NO", "PRI", nil, "", "", ""},
+			{"number", "mediumint", nil, "YES", "", nil, "", "", ""},
+		},
+	},
+	{
 		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
 		Expected: []sql.Row{
 			{"mytable"},
@@ -321,6 +335,23 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SHOW INDEXES FROM mytaBLE`,
+		ExpectedColumns: sql.Schema{
+			&sql.Column{Name: "Table", Type: types.LongText},
+			&sql.Column{Name: "Non_unique", Type: types.Int32},
+			&sql.Column{Name: "Key_name", Type: types.LongText},
+			&sql.Column{Name: "Seq_in_index", Type: types.Uint32},
+			&sql.Column{Name: "Column_name", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Collation", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Cardinality", Type: types.Int64},
+			&sql.Column{Name: "Sub_part", Type: types.Int64, Nullable: true},
+			&sql.Column{Name: "Packed", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Null", Type: types.LongText},
+			&sql.Column{Name: "Index_type", Type: types.LongText},
+			&sql.Column{Name: "Comment", Type: types.LongText},
+			&sql.Column{Name: "Index_comment", Type: types.LongText},
+			&sql.Column{Name: "Visible", Type: types.LongText},
+			&sql.Column{Name: "Expression", Type: types.LongText, Nullable: true},
+		},
 		Expected: []sql.Row{
 			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
@@ -328,6 +359,18 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM othertable FROM foo`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM foo.othertable`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -362,7 +405,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  `a` bigint,\n" +
 				"  `b` varchar(20),\n" +
 				"  PRIMARY KEY (`pk`),\n" +
-				"  KEY `ab` (`a`,`b`),\n" +
+				"  KEY `fk1` (`a`,`b`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
@@ -747,7 +790,7 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	},
 	{
 		Query:    `SELECT * FROM information_schema.table_constraints_extensions where table_name = 'fk_tbl'`,
-		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "ab", "fk_tbl", nil, nil}},
+		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,
@@ -1386,8 +1429,8 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"bit_2", "bit(2)", 2, nil, nil, nil, nil, "", "", "", "", nil},
 					{"some_blob", "blob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
 					{"char_1", "char(1)", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
-					{"some_date", "date", nil, nil, nil, nil, nil, "", "", "", "", nil},
-					{"date_time", "datetime(6)", nil, nil, 0, nil, nil, "", "", "", "", nil},
+					{"some_date", "date", nil, nil, 0, nil, nil, "", "", "", "", nil},
+					{"date_time", "datetime(6)", nil, nil, 6, nil, nil, "", "", "", "", nil},
 					{"decimal_52", "decimal(5,2)", 5, 2, nil, nil, nil, "", "", "", "", nil},
 					{"some_double", "double", 22, nil, nil, nil, nil, "", "", "", "", nil},
 					{"some_enum", "enum('s','m','l')", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
@@ -1407,7 +1450,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"small_int", "smallint", 5, 0, nil, nil, nil, "", "", "", "", nil},
 					{"some_text", "text", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
 					{"time_6", "time(6)", nil, nil, 6, nil, nil, "", "", "", "", nil},
-					{"time_stamp", "timestamp(6)", nil, nil, 0, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"time_stamp", "timestamp(6)", nil, nil, 6, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
 					{"tiny_blob", "tinyblob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
 					{"tiny_int", "tinyint", 3, 0, nil, nil, nil, "", "", "", "", nil},
 					{"tiny_text", "tinytext", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
@@ -1713,6 +1756,21 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 				Query: "select srs_id, srs_name, organization, organization_coordsys_id, definition, description from information_schema.st_spatial_reference_systems where srs_id = 1234",
 				Expected: []sql.Row{
 					{uint32(1234), "test_name", "test_org", uint32(1234), "test_definition", "test_description"},
+				},
+			},
+		},
+	},
+	{
+
+		Name: "information_schema.tables has table comments",
+		SetUpScript: []string{
+			"create table t (i int primary key) comment 'this is a table comment';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select table_comment from information_schema.tables where table_name = 't';",
+				Expected: []sql.Row{
+					{"this is a table comment"},
 				},
 			},
 		},

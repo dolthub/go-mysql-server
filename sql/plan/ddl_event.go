@@ -104,7 +104,7 @@ func (c *CreateEvent) IsReadOnly() bool {
 
 // Schema implements the sql.Node interface.
 func (c *CreateEvent) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 // Children implements the sql.Node interface.
@@ -339,6 +339,7 @@ func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
 	//       analyzer for ProcedureCalls, so we initialize it here.
 	// TODO: How does this work for triggers, which would have the same issue; seems like there
 	//       should be a cleaner way to handle this
+	// TODO: treat this the same way we treat triggers and stored procedures
 	beginEndBlock.Pref = expression.NewProcedureReference()
 
 	newChildren := make([]sql.Node, len(beginEndBlock.Children()))
@@ -610,7 +611,7 @@ func (d *DropEvent) String() string {
 
 // Schema implements the sql.Node interface.
 func (d *DropEvent) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 func (d *DropEvent) IsReadOnly() bool {

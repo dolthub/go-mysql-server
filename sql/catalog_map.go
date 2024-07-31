@@ -111,7 +111,7 @@ func (t MapCatalog) UnlockTables(ctx *Context, id uint32) error {
 	panic("implement me")
 }
 
-func (t MapCatalog) GetTableStats(ctx *Context, db, table string) ([]Statistic, error) {
+func (t MapCatalog) GetTableStats(ctx *Context, db string, table Table) ([]Statistic, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -136,11 +136,11 @@ func (t MapCatalog) DropStats(ctx *Context, qual StatQualifier, cols []string) e
 	panic("implement me")
 }
 
-func (t MapCatalog) RowCount(ctx *Context, db, table string) (uint64, error) {
+func (t MapCatalog) RowCount(ctx *Context, db string, table Table) (uint64, error) {
 	return 1, nil
 }
 
-func (t MapCatalog) DataLength(ctx *Context, db, table string) (uint64, error) {
+func (t MapCatalog) DataLength(ctx *Context, db string, table Table) (uint64, error) {
 	return 1, nil
 }
 

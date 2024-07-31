@@ -75,7 +75,7 @@ func (n *ShowIndexes) Schema() sql.Schema {
 		&sql.Column{Name: "Table", Type: types.LongText},
 		&sql.Column{Name: "Non_unique", Type: types.Int32},
 		&sql.Column{Name: "Key_name", Type: types.LongText},
-		&sql.Column{Name: "Seq_in_index", Type: types.Int32},
+		&sql.Column{Name: "Seq_in_index", Type: types.Uint32},
 		&sql.Column{Name: "Column_name", Type: types.LongText, Nullable: true},
 		&sql.Column{Name: "Collation", Type: types.LongText, Nullable: true},
 		&sql.Column{Name: "Cardinality", Type: types.Int64},

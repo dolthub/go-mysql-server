@@ -774,6 +774,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select count(i) from mytable",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
 		// Assert that SYSDATE() returns different times on each call in a query (unlike NOW())
 		// Using the maximum precision for fractional seconds, lets us see a difference.
 		Query:    "select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);",
@@ -1632,6 +1638,149 @@ Select * from (
 			{-5040},
 		},
 	},
+	{
+		Query: "values row(1, 3), row(2, 2), row(3, 1);",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1);",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 1 asc;",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 1 desc;",
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 2},
+			{1, 3},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 2 asc;",
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 2},
+			{1, 3},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 2 desc;",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) limit 2;",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+	{
+		Query: "values (1, 3), (2, 2), (3, 1) order by 2 limit 2;",
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 2},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: types.Int8,
+			},
+			{
+				Name: "column_1",
+				Type: types.Int8,
+			},
+		},
+	},
+
 	{
 		Query:    "SELECT TIMEDIFF(null, '2017-11-30 22:59:59');",
 		Expected: []sql.Row{{nil}},
@@ -5518,6 +5667,13 @@ Select * from (
 		},
 	},
 	{
+		// SHOW VARIABLES is case-insensitive
+		Query: `SHOW VARIABLES LIKE 'gtID_mO%'`,
+		Expected: []sql.Row{
+			{"gtid_mode", "OFF"},
+		},
+	},
+	{
 		Query: `SHOW VARIABLES LIKE 'gtid%'`,
 		Expected: []sql.Row{
 			{"gtid_executed", ""},
@@ -6153,7 +6309,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.Row{{"2018-05-03"}},
 	},
 	{
 		Query:    "SELECT DATE_ADD(DATE('2018-05-02'), INTERVAL 1 day)",
@@ -6165,7 +6321,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.Row{{"2018-05-01"}},
 	},
 	{
 		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",
@@ -7389,6 +7545,19 @@ Select * from (
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query: "select cast(X'9876543210' as char(10))",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "select cast(X'9876543210' as binary)",
+		Expected: []sql.Row{
+			{[]uint8{0x98, 0x76, 0x54, 0x32, 0x10}},
+		},
+	},
+
+	{
 		Query:    "SELECT 1/0 FROM dual",
 		Expected: []sql.Row{{nil}},
 	},
@@ -7863,55 +8032,55 @@ Select * from (
 	{
 		Query: `SHOW STATUS LIKE 'aborted\_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
 		Expected: []sql.Row{
-			{"Aborted_clients", 0},
+			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Bytes_sent'`,
 		Expected: []sql.Row{
-			{"Bytes_sent", 0},
+			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Bytes_sent'`,
 		Expected: []sql.Row{
-			{"Bytes_sent", 0},
+			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Com\_stmt\_%'`,
 		Expected: []sql.Row{
-			{"Com_stmt_close", 0},
-			{"Com_stmt_execute", 0},
-			{"Com_stmt_fetch", 0},
-			{"Com_stmt_prepare", 0},
-			{"Com_stmt_reprepare", 0},
-			{"Com_stmt_reset", 0},
-			{"Com_stmt_send_long_data", 0},
+			{"Com_stmt_close", uint64(0)},
+			{"Com_stmt_execute", uint64(0)},
+			{"Com_stmt_fetch", uint64(0)},
+			{"Com_stmt_prepare", uint64(0)},
+			{"Com_stmt_reprepare", uint64(0)},
+			{"Com_stmt_reset", uint64(0)},
+			{"Com_stmt_send_long_data", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
 		Expected: []sql.Row{
-			{"Com_stmt_close", 0},
-			{"Com_stmt_execute", 0},
-			{"Com_stmt_fetch", 0},
-			{"Com_stmt_prepare", 0},
-			{"Com_stmt_reprepare", 0},
-			{"Com_stmt_reset", 0},
-			{"Com_stmt_send_long_data", 0},
+			{"Com_stmt_close", uint64(0)},
+			{"Com_stmt_execute", uint64(0)},
+			{"Com_stmt_fetch", uint64(0)},
+			{"Com_stmt_prepare", uint64(0)},
+			{"Com_stmt_reprepare", uint64(0)},
+			{"Com_stmt_reset", uint64(0)},
+			{"Com_stmt_send_long_data", uint64(0)},
 		},
 	},
 	{
@@ -9591,6 +9760,141 @@ from typestable`,
 			{3},
 		},
 	},
+
+	{
+		Query: "select to_days('2024-04-15');",
+		Expected: []sql.Row{
+			{739356},
+		},
+	},
+	{
+		Query: "select from_days(739356);",
+		Expected: []sql.Row{
+			{time.Date(2024, 4, 15, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select last_day('2000-02-21');",
+		Expected: []sql.Row{
+			{time.Date(2000, 2, 29, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: "select last_day('1999-11-05');",
+		Expected: []sql.Row{
+			{time.Date(1999, 11, 30, 0, 0, 0, 0, time.UTC)},
+		},
+	},
+
+	{
+		Query: "select cast(' \t 123 \t ' as signed);",
+		Expected: []sql.Row{
+			{123},
+		},
+	},
+	{
+		Query: "select cast('\n123\n' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as signed);",
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: "select cast(' \t 123 \t ' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(123)},
+		},
+	},
+	{
+		Query: "select cast('\n123\n' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as unsigned);",
+		Expected: []sql.Row{
+			{uint64(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"123.456"},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"0.000"},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as decimal(10,3));",
+		Expected: []sql.Row{
+			{"0.000"},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as double);",
+		Expected: []sql.Row{
+			{123.456},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as double);",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as double);",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as float);",
+		Expected: []sql.Row{
+			{float32(123.456)},
+		},
+	},
+	{
+		Query: "select cast('\\0123\\0' as float);",
+		Expected: []sql.Row{
+			{float32(0)},
+		},
+	},
+	{
+		Query: "select cast(' \t \n\\0123 \t ' as float);",
+		Expected: []sql.Row{
+			{float32(0)},
+		},
+	},
+
+	{
+		Query: "select 'abc' like NULL",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -10187,8 +10491,8 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDuplicateAliasOrTable,
 	},
 	{
-		Query:       `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
-		ExpectedErr: expression.ErrInvalidRegexp,
+		Query:          `SELECT * FROM mytable WHERE s REGEXP("*main.go")`,
+		ExpectedErrStr: "the given regular expression is invalid",
 	},
 	{
 		Query:       `SELECT SUBSTRING(s, 1, 10) AS sub_s, SUBSTRING(SUB_S, 2, 3) AS sub_sub_s FROM mytable`,
@@ -10380,7 +10684,7 @@ var ErrorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `CREATE TABLE test (pk int, primary key(pk, noexist))`,
-		ExpectedErr: sql.ErrUnknownIndexColumn,
+		ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 	},
 	{
 		Query:       `CREATE TABLE test (pk int auto_increment, pk2 int auto_increment, primary key (pk))`,
@@ -10594,6 +10898,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:          `select cot(0)`,
 		ExpectedErrStr: "DOUBLE out of range for COT",
 	},
+	{
+		Query:       `SELECT * FROM (values row(1,2), row(1,2,3)) t`,
+		ExpectedErr: sql.ErrColValCountMismatch,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
@@ -10731,6 +11039,7 @@ type WriteQueryTest struct {
 	SelectQuery         string
 	ExpectedSelect      []sql.Row
 	Bindings            map[string]*query.BindVariable
+	Skip                bool
 	SkipServerEngine    bool
 }
 

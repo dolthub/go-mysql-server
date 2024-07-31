@@ -1050,7 +1050,10 @@ func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.Wind
 
 		// unwrap JSON values
 		if js, ok := v.(sql.JSONWrapper); ok {
-			v = js.ToInterface()
+			v, err = js.ToInterface()
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		vals = append(vals, v)
@@ -1134,7 +1137,10 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 
 		// unwrap JSON values
 		if js, ok := val.(sql.JSONWrapper); ok {
-			val = js.ToInterface()
+			val, err = js.ToInterface()
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Update the map.

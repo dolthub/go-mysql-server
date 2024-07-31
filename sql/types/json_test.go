@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -210,6 +211,29 @@ func TestValuer(t *testing.T) {
 	res, err = withVal.Value()
 	require.NoError(t, err)
 	require.Equal(t, `{"a": "one"}`, res)
+}
+
+func TestLazyJsonDocument(t *testing.T) {
+	testCases := []struct {
+		s    string
+		json interface{}
+	}{
+		{`"1"`, "1"},
+		{`{"a": [1.0, null]}`, map[string]any{"a": []any{1.0, nil}}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.s, func(t *testing.T) {
+			doc := NewLazyJSONDocument([]byte(testCase.s))
+			val, err := doc.ToInterface()
+			require.NoError(t, err)
+			require.Equal(t, testCase.json, val)
+		})
+	}
+	t.Run("lazy docs only error when deserialized", func(t *testing.T) {
+		doc := NewLazyJSONDocument([]byte("not valid json"))
+		_, err := doc.ToInterface()
+		require.Error(t, err)
+	})
 }
 
 type JsonRoundtripTest struct {
@@ -589,11 +613,12 @@ var JsonSetTests = []JsonMutationTest{
 }
 
 func TestJsonSet(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonSetTests {
 		t.Run("JSON set: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Set(test.path, val)
+			res, changed, err := doc.Set(ctx, test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -780,11 +805,12 @@ var JsonInsertTests = []JsonMutationTest{
 }
 
 func TestJsonInsert(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonInsertTests {
 		t.Run("JSON insert: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Insert(test.path, val)
+			res, changed, err := doc.Insert(ctx, test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -876,10 +902,11 @@ var JsonRemoveTests = []JsonMutationTest{
 }
 
 func TestJsonRemove(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonRemoveTests {
 		t.Run("JSON remove: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
-			res, changed, err := doc.Remove(test.path)
+			res, changed, err := doc.Remove(ctx, test.path)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1041,11 +1068,12 @@ var JsonReplaceTests = []JsonMutationTest{
 }
 
 func TestJsonReplace(t *testing.T) {
+	ctx := context.Background()
 	for _, test := range JsonReplaceTests {
 		t.Run("JSON replace: "+test.desc, func(t *testing.T) {
 			doc := MustJSON(test.doc)
 			val := MustJSON(test.value)
-			res, changed, err := doc.Replace(test.path, val)
+			res, changed, err := doc.Replace(ctx, test.path, val)
 			require.NoError(t, err)
 			assert.Equal(t, MustJSON(test.resultVal), res)
 			assert.Equal(t, test.changed, changed)
@@ -1275,11 +1303,12 @@ var JsonPathParseErrTests = []parseErrTest{
 }
 
 func TestJsonPathErrors(t *testing.T) {
+	ctx := context.Background()
 	doc := MustJSON(`{"a": {"b": 2} , "c": [1, 2, 3]}`)
 
 	for _, test := range JsonPathParseErrTests {
 		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
-			_, changed, err := doc.Set(test.path, MustJSON(`{"a": 42}`))
+			_, changed, err := doc.Set(ctx, test.path, MustJSON(`{"a": 42}`))
 			assert.Equal(t, false, changed)
 			require.Error(t, err)
 			assert.Equal(t, test.expectErrStr, err.Error())
@@ -1323,8 +1352,9 @@ func TestJsonInsertErrors(t *testing.T) {
 func TestRemoveRoot(t *testing.T) {
 	// Fairly special case situation which doesn't mesh with our other tests. MySQL returns a specfic message when you
 	// attempt to remove the root document.
+	ctx := context.Background()
 	doc := MustJSON(`{"a": 1, "b": 2}`)
-	_, changed, err := doc.Remove("$")
+	_, changed, err := doc.Remove(ctx, "$")
 
 	require.Error(t, err)
 	assert.Equal(t, "The path expression '$' is not allowed in this context.", err.Error())

@@ -209,56 +209,18 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "physical columns added after virtual one",
-			SetUpScript: []string{
-				"create table t (pk int primary key, col1 int as (pk + 1));",
-				"insert into t (pk) values (1), (3)",
-				"alter table t add index idx1 (col1, pk);",
-				"alter table t add index idx2 (col1);",
-				"alter table t add column col2 int;",
-				"alter table t add column col3 int;",
-				"insert into t (pk, col2, col3) values (2, 4, 5);",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "select * from t order by pk",
-					Expected: []sql.Row{
-						{1, 2, nil, nil},
-						{2, 3, 4, 5},
-						{3, 4, nil, nil},
-					},
-				},
-				{
-					Query: "select * from t where col1 = 2",
-					Expected: []sql.Row{
-						{1, 2, nil, nil},
-					},
-				},
-				{
-					Query: "select * from t where col1 = 3 and pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
-					},
-				},
-				{
-					Query: "select * from t where pk = 2",
-					Expected: []sql.Row{
-						{2, 3, 4, 5},
-					},
-				},
-			},
+			Name:        "test script",
+			SetUpScript: []string{},
+			Assertions:  []queries.ScriptTestAssertion{},
 		},
 	}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.MydbData, setup.Parent_childData)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
@@ -306,7 +268,7 @@ func TestQueryPlanTODOs(t *testing.T) {
 	}
 	for _, tt := range queries.QueryPlanTODOs {
 		t.Run(tt.Query, func(t *testing.T) {
-			enginetest.TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, enginetest.DebugQueryPlan)
+			enginetest.TestQueryPlan(t, harness, e, tt)
 		})
 	}
 }
@@ -350,6 +312,102 @@ func TestQueryPlans(t *testing.T) {
 		t.Run(indexInit.name, func(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestQueryPlans(t, harness, queries.PlanTests)
+		})
+	}
+}
+
+func TestSingleQueryPlan(t *testing.T) {
+	t.Skip()
+	tt := []queries.QueryPlanTest{
+		{
+			Query: `SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)`,
+			ExpectedPlan: "Project\n" +
+				" ├─ columns: [mytable.i:0!null, selfjoin.i:2!null]\n" +
+				" └─ SemiJoin\n" +
+				"     ├─ MergeJoin\n" +
+				"     │   ├─ cmp: Eq\n" +
+				"     │   │   ├─ mytable.i:0!null\n" +
+				"     │   │   └─ selfjoin.i:2!null\n" +
+				"     │   ├─ IndexedTableAccess(mytable)\n" +
+				"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+				"     │   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+				"     │   │   ├─ colSet: (1,2)\n" +
+				"     │   │   ├─ tableId: 1\n" +
+				"     │   │   └─ Table\n" +
+				"     │   │       ├─ name: mytable\n" +
+				"     │   │       └─ columns: [i s]\n" +
+				"     │   └─ Filter\n" +
+				"     │       ├─ Eq\n" +
+				"     │       │   ├─ selfjoin.i:0!null\n" +
+				"     │       │   └─ 1 (tinyint)\n" +
+				"     │       └─ TableAlias(selfjoin)\n" +
+				"     │           └─ IndexedTableAccess(mytable)\n" +
+				"     │               ├─ index: [mytable.i]\n" +
+				"     │               ├─ static: [{[1, 1]}]\n" +
+				"     │               ├─ colSet: (3,4)\n" +
+				"     │               ├─ tableId: 2\n" +
+				"     │               └─ Table\n" +
+				"     │                   ├─ name: mytable\n" +
+				"     │                   └─ columns: [i s]\n" +
+				"     └─ Project\n" +
+				"         ├─ columns: [1 (tinyint)]\n" +
+				"         └─ ProcessTable\n" +
+				"             └─ Table\n" +
+				"                 ├─ name: \n" +
+				"                 └─ columns: []\n" +
+				"",
+			ExpectedEstimates: "Project\n" +
+				" ├─ columns: [mytable.i, selfjoin.i]\n" +
+				" └─ SemiJoin (estimated cost=4.515 rows=1)\n" +
+				"     ├─ MergeJoin (estimated cost=6.090 rows=3)\n" +
+				"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
+				"     │   ├─ IndexedTableAccess(mytable)\n" +
+				"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+				"     │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+				"     │   └─ Filter\n" +
+				"     │       ├─ (selfjoin.i = 1)\n" +
+				"     │       └─ TableAlias(selfjoin)\n" +
+				"     │           └─ IndexedTableAccess(mytable)\n" +
+				"     │               ├─ index: [mytable.i]\n" +
+				"     │               └─ filters: [{[1, 1]}]\n" +
+				"     └─ Project\n" +
+				"         ├─ columns: [1]\n" +
+				"         └─ Table\n" +
+				"             └─ name: \n" +
+				"",
+			ExpectedAnalysis: "Project\n" +
+				" ├─ columns: [mytable.i, selfjoin.i]\n" +
+				" └─ SemiJoin (estimated cost=4.515 rows=1) (actual rows=1 loops=1)\n" +
+				"     ├─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=1 loops=1)\n" +
+				"     │   ├─ cmp: (mytable.i = selfjoin.i)\n" +
+				"     │   ├─ IndexedTableAccess(mytable)\n" +
+				"     │   │   ├─ index: [mytable.i,mytable.s]\n" +
+				"     │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+				"     │   └─ Filter\n" +
+				"     │       ├─ (selfjoin.i = 1)\n" +
+				"     │       └─ TableAlias(selfjoin)\n" +
+				"     │           └─ IndexedTableAccess(mytable)\n" +
+				"     │               ├─ index: [mytable.i]\n" +
+				"     │               └─ filters: [{[1, 1]}]\n" +
+				"     └─ Project\n" +
+				"         ├─ columns: [1]\n" +
+				"         └─ Table\n" +
+				"             └─ name: \n" +
+				"",
+		},
+	}
+
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, 2, true, nil)
+	harness.Setup(setup.PlanSetup...)
+
+	for _, test := range tt {
+		t.Run(test.Query, func(t *testing.T) {
+			engine, err := harness.NewEngine(t)
+			engine.EngineAnalyzer().Verbose = true
+			engine.EngineAnalyzer().Debug = true
+
+			require.NoError(t, err)
+			enginetest.TestQueryPlan(t, harness, engine, test)
 		})
 	}
 }
@@ -605,6 +663,10 @@ func TestSpatialIndexScripts(t *testing.T) {
 
 func TestSpatialIndexPlans(t *testing.T) {
 	enginetest.TestSpatialIndexPlans(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestNumericErrorScripts(t *testing.T) {
+	enginetest.TestNumericErrorScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestUserPrivileges(t *testing.T) {

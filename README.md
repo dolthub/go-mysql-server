@@ -12,7 +12,7 @@ implementing your own backend.
 versioning, is the main production database implementation of this
 package.  [Check
 out](https://docs.dolthub.com/introduction/what-is-dolt) that project
-for reference a implementation. Or, hop into the Dolt discord
+for a reference implementation. Or, hop into the Dolt Discord server
 [here](https://discord.com/invite/RFwfYpu) if you want to talk to the
 [core developers](https://www.dolthub.com/team) behind
 **go-mysql-server** and Dolt.

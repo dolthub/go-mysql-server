@@ -1,9 +1,10 @@
 package plan
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -58,8 +59,7 @@ func (u *UpdateHistogram) Resolved() bool {
 }
 
 func (u *UpdateHistogram) String() string {
-	statMap := u.stats.ToInterface()
-	statBytes, _ := json.Marshal(statMap)
+	statBytes, _ := types.MarshallJson(u.stats)
 	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statBytes)
 }
 

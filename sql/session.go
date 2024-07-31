@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -73,6 +74,7 @@ type Session interface {
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
 	SetUserVariable(ctx *Context, varName string, value interface{}, typ Type) error
 	// GetSessionVariable returns this session's value of the system variable with the given name.
+	// To access global scope, use sql.SystemVariables.GetGlobal instead.
 	GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
 	// GetUserVariable returns this session's value of the user variable with the given name, along with its most
 	// appropriate type.
@@ -83,7 +85,7 @@ type Session interface {
 	// To access global scope, use sql.StatusVariables instead.
 	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)
 	// SetStatusVariable sets the value of the status variable with session scope with the given name.
-	// To access global scope, use sql.StatusVariables instead.
+	// To access global scope, use sql.StatusVariables.GetGlobal instead.
 	SetStatusVariable(ctx *Context, statVarName string, val interface{}) error
 	// GetAllStatusVariables returns a map of all status variables with session scope and their values.
 	// To access global scope, use sql.StatusVariables instead.
@@ -106,6 +108,10 @@ type Session interface {
 	ClearWarnings()
 	// WarningCount returns a number of session warnings
 	WarningCount() uint16
+	// LockWarnings prevents the session warnings from being cleared.
+	LockWarnings()
+	// UnlockWarnings allows the session warnings to be cleared.
+	UnlockWarnings()
 	// AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates
 	AddLock(lockName string) error
 	// DelLock removes a lock from the set of locks owned by this user
@@ -643,13 +649,17 @@ func (i *spanIter) Close(ctx *Context) error {
 	return i.iter.Close(ctx)
 }
 
-func defaultLastQueryInfo() map[string]any {
-	return map[string]any{
-		RowCount:       int64(0),
-		FoundRows:      int64(1), // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
-		LastInsertId:   int64(0),
-		LastInsertUuid: "",
-	}
+func defaultLastQueryInfo() map[string]*atomic.Value {
+	ret := make(map[string]*atomic.Value)
+	ret[RowCount] = &atomic.Value{}
+	ret[RowCount].Store(int64(0))
+	ret[FoundRows] = &atomic.Value{}
+	ret[FoundRows].Store(int64(1)) // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issue)
+	ret[LastInsertId] = &atomic.Value{}
+	ret[LastInsertId].Store(int64(0))
+	ret[LastInsertUuid] = &atomic.Value{}
+	ret[LastInsertUuid].Store("")
+	return ret
 }
 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html

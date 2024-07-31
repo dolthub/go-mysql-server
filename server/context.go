@@ -79,7 +79,7 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.lastPid
 }
 
-// Add a connection to be tracked by the SessionManager. Should be called as
+// AddConn adds a connection to be tracked by the SessionManager. Should be called as
 // soon as possible after the server has accepted the connection. Results in
 // the connection being tracked by ProcessList and being available through
 // KillConnection. The connection will be tracked until RemoveConn is called,
@@ -177,8 +177,8 @@ func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 }
 
 // NewContext creates a new context for the session at the given conn.
-func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
-	return s.NewContextWithQuery(conn, "")
+func (s *SessionManager) NewContext(ctx context.Context, conn *mysql.Conn, query string) (*sql.Context, error) {
+	return s.NewContextWithQuery(ctx, conn, query)
 }
 
 func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, error) {
@@ -203,8 +203,7 @@ func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Con
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
-func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*sql.Context, error) {
-	ctx := context.Background()
+func (s *SessionManager) NewContextWithQuery(ctx context.Context, conn *mysql.Conn, query string) (*sql.Context, error) {
 	sess, err := s.getOrCreateSession(ctx, conn)
 
 	if err != nil {

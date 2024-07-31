@@ -3447,7 +3447,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table t",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10),\n  `v2` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10),\n  `v2` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
@@ -3526,7 +3526,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table t",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `v1` varchar(10),\n  `v2` varchar(10),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `v1` varchar(10),\n  `v2` varchar(10),\n  UNIQUE KEY `v1` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "insert into t values ('a', 'a'), ('ab','ab'), ('abc', 'abc'), ('abcde', 'abcde')",
@@ -3606,7 +3606,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table t",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10),\n  `v2` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` varchar(10),\n  `v2` varchar(10),\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"}},
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
@@ -3693,7 +3693,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table t",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` text,\n  `v2` text,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1v2` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `i` int NOT NULL,\n  `v1` text,\n  `v2` text,\n  PRIMARY KEY (`i`),\n  UNIQUE KEY `v1` (`v1`(3),`v2`(5))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "insert into t values (0, 'a', 'a'), (1, 'ab','ab'), (2, 'abc', 'abc'), (3, 'abcde', 'abcde')",
@@ -4188,6 +4188,51 @@ var IndexQueries = []ScriptTest{
 				Expected: []sql.Row{
 					{1, 0, 123},
 					{1, 1, 456},
+				},
+			},
+		},
+	},
+	{
+		Name: "secondary index errors",
+		SetUpScript: []string{
+			"create table json_tbl (pk int primary key, i int, j json);",
+			"create table idx_tbl (pk int primary key, j int, index(j));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create index idx on json_tbl(j)",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create index idx on json_tbl(i, j)",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create index idx on json_tbl(j, i)",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "alter table idx_tbl modify column j json;",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create table t1 (i int primary key, j json, index(j));",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create table t2 (i int, j json, index(i, j));",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				Query:       "create table t3 (i int, j json, index(j, i));",
+				ExpectedErr: sql.ErrJSONIndex,
+			},
+			{
+				// Ensure the above statements did not create tables without indexes
+				Query: "show tables;",
+				Expected: []sql.Row{
+					{"json_tbl"},
+					{"idx_tbl"},
 				},
 			},
 		},

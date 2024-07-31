@@ -15,6 +15,8 @@
 package json
 
 import (
+	"context"
+	goJson "encoding/json"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -24,57 +26,87 @@ import (
 var ErrInvalidPath = fmt.Errorf("Invalid JSON path expression")
 var ErrPathWildcard = fmt.Errorf("Path expressions may not contain the * and ** tokens")
 
+type invalidJson string
+
+var _ error = invalidJson("")
+
+func (err invalidJson) Error() string {
+	return "invalid json"
+}
+
 // getMutableJSONVal returns a JSONValue from the given row and expression. The underling value is deeply copied so that
 // you are free to use the mutation functions on the returned value.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
 func getMutableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (types.MutableJSON, error) {
 	doc, err := getJSONDocumentFromRow(ctx, row, json)
-	if err != nil || doc == nil || doc.Val == nil {
+	if err != nil || doc == nil {
 		return nil, err
 	}
 
-	mutable := types.DeepCopyJson(doc.Val)
-	return types.JSONDocument{Val: mutable}, nil
+	return mutableJsonDoc(ctx, doc)
 }
 
-// getSearchableJSONVal returns a SearchableJSONValue from the given row and expression. The underling value is not copied
+// getSearchableJSONVal returns a SearchableJSONValue from the given row and expression. The underlying value is not copied
 // so it is intended to be used for read-only operations.
 // nil will be returned only if the inputs are nil. This will not return an error, so callers must check.
 func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.JSONWrapper, error) {
-	doc, err := getJSONDocumentFromRow(ctx, row, json)
-	if err != nil || doc == nil || doc.Val == nil {
-		return nil, err
-	}
-
-	return doc, nil
+	return getJSONDocumentFromRow(ctx, row, json)
 }
 
 // getJSONDocumentFromRow returns a JSONDocument from the given row and expression. Helper function only intended to be
 // used by functions in this file.
-func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) (*types.JSONDocument, error) {
+func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.JSONWrapper, error) {
 	js, err := json.Eval(ctx, row)
 	if err != nil || js == nil {
 		return nil, err
 	}
 
-	var converted interface{}
-	switch js.(type) {
-	case string, []interface{}, map[string]interface{}, sql.JSONWrapper:
-		converted, _, err = types.JSON.Convert(js)
+	var jsonData interface{}
+
+	switch jsType := js.(type) {
+	case string:
+		// When coercing a string into a JSON object, don't use LazyJSONDocument; actually unmarshall it.
+		// This guarantees that we validate and normalize the JSON.
+		strData, _, err := types.LongBlob.Convert(js)
 		if err != nil {
-			return nil, sql.ErrInvalidJSONText.New(js)
+			return nil, err
 		}
+		if err = goJson.Unmarshal(strData.([]byte), &jsonData); err != nil {
+			return nil, invalidJson(jsType)
+		}
+		return types.JSONDocument{Val: jsonData}, nil
+	case sql.JSONWrapper:
+		return jsType, nil
 	default:
 		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
+}
 
-	doc, ok := converted.(types.JSONDocument)
-	if !ok {
-		// This should never happen, but just in case.
-		doc = types.JSONDocument{Val: js.(sql.JSONWrapper).ToInterface()}
+func getJsonFunctionError(functionName string, argumentPosition int, err error) error {
+	if sql.ErrInvalidArgument.Is(err) {
+		return sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
+	}
+	if ij, ok := err.(invalidJson); ok {
+		return sql.ErrInvalidJSONText.New(argumentPosition, functionName, string(ij))
+	}
+	return err
+}
+
+// mutableJsonDoc returns a copy of |wrapper| that can be safely mutated.
+func mutableJsonDoc(ctx context.Context, wrapper sql.JSONWrapper) (types.MutableJSON, error) {
+	// Call Clone() even if |wrapper| isn't mutable. This is because some implementations (like LazyJsonDocument)
+	// cache and reuse the result of ToInterface(), and mutating this map may cause unintended behavior.
+	clonedJsonWrapper := wrapper.Clone(ctx)
+
+	if mutable, ok := clonedJsonWrapper.(types.MutableJSON); ok {
+		return mutable, nil
 	}
 
-	return &doc, nil
+	val, err := clonedJsonWrapper.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	return &types.JSONDocument{Val: val}, nil
 }
 
 // pathValPair is a helper struct for use by functions which take json paths paired with a json value. eg. JSON_SET, JSON_INSERT, etc.
@@ -84,7 +116,7 @@ type pathValPair struct {
 }
 
 // buildPath builds a path from the given row and expression
-func buildPath(ctx *sql.Context, pathExp sql.Expression, row sql.Row) (interface{}, error) {
+func buildPath(ctx *sql.Context, pathExp sql.Expression, row sql.Row) (*string, error) {
 	path, err := pathExp.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -92,10 +124,11 @@ func buildPath(ctx *sql.Context, pathExp sql.Expression, row sql.Row) (interface
 	if path == nil {
 		return nil, nil
 	}
-	if _, ok := path.(string); !ok {
-		return "", ErrInvalidPath
+	if s, ok := path.(string); ok {
+		return &s, nil
+	} else {
+		return nil, ErrInvalidPath
 	}
-	return path.(string), nil
 }
 
 // buildPathValue builds a pathValPair from the given row and expressions. This is a common pattern in json methods to have
@@ -118,5 +151,5 @@ func buildPathValue(ctx *sql.Context, pathExp sql.Expression, valExp sql.Express
 		jsonVal = types.JSONDocument{Val: val}
 	}
 
-	return &pathValPair{path.(string), jsonVal}, nil
+	return &pathValPair{*path, jsonVal}, nil
 }

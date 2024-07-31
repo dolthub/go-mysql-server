@@ -754,7 +754,9 @@ var _ sql.RowIter = (*declareHandlerIter)(nil)
 
 // Next implements the interface sql.RowIter.
 func (d *declareHandlerIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.Pref.InitializeHandler(d.Statement, d.Action, d.Condition)
+	if err := d.Pref.InitializeHandler(d.Statement, d.Action, d.Condition); err != nil {
+		return nil, err
+	}
 	return nil, io.EOF
 }
 

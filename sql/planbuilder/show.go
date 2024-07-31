@@ -78,6 +78,20 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 		return b.buildShowStatus(inScope, s)
 	case ast.KeywordString(ast.PLUGINS):
 		return b.buildShowPlugins(inScope, s)
+	case "binary log status":
+		outScope = inScope.push()
+		showRep := plan.NewShowBinlogStatus()
+		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryCatalog); ok && binCat.HasBinlogPrimaryController() {
+			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
+		}
+		outScope.node = showRep
+	case "binary logs":
+		outScope = inScope.push()
+		showRep := plan.NewShowBinlogs()
+		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryCatalog); ok && binCat.HasBinlogPrimaryController() {
+			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
+		}
+		outScope.node = showRep
 	case "replica status":
 		outScope = inScope.push()
 		showRep := plan.NewShowReplicaStatus()
@@ -103,14 +117,14 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 
 	db := s.Database
 	if db == "" {
-		db = s.Table.Qualifier.String()
+		db = s.Table.DbQualifier.String()
 	}
 	if db == "" {
 		db = b.currentDb().Name()
 	}
 
 	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildResolvedTable(inScope, db, tableName, asOf)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, s.Table, asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
 		b.handleErr(err)
@@ -148,7 +162,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		if pks != nil {
 			showCreate.PrimaryKeySchema = pks.PrimaryKeySchema()
 		}
-		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt)
+		outScope.node = b.modifySchemaTarget(outScope, showCreate, rt.Schema())
 
 	}
 	return
@@ -170,7 +184,7 @@ func (b *Builder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scop
 
 func (b *Builder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := s.Table.Qualifier.String()
+	dbName := s.Table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
@@ -183,7 +197,7 @@ func (b *Builder) buildShowTrigger(inScope *scope, s *ast.Show) (outScope *scope
 }
 
 func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *scope) {
-	dbName := s.Table.Qualifier.String()
+	dbName := s.Table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
@@ -230,7 +244,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 
 func (b *Builder) buildShowEvent(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := strings.ToLower(s.Table.Qualifier.String())
+	dbName := strings.ToLower(s.Table.DbQualifier.String())
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
 	}
@@ -312,7 +326,7 @@ func (b *Builder) loadAllEventDefinitions(db sql.Database) []sql.EventDefinition
 func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
 	var db sql.Database
-	dbName := s.Table.Qualifier.String()
+	dbName := s.Table.DbQualifier.String()
 	if dbName != "" {
 		db = b.resolveDb(dbName)
 	} else {
@@ -445,17 +459,17 @@ func (b *Builder) buildShowTableStatus(inScope *scope, s *ast.Show) (outScope *s
 
 func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := strings.ToLower(s.Database)
-	if dbName == "" {
-		dbName = s.Table.Qualifier.String()
+
+	db := b.ctx.GetCurrentDatabase()
+	if s.Database != "" {
+		db = s.Database
+	} else if s.Table.DbQualifier.String() != "" {
+		db = s.Table.DbQualifier.String()
 	}
-	if dbName == "" {
-		dbName = b.ctx.GetCurrentDatabase()
-	}
-	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildResolvedTable(inScope, strings.ToLower(dbName), tableName, nil)
+
+	tableScope, ok := b.buildResolvedTable(inScope, db, "", s.Table.Name.String(), nil)
 	if !ok {
-		err := sql.ErrTableNotFound.New(tableName)
+		err := sql.ErrTableNotFound.New(s.Table.Name.String())
 		b.handleErr(err)
 	}
 	showIdx := plan.NewShowIndexes(tableScope.node)
@@ -466,7 +480,7 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 		// views don't have keys
 		showIdx.Child = plan.NewResolvedDualTable()
 	default:
-		err := sql.ErrTableNotFound.New(tableName)
+		err := sql.ErrTableNotFound.New(s.Table.Name.String())
 		b.handleErr(err)
 	}
 	outScope.node = showIdx
@@ -526,7 +540,7 @@ func (b *Builder) buildShowVariables(inScope *scope, s *ast.Show) (outScope *sco
 		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewGetField(0, node.Schema()[0].Type, plan.ShowStatusVariableCol, false),
-				expression.NewLiteral(s.Filter.Like, types.LongText),
+				expression.NewLiteral(strings.ToLower(s.Filter.Like), types.LongText),
 				nil,
 			)
 		}
@@ -679,18 +693,16 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 	}
 
-	db := s.Database
-	if db == "" {
-		db = s.Table.Qualifier.String()
-	}
-	if db == "" {
-		db = b.currentDb().Name()
+	var dbName string
+	if s.ShowTablesOpt != nil && s.ShowTablesOpt.DbName != "" {
+		dbName = s.ShowTablesOpt.DbName
+	} else if s.Table.DbQualifier.String() != "" {
+		dbName = s.Table.DbQualifier.String()
 	}
 
-	tableName := strings.ToLower(s.Table.Name.String())
-	tableScope, ok := b.buildResolvedTable(inScope, db, tableName, asOf)
+	tableScope, ok := b.buildResolvedTable(inScope, dbName, "", s.Table.Name.String(), asOf)
 	if !ok {
-		err := sql.ErrTableNotFound.New(tableName)
+		err := sql.ErrTableNotFound.New(s.Table.Name.String())
 		b.handleErr(err)
 	}
 	table = tableScope.node
@@ -711,13 +723,9 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	switch t := table.(type) {
 	case *plan.ResolvedTable:
 		show.Indexes = b.getInfoSchemaIndexes(t)
-		node = b.modifySchemaTarget(tableScope, show, t)
+		node = b.modifySchemaTarget(tableScope, show, t.Schema())
 	case *plan.SubqueryAlias:
-		var err error
-		node, err = show.WithTargetSchema(t.Schema())
-		if err != nil {
-			b.handleErr(err)
-		}
+		node = b.modifySchemaTarget(tableScope, show, t.Schema())
 	default:
 	}
 

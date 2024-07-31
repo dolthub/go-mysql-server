@@ -19,9 +19,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -129,20 +132,43 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	var dateVal interface{}
+	dateVal, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Add(date.(time.Time)))
+	res := types.ValidateTime(delta.Add(dateVal.(time.Time)))
+	if res == nil {
+		return nil, nil
+	}
+
 	resType := d.Type()
 	if types.IsText(resType) {
-		return res, nil
+		// If the input is a properly formatted date/datetime string, the output should also be a string
+		if dateStr, isStr := date.(string); isStr {
+			if res.(time.Time).Nanosecond() > 0 {
+				return res.(time.Time).Format(sql.DatetimeLayoutNoTrim), nil
+			}
+			if isHmsInterval(d.Interval) {
+				return res.(time.Time).Format(sql.TimestampDatetimeLayout), nil
+			}
+			for _, layout := range types.DateOnlyLayouts {
+				if _, pErr := time.Parse(layout, dateStr); pErr != nil {
+					continue
+				}
+				return res.(time.Time).Format(sql.DateLayout), nil
+			}
+		}
 	}
+
 	ret, _, err := resType.Convert(res)
-	return ret, err
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (d *DateAdd) String() string {
@@ -253,20 +279,43 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	var dateVal interface{}
+	dateVal, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
 	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Sub(date.(time.Time)))
+	res := types.ValidateTime(delta.Sub(dateVal.(time.Time)))
+	if res == nil {
+		return nil, nil
+	}
+
 	resType := d.Type()
 	if types.IsText(resType) {
-		return res, nil
+		// If the input is a properly formatted date/datetime string, the output should also be a string
+		if dateStr, isStr := date.(string); isStr {
+			if res.(time.Time).Nanosecond() > 0 {
+				return res.(time.Time).Format(sql.DatetimeLayoutNoTrim), nil
+			}
+			if isHmsInterval(d.Interval) {
+				return res.(time.Time).Format(sql.TimestampDatetimeLayout), nil
+			}
+			for _, layout := range types.DateOnlyLayouts {
+				if _, pErr := time.Parse(layout, dateStr); pErr != nil {
+					continue
+				}
+				return res.(time.Time).Format(sql.DateLayout), nil
+			}
+		}
 	}
+
 	ret, _, err := resType.Convert(res)
-	return ret, err
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (d *DateSub) String() string {
@@ -412,19 +461,103 @@ func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
 // With no argument, returns number of seconds since unix epoch for the current time.
 type UnixTimestamp struct {
 	Date sql.Expression
+	typ  sql.Type
 }
 
 var _ sql.FunctionExpression = (*UnixTimestamp)(nil)
 var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
+
+const MaxUnixTimeMicroSecs = 32536771199999999
+
+// noEval returns true if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
+func noEval(expr sql.Expression) bool {
+	var hasBadExpr bool
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		switch e.(type) {
+		case *expression.GetField:
+			hasBadExpr = true
+		case *ConvertTz:
+			hasBadExpr = true
+		}
+		return hasBadExpr
+	})
+	return hasBadExpr
+}
+
+func getNowExpr(expr sql.Expression) *Now {
+	var now *Now
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		if n, ok := e.(*Now); ok {
+			now = n
+			return true
+		}
+		return false
+	})
+	return now
+}
+
+func evalNowType(now *Now) sql.Type {
+	if now.prec == nil {
+		return types.Int64
+	}
+	if noEval(now.prec) {
+		return types.MustCreateDecimalType(19, 6)
+	}
+	prec, pErr := now.prec.Eval(nil, nil)
+	if pErr != nil {
+		return nil
+	}
+	scale, ok := types.CoalesceInt(prec)
+	if !ok {
+		return nil
+	}
+	typ, tErr := types.CreateDecimalType(19, uint8(scale))
+	if tErr != nil {
+		return nil
+	}
+	return typ
+}
 
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}
 	if len(args) == 0 {
-		return &UnixTimestamp{nil}, nil
+		return &UnixTimestamp{}, nil
 	}
-	return &UnixTimestamp{args[0]}, nil
+
+	arg := args[0]
+	if noEval(arg) {
+		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
+	}
+	if now := getNowExpr(arg); now != nil {
+		return &UnixTimestamp{Date: arg, typ: evalNowType(now)}, nil
+	}
+
+	// evaluate arg to determine return type
+	// no need to consider timezone conversions, because they have no impact on precision
+	date, err := arg.Eval(nil, nil)
+	if err != nil || date == nil {
+		return &UnixTimestamp{Date: arg}, nil
+	}
+	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	if err != nil {
+		return &UnixTimestamp{Date: arg}, nil
+	}
+	unixMicro := date.(time.Time).UnixMicro()
+	if unixMicro%1e6 > 0 {
+		scale := uint8(6)
+		for ; unixMicro%10 == 0; unixMicro /= 10 {
+			scale--
+		}
+		typ, tErr := types.CreateDecimalType(19, scale)
+		if tErr != nil {
+			return nil, tErr
+		}
+		return &UnixTimestamp{Date: arg, typ: typ}, nil
+	}
+
+	return &UnixTimestamp{Date: arg, typ: types.Int64}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -456,7 +589,10 @@ func (ut *UnixTimestamp) IsNullable() bool {
 }
 
 func (ut *UnixTimestamp) Type() sql.Type {
-	return types.Float64
+	if ut.typ == nil {
+		return types.Int64
+	}
+	return ut.typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -470,7 +606,7 @@ func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expressio
 
 func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if ut.Date == nil {
-		return toUnixTimestamp(ctx.QueryTime())
+		return toUnixTimestamp(ctx.QueryTime(), ut.Type()), nil
 	}
 
 	date, err := ut.Date.Eval(ctx, row)
@@ -486,9 +622,16 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
 		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String())
-		return 0, nil
+		return int64(0), nil
 	}
 
+	// https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_unix-timestamp
+	// When the date argument is a TIMESTAMP column,
+	// UNIX_TIMESTAMP() returns the internal timestamp value directly,
+	// with no implicit “string-to-Unix-timestamp” conversion.
+	if ut.Date.Type().Equals(types.Timestamp) {
+		return toUnixTimestamp(date.(time.Time), ut.Type()), nil
+	}
 	// The function above returns the time value in UTC time zone.
 	// Instead, it should use the current session time zone.
 
@@ -508,12 +651,30 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		date = ctz
 	}
 
-	return toUnixTimestamp(date.(time.Time))
+	return toUnixTimestamp(date.(time.Time), ut.Type()), nil
 }
 
-func toUnixTimestamp(t time.Time) (interface{}, error) {
-	ret, _, err := types.Float64.Convert(float64(t.Unix()) + float64(t.Nanosecond())/float64(1000000000))
-	return ret, err
+func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
+	unixMicro := t.UnixMicro()
+	if unixMicro > MaxUnixTimeMicroSecs {
+		return int64(0)
+	}
+	if unixMicro < 1e6 {
+		return resType.Zero()
+	}
+	if types.IsDecimal(resType) {
+		// scale decimal
+		scale := int32(resType.(types.DecimalType_).Scale())
+		for i := 6 - scale; i > 0; i-- {
+			unixMicro /= 10
+		}
+		res := decimal.New(unixMicro, -scale)
+		str := res.String()
+		if str == "" {
+		}
+		return res
+	}
+	return unixMicro / 1e6
 }
 
 func (ut *UnixTimestamp) String() string {
@@ -619,6 +780,20 @@ func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	return NoArgFuncWithChildren(c, children)
 }
 
+func isYmdInterval(interval *expression.Interval) bool {
+	return strings.Contains(interval.Unit, "YEAR") ||
+		strings.Contains(interval.Unit, "QUARTER") ||
+		strings.Contains(interval.Unit, "MONTH") ||
+		strings.Contains(interval.Unit, "WEEK") ||
+		strings.Contains(interval.Unit, "DAY")
+}
+
+func isHmsInterval(interval *expression.Interval) bool {
+	return strings.Contains(interval.Unit, "HOUR") ||
+		strings.Contains(interval.Unit, "MINUTE") ||
+		strings.Contains(interval.Unit, "SECOND")
+}
+
 // Determines the return type of a DateAdd/DateSub expression
 // Logic is based on https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-add
 func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Type {
@@ -632,31 +807,22 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 		return types.Null
 	}
 
-	// set type flags
-	isInputDate := inputType == types.Date
-	isInputTime := inputType == types.Time
-	isInputDatetime := types.IsDatetimeType(inputType) || types.IsTimestampType(inputType)
-
-	// result is Datetime if expression is Datetime or Timestamp
-	if isInputDatetime {
+	if types.IsDatetimeType(inputType) || types.IsTimestampType(inputType) {
 		return types.DatetimeMaxPrecision
 	}
 
-	// determine what kind of interval we're dealing with
-	isYmdInterval := strings.Contains(interval.Unit, "YEAR") ||
-		strings.Contains(interval.Unit, "QUARTER") ||
-		strings.Contains(interval.Unit, "MONTH") ||
-		strings.Contains(interval.Unit, "WEEK") ||
-		strings.Contains(interval.Unit, "DAY")
+	// set type flags
+	isInputDate := inputType == types.Date
+	isInputTime := inputType == types.Time
 
-	isHmsInterval := strings.Contains(interval.Unit, "HOUR") ||
-		strings.Contains(interval.Unit, "MINUTE") ||
-		strings.Contains(interval.Unit, "SECOND")
-	isMixedInterval := isYmdInterval && isHmsInterval
+	// determine what kind of interval we're dealing with
+	isYmd := isYmdInterval(interval)
+	isHms := isHmsInterval(interval)
+	isMixed := isYmd && isHms
 
 	// handle input of Date type
 	if isInputDate {
-		if isHmsInterval || isMixedInterval {
+		if isHms || isMixed {
 			// if interval contains time components, result is Datetime
 			return types.DatetimeMaxPrecision
 		} else {
@@ -667,7 +833,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 
 	// handle input of Time type
 	if isInputTime {
-		if isYmdInterval || isMixedInterval {
+		if isYmd || isMixed {
 			// if interval contains date components, result is Datetime
 			return types.DatetimeMaxPrecision
 		} else {
@@ -678,7 +844,7 @@ func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Typ
 
 	// handle dynamic input type
 	if types.IsDeferredType(inputType) {
-		if isYmdInterval && !isHmsInterval {
+		if isYmd && !isHms {
 			// if interval contains only date components, result is Date
 			return types.Date
 		} else {

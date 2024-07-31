@@ -15,7 +15,9 @@
 package rowexec
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -54,7 +56,28 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		return nil, err
 	}
 
+	var unlocker func()
 	insertExpressions := getInsertExpressions(ii.Source)
+	if ii.HasUnspecifiedAutoInc {
+		_, i, _ := sql.SystemVariables.GetGlobal("innodb_autoinc_lock_mode")
+		lockMode, ok := i.(int64)
+		if !ok {
+			return nil, errors.New(fmt.Sprintf("unexpected type for innodb_autoinc_lock_mode, expected int64, got %T", i))
+		}
+		// Lock modes "traditional" (0) and "consecutive" (1) require that a single lock is held for the entire iteration.
+		// Lock mode "interleaved" (2) will acquire the lock only when inserting into the table.
+		if lockMode != 2 {
+			autoIncrementable, ok := sql.GetUnderlyingTable(insertable).(sql.AutoIncrementTable)
+			if !ok {
+				return nil, errors.New("auto increment expression on non-AutoIncrement table. This should not be possible")
+			}
+
+			unlocker, err = autoIncrementable.AutoIncrementSetter(ctx).AcquireAutoIncrementLock(ctx)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	insertIter := &insertIter{
 		schema:              dstSchema,
 		tableNode:           ii.Destination,
@@ -63,6 +86,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		updater:             updater,
 		rowSource:           rowIter,
 		hasAutoAutoIncValue: ii.HasUnspecifiedAutoInc,
+		unlocker:            unlocker,
 		updateExprs:         ii.OnDupExprs,
 		insertExprs:         insertExpressions,
 		checks:              ii.Checks(),
@@ -269,6 +293,7 @@ func (b *BaseBuilder) buildTriggerBeginEndBlock(ctx *sql.Context, n *plan.Trigge
 		statements: n.Children(),
 		row:        row,
 		once:       &sync.Once{},
+		b:          b,
 	}, nil
 }
 
@@ -284,6 +309,7 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 		triggerEvent:   n.TriggerEvent,
 		executionLogic: n.Right(),
 		ctx:            ctx,
+		b:              b,
 	}, nil
 }
 
@@ -343,6 +369,27 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 		}
 
 		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: plan.RecreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
+		var iter = rowIter
+		var done bool
+		for !done {
+			switch i := iter.(type) {
+			case *plan.TableEditorIter:
+				iter = i.InnerIter()
+			case *updateIter:
+				iter = i.childIter
+			case *updateJoinIter:
+				i.accumulator = rowHandler.(*updateJoinRowHandler)
+				done = true
+			case *projectIter:
+				iter = i.childIter
+			case *plan.CheckpointingTableEditorIter:
+				iter = i.InnerIter()
+			case *triggerIter:
+				iter = i.child
+			default:
+				return nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
+			}
+		}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", n.RowUpdateType))
 	}
@@ -451,4 +498,47 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 		disposals:        make(map[string]sql.DisposeFunc),
 		joinNode:         n.Child.(*plan.UpdateSource).Child,
 	}, nil
+}
+
+func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameForeignKey, row sql.Row) (sql.RowIter, error) {
+	db, err := n.DbProvider.Database(ctx, n.Database())
+	if err != nil {
+		return nil, err
+	}
+	tbl, ok, err := db.GetTableInsensitive(ctx, n.Table)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(n.Table)
+	}
+	fkTbl, ok := tbl.(sql.ForeignKeyTable)
+	if !ok {
+		return nil, sql.ErrNoForeignKeySupport.New(n.OldName)
+	}
+
+	fkcs, err := fkTbl.GetDeclaredForeignKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var existingFk sql.ForeignKeyConstraint
+	for _, fkc := range fkcs {
+		if strings.EqualFold(fkc.Name, n.OldName) {
+			existingFk = fkc
+			break
+		}
+	}
+
+	err = fkTbl.DropForeignKey(ctx, n.OldName)
+	if err != nil {
+		return nil, err
+	}
+
+	existingFk.Name = n.NewName
+	err = fkTbl.AddForeignKey(ctx, existingFk)
+	if err != nil {
+		return nil, err
+	}
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }

@@ -460,9 +460,11 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		case *plan.ResolvedTable:
 			if col.PrimaryKey {
 				key = "PRI"
-			} else if isFirstColInUniqueKey(n, col, table) {
+			} else if isPriCol(n, col, table) {
+				key = "PRI"
+			} else if isUnqCol(n, col, table) {
 				key = "UNI"
-			} else if isFirstColInNonUniqueKey(n, col, table) {
+			} else if isMulCol(n, col, table) {
 				key = "MUL"
 			}
 		case *plan.SubqueryAlias:
@@ -528,7 +530,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 
 	for k, v := range sysVars {
 		if n.Filter != nil {
-			res, err := n.Filter.Eval(ctx, sql.Row{k})
+			res, err := n.Filter.Eval(ctx, sql.Row{strings.ToLower(k)})
 			if err != nil {
 				return nil, err
 			}
@@ -715,6 +717,61 @@ func (b *BaseBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateT
 		schema:   n.TargetSchema(),
 		pkSchema: n.PrimaryKeySchema,
 	}, nil
+}
+
+func (b *BaseBuilder) buildShowBinlogs(ctx *sql.Context, n *plan.ShowBinlogs, _ sql.Row) (sql.RowIter, error) {
+	if n.PrimaryController == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	logFiles, err := n.PrimaryController.ListBinaryLogs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(logFiles) == 0 {
+		return sql.RowsToRowIter(), nil
+	}
+
+	rows := make([]sql.Row, len(logFiles))
+	for i, logFile := range logFiles {
+		encrypted := "No"
+		if logFile.Encrypted {
+			encrypted = "Yes"
+		}
+		rows[i] = sql.Row{
+			logFile.Name, // Log_name
+			logFile.Size, // File_size
+			encrypted,    // Encrypted
+		}
+	}
+
+	return sql.RowsToRowIter(rows...), nil
+}
+
+func (b *BaseBuilder) buildShowBinlogStatus(ctx *sql.Context, n *plan.ShowBinlogStatus, row sql.Row) (sql.RowIter, error) {
+	if n.PrimaryController == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	statusResults, err := n.PrimaryController.GetBinaryLogStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if statusResults == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	for _, status := range statusResults {
+		row = sql.Row{
+			status.File,          // File
+			status.Position,      // Position
+			status.DoDbs,         // Binlog_Do_DB
+			status.IgnoreDbs,     // Binlog_Ignore_DB
+			status.ExecutedGtids, // Executed_Gtid_Set
+		}
+	}
+
+	return sql.RowsToRowIter(row), nil
 }
 
 func (b *BaseBuilder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowReplicaStatus, row sql.Row) (sql.RowIter, error) {

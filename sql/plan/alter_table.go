@@ -159,7 +159,13 @@ func (r *RenameTable) renameTable(ctx *sql.Context, renamer sql.TableRenamer, tb
 		}
 		for _, fk := range fks {
 			fk.Table = newName
-			err = fkTable.UpdateForeignKey(ctx, fk.Name, fk)
+			oldKeyName := fk.Name
+			// If the FK was auto named, update it to the new table name
+			autonamedPrefix := fmt.Sprintf("%s_ibfk_", oldName)
+			if strings.HasPrefix(fk.Name, autonamedPrefix) && len(fk.Name) > len(autonamedPrefix) {
+				fk.Name = fmt.Sprintf("%s_ibfk_%s", newName, fk.Name[len(autonamedPrefix):])
+			}
+			err = fkTable.UpdateForeignKey(ctx, oldKeyName, fk)
 			if err != nil {
 				return err
 			}

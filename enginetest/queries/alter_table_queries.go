@@ -716,7 +716,7 @@ var AlterTableScripts = []ScriptTest{
 				Query: "describe test",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk", "int", "YES", "UNI", nil, "auto_increment"},
+					{"uk", "int", "NO", "UNI", nil, "auto_increment"},
 				},
 			},
 		},
@@ -745,7 +745,7 @@ var AlterTableScripts = []ScriptTest{
 				Query: "describe test",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk", "int", "YES", "MUL", nil, "auto_increment"},
+					{"mk", "int", "NO", "MUL", nil, "auto_increment"},
 				},
 			},
 		},
@@ -912,6 +912,40 @@ var AlterTableScripts = []ScriptTest{
 						"  UNIQUE KEY `idx1` (`col1`),\n" +
 						"  KEY `idx2` (`col1`(10))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "Index case-insensitivity",
+		SetUpScript: []string{
+			"create table t1 (i int, KEY myIndex1 (`i`))",
+			"create table t2 (i int, KEY myIndex2 (`i`))",
+			"create table t3 (i int, KEY myIndex3 (`i`))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 drop index MYINDEX1;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show indexes from t1;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "alter table t2 rename index myIndex2 to mySecondIndex;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show indexes from t2;",
+				Expected: []sql.Row{{"t2", 1, "mySecondIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
+			},
+			{
+				Query:    "alter table t3 rename index MYiNDEX3 to anotherIndex;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "show indexes from t3;",
+				Expected: []sql.Row{{"t3", 1, "anotherIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
 			},
 		},
 	},
@@ -1083,7 +1117,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 					"CREATE TABLE `t1` (\n" +
 						"  `i` bigint NOT NULL,\n" +
 						"  `s` varchar(20),\n" +
-						"  `j` int AUTO_INCREMENT,\n" +
+						"  `j` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`),\n" +
 						"  UNIQUE KEY `j` (`j`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},

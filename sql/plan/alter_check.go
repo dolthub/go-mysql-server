@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -118,7 +119,7 @@ func (c *CreateCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-func (c *CreateCheck) Schema() sql.Schema { return nil }
+func (c *CreateCheck) Schema() sql.Schema { return types.OkResultSchema }
 
 func (c CreateCheck) String() string {
 	pr := sql.NewTreePrinter()

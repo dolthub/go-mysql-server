@@ -1540,6 +1540,8 @@ type IndexedTable struct {
 	Lookup sql.IndexLookup
 }
 
+var _ sql.StatisticsTable = (*IndexedTable)(nil)
+
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
 	memIdx := lookup.Index.(*Index)
 	filter, err := memIdx.rangeFilterExpr(ctx, lookup.Ranges...)
@@ -1769,6 +1771,9 @@ func (t *Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstr
 			fks = append(fks, fk)
 		}
 	}
+	sort.Slice(fks, func(i, j int) bool {
+		return fks[i].Name < fks[j].Name
+	})
 	return fks, nil
 }
 
@@ -1795,7 +1800,7 @@ func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) err
 	lowerName := strings.ToLower(fk.Name)
 	for _, key := range data.fkColl.Keys() {
 		if strings.ToLower(key.Name) == lowerName {
-			return fmt.Errorf("Constraint %s already exists", fk.Name)
+			return sql.ErrForeignKeyDuplicateName.New(fk.Name)
 		}
 	}
 	data.fkColl.AddFK(fk)
@@ -1824,7 +1829,7 @@ func (t *Table) UpdateForeignKey(ctx *sql.Context, fkName string, fk sql.Foreign
 	lowerName := strings.ToLower(fk.Name)
 	for _, key := range data.fkColl.Keys() {
 		if strings.ToLower(key.Name) == lowerName {
-			return fmt.Errorf("Constraint %s already exists", fk.Name)
+			return sql.ErrForeignKeyDuplicateName.New(fk.Name)
 		}
 	}
 	data.fkColl.AddFK(fk)
@@ -1877,7 +1882,7 @@ func (t *Table) CreateCheck(ctx *sql.Context, check *sql.CheckDefinition) error 
 
 	for _, key := range data.checks {
 		if key.Name == toInsert.Name {
-			return fmt.Errorf("constraint %s already exists", toInsert.Name)
+			return sql.ErrForeignKeyDuplicateName.New(toInsert.Name)
 		}
 	}
 
@@ -1906,7 +1911,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 			name += column.Name + "_"
 		}
 	}
-	if data.indexes[name] != nil {
+	if data.indexes[strings.ToLower(name)] != nil {
 		return nil, sql.ErrDuplicateKey.New(name)
 	}
 
@@ -1970,7 +1975,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 	}
 
 	// Store the computed index name in the case of an empty index name being passed in
-	data.indexes[index.ID()] = index
+	data.indexes[strings.ToLower(index.ID())] = index
 	sess.putTable(data)
 
 	return nil
@@ -1996,16 +2001,19 @@ func (t *Table) DropIndex(ctx *sql.Context, name string) error {
 }
 
 // RenameIndex implements sql.IndexAlterableTable
-func (t *Table) RenameIndex(ctx *sql.Context, fromIndexName string, toIndexName string) error {
+func (t *Table) RenameIndex(ctx *sql.Context, oldName string, newName string) error {
 	data := t.sessionTableData(ctx)
 
-	if fromIndexName == toIndexName {
+	lowerCaseOldName := strings.ToLower(oldName)
+	lowerCaseNewName := strings.ToLower(newName)
+
+	if oldName == newName {
 		return nil
 	}
-	if idx, ok := data.indexes[fromIndexName]; ok {
-		delete(data.indexes, fromIndexName)
-		data.indexes[toIndexName] = idx
-		idx.(*Index).Name = toIndexName
+	if idx, ok := data.indexes[lowerCaseOldName]; ok {
+		delete(data.indexes, lowerCaseOldName)
+		data.indexes[lowerCaseNewName] = idx
+		idx.(*Index).Name = newName
 	}
 	return nil
 }
@@ -2039,7 +2047,8 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 		KeyColumns:           keyCols,
 	}
 
-	data.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
+	// TODO: We should store the computed index name in the case of an empty index name being passed in
+	data.indexes[strings.ToLower(index.ID())] = index
 	sess.putTable(data)
 
 	return nil
@@ -2395,7 +2404,7 @@ func (t *Table) ShouldBuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (bool,
 
 func (t *Table) BuildIndex(ctx *sql.Context, indexDef sql.IndexDef) (sql.RowInserter, error) {
 	data := t.sessionTableData(ctx)
-	_, ok := data.indexes[indexDef.Name]
+	_, ok := data.indexes[strings.ToLower(indexDef.Name)]
 	if !ok {
 		return nil, sql.ErrIndexNotFound.New(indexDef.Name)
 	}

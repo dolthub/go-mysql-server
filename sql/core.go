@@ -16,8 +16,10 @@ package sql
 
 import (
 	"fmt"
+	trace2 "runtime/trace"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -305,6 +307,8 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 // EvaluateCondition evaluates a condition, which is an expression whose value
 // will be nil or coerced boolean.
 func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, error) {
+	defer trace2.StartRegion(ctx, "EvaluateCondition").End()
+
 	v, err := cond.Eval(ctx, row)
 	if err != nil {
 		return false, err
@@ -758,10 +762,74 @@ func (m *MySQLStatusVariable) GetDefault() interface{} {
 	return m.Default
 }
 
-// StatusVarValue is a StatusVariable with a value.
-type StatusVarValue struct {
+type StatusVarValue interface {
+	Increment(uint64) error
+	Set(interface{}) error
+	Value() interface{}
+	Variable() StatusVariable
+	Copy() StatusVarValue
+}
+
+// MutableStatusVarValue is a StatusVariable with a value.
+type MutableStatusVarValue struct {
+	Var StatusVariable
+	Val *atomic.Uint64
+}
+
+func (s *MutableStatusVarValue) Increment(v uint64) error {
+	s.Val.Add(v)
+	return nil
+}
+
+func (s *MutableStatusVarValue) Set(v interface{}) error {
+	typedVal, ok := v.(uint64)
+	if !ok {
+		return fmt.Errorf("expected uint64")
+	}
+	s.Val.Store(typedVal)
+	return nil
+}
+
+func (s *MutableStatusVarValue) Variable() StatusVariable {
+	return s.Var
+}
+
+func (s *MutableStatusVarValue) Value() interface{} {
+	return s.Val.Load()
+}
+
+func (s *MutableStatusVarValue) Copy() StatusVarValue {
+	ret := *s
+	ret.Val = &atomic.Uint64{}
+	ret.Val.Add(s.Val.Load())
+	return &ret
+}
+
+type ImmutableStatusVarValue struct {
 	Var StatusVariable
 	Val interface{}
+}
+
+func (s *ImmutableStatusVarValue) Increment(uint64) error {
+	return fmt.Errorf("status variable %s is not a uint64", s.Variable().GetName())
+}
+
+func (s *ImmutableStatusVarValue) Set(v interface{}) error {
+	s.Val = v
+	return nil
+}
+
+func (s *ImmutableStatusVarValue) Variable() StatusVariable {
+	return s.Var
+}
+
+func (s *ImmutableStatusVarValue) Value() interface{} {
+	return s.Val
+}
+
+func (s *ImmutableStatusVarValue) Copy() StatusVarValue {
+	ret := *s
+	return &ret
 }
 
 // IncrementStatusVariable increments the value of the status variable by integer val.

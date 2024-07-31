@@ -431,22 +431,24 @@ func statsForRel(rel RelExpr) sql.Statistic {
 		stat = &stats.Statistic{RowCnt: defaultTableSize / 2}
 
 	case SourceRel:
-		var tableName string
+		var table sql.Table
 		var dbName string
 		switch tn := rel.TableIdNode().(type) {
 		case sql.TableNode:
-			tableName = tn.Name()
+			table = tn.UnderlyingTable()
 			dbName = tn.Database().Name()
 		case *plan.TableAlias:
 			if tn, ok := tn.Child.(sql.TableNode); ok {
 				dbName = tn.Database().Name()
-				tableName = tn.Name()
+				table = tn.UnderlyingTable()
+			} else {
+				return &stats.Statistic{RowCnt: defaultTableSize}
 			}
 		default:
 			return &stats.Statistic{RowCnt: defaultTableSize}
 		}
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
-			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, strings.ToLower(tableName)); err == nil {
+			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, table); err == nil {
 				return &stats.Statistic{RowCnt: card}
 				break
 			}
@@ -488,6 +490,16 @@ func indexCoverageAdjustment(lookup *IndexScan) float64 {
 func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefixCnt int) (sql.Statistic, error) {
 	if stats.Empty(rightIdx) || stats.Empty(leftIdx) {
 		return nil, nil
+	}
+	if leftIdx.Qualifier() == rightIdx.Qualifier() {
+		expandRatio := leftIdx.RowCount() / leftIdx.DistinctCount()
+		if expandRatio == 1 {
+			return leftIdx, nil
+		} else {
+			// ths undershoots the estimate, but is directionally correct and faster
+			// than squaring every bucket
+			return leftIdx.WithRowCount(leftIdx.RowCount() * expandRatio), nil
+		}
 	}
 	// if either child is not nil, try to interpolate join index stats from child
 	if !stats.Empty(leftChild) {
@@ -554,7 +566,7 @@ func allTableCols(rel SourceRel) sql.Schema {
 			Type:           c.Type,
 			Default:        c.Default,
 			AutoIncrement:  c.AutoIncrement,
-			Nullable:       c.Nullable,
+			Nullable:       c.Nullable && !c.AutoIncrement,
 			Source:         rel.Name(),
 			DatabaseSource: c.DatabaseSource,
 			PrimaryKey:     c.PrimaryKey,

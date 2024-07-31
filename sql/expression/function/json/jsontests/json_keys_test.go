@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -23,21 +23,28 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestJsonLength(t *testing.T) {
-	_, err := NewJSONValid()
+func TestJSONKeys(t *testing.T) {
+	_, err := json.NewJSONKeys()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJsonLength, 1)
-	f2 := buildGetFieldExpressions(t, NewJsonLength, 2)
+	f1 := buildGetFieldExpressions(t, json.NewJSONKeys, 1)
+	f2 := buildGetFieldExpressions(t, json.NewJSONKeys, 2)
 
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
+		{
+			f:   f1,
+			row: sql.Row{nil},
+			exp: nil,
+		},
 		{
 			f:   f1,
 			row: sql.Row{`null`},
@@ -45,33 +52,43 @@ func TestJsonLength(t *testing.T) {
 		},
 		{
 			f:   f1,
+			row: sql.Row{1},
+			err: sql.ErrInvalidJSONArgument.New(1, "json_keys"),
+		},
+		{
+			f:   f1,
 			row: sql.Row{`1`},
-			exp: 1,
+			exp: nil,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`[1]`},
-			exp: 1,
+			exp: nil,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`"fjsadflkd"`},
-			exp: 1,
+			row: sql.Row{`{}`},
+			exp: types.MustJSON(`[]`),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1, false]`},
-			exp: 2,
+			row: sql.Row{`badjson`},
+			err: sql.ErrInvalidJSONText.New(1, "json_keys", "badjson"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1, {"a": 1}]`},
-			exp: 2,
+			row: sql.Row{`"doublestringisvalidjson"`},
+			exp: nil,
 		},
 		{
 			f:   f1,
 			row: sql.Row{`{"a": 1}`},
-			exp: 1,
+			exp: types.MustJSON(`["a"]`),
+		},
+		{
+			f:   f1,
+			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
+			exp: types.MustJSON(`["c", "aa", "bb"]`),
 		},
 
 		{
@@ -82,37 +99,42 @@ func TestJsonLength(t *testing.T) {
 		{
 			f:   f2,
 			row: sql.Row{`{"a": [1, false]}`, 123},
-			err: true,
+			err: fmt.Errorf("Invalid JSON path expression"),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, false]}`, "$.a"},
-			exp: 2,
+			row: sql.Row{`{"a": [1, false]}`, "$"},
+			exp: types.MustJSON(`["a"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, {"a": 1}]}`, "$.a"},
-			exp: 2,
+			row: sql.Row{`{"a": {"z": 1}}`, "$.a"},
+			exp: types.MustJSON(`["z"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b"},
-			exp: 2,
+			row: sql.Row{`[1, 2, {"a": 1, "b": {"c": 30}}]`, "$[2]"},
+			exp: types.MustJSON(`["a", "b"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b[0]"},
-			exp: 1,
+			row: sql.Row{`[1, 2, {"a": 1, "b": {"c": {"d": 100}}}]`, "$[2].b.c"},
+			exp: types.MustJSON(`["d"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.c.d"},
-			exp: 1,
+			row: sql.Row{`{"a": 1, "b": {"c": {"d": "foo"}}}`, "$.b.c"},
+			exp: types.MustJSON(`["d"]`),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
 			exp: nil,
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$["},
+			err: fmt.Errorf("Invalid JSON path expression. Missing ']'"),
 		},
 	}
 
@@ -123,10 +145,10 @@ func TestJsonLength(t *testing.T) {
 		}
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
-			// any error case will result in output of 'false' value
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 			} else {
 				require.NoError(err)
 			}

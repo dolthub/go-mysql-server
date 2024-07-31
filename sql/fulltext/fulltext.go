@@ -167,8 +167,8 @@ func writeHashedValue(h hash.Hash, val interface{}) (valIsNull bool, err error) 
 		if _, err := h.Write(val.Serialize()); err != nil {
 			return false, err
 		}
-	case types.JSONDocument:
-		str, err := val.JSONString()
+	case sql.JSONWrapper:
+		str, err := types.StringifyJSON(val)
 		if err != nil {
 			return false, err
 		}

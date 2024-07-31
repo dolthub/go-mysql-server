@@ -67,6 +67,13 @@ type TableWrapper interface {
 	Underlying() Table
 }
 
+func GetUnderlyingTable(t Table) Table {
+	if tw, ok := t.(TableWrapper); ok {
+		return GetUnderlyingTable(tw.Underlying())
+	}
+	return t
+}
+
 // MutableTableWrapper is a TableWrapper that can change its underlying table.
 type MutableTableWrapper interface {
 	TableWrapper
@@ -332,6 +339,11 @@ type AutoIncrementTable interface {
 type AutoIncrementSetter interface {
 	// SetAutoIncrementValue sets a new AUTO_INCREMENT value.
 	SetAutoIncrementValue(*Context, uint64) error
+
+	// AcquireAutoIncrementLock acquires (if necessary) an exclusive lock on generating auto-increment values for the underlying table.
+	// This is called when @@innodb_autoinc_lock_mode is set to 0 (traditional) or 1 (consecutive), in order to guarentee that insert
+	// operations get a consecutive range of generated ids. The function returns a callback to release the lock.
+	AcquireAutoIncrementLock(ctx *Context) (func(), error)
 	// Closer finalizes the set operation, persisting the result.
 	Closer
 }
@@ -468,12 +480,11 @@ type MutableTableNode interface {
 // IndexSearchable lets a node use custom logic to create
 // *plan.IndexedTableAccess
 type IndexSearchable interface {
-	// SkipIndexCosting defers to an integrator for provide a suitable
-	// index lookup.
+	// SkipIndexCosting avoids falling back default costing logic when
+	// the integrator fails to match an index.
 	SkipIndexCosting() bool
-	// LookupForExpressions returns an sql.IndexLookup for an expression
-	// set.
-	LookupForExpressions(*Context, []Expression) (IndexLookup, error)
+	// LookupForExpressions returns a sql.IndexLookup for a set of expression.
+	LookupForExpressions(*Context, ...Expression) (IndexLookup, *FuncDepSet, Expression, bool, error)
 }
 
 // IndexSearchableTable is a Table supports custom index generation.

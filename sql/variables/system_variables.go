@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -390,6 +391,22 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemStringType("binlog_checksum"),
 		Default:           "CRC32",
 	},
+	"binlog_expire_logs_seconds": &sql.MysqlSystemVariable{
+		Name:              "binlog_expire_logs_seconds",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemIntType("binlog_expire_logs_seconds", 0, 4294967295, false),
+		Default:           int64(2592000),
+	},
+	"binlog_format": &sql.MysqlSystemVariable{
+		Name:              "binlog_format",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemEnumType("binlog_format", "ROW"),
+		Default:           "ROW",
+	},
 	"binlog_gtid_simple_recovery": &sql.MysqlSystemVariable{
 		Name:              "binlog_gtid_simple_recovery",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
@@ -398,12 +415,20 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("binlog_gtid_simple_recovery"),
 		Default:           int8(1),
 	},
+	"binlog_row_image": &sql.MysqlSystemVariable{
+		Name:              "binlog_row_image",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemEnumType("binlog_row_image", "MINIMAL", "FULL", "NOBLOB"),
+		Default:           "FULL",
+	},
 	"binlog_row_metadata": &sql.MysqlSystemVariable{
 		Name:              "binlog_row_metadata",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              types.NewSystemEnumType("MINIMAL", "FULL"),
+		Type:              types.NewSystemEnumType("binlog_row_metadata", "MINIMAL", "FULL"),
 		Default:           "MINIMAL",
 	},
 	"block_encryption_mode": &sql.MysqlSystemVariable{
@@ -1029,9 +1054,8 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           false,
 		SetVarHintApplies: false,
-		// TODO: lower bound should be 0: https://github.com/dolthub/dolt/issues/7634
-		Type:    types.NewSystemIntType("innodb_autoinc_lock_mode", 2, 2, false),
-		Default: int64(2),
+		Type:              types.NewSystemIntType("innodb_autoinc_lock_mode", 0, 2, false),
+		Default:           int64(2),
 	},
 	// Row locking is currently not supported. This variable is provided for 3p tools, and we always return the
 	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.
@@ -1211,6 +1235,17 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("lock_wait_timeout", 1, 31536000, false),
 		Default:           int64(31536000),
 	},
+	"log_bin": &sql.MysqlSystemVariable{
+		Name:              "log_bin",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Persist),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("log_bin"),
+		// NOTE: MySQL defaults to the binary log being enabled, but GMS defaults
+		//       to disabled, since binary log support is not available in GMS.
+		//       Integrators who provide binary logging may change this default.
+		Default: int8(0),
+	},
 	"log_error": &sql.MysqlSystemVariable{
 		Name:              "log_error",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
@@ -1377,6 +1412,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("max_allowed_packet", 1024, 1073741824),
+		Default:           int64(1073741824),
+	},
+	"max_binlog_size": &sql.MysqlSystemVariable{
+		Name:              "max_binlog_size",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemUintType("max_binlog_size", 4096, 1073741824),
 		Default:           int64(1073741824),
 	},
 	"max_connect_errors": &sql.MysqlSystemVariable{
@@ -1842,7 +1885,10 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("performance_schema"),
-		Default:           int8(1),
+		// NOTE: MySQL defaults performance_schema to enabled, but since GMS does not
+		//       provide a performance_schema yet, we default to disabled so that tools
+		//       know not to try and query it.
+		Default: int8(0),
 	},
 	"persisted_globals_load": &sql.MysqlSystemVariable{
 		Name:              "persisted_globals_load",
@@ -2145,7 +2191,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.Text,
-		Default:           nil,
+		Default:           uuid.New().String(),
 	},
 	"session_track_gtids": &sql.MysqlSystemVariable{
 		Name:              "session_track_gtids",
@@ -2385,7 +2431,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: true,
 		Type:              types.NewSystemSetType("sql_mode", "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL", "ANSI"),
-		Default:           "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
+		Default:           sql.DefaultSqlMode,
 	},
 	"sql_notes": &sql.MysqlSystemVariable{
 		Name:              "sql_notes",

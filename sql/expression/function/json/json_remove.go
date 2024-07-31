@@ -104,7 +104,7 @@ func (j JSONRemove) Description() string {
 func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
 	if err != nil || doc == nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_remove", 1, err)
 	}
 
 	for _, path := range j.paths {
@@ -116,7 +116,7 @@ func (j JSONRemove) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		doc, _, err = doc.Remove(path.(string))
+		doc, _, err = doc.Remove(ctx, *path)
 		if err != nil {
 			return nil, err
 		}

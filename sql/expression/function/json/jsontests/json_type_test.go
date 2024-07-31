@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -24,49 +24,50 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestJSONType(t *testing.T) {
-	_, err := NewJSONType()
+	_, err := json.NewJSONType()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJSONType, 1)
+	f1 := buildGetFieldExpressions(t, json.NewJSONType, 1)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
 		{
 			f:   f1,
 			row: sql.Row{``},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_type", ""),
 		},
 		{
 			f:   f1,
 			row: sql.Row{`badjson`},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_type", "badjson"),
 		},
 		{
 			f:   f1,
 			row: sql.Row{true},
-			err: true,
+			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 		{
 			f:   f1,
 			row: sql.Row{1},
-			err: true,
+			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 		{
 			f:   f1,
 			row: sql.Row{1.5},
-			err: true,
+			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 		{
 			f:   f1,
 			row: sql.Row{decimal.New(15, -1)},
-			err: true,
+			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 
 		{
@@ -168,8 +169,9 @@ func TestJSONType(t *testing.T) {
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 			} else {
 				require.NoError(err)
 			}

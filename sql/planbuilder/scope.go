@@ -59,6 +59,9 @@ type scope struct {
 	// exprs collects unique expression ids for reference
 	exprs map[string]columnId
 	proc  *procCtx
+
+	insertTableAlias    string
+	insertColumnAliases map[string]string
 }
 
 // resolveColumn matches a variable use to a column definition with a unique

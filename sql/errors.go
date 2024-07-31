@@ -90,7 +90,7 @@ var (
 	ErrDatabaseCollationsNotSupported = errors.NewKind("database %s does not support collation operations")
 
 	// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
-	ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
+	ErrTableCreatedNotFound = errors.NewKind("table %q was created but could not be found")
 
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
@@ -108,7 +108,10 @@ var (
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
 	// ErrInvalidJSONText is returned when a JSON string cannot be parsed or unmarshalled
-	ErrInvalidJSONText = errors.NewKind("Invalid JSON text: %s")
+	ErrInvalidJSONText = errors.NewKind("Invalid JSON text in argument %d to function %s: \"%s\"")
+
+	// ErrInvalidJSONArgument is returned when a JSON function is called with a parameter that is not JSON or a string
+	ErrInvalidJSONArgument = errors.NewKind("invalid data type for JSON data in argument %d to function %s; a JSON string or JSON type is required")
 
 	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
@@ -290,6 +293,15 @@ var (
 	// ErrDatabaseExists is returned when CREATE DATABASE attempts to create a database that already exists.
 	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
+	// ErrDatabaseSchemaExists is returned when CREATE SCHEMA attempts to create a schema that already exists.
+	ErrDatabaseSchemaExists = errors.NewKind("can't create schema %s; schema exists")
+
+	// ErrDatabaseNoDatabaseSchemaSelectedCreate is returned when CREATE TABLE is called without a schema selected and one is required.
+	ErrDatabaseNoDatabaseSchemaSelectedCreate = errors.NewKind("no schema has been selected to create in")
+
+	// ErrInvalidDatabaseName is returned when a database name is invalid.
+	ErrInvalidDatabaseName = errors.NewKind("invalid database name: %s")
+
 	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
 	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
 
@@ -305,6 +317,9 @@ var (
 	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
 	// list with a different number of columns than the schema of the table.
 	ErrColumnCountMismatch = errors.NewKind("In definition of view, derived table or common table expression, SELECT list and column names list have different column counts")
+
+	// ErrColValCountMismatch is returned when not all rows in values constructor are of equal length.
+	ErrColValCountMismatch = errors.NewKind("Column count doesn't match value count at row %d")
 
 	// ErrUuidUnableToParse is returned when a UUID is unable to be parsed.
 	ErrUuidUnableToParse = errors.NewKind("unable to parse '%s' to UUID: %s")
@@ -509,7 +524,7 @@ var (
 	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition: there can be only one auto column and it must be defined as a key")
 
 	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
-	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
+	ErrKeyColumnDoesNotExist = errors.NewKind("key column '%s' doesn't exist in table")
 
 	// ErrCantDropFieldOrKey is returned when a table invokes DropPrimaryKey on a keyless table.
 	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")
@@ -547,6 +562,12 @@ var (
 
 	// ErrDatabaseNotFound is thrown when a database is not found
 	ErrDatabaseNotFound = errors.NewKind("database not found: %s")
+
+	// ErrDatabaseSchemaNotFound is thrown when a database schema is not found
+	ErrDatabaseSchemaNotFound = errors.NewKind("database schema not found: %s")
+
+	// ErrDatabaseSchemasNotSupported is thrown when a database does not support schemas
+	ErrDatabaseSchemasNotSupported = errors.NewKind("database '%s' does not support schemas")
 
 	// ErrNoDatabaseSelected is thrown when a database is not selected and the query requires one
 	ErrNoDatabaseSelected = errors.NewKind("no database selected")
@@ -649,6 +670,12 @@ var (
 
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
+
+	// ErrUserNameTooLong is returned when a CREATE USER statement uses a name that is longer than 32 chars.
+	ErrUserNameTooLong = errors.NewKind("String '%s' is too long for user name (should be no longer than 32)")
+
+	// ErrUserHostTooLong is returned when a CREATE USER statement uses a host that is longer than 255 chars.
+	ErrUserHostTooLong = errors.NewKind("String '%s' is too long for host name (should be no longer than 255)")
 
 	// ErrUserAlterFailure is returned when attempting to alter a user and it fails for any reason.
 	ErrUserAlterFailure = errors.NewKind("Operation ALTER USER failed for %s")
@@ -884,6 +911,9 @@ var (
 	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
 	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
 
+	// ErrJSONIndex is returned when attempting to create an index over a JSON column directly
+	ErrJSONIndex = errors.NewKind("JSON column '%s' supports indexing only via generated columns on a specified JSON path")
+
 	ErrInvalidOnUpdate = errors.NewKind("Invalid ON UPDATE clause for '%s' column")
 
 	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
@@ -921,6 +951,8 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERNoSuchTable
 	case ErrDatabaseExists.Is(err):
 		code = mysql.ERDbCreateExists
+	case ErrDatabaseNotFound.Is(err):
+		code = mysql.ERBadDb
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
 	case ErrInvalidOperandColumns.Is(err):

@@ -367,6 +367,10 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 	} {
 		for _, tt := range querySet {
 			t.Run(tt.WriteQuery, func(t *testing.T) {
+				if tt.Skip {
+					t.Skip()
+					return
+				}
 				AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzererrors.ErrReadOnlyDatabase)
 			})
 		}
@@ -422,29 +426,8 @@ func TestQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlan
 	harness.Setup(setup.PlanSetup...)
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	runTestWithDescribeOptions := func(t *testing.T, query, expectedPlan string, options sql.DescribeOptions) {
-		TestQueryPlanWithName(t, options.String(), harness, e, query, expectedPlan, options)
-	}
 	for _, tt := range planTests {
-		if tt.Skip {
-			t.Skip()
-		}
-		t.Run(tt.Query, func(t *testing.T) {
-			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
-				Debug: true,
-			})
-			if tt.ExpectedEstimates != "" {
-				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedEstimates, sql.DescribeOptions{
-					Estimates: true,
-				})
-			}
-			if tt.ExpectedAnalysis != "" {
-				runTestWithDescribeOptions(t, tt.Query, tt.ExpectedAnalysis, sql.DescribeOptions{
-					Estimates: true,
-					Analyze:   true,
-				})
-			}
-		})
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -453,7 +436,7 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.IntegrationPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -462,7 +445,7 @@ func TestImdbPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.ImdbPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -471,7 +454,7 @@ func TestTpchPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpchPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -480,7 +463,7 @@ func TestTpccPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpccPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -489,7 +472,7 @@ func TestTpcdsPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.TpcdsPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -570,13 +553,37 @@ func TestVersionedQueriesPrepared(t *testing.T, harness VersionedDBHarness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
-	TestQueryPlanWithName(t, query, harness, e, query, expectedPlan, options)
+func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryPlanTest) {
+	runTestWithDescribeOptions := func(t *testing.T, query, expectedPlan string, options sql.DescribeOptions) {
+		TestQueryPlanWithName(t, options.String(), harness, e, query, expectedPlan, options)
+	}
+
+	if tt.Skip {
+		t.Skip()
+	}
+
+	t.Run(tt.Query, func(t *testing.T) {
+		runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
+			Debug: true,
+		})
+		if tt.ExpectedEstimates != "" {
+			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedEstimates, sql.DescribeOptions{
+				Estimates: true,
+			})
+		}
+		if tt.ExpectedAnalysis != "" {
+			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedAnalysis, sql.DescribeOptions{
+				Estimates: true,
+				Analyze:   true,
+			})
+		}
+	})
 }
 
 func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEngine, query, expectedPlan string, options sql.DescribeOptions) {
 	t.Run(name, func(t *testing.T) {
 		ctx := NewContext(harness)
+
 		parsed, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 		require.NoError(t, err)
 
@@ -765,7 +772,7 @@ func TestReadOnly(t *testing.T, harness Harness, testStoredProcedures bool) {
 
 	for _, query := range writingQueries {
 		t.Run(query, func(t *testing.T) {
-			AssertErr(t, e, harness, query, sql.ErrReadOnly)
+			AssertErr(t, e, harness, query, nil, sql.ErrReadOnly)
 		})
 	}
 }
@@ -1140,7 +1147,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				t.Skip()
 			}
 			if tt.err != nil {
-				AssertErrWithCtx(t, e, harness, ctx, tt.query, tt.err)
+				AssertErrWithCtx(t, e, harness, ctx, tt.query, nil, tt.err)
 				return
 			}
 			// in case there are any residual files from previous runs
@@ -1164,8 +1171,8 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	file.Close()
 	defer os.Remove(exists)
 
-	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", sql.ErrFileExists)
-	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable LIMIT 1 INTO DUMPFILE './exists.txt'", sql.ErrFileExists)
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable INTO OUTFILE './exists.txt'", nil, sql.ErrFileExists)
+	AssertErrWithCtx(t, e, harness, ctx, "SELECT * FROM mytable LIMIT 1 INTO DUMPFILE './exists.txt'", nil, sql.ErrFileExists)
 }
 
 func TestReplaceInto(t *testing.T, harness Harness) {
@@ -1235,10 +1242,16 @@ func TestDelete(t *testing.T, harness Harness) {
 		for name, coster := range biasedCosters {
 			t.Run(name+" join", func(t *testing.T) {
 				for _, tt := range queries.DeleteJoinTests {
-					e := mustNewEngine(t, harness)
-					e.EngineAnalyzer().Coster = coster
-					defer e.Close()
-					RunWriteQueryTestWithEngine(t, harness, e, tt)
+					t.Run(tt.WriteQuery, func(t *testing.T) {
+						if tt.Skip {
+							t.Skip()
+							return
+						}
+						e := mustNewEngine(t, harness)
+						e.EngineAnalyzer().Coster = coster
+						defer e.Close()
+						RunWriteQueryTestWithEngine(t, harness, e, tt)
+					})
 				}
 			})
 		}
@@ -1317,7 +1330,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2parent (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2child (pk BIGINT PRIMARY KEY, v1 BIGINT, "+
 			"FOREIGN KEY (v1) REFERENCES t2parent (v1))")
-		AssertErrWithCtx(t, e, harness, ctx, "TRUNCATE t2parent", sql.ErrTruncateReferencedFromForeignKey)
+		AssertErrWithCtx(t, e, harness, ctx, "TRUNCATE t2parent", nil, sql.ErrTruncateReferencedFromForeignKey)
 	})
 
 	t.Run("ON DELETE Triggers", func(t *testing.T) {
@@ -1620,6 +1633,21 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func TestNumericErrorScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.NumericErrorQueries {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		TestScript(t, harness, script)
+	}
+}
+
 func TestSpatialScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SpatialScriptTests {
@@ -1695,7 +1723,7 @@ func TestGeneratedColumnPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.GeneratedColumnPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -1704,7 +1732,7 @@ func TestSysbenchPlans(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 	for _, tt := range queries.SysbenchPlanTests {
-		TestQueryPlan(t, harness, e, tt.Query, tt.ExpectedPlan, DebugQueryPlan)
+		TestQueryPlan(t, harness, e, tt)
 	}
 }
 
@@ -1795,11 +1823,11 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 
 				if assertion.ExpectedErr != nil {
 					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, assertion.ExpectedErr)
+						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, assertion.ExpectedErr)
 					})
 				} else if assertion.ExpectedErrStr != "" {
 					t.Run(assertion.Query, func(t *testing.T) {
-						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
+						AssertErrWithCtx(t, engine, harness, ctx, assertion.Query, nil, nil, assertion.ExpectedErrStr)
 					})
 				} else {
 					t.Run(assertion.Query, func(t *testing.T) {
@@ -1864,7 +1892,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 			ctx.SetCurrentDatabase(rootCtx.GetCurrentDatabase())
 			if script.ExpectedErr != nil {
 				t.Run(lastQuery, func(t *testing.T) {
-					AssertErrWithCtx(t, engine, harness, ctx, lastQuery, script.ExpectedErr)
+					AssertErrWithCtx(t, engine, harness, ctx, lastQuery, nil, script.ExpectedErr)
 				})
 			} else if script.ExpectingErr {
 				t.Run(lastQuery, func(t *testing.T) {
@@ -2003,6 +2031,9 @@ func TestComplexIndexQueries(t *testing.T, harness Harness) {
 func TestTriggers(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.FooData)
 	for _, script := range queries.TriggerTests {
+		TestScript(t, harness, script)
+	}
+	for _, script := range queries.TriggerCreateInSubroutineTests {
 		TestScript(t, harness, script)
 	}
 
@@ -2293,6 +2324,11 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 			TestScript(t, harness, script)
 		}
 	})
+	t.Run("create tests", func(t *testing.T) {
+		for _, script := range queries.ProcedureCreateInSubroutineTests {
+			TestScript(t, harness, script)
+		}
+	})
 	t.Run("drop tests", func(t *testing.T) {
 		for _, script := range queries.ProcedureDropTests {
 			TestScript(t, harness, script)
@@ -2324,7 +2360,7 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 					}
 					TestQueryWithContext(t, ctx, e, harness, script.Query, expectedResult, nil, nil)
 				} else if script.ExpectedErr != nil {
-					AssertErrWithCtx(t, e, harness, ctx, script.Query, script.ExpectedErr)
+					AssertErrWithCtx(t, e, harness, ctx, script.Query, script.Bindings, script.ExpectedErr)
 				}
 			})
 		}
@@ -2354,6 +2390,9 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 
 func TestEvents(t *testing.T, h Harness) {
 	for _, script := range queries.EventTests {
+		TestScript(t, h, script)
+	}
+	for _, script := range queries.EventCreateInSubroutineTests {
 		TestScript(t, h, script)
 	}
 }
@@ -2419,6 +2458,10 @@ func TestViews(t *testing.T, harness Harness) {
 	for _, script := range queries.ViewScripts {
 		TestScript(t, harness, script)
 	}
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.ViewCreateInSubroutineTests {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
@@ -2433,7 +2476,7 @@ func TestRecursiveViewDefinition(t *testing.T, harness Harness) {
 	_, ok := db.(sql.ViewDatabase)
 	require.True(t, ok, "expected sql.ViewDatabase")
 
-	AssertErr(t, e, harness, "create view recursiveView AS select * from recursiveView", sql.ErrTableNotFound)
+	AssertErr(t, e, harness, "create view recursiveView AS select * from recursiveView", nil, sql.ErrTableNotFound)
 }
 
 func TestViewsPrepared(t *testing.T, harness Harness) {
@@ -2520,6 +2563,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	}
 
 	for _, script := range queries.CreateTableScriptTests {
+		TestScript(t, harness, script)
+	}
+
+	for _, script := range queries.CreateTableInSubroutineTests {
 		TestScript(t, harness, script)
 	}
 
@@ -2794,9 +2841,9 @@ func TestRenameTable(t *testing.T, harness Harness) {
 
 		t.Skip("broken")
 		TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", sql.ErrTableNotFound)
+		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", nil, sql.ErrTableNotFound)
 		TestQueryWithContext(t, ctx, e, harness, "SELECT COUNT(*) FROM mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil)
-		AssertErrWithCtx(t, e, harness, ctx, "RENAME TABLE mydb.emptytable2 TO emptytable3", sql.ErrNoDatabaseSelected)
+		AssertErrWithCtx(t, e, harness, ctx, "RENAME TABLE mydb.emptytable2 TO emptytable3", nil, sql.ErrNoDatabaseSelected)
 	})
 }
 
@@ -3621,8 +3668,8 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, "s"},
 	}, nil, nil)
 
-	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", expression.ErrInvalidOffset)
-	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", expression.ErrInvalidOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", nil, expression.ErrInvalidOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", nil, expression.ErrInvalidOffset)
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2 (a int, b int, c int)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t2 VALUES (1,1,1), (3,2,2), (7,4,5)")
@@ -3739,8 +3786,8 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`, []sql.Row{{1}, {1}, {1}, {1}, {1}, {0}, {2}, {2}, {0}, {0}}, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY preceding and interval '2' DAY following) FROM c order by x`, []sql.Row{{4}, {4}, {4}, {5}, {2}, {2}, {4}, {4}, {4}, {4}}, nil, nil)
 
-	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", aggregation.ErrRangeInvalidOrderBy)
-	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", sql.ErrInvalidValue)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", nil, aggregation.ErrRangeInvalidOrderBy)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", nil, sql.ErrInvalidValue)
 }
 
 func TestNamedWindows(t *testing.T, harness Harness) {
@@ -3760,10 +3807,10 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT row_number() over (w3) FROM a WINDOW w3 as (w2), w2 as (w1), w1 as (partition by z order by x) order by x`, []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}, {int64(5)}, {int64(6)}}, nil, nil)
 
 	// errors
-	AssertErr(t, e, harness, "SELECT sum(y) over (w1 partition by x) FROM a WINDOW w1 as (partition by z) order by x", sql.ErrInvalidWindowInheritance)
-	AssertErr(t, e, harness, "SELECT sum(y) over (w1 order by x) FROM a WINDOW w1 as (order by z) order by x", sql.ErrInvalidWindowInheritance)
-	AssertErr(t, e, harness, "SELECT sum(y) over (w1 rows unbounded preceding) FROM a WINDOW w1 as (range unbounded preceding) order by x", sql.ErrInvalidWindowInheritance)
-	AssertErr(t, e, harness, "SELECT sum(y) over (w3) FROM a WINDOW w1 as (w2), w2 as (w3), w3 as (w1) order by x", sql.ErrCircularWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w1 partition by x) FROM a WINDOW w1 as (partition by z) order by x", nil, sql.ErrInvalidWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w1 order by x) FROM a WINDOW w1 as (order by z) order by x", nil, sql.ErrInvalidWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w1 rows unbounded preceding) FROM a WINDOW w1 as (range unbounded preceding) order by x", nil, sql.ErrInvalidWindowInheritance)
+	AssertErr(t, e, harness, "SELECT sum(y) over (w3) FROM a WINDOW w1 as (w2), w2 as (w3), w3 as (w1) order by x", nil, sql.ErrCircularWindowInheritance)
 
 	// TODO parser needs to differentiate between window replacement and copying -- window frames can't be copied
 	//AssertErr(t, e, harness, "SELECT sum(y) over w FROM a WINDOW (w) as (partition by z order by x rows unbounded preceding) order by x", sql.ErrInvalidWindowInheritance)
@@ -3867,6 +3914,18 @@ func TestVariables(t *testing.T, harness Harness) {
 	err = CreateNewConnectionForServerEngine(ctx1, engine)
 	require.NoError(t, err)
 	for _, assertion := range []queries.ScriptTestAssertion{
+		{
+			Query:    "SELECT @@binlog_row_metadata",
+			Expected: []sql.Row{{"MINIMAL"}},
+		},
+		{
+			Query:    "SELECT @@binlog_row_image",
+			Expected: []sql.Row{{"FULL"}},
+		},
+		{
+			Query:    "SELECT @@binlog_expire_logs_seconds",
+			Expected: []sql.Row{{2592000}},
+		},
 		{
 			Query:    "SELECT @@select_into_buffer_size",
 			Expected: []sql.Row{{131072}},
@@ -4040,6 +4099,236 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 			},
 		},
+		{
+			Name: "Insert on duplicate key with row alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner,status=new_nodes.status",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id1"),
+						"v2": mustBuildBindVariable("milo"),
+						"v3": mustBuildBindVariable("on"),
+						"v4": mustBuildBindVariable(2),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner,status=new_nodes.status",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id2"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("off"),
+						"v4": mustBuildBindVariable(3),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "milo", "on", 1},
+						{"id2", "dabe", "off", 3},
+					},
+				},
+			},
+		},
+		{
+			Name: "Out-of-order Insert on duplicate key with row alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    color varchar(10),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 'red', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(color,timestamp,owner,id) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("green"),
+						"v2": mustBuildBindVariable(2),
+						"v3": mustBuildBindVariable("dabe"),
+						"v4": mustBuildBindVariable("id1"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(color,timestamp,owner,id) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("blue"),
+						"v2": mustBuildBindVariable(3),
+						"v3": mustBuildBindVariable("dabe"),
+						"v4": mustBuildBindVariable("id2"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "dabe", "off", "green", 1},
+						{"id2", "dabe", nil, "blue", 3},
+					},
+				},
+			},
+		},
+		{
+			Name: "Insert on duplicate key with row and column alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    color varchar(10),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 'red', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(id,owner,status,color,timestamp) values(?, ?, ?, ?, ?) as new_nodes(new_id, new_owner, new_status, new_color, new_timestamp) on duplicate key update owner=new_nodes.new_owner,status=new_status,color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id1"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("on"),
+						"v4": mustBuildBindVariable("green"),
+						"v5": mustBuildBindVariable(2),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(id,owner,status,color,timestamp) values(?, ?, ?, ?, ?) as new_nodes(new_id, new_owner, new_status, new_color, new_timestamp) on duplicate key update owner=new_nodes.new_owner,status=new_status,color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("id2"),
+						"v2": mustBuildBindVariable("dabe"),
+						"v3": mustBuildBindVariable("off"),
+						"v4": mustBuildBindVariable("blue"),
+						"v5": mustBuildBindVariable(3),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "dabe", "on", "green", 1},
+						{"id2", "dabe", "off", "blue", 3},
+					},
+				},
+			},
+		},
+		{
+			Name: "Out-of-order Insert on duplicate key with row and column alias",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    color varchar(10),
+			    size varchar(10),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 'red', 'large', 1)",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into nodes(size,color,timestamp,owner,id) values(?, ?, ?, ?, ?) as new_nodes(new_size,new_color,new_timestamp,new_owner,new_id) on duplicate key update size=new_size, owner=new_nodes.new_owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("medium"),
+						"v2": mustBuildBindVariable("green"),
+						"v3": mustBuildBindVariable(2),
+						"v4": mustBuildBindVariable("dabe"),
+						"v5": mustBuildBindVariable("id1"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(size,color,timestamp,owner,id) values(?, ?, ?, ?, ?) as new_nodes(new_size,new_color,new_timestamp,new_owner,new_id) on duplicate key update size=new_size, owner=new_nodes.new_owner, color=VALUES(color)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": mustBuildBindVariable("small"),
+						"v2": mustBuildBindVariable("blue"),
+						"v3": mustBuildBindVariable(3),
+						"v4": mustBuildBindVariable("dabe"),
+						"v5": mustBuildBindVariable("id2"),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "dabe", "off", "green", "medium", 1},
+						{"id2", "dabe", nil, "blue", "small", 3},
+					},
+				},
+			},
+		},
+		{
+			Name: "inserts should trigger string conversion errors",
+			SetUpScript: []string{
+				"create table test (v varchar(10))",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into test values (?)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": sqltypes.BytesBindVariable([]byte{0x99, 0x98, 0x97}),
+					},
+					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+				},
+				{
+					Query: "insert into test values (?)",
+					Bindings: map[string]*query.BindVariable{
+						"v1": sqltypes.StringBindVariable(string([]byte{0x99, 0x98, 0x97})),
+					},
+					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		TestScript(t, harness, tt)
@@ -4091,7 +4380,7 @@ func TestVariableErrors(t *testing.T, harness Harness) {
 	defer e.Close()
 	for _, test := range queries.VariableErrorTests {
 		t.Run(test.Query, func(t *testing.T) {
-			AssertErr(t, e, harness, test.Query, test.ExpectedErr)
+			AssertErr(t, e, harness, test.Query, nil, test.ExpectedErr)
 		})
 	}
 }
@@ -4385,9 +4674,9 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 	ctx.SetCurrentDatabase("")
 
-	AssertErrWithCtx(t, e, harness, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
-	AssertErrWithCtx(t, e, harness, ctx, "show tables", sql.ErrNoDatabaseSelected)
-	AssertErrWithCtx(t, e, harness, ctx, "show triggers", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "create table a (b int primary key)", nil, sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "show tables", nil, sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "show triggers", nil, sql.ErrNoDatabaseSelected)
 
 	_, _, err := e.Query(ctx, "ROLLBACK")
 	require.NoError(t, err)
@@ -4628,9 +4917,9 @@ func TestOnUpdateExprScripts(t *testing.T, harness Harness) {
 					sql.RunWithNowFunc(func() time.Time { return queries.Dec15_1_30 }, func() error {
 						ctx.SetQueryTime(queries.Dec15_1_30)
 						if assertion.ExpectedErr != nil {
-							AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+							AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErr)
 						} else if assertion.ExpectedErrStr != "" {
-							AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+							AssertErr(t, e, harness, assertion.Query, nil, nil, assertion.ExpectedErrStr)
 						} else {
 							var expected = assertion.Expected
 							if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
@@ -5013,14 +5302,28 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
-			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Bindings: map[string]*query.BindVariable{
+				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
+			},
+		},
+		{
+			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]*query.BindVariable{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
-			Expected: []sql.Row{{time.Date(2022, time.October, 27, 13, 14, 15, 0, time.UTC)}},
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Bindings: map[string]*query.BindVariable{
+				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
+			},
+		},
+		{
+			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
+			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]*query.BindVariable{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
@@ -5547,9 +5850,14 @@ func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 func TestBlobs(t *testing.T, h Harness) {
 	h.Setup(setup.MydbData, setup.BlobData, setup.MytableData)
 
+	// By default, strict_mysql_compatibility is disabled, but these tests require it to be enabled.
+	err := sql.SystemVariables.SetGlobal("strict_mysql_compatibility", int8(1))
+	require.NoError(t, err)
 	for _, tt := range queries.BlobErrors {
 		runQueryErrorTest(t, h, tt)
 	}
+	err = sql.SystemVariables.SetGlobal("strict_mysql_compatibility", int8(0))
+	require.NoError(t, err)
 
 	e := mustNewEngine(t, h)
 	defer e.Close()

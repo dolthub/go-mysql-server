@@ -46,6 +46,7 @@ func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
+
 			for _, setup := range tt.setup {
 				for _, statement := range setup {
 					if sh, ok := harness.(SkippingHarness); ok {
@@ -129,6 +130,268 @@ var DefaultJoinOpTests = []joinOpTest{
 				// at risk of being lost.
 				Query:    "select /*+ JOIN_ORDER(ab,xy,uv) */ * from xy join uv on (x = u and u in (0,2)) join ab on (x = a and v < 2)",
 				Expected: []sql.Row{{0, 2, 0, 1, 0, 2}},
+			},
+		},
+	},
+	{
+		name: "keyless lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int, index y_idx(y));",
+				"CREATE table ab (a int primary key, b int, c int);",
+				"insert into xy values (1,0,3), (1,0,3), (0,2,1),(0,2,1);",
+				"insert into ab values (0,1,1), (1,2,2), (2,3,3), (3,2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			// covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			// covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 3}, {0, 0, 3}, {2, 2, 1}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 3}, {0, 0, 3}, {2, 2, 1}, {2, 2, 1}},
+			},
+			// non-covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 1}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,z from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 1}, {2, 2, 1}},
+			},
+		},
+	},
+	{
+		name: "keyed null lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,null,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (null,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// covering
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {2, 2, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
+		name: "partial key null lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y,x));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,null,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (null,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// covering
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {2, 2, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
+		name: "keyed lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,0,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			// covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// non-covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 0}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,x from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 0}, {2, 2, 0}},
+			},
+		},
+	},
+	{
+		name: "multi pk lax lookup join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table wxyz (w int, x int, y int, z int, primary key (x,w), index yw_idx(y,w));",
+				"CREATE table abcd (a int, b int, c int, d int, primary key (a,b), index ca_idx(c,a));",
+				"insert into wxyz values (1,0,0,0), (1,1,1,1), (0,2,2,1),(0,1,3,1);",
+				"insert into abcd values (0,0,0,0), (0,1,1,1), (0,2,2,1),(2,1,3,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,z from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,w from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = a",
+				Expected: []sql.Row{{2, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on w = c and w = a",
+				Expected: []sql.Row{{3, 0, 0}, {2, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and y = a",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+		},
+	},
+	{
+		name: "multi pk strict lookup join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table wxyz (w int not null, x int, y int not null, z int, primary key (x,w), unique index yw_idx(y,w));",
+				"CREATE table abcd (a int not null, b int, c int not null, d int, primary key (a,b), unique index ca_idx(c,a));",
+				"insert into wxyz values (1,0,0,0), (1,1,1,1), (0,2,2,1),(0,1,3,1);",
+				"insert into abcd values (0,0,0,0), (0,1,1,1), (0,2,2,1),(2,1,3,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,z from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,w from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = a",
+				Expected: []sql.Row{{2, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on w = c and w = a",
+				Expected: []sql.Row{{3, 0, 0}, {2, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and y = a",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+		},
+	},
+	{
+		name: "redundant keyless index",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int, index y_idx(x,y,z));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,0,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 0}, {2, 2, 3}, {2, 2, 2}},
 			},
 		},
 	},

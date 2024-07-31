@@ -353,7 +353,7 @@ func (f *FuncDepSet) simplifyCols(key ColSet, subKeys []Key) ColSet {
 	for i, ok := key.Next(1); ok; i, ok = key.Next(i + 1) {
 		ret.Remove(i)
 		plucked.Add(i)
-		notConst := f.consts.Intersection(plucked).Empty()
+		notConst := !f.consts.Contains(i)
 		if notConst && !f.inClosureOf(plucked, ret, subKeys) {
 			// plucked is novel
 			ret.Add(i)
@@ -533,10 +533,10 @@ func NewFilterFDs(fds *FuncDepSet, notNull ColSet, constant ColSet, equiv [][2]C
 	return ret
 }
 
-func NewLookupFDs(fds *FuncDepSet, idxCols ColSet, notNull ColSet, constant ColSet, equiv *EquivSets) *FuncDepSet {
+func NewLookupFDs(fds *FuncDepSet, idxCols ColSet, notNull ColSet, constants ColSet, equiv *EquivSets) *FuncDepSet {
 	ret := &FuncDepSet{all: fds.All()}
 	ret.AddNotNullable(fds.notNull.Union(notNull))
-	ret.AddConstants(fds.Constants().Union(constant))
+	ret.AddConstants(fds.Constants().Union(constants))
 	for _, e := range fds.equivs.Sets() {
 		ret.AddEquivSet(e)
 	}

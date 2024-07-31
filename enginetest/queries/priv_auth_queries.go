@@ -106,15 +106,35 @@ type ServerAuthenticationTestAssertion struct {
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
 	{
+		Name: "Create user limits",
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "create user abcdefghijklmnopqrstuvwxyz0123456789@'localhost' identified by 'abc123';",
+				ExpectedErr: sql.ErrUserNameTooLong,
+			},
+			{
+				User: "root",
+				Host: "localhost",
+				Query: "create user j@'abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+					"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+					"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'" +
+					" identified by 'abc123';",
+				ExpectedErr: sql.ErrUserHostTooLong,
+			},
+		},
+	},
+	{
 		Name: "Binlog replication privileges",
 		SetUpScript: []string{
 			"CREATE USER user@localhost;",
 			"CREATE USER 'replica-admin'@localhost;",
 			"CREATE USER 'replica-client'@localhost;",
 			"CREATE USER 'replica-reload'@localhost;",
-			// REPLICATION_SLAVE_ADMIN allows: start replica,
+			// REPLICATION_SLAVE_ADMIN allows: start replica, stop replica, change replication source, change replication filter
 			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO 'replica-admin'@localhost;",
-			// REPLICATION CLIENT allows: show replica status
+			// REPLICATION CLIENT allows: show replica status, show binary logs, show binary log status
 			"GRANT REPLICATION CLIENT ON *.* to 'replica-client'@localhost;",
 			// RELOAD allows: reset replica
 			"GRANT RELOAD ON *.* TO 'replica-reload'@localhost;",
@@ -248,6 +268,70 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SHOW REPLICA STATUS;",
+				Expected: []sql.Row{},
+			},
+
+			// SHOW BINARY LOGS
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "replica-client",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOGS;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOGS;",
+				Expected: []sql.Row{},
+			},
+
+			// SHOW BINARY LOG STATUS
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "replica-client",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOG STATUS;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOG STATUS;",
 				Expected: []sql.Row{},
 			},
 
@@ -2130,6 +2214,57 @@ var UserPrivTests = []UserPrivilegeTest{
 				Host:     "localhost",
 				Query:    "select count(*) from information_schema.parameters where specific_name = 'testabc';",
 				Expected: []sql.Row{{3}},
+			},
+		},
+	},
+	{
+		Name: "information schema is queryable",
+		SetUpScript: []string{
+			"CREATE DATABASE testdb;",
+			"CREATE USER testadmin@'%';",
+			"GRANT ALL ON testdb.* TO testadmin@'%';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    "USE testdb;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events)) as all_found;`,
+				Expected: []sql.Row{{1.0}},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `(SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events);`,
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM dual) UNION (SELECT 1 as found FROM dual)) as all_found;`,
+				Expected: []sql.Row{{1.0}},
+			},
+			{
+				User: "testadmin",
+				Host: "%",
+				Query: `SELECT SUM(found)
+FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'testdb')
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.views WHERE table_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.table_constraints WHERE table_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.triggers WHERE event_object_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.routines WHERE routine_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.events WHERE event_schema = 'testdb' LIMIT 1)) as all_found;`,
+				Expected: []sql.Row{{nil}},
 			},
 		},
 	},

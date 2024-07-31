@@ -53,9 +53,6 @@ func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 }
 
 var _ sql.Catalog = (*Catalog)(nil)
-var _ sql.FunctionProvider = (*Catalog)(nil)
-var _ sql.TableFunctionProvider = (*Catalog)(nil)
-var _ sql.ExternalStoredProcedureProvider = (*Catalog)(nil)
 var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
 var _ binlogreplication.BinlogPrimaryCatalog = (*Catalog)(nil)
 
@@ -75,11 +72,6 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 		StatsProvider:    memory.NewStatsProv(),
 		locks:            make(sessionLocks),
 	}
-}
-
-// TODO: kill this
-func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
-	return sql.NewDatabaseProvider(dbs...)
 }
 
 func (c *Catalog) HasBinlogReplicaController() bool {
@@ -378,7 +370,7 @@ func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string
 	return c.StatsProvider.RefreshTableStats(ctx, table, db)
 }
 
-func (c *Catalog) GetTableStats(ctx *sql.Context, db, table string) ([]sql.Statistic, error) {
+func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
 	return c.StatsProvider.GetTableStats(ctx, db, table)
 }
 
@@ -394,39 +386,47 @@ func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []str
 	return c.StatsProvider.DropStats(ctx, qual, cols)
 }
 
-func (c *Catalog) RowCount(ctx *sql.Context, db, table string) (uint64, error) {
+func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	cnt, err := c.StatsProvider.RowCount(ctx, db, table)
 	if err == nil && cnt > 0 {
 		return cnt, nil
 	}
 	// fallback to on-table statistics
-	t, _, err := c.Table(ctx, db, table)
-	if err != nil {
-		return 0, err
-	}
-	st, ok := t.(sql.StatisticsTable)
+	st, ok := getStatisticsTable(table, nil)
 	if !ok {
-		return 0, nil
+		return 0, fmt.Errorf("%T is not a statistics table, no row count available", table)
 	}
+
 	cnt, _, err = st.RowCount(ctx)
 	return cnt, err
 }
 
-func (c *Catalog) DataLength(ctx *sql.Context, db, table string) (uint64, error) {
+func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
 	length, err := c.StatsProvider.DataLength(ctx, db, table)
 	if err == nil && length > 0 {
 		return length, nil
 	}
 	// fallback to on-table statistics
-	t, _, err := c.Table(ctx, db, table)
-	if err != nil {
-		return 0, err
-	}
-	st, ok := t.(sql.StatisticsTable)
+	st, ok := getStatisticsTable(table, nil)
 	if !ok {
-		return 0, nil
+		return 0, fmt.Errorf("%T is not a statistics table, no data length available", table)
 	}
 	return st.DataLength(ctx)
+}
+
+func getStatisticsTable(table sql.Table, prevTable sql.Table) (sql.StatisticsTable, bool) {
+	// Some TableNodes return themselves for UnderlyingTable, so we need to check for that
+	if table == prevTable {
+		return nil, false
+	}
+	switch t := table.(type) {
+	case sql.StatisticsTable:
+		return t, true
+	case sql.TableNode:
+		return getStatisticsTable(t.UnderlyingTable(), table)
+	default:
+		return nil, false
+	}
 }
 
 func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {

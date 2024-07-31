@@ -52,7 +52,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		switch e := o.Expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
-			dbName := strings.ToLower(e.Qualifier.Qualifier.String())
+			dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(e.Qualifier.Name.String())
 			colName := strings.ToLower(e.Name.String())
 			c, ok := projScope.resolveColumn(dbName, tblName, colName, false, false)

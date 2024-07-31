@@ -100,7 +100,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		dbName := strings.ToLower(v.Qualifier.Qualifier.String())
+		dbName := strings.ToLower(v.Qualifier.DbQualifier.String())
 		tblName := strings.ToLower(v.Qualifier.Name.String())
 		colName := strings.ToLower(v.Name.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
@@ -250,6 +250,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
 		if err != nil {
 			b.handleErr(err)
+			return nil
 		}
 		if sqlExpr, ok := expr.(sql.Expression); ok {
 			return sqlExpr
@@ -283,6 +284,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		return b.buildUnaryScalar(inScope, v)
 	case *ast.Subquery:
 		sqScope := inScope.pushSubquery()
+		inScope.refsSubquery = true
 		selectString := ast.String(v.Select)
 		selScope := b.buildSelectStmt(sqScope, v.Select)
 		// TODO: get the original select statement, not the reconstruction
@@ -314,9 +316,12 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.ValuesFuncExpr:
 		if b.insertActive {
 			if v.Name.Qualifier.Name.String() == "" {
-				v.Name.Qualifier.Name = ast.NewTableIdent(OnDupValuesPrefix)
+				v.Name.Qualifier.Name = ast.NewTableIdent(inScope.insertTableAlias)
+				if len(inScope.insertColumnAliases) > 0 {
+					v.Name.Name = ast.NewColIdent(inScope.insertColumnAliases[v.Name.Name.Lowered()])
+				}
 			}
-			dbName := strings.ToLower(v.Name.Qualifier.Qualifier.String())
+			dbName := strings.ToLower(v.Name.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(v.Name.Qualifier.Name.String())
 			colName := strings.ToLower(v.Name.Name.String())
 			col, ok := inScope.resolveColumn(dbName, tblName, colName, false, false)
@@ -502,9 +507,63 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 	return expr
 }
 
+// typeExpandComparisonLiteral expands comparison literals to column types
+// to simplify comparison execution when the conversion is safe.
+func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
+	var leftLit, rightLit *expression.Literal
+	var leftGf, rightGf *expression.GetField
+	switch l := left.(type) {
+	case *expression.GetField:
+		leftGf = l
+	case *expression.Literal:
+		leftLit = l
+	}
+	switch r := right.(type) {
+	case *expression.GetField:
+		rightGf = r
+	case *expression.Literal:
+		rightLit = r
+	}
+
+	var swap bool
+	if leftLit != nil && rightGf != nil {
+		// format: col = lit
+		swap = true
+		left, right = right, left
+		rightLit, leftGf = leftLit, rightGf
+	}
+
+	if leftGf != nil && rightLit != nil {
+		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) ||
+			types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
+			types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
+			types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
+			types.IsText(left.Type()) && types.IsText(right.Type()) {
+			if left.Type().MaxTextResponseByteLength(b.ctx) >= right.Type().MaxTextResponseByteLength(b.ctx) {
+				// The types are congruent and the literal does not lose
+				// information casting to the column type. The conditions
+				// should preclude out of range, casting errors, or
+				// correctness missteps.
+				val, _, err := leftGf.Type().Convert(rightLit.Value())
+				if err != nil && !expression.ErrNilOperand.Is(err) {
+					b.handleErr(err)
+				}
+				right = expression.NewLiteral(val, leftGf.Type())
+			}
+		}
+
+	}
+	if swap {
+		return right, left
+	}
+	return left, right
+}
+
 func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Expression {
 	left := b.buildScalar(inScope, c.Left)
 	right := b.buildScalar(inScope, c.Right)
+
+	left, right = b.typeExpandComparisonLiteral(left, right)
 
 	var escape sql.Expression = nil
 	if c.Escape != nil {
@@ -513,9 +572,17 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 
 	switch strings.ToLower(c.Operator) {
 	case ast.RegexpStr:
-		return expression.NewRegexp(left, right)
+		regexpLike, err := function.NewRegexpLike(left, right)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return regexpLike
 	case ast.NotRegexpStr:
-		return expression.NewNot(expression.NewRegexp(left, right))
+		regexpLike, err := function.NewRegexpLike(left, right)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return expression.NewNot(regexpLike)
 	case ast.EqualStr:
 		return expression.NewEquals(left, right)
 	case ast.LessThanStr:

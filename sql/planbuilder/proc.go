@@ -171,40 +171,40 @@ func (p *procCtx) GetCondition(name string) *plan.DeclareCondition {
 	return cond
 }
 
-func (b *Builder) buildBeginEndBlock(inScope *scope, n *ast.BeginEndBlock) (outScope *scope) {
+func (b *Builder) buildBeginEndBlock(inScope *scope, n *ast.BeginEndBlock, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(n.Label, false)
-	block := b.buildBlock(outScope, n.Statements)
+	block := b.buildBlock(outScope, n.Statements, fullQuery)
 	outScope.node = plan.NewBeginEndBlock(n.Label, block)
 	return outScope
 }
 
-func (b *Builder) buildIfBlock(inScope *scope, n *ast.IfStatement) (outScope *scope) {
+func (b *Builder) buildIfBlock(inScope *scope, n *ast.IfStatement, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	ifConditionals := make([]*plan.IfConditional, len(n.Conditions))
 	for i, ic := range n.Conditions {
-		ifConditionalScope := b.buildIfConditional(inScope, ic)
+		ifConditionalScope := b.buildIfConditional(inScope, ic, fullQuery)
 		ifConditionals[i] = ifConditionalScope.node.(*plan.IfConditional)
 	}
-	elseBlock := b.buildBlock(inScope, n.Else)
+	elseBlock := b.buildBlock(inScope, n.Else, fullQuery)
 	outScope.node = plan.NewIfElse(ifConditionals, elseBlock)
 	return outScope
 }
 
-func (b *Builder) buildCaseStatement(inScope *scope, n *ast.CaseStatement) (outScope *scope) {
+func (b *Builder) buildCaseStatement(inScope *scope, n *ast.CaseStatement, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	ifConditionals := make([]*plan.IfConditional, len(n.Cases))
 	for i, c := range n.Cases {
 		ifConditionalScope := b.buildIfConditional(inScope, ast.IfStatementCondition{
 			Expr:       c.Case,
 			Statements: c.Statements,
-		})
+		}, fullQuery)
 		ifConditionals[i] = ifConditionalScope.node.(*plan.IfConditional)
 	}
 	var elseBlock sql.Node
 	if n.Else != nil {
-		elseBlock = b.buildBlock(inScope, n.Else)
+		elseBlock = b.buildBlock(inScope, n.Else, fullQuery)
 	}
 	if n.Expr == nil {
 		outScope.node = plan.NewCaseStatement(nil, ifConditionals, elseBlock)
@@ -216,9 +216,9 @@ func (b *Builder) buildCaseStatement(inScope *scope, n *ast.CaseStatement) (outS
 	}
 }
 
-func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition) (outScope *scope) {
+func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
-	block := b.buildBlock(inScope, n.Statements)
+	block := b.buildBlock(inScope, n.Statements, fullQuery)
 	condition := b.buildScalar(inScope, n.Expr)
 	outScope.node = plan.NewIfConditional(condition, block)
 	return outScope
@@ -257,7 +257,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		c.ProcName.Name.String(),
 		params,
 		asOf,
-		&b.cat)
+		b.cat)
 	return outScope
 }
 
@@ -390,7 +390,7 @@ func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query stri
 	return outScope
 }
 
-func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements) *plan.Block {
+func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements, fullQuery string) *plan.Block {
 	var statements []sql.Node
 	for _, s := range parserStatements {
 		switch s.(type) {
@@ -400,7 +400,7 @@ func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements) *p
 				inScope.proc.NewState(dsBody)
 			}
 		}
-		stmtScope := b.build(inScope, s, ast.String(s))
+		stmtScope := b.buildSubquery(inScope, s, ast.String(s), fullQuery)
 		statements = append(statements, stmtScope.node)
 	}
 	return plan.NewBlock(statements)
@@ -448,30 +448,30 @@ func (b *Builder) buildCloseCursor(inScope *scope, closeCursor *ast.CloseCursor)
 	return outScope
 }
 
-func (b *Builder) buildLoop(inScope *scope, loop *ast.Loop) (outScope *scope) {
+func (b *Builder) buildLoop(inScope *scope, loop *ast.Loop, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(loop.Label, true)
-	block := b.buildBlock(outScope, loop.Statements)
+	block := b.buildBlock(outScope, loop.Statements, fullQuery)
 	outScope.node = plan.NewLoop(loop.Label, block)
 	return outScope
 }
 
-func (b *Builder) buildRepeat(inScope *scope, repeat *ast.Repeat) (outScope *scope) {
+func (b *Builder) buildRepeat(inScope *scope, repeat *ast.Repeat, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(repeat.Label, true)
-	block := b.buildBlock(outScope, repeat.Statements)
+	block := b.buildBlock(outScope, repeat.Statements, fullQuery)
 	expr := b.buildScalar(inScope, repeat.Condition)
 	outScope.node = plan.NewRepeat(repeat.Label, expr, block)
 	return outScope
 }
 
-func (b *Builder) buildWhile(inScope *scope, while *ast.While) (outScope *scope) {
+func (b *Builder) buildWhile(inScope *scope, while *ast.While, fullQuery string) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.initProc()
 	outScope.proc.AddLabel(while.Label, true)
-	block := b.buildBlock(outScope, while.Statements)
+	block := b.buildBlock(outScope, while.Statements, fullQuery)
 	expr := b.buildScalar(inScope, while.Condition)
 	outScope.node = plan.NewWhile(while.Label, expr, block)
 	return outScope

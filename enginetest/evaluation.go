@@ -122,9 +122,9 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 				}
 
 				if assertion.ExpectedErr != nil {
-					AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+					AssertErr(t, e, harness, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
 				} else if assertion.ExpectedErrStr != "" {
-					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
+					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
 				} else if assertion.ExpectedWarning != 0 {
 					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
 						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
@@ -278,9 +278,9 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 			}
 
 			if assertion.ExpectedErr != nil {
-				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.ExpectedErr)
+				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
 			} else if assertion.ExpectedErrStr != "" {
-				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
+				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
 			} else if assertion.ExpectedWarning != 0 {
 				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
 					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
@@ -470,7 +470,7 @@ func injectBindVarsAndPrepare(
 	q string,
 ) (string, map[string]*querypb.BindVariable, error) {
 	sqlMode := sql.LoadSqlMode(ctx)
-	parsed, err := sqlparser.ParseWithOptions(q, sqlMode.ParserOptions())
+	parsed, err := sqlparser.ParseWithOptions(ctx, q, sqlMode.ParserOptions())
 	if err != nil {
 		// cannot prepare empty statement, can query
 		if err.Error() == "empty statement" {
@@ -492,12 +492,13 @@ func injectBindVarsAndPrepare(
 		}
 	}
 
-	resPlan, err := planbuilder.ParseWithOptions(ctx, e.EngineAnalyzer().Catalog, q, sqlMode.ParserOptions())
+	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
+	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
+	resPlan, err := b.BindOnly(parsed, q)
 	if err != nil {
 		return q, nil, err
 	}
 
-	b := planbuilder.New(ctx, sql.MapCatalog{})
 	_, isInsert := resPlan.(*plan.InsertInto)
 	bindVars := make(map[string]*querypb.BindVariable)
 	var bindCnt int
@@ -819,7 +820,10 @@ func widenJSONValues(val interface{}) sql.JSONWrapper {
 		js = types.MustJSON(str)
 	}
 
-	doc := js.ToInterface()
+	doc, err := js.ToInterface()
+	if err != nil {
+		panic(err)
+	}
 
 	if _, ok := js.(sql.Statistic); ok {
 		// avoid comparing time values in statistics
@@ -880,8 +884,8 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 }
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
-func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	AssertErrWithCtx(t, e, harness, NewContext(harness), query, expectedErrKind, errStrs...)
+func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
+	AssertErrWithCtx(t, e, harness, NewContext(harness), query, bindings, expectedErrKind, errStrs...)
 }
 
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
@@ -904,9 +908,9 @@ func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query s
 }
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
-func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx = ctx.WithQuery(query)
-	_, iter, err := e.Query(ctx, query)
+	_, iter, err := e.QueryWithBindings(ctx, query, nil, bindings)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
 	}
@@ -1046,37 +1050,45 @@ func ExtractQueryNode(node sql.Node) sql.Node {
 
 // RunWriteQueryTest runs the specified |tt| WriteQueryTest using the specified harness.
 func RunWriteQueryTest(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
-	e := mustNewEngine(t, harness)
-	defer e.Close()
-	RunWriteQueryTestWithEngine(t, harness, e, tt)
+	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if tt.Skip {
+			t.Skip()
+			return
+		}
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		RunWriteQueryTestWithEngine(t, harness, e, tt)
+	})
 }
 
 // RunWriteQueryTestWithEngine runs the specified |tt| WriteQueryTest, using the specified harness and engine. Callers
 // are still responsible for closing the engine.
 func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.WriteQueryTest) {
-	t.Run(tt.WriteQuery, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.WriteQuery) {
-				t.Logf("Skipping query %s", tt.WriteQuery)
-				return
-			}
-			if sh.SkipQueryTest(tt.SelectQuery) {
-				t.Logf("Skipping query %s", tt.SelectQuery)
-				return
-			}
+	if sh, ok := harness.(SkippingHarness); ok {
+		if sh.SkipQueryTest(tt.WriteQuery) {
+			t.Logf("Skipping query %s", tt.WriteQuery)
+			return
 		}
-		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
-		expectedSelect := tt.ExpectedSelect
-		if IsServerEngine(e) && tt.SkipServerEngine {
-			expectedSelect = nil
+		if sh.SkipQueryTest(tt.SelectQuery) {
+			t.Logf("Skipping query %s", tt.SelectQuery)
+			return
 		}
-		TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil)
-	})
+	}
+	ctx := NewContext(harness)
+	TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil)
+	expectedSelect := tt.ExpectedSelect
+	if IsServerEngine(e) && tt.SkipServerEngine {
+		expectedSelect = nil
+	}
+	TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil)
 }
 
 func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
 	t.Run(tt.WriteQuery, func(t *testing.T) {
+		if tt.Skip {
+			t.Skip()
+			return
+		}
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(tt.WriteQuery) {
 				t.Logf("Skipping query %s", tt.WriteQuery)
@@ -1104,7 +1116,7 @@ func runGenericErrorTest(t *testing.T, h Harness, tt queries.GenericErrorQueryTe
 		}
 		e := mustNewEngine(t, h)
 		defer e.Close()
-		AssertErr(t, e, h, tt.Query, nil)
+		AssertErr(t, e, h, tt.Query, nil, nil)
 	})
 }
 
@@ -1118,9 +1130,9 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 		e := mustNewEngine(t, h)
 		defer e.Close()
 		if tt.ExpectedErrStr == "" {
-			AssertErr(t, e, h, tt.Query, tt.ExpectedErr)
+			AssertErr(t, e, h, tt.Query, nil, tt.ExpectedErr)
 		} else {
-			AssertErr(t, e, h, tt.Query, tt.ExpectedErr, tt.ExpectedErrStr)
+			AssertErr(t, e, h, tt.Query, nil, tt.ExpectedErr, tt.ExpectedErrStr)
 		}
 
 	})

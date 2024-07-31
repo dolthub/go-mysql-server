@@ -122,6 +122,79 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "issue 7958, update join uppercase table name validation",
+		SetUpScript: []string{
+			`
+CREATE TABLE targetTable_test (
+    source_id int PRIMARY KEY,
+    value int
+);`,
+			`
+CREATE TABLE sourceTable_test (
+    id int PRIMARY KEY,
+    value int
+);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE targetTable_test
+    JOIN sourceTable_test
+    SET
+        targetTable_test.value = sourceTable_test.value
+    WHERE sourceTable_test.id = targetTable_test.source_id;
+`,
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 0,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  0,
+						Updated:  0,
+						Warnings: 0,
+					},
+				}}},
+			},
+			{
+				Query: `UPDATE targetTable_test
+    JOIN sourceTable_test
+    ON sourceTAble_test.id = TARGETTABLE_test.source_id
+    SET
+        TARGETTABLE_test.value = SourceTable_test.value;
+`,
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 0,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  0,
+						Updated:  0,
+						Warnings: 0,
+					},
+				}}},
+			},
+		},
+	},
+	{
+		Name: "histogram bucket merging error for implementor buckets",
+		SetUpScript: []string{
+			"CREATE TABLE xy (x int primary key, y varchar(10), key(y));",
+			"insert into xy select x, 'x' from (with recursive inputs(x) as (select 1 union select x+1 from inputs where x < 5000) select * from inputs) dt",
+			"analyze table xy",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select (select count(*) from information_schema.statistics) > 0",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select a.y from xy a join xy b on a.y = b.y limit 1",
+				Expected: []sql.Row{{"x"}},
+			},
+			{
+				Query:    "select y from xy where y = 'x' limit 1",
+				Expected: []sql.Row{{"x"}},
+			},
+		},
+	},
+	{
 		Name: "GMS issue 2369",
 		SetUpScript: []string{
 			`CREATE TABLE table1 (
@@ -152,6 +225,159 @@ var ScriptTests = []ScriptTest{
 					{2, "tbl1 row 2", 1},
 					{3, "tbl1 row 3", nil},
 				},
+			},
+		},
+	},
+	{
+		Name: "Dolt issue 7957, update join matched rows",
+		SetUpScript: []string{
+			`CREATE TABLE entity_test(
+    id INT PRIMARY KEY,
+    value INT
+);`,
+			"INSERT INTO entity_test (id, value) values (1,10), (2,20), (3,30);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE entity_test
+    JOIN (VALUES ROW(1, 10), ROW(2,20)) joined (id, value)
+    ON joined.id = entity_test.id
+SET entity_test.value = joined.value;`,
+				Expected: []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 2}}}},
+			},
+		},
+	},
+	{
+		Name: "update join with update trigger different value",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int, k int);",
+			"insert into t values (1, 2, 3);",
+			"create trigger trig before update on t for each row begin set new.j = 999; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 999, 30}},
+			},
+			{
+				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 999, 30}},
+			},
+		},
+	},
+	{
+		Name: "update join with update trigger same value",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int, k int);",
+			"insert into t values (1, 2, 3);",
+			"create trigger trig before update on t for each row begin set new.k = 999; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 2, 999}},
+			},
+			{
+				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 2, 999}},
+			},
+		},
+	},
+	{
+		Name: "update join with update trigger",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int, k int);",
+			"insert into t values (1, 2, 3);",
+			"create trigger trig before update on t for each row begin set new.k = 999; end;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30 where t.i = 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1, 2, 999}},
+			},
+			{
+				// TODO: should throw can't update error
+				Skip:     true,
+				Query:    "update t join (select i, j, k from t) as tt set t.k = 30 where t.i = 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+			},
+			{
+				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1 offset 1;",
+				Expected: []sql.Row{{newUpdateResult(0, 0)}},
+			},
+		},
+	},
+	{
+		Name: "update join with update trigger if condition",
+		SetUpScript: []string{
+			"CREATE TABLE test_users (\n" +
+				"    `id` int NOT NULL AUTO_INCREMENT,\n" +
+				"    `username` varchar(255) NOT NULL,\n" +
+				"    `password` varchar(60) NOT NULL,\n" +
+				"    `deleted` tinyint(1) DEFAULT '0',\n" +
+				"    `favorite_number` INT,\n" +
+				"    PRIMARY KEY (`id`)\n" +
+				");",
+
+			"CREATE TRIGGER test_on_delete_users\n" +
+				"    BEFORE UPDATE ON test_users\n" +
+				"    FOR EACH ROW\n" +
+				"BEGIN\n" +
+				"    IF NEW.`deleted` THEN\n" +
+				"        SET NEW.`password` = '';\n" +
+				"    END IF;\n" +
+				"END ",
+
+			"INSERT INTO test_users (username, password, deleted, favorite_number) VALUES ('john', 'doe', 0, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "UPDATE test_users JOIN (SELECT 1 FROM test_users) AS tu SET test_users.favorite_number = 42;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from test_users;",
+				Expected: []sql.Row{{1, "john", "doe", 0, 42}},
+			},
+			{
+				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.favorite_number = 420;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from test_users;",
+				Expected: []sql.Row{{1, "john", "doe", 0, 420}},
+			},
+			{
+				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.deleted = 1;",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from test_users;",
+				Expected: []sql.Row{{1, "john", "", 1, 420}},
 			},
 		},
 	},
@@ -195,12 +421,12 @@ create table t (
 			{
 				Query:           "select * from t where to_ = 'L1' and from_ = 'L2'",
 				Expected:        []sql.Row{},
-				ExpectedIndexes: []string{"to_from_"},
+				ExpectedIndexes: []string{"to_"},
 			},
 			{
 				Query:           "select * from t where BIN_TO_UUID(id) = '0' and  to_ = 'L1' and from_ = 'L2'",
 				Expected:        []sql.Row{},
-				ExpectedIndexes: []string{"to_from_"},
+				ExpectedIndexes: []string{"to_"},
 			},
 		},
 	},
@@ -2448,6 +2674,23 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name: "unix_timestamp with non UTC timezone",
+		SetUpScript: []string{
+			"SET @@SESSION.time_zone = 'UTC';",
+			"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `datetime_col` datetime,   `timestamp_col` timestamp,   PRIMARY KEY (`i`) )",
+			"insert into datetime_table(i,datetime_col,timestamp_col)values(1, '1970-01-02 00:00:00', '1970-01-02 00:00:00')",
+			"SET @@SESSION.time_zone = 'Asia/Shanghai';", // +8:00
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT unix_timestamp(timestamp_col), unix_timestamp(datetime_col) from datetime_table",
+				Expected: []sql.Row{
+					{"86400.000000", "57600.000000"},
+				},
+			},
+		},
+	},
+	{
 		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
 		SetUpScript: []string{
 			"SET @@SESSION.time_zone = 'UTC';",
@@ -2553,7 +2796,7 @@ CREATE TABLE tab3 (
 			{
 				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
-					Matched:  6, // TODO: The answer should be 8
+					Matched:  8,
 					Updated:  6,
 					Warnings: 0,
 				}}}},
@@ -3141,6 +3384,133 @@ CREATE TABLE tab3 (
 				},
 			},
 			// TODO: Does not include tests with column renames and defaults.
+		},
+	},
+	{
+		Name: "describe and show columns with various keys and constraints",
+		SetUpScript: []string{
+			"create table t1 (i int not null, unique key (i));",
+			"create table t2 (i int not null, j int not null, unique key (j), unique key(i));",
+			"create table t3 (i int not null, j int, unique key (i, j));",
+			"create table t4 (i int not null, j int primary key, unique key (i));",
+			"create table t5 (i int not null, j int not null, unique key (j, i), unique key (i));",
+			"create table t6 (i int not null, j int not null, unique key (i), unique key (j, i));",
+			"create table t7 (pk int primary key, i int, j int not null, unique key (i), unique key (j, i));",
+			"create table t8 (pk int primary key, i int, j int, k int, unique key (i, j, k), unique key (i), unique key (j), unique key(k));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  UNIQUE KEY `i` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "show columns from t1;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Skip:  true, // supposed to be the first index defined, not in order of columns
+				Query: "describe t2;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "UNI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "describe t3;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "MUL", nil, ""},
+					{"j", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "describe t4;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "UNI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				// MySQL reads indexes in the order that they were created, while we sort by idx name
+				// https://github.com/dolthub/dolt/issues/2289
+				Skip:  true,
+				Query: "describe t5;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"j", "int", "NO", "PRI", nil, ""},
+				},
+			},
+			{
+				Query: "describe t6;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "PRI", nil, ""},
+					{"j", "int", "NO", "MUL", nil, ""},
+				},
+			},
+			{
+				Query: "describe t7;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "UNI", nil, ""},
+					{"j", "int", "NO", "MUL", nil, ""},
+				},
+			},
+			{
+				Skip:  true, // for some reason MUL takes priority over UNI for i
+				Query: "describe t8;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"i", "int", "YES", "MUL", nil, ""},
+					{"j", "int", "YES", "UNI", nil, ""},
+					{"k", "int", "YES", "UNI", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"uk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with multiple KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
+			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"mk2", "int", "YES", "", nil, ""},
+				},
+			},
 		},
 	},
 	{
@@ -4318,11 +4688,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{float64(1695600177)}},
+				Expected: []sql.Row{{1695600177}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP(CONVERT_TZ('2023-09-25 07:02:57', '+00:00', @@session.time_zone));",
-				Expected: []sql.Row{{float64(1695625377)}},
+				Expected: []sql.Row{{"1695625377.000000"}},
 			},
 			{
 				Query:    "SET time_zone = '+00:00';",
@@ -4330,7 +4700,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{float64(1695625377)}},
+				Expected: []sql.Row{{1695625377}},
 			},
 			{
 				Query:    "SET time_zone = '-06:00';",
@@ -4338,7 +4708,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{float64(1695646977)}},
+				Expected: []sql.Row{{1695646977}},
 			},
 		},
 	},
@@ -5525,14 +5895,14 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				// TODO: this query isn't valid SQL, why
 				Query: `update joinparent as jp 
 							left join joinchild as jc on jc.parent_id = jp.id
 								set jp.archived = jp.id, jp.archived_at = now(), 
 									jc.archived = jc.id, jc.archived_at = now()
 						where jp.id > 0 and jp.name != "never"
-						order by jp.name
 						limit 100`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
 			},
 			// do without limit to use `plan.Sort` instead of `plan.TopN`
 			{
@@ -5540,9 +5910,8 @@ CREATE TABLE tab3 (
 							left join joinchild as jc on jc.parent_id = jp.id
 								set jp.archived = 0, jp.archived_at = null, 
 									jc.archived = 0, jc.archived_at = null
-						where jp.id > 0 and jp.name != "never"
-						order by jp.name`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 10, Updated: 8}}}},
+						where jp.id > 0 and jp.name != "never"`,
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
 			},
 		},
 	},
@@ -6330,6 +6699,181 @@ where
 			},
 		},
 	},
+	{
+		Name: "test index naming",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"alter table t add index (i);",
+			"alter table t add index (i);",
+			"alter table t add index (i);",
+
+			"create table tt (i int);",
+			"alter table tt add index i_3(i);",
+			"alter table tt add index (i);",
+			"alter table tt add index (i);",
+			"alter table tt add index (i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  KEY `i` (`i`),\n" +
+						"  KEY `i_2` (`i`),\n" +
+						"  KEY `i_3` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				// MySQL preserves the other that indexes are created
+				// We store them in a map, so we have to sort to have some consistency
+				Query: "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n" +
+						"  `i` int,\n" +
+						"  KEY `i` (`i`),\n" +
+						"  KEY `i_2` (`i`),\n" +
+						"  KEY `i_3` (`i`),\n" +
+						"  KEY `i_4` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "test parenthesized tables",
+		SetUpScript: []string{
+			"create table t1 (i int);",
+			"insert into t1 values (1), (2), (3);",
+			"create table t2 (j int);",
+			"insert into t2 values (1), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from (t1)",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (((((t1 as t11)))))",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from (t1) join t2 where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from t1 join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1) join (t2) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from ((((t1)))) join ((((t2)))) where t1.i = t2.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select * from (t1 as t11) join (t2 as t22) where t11.i = t22.j",
+				Expected: []sql.Row{
+					{1, 1},
+					{3, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "invalid utf8 encoding strings",
+		SetUpScript: []string{
+			"create table t (c char(10), v varchar(10), txt text, b blob, bi binary(10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t(c) values (X'9876543210');",
+				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+			},
+			{
+				Query:          "insert into t(v) values (X'9876543210');",
+				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+			},
+			{
+				Query:          "insert into t(txt) values (X'9876543210');",
+				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+			},
+			{
+				Query: "insert into t(b) values (X'9876543210');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into t(bi) values (X'9876543210');",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+		},
+	},
+
+	{
+		Name: "unix_timestamp script tests",
+		SetUpScript: []string{
+			"set time_zone = 'UTC';",
+			"create table t1 (i int primary key, v varchar(100));",
+			"insert into t1 values (0, '2000-01-01 12:34:56');",
+			"insert into t1 values (1, '2000-01-01 12:34:56.1');",
+			"insert into t1 values (2, '2000-01-01 12:34:56.12');",
+			"insert into t1 values (3, '2000-01-01 12:34:56.123');",
+			"insert into t1 values (4, '2000-01-01 12:34:56.1234');",
+			"insert into t1 values (5, '2000-01-01 12:34:56.12345');",
+			"insert into t1 values (6, '2000-01-01 12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// TODO: server engine is not respecting timezone
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "select i, unix_timestamp(v) from t1",
+				Expected: []sql.Row{
+					{0, "946730096.000000"},
+					{1, "946730096.100000"},
+					{2, "946730096.120000"},
+					{3, "946730096.123000"},
+					{4, "946730096.123400"},
+					{5, "946730096.123450"},
+					{6, "946730096.123456"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -7037,7 +7581,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @dt;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56 +0000 UTC"},
+					{"2001-02-03 12:34:56.000000"},
 				},
 			},
 			{
@@ -7051,7 +7595,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @ts;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56 +0000 UTC"},
+					{"2001-02-03 12:34:56.000000"},
 				},
 			},
 			{
@@ -7372,40 +7916,6 @@ var PreparedScriptTests = []ScriptTest{
 
 var BrokenScriptTests = []ScriptTest{
 	{
-		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
-			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"uk1", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name: "ALTER TABLE MODIFY column with multiple KEYS",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
-			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"mk1", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-	{
 		Name: "ALTER TABLE RENAME on a column when another column has a default dependency on it",
 		SetUpScript: []string{
 			"CREATE TABLE `test` (`pk` bigint NOT NULL,`v2` int NOT NULL DEFAULT '100',`v3` int DEFAULT ((`v2` + 1)),PRIMARY KEY (`pk`));",
@@ -7665,6 +8175,10 @@ var CreateDatabaseScripts = []ScriptTest{
 	{
 		Name: "CREATE DATABASE error handling",
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create database `abc/def`",
+				ExpectedErr: sql.ErrInvalidDatabaseName,
+			},
 			{
 				Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
 				Expected: []sql.Row{{types.NewOkResult(1)}},

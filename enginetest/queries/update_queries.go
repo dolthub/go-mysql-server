@@ -257,7 +257,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 6)}}, // TODO: Should be matched = 6
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(6, 6)}},
 		SelectQuery:         "SELECT * FROM two_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 2, 1, 2, 3, 4),
@@ -424,6 +424,28 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(1, "updated"),
 			sql.NewRow(2, "second row"),
 			sql.NewRow(3, "third row"),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE IGNORE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(4, 4)}},
+		SelectQuery:         "SELECT * FROM two_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 11, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 21, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 31, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE IGNORE one_pk JOIN one_pk one_pk2 on one_pk.pk = one_pk2.pk SET one_pk.pk = 10`,
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 4, Updated: 1, Warnings: 0}}}},
+		SelectQuery:         "SELECT * FROM one_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, 10, 11, 12, 13, 14),
+			sql.NewRow(2, 20, 21, 22, 23, 24),
+			sql.NewRow(3, 30, 31, 32, 33, 34),
+			sql.NewRow(10, 0, 1, 2, 3, 4),
 		},
 	},
 	{

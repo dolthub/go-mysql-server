@@ -28,13 +28,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-const zeroDateStr = "0000-00-00"
+const ZeroDateStr = "0000-00-00"
 
-const zeroTimestampDatetimeStr = "0000-00-00 00:00:00"
+const ZeroTimestampDatetimeStr = "0000-00-00 00:00:00"
 
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
-	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%s'")
+	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%v'")
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
@@ -50,29 +50,32 @@ var (
 	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, which is one second past the epoch.
 	datetimeTypeMinTimestamp = time.Unix(1, 0)
 
+	DateOnlyLayouts = []string{
+		"20060102",
+		"2006-1-2",
+		"2006-01-02",
+		"2006/01/02",
+	}
+
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
 	// not have all the layouts supported by mysql. Missing are two digit year
 	// versions of common cases and dates that use non common separators.
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
-	TimestampDatetimeLayouts = []string{
+	TimestampDatetimeLayouts = append(DateOnlyLayouts, []string{
 		"2006-01-02 15:4",
 		"2006-01-02 15:04",
 		"2006-01-02 15:04:",
 		"2006-01-02 15:04:.",
 		"2006-01-02 15:04:05.",
 		"2006-01-02 15:04:05.999999",
-		"2006-01-02",
-		"2006-1-2",
 		"2006-1-2 15:4:5.999999",
 		time.RFC3339,
 		time.RFC3339Nano,
 		"2006-01-02T15:04:05",
 		"20060102150405",
-		"20060102",
-		"2006/01/02",
 		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
-	}
+	}...)
 
 	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
 	zeroTime = time.Unix(-62167219200, 0).UTC()
@@ -226,7 +229,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	}
 	switch value := v.(type) {
 	case string:
-		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
+		if value == ZeroDateStr || value == ZeroTimestampDatetimeStr {
 			return zeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
@@ -348,7 +351,7 @@ func (t datetimeType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t datetimeType) MaxTextResponseByteLength(_ *sql.Context) uint32 {
+func (t datetimeType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	switch t.baseType {
 	case sqltypes.Date:
 		return uint32(len(sql.DateLayout))
@@ -383,21 +386,21 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 	case sqltypes.Date:
 		typ = sqltypes.Date
 		if vt.Equal(zeroTime) {
-			val = vt.Format(zeroDateStr)
+			val = vt.Format(ZeroDateStr)
 		} else {
 			val = vt.Format(sql.DateLayout)
 		}
 	case sqltypes.Datetime:
 		typ = sqltypes.Datetime
 		if vt.Equal(zeroTime) {
-			val = vt.Format(zeroTimestampDatetimeStr)
+			val = vt.Format(ZeroTimestampDatetimeStr)
 		} else {
 			val = vt.Format(sql.TimestampDatetimeLayout)
 		}
 	case sqltypes.Timestamp:
 		typ = sqltypes.Timestamp
 		if vt.Equal(zeroTime) {
-			val = vt.Format(zeroTimestampDatetimeStr)
+			val = vt.Format(ZeroTimestampDatetimeStr)
 		} else {
 			val = vt.Format(sql.TimestampDatetimeLayout)
 		}

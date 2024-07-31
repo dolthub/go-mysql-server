@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -85,6 +86,41 @@ func SplitDisjunction(expr sql.Expression) []sql.Expression {
 		SplitDisjunction(and.LeftChild),
 		SplitDisjunction(and.RightChild)...,
 	)
+}
+
+type LookupColumn struct {
+	Col string
+	Lit *Literal
+	Eq  *Equals
+}
+
+// LookupEqualityColumn breaks AND expressions into a list of equalities split into
+// (1) the column names and (2) opposing *Literal expressions. If the expression is
+// not an equality with literal columns, return (nil, false).
+func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, bool) {
+	if e == nil {
+		return LookupColumn{}, false
+	}
+	switch e := e.(type) {
+	case *Equals:
+		if gf, ok := e.Left().(*GetField); ok {
+			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
+				switch r := e.Right().(type) {
+				case *Literal:
+					return LookupColumn{strings.ToLower(gf.name), r, e}, true
+				}
+			}
+		}
+		if gf, ok := e.Right().(*GetField); ok {
+			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
+				switch l := e.Left().(type) {
+				case *Literal:
+					return LookupColumn{strings.ToLower(gf.name), l, e}, true
+				}
+			}
+		}
+	}
+	return LookupColumn{}, false
 }
 
 func (a *And) String() string {

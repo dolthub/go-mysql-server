@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
 	"fmt"
@@ -23,34 +23,50 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 )
 
 func TestJSONOverlaps(t *testing.T) {
-	_, err := NewJSONOverlaps()
+	_, err := json.NewJSONOverlaps()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f2 := buildGetFieldExpressions(t, NewJSONOverlaps, 2)
+	f2 := buildGetFieldExpressions(t, json.NewJSONOverlaps, 2)
 	testCases := []struct {
 		f   sql.Expression
 		row sql.Row
 		exp interface{}
-		err bool
+		err error
 	}{
 		// errors
 		{
 			f:   f2,
 			row: sql.Row{``},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", ``),
 		},
 		{
 			f:   f2,
 			row: sql.Row{``, ``},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", ``),
 		},
 		{
 			f:   f2,
 			row: sql.Row{`asdf`, `badjson`},
-			err: true,
+			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", `asdf`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{}`, `badjson`},
+			err: sql.ErrInvalidJSONText.New(2, "json_overlaps", `badjson`),
+		},
+		{
+			f:   f2,
+			row: sql.Row{1, `{}`},
+			err: sql.ErrInvalidJSONArgument.New(1, "json_overlaps"),
+		},
+		{
+			f:   f2,
+			row: sql.Row{`{}`, 1},
+			err: sql.ErrInvalidJSONArgument.New(2, "json_overlaps"),
 		},
 
 		// nulls
@@ -227,8 +243,9 @@ func TestJSONOverlaps(t *testing.T) {
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
-			if tt.err {
+			if tt.err != nil {
 				require.Error(err)
+				require.Equal(tt.err.Error(), err.Error())
 			} else {
 				require.NoError(err)
 			}

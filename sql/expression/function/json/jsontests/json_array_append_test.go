@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package json
+package jsontests
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -22,17 +23,18 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestArrayAppend(t *testing.T) {
-	_, err := NewJSONArrayInsert()
+	_, err := json.NewJSONArrayInsert()
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
-	f1 := buildGetFieldExpressions(t, NewJSONArrayAppend, 3)
-	f2 := buildGetFieldExpressions(t, NewJSONArrayAppend, 5)
+	f1 := buildGetFieldExpressions(t, json.NewJSONArrayAppend, 3)
+	f2 := buildGetFieldExpressions(t, json.NewJSONArrayAppend, 5)
 
-	json := `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`
+	jsonInput := `{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`
 
 	testCases := []struct {
 		f        sql.Expression
@@ -41,25 +43,27 @@ func TestArrayAppend(t *testing.T) {
 		err      error
 	}{
 
-		{f1, sql.Row{json, "$.b[0]", 4.1}, `{"a": 1, "b": [[2,4.1], 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{json, "$.a", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{json, "$.e", "new"}, json, nil},
-		{f1, sql.Row{json, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": ["foo", "test"]}}`, nil},
-		{f2, sql.Row{json, "$.b[0]", 4.1, "$.c.d", "test"}, `{"a": 1, "b": [[2, 4.1], 3], "c": {"d": ["foo", "test"]}}`, nil},
-		{f1, sql.Row{json, "$.b[5]", 4.1}, json, nil},
-		{f1, sql.Row{json, "$.b.c", 4}, json, nil},
-		{f1, sql.Row{json, "$.a[51]", 4.1}, json, nil},
-		{f1, sql.Row{json, "$.a[last-1]", 4.1}, json, nil},
-		{f1, sql.Row{json, "$.a[0]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{json, "$.a[last]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{json, "$[0]", 4.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 4.1]`, nil},
-		{f1, sql.Row{json, "$.[0]", 4.1}, nil, ErrInvalidPath},
-		{f1, sql.Row{json, "foo", "test"}, nil, ErrInvalidPath},
-		{f1, sql.Row{json, "$.c.*", "test"}, nil, ErrPathWildcard},
-		{f1, sql.Row{json, "$.c.**", "test"}, nil, ErrPathWildcard},
-		{f1, sql.Row{json, "$", 10.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 10.1]`, nil},
+		{f1, sql.Row{jsonInput, "$.b[0]", 4.1}, `{"a": 1, "b": [[2,4.1], 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.Row{jsonInput, "$.a", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.Row{jsonInput, "$.e", "new"}, jsonInput, nil},
+		{f1, sql.Row{jsonInput, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": ["foo", "test"]}}`, nil},
+		{f2, sql.Row{jsonInput, "$.b[0]", 4.1, "$.c.d", "test"}, `{"a": 1, "b": [[2, 4.1], 3], "c": {"d": ["foo", "test"]}}`, nil},
+		{f1, sql.Row{jsonInput, "$.b[5]", 4.1}, jsonInput, nil},
+		{f1, sql.Row{jsonInput, "$.b.c", 4}, jsonInput, nil},
+		{f1, sql.Row{jsonInput, "$.a[51]", 4.1}, jsonInput, nil},
+		{f1, sql.Row{jsonInput, "$.a[last-1]", 4.1}, jsonInput, nil},
+		{f1, sql.Row{jsonInput, "$.a[0]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.Row{jsonInput, "$.a[last]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.Row{jsonInput, "$[0]", 4.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 4.1]`, nil},
+		{f1, sql.Row{jsonInput, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 2 of $.[0]")},
+		{f1, sql.Row{jsonInput, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")},
+		{f1, sql.Row{jsonInput, "$.c.*", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.*")},
+		{f1, sql.Row{jsonInput, "$.c.**", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.**")},
+		{f1, sql.Row{1, "$", "test"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_array_append")},
+		{f1, sql.Row{`}`, "$", "test"}, nil, sql.ErrInvalidJSONText.New(1, "json_array_append", `}`)},
+		{f1, sql.Row{jsonInput, "$", 10.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 10.1]`, nil},
 		{f1, sql.Row{nil, "$", 42.7}, nil, nil},
-		{f1, sql.Row{json, nil, 10}, nil, nil},
+		{f1, sql.Row{jsonInput, nil, 10}, nil, nil},
 
 		// mysql> select JSON_ARRAY_APPEND(JSON_ARRAY(1,2,3), "$[1]", 51, "$[1]", 52, "$[1]", 53);
 		// +--------------------------------------------------------------------------+
@@ -67,7 +71,7 @@ func TestArrayAppend(t *testing.T) {
 		// +--------------------------------------------------------------------------+
 		// | [1, [2, 51, 52, 53], 3]                                                  |
 		// +--------------------------------------------------------------------------+
-		{buildGetFieldExpressions(t, NewJSONArrayAppend, 7),
+		{buildGetFieldExpressions(t, json.NewJSONArrayAppend, 7),
 			sql.Row{`[1.0,2.0,3.0]`,
 				"$[1]", 51.0, // [1, 2, 3] -> [1, [2, 51], 3]
 				"$[1]", 52.0, // [1, [2, 51], 2, 3] -> [1, [2, 51, 52] 3]
@@ -101,7 +105,12 @@ func TestArrayAppend(t *testing.T) {
 				req.Equal(expect, result)
 			} else {
 				req.Nil(result)
-				req.Error(tstC.err, err)
+				if tstC.err == nil {
+					req.NoError(err)
+				} else {
+					req.Error(err)
+					req.Equal(tstC.err.Error(), err.Error())
+				}
 			}
 		})
 	}

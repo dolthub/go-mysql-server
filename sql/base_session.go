@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -32,12 +31,6 @@ type BaseSession struct {
 	addr   string
 	client Client
 
-	// TODO(andy): in principle, we shouldn't
-	//   have concurrent access to the session.
-	//   Needs investigation.
-	mu sync.RWMutex
-
-	// |mu| protects the following state
 	logger           *logrus.Entry
 	currentDB        string
 	transactionDb    string
@@ -47,10 +40,11 @@ type BaseSession struct {
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
 	warnings         []*Warning
+	warningLock      bool
 	warncnt          uint16
 	locks            map[string]bool
 	queriedDb        string
-	lastQueryInfo    map[string]any
+	lastQueryInfo    map[string]*atomic.Value
 	tx               Transaction
 	ignoreAutocommit bool
 
@@ -61,8 +55,6 @@ type BaseSession struct {
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if s.logger == nil {
 		s.logger = s.newLogger()
@@ -76,34 +68,24 @@ func (s *BaseSession) newLogger() *logrus.Entry {
 }
 
 func (s *BaseSession) SetLogger(logger *logrus.Entry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.logger = logger
 }
 
 func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.ignoreAutocommit = ignore
 }
 
 func (s *BaseSession) GetIgnoreAutoCommit() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.ignoreAutocommit
 }
 
 var _ Session = (*BaseSession)(nil)
 
 func (s *BaseSession) SetTransactionDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.transactionDb = dbName
 }
 
 func (s *BaseSession) GetTransactionDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.transactionDb
 }
 
@@ -122,8 +104,6 @@ func (s *BaseSession) SetClient(c Client) {
 // GetAllSessionVariables implements the Session interface.
 func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	m := make(map[string]interface{})
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	for k, v := range s.systemVars {
 		if sysType, ok := v.Var.GetType().(SetType); ok {
@@ -182,8 +162,6 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 }
 
 func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}, init bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	var svv SystemVarValue
 	var err error
 	if init {
@@ -209,9 +187,6 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 
 // GetSessionVariable implements the Session interface.
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
@@ -233,35 +208,26 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 
 // GetStatusVariable implements the Session interface.
 func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interface{}, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	statVar, ok := s.statusVars[statVarName]
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(statVarName)
 	}
-	return statVar.Val, nil
+	return statVar.Value(), nil
 }
 
 // SetStatusVariable implements the Session interface.
 func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, val interface{}) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	statVar, ok := s.statusVars[statVarName]
 	if !ok {
 		return ErrUnknownSystemVariable.New(statVarName)
 	}
-	statVar.Val = val
+	statVar.Set(val)
 	s.statusVars[statVarName] = statVar
 	return nil
 }
 
 // GetAllStatusVariables implements the Session interface.
 func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValue {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	m := make(map[string]StatusVarValue)
 	for k, v := range s.statusVars {
 		m[k] = v
@@ -271,30 +237,19 @@ func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValu
 
 // IncrementStatusVariable implements the Session interface.
 func (s *BaseSession) IncrementStatusVariable(_ *Context, statVarName string, val int) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	statVar, ok := s.statusVars[statVarName]
-	if !ok {
+	if _, ok := s.statusVars[statVarName]; !ok {
 		return ErrUnknownSystemVariable.New(statVarName)
 	}
-	statVal, ok := statVar.Val.(uint64)
-	if !ok {
-		return fmt.Errorf("status variable %s is not a uint64", statVarName)
-	}
 	if val < 0 {
-		statVar.Val = statVal - uint64(-val)
+		s.statusVars[statVarName].Increment(-(uint64(-val)))
 	} else {
-		statVar.Val = statVal + uint64(val)
+		s.statusVars[statVarName].Increment((uint64(val)))
 	}
-	s.statusVars[statVarName] = statVar
 	return nil
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
 func (s *BaseSession) GetCharacterSet() CharacterSetID {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	sysVar, _ := s.systemVars[characterSetConnectionSysVarName]
 	if sysVar.Val == nil {
 		return CharacterSet_Unspecified
@@ -308,8 +263,6 @@ func (s *BaseSession) GetCharacterSet() CharacterSetID {
 
 // GetCharacterSetResults returns the result character set for this session (defined by the system variable `character_set_results`).
 func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	sysVar, _ := s.systemVars[characterSetResultsSysVarName]
 	if sysVar.Val == nil {
 		return CharacterSet_Unspecified
@@ -323,8 +276,6 @@ func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
 
 // GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
 func (s *BaseSession) GetCollation() CollationID {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	sysVar, ok := s.systemVars[collationConnectionSysVarName]
 
 	// In tests, the collation may not be set because the sys vars haven't been initialized
@@ -349,15 +300,11 @@ func (s *BaseSession) ValidateSession(ctx *Context) error {
 
 // GetCurrentDatabase gets the current database for this session
 func (s *BaseSession) GetCurrentDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.currentDB
 }
 
 // SetCurrentDatabase sets the current database for this session
 func (s *BaseSession) SetCurrentDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.currentDB = dbName
 	logger := s.logger
 	if logger == nil {
@@ -383,72 +330,65 @@ func (s *BaseSession) SetConnectionId(id uint32) {
 
 // Warn stores the warning in the session.
 func (s *BaseSession) Warn(warn *Warning) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.warnings = append(s.warnings, warn)
 }
 
 // Warnings returns a copy of session warnings (from the most recent - the last one)
 // The function implements sql.Session interface
 func (s *BaseSession) Warnings() []*Warning {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	n := len(s.warnings)
 	warns := make([]*Warning, n)
 	for i := 0; i < n; i++ {
 		warns[i] = s.warnings[n-i-1]
 	}
-
 	return warns
+}
+
+// LockWarnings locks the session warnings so that they can't be cleared
+func (s *BaseSession) LockWarnings() {
+	s.warningLock = true
+}
+
+// UnlockWarnings locks the session warnings so that they can be cleared
+func (s *BaseSession) UnlockWarnings() {
+	s.warningLock = false
 }
 
 // ClearWarnings cleans up session warnings
 func (s *BaseSession) ClearWarnings() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	cnt := uint16(len(s.warnings))
-	if s.warncnt == cnt {
-		if s.warnings != nil {
-			s.warnings = s.warnings[:0]
-		}
-		s.warncnt = 0
-	} else {
-		s.warncnt = cnt
+	if s.warningLock {
+		return
 	}
+	cnt := uint16(len(s.warnings))
+	if s.warncnt != cnt {
+		s.warncnt = cnt
+		return
+	}
+	if s.warnings != nil {
+		s.warnings = s.warnings[:0]
+	}
+	s.warncnt = 0
 }
 
 // WarningCount returns a number of session warnings
 func (s *BaseSession) WarningCount() uint16 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return uint16(len(s.warnings))
 }
 
 // AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates
 func (s *BaseSession) AddLock(lockName string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.locks[lockName] = true
 	return nil
 }
 
 // DelLock removes a lock from the set of locks owned by this user
 func (s *BaseSession) DelLock(lockName string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	delete(s.locks, lockName)
 	return nil
 }
 
 // IterLocks iterates through all locks owned by this user
 func (s *BaseSession) IterLocks(cb func(name string) error) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	for name := range s.locks {
 		err := cb(name)
 
@@ -462,53 +402,37 @@ func (s *BaseSession) IterLocks(cb func(name string) error) error {
 
 // GetQueriedDatabase implements the Session interface.
 func (s *BaseSession) GetQueriedDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.queriedDb
 }
 
 // SetQueriedDatabase implements the Session interface.
 func (s *BaseSession) SetQueriedDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.queriedDb = dbName
 }
 
 func (s *BaseSession) GetIndexRegistry() *IndexRegistry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.idxReg
 }
 
 func (s *BaseSession) GetViewRegistry() *ViewRegistry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.viewReg
 }
 
 func (s *BaseSession) SetIndexRegistry(reg *IndexRegistry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.idxReg = reg
 }
 
 func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.viewReg = reg
 }
 
 func (s *BaseSession) SetLastQueryInfoInt(key string, value int64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.lastQueryInfo[key] = value
+	s.lastQueryInfo[key].Store(value)
 }
 
 func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
-	value, ok := s.lastQueryInfo[key].(int64)
+	value, ok := s.lastQueryInfo[key].Load().(int64)
 	if !ok {
 		panic(fmt.Sprintf("last query info value stored for %s is not an int64 value, but a %T", key, s.lastQueryInfo[key]))
 	}
@@ -516,16 +440,11 @@ func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
 }
 
 func (s *BaseSession) SetLastQueryInfoString(key string, value string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.lastQueryInfo[key] = value
+	s.lastQueryInfo[key].Store(value)
 }
 
 func (s *BaseSession) GetLastQueryInfoString(key string) string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	value, ok := s.lastQueryInfo[key].(string)
+	value, ok := s.lastQueryInfo[key].Load().(string)
 	if !ok {
 		panic(fmt.Sprintf("last query info value stored for %s is not a string value, but a %T", key, s.lastQueryInfo[key]))
 	}
@@ -533,14 +452,10 @@ func (s *BaseSession) GetLastQueryInfoString(key string) string {
 }
 
 func (s *BaseSession) GetTransaction() Transaction {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.tx
 }
 
 func (s *BaseSession) SetTransaction(tx Transaction) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.tx = tx
 }
 
@@ -590,7 +505,6 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		userVars:       NewUserVars(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
-		mu:             sync.RWMutex{},
 		locks:          make(map[string]bool),
 		lastQueryInfo:  defaultLastQueryInfo(),
 		privSetCounter: 0,
@@ -619,7 +533,6 @@ func NewBaseSession() *BaseSession {
 		userVars:       NewUserVars(),
 		idxReg:         NewIndexRegistry(),
 		viewReg:        NewViewRegistry(),
-		mu:             sync.RWMutex{},
 		locks:          make(map[string]bool),
 		lastQueryInfo:  defaultLastQueryInfo(),
 		privSetCounter: 0,

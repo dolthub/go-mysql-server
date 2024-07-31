@@ -15,6 +15,7 @@
 package server
 
 import (
+	"context"
 	"sort"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -62,7 +63,7 @@ type Interceptor interface {
 	// Note the contents of the query slice may change after
 	// the first call to callback. So the Handler should not
 	// hang on to the byte slice.
-	Query(chain Chain, c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) error
+	Query(ctx context.Context, chain Chain, c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) error
 
 	// ParsedQuery is called when a connection receives a
 	// query that has already been parsed. Note the contents
@@ -75,15 +76,15 @@ type Interceptor interface {
 	// client supports MULTI_STATEMENT. It should process the first
 	// statement in |query| and return the remainder. It will be called
 	// multiple times until the remainder is |""|.
-	MultiQuery(chain Chain, c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) (string, error)
+	MultiQuery(ctx context.Context, chain Chain, c *mysql.Conn, query string, callback func(res *sqltypes.Result, more bool) error) (string, error)
 
 	// Prepare is called when a connection receives a prepared
 	// statement query.
-	Prepare(chain Chain, c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error)
+	Prepare(ctx context.Context, chain Chain, c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error)
 
 	// StmtExecute is called when a connection receives a statement
 	// execute query.
-	StmtExecute(chain Chain, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error
+	StmtExecute(ctx context.Context, chain Chain, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error
 }
 
 type Chain interface {
@@ -92,21 +93,21 @@ type Chain interface {
 	// Note the contents of the query slice may change after
 	// the first call to callback. So the Handler should not
 	// hang on to the byte slice.
-	ComQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error
+	ComQuery(ctx context.Context, c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error
 
 	// ComMultiQuery is called when a connection receives a query and the
 	// client supports MULTI_STATEMENT. It should process the first
 	// statement in |query| and return the remainder. It will be called
 	// multiple times until the remainder is |""|.
-	ComMultiQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error)
+	ComMultiQuery(ctx context.Context, c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error)
 
 	// ComPrepare is called when a connection receives a prepared
 	// statement query.
-	ComPrepare(c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error)
+	ComPrepare(ctx context.Context, c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error)
 
 	// ComStmtExecute is called when a connection receives a statement
 	// execute query.
-	ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error
+	ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error
 }
 
 type chainInterceptor struct {
@@ -114,26 +115,28 @@ type chainInterceptor struct {
 	c Chain
 }
 
-func (ci *chainInterceptor) ComQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error {
-	return ci.i.Query(ci.c, c, query, callback)
+func (ci *chainInterceptor) ComQuery(ctx context.Context, c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error {
+	return ci.i.Query(ctx, ci.c, c, query, callback)
 }
 
-func (ci *chainInterceptor) ComMultiQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error) {
-	return ci.i.MultiQuery(ci.c, c, query, callback)
+func (ci *chainInterceptor) ComMultiQuery(ctx context.Context, c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error) {
+	return ci.i.MultiQuery(ctx, ci.c, c, query, callback)
 }
 
-func (ci *chainInterceptor) ComPrepare(c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error) {
-	return ci.i.Prepare(ci.c, c, query, prepare)
+func (ci *chainInterceptor) ComPrepare(ctx context.Context, c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error) {
+	return ci.i.Prepare(ctx, ci.c, c, query, prepare)
 }
 
-func (ci *chainInterceptor) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	return ci.i.StmtExecute(ci.c, c, prepare, callback)
+func (ci *chainInterceptor) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+	return ci.i.StmtExecute(ctx, ci.c, c, prepare, callback)
 }
 
 type interceptorHandler struct {
 	c Chain
 	h mysql.Handler
 }
+
+var _ mysql.Handler = (*interceptorHandler)(nil)
 
 func (ih *interceptorHandler) NewConnection(c *mysql.Conn) {
 	ih.h.NewConnection(c)
@@ -143,24 +146,28 @@ func (ih *interceptorHandler) ConnectionClosed(c *mysql.Conn) {
 	ih.h.ConnectionClosed(c)
 }
 
+func (ih *interceptorHandler) ConnectionAborted(c *mysql.Conn, reason string) error {
+	return ih.h.ConnectionAborted(c, reason)
+}
+
 func (ih *interceptorHandler) ComInitDB(c *mysql.Conn, schemaName string) error {
 	return ih.h.ComInitDB(c, schemaName)
 }
 
-func (ih *interceptorHandler) ComQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error {
-	return ih.c.ComQuery(c, query, callback)
+func (ih *interceptorHandler) ComQuery(ctx context.Context, c *mysql.Conn, query string, callback mysql.ResultSpoolFn) error {
+	return ih.c.ComQuery(ctx, c, query, callback)
 }
 
-func (ih *interceptorHandler) ComMultiQuery(c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error) {
-	return ih.c.ComMultiQuery(c, query, callback)
+func (ih *interceptorHandler) ComMultiQuery(ctx context.Context, c *mysql.Conn, query string, callback mysql.ResultSpoolFn) (string, error) {
+	return ih.c.ComMultiQuery(ctx, c, query, callback)
 }
 
-func (ih *interceptorHandler) ComPrepare(c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error) {
-	return ih.c.ComPrepare(c, query, prepare)
+func (ih *interceptorHandler) ComPrepare(ctx context.Context, c *mysql.Conn, query string, prepare *mysql.PrepareData) ([]*querypb.Field, error) {
+	return ih.c.ComPrepare(ctx, c, query, prepare)
 }
 
-func (ih *interceptorHandler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	return ih.c.ComStmtExecute(c, prepare, callback)
+func (ih *interceptorHandler) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+	return ih.c.ComStmtExecute(ctx, c, prepare, callback)
 }
 
 func (ih *interceptorHandler) WarningCount(c *mysql.Conn) uint16 {

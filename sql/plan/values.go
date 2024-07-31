@@ -23,6 +23,8 @@ import (
 
 // Values represents a set of tuples of expressions.
 type Values struct {
+	AliasName        string
+	ColumnNames      map[string]string
 	ExpressionTuples [][]sql.Expression
 }
 
@@ -31,7 +33,12 @@ var _ sql.CollationCoercible = (*Values)(nil)
 
 // NewValues creates a Values node with the given tuples.
 func NewValues(tuples [][]sql.Expression) *Values {
-	return &Values{tuples}
+	return &Values{ExpressionTuples: tuples}
+}
+
+// NewValuesWithAliasName creates a Values node with the given row and column aliases.
+func NewValuesWithAlias(tableName string, columnNames map[string]string, tuples [][]sql.Expression) *Values {
+	return &Values{ExpressionTuples: tuples, AliasName: tableName, ColumnNames: columnNames}
 }
 
 // Schema implements the Node interface.
@@ -186,5 +193,5 @@ func (p *Values) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		}
 	}
 
-	return NewValues(tuples), nil
+	return NewValuesWithAlias(p.AliasName, p.ColumnNames, tuples), nil
 }

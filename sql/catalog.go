@@ -14,11 +14,6 @@
 
 package sql
 
-import (
-	"fmt"
-	"strings"
-)
-
 type Catalog interface {
 	DatabaseProvider
 	FunctionProvider
@@ -44,13 +39,6 @@ type Catalog interface {
 	// DatabaseTableAsOf returns the table with the name given in the db given, as of the given marker
 	DatabaseTableAsOf(ctx *Context, db Database, tableName string, asOf interface{}) (Table, Database, error)
 
-	// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
-	Function(ctx *Context, name string) (Function, error)
-
-	// RegisterFunction registers the functions given, adding them to the built-in functions.
-	// Integrators with custom functions should typically use the FunctionProvider interface to register their functions.
-	RegisterFunction(ctx *Context, fns ...Function)
-
 	// LockTable locks the table named
 	LockTable(ctx *Context, table string)
 
@@ -64,20 +52,4 @@ type CatalogTable interface {
 
 	// AssignCatalog assigns a Catalog to the table.
 	AssignCatalog(cat Catalog) Table
-}
-
-func NewDbTable(db, table string) DbTable {
-	return DbTable{Db: strings.ToLower(db), Table: strings.ToLower(table)}
-}
-
-type DbTable struct {
-	Db    string
-	Table string
-}
-
-func (dt *DbTable) String() string {
-	if dt.Db == "" {
-		return dt.Table
-	}
-	return fmt.Sprintf("%s.%s", dt.Db, dt.Table)
 }

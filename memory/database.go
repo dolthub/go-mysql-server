@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"sync"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
@@ -548,14 +550,14 @@ func (d *Database) Database() *BaseDatabase {
 
 // CreateView implements the interface sql.ViewDatabase.
 func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
-	_, ok := d.views[name]
+	_, ok := d.views[strings.ToLower(name)]
 	if ok {
 		return sql.ErrExistingView.New(name)
 	}
 
 	sqlMode := sql.LoadSqlMode(ctx)
 
-	d.views[name] = sql.ViewDefinition{
+	d.views[strings.ToLower(name)] = sql.ViewDefinition{
 		Name:                name,
 		TextDefinition:      selectStatement,
 		CreateViewStatement: createViewStmt,
@@ -586,7 +588,7 @@ func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 
 // GetViewDefinition implements the interface sql.ViewDatabase.
 func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
-	viewDef, ok := d.views[viewName]
+	viewDef, ok := d.views[strings.ToLower(viewName)]
 	return viewDef, ok, nil
 }
 

@@ -47,6 +47,39 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	return database
 }
 
+func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
+	dbName := table.DbQualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+
+	if dbName == "" {
+		b.handleErr(sql.ErrNoDatabaseSelected.New())
+	}
+
+	database, err := b.cat.Database(b.ctx, dbName)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	schema := table.SchemaQualifier.String()
+	if schema != "" {
+		scd, ok := database.(sql.SchemaDatabase)
+		if !ok {
+			b.handleErr(fmt.Errorf("database %T does not support schemas", database))
+		}
+		database, ok, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !ok {
+			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
+		}
+	}
+
+	return database
+}
+
 // buildAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
 // the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
 // Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
@@ -80,21 +113,21 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 	return
 }
 
-func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *scope) {
+func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
 		if c.TriggerSpec != nil {
-			return b.buildCreateTrigger(inScope, query, c)
+			return b.buildCreateTrigger(inScope, subQuery, fullQuery, c)
 		}
 		if c.ProcedureSpec != nil {
-			return b.buildCreateProcedure(inScope, query, c)
+			return b.buildCreateProcedure(inScope, subQuery, fullQuery, c)
 		}
 		if c.EventSpec != nil {
-			return b.buildCreateEvent(inScope, query, c)
+			return b.buildCreateEvent(inScope, subQuery, fullQuery, c)
 		}
 		if c.ViewSpec != nil {
-			return b.buildCreateView(inScope, query, c)
+			return b.buildCreateView(inScope, subQuery, fullQuery, c)
 		}
 		return b.buildCreateTable(inScope, c)
 	case ast.DropStr:
@@ -137,9 +170,9 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 		return b.buildDropTable(inScope, c)
 	case ast.AlterStr:
 		if c.EventSpec != nil {
-			return b.buildAlterEvent(inScope, query, c)
+			return b.buildAlterEvent(inScope, subQuery, fullQuery, c)
 		} else if !c.User.IsEmpty() {
-			return b.buildAlterUser(inScope, query, c)
+			return b.buildAlterUser(inScope, subQuery, c)
 		}
 		b.handleErr(sql.ErrUnsupportedFeature.New(ast.String(c)))
 	case ast.RenameStr:
@@ -155,12 +188,12 @@ func (b *Builder) buildDDL(inScope *scope, query string, c *ast.DDL) (outScope *
 func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
 	var dropTables []sql.Node
-	dbName := c.FromTables[0].Qualifier.String()
+	dbName := c.FromTables[0].DbQualifier.String()
 	if dbName == "" {
 		dbName = b.currentDb().Name()
 	}
 	for _, t := range c.FromTables {
-		if t.Qualifier.String() != "" && t.Qualifier.String() != dbName {
+		if t.DbQualifier.String() != "" && t.DbQualifier.String() != dbName {
 			err := sql.ErrUnsupportedFeature.New("dropping tables on multiple databases in the same statement")
 			b.handleErr(err)
 		}
@@ -179,7 +212,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 			}
 		}
 
-		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, t, nil)
 		if ok {
 			dropTables = append(dropTables, tableScope.node)
 		} else if !c.IfExists {
@@ -194,14 +227,12 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 
 func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
-	dbName := c.Table.Qualifier.String()
-	tabName := c.Table.Name.String()
-	tableScope, ok := b.buildResolvedTable(inScope, dbName, tabName, nil)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tabName))
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
 	}
 	outScope.node = plan.NewTruncate(
-		c.Table.Qualifier.String(),
+		c.Table.DbQualifier.String(),
 		tableScope.node,
 	)
 	return
@@ -213,19 +244,16 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		return b.buildCreateTableLike(inScope, c)
 	}
 
-	qualifier := c.Table.Qualifier.String()
-	if qualifier == "" {
-		qualifier = b.ctx.GetCurrentDatabase()
-	}
-	database := b.resolveDb(qualifier)
+	database := b.resolveDbForTable(c.Table)
 
 	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE node.
 	// if the table spec != nil it will get parsed below.
 	if c.TableSpec == nil && c.OptSelect != nil {
-		tableSpec := &plan.TableSpec{}
-
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
-
+		sch := b.resolveSchemaDefaults(outScope, selectScope.node.Schema())
+		tableSpec := &plan.TableSpec{
+			Schema: sql.NewPrimaryKeySchema(sch),
+		}
 		outScope.node = plan.NewCreateTableSelect(database, c.Table.Name.String(), c.IfNotExists, c.Temporary, selectScope.node, tableSpec)
 		return outScope
 	}
@@ -296,18 +324,14 @@ func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 }
 
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
-	tableName := ct.OptLike.LikeTable.Name.String()
-	likeDbName := ct.OptLike.LikeTable.Qualifier.String()
-	if likeDbName == "" {
-		likeDbName = b.ctx.GetCurrentDatabase()
-	}
-	outScope, ok := b.buildTablescan(inScope, likeDbName, tableName, nil)
+	outScope, ok := b.buildTablescan(inScope, ct.OptLike.LikeTable, nil)
 	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
+		b.handleErr(sql.ErrTableNotFound.New(ct.OptLike.LikeTable.Name.String()))
 	}
+
 	likeTable, ok := outScope.node.(*plan.ResolvedTable)
 	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", tableName)
+		err := fmt.Errorf("expected resolved table: %s", ct.OptLike.LikeTable.Name.String())
 		b.handleErr(err)
 	}
 
@@ -392,11 +416,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		Comment:   likeTable.Comment(),
 	}
 
-	qualifier := ct.Table.Qualifier.String()
-	if qualifier == "" {
-		qualifier = b.ctx.GetCurrentDatabase()
-	}
-	database := b.resolveDb(qualifier)
+	database := b.resolveDbForTable(ct.Table)
 
 	outScope.node = plan.NewCreateTable(database, newTableName, ct.IfNotExists, ct.Temporary, tableSpec)
 	return outScope
@@ -440,16 +460,14 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 	if ddl.Action == ast.RenameStr {
 		outScopes = append(outScopes, b.buildRenameTable(inScope, ddl))
 	} else {
-		dbName := ddl.Table.Qualifier.String()
-		tableName := ddl.Table.Name.String()
 		var ok bool
-		tableScope, ok := b.buildResolvedTable(inScope, dbName, tableName, nil)
+		tableScope, ok := b.buildResolvedTableForTablename(inScope, ddl.Table, nil)
 		if !ok {
-			b.handleErr(sql.ErrTableNotFound.New(tableName))
+			b.handleErr(sql.ErrTableNotFound.New(ddl.Table.Name.String()))
 		}
 		rt, ok := tableScope.node.(*plan.ResolvedTable)
 		if !ok {
-			err := fmt.Errorf("expected resolved table: %s", tableName)
+			err := fmt.Errorf("expected resolved table: %s", ddl.Table.Name.String())
 			b.handleErr(err)
 		}
 
@@ -484,7 +502,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		}
 
 		if ddl.ConstraintAction != "" {
-			if len(ddl.TableSpec.Constraints) != 1 {
+			if len(ddl.TableSpec.Constraints) != 1 && ddl.ConstraintAction != ast.RenameStr {
 				b.handleErr(sql.ErrUnsupportedFeature.New("unexpected number of constraints in a single alter constraint clause"))
 			}
 			outScopes = append(outScopes, b.buildAlterConstraint(tableScope, ddl, rt))
@@ -508,14 +526,14 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 
 		for _, s := range outScopes {
 			if ts, ok := s.node.(sql.SchemaTarget); ok {
-				s.node = b.modifySchemaTarget(s, ts, rt)
+				s.node = b.modifySchemaTarget(s, ts, rt.Schema())
 			}
 		}
 		pkt, _ := rt.Table.(sql.PrimaryKeyTable)
 		if pkt != nil {
 			for _, s := range outScopes {
 				if ts, ok := s.node.(sql.PrimaryKeySchemaTarget); ok {
-					s.node = b.modifySchemaTarget(inScope, ts, rt)
+					s.node = b.modifySchemaTarget(inScope, ts, rt.Schema())
 					ts.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
 				}
 			}
@@ -589,6 +607,28 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
 			b.handleErr(err)
 		}
+	case ast.RenameStr:
+		if len(ddl.TableSpec.Constraints) != 2 {
+			err := sql.ErrUnsupportedFeature.New("expected two constraints for rename constraint")
+			b.handleErr(err)
+		}
+		switch c := parsedConstraint.(type) {
+		case *sql.ForeignKeyConstraint:
+			otherConstraint := b.convertConstraintDefinition(inScope, ddl.TableSpec.Constraints[1])
+			cc, ok := otherConstraint.(*sql.ForeignKeyConstraint)
+			if !ok {
+				err := sql.ErrUnsupportedFeature.New("expected foreign key constraint")
+				b.handleErr(err)
+			}
+			database := table.SqlDatabase.Name()
+			dropFk := plan.NewAlterRenameForeignKey(database, table.Name(), c.Name, cc.Name)
+			dropFk.DbProvider = b.cat
+			outScope.node = dropFk
+		default:
+			// TODO: *sql.CheckConstraint, namedConstraint
+			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
+			b.handleErr(err)
+		}
 	}
 	return
 }
@@ -598,7 +638,7 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
-			constraint.Database = tname.Qualifier.String()
+			constraint.Database = tname.DbQualifier.String()
 			constraint.Table = tname.Name.String()
 			if constraint.Database == "" {
 				constraint.Database = b.ctx.GetCurrentDatabase()
@@ -697,7 +737,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 		for i, col := range fkConstraint.ReferencedColumns {
 			refColumns[i] = col.String()
 		}
-		refDatabase := fkConstraint.ReferencedTable.Qualifier.String()
+		refDatabase := fkConstraint.ReferencedTable.DbQualifier.String()
 		if refDatabase == "" {
 			refDatabase = b.ctx.GetCurrentDatabase()
 		}
@@ -797,7 +837,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 		}
 
 		createIndex := plan.NewAlterCreateIndex(table.SqlDatabase, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
-		outScope.node = b.modifySchemaTarget(inScope, createIndex, table)
+		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema())
 		return
 	case ast.DropStr:
 		if ddl.IndexSpec.Type == ast.PrimaryStr {
@@ -883,7 +923,7 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 			if strings.EqualFold(c.Name, ddl.DefaultSpec.Column.String()) {
 				defaultExpr := b.convertDefaultExpression(inScope, ddl.DefaultSpec.Value, c.Type, c.Nullable)
 				defSet := plan.NewAlterDefaultSet(table.Database(), table, ddl.DefaultSpec.Column.String(), defaultExpr)
-				outScope.node = b.modifySchemaTarget(inScope, defSet, table)
+				outScope.node = b.modifySchemaTarget(inScope, defSet, table.Schema())
 				return
 			}
 		}
@@ -965,10 +1005,11 @@ func (b *Builder) buildExternalCreateIndex(inScope *scope, ddl *ast.DDL) (outSco
 		}
 	}
 
-	dbName := strings.ToLower(ddl.Table.Qualifier.String())
+	dbName := strings.ToLower(ddl.Table.DbQualifier.String())
 	tblName := strings.ToLower(ddl.Table.Name.String())
+
 	var ok bool
-	outScope, ok = b.buildTablescan(inScope, dbName, tblName, nil)
+	outScope, ok = b.buildTablescan(inScope, ddl.Table, nil)
 	if !ok {
 		b.handleErr(sql.ErrTableNotFound.New(tblName))
 	}
@@ -1309,15 +1350,16 @@ func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinit
 		Name:          cd.Name.String(),
 		Type:          internalTyp,
 		AutoIncrement: bool(cd.Type.Autoincrement),
-		Nullable:      nullable,
+		Nullable:      nullable && !bool(cd.Type.Autoincrement),
 		PrimaryKey:    isPkey,
 		Comment:       comment,
 		Extra:         extra,
 	}
 }
 
-func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, rt *plan.ResolvedTable) sql.Node {
-	targSchema := b.resolveSchemaDefaults(inScope, rt.Schema())
+// modifySchemaTarget resolves the schema defaults and sets the target schema for the node.
+func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql.Schema) sql.Node {
+	targSchema := b.resolveSchemaDefaults(inScope, sch)
 	ret, err := n.WithTargetSchema(targSchema)
 	if err != nil {
 		b.handleErr(err)
@@ -1346,17 +1388,26 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 	}
 
 	newSch := schema.Copy()
-	for _, part := range partitionTableColumns(newSch) {
-		start := part[0]
-		end := part[1]
-		subScope := inScope.replace()
-		for i := start; i < end; i++ {
-			subScope.addColumn(inScope.cols[i])
+	partitions := partitionTableColumns(newSch)
+	if len(partitions) == 1 {
+		for _, col := range newSch {
+			col.Default = b.resolveColumnDefaultExpression(inScope, col, col.Default)
+			col.Generated = b.resolveColumnDefaultExpression(inScope, col, col.Generated)
+			col.OnUpdate = b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
 		}
-		for _, col := range newSch[start:end] {
-			col.Default = b.resolveColumnDefaultExpression(subScope, col, col.Default)
-			col.Generated = b.resolveColumnDefaultExpression(subScope, col, col.Generated)
-			col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
+	} else {
+		for _, part := range partitions {
+			start := part[0]
+			end := part[1]
+			subScope := inScope.replace()
+			for i := start; i < end; i++ {
+				subScope.addColumn(inScope.cols[i])
+			}
+			for _, col := range newSch[start:end] {
+				col.Default = b.resolveColumnDefaultExpression(subScope, col, col.Default)
+				col.Generated = b.resolveColumnDefaultExpression(subScope, col, col.Generated)
+				col.OnUpdate = b.resolveColumnDefaultExpression(subScope, col, col.OnUpdate)
+			}
 		}
 	}
 	return newSch
@@ -1400,7 +1451,7 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 		return b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, columnDef.Type, columnDef.Nullable)
 	}
 
-	parsed, err := ast.Parse(fmt.Sprintf("SELECT %s", def))
+	parsed, err := b.parser.ParseSimple(fmt.Sprintf("SELECT %s", def))
 	if err != nil {
 		err := fmt.Errorf("%w: %s", sql.ErrInvalidColumnDefaultValue.New(def), err)
 		b.handleErr(err)
@@ -1479,6 +1530,10 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
+		if strings.ContainsRune(c.DBName, '/') {
+			b.handleErr(sql.ErrInvalidDatabaseName.New(c.DBName))
+		}
+
 		var charsetStr, collationStr string
 		if len(c.CharsetCollate) != 0 && b.ctx != nil && b.ctx.Session != nil {
 			b.ctx.Session.Warn(&sql.Warning{
@@ -1508,9 +1563,20 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 		if err != nil {
 			b.handleErr(err)
 		}
-		createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
-		createDb.Catalog = b.cat
-		outScope.node = createDb
+
+		var node sql.Node
+		switch c.SchemaOrDatabase {
+		case "database":
+			createDb := plan.NewCreateDatabase(c.DBName, c.IfNotExists, collation)
+			createDb.Catalog = b.cat
+			node = createDb
+		case "schema":
+			createSchema := plan.NewCreateSchema(c.DBName, c.IfNotExists, collation)
+			createSchema.Catalog = b.cat
+			node = createSchema
+		}
+
+		outScope.node = node
 	case ast.DropStr:
 		dropDb := plan.NewDropDatabase(c.DBName, c.IfExists)
 		dropDb.Catalog = b.cat

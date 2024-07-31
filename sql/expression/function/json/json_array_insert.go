@@ -75,7 +75,7 @@ func (j JSONArrayInsert) IsNullable() bool {
 func (j JSONArrayInsert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	doc, err := getMutableJSONVal(ctx, row, j.doc)
 	if err != nil || doc == nil {
-		return nil, err
+		return nil, getJsonFunctionError("json_array_insert", 1, err)
 	}
 
 	pairs := make([]pathValPair, 0, len(j.pathVals)/2)

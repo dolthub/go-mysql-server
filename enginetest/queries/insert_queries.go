@@ -477,6 +477,20 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
 	},
 	{
+		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt(new_i,new_s) ON DUPLICATE KEY UPDATE s=new_s",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
+		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
+		Skip:                true, // https://github.com/dolthub/dolt/issues/7638
+	},
+	{
+		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt ON DUPLICATE KEY UPDATE mytable.s=dt.s",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
+		ExpectedSelect:      []sql.Row{{int64(1), "hir"}},
+		Skip:                true, // https://github.com/dolthub/dolt/issues/7638
+	},
+	{
 		WriteQuery:          "INSERT INTO mytable (s,i) values ('dup',1) ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'licate')",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
@@ -1779,6 +1793,18 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "insert on duplicate key with incorrect row alias",
+		SetUpScript: []string{
+			`create table a (i int primary key)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `insert into a values (1) as new(c, d) on duplicate key update i = c`,
+				ExpectedErr: sql.ErrColumnCountMismatch,
+			},
+		},
+	},
+	{
 		Name: "Insert throws primary key violations",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk int PRIMARY key);",
@@ -1959,6 +1985,42 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "INSERT INTO test (pk, v1) SELECT 2 as pk, 'a' as v1;",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+		},
+	},
+	{
+		Name: "INSERT INTO ... SELECT with TEXT types",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, t text);",
+			"insert into t1 values (1, '2001-01-01'), (2, 'badtime'), (3, '');",
+			"create table t2 (d datetime);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t2(d) select t from t1 where false;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:          "insert into t2(d) select t from t1 where i = 3;",
+				ExpectedErrStr: "Incorrect datetime value: ''",
+			},
+			{
+				Query:          "insert into t2(d) select t from t1 where i = 2;",
+				ExpectedErrStr: "Incorrect datetime value: 'badtime'",
+			},
+			{
+				Query: "insert into t2(d) select t from t1 where i = 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t2;",
+				Expected: []sql.Row{
+					{time.Date(2001, time.January, 1, 0, 0, 0, 0, time.UTC)},
+				},
 			},
 		},
 	},
@@ -2791,6 +2853,110 @@ var InsertBrokenScripts = []ScriptTest{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/3157
+		Name: "auto increment does not increment on error",
+		SetUpScript: []string{
+			"create table auto1 (pk int primary key auto_increment);",
+			"insert into auto1 values (null);",
+			"create table auto2 (pk int primary key auto_increment, c int not null);",
+			"insert into auto2 values (null, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into auto1 values (1);",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into auto1 values (null);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 2}},
+				},
+			},
+			{
+				Query: "show create table auto1;",
+				Expected: []sql.Row{
+					{"auto1", "CREATE TABLE `auto1` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from auto1;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+				},
+			},
+
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into auto2 values (null, null);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into auto2 values (null, 2);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, InsertID: 2}},
+				},
+			},
+			{
+				Query: "show create table auto2;",
+				Expected: []sql.Row{
+					{"auto2", "CREATE TABLE `auto2` (\n" +
+						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `c` int NOT NULL,\n" +
+						"  PRIMARY KEY (`pk`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "select * from auto2;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+				},
 			},
 		},
 	},
