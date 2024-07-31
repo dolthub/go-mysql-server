@@ -155,6 +155,8 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	j := memo.NewJoinOrderBuilder(m)
 	j.ReorderJoin(n)
 
+	ctx.QProps.Set(sql.QPropInnerJoin)
+
 	err = addIndexScans(m)
 	if err != nil {
 		return nil, err
