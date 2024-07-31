@@ -2040,7 +2040,7 @@ CREATE TABLE tab3 (
 
 			{
 				Query: "insert into t(pk) values (10), (default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 10}}},
 			},
 			{
 				Query: "select last_insert_id()",
@@ -2059,17 +2059,44 @@ CREATE TABLE tab3 (
 					{6, 0},
 					{10, 0},
 					{11, 0},
+				},
+			},
+
+			{
+				Query: "insert into t(pk) values (20), (default), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 20}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(21)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
 				},
 			},
 
 			{
 				Query: "insert into t(i) values (100);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 23}}},
 			},
 			{
 				Query: "select last_insert_id()",
 				Expected: []sql.Row{
-					{uint64(11)},
+					{uint64(23)},
 				},
 			},
 			{
@@ -2083,18 +2110,21 @@ CREATE TABLE tab3 (
 					{6, 0},
 					{10, 0},
 					{11, 0},
-					{12, 100},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
 				},
 			},
 
 			{
 				Query: "insert into t(i, pk) values (200, default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 5}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 24}}},
 			},
 			{
 				Query: "select last_insert_id()",
 				Expected: []sql.Row{
-					{uint64(13)},
+					{uint64(24)},
 				},
 			},
 			{
@@ -2108,8 +2138,11 @@ CREATE TABLE tab3 (
 					{6, 0},
 					{10, 0},
 					{11, 0},
-					{12, 100},
-					{13, 200},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
 				},
 			},
 		},

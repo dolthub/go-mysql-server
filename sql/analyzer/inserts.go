@@ -178,7 +178,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				return nil, -1, err
 			}
 			projExprs[i] = ai
-			if autoAutoIncrement == -1 {
+			if autoAutoIncrement == -1 && !columnExplicitlySpecified {
 				autoAutoIncrement = 0
 			}
 		}
