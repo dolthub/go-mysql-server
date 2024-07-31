@@ -171,7 +171,6 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		}
 	}
 
-	// TODO: only do this when auto increment is triggered
 	i.updateLastInsertId(ctx, row)
 
 	return row, nil

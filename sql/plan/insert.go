@@ -93,16 +93,19 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 
 var _ sql.CheckConstraintNode = (*RenameColumn)(nil)
 
+// Checks implements the sql.CheckConstraintNode interface.
 func (ii *InsertInto) Checks() sql.CheckConstraints {
 	return ii.checks
 }
 
+// WithChecks implements the sql.CheckConstraintNode interface.
 func (ii *InsertInto) WithChecks(checks sql.CheckConstraints) sql.Node {
 	ret := *ii
 	ret.checks = checks
 	return &ret
 }
 
+// Dispose implements the sql.Disposable interface.
 func (ii *InsertInto) Dispose() {
 	disposeNode(ii.Source)
 }
@@ -117,19 +120,23 @@ func (ii *InsertInto) Schema() sql.Schema {
 	return ii.Destination.Schema()
 }
 
+// Children implements the sql.Node interface.
 func (ii *InsertInto) Children() []sql.Node {
 	// The source node is analyzed completely independently, so we don't include it in children
 	return []sql.Node{ii.Destination}
 }
 
+// Database implements the sql.Databaser interface.
 func (ii *InsertInto) Database() sql.Database {
 	return ii.db
 }
 
+// IsReadOnly implements the sql.Node interface.
 func (ii *InsertInto) IsReadOnly() bool {
 	return false
 }
 
+// WithDatabase implements the sql.Databaser interface.
 func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *ii
 	nc.db = database
@@ -209,6 +216,7 @@ func (ii *InsertInto) WithUnspecifiedAutoIncrementIdx(unspecifiedAutoIncrementId
 	return &np
 }
 
+// String implements the fmt.Stringer interface.
 func (ii *InsertInto) String() string {
 	pr := sql.NewTreePrinter()
 	if ii.IsReplace {
@@ -220,6 +228,7 @@ func (ii *InsertInto) String() string {
 	return pr.String()
 }
 
+// DebugString implements the sql.Node interface.
 func (ii *InsertInto) DebugString() string {
 	pr := sql.NewTreePrinter()
 	if ii.IsReplace {
@@ -231,10 +240,12 @@ func (ii *InsertInto) DebugString() string {
 	return pr.String()
 }
 
+// Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
 	return append(ii.OnDupExprs, ii.checks.ToExpressions()...)
 }
 
+// WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
 	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks) {
 		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks))
