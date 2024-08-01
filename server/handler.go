@@ -94,7 +94,8 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 }
 
 func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
-	return sql.StatusVariables.IncrementGlobal("Aborted_connects", 1)
+	sql.StatusVariables.IncrementGlobal("Aborted_connects", 1)
+	return nil
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
