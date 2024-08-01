@@ -235,8 +235,6 @@ func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValu
 	return m
 }
 
-var done bool
-
 // IncrementStatusVariable implements the Session interface.
 func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, val int) {
 	if _, ok := s.statusVars[statVarName]; !ok {
