@@ -107,10 +107,6 @@ type ProcContext struct {
 func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
 	sqlMode := sql.LoadSqlMode(ctx)
 
-	//if ctx.QProps == nil {
-	//	ctx.QProps = &sql.QueryProps{Flags: sql.NewFastIntSet()}
-	//}
-
 	return &Builder{
 		ctx:        ctx,
 		cat:        cat,
