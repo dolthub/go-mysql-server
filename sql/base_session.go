@@ -431,7 +431,6 @@ func (s *BaseSession) SetLastQueryInfoInt(key string, value int64) {
 }
 
 func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
-
 	value, ok := s.lastQueryInfo[key].Load().(int64)
 	if !ok {
 		panic(fmt.Sprintf("last query info value stored for %s is not an int64 value, but a %T", key, s.lastQueryInfo[key]))
