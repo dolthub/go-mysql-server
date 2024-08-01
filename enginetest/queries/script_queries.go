@@ -15,7 +15,7 @@
 package queries
 
 import (
-		"time"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
