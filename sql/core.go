@@ -713,7 +713,7 @@ type StatusVariableRegistry interface {
 	// SetGlobal sets the global value of the status variable with the given name, returns an error if the variable is SessionOnly scope
 	SetGlobal(name string, val interface{}) error
 	// IncrementGlobal increments the value of the status variable by the given integer value
-	IncrementGlobal(name string, val int) error
+	IncrementGlobal(name string, val int)
 }
 
 // StatusVariableScope represents the scope of a status variable.

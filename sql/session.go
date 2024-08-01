@@ -91,7 +91,7 @@ type Session interface {
 	// To access global scope, use sql.StatusVariables instead.
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
-	IncrementStatusVariable(ctx *Context, statVarName string, val int) error
+	IncrementStatusVariable(ctx *Context, statVarName string, val int)
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
