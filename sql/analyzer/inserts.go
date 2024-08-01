@@ -83,12 +83,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, autoAutoIncIdx, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project).WithUnspecifiedAutoIncrementIdx(autoAutoIncIdx), transform.NewTree, nil
+		return insert.WithSource(project).WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx), transform.NewTree, nil
 	})
 }
 
@@ -117,11 +117,11 @@ func findColIdx(colName string, colNames []string) int {
 }
 
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
-// the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
+// the underlying table in the same order. Also, returns an integer value that indicates when this row source will
 // result in an automatically generated value for an auto_increment column.
 func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, error) {
 	projExprs := make([]sql.Expression, len(schema))
-	autoAutoIncrement := -1
+	firstGeneratedAutoIncRowIdx := -1
 
 	for i, col := range schema {
 		colIdx := findColIdx(col.Name, columnNames)
@@ -170,8 +170,8 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			projExprs[i] = ai
 
 			if colIdx == -1 {
-				// Not Explicitly Specified AutoIncrement Column, increment the autoAutoIncrement index immediately
-				autoAutoIncrement = 0
+				// Auto increment column was not specified explicitly, so we should increment last_insert_id immediately
+				firstGeneratedAutoIncRowIdx = 0
 			} else {
 				// Additionally, the first NULL, DEFAULT, or empty value is what the last_insert_id should be set to.
 				switch src := insertSource.(type) {
@@ -182,12 +182,12 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 							expr = unwrap.Unwrap()
 						}
 						if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
-							autoAutoIncrement = ii
+							firstGeneratedAutoIncRowIdx = ii
 							break
 						}
 						if lit, isLit := expr.(*expression.Literal); isLit {
 							if types.Null.Equals(lit.Type()) {
-								autoAutoIncrement = ii
+								firstGeneratedAutoIncRowIdx = ii
 								break
 							}
 						}
@@ -221,7 +221,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 		}
 	}
 
-	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
+	return plan.NewProject(projExprs, insertSource), firstGeneratedAutoIncRowIdx, nil
 }
 
 // insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid

@@ -2177,7 +2177,7 @@ CREATE TABLE tab3 (
 			},
 
 			{
-				Query:    "insert into t(pk) values ();",
+				Query:    "insert into t values ();",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 26}}},
 			},
 			{

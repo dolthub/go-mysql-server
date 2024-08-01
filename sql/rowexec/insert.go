@@ -30,21 +30,21 @@ import (
 )
 
 type insertIter struct {
-	schema              sql.Schema
-	inserter            sql.RowInserter
-	replacer            sql.RowReplacer
-	updater             sql.RowUpdater
-	rowSource           sql.RowIter
-	lastInsertIdUpdated bool
-	autoAutoIncIdx      int
-	unlocker            func()
-	ctx                 *sql.Context
-	insertExprs         []sql.Expression
-	updateExprs         []sql.Expression
-	checks              sql.CheckConstraints
-	tableNode           sql.Node
-	closed              bool
-	ignore              bool
+	schema      sql.Schema
+	inserter    sql.RowInserter
+	replacer    sql.RowReplacer
+	updater     sql.RowUpdater
+	rowSource   sql.RowIter
+	unlocker    func()
+	ctx         *sql.Context
+	insertExprs []sql.Expression
+	updateExprs []sql.Expression
+	checks      sql.CheckConstraints
+	tableNode   sql.Node
+	closed      bool
+	ignore      bool
+
+	firstGeneratedAutoIncRowIdx      int
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -291,14 +291,14 @@ func (i *insertIter) Close(ctx *sql.Context) error {
 }
 
 func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
-	if i.autoAutoIncIdx < 0 {
+	if i.firstGeneratedAutoIncRowIdx < 0 {
 		return
 	}
-	if i.autoAutoIncIdx == 0 {
+	if i.firstGeneratedAutoIncRowIdx == 0 {
 		autoIncVal := i.getAutoIncVal(row)
 		ctx.SetLastQueryInfoInt(sql.LastInsertId, autoIncVal)
 	}
-	i.autoAutoIncIdx--
+	i.firstGeneratedAutoIncRowIdx--
 }
 
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {

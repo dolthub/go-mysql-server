@@ -58,18 +58,20 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
 // them into.
 type InsertInto struct {
-	db                    sql.Database
-	Destination           sql.Node
-	Source                sql.Node
-	ColumnNames           []string
-	IsReplace             bool
-	UnspecifiedAutoIncIdx int
-	OnDupExprs            []sql.Expression
-	checks                sql.CheckConstraints
-	Ignore                bool
+	db          sql.Database
+	Destination sql.Node
+	Source      sql.Node
+	ColumnNames []string
+	IsReplace   bool
+	OnDupExprs  []sql.Expression
+	checks      sql.CheckConstraints
+	Ignore      bool
 	// LiteralValueSource is set to |true| when |Source| is
 	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
+
+	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
+	FirstGeneratedAutoIncRowIdx int
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
@@ -207,12 +209,11 @@ func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
 	return &np
 }
 
-// WithUnspecifiedAutoIncrementIdx sets the unspecified auto increment index for this insert operation. Inserts with
-// this property set the LAST_INSERT_ID session variable, whereas inserts that manually specify values for an
-// auto-insert column do not.
-func (ii *InsertInto) WithUnspecifiedAutoIncrementIdx(unspecifiedAutoIncrementIdx int) *InsertInto {
+// WithAutoIncrementIdx sets the auto increment index for this insert operation. This indicates when the LAST_INSERT_ID
+// session variable should be updated during insert.
+func (ii *InsertInto) WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx int) *InsertInto {
 	np := *ii
-	np.UnspecifiedAutoIncIdx = unspecifiedAutoIncrementIdx
+	np.FirstGeneratedAutoIncRowIdx = firstGeneratedAutoIncRowIdx
 	return &np
 }
 
