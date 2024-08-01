@@ -16,7 +16,6 @@ package sqle
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"sort"
 	"testing"
 	"time"
@@ -24,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestProcessList(t *testing.T) {

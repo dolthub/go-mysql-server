@@ -15,7 +15,6 @@
 package rowexec
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"io"
 	"testing"
 
@@ -23,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestShowStatus(t *testing.T) {
