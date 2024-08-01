@@ -44,7 +44,7 @@ type insertIter struct {
 	closed      bool
 	ignore      bool
 
-	firstGeneratedAutoIncRowIdx      int
+	firstGeneratedAutoIncRowIdx int
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
