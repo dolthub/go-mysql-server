@@ -23,10 +23,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
+	variables.InitStatusVariables()
 
 	clientHostOne := "127.0.0.1:34567"
 	clientHostTwo := "127.0.0.1:34568"

@@ -22,11 +22,13 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestShowStatus(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
+	variables.InitStatusVariables()
 
 	var res sql.Row
 	var err error

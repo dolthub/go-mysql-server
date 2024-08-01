@@ -93,19 +93,13 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 }
 
 // IncrementGlobal implements sql.StatusVariableRegistry
-func (g *globalStatusVariables) IncrementGlobal(name string, val int) error {
+func (g *globalStatusVariables) IncrementGlobal(name string, val int) {
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
-		return sql.ErrUnknownSystemVariable.New(name)
+		return
 	}
 	g.varVals[name].Increment(uint64(val))
-	return nil
-}
-
-// init initializes SystemVariables as it functions as a global variable.
-// TODO: get rid of me, make this construction the responsibility of the engine
-func init() {
-	InitStatusVariables()
+	return
 }
 
 // InitStatusVariables initializes the global status variables in sql.StatusVariables. If they have already

@@ -704,16 +704,19 @@ var StatusVariables StatusVariableRegistry
 
 // StatusVariableRegistry is a registry of status variables.
 type StatusVariableRegistry interface {
-	// NewSessionMap returns a deep copy of the status variables that are not GlobalOnly scope (i.e. SessionOnly or Both)
+	// NewSessionMap returns a deep copy of the status variables that are
+	// not GlobalOnly scope (i.e. SessionOnly or Both)
 	NewSessionMap() map[string]StatusVarValue
 	// NewGlobalMap returns a deep copy of the status variables of every scope
 	NewGlobalMap() map[string]StatusVarValue
 	// GetGlobal returns the current global value of the status variable with the given name
 	GetGlobal(name string) (StatusVariable, interface{}, bool)
-	// SetGlobal sets the global value of the status variable with the given name, returns an error if the variable is SessionOnly scope
+	// SetGlobal sets the global value of the status variable with the given
+	// name, returns an error if the variable is SessionOnly scope
 	SetGlobal(name string, val interface{}) error
-	// IncrementGlobal increments the value of the status variable by the given integer value
-	IncrementGlobal(name string, val int) error
+	// IncrementGlobal increments the value of the status variable by the
+	// given integer value. Noop if the variable is session-only scoped.
+	IncrementGlobal(name string, val int)
 }
 
 // StatusVariableScope represents the scope of a status variable.
@@ -833,11 +836,8 @@ func (s *ImmutableStatusVarValue) Copy() StatusVarValue {
 }
 
 // IncrementStatusVariable increments the value of the status variable by integer val.
-// name is case-insensitive. Errors are ignored.
-// This runs in a goroutine to avoid blocking the caller, but we do not wait for it to complete.
+// |name| is case-sensitive.
 func IncrementStatusVariable(ctx *Context, name string, val int) {
-	go func() {
-		StatusVariables.IncrementGlobal(name, val)
-		ctx.Session.IncrementStatusVariable(ctx, name, val)
-	}()
+	StatusVariables.IncrementGlobal(name, val)
+	ctx.Session.IncrementStatusVariable(ctx, name, val)
 }
