@@ -70,9 +70,9 @@ func (pl *ProcessList) Processes() []sql.Process {
 }
 
 func (pl *ProcessList) AddConnection(id uint32, addr string) {
+	sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-	sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
 	pl.procs[id] = &sql.Process{
 		Connection: id,
 		Command:    sql.ProcessCommandConnect,

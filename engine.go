@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"os"
 	"strconv"
 	"strings"
@@ -167,6 +168,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	}
 
 	ls := sql.NewLockSubsystem()
+
+	variables.InitStatusVariables()
 
 	emptyCtx := sql.NewEmptyContext()
 
