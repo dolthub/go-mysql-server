@@ -833,8 +833,7 @@ func (s *ImmutableStatusVarValue) Copy() StatusVarValue {
 }
 
 // IncrementStatusVariable increments the value of the status variable by integer val.
-// name is case-insensitive. Errors are ignored.
-// This runs in a goroutine to avoid blocking the caller, but we do not wait for it to complete.
+// |name| is case-sensitive.
 func IncrementStatusVariable(ctx *Context, name string, val int) {
 	StatusVariables.IncrementGlobal(name, val)
 	ctx.Session.IncrementStatusVariable(ctx, name, val)
