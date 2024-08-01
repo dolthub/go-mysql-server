@@ -116,7 +116,7 @@ func (pl *ProcessList) BeginQuery(
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	sql.IncrementStatusVariable(ctx, "Threads_running", 1)
+	sql.StatusVariables.IncrementGlobal("Threads_running", 1)
 
 	id := ctx.Session.ID()
 	pid := ctx.Pid()
@@ -158,7 +158,7 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 			sql.IncrementStatusVariable(ctx, "Slow_queries", 1)
 		}
 
-		sql.IncrementStatusVariable(ctx, "Threads_running", -1)
+		sql.StatusVariables.IncrementGlobal("Threads_running", -1)
 		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
 		p.StartedAt = time.Now()

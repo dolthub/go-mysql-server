@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"sort"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ import (
 
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
+	variables.InitStatusVariables()
 
 	clientHostOne := "127.0.0.1:34567"
 	clientHostTwo := "127.0.0.1:34568"
