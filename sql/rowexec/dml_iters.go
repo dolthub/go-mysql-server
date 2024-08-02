@@ -295,10 +295,6 @@ type insertRowHandler struct {
 }
 
 func (i *insertRowHandler) handleRowUpdate(row sql.Row) error {
-	if !i.updatedAutoIncrementValue {
-		i.updatedAutoIncrementValue = true
-		i.lastInsertId = uint64(i.lastInsertIdGetter(row))
-	}
 	i.rowsAffected++
 	return nil
 }
@@ -306,7 +302,6 @@ func (i *insertRowHandler) handleRowUpdate(row sql.Row) error {
 func (i *insertRowHandler) okResult() types.OkResult {
 	return types.OkResult{
 		RowsAffected: uint64(i.rowsAffected),
-		InsertID:     i.lastInsertId,
 	}
 }
 
@@ -498,11 +493,6 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 		return nil, io.EOF
 	}
 
-	oldLastInsertId := ctx.Session.GetLastQueryInfoInt(sql.LastInsertId)
-	if oldLastInsertId != 0 {
-		ctx.Session.SetLastQueryInfoInt(sql.LastInsertId, -1)
-	}
-
 	// We close our child iterator before returning any results. In
 	// particular, the LOAD DATA source iterator needs to be closed before
 	// results are returned.
@@ -533,19 +523,15 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 				ctx.SetLastQueryInfoInt(sql.FoundRows, ma.RowsMatched())
 			}
 
-			newLastInsertId := ctx.Session.GetLastQueryInfoInt(sql.LastInsertId)
-			if newLastInsertId == -1 {
-				ctx.Session.SetLastQueryInfoInt(sql.LastInsertId, oldLastInsertId)
-			}
-
 			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
 
 			// For some update accumulators, we don't accurately track the last insert ID in the handler and need to set
 			// it manually in the result by getting it from the session. This doesn't work correctly in all cases and needs
 			// to be fixed. See comment in buildRowUpdateAccumulator in rowexec/dml.go
 			switch a.updateRowHandler.(type) {
-			case *onDuplicateUpdateHandler, *replaceRowHandler:
-				res.InsertID = uint64(newLastInsertId)
+			case *onDuplicateUpdateHandler, *replaceRowHandler, *insertRowHandler:
+				lastInsertId := ctx.Session.GetLastQueryInfoInt(sql.LastInsertId)
+				res.InsertID = uint64(lastInsertId)
 			}
 
 			// By definition, ROW_COUNT() is equal to RowsAffected.

@@ -2127,7 +2127,7 @@ end;`,
 			},
 			{
 				Query:    "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film",
@@ -2188,7 +2188,7 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			{
 				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
 				Query:                         "CALL add_entry(4, 'aaa');",
-				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",
