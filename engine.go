@@ -37,6 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
 )
 
@@ -167,6 +168,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	}
 
 	ls := sql.NewLockSubsystem()
+
+	variables.InitStatusVariables()
 
 	emptyCtx := sql.NewEmptyContext()
 

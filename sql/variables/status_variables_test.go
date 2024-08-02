@@ -23,6 +23,7 @@ import (
 )
 
 func TestStatusVariables(t *testing.T) {
+	InitStatusVariables()
 	defer InitStatusVariables()
 
 	require := require.New(t)

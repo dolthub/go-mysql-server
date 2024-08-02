@@ -58,7 +58,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 
 	var unlocker func()
 	insertExpressions := getInsertExpressions(ii.Source)
-	if ii.HasUnspecifiedAutoInc {
+	if ii.FirstGeneratedAutoIncRowIdx >= 0 {
 		_, i, _ := sql.SystemVariables.GetGlobal("innodb_autoinc_lock_mode")
 		lockMode, ok := i.(int64)
 		if !ok {
@@ -79,19 +79,19 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		}
 	}
 	insertIter := &insertIter{
-		schema:              dstSchema,
-		tableNode:           ii.Destination,
-		inserter:            inserter,
-		replacer:            replacer,
-		updater:             updater,
-		rowSource:           rowIter,
-		hasAutoAutoIncValue: ii.HasUnspecifiedAutoInc,
-		unlocker:            unlocker,
-		updateExprs:         ii.OnDupExprs,
-		insertExprs:         insertExpressions,
-		checks:              ii.Checks(),
-		ctx:                 ctx,
-		ignore:              ii.Ignore,
+		schema:                      dstSchema,
+		tableNode:                   ii.Destination,
+		inserter:                    inserter,
+		replacer:                    replacer,
+		updater:                     updater,
+		rowSource:                   rowIter,
+		unlocker:                    unlocker,
+		updateExprs:                 ii.OnDupExprs,
+		insertExprs:                 insertExpressions,
+		checks:                      ii.Checks(),
+		ctx:                         ctx,
+		ignore:                      ii.Ignore,
+		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
 	}
 
 	var ed sql.EditOpenerCloser
@@ -328,15 +328,7 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	var rowHandler accumulatorRowHandler
 	switch n.RowUpdateType {
 	case plan.UpdateTypeInsert:
-		insertItr, err := findInsertIter(rowIter)
-		if err != nil {
-			return nil, err
-		}
-
-		rowHandler = &insertRowHandler{
-			lastInsertIdGetter: insertItr.getAutoIncVal,
-		}
-		// TODO: some of these other row handlers also need to keep track of the last insert id
+		rowHandler = &insertRowHandler{}
 	case plan.UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case plan.UpdateTypeDuplicateKeyUpdate:

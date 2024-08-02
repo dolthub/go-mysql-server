@@ -15,7 +15,6 @@
 package queries
 
 import (
-	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -1899,7 +1898,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "insert into a (x,y) values (1,1)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -1924,7 +1923,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "insert into b (x) values (1), (2)",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
 			},
 			{
 				// The above query doesn't have an auto increment column, so last_insert_id is unchanged
@@ -1935,7 +1934,7 @@ CREATE TABLE tab3 (
 				Query: "insert into a (x, y) values (-100, 10)",
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
-					InsertID:     uint64(math.MaxUint64 - uint(100-1)),
+					InsertID:     3,
 				}}},
 			},
 			{
@@ -1947,7 +1946,7 @@ CREATE TABLE tab3 (
 				Query: "insert into a (x, y) values (100, 10)",
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
-					InsertID:     100,
+					InsertID:     3,
 				}}},
 			},
 			{
@@ -1990,6 +1989,221 @@ CREATE TABLE tab3 (
 			{
 				Query:    "select last_insert_id()",
 				Expected: []sql.Row{{uint64(2)}},
+			},
+		},
+	},
+	{
+		Name: "last_insert_id(default) behavior",
+		SetUpScript: []string{
+			"create table t (pk int primary key auto_increment, i int default 0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t(pk) values (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(1)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (default), (default), (default), (default), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 5, InsertID: 2}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(2)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (10), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 11}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(11)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (20), (default), (default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 21}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(21)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t(i) values (100);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 23}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(23)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+				},
+			},
+
+			{
+				Query:    "insert into t(i, pk) values (200, default);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 24}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(24)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+				},
+			},
+
+			{
+				Query:    "insert into t(pk) values (null);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 25}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(25)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+					{25, 0},
+				},
+			},
+
+			{
+				Query:    "insert into t values ();",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 26}}},
+			},
+			{
+				Query: "select last_insert_id()",
+				Expected: []sql.Row{
+					{uint64(26)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 0},
+					{2, 0},
+					{3, 0},
+					{4, 0},
+					{5, 0},
+					{6, 0},
+					{10, 0},
+					{11, 0},
+					{20, 0},
+					{21, 0},
+					{22, 0},
+					{23, 100},
+					{24, 200},
+					{25, 0},
+					{26, 0},
+				},
 			},
 		},
 	},

@@ -236,16 +236,16 @@ func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValu
 }
 
 // IncrementStatusVariable implements the Session interface.
-func (s *BaseSession) IncrementStatusVariable(_ *Context, statVarName string, val int) error {
+func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, val int) {
 	if _, ok := s.statusVars[statVarName]; !ok {
-		return ErrUnknownSystemVariable.New(statVarName)
+		return
 	}
 	if val < 0 {
 		s.statusVars[statVarName].Increment(-(uint64(-val)))
 	} else {
 		s.statusVars[statVarName].Increment((uint64(val)))
 	}
-	return nil
+	return
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
@@ -431,7 +431,6 @@ func (s *BaseSession) SetLastQueryInfoInt(key string, value int64) {
 }
 
 func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
-
 	value, ok := s.lastQueryInfo[key].Load().(int64)
 	if !ok {
 		panic(fmt.Sprintf("last query info value stored for %s is not an int64 value, but a %T", key, s.lastQueryInfo[key]))

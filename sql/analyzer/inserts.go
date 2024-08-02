@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
@@ -82,12 +83,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, autoAutoIncrement, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project).WithUnspecifiedAutoIncrement(autoAutoIncrement), transform.NewTree, nil
+		return insert.WithSource(project).WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx), transform.NewTree, nil
 	})
 }
 
@@ -106,42 +107,43 @@ func existsNonZeroValueCount(values sql.Node) bool {
 	return false
 }
 
-// wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
-// the underlying table, in the same order. Also returns a boolean value that indicates whether this row source will
-// result in an automatically generated value for an auto_increment column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, bool, error) {
-	projExprs := make([]sql.Expression, len(schema))
-	autoAutoIncrement := false
-
-	for i, f := range schema {
-		columnExplicitlySpecified := false
-		for j, col := range columnNames {
-			if strings.EqualFold(f.Name, col) {
-				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-				columnExplicitlySpecified = true
-				break
-			}
+func findColIdx(colName string, colNames []string) int {
+	for i, name := range colNames {
+		if strings.EqualFold(name, colName) {
+			return i
 		}
+	}
+	return -1
+}
 
-		if !columnExplicitlySpecified {
-			defaultExpr := f.Default
+// wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
+// the underlying table in the same order. Also, returns an integer value that indicates when this row source will
+// result in an automatically generated value for an auto_increment column.
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, error) {
+	projExprs := make([]sql.Expression, len(schema))
+	firstGeneratedAutoIncRowIdx := -1
+
+	for i, col := range schema {
+		colIdx := findColIdx(col.Name, columnNames)
+		// if column was not explicitly specified, try to substitute with default or generated value
+		if colIdx == -1 {
+			defaultExpr := col.Default
 			if defaultExpr == nil {
-				defaultExpr = f.Generated
+				defaultExpr = col.Generated
+			}
+			if !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
+				return nil, -1, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
 			}
 
-			if !f.Nullable && defaultExpr == nil && !f.AutoIncrement {
-				return nil, false, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
-			}
 			var err error
-
-			colIdx := make(map[string]int)
+			colNameToIdx := make(map[string]int)
 			for i, c := range schema {
-				colIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
+				colNameToIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
 			}
 			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
-					idx, ok := colIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
+					idx, ok := colNameToIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
 					if !ok {
 						return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
 					}
@@ -151,20 +153,46 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				}
 			})
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 			projExprs[i] = def
+		} else {
+			projExprs[i] = expression.NewGetField(colIdx, col.Type, col.Name, col.Nullable)
 		}
 
-		if f.AutoIncrement {
+		if col.AutoIncrement {
+			// Regardless of whether the column was explicitly specified, if it is an auto increment column, we need to
+			// wrap it in an AutoIncrement expression.
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 			projExprs[i] = ai
 
-			if !columnExplicitlySpecified {
-				autoAutoIncrement = true
+			if colIdx == -1 {
+				// Auto increment column was not specified explicitly, so we should increment last_insert_id immediately
+				firstGeneratedAutoIncRowIdx = 0
+			} else {
+				// Additionally, the first NULL, DEFAULT, or empty value is what the last_insert_id should be set to.
+				switch src := insertSource.(type) {
+				case *plan.Values:
+					for ii, tup := range src.ExpressionTuples {
+						expr := tup[colIdx]
+						if unwrap, ok := expr.(*expression.Wrapper); ok {
+							expr = unwrap.Unwrap()
+						}
+						if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
+							firstGeneratedAutoIncRowIdx = ii
+							break
+						}
+						if lit, isLit := expr.(*expression.Literal); isLit {
+							if types.Null.Equals(lit.Type()) {
+								firstGeneratedAutoIncRowIdx = ii
+								break
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -177,7 +205,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			// ColumnDefaultValue to create the UUID), then update the project to include the AutoUuid expression.
 			newExpr, identity, err := insertAutoUuidExpression(ctx, columnDefaultValue, autoUuidCol)
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 			if identity == transform.NewTree {
 				projExprs[autoUuidColIdx] = newExpr
@@ -188,12 +216,12 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			// the AutoUuid expression to it.
 			err := wrapAutoUuidInValuesTuples(ctx, autoUuidCol, insertSource, columnNames)
 			if err != nil {
-				return nil, false, err
+				return nil, -1, err
 			}
 		}
 	}
 
-	return plan.NewProject(projExprs, insertSource), autoAutoIncrement, nil
+	return plan.NewProject(projExprs, insertSource), firstGeneratedAutoIncRowIdx, nil
 }
 
 // insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid
