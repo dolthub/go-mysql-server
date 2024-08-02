@@ -13,7 +13,7 @@ import (
 )
 
 // replaceIdxSort applies an IndexAccess when there is an `OrderBy` over a prefix of any columns with Indexes
-func replaceIdxSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func replaceIdxSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	return replaceIdxSortHelper(ctx, scope, n, nil)
 }
 
@@ -174,8 +174,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 }
 
 // replaceAgg converts aggregate functions to order by + limit 1 when possible
-func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if !ctx.QProps.IsSet(sql.QPropAggregation) {
+func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+	if !qFlags.IsSet(sql.QPropAggregation) {
 		return node, transform.SameTree, nil
 	}
 

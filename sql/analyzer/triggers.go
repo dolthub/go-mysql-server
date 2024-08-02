@@ -30,7 +30,7 @@ import (
 // validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
 // the trigger body. Also validates that these old and new references are being used appropriately -- they are only
 // valid for certain kinds of triggers and certain statements.
-func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := node.(*plan.CreateTrigger)
 	if !ok {
 		return node, transform.SameTree, nil
@@ -113,8 +113,8 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	return node, transform.NewTree, nil
 }
 
-func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	if !ctx.QProps.DmlIsSet() {
+func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+	if !qFlags.DmlIsSet() {
 		return n, transform.SameTree, nil
 	}
 
@@ -181,7 +181,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
-			parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
+			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, false)
 			b.Reset()
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -202,7 +202,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				// first pass allows unresolved before we know whether trigger is relevant
 				// TODO store destination table name with trigger, so we don't have to do parse twice
 				b.TriggerCtx().Call = true
-				parsedTrigger, _, _, err = b.Parse(trigger.CreateStatement, false)
+				parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, false)
 				b.TriggerCtx().Call = false
 				b.Reset()
 				if err != nil {
@@ -236,7 +236,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
-		n, same, err = applyTrigger(ctx, a, originalNode, n, scope, trigger)
+		n, same, err = applyTrigger(ctx, a, originalNode, n, scope, trigger, qFlags)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -247,8 +247,10 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 }
 
 // applyTrigger applies the trigger given to the node given, returning the resulting node
-func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger) (sql.Node, transform.TreeIdentity, error) {
-	triggerLogic, err := getTriggerLogic(ctx, a, originalNode, scope, trigger)
+func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+	qFlags.Set(sql.QPropRelSubquery)
+
+	triggerLogic, err := getTriggerLogic(ctx, a, originalNode, scope, trigger, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -394,7 +396,7 @@ func getUpdateJoinSource(n sql.Node) *plan.UpdateSource {
 
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
-func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger) (sql.Node, error) {
+func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryProps) (sql.Node, error) {
 	// For trigger body analysis, we don't want any row update accumulators applied to insert / update / delete
 	// statements, we need the raw output from them.
 	var noRowUpdateAccumulators RuleSelector
@@ -407,7 +409,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
 	var triggerLogic sql.Node
 	var err error
-	ctx.QProps.Set(sql.QPropStar)
+	qFlags = nil
 
 	switch trigger.TriggerEvent {
 	case sqlparser.InsertStr:
@@ -416,7 +418,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			plan.NewTableAlias("new", getResolvedTable(n)),
 		)
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
-		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	case sqlparser.UpdateStr:
 		var scopeNode *plan.Project
 		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
@@ -437,17 +439,16 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					plan.NewSubqueryAlias("new", "", updateSrc.Child),
 				),
 			)
-			ctx.QProps.Set(sql.QPropRelSubquery)
 		}
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
-		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", getResolvedTable(n)),
 		)
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
-		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	}
 
 	return StripPassthroughNodes(triggerLogic), err
@@ -494,7 +495,7 @@ func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 }
 
 // wrapWritesWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
-func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	// Check if tree contains a TriggerExecutor
 	containsTrigger := false
 	transform.Inspect(n, func(n sql.Node) bool {

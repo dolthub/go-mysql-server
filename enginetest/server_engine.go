@@ -136,12 +136,12 @@ func (s *ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, s
 		// TODO: ctx being used does not get updated when running the queries through go sql driver.
 		//  we can try preparing and if it errors, then pass the original query
 		// For example, `USE db` does not change the db in the ctx.
-		return s.QueryWithBindings(ctx, query, nil, nil)
+		return s.QueryWithBindings(ctx, query, nil, nil, nil)
 	}
 	if _, ok := cannotBePrepared[query]; ok {
-		return s.QueryWithBindings(ctx, query, nil, nil)
+		return s.QueryWithBindings(ctx, query, nil, nil, nil)
 	}
-	return s.QueryWithBindings(ctx, q, nil, bindVars)
+	return s.QueryWithBindings(ctx, q, nil, bindVars, nil)
 }
 
 func (s *ServerQueryEngine) EngineAnalyzer() *analyzer.Analyzer {
@@ -152,7 +152,7 @@ func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
 }
 
-func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable) (sql.Schema, sql.RowIter, error) {
+func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryProps) (sql.Schema, sql.RowIter, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
 		if err != nil {

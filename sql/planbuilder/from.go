@@ -78,7 +78,7 @@ func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
 }
 
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
-	b.ctx.QProps.Set(sql.QPropInnerJoin)
+	b.qProps.Set(sql.QPropInnerJoin)
 
 	//TODO build individual table expressions
 	// collect column  definitions
@@ -110,7 +110,7 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 		} else if b.isLateral(te.RightExpr) {
 			outScope.node = plan.NewJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, nil)
 		} else {
-			b.ctx.QProps.Set(sql.QPropCrossJoin)
+			b.qProps.Set(sql.QPropCrossJoin)
 			outScope.node = plan.NewCrossJoin(leftScope.node, rightScope.node)
 		}
 		return
@@ -304,7 +304,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			fromScope := b.buildSelectStmt(sqScope, e.Select)
 			alias := strings.ToLower(t.As.String())
 			sq := plan.NewSubqueryAlias(alias, ast.String(e.Select), fromScope.node)
-			b.ctx.QProps.Set(sql.QPropRelSubquery)
+			b.qProps.Set(sql.QPropRelSubquery)
 			sq = sq.WithCorrelated(sqScope.correlated())
 			sq = sq.WithVolatile(sqScope.volatile())
 			sq.IsLateral = t.Lateral
@@ -825,7 +825,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			if err != nil {
 				b.handleErr(err)
 			}
-			node, err := b.BindOnly(stmt, viewDef.CreateViewStatement)
+			node, _, err := b.BindOnly(stmt, viewDef.CreateViewStatement)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.
@@ -844,7 +844,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				view = n.AsView(viewDef.CreateViewStatement)
 			default:
 				view = plan.NewSubqueryAlias(name, create.Definition.TextDefinition, n).AsView(viewDef.CreateViewStatement)
-				b.ctx.QProps.Set(sql.QPropRelSubquery)
+				b.qProps.Set(sql.QPropRelSubquery)
 			}
 		}
 	}

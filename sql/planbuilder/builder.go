@@ -49,6 +49,7 @@ type Builder struct {
 	insertActive    bool
 	nesting         int
 	parser          sql.Parser
+	qProps          *sql.QueryProps
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -113,6 +114,7 @@ func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
 		parserOpts: sqlMode.ParserOptions(),
 		f:          &factory{},
 		parser:     p,
+		qProps:     &sql.QueryProps{},
 	}
 }
 
@@ -171,6 +173,7 @@ func (b *Builder) Reset() {
 	b.triggerCtx = nil
 	b.viewCtx = nil
 	b.nesting = 0
+	b.qProps = &sql.QueryProps{}
 }
 
 type parseErr struct {
@@ -207,7 +210,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 	case *ast.DDL:
 		return b.buildDDL(inScope, subQuery, fullQuery, n)
 	case *ast.AlterTable:
-		b.ctx.QProps.Set(sql.QPropAlterTable)
+		b.qProps.Set(sql.QPropAlterTable)
 		return b.buildAlterTable(inScope, subQuery, n)
 	case *ast.DBDDL:
 		return b.buildDBDDL(inScope, n)

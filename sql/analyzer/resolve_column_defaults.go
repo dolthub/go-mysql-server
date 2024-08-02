@@ -48,7 +48,7 @@ import (
 // because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
 // here, as well as in the `resolve_functions` rule.
 
-func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validateColumnDefaults")
 	defer span.End()
 
@@ -116,7 +116,7 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 // Default values can only reference their host table, and since we serialize the GetField expression for storage, it's
 // important that we remove the table name before passing it off for storage. Otherwise we end up with serialized
 // defaults like `tableName.field + 1` instead of just `field + 1`.
-func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("stripTableNamesFromColumnDefaults")
 	defer span.End()
 
@@ -317,7 +317,7 @@ func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transfor
 	return expression.WrapExpression(&nd), transform.NewTree, nil
 }
 
-func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("backtickDefaultColumnValueNames")
 	defer span.End()
 

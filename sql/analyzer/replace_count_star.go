@@ -28,7 +28,7 @@ import (
 
 // replaceCountStar replaces count(*) expressions with count(1) expressions, which are semantically equivalent and
 // lets us prune all the unused columns from the target tables.
-func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	if plan.IsDDLNode(n) {
 		return n, transform.SameTree, nil
 	}

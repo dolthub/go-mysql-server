@@ -28,7 +28,7 @@ import (
 
 // assignExecIndexes walks a query plan in-order and rewrites GetFields to use
 // execution appropriate indexing.
-func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	s := &idxScope{}
 	if !scope.IsEmpty() {
 		// triggers

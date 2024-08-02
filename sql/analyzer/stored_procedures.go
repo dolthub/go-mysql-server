@@ -56,7 +56,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 				var parsedProcedure sql.Node
 				b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
 				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
-				parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
+				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, false)
 				if err != nil {
 					procToRegister = &plan.Procedure{
 						CreateProcedureString: procedure.CreateStatement,
@@ -82,13 +82,13 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 }
 
 // analyzeCreateProcedure checks the plan.CreateProcedure and returns a valid plan.Procedure or an error
-func analyzeCreateProcedure(ctx *sql.Context, a *Analyzer, cp *plan.CreateProcedure, scope *plan.Scope, sel RuleSelector) (*plan.Procedure, error) {
+func analyzeCreateProcedure(ctx *sql.Context, a *Analyzer, cp *plan.CreateProcedure, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (*plan.Procedure, error) {
 	err := validateStoredProcedure(ctx, cp.Procedure)
 	if err != nil {
 		return nil, err
 	}
 	var analyzedNode sql.Node
-	analyzedNode, _, err = analyzeProcedureBodies(ctx, a, cp.Procedure, false, scope, sel)
+	analyzedNode, _, err = analyzeProcedureBodies(ctx, a, cp.Procedure, false, scope, sel, qFlags)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func hasProcedureCall(n sql.Node) bool {
 
 // analyzeProcedureBodies analyzes each statement in a procedure's body individually, as the analyzer is designed to
 // inspect single statements rather than a collection of statements, which is usually the body of a stored procedure.
-func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCall bool, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCall bool, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	children := node.Children()
 	newChildren := make([]sql.Node, len(children))
 	var err error
@@ -129,7 +129,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		switch child := child.(type) {
 		case plan.RepresentsBlock:
 			// Many analyzer rules only check the top-level node, so we have to recursively analyze each child
-			newChild, _, err = analyzeProcedureBodies(ctx, a, child, skipCall, scope, sel)
+			newChild, _, err = analyzeProcedureBodies(ctx, a, child, skipCall, scope, sel, qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -142,15 +142,15 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			}
 			newChild, _, err = a.analyzeWithSelector(ctx, newChild, scope, SelectAllBatches, func(id RuleId) bool {
 				return slices.Contains(rulesToRun, id)
-			})
+			}, qFlags)
 		case *plan.Call:
 			if skipCall {
 				newChild = child
 			} else {
-				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel)
+				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
 			}
 		default:
-			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
 		}
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -165,7 +165,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 }
 
 // validateCreateProcedure handles CreateProcedure nodes, ensuring that all nodes in Procedure are supported.
-func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	cp, ok := node.(*plan.CreateProcedure)
 	if !ok {
 		return node, transform.SameTree, nil
@@ -239,7 +239,7 @@ func validateStoredProcedure(_ *sql.Context, proc *plan.Procedure) error {
 }
 
 // applyProcedures applies the relevant stored procedures to the node given (if necessary).
-func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
 	}
@@ -300,7 +300,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				b.ProcCtx().AsOf = asOf
 			}
 			b.ProcCtx().DbName = call.Database().Name()
-			parsedProcedure, _, _, err = b.Parse(procedure.CreateStatement, false)
+			parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -308,7 +308,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			if !ok {
 				return nil, transform.SameTree, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
 			}
-			analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel)
+			analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel, qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -325,7 +325,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Call:
-			return applyProceduresCall(ctx, a, n, scope, sel)
+			return applyProceduresCall(ctx, a, n, scope, sel, qFlags)
 		case *plan.ShowCreateProcedure:
 			procedures, err := a.Catalog.ExternalStoredProcedures(ctx, n.ProcedureName)
 			if err != nil {
@@ -344,7 +344,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 }
 
 // applyProceduresCall applies the relevant stored procedure to the given *plan.Call.
-func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	var procedure *plan.Procedure
 	if call.Procedure == nil {
 		dbName := ctx.GetCurrentDatabase()
@@ -470,7 +470,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		return plan.NewProcedureResolvedTable(rt), transform.NewTree, nil
 	})
 
-	transformedProcedure, _, err = applyProcedures(ctx, a, transformedProcedure, scope, sel)
+	transformedProcedure, _, err = applyProcedures(ctx, a, transformedProcedure, scope, sel, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}

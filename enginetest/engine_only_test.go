@@ -316,7 +316,7 @@ func TestTrackProcess(t *testing.T) {
 	require.NoError(err)
 
 	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
-	result, _, err := rule.Apply(ctx, a, node, nil, analyzer.DefaultRuleSelector)
+	result, _, err := rule.Apply(ctx, a, node, nil, analyzer.DefaultRuleSelector, nil)
 	require.NoError(err)
 
 	processes := ctx.ProcessList.Processes()
@@ -511,10 +511,10 @@ func TestAnalyzer_Exp(t *testing.T) {
 
 			ctx := enginetest.NewContext(harness)
 			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
-			parsed, _, _, err := b.Parse(tt.query, false)
+			parsed, _, _, _, err := b.Parse(tt.query, false)
 			require.NoError(t, err)
 
-			analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil)
+			analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, nil)
 			analyzed = analyzer.StripPassthroughNodes(analyzed)
 			if tt.err != nil {
 				require.Error(t, err)
@@ -731,8 +731,8 @@ func TestTriggerViewWarning(t *testing.T) {
 	ctx := harness.NewContext()
 	enginetest.CreateNewConnectionForServerEngine(ctx, e)
 
-	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil)
-	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "trigger on view is not supported; 'DROP TRIGGER  view_trig' to fix"}}, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "trigger on view is not supported; 'DROP TRIGGER  view_trig' to fix"}}, nil, nil, nil)
 	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, nil, "expected insert destination to be resolved or unresolved table")
 }
 
@@ -801,7 +801,7 @@ func TestRegex(t *testing.T) {
 				t.Skipf("Skipping query plan for %s", tt.Query)
 			}
 			if tt.ExpectedErr == nil {
-				enginetest.TestQueryWithContext(t, ctx, engine, harness, tt.Query, tt.Expected, nil, nil)
+				enginetest.TestQueryWithContext(t, ctx, engine, harness, tt.Query, tt.Expected, nil, nil, nil)
 			} else {
 				newCtx := ctx.WithQuery(tt.Query)
 				_, iter, err := engine.Query(newCtx, tt.Query)

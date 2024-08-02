@@ -144,7 +144,7 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 			var result = tt.node
 			var err error
 			for _, r := range f {
-				result, _, err = r.Apply(context, a, result, tt.scope, DefaultRuleSelector)
+				result, _, err = r.Apply(context, a, result, tt.scope, DefaultRuleSelector, nil)
 				if tt.err != nil {
 					require.Error(t, err)
 					require.True(t, tt.err.Is(err), fmt.Sprintf("Expected error of type %T but got %T", tt.err, err))

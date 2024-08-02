@@ -29,7 +29,7 @@ import (
 
 // optimizeJoins finds an optimal table ordering and access plan
 // for the tables in the query.
-func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("construct_join_plan")
 	defer span.End()
 
@@ -43,19 +43,19 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 	_, isUpdate := n.(*plan.Update)
 
-	ret, same, err := inOrderReplanJoin(ctx, a, scope, nil, n, isUpdate)
+	ret, same, err := inOrderReplanJoin(ctx, a, scope, nil, n, isUpdate, qFlags)
 	if err != nil {
 		return n, transform.SameTree, err
 	}
 	if same {
 		// try index plans only
-		return costedIndexScans(ctx, a, n)
+		return costedIndexScans(ctx, a, n, qFlags)
 	}
 	return ret, transform.NewTree, nil
 }
 
 // inOrderReplanJoin replans the first join node found
-func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql.Schema, n sql.Node, isUpdate bool) (sql.Node, transform.TreeIdentity, error) {
+func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql.Schema, n sql.Node, isUpdate bool, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(sql.OpaqueNode); ok {
 		return n, transform.SameTree, nil
 	}
@@ -65,7 +65,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 	j, ok := n.(*plan.JoinNode)
 	if !ok {
 		for i := range children {
-			newChild, same, err := inOrderReplanJoin(ctx, a, scope, sch, children[i], isUpdate)
+			newChild, same, err := inOrderReplanJoin(ctx, a, scope, sch, children[i], isUpdate, qFlags)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -90,7 +90,7 @@ func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql
 
 	scope.SetJoin(true)
 	scope.SetLateralJoin(j.Op.IsLateral())
-	ret, err := replanJoin(ctx, j, a, scope)
+	ret, err := replanJoin(ctx, j, a, scope, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, fmt.Errorf("failed to replan join: %w", err)
 	}
@@ -134,8 +134,8 @@ func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
 	}
 }
 
-func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope) (ret sql.Node, err error) {
-	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster)
+func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope, qFlags *sql.QueryProps) (ret sql.Node, err error) {
+	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, qFlags)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -155,7 +155,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	j := memo.NewJoinOrderBuilder(m)
 	j.ReorderJoin(n)
 
-	ctx.QProps.Set(sql.QPropInnerJoin)
+	qFlags.Set(sql.QPropInnerJoin)
 
 	err = addIndexScans(m)
 	if err != nil {

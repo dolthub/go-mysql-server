@@ -154,7 +154,7 @@ func TestEvalFilter(t *testing.T) {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
 			node := plan.NewFilter(tt.filter, plan.NewResolvedTable(inner, nil, nil))
-			result, _, err := rule.Apply(ctx, NewDefault(nil), node, nil, DefaultRuleSelector)
+			result, _, err := rule.Apply(ctx, NewDefault(nil), node, nil, DefaultRuleSelector, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 		})
@@ -223,10 +223,10 @@ func TestPushNotFilters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
 			q := fmt.Sprintf("SELECT 1 from xy WHERE %s", tt.in)
-			node, _, _, err := b.Parse(q, false)
+			node, _, _, _, err := b.Parse(q, false)
 			require.NoError(t, err)
 
-			cmp, _, err := pushNotFilters(ctx, nil, node, nil, nil)
+			cmp, _, err := pushNotFilters(ctx, nil, node, nil, nil, nil)
 			require.NoError(t, err)
 
 			cmpF := cmp.(*plan.Project).Child.(*plan.Filter).Expression

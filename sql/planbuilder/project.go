@@ -169,7 +169,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.Expression {
 	switch e := se.(type) {
 	case *ast.StarExpr:
-		b.ctx.QProps.Set(sql.QPropStar)
+		b.qProps.Set(sql.QPropStar)
 		if e.TableName.IsEmpty() {
 			return expression.NewStar()
 		}

@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -77,22 +76,23 @@ func unnestExistsSubqueries(
 	a *Analyzer,
 	n sql.Node,
 	scope *plan.Scope,
-	sel RuleSelector,
+	_ RuleSelector,
+	qFlags *sql.QueryProps,
 ) (sql.Node, transform.TreeIdentity, error) {
-	if !ctx.QProps.SubqueryIsSet() {
+	if !qFlags.SubqueryIsSet() {
 		return n, transform.SameTree, nil
 	}
 	aliasDisambig := newAliasDisambiguator(n, scope)
-	return unnestSelectExistsHelper(ctx, scope, a, n, aliasDisambig)
+	return unnestSelectExistsHelper(ctx, scope, a, n, aliasDisambig, qFlags)
 }
 
-func unnestSelectExistsHelper(ctx *sql.Context, scope *plan.Scope, a *Analyzer, n sql.Node, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
+func unnestSelectExistsHelper(ctx *sql.Context, scope *plan.Scope, a *Analyzer, n sql.Node, aliasDisambig *aliasDisambiguator, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		return unnestExistSubqueries(ctx, scope, a, f, aliasDisambig)
+		return unnestExistSubqueries(ctx, scope, a, f, aliasDisambig, qFlags)
 	})
 }
 
@@ -114,7 +114,7 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 // unnestExistSubqueries scans a filter for [NOT] WHERE EXISTS, and then attempts to
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
-func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filter *plan.Filter, aliasDisambig *aliasDisambiguator) (sql.Node, transform.TreeIdentity, error) {
+func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filter *plan.Filter, aliasDisambig *aliasDisambiguator, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	ret := filter.Child
 	var retFilters []sql.Expression
 	same := transform.SameTree
@@ -153,7 +153,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 
 		// recurse
 		if s.inner != nil {
-			s.inner, _, err = unnestSelectExistsHelper(ctx, scope.NewScopeFromSubqueryExpression(filter, sq.Correlated()), a, s.inner, aliasDisambig)
+			s.inner, _, err = unnestSelectExistsHelper(ctx, scope.NewScopeFromSubqueryExpression(filter, sq.Correlated()), a, s.inner, aliasDisambig, qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -190,10 +190,10 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			case plan.JoinTypeAnti:
 				cond := expression.NewLiteral(true, types.Boolean)
 				ret = plan.NewAntiJoin(ret, s.inner, cond).WithComment(comment)
-				ctx.QProps.Set(sql.QPropInnerJoin)
+				qFlags.Set(sql.QPropInnerJoin)
 			case plan.JoinTypeSemi:
 				ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
-				ctx.QProps.Set(sql.QPropCrossJoin)
+				qFlags.Set(sql.QPropCrossJoin)
 			default:
 				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 			}
@@ -209,10 +209,10 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		switch joinType {
 		case plan.JoinTypeAnti:
 			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
-			ctx.QProps.Set(sql.QPropInnerJoin)
+			qFlags.Set(sql.QPropInnerJoin)
 		case plan.JoinTypeSemi:
 			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
-			ctx.QProps.Set(sql.QPropInnerJoin)
+			qFlags.Set(sql.QPropInnerJoin)
 		default:
 			return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 		}

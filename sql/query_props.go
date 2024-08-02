@@ -50,23 +50,40 @@ func (qp *QueryProps) Set(flag int) {
 }
 
 func (qp *QueryProps) IsSet(flag int) bool {
+	if qp == nil {
+		switch flag {
+		case QPropMax1Row:
+			return false
+		default:
+			return true
+		}
+	}
 	return qp.Flags.Contains(flag)
 }
 
 var DmlFlags = NewFastIntSet(QPropDelete, QPropUpdate, QPropInsert)
 
 func (qp *QueryProps) DmlIsSet() bool {
+	if qp == nil {
+		return true
+	}
 	return qp.Flags.Intersects(DmlFlags)
 }
 
 var SubqueryFlags = NewFastIntSet(QPropScalarSubquery, QPropRelSubquery)
 
 func (qp *QueryProps) SubqueryIsSet() bool {
+	if qp == nil {
+		return true
+	}
 	return qp.Flags.Intersects(SubqueryFlags)
 }
 
 var JoinFlags = NewFastIntSet(QPropInnerJoin, QPropCrossJoin)
 
 func (qp *QueryProps) JoinIsSet() bool {
+	if qp == nil {
+		return true
+	}
 	return qp.Flags.Intersects(JoinFlags)
 }

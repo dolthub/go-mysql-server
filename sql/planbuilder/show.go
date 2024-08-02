@@ -206,7 +206,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 	}
 	db := b.resolveDb(dbName)
 
-	b.ctx.QProps.Set(sql.QPropSetDatabase)
+	b.qProps.Set(sql.QPropSetDatabase)
 	var node sql.Node = plan.NewShowTriggers(db)
 
 	outScope = inScope.push()
@@ -340,7 +340,7 @@ func (b *Builder) buildShowProcedure(inScope *scope, s *ast.Show) (outScope *sco
 func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	var filter sql.Expression
 
-	node, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, CHARACTER_SET_CLIENT as `character_set_client`, COLLATION_CONNECTION as `collation_connection`,"+
 		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'", false)
@@ -376,7 +376,7 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 
 func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope *scope) {
 	var filter sql.Expression
-	node, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, character_set_client, collation_connection,"+
 		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'", false)
@@ -626,7 +626,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	}
 	db := b.resolveDb(dbName)
 
-	b.ctx.QProps.Set(sql.QPropSetDatabase)
+	b.qProps.Set(sql.QPropSetDatabase)
 	showTabs := plan.NewShowTables(db, s.Full, asOf)
 	for _, c := range showTabs.Schema() {
 		outScope.newColumn(scopeColumn{
@@ -761,7 +761,7 @@ func (b *Builder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scop
 		unsupportedShow := "SHOW COUNT(*) WARNINGS"
 		b.handleErr(sql.ErrUnsupportedFeature.New(unsupportedShow))
 	}
-	b.ctx.QProps.Set(sql.QPropShowWarnings)
+	b.qProps.Set(sql.QPropShowWarnings)
 	var node sql.Node
 	node = plan.ShowWarnings(b.ctx.Session.Warnings())
 	if s.Limit != nil {
@@ -782,7 +782,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	// show collation statements are functionally identical to selecting from the collations table in
 	// information_schema, with slightly different syntax and with some columns aliased.
 	// TODO: install information_schema automatically for all catalogs
-	node, _, _, err := b.Parse("select collation_name as `collation`, character_set_name as charset, id,"+
+	node, _, _, _, err := b.Parse("select collation_name as `collation`, character_set_name as charset, id,"+
 		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations order by collation_name", false)
 	if err != nil {
 		b.handleErr(err)
@@ -819,7 +819,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 
 func (b *Builder) buildShowEngines(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, err := b.Parse(`
+	infoSchemaSelect, _, _, _, err := b.Parse(`
 select
     ENGINE as Engine,
     SUPPORT as Support,
@@ -839,7 +839,7 @@ from information_schema.engines
 
 func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, err := b.Parse("select * from information_schema.plugins", false)
+	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", false)
 	if err != nil {
 		b.handleErr(err)
 	}

@@ -21,13 +21,13 @@ import (
 )
 
 // addAutocommitNode wraps each query with a TransactionCommittingNode.
-func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
 
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
-	if ctx.QProps.IsSet(sql.QPropShowWarnings) {
+	if qFlags.IsSet(sql.QPropShowWarnings) {
 		return n, transform.SameTree, nil
 	}
 

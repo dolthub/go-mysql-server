@@ -2178,7 +2178,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
 				triggerSqlMode := NewSqlModeFromString(trigger.SqlMode)
-				parsedTrigger, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
+				parsedTrigger, _, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
 				if err != nil {
 					return nil, err
 				}
@@ -2389,7 +2389,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			if !hasGlobalShowViewPriv && !hasDbShowViewPriv && !privTblSet.Has(PrivilegeType_ShowView) {
 				continue
 			}
-			parsedView, err := planbuilder.ParseWithOptions(ctx, catalog, view.CreateViewStatement, NewSqlModeFromString(view.SqlMode).ParserOptions())
+			parsedView, _, err := planbuilder.ParseWithOptions(ctx, catalog, view.CreateViewStatement, NewSqlModeFromString(view.SqlMode).ParserOptions())
 			if err != nil {
 				continue
 			}
