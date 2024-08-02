@@ -308,7 +308,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			if !ok {
 				return nil, transform.SameTree, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
 			}
-			analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel, qFlags)
+			analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel, nil)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
