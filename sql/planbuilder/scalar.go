@@ -159,6 +159,16 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 
+		if nc, ok := rf.(*function.NameConst); ok {
+			if lit, isLit := nc.Alias.(*expression.Literal); isLit {
+				nc.AliasStr = nc.Alias.String()
+
+				rf = nc
+			} else {
+				b.handleErr(fmt.Errorf("incorrect arguments to: %s", nc.FunctionName()))
+			}
+		}
+
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
 		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
 		if v.Distinct {

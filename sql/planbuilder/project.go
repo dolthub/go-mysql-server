@@ -15,7 +15,8 @@
 package planbuilder
 
 import (
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -184,6 +185,10 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 			if strings.EqualFold(e.InputExpression, expr.String()) {
 				return expression.NewAlias(e.InputExpression, expr)
 			}
+			if nc, isNameConst := expr.(*function.NameConst); isNameConst {
+				return expression.NewAlias(nc.Name(), expr)
+			}
+
 			return expression.NewAlias(e.InputExpression, expr).AsUnreferencable()
 		}
 		return expr
