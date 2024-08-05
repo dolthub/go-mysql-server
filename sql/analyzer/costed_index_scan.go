@@ -71,12 +71,12 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 		}
 
 		if is, ok := rt.UnderlyingTable().(sql.IndexSearchableTable); ok {
-			lookup, _, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression)...)
+			lookup, lookupFds, newFilter, ok, err := is.LookupForExpressions(ctx, expression.SplitConjunction(filter.Expression)...)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
 			if ok {
-				return indexSearchableLookup(n, rt, lookup, filter.Expression, newFilter)
+				return indexSearchableLookup(n, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
 			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
@@ -88,7 +88,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 	})
 }
 
-func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if lookup.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
@@ -112,6 +112,14 @@ func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup,
 	if newFilter != nil {
 		ret = plan.NewFilter(newFilter, ret)
 	}
+	x
+	if fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && len(lookup.Ranges) == 1 {
+		// Strict index lookup without a join or subquery scope will return
+		// at most one row. We could also use some sort of scope counting
+		// to check for single scope.
+		qFlags.Set(sql.QFlagMax1Row)
+	}
+
 	return ret, transform.NewTree, nil
 }
 
