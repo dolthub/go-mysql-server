@@ -351,7 +351,18 @@ func (h *Handler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64
 
 var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 
-func (h *Handler) doQuery(ctx context.Context, c *mysql.Conn, query string, parsed sqlparser.Statement, analyzedPlan sql.Node, mode MultiStmtMode, queryExec QueryExecutor, bindings map[string]*querypb.BindVariable, callback func(*sqltypes.Result, bool) error, qProps *sql.QueryProps) (string, error) {
+func (h *Handler) doQuery(
+	ctx context.Context,
+	c *mysql.Conn,
+	query string,
+	parsed sqlparser.Statement,
+	analyzedPlan sql.Node,
+	mode MultiStmtMode,
+	queryExec QueryExecutor,
+	bindings map[string]*querypb.BindVariable,
+	callback func(*sqltypes.Result, bool) error,
+	qFlags *sql.QueryFlags,
+) (string, error) {
 	sqlCtx, err := h.sm.NewContext(ctx, c, query)
 	if err != nil {
 		return "", err
@@ -405,7 +416,7 @@ func (h *Handler) doQuery(ctx context.Context, c *mysql.Conn, query string, pars
 		}
 	}()
 
-	schema, rowIter, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qProps)
+	schema, rowIter, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
 		if verboseErrorLogging {
@@ -424,7 +435,7 @@ func (h *Handler) doQuery(ctx context.Context, c *mysql.Conn, query string, pars
 		r, err = resultForOkIter(sqlCtx, rowIter)
 	} else if schema == nil {
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
-	} else if qProps.IsSet(sql.QPropMax1Row) {
+	} else if qFlags.IsSet(sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
@@ -702,14 +713,14 @@ func (h *Handler) errorWrappedDoQuery(
 	mode MultiStmtMode,
 	bindings map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
-	qProps *sql.QueryProps,
+	qFlags *sql.QueryFlags,
 ) (string, error) {
 	start := time.Now()
 	if h.sel != nil {
 		h.sel.QueryStarted()
 	}
 
-	remainder, err := h.doQuery(ctx, c, query, parsed, nil, mode, h.executeQuery, bindings, callback, qProps)
+	remainder, err := h.doQuery(ctx, c, query, parsed, nil, mode, h.executeQuery, bindings, callback, qFlags)
 	if err != nil {
 		err = sql.CastSQLError(err)
 	}
@@ -995,12 +1006,12 @@ type QueryExecutor func(
 	parsed sqlparser.Statement,
 	analyzed sql.Node,
 	bindings map[string]*querypb.BindVariable,
-	qProps *sql.QueryProps,
+	qFlags *sql.QueryFlags,
 ) (sql.Schema, sql.RowIter, error)
 
 // executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
 // statement, which may be nil.
-func (h *Handler) executeQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, _ sql.Node, bindings map[string]*querypb.BindVariable, qProps *sql.QueryProps) (sql.Schema, sql.RowIter, error) {
+func (h *Handler) executeQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, _ sql.Node, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error) {
 	return h.e.QueryWithBindings(ctx, query, parsed, bindings, nil)
 }
 
@@ -1012,7 +1023,7 @@ func (h *Handler) executeBoundPlan(
 	_ sqlparser.Statement,
 	plan sql.Node,
 	_ map[string]*querypb.BindVariable,
-	_ *sql.QueryProps,
+	_ *sql.QueryFlags,
 ) (sql.Schema, sql.RowIter, error) {
 	return h.e.PrepQueryPlanForExecution(ctx, query, plan)
 }

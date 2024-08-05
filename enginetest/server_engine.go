@@ -152,7 +152,7 @@ func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
 }
 
-func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryProps) (sql.Schema, sql.RowIter, error) {
+func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
 		if err != nil {

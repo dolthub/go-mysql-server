@@ -31,7 +31,7 @@ type QueryEngine interface {
 	EngineAnalyzer() *analyzer.Analyzer
 	// TODO: get rid of this, should not be exposed to engine tests
 	EnginePreparedDataCache() *sqle.PreparedDataCache
-	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryProps) (sql.Schema, sql.RowIter, error)
+	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error)
 	CloseSession(connID uint32)
 	Close() error
 }

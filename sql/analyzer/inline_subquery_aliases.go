@@ -65,7 +65,7 @@ func (a *aliasScope) isOuterRef(name string) (sql.Expression, bool) {
 // as written this is a fairly unflexible rule.
 // TODO: extend subquery search to WHERE filters and other scalar expressions
 // TODO: convert subquery expressions to lateral joins to avoid this hack
-func inlineSubqueryAliasRefs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func inlineSubqueryAliasRefs(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !qFlags.SubqueryIsSet() {
 		return n, transform.SameTree, nil
 	}

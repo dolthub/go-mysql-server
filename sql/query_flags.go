@@ -15,44 +15,46 @@
 package sql
 
 const (
-	qpNullFlag int = iota
-	QPropShowWarnings
-	QPropInsert
-	QPropUpdate
-	QPropDelete
-	QPropScalarSubquery
-	QPropRelSubquery
-	QPropNotExpr
-	QPropCount
-	QPropCountStar
-	QPropAlterTable
-	QPropCrossJoin
-	QPropSort
-	QPropFilter
-	QPropAggregation
-	QPropSetDatabase
-	QPropStar
-	QPropInnerJoin
-	QPropLimit
-	QPropInterval
-	QPropMax1Row
+	QFlagNull int = iota
+	QFlagShowWarnings
+	QFlagInsert
+	QFlagUpdate
+	QFlagDelete
+	QFlagScalarSubquery
+	QFlagRelSubquery
+	QFlgNotExpr
+	QFlagCount
+	QFlagCountStar
+	QFlagAlterTable
+	QFlagCrossJoin
+	QFlagSort
+	QFlagFilter
+	QFlagAggregation
+	QFlagSetDatabase
+	QFlagStar
+	QFlagInnerJoin
+	QFlagLimit
+	QFlagInterval
+	QFlagMax1Row
 )
 
-type QueryProps struct {
+type QueryFlags struct {
 	Flags FastIntSet
 }
 
-func (qp *QueryProps) Set(flag int) {
+func (qp *QueryFlags) Set(flag int) {
 	if qp == nil {
 		return
 	}
 	qp.Flags.Add(flag)
 }
 
-func (qp *QueryProps) IsSet(flag int) bool {
+func (qp *QueryFlags) IsSet(flag int) bool {
 	if qp == nil {
+		// default behavior with |nil| flags is execute
+		// all analyzer rules, and no special spool shortcuts.
 		switch flag {
-		case QPropMax1Row:
+		case QFlagMax1Row:
 			return false
 		default:
 			return true
@@ -61,27 +63,27 @@ func (qp *QueryProps) IsSet(flag int) bool {
 	return qp.Flags.Contains(flag)
 }
 
-var DmlFlags = NewFastIntSet(QPropDelete, QPropUpdate, QPropInsert)
+var DmlFlags = NewFastIntSet(QFlagDelete, QFlagUpdate, QFlagInsert)
 
-func (qp *QueryProps) DmlIsSet() bool {
+func (qp *QueryFlags) DmlIsSet() bool {
 	if qp == nil {
 		return true
 	}
 	return qp.Flags.Intersects(DmlFlags)
 }
 
-var SubqueryFlags = NewFastIntSet(QPropScalarSubquery, QPropRelSubquery)
+var SubqueryFlags = NewFastIntSet(QFlagScalarSubquery, QFlagRelSubquery)
 
-func (qp *QueryProps) SubqueryIsSet() bool {
+func (qp *QueryFlags) SubqueryIsSet() bool {
 	if qp == nil {
 		return true
 	}
 	return qp.Flags.Intersects(SubqueryFlags)
 }
 
-var JoinFlags = NewFastIntSet(QPropInnerJoin, QPropCrossJoin)
+var JoinFlags = NewFastIntSet(QFlagInnerJoin, QFlagCrossJoin)
 
-func (qp *QueryProps) JoinIsSet() bool {
+func (qp *QueryFlags) JoinIsSet() bool {
 	if qp == nil {
 		return true
 	}

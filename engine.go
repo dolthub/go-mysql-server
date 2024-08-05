@@ -365,7 +365,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryProps) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error) {
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
@@ -531,7 +531,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 	return parsed, binder, nil
 }
 
-func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFlags *sql.QueryProps) (sql.Node, error) {
+func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFlags *sql.QueryFlags) (sql.Node, error) {
 	switch n := bound.(type) {
 	case *plan.PrepareQuery:
 		sqlMode := sql.LoadSqlMode(ctx)
@@ -582,7 +582,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFl
 // bindQuery binds any bind variables to the plan node or query given and returns it.
 // |parsed| is the parsed AST without bindings applied, if the statement was previously parsed / prepared.
 // If it wasn't (|parsed| is nil), then the query is parsed.
-func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder, qFlags *sql.QueryProps) (sql.Node, *sql.QueryProps, error) {
+func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder, qFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {
 	var bound sql.Node
 	var err error
 	if parsed == nil {

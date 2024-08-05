@@ -487,12 +487,12 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
-func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *plan.Scope, qFlags *sql.QueryProps) (sql.Node, error) {
+func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *plan.Scope, qFlags *sql.QueryFlags) (sql.Node, error) {
 	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector, qFlags)
 	return n, err
 }
 
-func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *plan.Scope, until string, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *plan.Scope, until string, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	stop := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if stop {
@@ -511,7 +511,7 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *plan
 // cause infinite recursion. This limit is high but arbitrary
 const maxBatchRecursion = 100
 
-func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan.Scope, batchSelector BatchSelector, ruleSelector RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan.Scope, batchSelector BatchSelector, ruleSelector RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze")
 	defer trace.StartRegion(ctx, "Analyzer.analyzeWithSelector").End()
 
@@ -556,7 +556,7 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 	return n, allSame, err
 }
 
-func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *plan.Scope, startAt string, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *plan.Scope, startAt string, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	start := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if desc == startAt {

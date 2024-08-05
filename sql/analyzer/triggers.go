@@ -30,7 +30,7 @@ import (
 // validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
 // the trigger body. Also validates that these old and new references are being used appropriately -- they are only
 // valid for certain kinds of triggers and certain statements.
-func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := node.(*plan.CreateTrigger)
 	if !ok {
 		return node, transform.SameTree, nil
@@ -113,7 +113,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	return node, transform.NewTree, nil
 }
 
-func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !qFlags.DmlIsSet() {
 		return n, transform.SameTree, nil
 	}
@@ -247,8 +247,8 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 }
 
 // applyTrigger applies the trigger given to the node given, returning the resulting node
-func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
-	qFlags.Set(sql.QPropRelSubquery)
+func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	qFlags.Set(sql.QFlagRelSubquery)
 
 	triggerLogic, err := getTriggerLogic(ctx, a, originalNode, scope, trigger, qFlags)
 	if err != nil {
@@ -396,7 +396,7 @@ func getUpdateJoinSource(n sql.Node) *plan.UpdateSource {
 
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
-func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryProps) (sql.Node, error) {
+func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryFlags) (sql.Node, error) {
 	// For trigger body analysis, we don't want any row update accumulators applied to insert / update / delete
 	// statements, we need the raw output from them.
 	var noRowUpdateAccumulators RuleSelector
@@ -495,7 +495,7 @@ func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 }
 
 // wrapWritesWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
-func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	// Check if tree contains a TriggerExecutor
 	containsTrigger := false
 	transform.Inspect(n, func(n sql.Node) bool {

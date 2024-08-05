@@ -49,10 +49,10 @@ type Memo struct {
 	scopeLen  int
 
 	TableProps *tableProps
-	QFlags     *sql.QueryProps
+	QFlags     *sql.QueryFlags
 }
 
-func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, qFlags *sql.QueryProps) *Memo {
+func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, qFlags *sql.QueryFlags) *Memo {
 	return &Memo{
 		Ctx:        ctx,
 		c:          cost,

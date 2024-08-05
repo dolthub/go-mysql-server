@@ -339,7 +339,7 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 	})
 }
 
-func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryProps) {
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {

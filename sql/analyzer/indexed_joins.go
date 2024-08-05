@@ -29,7 +29,7 @@ import (
 
 // optimizeJoins finds an optimal table ordering and access plan
 // for the tables in the query.
-func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("construct_join_plan")
 	defer span.End()
 
@@ -55,7 +55,7 @@ func optimizeJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 }
 
 // inOrderReplanJoin replans the first join node found
-func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql.Schema, n sql.Node, isUpdate bool, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func inOrderReplanJoin(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sch sql.Schema, n sql.Node, isUpdate bool, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(sql.OpaqueNode); ok {
 		return n, transform.SameTree, nil
 	}
@@ -134,7 +134,7 @@ func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
 	}
 }
 
-func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope, qFlags *sql.QueryProps) (ret sql.Node, err error) {
+func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope, qFlags *sql.QueryFlags) (ret sql.Node, err error) {
 	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, qFlags)
 
 	defer func() {
@@ -155,7 +155,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	j := memo.NewJoinOrderBuilder(m)
 	j.ReorderJoin(n)
 
-	qFlags.Set(sql.QPropInnerJoin)
+	qFlags.Set(sql.QFlagInnerJoin)
 
 	err = addIndexScans(m)
 	if err != nil {

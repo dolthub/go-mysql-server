@@ -33,7 +33,7 @@ func applyDefaultSelectLimit(
 	n sql.Node,
 	scope *plan.Scope,
 	_ RuleSelector,
-	_ *sql.QueryProps,
+	_ *sql.QueryFlags,
 ) (sql.Node, transform.TreeIdentity, error) {
 	if !scope.IsEmpty() || scope.RecursionDepth() > 0 {
 		return n, transform.SameTree, nil

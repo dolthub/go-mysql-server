@@ -21,7 +21,7 @@ import (
 )
 
 // resolveUnions resolves the left and right side of a union node in isolation.
-func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -59,7 +59,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	})
 }
 
-func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	// Procedures explicitly handle unions
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil

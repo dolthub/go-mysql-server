@@ -78,7 +78,7 @@ func unnestExistsSubqueries(
 	n sql.Node,
 	scope *plan.Scope,
 	_ RuleSelector,
-	qFlags *sql.QueryProps,
+	qFlags *sql.QueryFlags,
 ) (sql.Node, transform.TreeIdentity, error) {
 	if !qFlags.SubqueryIsSet() {
 		return n, transform.SameTree, nil
@@ -87,7 +87,7 @@ func unnestExistsSubqueries(
 	return unnestSelectExistsHelper(ctx, scope, a, n, aliasDisambig, qFlags)
 }
 
-func unnestSelectExistsHelper(ctx *sql.Context, scope *plan.Scope, a *Analyzer, n sql.Node, aliasDisambig *aliasDisambiguator, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func unnestSelectExistsHelper(ctx *sql.Context, scope *plan.Scope, a *Analyzer, n sql.Node, aliasDisambig *aliasDisambiguator, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
@@ -115,7 +115,7 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 // unnestExistSubqueries scans a filter for [NOT] WHERE EXISTS, and then attempts to
 // extract the subquery, correlated filters, a modified outer scope (net subquery and filters),
 // and the new target joinType
-func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filter *plan.Filter, aliasDisambig *aliasDisambiguator, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, filter *plan.Filter, aliasDisambig *aliasDisambiguator, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	ret := filter.Child
 	var retFilters []sql.Expression
 	same := transform.SameTree
@@ -191,10 +191,10 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			case plan.JoinTypeAnti:
 				cond := expression.NewLiteral(true, types.Boolean)
 				ret = plan.NewAntiJoin(ret, s.inner, cond).WithComment(comment)
-				qFlags.Set(sql.QPropInnerJoin)
+				qFlags.Set(sql.QFlagInnerJoin)
 			case plan.JoinTypeSemi:
 				ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
-				qFlags.Set(sql.QPropCrossJoin)
+				qFlags.Set(sql.QFlagCrossJoin)
 			default:
 				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 			}
@@ -210,10 +210,10 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		switch joinType {
 		case plan.JoinTypeAnti:
 			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
-			qFlags.Set(sql.QPropInnerJoin)
+			qFlags.Set(sql.QFlagInnerJoin)
 		case plan.JoinTypeSemi:
 			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
-			qFlags.Set(sql.QPropInnerJoin)
+			qFlags.Set(sql.QFlagInnerJoin)
 		default:
 			return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 		}

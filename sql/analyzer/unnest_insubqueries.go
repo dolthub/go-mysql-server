@@ -39,7 +39,7 @@ type applyJoin struct {
 // and sql.TableId (to support join reordering).
 // TODO decorrelate lhs too
 // TODO non-null-rejecting with dual table
-func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryProps) (sql.Node, transform.TreeIdentity, error) {
+func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !qFlags.SubqueryIsSet() {
 		return n, transform.SameTree, nil
 	}

@@ -450,7 +450,7 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	queryScope := b.buildSelectStmt(inScope, selectStatement)
 
 	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
-	b.qProps.Set(sql.QPropRelSubquery)
+	b.qProps.Set(sql.QFlagRelSubquery)
 
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
 
