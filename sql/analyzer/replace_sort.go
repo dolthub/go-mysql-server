@@ -175,7 +175,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 
 // replaceAgg converts aggregate functions to order by + limit 1 when possible
 func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !qFlags.IsSet(sql.QFlagAggregation) {
+	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return node, transform.SameTree, nil
 	}
 

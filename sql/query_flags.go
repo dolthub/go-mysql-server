@@ -55,16 +55,6 @@ func (qp *QueryFlags) Set(flag int) {
 }
 
 func (qp *QueryFlags) IsSet(flag int) bool {
-	if qp == nil {
-		// default behavior with |nil| flags is execute all
-		// analyzer rules, and no special spooling shortcuts.
-		switch flag {
-		case QFlagMax1Row:
-			return false
-		default:
-			return true
-		}
-	}
 	return qp.Flags.Contains(flag)
 }
 

@@ -414,7 +414,7 @@ func isTrue(e sql.Expression) bool {
 // note: the output tree identity is sometimes inaccurate when there is
 // a NOT expression that we do not simplify
 func pushNotFilters(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !qFlags.IsSet(sql.QFlgNotExpr) {
+	if !FlagIsSet(qFlags, sql.QFlgNotExpr) {
 		return n, transform.SameTree, nil
 	}
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {

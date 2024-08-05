@@ -250,7 +250,7 @@ func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
 }
 
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !qFlags.IsSet(sql.QFlagAggregation) {
+	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return n, transform.SameTree, nil
 	}
 
@@ -429,7 +429,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 }
 
 func validateIntervalUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !qFlags.IsSet(sql.QFlagInterval) {
+	if !FlagIsSet(qFlags, sql.QFlagInterval) {
 		return n, transform.SameTree, nil
 	}
 	var invalid bool
@@ -475,7 +475,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 	//
 	// We do not use plan.InspectExpressions here because we're treating
 	// the top-level expressions of sql.Node differently from subexpressions.
-	if !qFlags.IsSet(sql.QFlagStar) {
+	if !FlagIsSet(qFlags, sql.QFlagStar) {
 		return n, transform.SameTree, nil
 	}
 
@@ -826,7 +826,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // that should be supported but that currently trigger this validation because
 // aggregation expressions end up in the wrong place.
 func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !qFlags.IsSet(sql.QFlagAggregation) {
+	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return n, transform.SameTree, nil
 	}
 	var validationErr error

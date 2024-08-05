@@ -157,7 +157,7 @@ func validateIdentifiers(ct *plan.CreateTable) error {
 }
 
 func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !qFlags.IsSet(sql.QFlagAlterTable) {
+	if !FlagIsSet(qFlags, sql.QFlagAlterTable) {
 		return n, transform.SameTree, nil
 	}
 

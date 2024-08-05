@@ -576,3 +576,23 @@ func DeepCopyNode(node sql.Node) (sql.Node, error) {
 	})
 	return n, err
 }
+
+// FlagIsSet returns whether a set of query flag has the |flag| bit marked,
+// or a default value if |flags| is nil. Flags for rule selecting are
+// enabled by default (true), flags for execution behavior are disabled by
+// default (false).
+func FlagIsSet(flags *sql.QueryFlags, flag int) bool {
+	if flags == nil {
+		switch flag {
+		case sql.QFlagMax1Row:
+			// no spooling shortcuts
+			return false
+		default:
+			// default behavior with |nil| flags is execute all
+			// analyzer rules
+			return true
+
+		}
+	}
+	return flags.IsSet(flag)
+}
