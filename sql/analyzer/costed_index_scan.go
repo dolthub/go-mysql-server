@@ -112,7 +112,7 @@ func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup,
 	if newFilter != nil {
 		ret = plan.NewFilter(newFilter, ret)
 	}
-	x
+	
 	if fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && len(lookup.Ranges) == 1 {
 		// Strict index lookup without a join or subquery scope will return
 		// at most one row. We could also use some sort of scope counting
