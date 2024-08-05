@@ -50,7 +50,7 @@ import (
 // fraction of its conjunctions into an indexScan, with the excluded
 // remaining in the parent filter. Much of the format conversions focus
 // on maintaining this invariant.
-func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := n.(*plan.Filter)
 		if !ok {
@@ -82,7 +82,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node) (sql.Node, tran
 			}
 		}
 		if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
-			return costedIndexLookup(ctx, n, a.Catalog, iat, rt, aliasName, filter.Expression)
+			return costedIndexLookup(ctx, n, a.Catalog, iat, rt, aliasName, filter.Expression, qFlags)
 		}
 		return n, transform.SameTree, nil
 	})
@@ -115,12 +115,12 @@ func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup,
 	return ret, transform.NewTree, nil
 }
 
-func costedIndexLookup(ctx *sql.Context, n sql.Node, cat sql.Catalog, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression) (sql.Node, transform.TreeIdentity, error) {
+func costedIndexLookup(ctx *sql.Context, n sql.Node, cat sql.Catalog, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	indexes, err := iat.GetIndexes(ctx)
 	if err != nil {
 		return n, transform.SameTree, err
 	}
-	ita, _, filters, err := getCostedIndexScan(ctx, cat, rt, indexes, expression.SplitConjunction(oldFilter))
+	ita, _, filters, err := getCostedIndexScan(ctx, cat, rt, indexes, expression.SplitConjunction(oldFilter), qFlags)
 	if err != nil || ita == nil {
 		return n, transform.SameTree, err
 	}
@@ -135,7 +135,7 @@ func costedIndexLookup(ctx *sql.Context, n sql.Node, cat sql.Catalog, iat sql.In
 	return ret, transform.NewTree, nil
 }
 
-func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
+func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression, qFlags *sql.QueryFlags) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
 	statistics, err := statsProv.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), rt.UnderlyingTable())
 	if err != nil {
 		return nil, nil, nil, err
@@ -295,6 +295,13 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		bestStat = stats.UpdateCounts(bestStat)
 	}
 
+	if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && len(lookup.Ranges) == 1 {
+		// Strict index lookup without a join or subquery scope will return
+		// at most one row. We could also use some sort of scope counting
+		// to check for single scope.
+		qFlags.Set(sql.QFlagMax1Row)
+	}
+
 	return ret, bestStat, retFilters, nil
 }
 
@@ -368,7 +375,7 @@ func addIndexScans(m *memo.Memo) error {
 		for i, idx := range indexes {
 			sqlIndexes[i] = idx.SqlIdx()
 		}
-		ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters)
+		ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters, m.QFlags)
 		if err != nil {
 			m.HandleErr(err)
 		}

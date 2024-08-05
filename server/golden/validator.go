@@ -77,7 +77,7 @@ func (v Validator) ComPrepare(_ context.Context, _ *mysql.Conn, _ string, _ *mys
 	return nil, fmt.Errorf("ComPrepare unsupported")
 }
 
-func (v Validator) ComStmtExecute(_ context.Context, _ *mysql.Conn, _ *mysql.PrepareData, _ func(*sqltypes.Result) error) error {
+func (v Validator) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	return fmt.Errorf("ComStmtExecute unsupported")
 }
 

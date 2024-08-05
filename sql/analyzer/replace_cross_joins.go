@@ -72,7 +72,7 @@ func expressionCoversJoin(c sql.Expression, j *plan.JoinNode) (found bool) {
 //  2. For every CrossJoin, check whether a subset of predicates covers as join conditions,
 //     and create a new InnerJoin with the matching predicates.
 //  3. Remove predicates from the parent Filter that have been pushed into InnerJoins.
-func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}

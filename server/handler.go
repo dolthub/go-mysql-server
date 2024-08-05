@@ -21,7 +21,7 @@ import (
 	"io"
 	"net"
 	"regexp"
-	trace2 "runtime/trace"
+	"runtime/trace"
 	"sync"
 	"time"
 
@@ -33,7 +33,7 @@ import (
 	"github.com/go-kit/kit/metrics/discard"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	otel "go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -208,7 +208,7 @@ func (h *Handler) ComExecuteBound(ctx context.Context, conn *mysql.Conn, query s
 func (h *Handler) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	_, err := h.errorWrappedDoQuery(ctx, c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
-	})
+	}, nil)
 	return err
 }
 
@@ -287,7 +287,7 @@ func (h *Handler) ComMultiQuery(
 	query string,
 	callback mysql.ResultSpoolFn,
 ) (string, error) {
-	return h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOn, nil, callback)
+	return h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOn, nil, callback, nil)
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
@@ -297,7 +297,7 @@ func (h *Handler) ComQuery(
 	query string,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOff, nil, callback)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOff, nil, callback, nil)
 	return err
 }
 
@@ -309,7 +309,7 @@ func (h *Handler) ComParsedQuery(
 	parsed sqlparser.Statement,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(ctx, c, query, parsed, MultiStmtModeOff, nil, callback)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, parsed, MultiStmtModeOff, nil, callback, nil)
 	return err
 }
 
@@ -361,6 +361,7 @@ func (h *Handler) doQuery(
 	queryExec QueryExecutor,
 	bindings map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
+	qFlags *sql.QueryFlags,
 ) (string, error) {
 	sqlCtx, err := h.sm.NewContext(ctx, c, query)
 	if err != nil {
@@ -415,7 +416,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings)
+	schema, rowIter, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
 		if verboseErrorLogging {
@@ -434,6 +435,8 @@ func (h *Handler) doQuery(
 		r, err = resultForOkIter(sqlCtx, rowIter)
 	} else if schema == nil {
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
+	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
+		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
 	}
@@ -472,7 +475,7 @@ func (h *Handler) doQuery(
 
 // resultForOkIter reads a maximum of one result row from a result iterator.
 func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, error) {
-	defer trace2.StartRegion(ctx, "Handler.resultForOkIter").End()
+	defer trace.StartRegion(ctx, "Handler.resultForOkIter").End()
 
 	row, err := iter.Next(ctx)
 	if err != nil {
@@ -490,7 +493,7 @@ func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, erro
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
 func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
-	defer trace2.StartRegion(ctx, "Handler.resultForEmptyIter").End()
+	defer trace.StartRegion(ctx, "Handler.resultForEmptyIter").End()
 	if _, err := iter.Next(ctx); err != io.EOF {
 		return nil, fmt.Errorf("result schema iterator returned more than zero rows")
 	}
@@ -498,6 +501,33 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 		return nil, err
 	}
 	return &sqltypes.Result{Fields: resultFields}, nil
+}
+
+// resultForMax1RowIter ensures that an empty iterator returns at most one row
+func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+	defer trace.StartRegion(ctx, "Handler.resultForMax1RowIter").End()
+	row, err := iter.Next(ctx)
+	if err == io.EOF {
+		return &sqltypes.Result{Fields: resultFields}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	if _, err = iter.Next(ctx); err != io.EOF {
+		return nil, fmt.Errorf("result max1Row iterator returned more than one row")
+	}
+	if err := iter.Close(ctx); err != nil {
+		return nil, err
+	}
+
+	outputRow, err := rowToSQL(ctx, schema, row)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+
+	return &sqltypes.Result{Fields: resultFields, Rows: [][]sqltypes.Value{outputRow}, RowsAffected: 1}, nil
 }
 
 // resultForDefaultIter reads batches of rows from the iterator
@@ -510,7 +540,7 @@ func (h *Handler) resultForDefaultIter(
 	callback func(*sqltypes.Result, bool) error,
 	resultFields []*querypb.Field,
 	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, returnErr error) {
-	defer trace2.StartRegion(ctx, "Handler.resultForDefaultIter").End()
+	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
 
@@ -683,13 +713,14 @@ func (h *Handler) errorWrappedDoQuery(
 	mode MultiStmtMode,
 	bindings map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
+	qFlags *sql.QueryFlags,
 ) (string, error) {
 	start := time.Now()
 	if h.sel != nil {
 		h.sel.QueryStarted()
 	}
 
-	remainder, err := h.doQuery(ctx, c, query, parsed, nil, mode, h.executeQuery, bindings, callback)
+	remainder, err := h.doQuery(ctx, c, query, parsed, nil, mode, h.executeQuery, bindings, callback, qFlags)
 	if err != nil {
 		err = sql.CastSQLError(err)
 	}
@@ -714,7 +745,7 @@ func (h *Handler) errorWrappedComExec(
 		h.sel.QueryStarted()
 	}
 
-	_, err := h.doQuery(ctx, c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback)
+	_, err := h.doQuery(ctx, c, query, nil, analyzedPlan, MultiStmtModeOff, h.executeBoundPlan, nil, callback, nil)
 
 	if err != nil {
 		err = sql.CastSQLError(err)
@@ -952,7 +983,7 @@ var (
 )
 
 func observeQuery(ctx *sql.Context, query string) func(err error) {
-	span, ctx := ctx.Span("query", trace.WithAttributes(attribute.String("query", query)))
+	span, ctx := ctx.Span("query", otel.WithAttributes(attribute.String("query", query)))
 
 	t := time.Now()
 	return func(err error) {
@@ -975,18 +1006,13 @@ type QueryExecutor func(
 	parsed sqlparser.Statement,
 	analyzed sql.Node,
 	bindings map[string]*querypb.BindVariable,
+	qFlags *sql.QueryFlags,
 ) (sql.Schema, sql.RowIter, error)
 
 // executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
 // statement, which may be nil.
-func (h *Handler) executeQuery(
-	ctx *sql.Context,
-	query string,
-	parsed sqlparser.Statement,
-	_ sql.Node,
-	bindings map[string]*querypb.BindVariable,
-) (sql.Schema, sql.RowIter, error) {
-	return h.e.QueryWithBindings(ctx, query, parsed, bindings)
+func (h *Handler) executeQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, _ sql.Node, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error) {
+	return h.e.QueryWithBindings(ctx, query, parsed, bindings, nil)
 }
 
 // executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
@@ -997,6 +1023,7 @@ func (h *Handler) executeBoundPlan(
 	_ sqlparser.Statement,
 	plan sql.Node,
 	_ map[string]*querypb.BindVariable,
+	_ *sql.QueryFlags,
 ) (sql.Schema, sql.RowIter, error) {
 	return h.e.PrepQueryPlanForExecution(ctx, query, plan)
 }

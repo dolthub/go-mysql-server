@@ -24,7 +24,7 @@ import (
 
 // validateDropTables ensures that each TableNode in DropTable is droppable, any UnresolvedTables are
 // skipped due to `IF EXISTS` clause, and there aren't any non-table nodes.
-func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
 		return n, transform.SameTree, nil

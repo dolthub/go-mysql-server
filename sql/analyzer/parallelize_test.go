@@ -72,7 +72,7 @@ func TestParallelize(t *testing.T) {
 		),
 	)
 
-	result, _, err := rule.Apply(ctx, &Analyzer{Parallelism: 2}, node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(ctx, &Analyzer{Parallelism: 2}, node, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -93,7 +93,7 @@ func TestParallelizeCreateIndex(t *testing.T) {
 		nil,
 	)
 
-	result, _, err := rule.Apply(ctx, &Analyzer{Parallelism: 1}, node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(ctx, &Analyzer{Parallelism: 1}, node, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 	require.Equal(node, result)
 }

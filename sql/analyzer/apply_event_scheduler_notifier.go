@@ -22,7 +22,7 @@ import (
 
 // applyEventScheduler configures AddEvent, UpdateEvent and RemoveEvent nodes with the
 // EventScheduler that the Analyzer holds.
-func applyEventScheduler(_ *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyEventScheduler(_ *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
 		case sql.EventSchedulerStatement:

@@ -15,7 +15,11 @@ import (
 // select * from xy where exists (select * from uv where x = 1)
 // =>
 // select * from xy where x = 1 and exists (select * from uv)
-func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	if !qFlags.SubqueryIsSet() {
+		return n, transform.SameTree, nil
+	}
+
 	switch n.(type) {
 	case *plan.TriggerBeginEndBlock:
 		return n, transform.SameTree, nil

@@ -25,7 +25,7 @@ import (
 
 // loadTriggers loads any triggers that are required for a plan node to operate properly (except for nodes dealing with
 // trigger execution).
-func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("loadTriggers")
 	defer span.End()
 
@@ -105,7 +105,7 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
-			parsedTrigger, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlMode.ParserOptions())
+			parsedTrigger, _, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlMode.ParserOptions())
 			if err != nil {
 				return nil, err
 			}

@@ -27,7 +27,7 @@ import (
 const MaxBytePrefix = 3072
 
 // validateCreateTable validates various constraints about CREATE TABLE statements.
-func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
 		return n, transform.SameTree, nil
@@ -82,7 +82,7 @@ func validateNoVirtualColumnsInPrimaryKey(sch sql.Schema) error {
 
 // validateAlterTable is a set of validation functions for ALTER TABLE statements not handled by more specific
 // validation rules
-func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	// Inspect is required here because alter table statements with multiple clauses are represented as a block of
 	// plan nodes
@@ -156,7 +156,11 @@ func validateIdentifiers(ct *plan.CreateTable) error {
 	return nil
 }
 
-func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	if !FlagIsSet(qFlags, sql.QFlagAlterTable) {
+		return n, transform.SameTree, nil
+	}
+
 	var sch sql.Schema
 	var indexes []string
 	var validator sql.SchemaValidator

@@ -21,7 +21,7 @@ import (
 )
 
 // resolveUnions resolves the left and right side of a union node in isolation.
-func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -41,12 +41,12 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		subqueryCtx, cancelFunc := ctx.NewSubContext()
 		defer cancelFunc()
 
-		left, _, err := a.analyzeThroughBatch(subqueryCtx, u.Left(), scope, "default-rules", sel)
+		left, _, err := a.analyzeThroughBatch(subqueryCtx, u.Left(), scope, "default-rules", sel, qFlags)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		right, _, err := a.analyzeThroughBatch(subqueryCtx, u.Right(), scope, "default-rules", sel)
+		right, _, err := a.analyzeThroughBatch(subqueryCtx, u.Right(), scope, "default-rules", sel, qFlags)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -59,7 +59,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	})
 }
 
-func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	// Procedures explicitly handle unions
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
@@ -81,14 +81,14 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 
 		scope.SetJoin(false)
 		// TODO we could detect tree modifications here, skip rebuilding
-		left, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Left(), scope, "default-rules", NewFinalizeUnionSel(sel))
+		left, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Left(), scope, "default-rules", NewFinalizeUnionSel(sel), qFlags)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
 		scope.SetJoin(false)
 
-		right, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Right(), scope, "default-rules", NewFinalizeUnionSel(sel))
+		right, _, err := a.analyzeStartingAtBatch(subqueryCtx, u.Right(), scope, "default-rules", NewFinalizeUnionSel(sel), qFlags)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

@@ -43,7 +43,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 		),
 	)
 
-	result, _, err := rule.Apply(ctx, a, node, nil, DefaultRuleSelector)
+	result, _, err := rule.Apply(ctx, a, node, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
 	expectedChild := plan.NewProject(

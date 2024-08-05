@@ -27,7 +27,7 @@ import (
 //
 // TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
 // checks that will never evaluate correctly.
-func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
 		return validateCreateCheckNode(n)

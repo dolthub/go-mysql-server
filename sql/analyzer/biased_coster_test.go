@@ -98,7 +98,7 @@ func TestBiasedCoster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s biased coster", tt.name), func(t *testing.T) {
 			a.Coster = tt.c()
-			cmp, err := replanJoin(ctx, n, a, nil)
+			cmp, err := replanJoin(ctx, n, a, nil, nil)
 			require.NoError(t, err)
 			types := collectJoinTypes(cmp)[0]
 			require.Equal(t, tt.exp, types)

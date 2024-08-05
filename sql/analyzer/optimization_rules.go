@@ -32,7 +32,7 @@ import (
 // we still need to check column/table/database names.
 // todo: analyzer should separate target schema from plan schema
 // todo: projection columns should all have ids so that pruning is more reliable
-func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("erase_projection")
 	defer span.End()
 
@@ -54,7 +54,7 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 	})
 }
 
-func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if d, ok := n.(*plan.Distinct); ok {
 			if d2, ok := d.Child.(*plan.Distinct); ok {
@@ -79,7 +79,7 @@ func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
-func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -228,7 +228,7 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 // simplifyFilters simplifies the expressions in Filter nodes where possible. This involves removing redundant parts of AND
 // and OR expressions, as well as replacing evaluable expressions with their literal result. Filters that can
 // statically be determined to be true or false are replaced with the child node or an empty result, respectively.
-func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
 	}
@@ -242,7 +242,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 		e, same, err := transform.Expr(filter.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
 			case *plan.Subquery:
-				newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel)
+				newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel, qFlags)
 				if same || err != nil {
 					return e, transform.SameTree, err
 				}
@@ -411,8 +411,12 @@ func isTrue(e sql.Expression) bool {
 // pushNotFilters applies De'Morgan's laws to push NOT expressions as low
 // in expression trees as possible and inverts NOT leaf expressions.
 // ref: https://en.wikipedia.org/wiki/De_Morgan%27s_laws
-// note: the output tree identity will not be accurate
-func pushNotFilters(_ *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// note: the output tree identity is sometimes inaccurate when there is
+// a NOT expression that we do not simplify
+func pushNotFilters(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	if !FlagIsSet(qFlags, sql.QFlgNotExpr) {
+		return n, transform.SameTree, nil
+	}
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var e sql.Expression
 		var err error

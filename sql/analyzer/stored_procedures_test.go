@@ -36,7 +36,7 @@ func TestStoredProcedureNotFoundWithNoDatabaseSelected(t *testing.T) {
 	scope, err := loadStoredProcedures(ctx, a, call, newTestScope(call), DefaultRuleSelector)
 	require.NoError(t, err)
 
-	node, identity, err := applyProceduresCall(ctx, a, call, scope, DefaultRuleSelector)
+	node, identity, err := applyProceduresCall(ctx, a, call, scope, DefaultRuleSelector, nil)
 	assert.Nil(t, node)
 	assert.Equal(t, transform.SameTree, identity)
 	assert.Contains(t, err.Error(), "stored procedure \"non_existent_procedure\" does not exist")
