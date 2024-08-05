@@ -544,7 +544,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (0, 44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -555,7 +555,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (5, 44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 5}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -610,11 +610,9 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery: `INSERT INTO auto_increment_tbl VALUES ('4', 44)`,
-		ExpectedWriteResult: []sql.Row{
-			{types.OkResult{InsertID: 4, RowsAffected: 1}},
-		},
-		SelectQuery: `SELECT * from auto_increment_tbl where pk=4`,
+		WriteQuery:          `INSERT INTO auto_increment_tbl VALUES ('4', 44)`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		SelectQuery:         `SELECT * from auto_increment_tbl where pk=4`,
 		ExpectedSelect: []sql.Row{
 			{4, 44},
 		},
@@ -1282,10 +1280,10 @@ var InsertScripts = []ScriptTest{
 	{
 		Name: "sql_mode=NO_AUTO_VALUE_ON_ZERO",
 		SetUpScript: []string{
-			"set @old_sql_mode=@@sql_mode",
-			"set @@sql_mode='NO_AUTO_VALUE_ON_ZERO'",
-			"create table auto (i int auto_increment, index (i))",
-			"create table auto_pk (i int auto_increment primary key)",
+			"set @old_sql_mode=@@sql_mode;",
+			"set @@sql_mode='NO_AUTO_VALUE_ON_ZERO';",
+			"create table auto (i int auto_increment, index (i));",
+			"create table auto_pk (i int auto_increment primary key);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1317,7 +1315,7 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: "insert into auto values (1)",
 				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 1, InsertID: 1}},
+					{types.OkResult{RowsAffected: 1, InsertID: 0}},
 				},
 			},
 			{
@@ -1336,7 +1334,7 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: "insert into auto_pk values (0), (1), (NULL), ()",
 				Expected: []sql.Row{
-					{types.NewOkResult(4)},
+					{types.OkResult{RowsAffected: 4, InsertID: 2}},
 				},
 			},
 			{

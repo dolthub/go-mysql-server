@@ -328,15 +328,7 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	var rowHandler accumulatorRowHandler
 	switch n.RowUpdateType {
 	case plan.UpdateTypeInsert:
-		insertItr, err := findInsertIter(rowIter)
-		if err != nil {
-			return nil, err
-		}
-
-		rowHandler = &insertRowHandler{
-			lastInsertIdGetter: insertItr.getAutoIncVal,
-		}
-		// TODO: some of these other row handlers also need to keep track of the last insert id
+		rowHandler = &insertRowHandler{}
 	case plan.UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case plan.UpdateTypeDuplicateKeyUpdate:
