@@ -14,8 +14,11 @@
 
 package sql
 
+// Most QFlags indicate the presence of a specific AST node.
+// Flags with more complex meanings have more specific comments.
 const (
 	QFlagNull int = iota
+
 	QFlagShowWarnings
 	QFlagInsert
 	QFlagUpdate
@@ -35,6 +38,8 @@ const (
 	QFlagInnerJoin
 	QFlagLimit
 	QFlagInterval
+
+	// QFlagMax1Row indicates that a query can only return at most one row
 	QFlagMax1Row
 )
 
@@ -51,8 +56,8 @@ func (qp *QueryFlags) Set(flag int) {
 
 func (qp *QueryFlags) IsSet(flag int) bool {
 	if qp == nil {
-		// default behavior with |nil| flags is execute
-		// all analyzer rules, and no special spool shortcuts.
+		// default behavior with |nil| flags is execute all
+		// analyzer rules, and no special spooling shortcuts.
 		switch flag {
 		case QFlagMax1Row:
 			return false
