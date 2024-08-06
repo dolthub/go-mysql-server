@@ -136,7 +136,7 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 			}
 			// ctx.GetLogger().Warnf("running query %s\n", s)
 			ctx := ctx.WithQuery(s)
-			_, iter, err := e.Query(ctx, s)
+			_, iter, _, err := e.Query(ctx, s)
 			if err != nil {
 				return nil, err
 			}
@@ -150,7 +150,7 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 }
 
 func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row) {
-	sch, iter, err := e.Query(ctx, q)
+	sch, iter, _, err := e.Query(ctx, q)
 	if err != nil {
 		panic(fmt.Sprintf("err running query %s: %s", q, err))
 	}

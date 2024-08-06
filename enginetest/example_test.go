@@ -34,7 +34,7 @@ func Example() {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
 	ctx.SetCurrentDatabase("mydb")
 
-	_, r, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
+	_, r, _, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
 	WHERE name = 'John Doe'
 	GROUP BY name`)
 	checkIfError(err)

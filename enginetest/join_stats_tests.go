@@ -30,7 +30,7 @@ func TestJoinStats(t *testing.T, harness Harness) {
 
 			ctx := harness.NewContext()
 			for _, q := range tt.setup {
-				_, iter, err := e.Query(ctx, q)
+				_, iter, _, err := e.Query(ctx, q)
 				require.NoError(t, err)
 				_, err = sql.RowIterToRows(ctx, iter)
 				require.NoError(t, err)

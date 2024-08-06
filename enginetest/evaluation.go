@@ -47,7 +47,7 @@ func RunQueryWithContext(t *testing.T, e QueryEngine, harness Harness, ctx *sql.
 		ctx = NewContext(harness)
 	}
 	ctx = ctx.WithQuery(query)
-	_, iter, err := e.Query(ctx, query)
+	_, iter, _, err := e.Query(ctx, query)
 	require.NoError(t, err, "error running query %s: %v", query, err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(t, err)
@@ -347,7 +347,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness
 		require.NoError(err)
 	}
 
-	sch, iter, err := e.QueryWithBindings(ctx, q, nil, bindings, qFlags)
+	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindings, qFlags)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	rows, err := sql.RowIterToRows(ctx, iter)
@@ -390,7 +390,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 		require.True(CheckIndexedAccess(node), "expected plan to have index, but found: %s", sql.DebugString(node))
 	}
 
-	sch, iter, err := e.QueryWithBindings(ctx, q, nil, bindings, nil)
+	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindings, nil)
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	rows, err := sql.RowIterToRows(ctx, iter)
@@ -595,7 +595,7 @@ func runQueryPreparedWithCtx(t *testing.T, ctx *sql.Context, e QueryEngine, q st
 		require.True(t, CheckIndexedAccess(n), "expected plan to have index, but found: %s", sql.DebugString(n))
 	}
 
-	sch, iter, err := e.QueryWithBindings(ctx, q, nil, bindVars, nil)
+	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindVars, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -892,7 +892,7 @@ func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, bindi
 // type of error.
 func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx := NewContext(harness)
-	_, iter, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
+	_, iter, _, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
 	}
@@ -910,7 +910,7 @@ func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query s
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
 func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx = ctx.WithQuery(query)
-	_, iter, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
+	_, iter, _, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
 	}
@@ -973,7 +973,7 @@ func AssertWarningAndTestQuery(
 	ctx.ClearWarnings()
 	ctx = ctx.WithQuery(query)
 
-	sch, iter, err := e.Query(ctx, query)
+	sch, iter, _, err := e.Query(ctx, query)
 	require.NoError(err, "Unexpected error for query %s", query)
 
 	rows, err := sql.RowIterToRows(ctx, iter)

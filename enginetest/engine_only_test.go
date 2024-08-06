@@ -134,7 +134,7 @@ func TestLocks(t *testing.T) {
 
 	ctx := enginetest.NewContext(harness)
 	ctx.SetCurrentDatabase("db")
-	_, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	_, iter, _, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(ctx, iter)
@@ -142,7 +142,7 @@ func TestLocks(t *testing.T) {
 
 	ctx = enginetest.NewContext(harness)
 	ctx.SetCurrentDatabase("db")
-	_, iter, err = engine.Query(ctx, "UNLOCK TABLES")
+	_, iter, _, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
 
 	_, err = sql.RowIterToRows(ctx, iter)
@@ -185,7 +185,7 @@ func TestRootSpanFinish(t *testing.T) {
 	sql.WithRootSpan(fakeSpan)(sqlCtx)
 	sqlCtx = sqlCtx.WithContext(ctx)
 
-	_, iter, err := e.Query(sqlCtx, "SELECT 1")
+	_, iter, _, err := e.Query(sqlCtx, "SELECT 1")
 	require.NoError(t, err)
 
 	_, err = sql.RowIterToRows(sqlCtx, iter)
@@ -758,7 +758,7 @@ func TestCollationCoercion(t *testing.T) {
 		collationQuery := fmt.Sprintf(`SELECT COLLATION(%s) FROM temp_tbl LIMIT 1;`, test.Parameters)
 		for i, query := range []string{coercibilityQuery, collationQuery} {
 			t.Run(query, func(t *testing.T) {
-				_, iter, err := engine.Query(ctx, query)
+				_, iter, _, err := engine.Query(ctx, query)
 				if test.Error {
 					if err == nil {
 						_, err := sql.RowIterToRows(ctx, iter)
@@ -804,7 +804,7 @@ func TestRegex(t *testing.T) {
 				enginetest.TestQueryWithContext(t, ctx, engine, harness, tt.Query, tt.Expected, nil, nil, nil)
 			} else {
 				newCtx := ctx.WithQuery(tt.Query)
-				_, iter, err := engine.Query(newCtx, tt.Query)
+				_, iter, _, err := engine.Query(newCtx, tt.Query)
 				if err == nil {
 					_, err = sql.RowIterToRows(newCtx, iter)
 					require.Error(t, err)
@@ -1077,7 +1077,7 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := harness.NewContext()
-			_, iter, err := engine.Query(ctx, tt.q)
+			_, iter, _, err := engine.Query(ctx, tt.q)
 			// errors should be analyze time, not execution time
 			if tt.err {
 				require.Error(t, err)

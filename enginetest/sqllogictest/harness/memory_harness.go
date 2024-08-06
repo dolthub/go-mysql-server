@@ -55,7 +55,7 @@ func (h *memoryHarness) Init() error {
 func (h *memoryHarness) ExecuteStatement(statement string) error {
 	ctx := h.newContext()
 
-	_, rowIter, err := h.engine.Query(ctx, statement)
+	_, rowIter, _, err := h.engine.Query(ctx, statement)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results [
 		}
 	}()
 
-	sch, rowIter, err = h.engine.Query(ctx, statement)
+	sch, rowIter, _, err = h.engine.Query(ctx, statement)
 	if err != nil {
 		return "", nil, err
 	}
