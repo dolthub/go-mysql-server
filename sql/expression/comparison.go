@@ -50,21 +50,25 @@ func PreciseComparison(e sql.Expression) bool {
 				return true
 			}
 
+			// string type comparisons are exact
+			if types.IsText(left) && types.IsText(right) {
+				return true
+			}
+
 			if tupType, ok := right.(types.TupleType); ok {
-				if types.IsInteger(left) {
-					rightIsAllInt := true
-					for _, typ := range tupType {
-						if !types.IsInteger(typ) {
-							rightIsAllInt = false
-							break
+				for _, typCb := range []func(t sql.Type) bool{types.IsText, types.IsInteger} {
+					if typCb(left) {
+						rightAllSameType := true
+						for _, typ := range tupType {
+							if !typCb(typ) {
+								rightAllSameType = false
+								break
+							}
+						}
+						if rightAllSameType {
+							return true
 						}
 					}
-					if rightIsAllInt {
-						// left integer and right tuple integer types is OK
-						return true
-					}
-					imprecise = true
-					return false
 				}
 				for _, right := range tupType {
 					if !left.Equals(right) {

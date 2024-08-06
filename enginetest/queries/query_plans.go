@@ -1260,27 +1260,15 @@ where
 			" ├─ columns: [style.assetId:1]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ LookupJoin\n" +
-			"     │   ├─ Filter\n" +
-			"     │   │   ├─ AND\n" +
-			"     │   │   │   ├─ AND\n" +
-			"     │   │   │   │   ├─ Eq\n" +
-			"     │   │   │   │   │   ├─ style.val:3\n" +
-			"     │   │   │   │   │   └─ curve (longtext)\n" +
-			"     │   │   │   │   └─ Eq\n" +
-			"     │   │   │   │       ├─ style.name:2\n" +
-			"     │   │   │   │       └─ style (longtext)\n" +
-			"     │   │   │   └─ Eq\n" +
-			"     │   │   │       ├─ style.orgId:0\n" +
-			"     │   │   │       └─ org1 (longtext)\n" +
-			"     │   │   └─ TableAlias(style)\n" +
-			"     │   │       └─ IndexedTableAccess(asset)\n" +
-			"     │   │           ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │   │           ├─ static: [{[org1, org1], [style, style], [curve, curve]}]\n" +
-			"     │   │           ├─ colSet: (1-5)\n" +
-			"     │   │           ├─ tableId: 1\n" +
-			"     │   │           └─ Table\n" +
-			"     │   │               ├─ name: asset\n" +
-			"     │   │               └─ columns: [orgid assetid name val]\n" +
+			"     │   ├─ TableAlias(style)\n" +
+			"     │   │   └─ IndexedTableAccess(asset)\n" +
+			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"     │   │       ├─ static: [{[org1, org1], [style, style], [curve, curve]}]\n" +
+			"     │   │       ├─ colSet: (1-5)\n" +
+			"     │   │       ├─ tableId: 1\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: asset\n" +
+			"     │   │           └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
 			"     │       │   ├─ AND\n" +
@@ -1326,15 +1314,13 @@ where
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=16.500 rows=5)\n" +
-			"     ├─ LookupJoin (estimated cost=16.500 rows=5)\n" +
-			"     │   ├─ Filter\n" +
-			"     │   │   ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
-			"     │   │   └─ TableAlias(style)\n" +
-			"     │   │       └─ IndexedTableAccess(asset)\n" +
-			"     │   │           ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │   │           ├─ filters: [{[org1, org1], [style, style], [curve, curve]}]\n" +
-			"     │   │           └─ columns: [orgid assetid name val]\n" +
+			" └─ LookupJoin (estimated cost=19.800 rows=6)\n" +
+			"     ├─ LookupJoin (estimated cost=19.800 rows=6)\n" +
+			"     │   ├─ TableAlias(style)\n" +
+			"     │   │   └─ IndexedTableAccess(asset)\n" +
+			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"     │   │       ├─ filters: [{[org1, org1], [style, style], [curve, curve]}]\n" +
+			"     │   │       └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
 			"     │       └─ TableAlias(dimension)\n" +
@@ -1352,15 +1338,13 @@ where
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=1 loops=1)\n" +
-			"     │   ├─ Filter\n" +
-			"     │   │   ├─ (((style.val = 'curve') AND (style.name = 'style')) AND (style.orgId = 'org1'))\n" +
-			"     │   │   └─ TableAlias(style)\n" +
-			"     │   │       └─ IndexedTableAccess(asset)\n" +
-			"     │   │           ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │   │           ├─ filters: [{[org1, org1], [style, style], [curve, curve]}]\n" +
-			"     │   │           └─ columns: [orgid assetid name val]\n" +
+			" └─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
+			"     │   ├─ TableAlias(style)\n" +
+			"     │   │   └─ IndexedTableAccess(asset)\n" +
+			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"     │   │       ├─ filters: [{[org1, org1], [style, style], [curve, curve]}]\n" +
+			"     │   │       └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
 			"     │       └─ TableAlias(dimension)\n" +
@@ -1535,23 +1519,15 @@ where
 			"                 │           ├─ Distinct\n" +
 			"                 │           │   └─ Project\n" +
 			"                 │           │       ├─ columns: [parts_1.part:0!null]\n" +
-			"                 │           │       └─ Filter\n" +
-			"                 │           │           ├─ AND\n" +
-			"                 │           │           │   ├─ Eq\n" +
-			"                 │           │           │   │   ├─ parts_1.part:0!null\n" +
-			"                 │           │           │   │   └─ pie (longtext)\n" +
-			"                 │           │           │   └─ Eq\n" +
-			"                 │           │           │       ├─ parts_1.sub_part:1!null\n" +
-			"                 │           │           │       └─ crust (longtext)\n" +
-			"                 │           │           └─ TableAlias(parts_1)\n" +
-			"                 │           │               └─ IndexedTableAccess(parts)\n" +
-			"                 │           │                   ├─ index: [parts.part,parts.sub_part]\n" +
-			"                 │           │                   ├─ static: [{[pie, pie], [crust, crust]}]\n" +
-			"                 │           │                   ├─ colSet: (4-6)\n" +
-			"                 │           │                   ├─ tableId: 2\n" +
-			"                 │           │                   └─ Table\n" +
-			"                 │           │                       ├─ name: parts\n" +
-			"                 │           │                       └─ columns: [part sub_part quantity]\n" +
+			"                 │           │       └─ TableAlias(parts_1)\n" +
+			"                 │           │           └─ IndexedTableAccess(parts)\n" +
+			"                 │           │               ├─ index: [parts.part,parts.sub_part]\n" +
+			"                 │           │               ├─ static: [{[pie, pie], [crust, crust]}]\n" +
+			"                 │           │               ├─ colSet: (4-6)\n" +
+			"                 │           │               ├─ tableId: 2\n" +
+			"                 │           │               └─ Table\n" +
+			"                 │           │                   ├─ name: parts\n" +
+			"                 │           │                   └─ columns: [part sub_part quantity]\n" +
 			"                 │           └─ Table\n" +
 			"                 │               ├─ name: parts\n" +
 			"                 │               ├─ columns: [part sub_part quantity]\n" +
@@ -1593,12 +1569,10 @@ where
 			"                 │           ├─ Distinct\n" +
 			"                 │           │   └─ Project\n" +
 			"                 │           │       ├─ columns: [parts_1.part]\n" +
-			"                 │           │       └─ Filter\n" +
-			"                 │           │           ├─ ((parts_1.part = 'pie') AND (parts_1.sub_part = 'crust'))\n" +
-			"                 │           │           └─ TableAlias(parts_1)\n" +
-			"                 │           │               └─ IndexedTableAccess(parts)\n" +
-			"                 │           │                   ├─ index: [parts.part,parts.sub_part]\n" +
-			"                 │           │                   └─ filters: [{[pie, pie], [crust, crust]}]\n" +
+			"                 │           │       └─ TableAlias(parts_1)\n" +
+			"                 │           │           └─ IndexedTableAccess(parts)\n" +
+			"                 │           │               ├─ index: [parts.part,parts.sub_part]\n" +
+			"                 │           │               └─ filters: [{[pie, pie], [crust, crust]}]\n" +
 			"                 │           └─ Table\n" +
 			"                 │               └─ name: parts\n" +
 			"                 └─ Project\n" +
@@ -1633,12 +1607,10 @@ where
 			"                 │           ├─ Distinct\n" +
 			"                 │           │   └─ Project\n" +
 			"                 │           │       ├─ columns: [parts_1.part]\n" +
-			"                 │           │       └─ Filter\n" +
-			"                 │           │           ├─ ((parts_1.part = 'pie') AND (parts_1.sub_part = 'crust'))\n" +
-			"                 │           │           └─ TableAlias(parts_1)\n" +
-			"                 │           │               └─ IndexedTableAccess(parts)\n" +
-			"                 │           │                   ├─ index: [parts.part,parts.sub_part]\n" +
-			"                 │           │                   └─ filters: [{[pie, pie], [crust, crust]}]\n" +
+			"                 │           │       └─ TableAlias(parts_1)\n" +
+			"                 │           │           └─ IndexedTableAccess(parts)\n" +
+			"                 │           │               ├─ index: [parts.part,parts.sub_part]\n" +
+			"                 │           │               └─ filters: [{[pie, pie], [crust, crust]}]\n" +
 			"                 │           └─ Table\n" +
 			"                 │               └─ name: parts\n" +
 			"                 └─ Project\n" +
@@ -2473,18 +2445,14 @@ Select * from (
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2:1!null]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ Eq\n" +
-			"     │           │   ├─ othertable.s2:0!null\n" +
-			"     │           │   └─ second (longtext)\n" +
-			"     │           └─ IndexedTableAccess(othertable)\n" +
-			"     │               ├─ index: [othertable.s2]\n" +
-			"     │               ├─ static: [{[second, second]}]\n" +
-			"     │               ├─ colSet: (3,4)\n" +
-			"     │               ├─ tableId: 2\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: othertable\n" +
-			"     │                   └─ columns: [s2 i2]\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.s2]\n" +
+			"     │           ├─ static: [{[second, second]}]\n" +
+			"     │           ├─ colSet: (3,4)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: othertable\n" +
+			"     │               └─ columns: [s2 i2]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         ├─ keys: [othertable.i2:0!null]\n" +
@@ -2496,32 +2464,28 @@ Select * from (
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=0)\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
 			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (othertable.s2 = 'second')\n" +
-			"     │           └─ IndexedTableAccess(othertable)\n" +
-			"     │               ├─ index: [othertable.s2]\n" +
-			"     │               └─ filters: [{[second, second]}]\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.s2]\n" +
+			"     │           └─ filters: [{[second, second]}]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         └─ keys: othertable.i2\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=0) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [othertable.i2]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (othertable.s2 = 'second')\n" +
-			"     │           └─ IndexedTableAccess(othertable)\n" +
-			"     │               ├─ index: [othertable.s2]\n" +
-			"     │               └─ filters: [{[second, second]}]\n" +
+			"     │       └─ IndexedTableAccess(othertable)\n" +
+			"     │           ├─ index: [othertable.s2]\n" +
+			"     │           └─ filters: [{[second, second]}]\n" +
 			"     └─ IndexedTableAccess(mytable)\n" +
 			"         ├─ index: [mytable.i]\n" +
 			"         └─ keys: othertable.i2\n" +
@@ -3712,18 +3676,14 @@ Select * from (
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [bus_routes.origin:0!null as dst]\n" +
-			"             │   └─ Filter\n" +
-			"             │       ├─ Eq\n" +
-			"             │       │   ├─ bus_routes.origin:0!null\n" +
-			"             │       │   └─ New York (longtext)\n" +
-			"             │       └─ IndexedTableAccess(bus_routes)\n" +
-			"             │           ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
-			"             │           ├─ static: [{[New York, New York], [NULL, ∞)}]\n" +
-			"             │           ├─ colSet: (1,2)\n" +
-			"             │           ├─ tableId: 1\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: bus_routes\n" +
-			"             │               └─ columns: [origin]\n" +
+			"             │   └─ IndexedTableAccess(bus_routes)\n" +
+			"             │       ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
+			"             │       ├─ static: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │       ├─ colSet: (1,2)\n" +
+			"             │       ├─ tableId: 1\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: bus_routes\n" +
+			"             │           └─ columns: [origin]\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [bus_routes.dst:2!null]\n" +
 			"                 └─ HashJoin\n" +
@@ -3750,12 +3710,10 @@ Select * from (
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [bus_routes.origin as dst]\n" +
-			"             │   └─ Filter\n" +
-			"             │       ├─ (bus_routes.origin = 'New York')\n" +
-			"             │       └─ IndexedTableAccess(bus_routes)\n" +
-			"             │           ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
-			"             │           ├─ filters: [{[New York, New York], [NULL, ∞)}]\n" +
-			"             │           └─ columns: [origin]\n" +
+			"             │   └─ IndexedTableAccess(bus_routes)\n" +
+			"             │       ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
+			"             │       ├─ filters: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │       └─ columns: [origin]\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [bus_routes.dst]\n" +
 			"                 └─ HashJoin\n" +
@@ -3778,12 +3736,10 @@ Select * from (
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [bus_routes.origin as dst]\n" +
-			"             │   └─ Filter\n" +
-			"             │       ├─ (bus_routes.origin = 'New York')\n" +
-			"             │       └─ IndexedTableAccess(bus_routes)\n" +
-			"             │           ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
-			"             │           ├─ filters: [{[New York, New York], [NULL, ∞)}]\n" +
-			"             │           └─ columns: [origin]\n" +
+			"             │   └─ IndexedTableAccess(bus_routes)\n" +
+			"             │       ├─ index: [bus_routes.origin,bus_routes.dst]\n" +
+			"             │       ├─ filters: [{[New York, New York], [NULL, ∞)}]\n" +
+			"             │       └─ columns: [origin]\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [bus_routes.dst]\n" +
 			"                 └─ HashJoin\n" +
@@ -9054,20 +9010,15 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ NOT\n" +
-			"     │   │   └─ HashIn\n" +
-			"     │   │       ├─ a.s:1!null\n" +
-			"     │   │       └─ TUPLE(1 (longtext), 2 (longtext), 3 (longtext), 4 (longtext))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.s,mytable.i]\n" +
-			"     │           ├─ static: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.s,mytable.i]\n" +
+			"     │       ├─ static: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
@@ -9080,14 +9031,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=0)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (NOT((a.s HASH IN ('1', '2', '3', '4'))))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.s,mytable.i]\n" +
-			"     │           ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.s,mytable.i]\n" +
+			"     │       ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
@@ -9096,14 +9045,12 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=0) (actual rows=0 loops=1)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (NOT((a.s HASH IN ('1', '2', '3', '4'))))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.s,mytable.i]\n" +
-			"     │           ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.s,mytable.i]\n" +
+			"     │       ├─ filters: [{(NULL, 1), [NULL, ∞)}, {(1, 2), [NULL, ∞)}, {(2, 3), [NULL, ∞)}, {(3, 4), [NULL, ∞)}, {(4, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
@@ -9528,62 +9475,46 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ mytable.s:1!null\n" +
-			" │   └─ TUPLE(first row (longtext))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ static: [{[first row, first row]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (mytable.s HASH IN ('first row'))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ filters: [{[first row, first row]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.s]\n" +
+			" ├─ static: [{[first row, first row]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (mytable.s HASH IN ('first row'))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ filters: [{[first row, first row]}]\n" +
-			"     └─ columns: [i s]\n" +
+		ExpectedEstimates: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.s]\n" +
+			" ├─ filters: [{[first row, first row]}]\n" +
+			" └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.s]\n" +
+			" ├─ filters: [{[first row, first row]}]\n" +
+			" └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ mytable.s:1!null\n" +
-			" │   └─ TUPLE(second row (longtext), FIRST ROW (longtext))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ static: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (mytable.s HASH IN ('second row', 'FIRST ROW'))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ filters: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.s]\n" +
+			" ├─ static: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (mytable.s HASH IN ('second row', 'FIRST ROW'))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
-			"     ├─ filters: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
-			"     └─ columns: [i s]\n" +
+		ExpectedEstimates: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.s]\n" +
+			" ├─ filters: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
+			" └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.s]\n" +
+			" ├─ filters: [{[FIRST ROW, FIRST ROW]}, {[second row, second row]}]\n" +
+			" └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -11278,42 +11209,34 @@ inner join pq on true
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (3,4)\n" +
 			" ├─ tableId: 2\n" +
-			" └─ Filter\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ othertable.s2:0!null\n" +
-			"     │   └─ a (longtext)\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.s2]\n" +
-			"         ├─ static: [{[a, a]}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: othertable\n" +
-			"             └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.s2]\n" +
+			"     ├─ static: [{[a, a]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: othertable_alias\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ Filter\n" +
-			"     ├─ (othertable.s2 = 'a')\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.s2]\n" +
-			"         ├─ filters: [{[a, a]}]\n" +
-			"         └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.s2]\n" +
+			"     ├─ filters: [{[a, a]}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: othertable_alias\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ Filter\n" +
-			"     ├─ (othertable.s2 = 'a')\n" +
-			"     └─ IndexedTableAccess(othertable)\n" +
-			"         ├─ index: [othertable.s2]\n" +
-			"         ├─ filters: [{[a, a]}]\n" +
-			"         └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.s2]\n" +
+			"     ├─ filters: [{[a, a]}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -11339,18 +11262,14 @@ inner join pq on true
 			"         ├─ cacheable: true\n" +
 			"         ├─ colSet: (3,4)\n" +
 			"         ├─ tableId: 2\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ othertable.s2:0!null\n" +
-			"             │   └─ a (longtext)\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.s2]\n" +
-			"                 ├─ static: [{[a, a]}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: othertable\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
+			"             ├─ static: [{[a, a]}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: othertable_three\n" +
@@ -11367,12 +11286,10 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         └─ Filter\n" +
-			"             ├─ (othertable.s2 = 'a')\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.s2]\n" +
-			"                 ├─ filters: [{[a, a]}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
+			"             ├─ filters: [{[a, a]}]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: othertable_three\n" +
@@ -11389,12 +11306,10 @@ inner join pq on true
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         └─ Filter\n" +
-			"             ├─ (othertable.s2 = 'a')\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.s2]\n" +
-			"                 ├─ filters: [{[a, a]}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
+			"             ├─ filters: [{[a, a]}]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -11410,18 +11325,14 @@ inner join pq on true
 			" │   ├─ cacheable: true\n" +
 			" │   ├─ colSet: (5,6)\n" +
 			" │   ├─ tableId: 3\n" +
-			" │   └─ Filter\n" +
-			" │       ├─ GreaterThan\n" +
-			" │       │   ├─ othertable.s2:0!null\n" +
-			" │       │   └─ a (longtext)\n" +
-			" │       └─ IndexedTableAccess(othertable)\n" +
-			" │           ├─ index: [othertable.s2]\n" +
-			" │           ├─ static: [{(a, ∞)}]\n" +
-			" │           ├─ colSet: (3,4)\n" +
-			" │           ├─ tableId: 2\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: othertable\n" +
-			" │               └─ columns: [s2 i2]\n" +
+			" │   └─ IndexedTableAccess(othertable)\n" +
+			" │       ├─ index: [othertable.s2]\n" +
+			" │       ├─ static: [{(a, ∞)}]\n" +
+			" │       ├─ colSet: (3,4)\n" +
+			" │       ├─ tableId: 2\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: othertable\n" +
+			" │           └─ columns: [s2 i2]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
 			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
@@ -11437,12 +11348,10 @@ inner join pq on true
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
-			" │   └─ Filter\n" +
-			" │       ├─ (othertable.s2 > 'a')\n" +
-			" │       └─ IndexedTableAccess(othertable)\n" +
-			" │           ├─ index: [othertable.s2]\n" +
-			" │           ├─ filters: [{(a, ∞)}]\n" +
-			" │           └─ columns: [s2 i2]\n" +
+			" │   └─ IndexedTableAccess(othertable)\n" +
+			" │       ├─ index: [othertable.s2]\n" +
+			" │       ├─ filters: [{(a, ∞)}]\n" +
+			" │       └─ columns: [s2 i2]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: (othertable.i2)\n" +
 			"     ├─ right-key: (mytable.i)\n" +
@@ -11457,12 +11366,10 @@ inner join pq on true
 			" │   ├─ outerVisibility: false\n" +
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
-			" │   └─ Filter\n" +
-			" │       ├─ (othertable.s2 > 'a')\n" +
-			" │       └─ IndexedTableAccess(othertable)\n" +
-			" │           ├─ index: [othertable.s2]\n" +
-			" │           ├─ filters: [{(a, ∞)}]\n" +
-			" │           └─ columns: [s2 i2]\n" +
+			" │   └─ IndexedTableAccess(othertable)\n" +
+			" │       ├─ index: [othertable.s2]\n" +
+			" │       ├─ filters: [{(a, ∞)}]\n" +
+			" │       └─ columns: [s2 i2]\n" +
 			" └─ HashLookup\n" +
 			"     ├─ left-key: (othertable.i2)\n" +
 			"     ├─ right-key: (mytable.i)\n" +
@@ -16733,19 +16640,14 @@ inner join pq on true
 			"             ├─ row_number() over ( order by othertable.s2 ASC)\n" +
 			"             ├─ othertable.i2:1!null\n" +
 			"             ├─ othertable.s2:0!null\n" +
-			"             └─ Filter\n" +
-			"                 ├─ NOT\n" +
-			"                 │   └─ Eq\n" +
-			"                 │       ├─ othertable.s2:0!null\n" +
-			"                 │       └─ second (longtext)\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.s2]\n" +
-			"                     ├─ static: [{(NULL, second)}, {(second, ∞)}]\n" +
-			"                     ├─ colSet: (1,2)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [s2 i2]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.s2]\n" +
+			"                 ├─ static: [{(NULL, second)}, {(second, ∞)}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
@@ -16753,12 +16655,10 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
 			"         └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (NOT((othertable.s2 = 'second')))\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.s2]\n" +
-			"                     ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.s2]\n" +
+			"                 ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
@@ -16766,12 +16666,10 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
 			"         └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (NOT((othertable.s2 = 'second')))\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.s2]\n" +
-			"                     ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.s2]\n" +
+			"                 ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
