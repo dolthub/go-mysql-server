@@ -52,14 +52,14 @@ func PreciseComparison(e sql.Expression) bool {
 
 			if tupType, ok := right.(types.TupleType); ok {
 				if types.IsInteger(left) {
-					var foundNotInt bool
+					rightIsAllInt := true
 					for _, typ := range tupType {
 						if !types.IsInteger(typ) {
-							foundNotInt = true
+							rightIsAllInt = false
 							break
 						}
 					}
-					if !foundNotInt {
+					if rightIsAllInt {
 						// left integer and right tuple integer types is OK
 						return true
 					}
