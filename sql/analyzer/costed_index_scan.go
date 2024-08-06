@@ -1376,6 +1376,10 @@ func (o IndexScanOp) Swap() IndexScanOp {
 	}
 }
 
+// newLeaf tries to convert an expression into the intermediate
+// representation that facilitates index column matching. We return
+// a metadata enriched *iScanLeaf, or nil and a false value if the
+// expression is not supported for index matching.
 func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying string) (*iScanLeaf, bool) {
 	op, left, right, ok := IndexLeafChildren(e)
 	if !ok {
