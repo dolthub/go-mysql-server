@@ -104,7 +104,7 @@ func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup,
 		return n, transform.SameTree, nil
 	}
 
-	if !iat.PreciseMatch() {
+	if preciseIndexAccess(iat, lookup.Index) {
 		// cannot drop any filters
 		newFilter = oldFilter
 	}
@@ -284,7 +284,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	var retFilters []sql.Expression
-	if !iat.PreciseMatch() {
+	if preciseIndexAccess(iat, lookup.Index) {
 		// cannot drop filters
 		retFilters = filters
 	} else if len(b.leftover) > 0 {
@@ -357,7 +357,7 @@ func addIndexScans(m *memo.Memo) error {
 				}
 
 				var keepFilters []sql.Expression
-				if !iat.PreciseMatch() {
+				if !preciseIndexAccess(iat, lookup.Index) {
 					// cannot drop any filters
 					keepFilters = filter.Filters
 				} else {
@@ -400,6 +400,12 @@ func addIndexScans(m *memo.Memo) error {
 
 		return nil
 	})
+}
+
+// preciseIndexAccess returns whether an indexed access into a table is a
+// replacement for relational filters.
+func preciseIndexAccess(t sql.IndexAddressableTable, i sql.Index) bool {
+	return t.PreciseMatch() && !i.IsFullText() && !i.IsSpatial() && len(i.PrefixLengths()) == 0
 }
 
 func newIndexCoster(ctx *sql.Context, underlyingName string) *indexCoster {
