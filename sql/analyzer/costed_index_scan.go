@@ -104,7 +104,7 @@ func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup,
 		return n, transform.SameTree, nil
 	}
 
-	if preciseIndexAccess(iat, lookup.Index) {
+	if !preciseIndexAccess(iat, lookup.Index) {
 		// cannot drop any filters
 		newFilter = oldFilter
 	}
@@ -284,7 +284,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	var retFilters []sql.Expression
-	if preciseIndexAccess(iat, lookup.Index) {
+	if !preciseIndexAccess(iat, lookup.Index) {
 		// cannot drop filters
 		retFilters = filters
 	} else if len(b.leftover) > 0 {

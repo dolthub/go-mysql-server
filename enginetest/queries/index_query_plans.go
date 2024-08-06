@@ -19,112 +19,160 @@ package queries
 var IndexPlanTests = []QueryPlanTest{
 	{
 		Query: `select * from pref_index_t4 where v1 = 'a'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ static: [{[a, a], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t4\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t4.v1:1\n" +
+			" │   └─ a (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ static: [{[a, a], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t4\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t4.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t4.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t4 where v1 = 'abc'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ static: [{[abc, abc], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t4\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t4.v1:1\n" +
+			" │   └─ abc (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ static: [{[abc, abc], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t4\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t4.v1 = 'abc')\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t4.v1 = 'abc')\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t4 where v1 = 'abcd'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ static: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t4\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t4.v1:1\n" +
+			" │   └─ abcd (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ static: [{[abcd, abcd], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t4\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t4.v1 = 'abcd')\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t4.v1 = 'abcd')\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t4 where v1 > 'a' and v1 < 'abcde'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ static: [{(a, abcde), [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t4\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t4.v1:1\n" +
+			" │   │   └─ a (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t4.v1:1\n" +
+			" │       └─ abcde (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ static: [{(a, abcde), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t4\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t4.v1 > 'a') AND (pref_index_t4.v1 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t4.v1 > 'a') AND (pref_index_t4.v1 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t4 where v1 > 'a' and v2 < 'abcde'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ static: [{(a, ∞), (NULL, abcde)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t4\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t4.v1:1\n" +
+			" │   │   └─ a (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t4.v2:2\n" +
+			" │       └─ abcde (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ static: [{(a, ∞), (NULL, abcde)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t4\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t4.v1 > 'a') AND (pref_index_t4.v2 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t4)\n" +
-			" ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			" ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t4.v1 > 'a') AND (pref_index_t4.v2 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t4)\n" +
+			"     ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"     ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -132,6 +180,28 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET pref_index_t4.v1:1 = concat(pref_index_t4.v1:1,z (longtext)))\n" +
+			"         └─ Filter\n" +
+			"             ├─ GreaterThanOrEqual\n" +
+			"             │   ├─ pref_index_t4.v1:1\n" +
+			"             │   └─ a (longtext)\n" +
+			"             └─ IndexedTableAccess(pref_index_t4)\n" +
+			"                 ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-3)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: pref_index_t4\n" +
+			"                     └─ columns: [i v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `delete from pref_index_t4 where v1 >= 'a'`,
+		ExpectedPlan: "RowUpdateAccumulator\n" +
+			" └─ Delete\n" +
+			"     └─ Filter\n" +
+			"         ├─ GreaterThanOrEqual\n" +
+			"         │   ├─ pref_index_t4.v1:1\n" +
+			"         │   └─ a (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t4)\n" +
 			"             ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
 			"             ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
@@ -143,127 +213,161 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `delete from pref_index_t4 where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
-			"     └─ IndexedTableAccess(pref_index_t4)\n" +
-			"         ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			"         ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-3)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: pref_index_t4\n" +
-			"             └─ columns: [i v1 v2]\n" +
-			"",
-	},
-	{
 		Query: `select * from pref_index_t3 where v1 = 'a'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ static: [{[a, a], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1,2)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t3\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t3.v1:0\n" +
+			" │   └─ a (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ static: [{[a, a], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t3\n" +
+			"         └─ columns: [v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t3.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
 			"     └─ columns: [v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t3.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
+			"     └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t3 where v1 = 'abc'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ static: [{[abc, abc], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1,2)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t3\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t3.v1:0\n" +
+			" │   └─ abc (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ static: [{[abc, abc], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t3\n" +
+			"         └─ columns: [v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t3.v1 = 'abc')\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
 			"     └─ columns: [v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t3.v1 = 'abc')\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
+			"     └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t3 where v1 = 'abcd'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ static: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1,2)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t3\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t3.v1:0\n" +
+			" │   └─ abcd (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ static: [{[abcd, abcd], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t3\n" +
+			"         └─ columns: [v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t3.v1 = 'abcd')\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
 			"     └─ columns: [v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t3.v1 = 'abcd')\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
+			"     └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t3 where v1 > 'a' and v1 < 'abcde'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ static: [{(a, abcde), [NULL, ∞)}]\n" +
-			" ├─ colSet: (1,2)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t3\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t3.v1:0\n" +
+			" │   │   └─ a (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t3.v1:0\n" +
+			" │       └─ abcde (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ static: [{(a, abcde), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t3\n" +
+			"         └─ columns: [v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t3.v1 > 'a') AND (pref_index_t3.v1 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
 			"     └─ columns: [v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
-			" └─ columns: [v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t3.v1 > 'a') AND (pref_index_t3.v1 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
+			"     └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t3 where v1 > 'a' and v2 < 'abcde'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ static: [{(a, ∞), (NULL, abcde)}]\n" +
-			" ├─ colSet: (1,2)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t3\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t3.v1:0\n" +
+			" │   │   └─ a (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t3.v2:1\n" +
+			" │       └─ abcde (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ static: [{(a, ∞), (NULL, abcde)}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t3\n" +
+			"         └─ columns: [v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t3.v1 > 'a') AND (pref_index_t3.v2 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
 			"     └─ columns: [v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
-			" └─ columns: [v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t3)\n" +
-			" ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			" ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
-			" └─ columns: [v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t3.v1 > 'a') AND (pref_index_t3.v2 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t3)\n" +
+			"     ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"     ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
+			"     └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
@@ -271,6 +375,28 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET pref_index_t3.v1:0 = concat(pref_index_t3.v1:0,z (longtext)))\n" +
+			"         └─ Filter\n" +
+			"             ├─ GreaterThanOrEqual\n" +
+			"             │   ├─ pref_index_t3.v1:0\n" +
+			"             │   └─ a (longtext)\n" +
+			"             └─ IndexedTableAccess(pref_index_t3)\n" +
+			"                 ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: pref_index_t3\n" +
+			"                     └─ columns: [v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `delete from pref_index_t3 where v1 >= 'a'`,
+		ExpectedPlan: "RowUpdateAccumulator\n" +
+			" └─ Delete\n" +
+			"     └─ Filter\n" +
+			"         ├─ GreaterThanOrEqual\n" +
+			"         │   ├─ pref_index_t3.v1:0\n" +
+			"         │   └─ a (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t3)\n" +
 			"             ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
 			"             ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
@@ -282,127 +408,161 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `delete from pref_index_t3 where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
-			"     └─ IndexedTableAccess(pref_index_t3)\n" +
-			"         ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			"         ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: pref_index_t3\n" +
-			"             └─ columns: [v1 v2]\n" +
-			"",
-	},
-	{
 		Query: `select * from pref_index_t2 where v1 = 'A'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ static: [{[A, A], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t2\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t2.v1:1\n" +
+			" │   └─ A (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ static: [{[A, A], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t2\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t2.v1 = 'A')\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{[A, A], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{[A, A], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{[A, A], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t2.v1 = 'A')\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{[A, A], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t2 where v1 = 'ABC'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ static: [{[ABC, ABC], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t2\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t2.v1:1\n" +
+			" │   └─ ABC (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ static: [{[ABC, ABC], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t2\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t2.v1 = 'ABC')\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{[ABC, ABC], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{[ABC, ABC], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{[ABC, ABC], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t2.v1 = 'ABC')\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{[ABC, ABC], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t2 where v1 = 'ABCD'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ static: [{[ABCD, ABCD], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t2\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t2.v1:1\n" +
+			" │   └─ ABCD (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ static: [{[ABCD, ABCD], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t2\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t2.v1 = 'ABCD')\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{[ABCD, ABCD], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{[ABCD, ABCD], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{[ABCD, ABCD], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t2.v1 = 'ABCD')\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{[ABCD, ABCD], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t2 where v1 > 'A' and v1 < 'ABCDE'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ static: [{(A, ABCDE), [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t2\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t2.v1:1\n" +
+			" │   │   └─ A (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t2.v1:1\n" +
+			" │       └─ ABCDE (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ static: [{(A, ABCDE), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t2\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t2.v1 > 'A') AND (pref_index_t2.v1 < 'ABCDE'))\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{(A, ABCDE), [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{(A, ABCDE), [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{(A, ABCDE), [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t2.v1 > 'A') AND (pref_index_t2.v1 < 'ABCDE'))\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{(A, ABCDE), [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t2 where v1 > 'A' and v2 < 'ABCDE'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ static: [{(A, ∞), (NULL, ABCDE)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t2\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t2.v1:1\n" +
+			" │   │   └─ A (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t2.v2:2\n" +
+			" │       └─ ABCDE (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ static: [{(A, ∞), (NULL, ABCDE)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t2\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t2.v1 > 'A') AND (pref_index_t2.v2 < 'ABCDE'))\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{(A, ∞), (NULL, ABCDE)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{(A, ∞), (NULL, ABCDE)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t2)\n" +
-			" ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			" ├─ filters: [{(A, ∞), (NULL, ABCDE)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t2.v1 > 'A') AND (pref_index_t2.v2 < 'ABCDE'))\n" +
+			" └─ IndexedTableAccess(pref_index_t2)\n" +
+			"     ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"     ├─ filters: [{(A, ∞), (NULL, ABCDE)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -410,6 +570,28 @@ var IndexPlanTests = []QueryPlanTest{
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Update\n" +
 			"     └─ UpdateSource(SET pref_index_t2.v1:1 = concat(pref_index_t2.v1:1,Z (longtext)))\n" +
+			"         └─ Filter\n" +
+			"             ├─ GreaterThanOrEqual\n" +
+			"             │   ├─ pref_index_t2.v1:1\n" +
+			"             │   └─ A (longtext)\n" +
+			"             └─ IndexedTableAccess(pref_index_t2)\n" +
+			"                 ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"                 ├─ static: [{[A, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-3)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: pref_index_t2\n" +
+			"                     └─ columns: [i v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `delete from pref_index_t2 where v1 >= 'A'`,
+		ExpectedPlan: "RowUpdateAccumulator\n" +
+			" └─ Delete\n" +
+			"     └─ Filter\n" +
+			"         ├─ GreaterThanOrEqual\n" +
+			"         │   ├─ pref_index_t2.v1:1\n" +
+			"         │   └─ A (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t2)\n" +
 			"             ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
 			"             ├─ static: [{[A, ∞), [NULL, ∞)}]\n" +
@@ -421,148 +603,171 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `delete from pref_index_t2 where v1 >= 'A'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
-			"     └─ IndexedTableAccess(pref_index_t2)\n" +
-			"         ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			"         ├─ static: [{[A, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-3)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: pref_index_t2\n" +
-			"             └─ columns: [i v1 v2]\n" +
-			"",
-	},
-	{
 		Query: `select * from pref_index_t1 where v1 = 'a'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ static: [{[a, a], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t1\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t1.v1:1\n" +
+			" │   └─ a (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ static: [{[a, a], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t1\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t1.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t1.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{[a, a], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t1 where v1 = 'abc'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ static: [{[abc, abc], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t1\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t1.v1:1\n" +
+			" │   └─ abc (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ static: [{[abc, abc], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t1\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t1.v1 = 'abc')\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t1.v1 = 'abc')\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{[abc, abc], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t1 where v1 = 'abcd'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ static: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t1\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ pref_index_t1.v1:1\n" +
+			" │   └─ abcd (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ static: [{[abcd, abcd], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t1\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (pref_index_t1.v1 = 'abcd')\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (pref_index_t1.v1 = 'abcd')\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{[abcd, abcd], [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t1 where v1 > 'a' and v1 < 'abcde'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ static: [{(a, abcde), [NULL, ∞)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t1\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t1.v1:1\n" +
+			" │   │   └─ a (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t1.v1:1\n" +
+			" │       └─ abcde (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ static: [{(a, abcde), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t1\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t1.v1 > 'a') AND (pref_index_t1.v1 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t1.v1 > 'a') AND (pref_index_t1.v1 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{(a, abcde), [NULL, ∞)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `select * from pref_index_t1 where v1 > 'a' and v2 < 'abcde'`,
-		ExpectedPlan: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ static: [{(a, ∞), (NULL, abcde)}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: pref_index_t1\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThan\n" +
+			" │   │   ├─ pref_index_t1.v1:1\n" +
+			" │   │   └─ a (longtext)\n" +
+			" │   └─ LessThan\n" +
+			" │       ├─ pref_index_t1.v2:2\n" +
+			" │       └─ abcde (longtext)\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ static: [{(a, ∞), (NULL, abcde)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: pref_index_t1\n" +
+			"         └─ columns: [i v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ ((pref_index_t1.v1 > 'a') AND (pref_index_t1.v2 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
 			"     └─ columns: [i v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(pref_index_t1)\n" +
-			" ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			" ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
-			" └─ columns: [i v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ ((pref_index_t1.v1 > 'a') AND (pref_index_t1.v2 < 'abcde'))\n" +
+			" └─ IndexedTableAccess(pref_index_t1)\n" +
+			"     ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"     ├─ filters: [{(a, ∞), (NULL, abcde)}]\n" +
+			"     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
 		Query: `delete from pref_index_t1 where v1 >= 'a'`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
-			"     └─ IndexedTableAccess(pref_index_t1)\n" +
-			"         ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			"         ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-3)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: pref_index_t1\n" +
-			"             └─ columns: [i v1 v2]\n" +
-			"",
-	},
-	{
-		Query: `update pref_index_t1 set v1 = concat(v1, 'z') where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t1.v1:1 = concat(pref_index_t1.v1:1,z (longtext)))\n" +
+			"     └─ Filter\n" +
+			"         ├─ GreaterThanOrEqual\n" +
+			"         │   ├─ pref_index_t1.v1:1\n" +
+			"         │   └─ a (longtext)\n" +
 			"         └─ IndexedTableAccess(pref_index_t1)\n" +
 			"             ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
 			"             ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
@@ -571,6 +776,25 @@ var IndexPlanTests = []QueryPlanTest{
 			"             └─ Table\n" +
 			"                 ├─ name: pref_index_t1\n" +
 			"                 └─ columns: [i v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `update pref_index_t1 set v1 = concat(v1, 'z') where v1 >= 'a'`,
+		ExpectedPlan: "RowUpdateAccumulator\n" +
+			" └─ Update\n" +
+			"     └─ UpdateSource(SET pref_index_t1.v1:1 = concat(pref_index_t1.v1:1,z (longtext)))\n" +
+			"         └─ Filter\n" +
+			"             ├─ GreaterThanOrEqual\n" +
+			"             │   ├─ pref_index_t1.v1:1\n" +
+			"             │   └─ a (longtext)\n" +
+			"             └─ IndexedTableAccess(pref_index_t1)\n" +
+			"                 ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (1-3)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: pref_index_t1\n" +
+			"                     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -15975,24 +16199,32 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select * from comp_index_t3 where v1 = 'a'`,
-		ExpectedPlan: "IndexedTableAccess(comp_index_t3)\n" +
-			" ├─ index: [comp_index_t3.v1]\n" +
-			" ├─ static: [{[[97], [97]]}]\n" +
-			" ├─ colSet: (1-3)\n" +
-			" ├─ tableId: 1\n" +
-			" └─ Table\n" +
-			"     ├─ name: comp_index_t3\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ comp_index_t3.v1:1\n" +
+			" │   └─ a (longtext)\n" +
+			" └─ IndexedTableAccess(comp_index_t3)\n" +
+			"     ├─ index: [comp_index_t3.v1]\n" +
+			"     ├─ static: [{[[97], [97]]}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: comp_index_t3\n" +
+			"         └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (comp_index_t3.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(comp_index_t3)\n" +
+			"     ├─ index: [comp_index_t3.v1]\n" +
+			"     ├─ filters: [{[[97], [97]]}]\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
-		ExpectedEstimates: "IndexedTableAccess(comp_index_t3)\n" +
-			" ├─ index: [comp_index_t3.v1]\n" +
-			" ├─ filters: [{[[97], [97]]}]\n" +
-			" └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "IndexedTableAccess(comp_index_t3)\n" +
-			" ├─ index: [comp_index_t3.v1]\n" +
-			" ├─ filters: [{[[97], [97]]}]\n" +
-			" └─ columns: [pk v1 v2]\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (comp_index_t3.v1 = 'a')\n" +
+			" └─ IndexedTableAccess(comp_index_t3)\n" +
+			"     ├─ index: [comp_index_t3.v1]\n" +
+			"     ├─ filters: [{[[97], [97]]}]\n" +
+			"     └─ columns: [pk v1 v2]\n" +
 			"",
 	},
 	{
