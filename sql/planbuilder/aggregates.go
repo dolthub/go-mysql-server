@@ -174,7 +174,7 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 		b.handleErr(fmt.Errorf("incorrect arguments to: NAME_CONST"))
 	}
 	value := b.selectExprToExpression(fromScope, f.Exprs[1])
-	vLit, ok :=	value.(*expression.Literal)
+	vLit, ok := value.(*expression.Literal)
 	if !ok {
 		b.handleErr(fmt.Errorf("incorrect arguments to: NAME_CONST"))
 	}

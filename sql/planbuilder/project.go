@@ -211,7 +211,7 @@ func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
 		return false
 	}
 
-	if ee, isExpr := e.Expr.(*ast.FuncExpr); isExpr && strings.EqualFold(ee.Name.String(),"name_const") {
+	if ee, isExpr := e.Expr.(*ast.FuncExpr); isExpr && strings.EqualFold(ee.Name.String(), "name_const") {
 		return false
 	}
 
