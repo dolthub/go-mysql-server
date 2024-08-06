@@ -50,6 +50,31 @@ func PreciseComparison(e sql.Expression) bool {
 				return true
 			}
 
+			if tupType, ok := right.(types.TupleType); ok {
+				if types.IsInteger(left) {
+					var foundNotInt bool
+					for _, typ := range tupType {
+						if !types.IsInteger(typ) {
+							foundNotInt = true
+							break
+						}
+					}
+					if !foundNotInt {
+						// left integer and right tuple integer types is OK
+						return true
+					}
+					imprecise = true
+					return false
+				}
+				for _, right := range tupType {
+					if !left.Equals(right) {
+						imprecise = true
+						return false
+					}
+				}
+				return true
+			}
+
 			// comparisons with type conversions are sometimes imprecise
 			if !left.Equals(right) {
 				imprecise = true

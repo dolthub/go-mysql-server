@@ -3856,18 +3856,14 @@ Select * from (
 			"                                                 │   ├─ columns: [b]\n" +
 			"                                                 │   ├─ colSet: (3,4)\n" +
 			"                                                 │   └─ tableId: 2\n" +
-			"                                                 └─ Filter\n" +
-			"                                                     ├─ HashIn\n" +
-			"                                                     │   ├─ uv.u:0!null\n" +
-			"                                                     │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
-			"                                                     └─ IndexedTableAccess(uv)\n" +
-			"                                                         ├─ index: [uv.u]\n" +
-			"                                                         ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                                         ├─ colSet: (1,2)\n" +
-			"                                                         ├─ tableId: 1\n" +
-			"                                                         └─ Table\n" +
-			"                                                             ├─ name: uv\n" +
-			"                                                             └─ columns: [u v]\n" +
+			"                                                 └─ IndexedTableAccess(uv)\n" +
+			"                                                     ├─ index: [uv.u]\n" +
+			"                                                     ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
+			"                                                     ├─ colSet: (1,2)\n" +
+			"                                                     ├─ tableId: 1\n" +
+			"                                                     └─ Table\n" +
+			"                                                         ├─ name: uv\n" +
+			"                                                         └─ columns: [u v]\n" +
 			"",
 		ExpectedEstimates: "Sort(xy.x ASC)\n" +
 			" └─ Project\n" +
@@ -3910,12 +3906,10 @@ Select * from (
 			"                                                 ├─ Table\n" +
 			"                                                 │   ├─ name: ab\n" +
 			"                                                 │   └─ columns: [b]\n" +
-			"                                                 └─ Filter\n" +
-			"                                                     ├─ (uv.u HASH IN (2, 3))\n" +
-			"                                                     └─ IndexedTableAccess(uv)\n" +
-			"                                                         ├─ index: [uv.u]\n" +
-			"                                                         ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                                         └─ columns: [u v]\n" +
+			"                                                 └─ IndexedTableAccess(uv)\n" +
+			"                                                     ├─ index: [uv.u]\n" +
+			"                                                     ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"                                                     └─ columns: [u v]\n" +
 			"",
 		ExpectedAnalysis: "Sort(xy.x ASC)\n" +
 			" └─ Project\n" +
@@ -3958,12 +3952,10 @@ Select * from (
 			"                                                 ├─ Table\n" +
 			"                                                 │   ├─ name: ab\n" +
 			"                                                 │   └─ columns: [b]\n" +
-			"                                                 └─ Filter\n" +
-			"                                                     ├─ (uv.u HASH IN (2, 3))\n" +
-			"                                                     └─ IndexedTableAccess(uv)\n" +
-			"                                                         ├─ index: [uv.u]\n" +
-			"                                                         ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                                         └─ columns: [u v]\n" +
+			"                                                 └─ IndexedTableAccess(uv)\n" +
+			"                                                     ├─ index: [uv.u]\n" +
+			"                                                     ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"                                                     └─ columns: [u v]\n" +
 			"",
 	},
 	{
@@ -6610,13 +6602,9 @@ inner join pq on true
 	{
 		Query: `SELECT * FROM one_pk_two_idx WHERE v1 IN (1, 2) AND v2 <= 2`,
 		ExpectedPlan: "Filter\n" +
-			" ├─ AND\n" +
-			" │   ├─ HashIn\n" +
-			" │   │   ├─ one_pk_two_idx.v1:1\n" +
-			" │   │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
-			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ one_pk_two_idx.v2:2\n" +
-			" │       └─ 2 (bigint)\n" +
+			" ├─ LessThanOrEqual\n" +
+			" │   ├─ one_pk_two_idx.v2:2\n" +
+			" │   └─ 2 (bigint)\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1]\n" +
 			"     ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
@@ -6627,14 +6615,14 @@ inner join pq on true
 			"         └─ columns: [pk v1 v2]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ ((one_pk_two_idx.v1 HASH IN (1, 2)) AND (one_pk_two_idx.v2 <= 2))\n" +
+			" ├─ (one_pk_two_idx.v2 <= 2)\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1]\n" +
 			"     ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
 			"     └─ columns: [pk v1 v2]\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((one_pk_two_idx.v1 HASH IN (1, 2)) AND (one_pk_two_idx.v2 <= 2))\n" +
+			" ├─ (one_pk_two_idx.v2 <= 2)\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
 			"     ├─ index: [one_pk_two_idx.v1]\n" +
 			"     ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
@@ -9128,19 +9116,15 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null, a.s:1!null]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ HashIn\n" +
-			"     │   │   ├─ a.i:0!null\n" +
-			"     │   │   └─ TUPLE(1 (tinyint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.i]\n" +
+			"     │       ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
@@ -9153,14 +9137,12 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=0)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (a.i HASH IN (1, 2, 3, 4))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.i]\n" +
+			"     │       ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
@@ -9169,14 +9151,12 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=0) (actual rows=0 loops=1)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (a.i HASH IN (1, 2, 3, 4))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.i]\n" +
+			"     │       ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.s]\n" +
@@ -9186,92 +9166,68 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 2, 3, 4)`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ mytable.i:0!null\n" +
-			" │   └─ TUPLE(1 (tinyint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (mytable.i HASH IN (1, 2, 3, 4))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (mytable.i HASH IN (1, 2, 3, 4))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     └─ columns: [i s]\n" +
+		ExpectedEstimates: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			" └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ filters: [{[1, 1]}, {[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			" └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 1)`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ mytable.i:0!null\n" +
-			" │   └─ TUPLE(1 (tinyint), 1 (tinyint))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[1, 1]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (mytable.i HASH IN (1, 1))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[1, 1]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ static: [{[1, 1]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (mytable.i HASH IN (1, 1))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[1, 1]}]\n" +
-			"     └─ columns: [i s]\n" +
+		ExpectedEstimates: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ filters: [{[1, 1]}]\n" +
+			" └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ filters: [{[1, 1]}]\n" +
+			" └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ mytable.i:0!null\n" +
-			" │   └─ TUPLE(NULL (bigint), 2 (tinyint), 3 (tinyint), 4 (tinyint))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i s]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (mytable.i HASH IN (NULL, 2, 3, 4))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ static: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: mytable\n" +
 			"     └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (mytable.i HASH IN (NULL, 2, 3, 4))\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
-			"     └─ columns: [i s]\n" +
+		ExpectedEstimates: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ filters: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			" └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(mytable)\n" +
+			" ├─ index: [mytable.i]\n" +
+			" ├─ filters: [{[2, 2]}, {[3, 3]}, {[4, 4]}]\n" +
+			" └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -9997,45 +9953,37 @@ inner join pq on true
 			" │       └─ Table\n" +
 			" │           ├─ name: mytable\n" +
 			" │           └─ columns: []\n" +
-			" └─ Filter\n" +
-			"     ├─ HashIn\n" +
-			"     │   ├─ a.i:0!null\n" +
-			"     │   └─ TUPLE(2 (tinyint), 432 (smallint), 7 (tinyint))\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i s]\n" +
+			" └─ TableAlias(a)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
 			"",
-		ExpectedEstimates: "CrossJoin (estimated cost=4.030 rows=0)\n" +
+		ExpectedEstimates: "CrossJoin (estimated cost=4.030 rows=3)\n" +
 			" ├─ TableAlias(b)\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: mytable\n" +
 			" │       └─ columns: []\n" +
-			" └─ Filter\n" +
-			"     ├─ (a.i HASH IN (2, 432, 7))\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
-			"             └─ columns: [i s]\n" +
+			" └─ TableAlias(a)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
+			"         └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "CrossJoin (estimated cost=4.030 rows=0) (actual rows=3 loops=1)\n" +
+		ExpectedAnalysis: "CrossJoin (estimated cost=4.030 rows=3) (actual rows=3 loops=1)\n" +
 			" ├─ TableAlias(b)\n" +
 			" │   └─ Table\n" +
 			" │       ├─ name: mytable\n" +
 			" │       └─ columns: []\n" +
-			" └─ Filter\n" +
-			"     ├─ (a.i HASH IN (2, 432, 7))\n" +
-			"     └─ TableAlias(a)\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
-			"             └─ columns: [i s]\n" +
+			" └─ TableAlias(a)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[2, 2]}, {[7, 7]}, {[432, 432]}]\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -22002,19 +21950,15 @@ With c as (
 			"             │   │   ├─ cacheable: true\n" +
 			"             │   │   ├─ colSet: (5,6)\n" +
 			"             │   │   ├─ tableId: 3\n" +
-			"             │   │   └─ Filter\n" +
-			"             │   │       ├─ HashIn\n" +
-			"             │   │       │   ├─ t2.i:0!null\n" +
-			"             │   │       │   └─ TUPLE(1 (tinyint), 2 (tinyint))\n" +
-			"             │   │       └─ TableAlias(t2)\n" +
-			"             │   │           └─ IndexedTableAccess(mytable)\n" +
-			"             │   │               ├─ index: [mytable.i]\n" +
-			"             │   │               ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
-			"             │   │               ├─ colSet: (3,4)\n" +
-			"             │   │               ├─ tableId: 2\n" +
-			"             │   │               └─ Table\n" +
-			"             │   │                   ├─ name: mytable\n" +
-			"             │   │                   └─ columns: [i s]\n" +
+			"             │   │   └─ TableAlias(t2)\n" +
+			"             │   │       └─ IndexedTableAccess(mytable)\n" +
+			"             │   │           ├─ index: [mytable.i]\n" +
+			"             │   │           ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
+			"             │   │           ├─ colSet: (3,4)\n" +
+			"             │   │           ├─ tableId: 2\n" +
+			"             │   │           └─ Table\n" +
+			"             │   │               ├─ name: mytable\n" +
+			"             │   │               └─ columns: [i s]\n" +
 			"             │   └─ HashLookup\n" +
 			"             │       ├─ left-key: TUPLE(b.i:0!null)\n" +
 			"             │       ├─ right-key: TUPLE(a.i:0!null)\n" +
@@ -22034,19 +21978,15 @@ With c as (
 			"                     ├─ cacheable: true\n" +
 			"                     ├─ colSet: (9,10)\n" +
 			"                     ├─ tableId: 5\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ HashIn\n" +
-			"                         │   ├─ t1.I:0!null\n" +
-			"                         │   └─ TUPLE(2 (tinyint), 3 (tinyint))\n" +
-			"                         └─ TableAlias(t1)\n" +
-			"                             └─ IndexedTableAccess(mytable)\n" +
-			"                                 ├─ index: [mytable.i]\n" +
-			"                                 ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                 ├─ colSet: (7,8)\n" +
-			"                                 ├─ tableId: 4\n" +
-			"                                 └─ Table\n" +
-			"                                     ├─ name: mytable\n" +
-			"                                     └─ columns: [i s]\n" +
+			"                     └─ TableAlias(t1)\n" +
+			"                         └─ IndexedTableAccess(mytable)\n" +
+			"                             ├─ index: [mytable.i]\n" +
+			"                             ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
+			"                             ├─ colSet: (7,8)\n" +
+			"                             ├─ tableId: 4\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: mytable\n" +
+			"                                 └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
@@ -22069,13 +22009,11 @@ With c as (
 			"             │   │   ├─ outerVisibility: false\n" +
 			"             │   │   ├─ isLateral: false\n" +
 			"             │   │   ├─ cacheable: true\n" +
-			"             │   │   └─ Filter\n" +
-			"             │   │       ├─ (t2.i HASH IN (1, 2))\n" +
-			"             │   │       └─ TableAlias(t2)\n" +
-			"             │   │           └─ IndexedTableAccess(mytable)\n" +
-			"             │   │               ├─ index: [mytable.i]\n" +
-			"             │   │               ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
-			"             │   │               └─ columns: [i s]\n" +
+			"             │   │   └─ TableAlias(t2)\n" +
+			"             │   │       └─ IndexedTableAccess(mytable)\n" +
+			"             │   │           ├─ index: [mytable.i]\n" +
+			"             │   │           ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
+			"             │   │           └─ columns: [i s]\n" +
 			"             │   └─ HashLookup\n" +
 			"             │       ├─ left-key: (b.i)\n" +
 			"             │       ├─ right-key: (a.i)\n" +
@@ -22091,13 +22029,11 @@ With c as (
 			"                     ├─ outerVisibility: false\n" +
 			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ (t1.I HASH IN (2, 3))\n" +
-			"                         └─ TableAlias(t1)\n" +
-			"                             └─ IndexedTableAccess(mytable)\n" +
-			"                                 ├─ index: [mytable.i]\n" +
-			"                                 ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                 └─ columns: [i s]\n" +
+			"                     └─ TableAlias(t1)\n" +
+			"                         └─ IndexedTableAccess(mytable)\n" +
+			"                             ├─ index: [mytable.i]\n" +
+			"                             ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"                             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
@@ -22120,13 +22056,11 @@ With c as (
 			"             │   │   ├─ outerVisibility: false\n" +
 			"             │   │   ├─ isLateral: false\n" +
 			"             │   │   ├─ cacheable: true\n" +
-			"             │   │   └─ Filter\n" +
-			"             │   │       ├─ (t2.i HASH IN (1, 2))\n" +
-			"             │   │       └─ TableAlias(t2)\n" +
-			"             │   │           └─ IndexedTableAccess(mytable)\n" +
-			"             │   │               ├─ index: [mytable.i]\n" +
-			"             │   │               ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
-			"             │   │               └─ columns: [i s]\n" +
+			"             │   │   └─ TableAlias(t2)\n" +
+			"             │   │       └─ IndexedTableAccess(mytable)\n" +
+			"             │   │           ├─ index: [mytable.i]\n" +
+			"             │   │           ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
+			"             │   │           └─ columns: [i s]\n" +
 			"             │   └─ HashLookup\n" +
 			"             │       ├─ left-key: (b.i)\n" +
 			"             │       ├─ right-key: (a.i)\n" +
@@ -22142,13 +22076,11 @@ With c as (
 			"                     ├─ outerVisibility: false\n" +
 			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ (t1.I HASH IN (2, 3))\n" +
-			"                         └─ TableAlias(t1)\n" +
-			"                             └─ IndexedTableAccess(mytable)\n" +
-			"                                 ├─ index: [mytable.i]\n" +
-			"                                 ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                 └─ columns: [i s]\n" +
+			"                     └─ TableAlias(t1)\n" +
+			"                         └─ IndexedTableAccess(mytable)\n" +
+			"                             ├─ index: [mytable.i]\n" +
+			"                             ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"                             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -23638,128 +23570,96 @@ WHERE keyless.c0 IN (
 	},
 	{
 		Query: `select * from xy where x in (3, 0, 1) order by x`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ xy.x:0!null\n" +
-			" │   └─ TUPLE(3 (tinyint), 0 (tinyint), 1 (tinyint))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.x]\n" +
-			"     ├─ static: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (xy.x HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.x]\n" +
-			"     ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.x]\n" +
+			" ├─ static: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
 			"     └─ columns: [x y]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (xy.x HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.x]\n" +
-			"     ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
-			"     └─ columns: [x y]\n" +
+		ExpectedEstimates: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.x]\n" +
+			" ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			" └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.x]\n" +
+			" ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			" └─ columns: [x y]\n" +
 			"",
 	},
 	{
 		Query: `select * from xy where x in (3, 0, 1) order by x desc`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ xy.x:0!null\n" +
-			" │   └─ TUPLE(3 (tinyint), 0 (tinyint), 1 (tinyint))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.x]\n" +
-			"     ├─ static: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
-			"     ├─ reverse: true\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+		ExpectedPlan: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.x]\n" +
+			" ├─ static: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
+			" ├─ reverse: true\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
 			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (xy.x HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.x]\n" +
-			"     ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
-			"     ├─ columns: [x y]\n" +
-			"     └─ reverse: true\n" +
+		ExpectedEstimates: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.x]\n" +
+			" ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
+			" ├─ columns: [x y]\n" +
+			" └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (xy.x HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.x]\n" +
-			"     ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
-			"     ├─ columns: [x y]\n" +
-			"     └─ reverse: true\n" +
+		ExpectedAnalysis: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.x]\n" +
+			" ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
+			" ├─ columns: [x y]\n" +
+			" └─ reverse: true\n" +
 			"",
 	},
 	{
 		Query: `select * from xy where y in (3, 0, 1) order by y`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ xy.y:1\n" +
-			" │   └─ TUPLE(3 (tinyint), 0 (tinyint), 1 (tinyint))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.y]\n" +
-			"     ├─ static: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (xy.y HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.y]\n" +
-			"     ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ static: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
 			"     └─ columns: [x y]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (xy.y HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.y]\n" +
-			"     ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
-			"     └─ columns: [x y]\n" +
+		ExpectedEstimates: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			" └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ filters: [{[0, 0]}, {[1, 1]}, {[3, 3]}]\n" +
+			" └─ columns: [x y]\n" +
 			"",
 	},
 	{
 		Query: `select * from xy where y in (3, 0, 1) order by y desc`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ HashIn\n" +
-			" │   ├─ xy.y:1\n" +
-			" │   └─ TUPLE(3 (tinyint), 0 (tinyint), 1 (tinyint))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.y]\n" +
-			"     ├─ static: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
-			"     ├─ reverse: true\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+		ExpectedPlan: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ static: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
+			" ├─ reverse: true\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
 			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ (xy.y HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.y]\n" +
-			"     ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
-			"     ├─ columns: [x y]\n" +
-			"     └─ reverse: true\n" +
+		ExpectedEstimates: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
+			" ├─ columns: [x y]\n" +
+			" └─ reverse: true\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ (xy.y HASH IN (3, 0, 1))\n" +
-			" └─ IndexedTableAccess(xy)\n" +
-			"     ├─ index: [xy.y]\n" +
-			"     ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
-			"     ├─ columns: [x y]\n" +
-			"     └─ reverse: true\n" +
+		ExpectedAnalysis: "IndexedTableAccess(xy)\n" +
+			" ├─ index: [xy.y]\n" +
+			" ├─ filters: [{[3, 3]}, {[1, 1]}, {[0, 0]}]\n" +
+			" ├─ columns: [x y]\n" +
+			" └─ reverse: true\n" +
 			"",
 	},
 	{
@@ -23861,34 +23761,24 @@ WHERE keyless.c0 IN (
 	},
 	{
 		Query: `select * from xy_hasnull_idx where y in (0, 2) or y is null order by y`,
-		ExpectedPlan: "Filter\n" +
-			" ├─ Or\n" +
-			" │   ├─ HashIn\n" +
-			" │   │   ├─ xy_hasnull_idx.y:1\n" +
-			" │   │   └─ TUPLE(0 (tinyint), 2 (tinyint))\n" +
-			" │   └─ xy_hasnull_idx.y:1 IS NULL\n" +
-			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
-			"     ├─ index: [xy_hasnull_idx.y]\n" +
-			"     ├─ static: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy_hasnull_idx\n" +
-			"         └─ columns: [x y]\n" +
-			"",
-		ExpectedEstimates: "Filter\n" +
-			" ├─ ((xy_hasnull_idx.y HASH IN (0, 2)) OR xy_hasnull_idx.y IS NULL)\n" +
-			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
-			"     ├─ index: [xy_hasnull_idx.y]\n" +
-			"     ├─ filters: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
+		ExpectedPlan: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ static: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
+			" ├─ colSet: (1,2)\n" +
+			" ├─ tableId: 1\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy_hasnull_idx\n" +
 			"     └─ columns: [x y]\n" +
 			"",
-		ExpectedAnalysis: "Filter\n" +
-			" ├─ ((xy_hasnull_idx.y HASH IN (0, 2)) OR xy_hasnull_idx.y IS NULL)\n" +
-			" └─ IndexedTableAccess(xy_hasnull_idx)\n" +
-			"     ├─ index: [xy_hasnull_idx.y]\n" +
-			"     ├─ filters: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
-			"     └─ columns: [x y]\n" +
+		ExpectedEstimates: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ filters: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
+			" └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "IndexedTableAccess(xy_hasnull_idx)\n" +
+			" ├─ index: [xy_hasnull_idx.y]\n" +
+			" ├─ filters: [{[NULL, NULL]}, {[0, 0]}, {[2, 2]}]\n" +
+			" └─ columns: [x y]\n" +
 			"",
 	},
 	{
