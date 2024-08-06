@@ -131,8 +131,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
-
-		if isAggregateFunc(name) && v.Over == nil {
+		if name == "name_const" {
+			return b.buildNameConst(inScope, v)
+		} else if isAggregateFunc(name) && v.Over == nil {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates
 			return b.buildAggregateFunc(inScope, name, v)
@@ -161,16 +162,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 
-		if nc, ok := rf.(*function.NameConst); ok {
-			if _, isLit := nc.Alias.(*expression.Literal); isLit {
-				nc.AliasStr = nc.Alias.String()
-
-				rf = nc
-			} else {
-				b.handleErr(fmt.Errorf("incorrect arguments to: %s", nc.FunctionName()))
-			}
-		}
-
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
 		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
 		if v.Distinct {
@@ -185,7 +176,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 
 		return rf
-
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
 		return b.buildGroupConcat(inScope, v)
@@ -290,7 +280,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			exprs[i] = expr
 		}
 		return expression.NewTuple(exprs...)
-
 	case *ast.BinaryExpr:
 		return b.buildBinaryScalar(inScope, v)
 	case *ast.UnaryExpr:
