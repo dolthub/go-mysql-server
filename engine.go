@@ -387,7 +387,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, nil)
+	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, qFlags)
 	if err != nil {
 		return nil, nil, nil, err
 	}
