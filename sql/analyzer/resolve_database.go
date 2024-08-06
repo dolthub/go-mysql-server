@@ -21,7 +21,7 @@ import (
 )
 
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
-func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	transform.Inspect(n, func(node sql.Node) bool {
 		switch n.(type) {

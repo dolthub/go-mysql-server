@@ -165,6 +165,8 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 }
 
 func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
+	b.qProps.Set(sql.QFlagAggregation)
+
 	// GROUP_BY consists of:
 	// - input arguments projection
 	// - grouping cols projection
@@ -267,6 +269,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			} else {
 				agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 			}
+			b.qProps.Set(sql.QFlagCountStar)
 			aggName := strings.ToLower(agg.String())
 			gf := gb.getAggRef(aggName)
 			if gf != nil {
@@ -292,6 +295,8 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			var agg sql.Aggregation
 			agg = aggregation.NewJsonArray(expression.NewLiteral(expression.NewStar(), types.Int64))
+			b.qProps.Set(sql.QFlagStar)
+
 			//if e.Distinct {
 			//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
 			//}
@@ -378,6 +383,10 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			err := fmt.Errorf("expected function to be aggregation: %s", f.FunctionName())
 			b.handleErr(err)
 		}
+	}
+
+	if name == "count" {
+		b.qProps.Set(sql.QFlagCount)
 	}
 
 	aggType := agg.Type()
@@ -491,6 +500,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 	if name == "count" {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
 			win = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
+			b.qProps.Set(sql.QFlagCountStar)
 		}
 	}
 	if win == nil {

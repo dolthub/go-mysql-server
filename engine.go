@@ -210,11 +210,11 @@ func (e *Engine) AnalyzeQuery(
 	query string,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	parsed, _, _, err := binder.Parse(query, false)
+	parsed, _, _, qFlags, err := binder.Parse(query, false)
 	if err != nil {
 		return nil, err
 	}
-	return e.Analyzer.Analyze(ctx, parsed, nil)
+	return e.Analyzer.Analyze(ctx, parsed, nil, qFlags)
 }
 
 // PrepareQuery returns a partially analyzed query
@@ -238,7 +238,7 @@ func (e *Engine) PrepareParsedQuery(
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	node, err := binder.BindOnly(stmt, query)
+	node, _, err := binder.BindOnly(stmt, query)
 
 	if err != nil {
 		return nil, err
@@ -249,8 +249,8 @@ func (e *Engine) PrepareParsedQuery(
 }
 
 // Query executes a query.
-func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
-	return e.QueryWithBindings(ctx, query, nil, nil)
+func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+	return e.QueryWithBindings(ctx, query, nil, nil, nil)
 }
 
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
@@ -365,36 +365,36 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
 	parsed, binder, err := e.preparedStatement(ctx, query, parsed, bindings)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
 	err = ctx.Session.ValidateSession(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	err = e.beginTransaction(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	bound, err := e.bindQuery(ctx, query, parsed, bindings, err, binder)
+	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, qFlags)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	analyzed, err := e.analyzeNode(ctx, query, bound)
+	analyzed, err := e.analyzeNode(ctx, query, bound, qFlags)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if plan.NodeRepresentsSelect(analyzed) {
@@ -403,61 +403,61 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 
 	if bindCtx := binder.BindCtx(); bindCtx != nil {
 		if unused := bindCtx.UnusedBindings(); len(unused) > 0 {
-			return nil, nil, fmt.Errorf("invalid arguments. expected: %d, found: %d", len(bindCtx.Bindings)-len(unused), len(bindCtx.Bindings))
+			return nil, nil, nil, fmt.Errorf("invalid arguments. expected: %d, found: %d", len(bindCtx.Bindings)-len(unused), len(bindCtx.Bindings))
 		}
 	}
 
 	err = e.readOnlyCheck(analyzed)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	iter, err := e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
 
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
-	return analyzed.Schema(), iter, nil
+	return analyzed.Schema(), iter, qFlags, nil
 }
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
 // begin spooling results
-func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, query string, plan sql.Node) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
 	err := ctx.Session.ValidateSession(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	err = e.beginTransaction(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	err = e.readOnlyCheck(plan)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	iter, err := e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
-			return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
 
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	iter = rowexec.AddExpressionCloser(plan, iter)
 
-	return plan.Schema(), iter, nil
+	return plan.Schema(), iter, nil, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
@@ -478,7 +478,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 	}
 
 	// TODO: we need to be more principled about when to clear auto commit transactions here
-	bound, err := e.bindQuery(ctx, query, parsed, bindings, err, binder)
+	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, nil)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
@@ -488,7 +488,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 		return nil, err
 	}
 
-	analyzed, err := e.analyzeNode(ctx, query, bound)
+	analyzed, err := e.analyzeNode(ctx, query, bound, qFlags)
 	if err != nil {
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
@@ -531,7 +531,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 	return parsed, binder, nil
 }
 
-func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sql.Node, error) {
+func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFlags *sql.QueryFlags) (sql.Node, error) {
 	switch n := bound.(type) {
 	case *plan.PrepareQuery:
 		sqlMode := sql.LoadSqlMode(ctx)
@@ -575,38 +575,40 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node) (sq
 		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
 		return bound, nil
 	default:
-		return e.Analyzer.Analyze(ctx, bound, nil)
+		return e.Analyzer.Analyze(ctx, bound, nil, qFlags)
 	}
 }
 
 // bindQuery binds any bind variables to the plan node or query given and returns it.
 // |parsed| is the parsed AST without bindings applied, if the statement was previously parsed / prepared.
 // If it wasn't (|parsed| is nil), then the query is parsed.
-func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, err error, binder *planbuilder.Builder) (sql.Node, error) {
+func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder, qFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {
 	var bound sql.Node
+	var err error
 	if parsed == nil {
-		bound, _, _, err = binder.Parse(query, false)
+		bound, _, _, qFlags, err = binder.Parse(query, false)
 		if err != nil {
 			clearAutocommitErr := clearAutocommitTransaction(ctx)
 			if clearAutocommitErr != nil {
-				return nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+				return nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
 			}
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
-		bound, err = binder.BindOnly(parsed, query)
+		bound, qFlags, err = binder.BindOnly(parsed, query)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	// ExecuteQuery nodes have their own special var binding step
 	eq, ok := bound.(*plan.ExecuteQuery)
 	if ok {
-		return e.bindExecuteQueryNode(ctx, query, eq, bindings, binder)
+		ret, err := e.bindExecuteQueryNode(ctx, query, eq, bindings, binder)
+		return ret, qFlags, err
 	}
 
-	return bound, nil
+	return bound, qFlags, nil
 }
 
 // bindExecuteQueryNode returns the
@@ -644,7 +646,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	}
 	binder.SetBindings(bindings)
 
-	bound, err := binder.BindOnly(prep, query)
+	bound, _, err := binder.BindOnly(prep, query)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {

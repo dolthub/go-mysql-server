@@ -10,13 +10,13 @@ import (
 // planbuilder and only bind the child select, strip/merge schemas.
 // a second rule should finalize analysis of the source/dest nodes
 // (skipping passthrough rule).
-func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok || ct.Select() == nil {
 		return n, transform.SameTree, nil
 	}
 
-	analyzedSelect, err := a.Analyze(ctx, ct.Select(), scope)
+	analyzedSelect, err := a.Analyze(ctx, ct.Select(), scope, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -46,7 +46,7 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	}
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
-	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)
+	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}

@@ -420,7 +420,7 @@ func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e QueryEngin
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(q)
 
-		sch, iter, err := e.QueryWithBindings(ctx, q, nil, nil)
+		sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
 		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
 
 		rows, err := sql.RowIterToRows(ctx, iter)

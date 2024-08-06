@@ -98,6 +98,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 		switch n := cteScope.node.(type) {
 		case *plan.SetOp:
 			sq := plan.NewSubqueryAlias(name, "", n)
+			b.qProps.Set(sql.QFlagRelSubquery)
 			sq = sq.WithColumnNames(columns)
 			sq = sq.WithCorrelated(sqScope.correlated())
 			sq = sq.WithVolatile(sqScope.volatile())
@@ -200,6 +201,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	rcteId := rcte.WithId(tableId).WithColumns(cols)
 
 	sq := plan.NewSubqueryAlias(name, "", rcteId)
+	b.qProps.Set(sql.QFlagRelSubquery)
 	sq = sq.WithColumnNames(columns)
 	sq = sq.WithCorrelated(corr)
 	sq = sq.WithVolatile(vol)

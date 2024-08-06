@@ -28,7 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
 		return n, transform.SameTree, nil
 	} else if _, ok := n.(*plan.CreateProcedure); ok {
@@ -58,7 +58,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 					plan.NewSubqueryAlias("dummy", "", insert.Source),
 				))
 			}
-			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel))
+			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
