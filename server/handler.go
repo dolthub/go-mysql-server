@@ -19,7 +19,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"regexp"
 	"runtime/trace"
@@ -430,9 +429,7 @@ func (h *Handler) doQuery(
 	resultFields := schemaToFields(sqlCtx, schema)
 	var r *sqltypes.Result
 	var processedAtLeastOneBatch bool
-
-	log.Println(analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row))
-	log.Println(qFlags)
+	
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
 		r, err = resultForOkIter(sqlCtx, rowIter)
