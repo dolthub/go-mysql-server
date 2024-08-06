@@ -160,7 +160,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 
 		if nc, ok := rf.(*function.NameConst); ok {
-			if lit, isLit := nc.Alias.(*expression.Literal); isLit {
+			if _, isLit := nc.Alias.(*expression.Literal); isLit {
 				nc.AliasStr = nc.Alias.String()
 
 				rf = nc
