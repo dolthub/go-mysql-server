@@ -429,7 +429,7 @@ func (h *Handler) doQuery(
 	resultFields := schemaToFields(sqlCtx, schema)
 	var r *sqltypes.Result
 	var processedAtLeastOneBatch bool
-	
+
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
 		r, err = resultForOkIter(sqlCtx, rowIter)
