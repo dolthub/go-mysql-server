@@ -654,7 +654,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
 		// group by with any_value()
 
-		_, rowIter, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
+		_, rowIter, _, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
 		require.NoError(t, err)
 		rowCount = 0
 		isServerTest := IsServerEngine(e)
@@ -690,7 +690,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		require.Equal(t, rowCount, 3)
 
 		// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
-		_, rowIter, err = e.Query(ctx, "select id, team from members group by team order by id")
+		_, rowIter, _, err = e.Query(ctx, "select id, team from members group by team order by id")
 		require.NoError(t, err)
 		rowCount = 0
 		for {
@@ -1896,7 +1896,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 				})
 			} else if script.ExpectingErr {
 				t.Run(lastQuery, func(t *testing.T) {
-					_, iter, err := engine.Query(ctx, lastQuery)
+					_, iter, _, err := engine.Query(ctx, lastQuery)
 					if err == nil {
 						_, err = sql.RowIterToRows(ctx, iter)
 					}
@@ -1914,7 +1914,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 				})
 			} else {
 				t.Run(lastQuery, func(t *testing.T) {
-					sch, iter, err := engine.Query(ctx, lastQuery)
+					sch, iter, _, err := engine.Query(ctx, lastQuery)
 					require.NoError(t, err)
 					rows, err := sql.RowIterToRows(ctx, iter)
 					require.NoError(t, err)
@@ -2497,31 +2497,31 @@ func initializeViewsForVersionedViewsTests(t *testing.T, harness VersionedDBHarn
 	require := require.New(t)
 
 	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	_, iter, _, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// nested views
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
+	_, iter, _, err = e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview1 WHERE i = 1")
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// views with unions
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
+	_, iter, _, err = e.Query(ctx, "CREATE VIEW myview3 AS SELECT i from myview1 union select s from myhistorytable")
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// views with subqueries
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
+	_, iter, _, err = e.Query(ctx, "CREATE VIEW myview4 AS SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)")
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
 	// views with a subquery alias
-	_, iter, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
+	_, iter, _, err = e.Query(ctx, "CREATE VIEW myview5 AS SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq")
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
@@ -2706,10 +2706,10 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.False(ok)
 
-		_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
+		_, _, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
 		require.Error(err)
 
-		_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
+		_, _, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
 		require.NoError(err)
 	}()
 
@@ -2735,7 +2735,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.table1 (pk1 integer primary key)")
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.table2 (pk2 integer primary key)")
 
-		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
+		_, _, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
 		require.Error(err)
 
 		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
@@ -2746,7 +2746,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 
-		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, mydb.one_pk")
+		_, _, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, mydb.one_pk")
 		require.Error(err)
 
 		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
@@ -2757,14 +2757,14 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 
-		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, otherdb.table3")
+		_, _, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, otherdb.table3")
 		require.Error(err)
 
 		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
 		require.NoError(err)
 		require.True(ok)
 
-		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, otherdb.table3")
+		_, _, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, otherdb.table3")
 		require.NoError(err)
 
 		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
@@ -2790,7 +2790,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.tab1 (other_pk1 integer primary key)")
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE otherdb.tab2 (other_pk2 integer primary key)")
 
-		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
+		_, _, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
 		require.NoError(err)
 
 		_, ok, err := db.GetTableInsensitive(ctx, "tab1")
@@ -2801,17 +2801,17 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.False(ok)
 
-		_, _, err = e.Query(ctx, "DROP TABLE nonExistentTable, otherdb.tab2")
+		_, _, _, err = e.Query(ctx, "DROP TABLE nonExistentTable, otherdb.tab2")
 		require.Error(err)
 
-		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS nonExistentTable, otherdb.tab2")
+		_, _, _, err = e.Query(ctx, "DROP TABLE IF EXISTS nonExistentTable, otherdb.tab2")
 		require.Error(err)
 
 		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab2")
 		require.NoError(err)
 		require.True(ok)
 
-		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.tab3, otherdb.tab2")
+		_, _, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.tab3, otherdb.tab2")
 		require.NoError(err)
 
 		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab2")
@@ -4464,12 +4464,12 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	require.NoError(err)
 
 	// this query will cause 3 warnings.
-	_, iter, err := e.Query(ctx, "drop table if exists table1, table2, table3;")
+	_, iter, _, err := e.Query(ctx, "drop table if exists table1, table2, table3;")
 	require.NoError(err)
 	err = iter.Close(ctx)
 	require.NoError(err)
 
-	_, iter, err = e.Query(ctx, "SHOW WARNINGS")
+	_, iter, _, err = e.Query(ctx, "SHOW WARNINGS")
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
@@ -4477,7 +4477,7 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.Equal(3, len(rows))
 
-	_, iter, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
+	_, iter, _, err = e.Query(ctx, "SHOW WARNINGS LIMIT 1")
 	require.NoError(err)
 	rows, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
@@ -4485,7 +4485,7 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.Equal(1, len(rows))
 
-	_, iter, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
+	_, iter, _, err = e.Query(ctx, "SELECT * FROM mytable LIMIT 1")
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
@@ -4575,12 +4575,12 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 	// We want to add the query to the process list to represent the full workflow.
 	clientSessionA, err = pl.BeginQuery(clientSessionA, "INSERT INTO a VALUES (1,1)")
 	require.NoError(err)
-	_, iter, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")
+	_, iter, _, err := e.Query(clientSessionA, "INSERT INTO a VALUES (1,1)")
 	require.NoError(err)
 
 	clientSessionB, err = pl.BeginQuery(clientSessionB, "INSERT INTO a VALUES (2,2)")
 	require.NoError(err)
-	_, iter2, err := e.Query(clientSessionB, "INSERT INTO a VALUES (2,2)")
+	_, iter2, _, err := e.Query(clientSessionB, "INSERT INTO a VALUES (2,2)")
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(clientSessionA, iter)
@@ -4672,7 +4672,7 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	AssertErrWithCtx(t, e, harness, ctx, "show tables", nil, sql.ErrNoDatabaseSelected)
 	AssertErrWithCtx(t, e, harness, ctx, "show triggers", nil, sql.ErrNoDatabaseSelected)
 
-	_, _, err := e.Query(ctx, "ROLLBACK")
+	_, _, _, err := e.Query(ctx, "ROLLBACK")
 	require.NoError(t, err)
 }
 
@@ -4752,7 +4752,7 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	sql.WithTracer(tracer)(ctx)
 
-	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
+	_, iter, _, err := e.Query(ctx, `SELECT DISTINCT i
 		FROM mytable
 		WHERE s = 'first row'
 		ORDER BY i DESC
@@ -5354,7 +5354,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			_, err := e.PrepareQuery(ctx, tt.Query)
 			require.NoError(t, err)
 			ctx = ctx.WithQuery(tt.Query)
-			_, _, err = e.QueryWithBindings(ctx, tt.Query, nil, tt.Bindings, nil)
+			_, _, _, err = e.QueryWithBindings(ctx, tt.Query, nil, tt.Bindings, nil)
 			require.Error(t, err)
 		})
 	}
@@ -5439,7 +5439,7 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 
 			for _, query := range script.Queries {
 				t.Run(query.Query, func(t *testing.T) {
-					_, iter, err := engine.Query(ctx, query.Query)
+					_, iter, _, err := engine.Query(ctx, query.Query)
 					if query.Error || query.ErrKind != nil {
 						if err == nil {
 							_, err := sql.RowIterToRows(ctx, iter)
@@ -5631,7 +5631,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 			for queryIdx, query := range script.Queries {
 				r, err := conn.Query(query)
 				if assert.NoError(t, err) {
-					sch, engineIter, err := engine.Query(ctx, query)
+					sch, engineIter, _, err := engine.Query(ctx, query)
 					require.NoError(t, err)
 					expectedRowSet := script.Results[queryIdx]
 					expectedRowIdx := 0
@@ -5811,10 +5811,10 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 	require.ElementsMatch(t, []string{"REPLICATION_SLAVE_ADMIN"}, testuser.PrivilegeSet.ToSliceDynamic(false))
 	require.ElementsMatch(t, []string{}, testuser.PrivilegeSet.ToSliceDynamic(true))
 
-	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
+	_, _, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
 	require.Error(t, err)
 
-	_, _, err = engine.Query(ctx, "FLUSH LOCAL PRIVILEGES")
+	_, _, _, err = engine.Query(ctx, "FLUSH LOCAL PRIVILEGES")
 	require.Error(t, err)
 }
 

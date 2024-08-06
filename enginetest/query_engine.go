@@ -26,12 +26,12 @@ import (
 type QueryEngine interface {
 	PrepareQuery(*sql.Context, string) (sql.Node, error)
 	AnalyzeQuery(*sql.Context, string) (sql.Node, error)
-	Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error)
+	Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)
 	// TODO: get rid of this, should not be exposed to engine tests
 	EngineAnalyzer() *analyzer.Analyzer
 	// TODO: get rid of this, should not be exposed to engine tests
 	EnginePreparedDataCache() *sqle.PreparedDataCache
-	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error)
+	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)
 	CloseSession(connID uint32)
 	Close() error
 }

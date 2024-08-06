@@ -416,7 +416,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rowIter, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
+	schema, rowIter, qFlags, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
 		if verboseErrorLogging {
@@ -1007,12 +1007,12 @@ type QueryExecutor func(
 	analyzed sql.Node,
 	bindings map[string]*querypb.BindVariable,
 	qFlags *sql.QueryFlags,
-) (sql.Schema, sql.RowIter, error)
+) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)
 
 // executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
 // statement, which may be nil.
-func (h *Handler) executeQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, _ sql.Node, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error) {
-	return h.e.QueryWithBindings(ctx, query, parsed, bindings, nil)
+func (h *Handler) executeQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, _ sql.Node, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+	return h.e.QueryWithBindings(ctx, query, parsed, bindings, qFlags)
 }
 
 // executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
@@ -1024,6 +1024,6 @@ func (h *Handler) executeBoundPlan(
 	plan sql.Node,
 	_ map[string]*querypb.BindVariable,
 	_ *sql.QueryFlags,
-) (sql.Schema, sql.RowIter, error) {
+) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	return h.e.PrepQueryPlanForExecution(ctx, query, plan)
 }

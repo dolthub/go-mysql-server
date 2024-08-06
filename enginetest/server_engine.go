@@ -122,11 +122,11 @@ func (s *ServerQueryEngine) PrepareQuery(ctx *sql.Context, query string) (sql.No
 	return nil, nil
 }
 
-func (s *ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
+func (s *ServerQueryEngine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -152,11 +152,11 @@ func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
 }
 
-func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, error) {
+func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -166,7 +166,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 		if err != nil {
 			// TODO: conn.Query() empty query does not error
 			if strings.HasSuffix(err.Error(), "empty statement") {
-				return nil, sql.RowsToRowIter(), nil
+				return nil, sql.RowsToRowIter(), nil, nil
 			}
 			// Note: we cannot access sql_mode when using ServerEngine
 			//  to use ParseWithOptions() method. Replacing double quotes
@@ -175,7 +175,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 			ansiQuery := strings.Replace(query, "\"", "`", -1)
 			parsed, err = sqlparser.Parse(ansiQuery)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 		}
 	}
@@ -189,7 +189,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 
 	stmt, err := s.conn.Prepare(query)
 	if err != nil {
-		return nil, nil, trimMySQLErrCodePrefix(err)
+		return nil, nil, nil, trimMySQLErrCodePrefix(err)
 	}
 
 	args := prepareBindingArgs(bindings)
@@ -203,7 +203,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 // TODO: for `EXECUTE` and `CALL` statements, it can be either query or exec depending on the statement that prepared or stored procedure holds.
 //
 //	for now, we use `query` to get the row results for these statements. For statements that needs `exec`, there will be no result.
-func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, error) {
+func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	var err error
 	switch parsed.(type) {
 	// TODO: added `FLUSH` stmt here (should be `exec`) because we don't support `FLUSH BINARY LOGS` or `FLUSH ENGINE LOGS`, so nil schema is returned.
@@ -215,7 +215,7 @@ func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.State
 			rows, err = s.conn.Query(query, args...)
 		}
 		if err != nil {
-			return nil, nil, trimMySQLErrCodePrefix(err)
+			return nil, nil, nil, trimMySQLErrCodePrefix(err)
 		}
 		return convertRowsResult(rows)
 	default:
@@ -226,7 +226,7 @@ func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.State
 			res, err = s.conn.Exec(query, args...)
 		}
 		if err != nil {
-			return nil, nil, trimMySQLErrCodePrefix(err)
+			return nil, nil, nil, trimMySQLErrCodePrefix(err)
 		}
 		return convertExecResult(res)
 	}
@@ -252,14 +252,14 @@ func trimMySQLErrCodePrefix(err error) error {
 	return err
 }
 
-func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, error) {
+func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	affected, err := exec.RowsAffected()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	lastInsertId, err := exec.LastInsertId()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	okResult := types.OkResult{
@@ -268,21 +268,21 @@ func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, error) {
 		Info:         nil,
 	}
 
-	return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil
+	return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil, nil
 }
 
-func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, error) {
+func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	sch, err := schemaForRows(rows)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	rowIter, err := rowIterForGoSqlRows(sch, rows)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return sch, rowIter, nil
+	return sch, rowIter, nil, nil
 }
 
 func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) {
