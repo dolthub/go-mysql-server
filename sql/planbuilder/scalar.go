@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -30,8 +31,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
-	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
