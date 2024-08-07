@@ -2448,6 +2448,19 @@ Project
 			Skip:  true,
 			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having avg(xx) = 123;",
 		},
+
+		{
+			Query: "select name_const('abc', 123);",
+			ExpectedPlan: `
+Project
+ ├─ columns: [123 (tinyint) as abc]
+ └─ Table
+     ├─ name: 
+     ├─ columns: []
+     ├─ colSet: ()
+     └─ tableId: 0
+`,
+		},
 	}
 
 	var w *bufio.Writer
