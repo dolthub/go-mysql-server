@@ -2450,6 +2450,19 @@ Project
 		},
 
 		{
+			Query: "select name_const('abc', 123);",
+			ExpectedPlan: `
+Project
+ ├─ columns: [123 (tinyint) as abc]
+ └─ Table
+     ├─ name: 
+     ├─ columns: []
+     ├─ colSet: ()
+     └─ tableId: 0
+`,
+		},
+
+		{
 			Query: "select icu_version();",
 			ExpectedPlan: `
 Project

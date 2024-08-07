@@ -7088,6 +7088,90 @@ where
 			},
 		},
 	},
+
+	{
+		Name: "name_const queries",
+		SetUpScript: []string{
+			"create table t (i int primary key);",
+			"insert into t values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select name_const(123, 123)",
+				ExpectedColumns: sql.Schema{
+					{Name: "123", Type: types.Int8, Nullable: false},
+				},
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query: "select name_const('abc', 123)",
+				ExpectedColumns: sql.Schema{
+					{Name: "abc", Type: types.Int8, Nullable: false},
+				},
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query: "select name_const('abc', 'abc')",
+				ExpectedColumns: sql.Schema{
+					{Name: "abc", Type: types.Text, Nullable: false},
+				},
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select name_const(date '2000-01-02', 123)",
+				ExpectedColumns: sql.Schema{
+					{Name: "2000-01-02", Type: types.Int8, Nullable: false},
+				},
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query: "select name_const('abc', date '2001-02-03')",
+				ExpectedColumns: sql.Schema{
+					{Name: "abc", Type: types.Text, Nullable: false},
+				},
+				Expected: []sql.Row{
+					{"2001-02-03"},
+				},
+			},
+
+			{
+				Query:          "select name_const('abc', 1+1)",
+				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
+			},
+			{
+				Query:          "select name_const(1+1, 123)",
+				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
+			},
+			{
+				Query:          "select name_const(i, 123) from t",
+				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
+			},
+			{
+				Query:          "select name_const(123, i) from t",
+				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
+			},
+			{
+				Query:          "select name_const()",
+				ExpectedErrStr: "incorrect parameter count in the call to native function NAME_CONST",
+			},
+			{
+				Query:          "select name_const(1)",
+				ExpectedErrStr: "incorrect parameter count in the call to native function NAME_CONST",
+			},
+			{
+				Query:          "select name_const(1, 2, 3)",
+				ExpectedErrStr: "incorrect parameter count in the call to native function NAME_CONST",
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
