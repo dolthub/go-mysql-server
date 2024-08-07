@@ -26,7 +26,7 @@ import (
 const icuVersion = "73.1"
 
 // ICUVersion is a function that returns the ICU library used to support regex operations.
-type ICUVersion struct {}
+type ICUVersion struct{}
 
 var _ sql.FunctionExpression = (*ICUVersion)(nil)
 var _ sql.CollationCoercible = (*ICUVersion)(nil)
