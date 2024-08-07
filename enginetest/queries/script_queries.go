@@ -7143,31 +7143,31 @@ where
 			},
 
 			{
-				Query: "select name_const('abc', 1+1)",
+				Query:          "select name_const('abc', 1+1)",
 				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
 			},
 			{
-				Query: "select name_const(1+1, 123)",
+				Query:          "select name_const(1+1, 123)",
 				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
 			},
 			{
-				Query: "select name_const(i, 123) from t",
+				Query:          "select name_const(i, 123) from t",
 				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
 			},
 			{
-				Query: "select name_const(123, i) from t",
+				Query:          "select name_const(123, i) from t",
 				ExpectedErrStr: "incorrect arguments to: NAME_CONST",
 			},
 			{
-				Query: "select name_const()",
+				Query:          "select name_const()",
 				ExpectedErrStr: "incorrect parameter count in the call to native function NAME_CONST",
 			},
 			{
-				Query: "select name_const(1)",
+				Query:          "select name_const(1)",
 				ExpectedErrStr: "incorrect parameter count in the call to native function NAME_CONST",
 			},
 			{
-				Query: "select name_const(1, 2, 3)",
+				Query:          "select name_const(1, 2, 3)",
 				ExpectedErrStr: "incorrect parameter count in the call to native function NAME_CONST",
 			},
 		},
