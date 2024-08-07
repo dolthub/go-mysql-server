@@ -2448,6 +2448,19 @@ Project
 			Skip:  true,
 			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having avg(xx) = 123;",
 		},
+
+		{
+			Query: "select icu_version();",
+			ExpectedPlan: `
+Project
+ ├─ columns: [73.1 (varchar(4)) as icu_version()]
+ └─ Table
+     ├─ name: 
+     ├─ columns: []
+     ├─ colSet: ()
+     └─ tableId: 0
+`,
+		},
 	}
 
 	var w *bufio.Writer

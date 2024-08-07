@@ -102,7 +102,6 @@ var BuiltIns = []sql.Function{
 	sql.Function2{Name: "gtid_subtract", Fn: NewGtidSubtract},
 	sql.Function1{Name: "hex", Fn: NewHex},
 	sql.Function1{Name: "hour", Fn: NewHour},
-	sql.Function0{Name: "icu_version", Fn: NewICUVersion},
 	sql.Function3{Name: "if", Fn: NewIf},
 	sql.Function2{Name: "ifnull", Fn: NewIfNull},
 	sql.Function1{Name: "inet_aton", Fn: NewInetAton},

@@ -30,6 +30,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
@@ -132,7 +134,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
 
-		if isAggregateFunc(name) && v.Over == nil {
+		if name == "icu_version" {
+			return expression.NewLiteral("73.1", types.MustCreateString(query.Type_VARCHAR, 4, sql.Collation_Default))
+		} else if isAggregateFunc(name) && v.Over == nil {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates
 			return b.buildAggregateFunc(inScope, name, v)
