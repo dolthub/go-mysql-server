@@ -283,7 +283,6 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			left = i.parentRow.Append(r)
 			rIter, err = i.b.Build(ctx, i.secondaryProvider, left)
-
 			if err != nil {
 				return nil, err
 			}
@@ -315,13 +314,6 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if i.typ.IsSemi() {
 				// reset iter, no match
 				nextState = esIncLeft
-			} else if !i.rightIterNonEmpty && !isTrueLit(i.cond) {
-				// ANTI_JOIN with empty RHS is subject to special cases,
-				// the first two are a valid match.
-				//   1) If we matched no rows but rows were returned
-				//   2) No match and no rows returned, EXISTS check
-				//   3) No match and no rows returned, IN check
-				return nil, io.EOF
 			} else {
 				nextState = esRet
 			}
