@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -31,6 +32,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+var icuVersion = "73.1"
 
 func (b *Builder) buildWhere(inScope *scope, where *ast.Where) {
 	if where == nil {
@@ -133,6 +136,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		name := v.Name.Lowered()
 		if name == "name_const" {
 			return b.buildNameConst(inScope, v)
+		} else if name == "icu_version" {
+			return expression.NewLiteral(icuVersion, types.MustCreateString(query.Type_VARCHAR, int64(len(icuVersion)), sql.Collation_Default))
 		} else if isAggregateFunc(name) && v.Over == nil {
 			// TODO this assumes aggregate is in the same scope
 			// also need to avoid nested aggregates

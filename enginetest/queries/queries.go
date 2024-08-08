@@ -9911,6 +9911,13 @@ from typestable`,
 			{nil},
 		},
 	},
+
+	{
+		Query: "select icu_version()",
+		Expected: []sql.Row{
+			{"73.1"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
