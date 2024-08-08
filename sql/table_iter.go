@@ -34,10 +34,11 @@ func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *Table
 }
 
 func (i *TableRowIter) Next(ctx *Context) (Row, error) {
-	if ctx.Err() != nil {
+	select {
+	case <-ctx.Done():
 		return nil, ctx.Err()
+	default:
 	}
-
 	if i.partition == nil {
 		partition, err := i.partitions.Next(ctx)
 		if err != nil {
@@ -71,11 +72,6 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 		i.partition = nil
 		i.rows = nil
 		row, err = i.Next(ctx)
-	}
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
 	}
 	return row, err
 }
