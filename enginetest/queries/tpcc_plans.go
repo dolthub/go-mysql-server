@@ -418,42 +418,34 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(customer2.c_id:0!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ customer2.c_last:3\n" +
-			"         │   └─ ESEEINGABLE (longtext)\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-21)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: customer2\n" +
-			"                 └─ columns: [c_id c_d_id c_w_id c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-21)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: customer2\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 	},
 	{
@@ -461,38 +453,30 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [customer2.c_id:0!null]\n" +
 			" └─ Sort(customer2.c_first:3 ASC nullsFirst)\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ customer2.c_last:4\n" +
-			"         │   └─ ESEEINGABLE (longtext)\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-21)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: customer2\n" +
-			"                 └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ static: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-21)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: customer2\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_id]\n" +
 			" └─ Sort(customer2.c_first ASC)\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_id]\n" +
 			" └─ Sort(customer2.c_first ASC)\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'ESEEINGABLE')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [5, 5], [ESEEINGABLE, ESEEINGABLE], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_first c_last]\n" +
 			"",
 	},
 	{
@@ -561,42 +545,34 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(customer2.c_id:0!null)\n" +
 			"     ├─ group: \n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ customer2.c_last:3\n" +
-			"         │   └─ PRIESEPRES (longtext)\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-21)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: customer2\n" +
-			"                 └─ columns: [c_id c_d_id c_w_id c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-21)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: customer2\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_last]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_last]\n" +
 			"",
 	},
 	{
@@ -604,38 +580,30 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [customer2.c_balance:6, customer2.c_first:3, customer2.c_middle:4, customer2.c_id:0!null]\n" +
 			" └─ Sort(customer2.c_first:3 ASC nullsFirst)\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ customer2.c_last:5\n" +
-			"         │   └─ PRIESEPRES (longtext)\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             ├─ colSet: (1-21)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: customer2\n" +
-			"                 └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ static: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-21)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: customer2\n" +
+			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_balance, customer2.c_first, customer2.c_middle, customer2.c_id]\n" +
 			" └─ Sort(customer2.c_first ASC)\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_balance, customer2.c_first, customer2.c_middle, customer2.c_id]\n" +
 			" └─ Sort(customer2.c_first ASC)\n" +
-			"     └─ Filter\n" +
-			"         ├─ (customer2.c_last = 'PRIESEPRES')\n" +
-			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
-			"             ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
-			"             └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
+			"     └─ IndexedTableAccess(customer2)\n" +
+			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [PRIESEPRES, PRIESEPRES], [NULL, ∞)}]\n" +
+			"         └─ columns: [c_id c_d_id c_w_id c_first c_middle c_last c_balance]\n" +
 			"",
 	},
 	{

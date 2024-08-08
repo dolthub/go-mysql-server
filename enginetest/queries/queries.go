@@ -1078,6 +1078,22 @@ Select * from (
 		Expected: []sql.Row{{1}},
 	},
 	{
+		Query:    "select count(*) from mytable where s in ('', 'first row');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(*) from mytable where s in (1, 'first row');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(*) from mytable where s in (NULL, 'first row');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select count(*) from niltable where i2 in (NULL, 1);",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query: "SELECT * FROM mytable;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},

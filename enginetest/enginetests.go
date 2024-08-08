@@ -4770,7 +4770,6 @@ func TestTracing(t *testing.T, harness Harness) {
 		"plan.Distinct",
 		"plan.Project",
 		"plan.Sort",
-		"plan.Filter",
 		"plan.IndexedTableAccess",
 	}
 
