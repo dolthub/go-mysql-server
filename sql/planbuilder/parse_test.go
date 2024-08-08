@@ -2461,6 +2461,19 @@ Project
      └─ tableId: 0
 `,
 		},
+
+		{
+			Query: "select icu_version();",
+			ExpectedPlan: `
+Project
+ ├─ columns: [73.1 (varchar(4)) as icu_version()]
+ └─ Table
+     ├─ name: 
+     ├─ columns: []
+     ├─ colSet: ()
+     └─ tableId: 0
+`,
+		},
 	}
 
 	var w *bufio.Writer
