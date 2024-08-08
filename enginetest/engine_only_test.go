@@ -482,11 +482,11 @@ var analyzerTestCases = []analyzerTestCase{
 		planGenerator: func(t *testing.T, ctx *sql.Context, engine enginetest.QueryEngine) sql.Node {
 			db, err := engine.EngineAnalyzer().Catalog.Database(ctx, "foo")
 			require.NoError(t, err)
-			timestamp, err := function.NewTimestamp(
+			datetime, err := function.NewDatetime(
 				expression.NewLiteral("20200101:120000Z", types.LongText),
 			)
 			require.NoError(t, err)
-			return plan.NewShowTables(db, false, timestamp)
+			return plan.NewShowTables(db, false, datetime)
 		},
 	},
 	{

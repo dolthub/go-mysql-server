@@ -322,72 +322,6 @@ func (d *DateSub) String() string {
 	return fmt.Sprintf("%s(%s,%s)", d.FunctionName(), d.Date, d.Interval)
 }
 
-// TimestampConversion is a shorthand function for CONVERT(expr, TIMESTAMP)
-type TimestampConversion struct {
-	Date sql.Expression
-}
-
-var _ sql.FunctionExpression = (*TimestampConversion)(nil)
-var _ sql.CollationCoercible = (*TimestampConversion)(nil)
-
-// FunctionName implements sql.FunctionExpression
-func (t *TimestampConversion) FunctionName() string {
-	return "timestamp"
-}
-
-// Description implements sql.FunctionExpression
-func (t *TimestampConversion) Description() string {
-	return "returns a timestamp value for the expression given (e.g. the string '2020-01-02')."
-}
-
-func (t *TimestampConversion) Resolved() bool {
-	return t.Date == nil || t.Date.Resolved()
-}
-
-func (t *TimestampConversion) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Date)
-}
-
-func (t *TimestampConversion) Type() sql.Type {
-	return t.Date.Type()
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (*TimestampConversion) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 5
-}
-
-func (t *TimestampConversion) IsNullable() bool {
-	return false
-}
-
-func (t *TimestampConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	e, err := t.Date.Eval(ctx, r)
-	if err != nil {
-		return nil, err
-	}
-	ret, _, err := types.TimestampMaxPrecision.Convert(e)
-	return ret, err
-}
-
-func (t *TimestampConversion) Children() []sql.Expression {
-	if t.Date == nil {
-		return nil
-	}
-	return []sql.Expression{t.Date}
-}
-
-func (t *TimestampConversion) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewTimestamp(children...)
-}
-
-func NewTimestamp(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) != 1 {
-		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
-	}
-	return &TimestampConversion{args[0]}, nil
-}
-
 // DatetimeConversion is a shorthand function for CONVERT(expr, DATETIME)
 type DatetimeConversion struct {
 	Date sql.Expression
@@ -447,8 +381,10 @@ func (t *DatetimeConversion) WithChildren(children ...sql.Expression) (sql.Expre
 	return NewDatetime(children...)
 }
 
-// NewDatetime returns a DatetimeConversion instance to handle the sql function "datetime". This is
-// not a standard mysql function, but provides a shorthand for datetime conversions.
+// NewDatetime returns a DatetimeConversion instance to handle the sql function "datetime". The standard
+// MySQL function associated with this function is "timestamp", which actually returns a datetime type
+// instead of a timestamp type.
+// https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_timestamp
 func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATETIME", 1, len(args))
