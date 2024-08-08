@@ -396,6 +396,36 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
+		name: "empty join tests",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int);",
+				"CREATE table uv (u int primary key, v int);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where y-1 = (select u from uv where u = 4);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x != (select u from uv where u = 4);",
+				Expected: []sql.Row{{1, 0}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x not in (select u from uv where u = 4);",
+				Expected: []sql.Row{{1, 0}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and not exists (select u from uv where u = 4);",
+				Expected: []sql.Row{{1, 0}},
+			},
+		},
+	},
+	{
 		name: "issue 5633, nil comparison in merge join",
 		setup: [][]string{
 			setup.MydbData[0],

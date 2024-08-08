@@ -211,6 +211,10 @@ func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
 		return false
 	}
 
+	if ee, isExpr := e.Expr.(*ast.FuncExpr); isExpr && strings.EqualFold(ee.Name.String(), "name_const") {
+		return false
+	}
+
 	// We want to avoid unnecessary wrapping of aliases, but not at the cost of blowing up parse time. So we examine
 	// the expression tree to see if is likely to need an alias without first serializing the expression being
 	// examined, which can be very expensive in memory.

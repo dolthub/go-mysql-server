@@ -494,14 +494,24 @@ order by 1;`,
 		},
 		tests: []JoinPlanTest{
 			{
-				q:     "select * from xy where y-1 = (select u from uv limit 1 offset 5);",
+				q:     "select * from xy where y-1 = (select u from uv where u = 4);",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{},
 			},
 			{
-				q:     "select * from xy where x != (select u from uv limit 1 offset 5);",
-				types: []plan.JoinType{plan.JoinTypeAnti},
-				exp:   []sql.Row{},
+				q:     "select * from xy where x = 1 and x != (select u from uv where u = 4);",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q:     "select * from xy where x = 1 and x not in (select u from uv where u = 4);",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				exp:   []sql.Row{{1, 0}},
+			},
+			{
+				q:     "select * from xy where x = 1 and not exists (select u from uv where u = 4);",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				exp:   []sql.Row{{1, 0}},
 			},
 		},
 	},

@@ -164,6 +164,29 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 	return groupings
 }
 
+func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expression {
+	if len(f.Exprs) != 2 {
+		b.handleErr(fmt.Errorf("incorrect parameter count in the call to native function NAME_CONST"))
+	}
+	alias := b.selectExprToExpression(fromScope, f.Exprs[0])
+	aLit, ok := alias.(*expression.Literal)
+	if !ok {
+		b.handleErr(fmt.Errorf("incorrect arguments to: NAME_CONST"))
+	}
+	value := b.selectExprToExpression(fromScope, f.Exprs[1])
+	vLit, ok := value.(*expression.Literal)
+	if !ok {
+		b.handleErr(fmt.Errorf("incorrect arguments to: NAME_CONST"))
+	}
+	var aliasStr string
+	if types.IsText(aLit.Type()) {
+		aliasStr = strings.Trim(aLit.String(), "'")
+	} else {
+		aliasStr = aLit.String()
+	}
+	return expression.NewAlias(aliasStr, vLit)
+}
+
 func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []sql.Expression) *scope {
 	b.qProps.Set(sql.QFlagAggregation)
 
