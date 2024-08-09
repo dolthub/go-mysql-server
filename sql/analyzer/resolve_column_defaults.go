@@ -47,7 +47,7 @@ import (
 // The `information_schema.columns` table also needs access to the default values of every column in the database, and
 // because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
 // here, as well as in the `resolve_functions` rule.
-
+// TODO: rename this to resolveColumnDefaults
 func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validateColumnDefaults")
 	defer span.End()
