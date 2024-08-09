@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -63,13 +61,25 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 				return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnName)
 			}
 			col := sch[index]
-			eWrapper := expression.WrapExpression(node.Default)
-			err := validateColumnDefault(ctx, col, eWrapper)
+			err := validateColumnDefault(ctx, col, node.Default)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
-			// TODO: normalize default here too?
-			return node, transform.SameTree, nil
+
+			newDefault, same, err := normalizeDefault(ctx, node.Default)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return node, transform.SameTree, nil
+			}
+
+			newNode, err := node.WithDefault(newDefault)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
+
 		case sql.SchemaTarget:
 			switch node.(type) {
 			case *plan.AlterPK, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultDrop, *plan.CreateTable, *plan.DropColumn:
@@ -92,7 +102,12 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 					i++
 				}()
 
-				if eWrapper.Unwrap() == nil {
+				eVal := eWrapper.Unwrap()
+				if eVal == nil {
+					return e, transform.SameTree, nil
+				}
+				colDefault, ok := eVal.(*sql.ColumnDefaultValue)
+				if !ok {
 					return e, transform.SameTree, nil
 				}
 
@@ -101,19 +116,19 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 					return nil, transform.SameTree, err
 				}
 
-				err = validateColumnDefault(ctx, col, eWrapper)
+				err = validateColumnDefault(ctx, col, colDefault)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 
-				newE, same, err := normalizeDefault(ctx, col, eWrapper)
+				newDefault, same, err := normalizeDefault(ctx, colDefault)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 				if same {
 					return e, transform.SameTree, nil
 				}
-				return newE, transform.NewTree, nil
+				return expression.WrapExpression(newDefault), transform.NewTree, nil
 			})
 		default:
 			return node, transform.SameTree, nil
@@ -232,18 +247,13 @@ func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex
 
 // validateColumnDefault validates that the column default expression is valid for the column type and returns an error
 // if not
-func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) error {
-	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
-	if !ok {
-		return nil
-	}
-
-	if newDefault == nil {
+func validateColumnDefault(ctx *sql.Context, col *sql.Column, colDefault *sql.ColumnDefaultValue) error {
+	if colDefault == nil {
 		return nil
 	}
 
 	var err error
-	sql.Inspect(newDefault.Expr, func(e sql.Expression) bool {
+	sql.Inspect(colDefault.Expr, func(e sql.Expression) bool {
 		switch e.(type) {
 		case sql.FunctionExpression, *expression.UnresolvedFunction:
 			var funcName string
@@ -256,30 +266,23 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 				funcName = expr.Name()
 			}
 
-			if !newDefault.IsParenthesized() {
-				if funcName == "now" || funcName == "current_timestamp" {
-					// now and current_timestamps are the only functions that don't have to be enclosed in
-					// parens when used as a column default value, but ONLY when they are used with a
-					// datetime or timestamp column, otherwise it's invalid.
-					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
-						return true
-					} else {
-						err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
-						return false
-					}
-				}
+			// now and current_timestamps are the only functions that don't have to be enclosed in
+			// parens when used as a column default value, but ONLY when they are used with a
+			// datetime or timestamp column, otherwise it's invalid.
+			if (funcName == "now" || funcName == "current_timestamp") && !colDefault.IsParenthesized() && (!types.IsTimestampType(col.Type) && !types.IsDatetimeType(col.Type)) {
+				err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+				return false
 			}
 			return true
 		case *plan.Subquery:
 			err = sql.ErrColumnDefaultSubquery.New(col.Name)
 			return false
 		case *expression.GetField:
-			if newDefault.IsParenthesized() == false {
+			if !colDefault.IsParenthesized() {
 				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 				return false
-			} else {
-				return true
 			}
+			return true
 		default:
 			return true
 		}
@@ -290,7 +293,7 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 	}
 
 	// validate type of default expression
-	if err = newDefault.CheckType(ctx); err != nil {
+	if err = colDefault.CheckType(ctx); err != nil {
 		return err
 	}
 
@@ -425,32 +428,25 @@ func backtickDefault(wrap *expression.Wrapper) (sql.Expression, transform.TreeId
 
 // normalizeDefault ensures that default values that are literals are normalized string literals. This is necessary for
 // the default value to be serialized correctly.
-func normalizeDefault(ctx *sql.Context, col *sql.Column, wrap *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
-	colDefault, ok := wrap.Unwrap().(*sql.ColumnDefaultValue)
-	if !ok {
-		return wrap, transform.SameTree, nil
-	}
+func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql.Expression, transform.TreeIdentity, error) {
 	if colDefault == nil {
-		return wrap, transform.SameTree, nil
+		return colDefault, transform.SameTree, nil
 	}
 	if !colDefault.IsLiteral() {
-		return wrap, transform.SameTree, nil
-	}
-	if types.IsTime(colDefault.Type()) {
-		return wrap, transform.SameTree, nil
+		return colDefault, transform.SameTree, nil
 	}
 	if types.IsNull(colDefault.Expr) {
-		return wrap, transform.SameTree, nil
+		return colDefault, transform.SameTree, nil
 	}
-	if types.IsText(colDefault.Expr.Type()) {
-		return wrap, transform.SameTree, nil
+	if types.IsTime(colDefault.Type()) || types.IsTimespan(colDefault.Type()) || types.IsEnum(colDefault.Type()) || types.IsSet(colDefault.Type()) {
+		return colDefault, transform.SameTree, nil
 	}
 	val, err := colDefault.Eval(ctx, nil)
 	if err != nil {
-		return wrap, transform.SameTree, nil
+		return colDefault, transform.SameTree, nil
 	}
 	// TODO: floats should be rounded up
 	colDefault.Expr = expression.NewLiteral(val, types.Text)
-	return expression.WrapExpression(colDefault), transform.NewTree, nil
+	return colDefault, transform.NewTree, nil
 }
 
