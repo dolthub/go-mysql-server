@@ -3681,6 +3681,13 @@ Select * from (
 		Expected: []sql.Row{{1}},
 	},
 	{
+		// The timestamp function actually converts to a datetime type, so check that we can convert values
+		// outside of the timestamp range, but inside the datetime range.
+		// https://github.com/dolthub/dolt/issues/8236
+		Query:    "SELECT timestamp('1001-01-01 00:00:00');",
+		Expected: []sql.Row{{time.Date(1001, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
 		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:01'",
 		Expected: []sql.Row{},
 	},
