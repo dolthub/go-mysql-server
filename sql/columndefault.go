@@ -16,7 +16,7 @@ package sql
 
 import (
 	"fmt"
-	)
+)
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
 // and a default expression. A nil pointer of this type represents an implicit default value and is thus valid, so all
