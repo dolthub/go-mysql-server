@@ -228,6 +228,29 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
+		Name: "keyless unique index bug",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int UNIQUE)",
+			"INSERT INTO mytable values (1),(2),(3),(4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM mytable order by pk",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:       "INSERT INTO mytable VALUES (1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query: "INSERT INTO mytable VALUES (500000), (5000001)",
+			},
+			{
+				Query: "SELECT count(*) FROM mytable where pk in (500000,5000001)",
+			},
+		},
+	},
+	{
 		Name: "Dolt issue 7957, update join matched rows",
 		SetUpScript: []string{
 			`CREATE TABLE entity_test(
