@@ -1195,15 +1195,12 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, bucket
 
 	if len(filter.orChildren) > 0 {
 		for _, or := range filter.orChildren {
-			childStat, fds, ok, err := c.costIndexScanOr(or.(*iScanOr), s, buckets, ordinals, idx)
+			childStat, _, ok, err := c.costIndexScanOr(or.(*iScanOr), s, buckets, ordinals, idx)
 			if err != nil {
 				return nil, nil, sql.FastIntSet{}, 0, err
 			}
 			// if valid, INTERSECT
 			if ok {
-				if fds != nil {
-					s = s.WithFuncDeps(fds)
-				}
 				ret, err = stats.Intersect(ret, childStat, s.Types())
 				if err != nil {
 					return nil, nil, sql.FastIntSet{}, 0, err
@@ -1238,16 +1235,13 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets 
 	for _, child := range filter.children {
 		switch child := child.(type) {
 		case *iScanAnd:
-			childBuckets, fds, ids, _, err := c.costIndexScanAnd(child, s, buckets, ordinals, idx)
+			childBuckets, _, ids, _, err := c.costIndexScanAnd(child, s, buckets, ordinals, idx)
 			if err != nil {
 				return nil, nil, false, err
 			}
 			if ids.Len() != 1 || !ids.Contains(int(child.Id())) {
 				// scan option missed some filters
 				return nil, nil, false, nil
-			}
-			if fds != nil {
-				s = s.WithFuncDeps(fds)
 			}
 			ret, err = stats.Union(buckets, childBuckets, s.Types())
 			if err != nil {
@@ -1256,15 +1250,12 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets 
 
 		case *iScanLeaf:
 			var ok bool
-			childBuckets, fds, ok, _, err := c.costIndexScanLeaf(child, s, ret, ordinals, idx)
+			childBuckets, _, ok, _, err := c.costIndexScanLeaf(child, s, ret, ordinals, idx)
 			if err != nil {
 				return nil, nil, false, err
 			}
 			if !ok {
 				return nil, nil, false, nil
-			}
-			if fds != nil {
-				s = s.WithFuncDeps(fds)
 			}
 			ret, err = stats.Union(ret, childBuckets, s.Types())
 			if err != nil {

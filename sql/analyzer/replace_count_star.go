@@ -35,6 +35,12 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if agg, ok := n.(*plan.GroupBy); ok {
+
+			if len(agg.GroupByExprs) == 0 && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() {
+				// top-level aggregation with a single group can only return one row
+				qFlags.Set(sql.QFlagMax1Row)
+			}
+
 			if len(agg.SelectedExprs) == 1 && len(agg.GroupByExprs) == 0 {
 				child := agg.SelectedExprs[0]
 				var cnt *aggregation.Count
