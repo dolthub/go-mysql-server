@@ -391,8 +391,10 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			args[0] = expression.NewDistinctExpression(args[0])
 		}
 
-		f, err := b.cat.Function(b.ctx, name)
-		if err != nil {
+		f, ok := b.cat.Function(b.ctx, name)
+		if !ok {
+			// todo(max): similar names in registry?
+			err := sql.ErrFunctionNotFound.New(name)
 			b.handleErr(err)
 		}
 
@@ -400,7 +402,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		if err != nil {
 			b.handleErr(err)
 		}
-		var ok bool
+
 		agg, ok = newInst.(sql.Aggregation)
 		if !ok {
 			err := fmt.Errorf("expected function to be aggregation: %s", f.FunctionName())
@@ -527,13 +529,15 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		}
 	}
 	if win == nil {
-		f, err := b.cat.Function(b.ctx, name)
-		if err != nil {
+		f, ok := b.cat.Function(b.ctx, name)
+		if !ok {
+			// todo(max): similar names in registry?
+			err := sql.ErrFunctionNotFound.New(name)
 			b.handleErr(err)
 		}
 
 		newInst, err := f.NewInstance(args)
-		var ok bool
+
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
 			err := fmt.Errorf("function is not a window adaptable exprssion: %s", f.FunctionName())

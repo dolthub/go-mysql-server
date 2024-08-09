@@ -146,8 +146,10 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			return b.buildWindowFunc(inScope, name, v, (*ast.WindowDef)(v.Over))
 		}
 
-		f, err := b.cat.Function(b.ctx, name)
-		if err != nil {
+		f, ok := b.cat.Function(b.ctx, name)
+		if !ok {
+			// todo(max): similar names in registry?
+			err := sql.ErrFunctionNotFound.New(name)
 			b.handleErr(err)
 		}
 
@@ -341,8 +343,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			return col.scalarGf()
 		} else {
 			col := b.buildScalar(inScope, v.Name)
-			fn, err := b.cat.Function(b.ctx, "values")
-			if err != nil {
+			fn, ok := b.cat.Function(b.ctx, "values")
+			if !ok {
+				err := sql.ErrFunctionNotFound.New("values")
 				b.handleErr(err)
 			}
 			values, err := fn.NewInstance([]sql.Expression{col})

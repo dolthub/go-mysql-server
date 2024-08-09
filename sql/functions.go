@@ -28,7 +28,7 @@ type Function interface {
 // implemented by a DatabaseProvider.
 type FunctionProvider interface {
 	// Function returns the function with the name provided, case-insensitive
-	Function(ctx *Context, name string) (Function, error)
+	Function(ctx *Context, name string) (Function, bool)
 }
 
 type CreateFunc0Args func() Expression
