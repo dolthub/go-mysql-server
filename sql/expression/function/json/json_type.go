@@ -88,56 +88,63 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return "NULL", nil
 	}
 
+	if conv, ok := j.JSON.(*expression.Convert); ok {
+		typ := conv.Child.Type()
+		if types.IsDatetimeType(typ) {
+			return "DATETIME", nil
+		}
+		if types.IsDateType(typ) {
+			return "DATE", nil
+		}
+		if types.IsTime(typ) {
+			return "TIME", nil
+		}
+		if types.IsUnsigned(typ) || types.IsYear(typ) {
+			return "UNSIGNED INTEGER", nil
+		}
+
+	}
+
+	if comparableDoc, ok := doc.(types.ComparableJSON); ok {
+		return comparableDoc.Type(ctx)
+	}
+
 	val, err := doc.ToInterface()
 	if err != nil {
 		return nil, err
 	}
 
+	return TypeOfJsonValue(val), nil
+}
+
+func TypeOfJsonValue(val interface{}) string {
 	switch v := val.(type) {
 	case nil:
-		return "NULL", nil
+		return "NULL"
 	case bool:
-		return "BOOLEAN", nil
+		return "BOOLEAN"
 	case int64:
-		return "INTEGER", nil
+		return "INTEGER"
 	case uint64:
-		return "UNSIGNED INTEGER", nil
+		return "UNSIGNED INTEGER"
 	case float64:
-		if conv, ok := j.JSON.(*expression.Convert); ok {
-			typ := conv.Child.Type()
-			if types.IsUnsigned(typ) || types.IsYear(typ) {
-				return "UNSIGNED INTEGER", nil
-			}
-		}
 		if math.Floor(v) == v {
 			if v >= (math.MaxInt32+1)*2 {
-				return "UNSIGNED INTEGER", nil
+				return "UNSIGNED INTEGER"
 			}
-			return "INTEGER", nil
+			return "INTEGER"
 		}
-		return "DOUBLE", nil
+		return "DOUBLE"
 	case string:
-		if conv, ok := j.JSON.(*expression.Convert); ok {
-			typ := conv.Child.Type()
-			if types.IsDatetimeType(typ) {
-				return "DATETIME", nil
-			}
-			if types.IsDateType(typ) {
-				return "DATE", nil
-			}
-			if types.IsTime(typ) {
-				return "TIME", nil
-			}
-		}
-		return "STRING", nil
+		return "STRING"
 	case []interface{}:
-		return "ARRAY", nil
+		return "ARRAY"
 	case map[string]interface{}:
-		return "OBJECT", nil
+		return "OBJECT"
 	case decimal.Decimal:
-		return "DECIMAL", nil
+		return "DECIMAL"
 	default:
-		return "OPAQUE", nil
+		return "OPAQUE"
 	}
 }
 
