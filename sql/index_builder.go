@@ -563,6 +563,8 @@ func (b *EqualityIndexBuilder) AddEquality(_ *Context, colIdx int, k interface{}
 		}
 	}
 
+	// TODO: take into account key type?
+
 	var err error
 	k, _, err = typ.Convert(k)
 	if err != nil {
