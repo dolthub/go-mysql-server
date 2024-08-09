@@ -206,7 +206,7 @@ func (b *Builder) buildShowAllTriggers(inScope *scope, s *ast.Show) (outScope *s
 	}
 	db := b.resolveDb(dbName)
 
-	b.qProps.Set(sql.QFlagSetDatabase)
+	b.qFlags.Set(sql.QFlagSetDatabase)
 	var node sql.Node = plan.NewShowTriggers(db)
 
 	outScope = inScope.push()
@@ -626,7 +626,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	}
 	db := b.resolveDb(dbName)
 
-	b.qProps.Set(sql.QFlagSetDatabase)
+	b.qFlags.Set(sql.QFlagSetDatabase)
 	showTabs := plan.NewShowTables(db, s.Full, asOf)
 	for _, c := range showTabs.Schema() {
 		outScope.newColumn(scopeColumn{
@@ -761,7 +761,7 @@ func (b *Builder) buildShowWarnings(inScope *scope, s *ast.Show) (outScope *scop
 		unsupportedShow := "SHOW COUNT(*) WARNINGS"
 		b.handleErr(sql.ErrUnsupportedFeature.New(unsupportedShow))
 	}
-	b.qProps.Set(sql.QFlagShowWarnings)
+	b.qFlags.Set(sql.QFlagShowWarnings)
 	var node sql.Node
 	node = plan.ShowWarnings(b.ctx.Session.Warnings())
 	if s.Limit != nil {
