@@ -26,10 +26,10 @@ import (
 
 // Resolving column defaults is a multi-phase process, with different analyzer rules for each phase.
 //
-// * parseColumnDefaults: Some integrators (dolt but not GMS) store their column defaults as strings, which we need to
-// 	parse into expressions before we can analyze them any further.
-// * resolveColumnDefaults: Once we have an expression for a default value, it may contain expressions that need
-// 	simplification before further phases of processing can take place.
+//   - parseColumnDefaults: Some integrators (dolt but not GMS) store their column defaults as strings, which we need to
+//     parse into expressions before we can analyze them any further.
+//   - resolveColumnDefaults: Once we have an expression for a default value, it may contain expressions that need
+//     simplification before further phases of processing can take place.
 //
 // After this stage, expressions in column default values are handled by the normal analyzer machinery responsible for
 // resolving expressions, including things like columns and functions. Every node that needs to do this for its default
@@ -37,12 +37,12 @@ import (
 // identify the correct indexes for column references, which can vary based on the node type.
 //
 // Finally there are cleanup phases:
-// * validateColumnDefaults: ensures that newly created column defaults from a DDL statement are legal for the type of
-// 	column, various other business logic checks to match MySQL's logic.
-// * stripTableNamesFromDefault: column defaults headed for storage or serialization in a query result need the table
-// 	names in any GetField expressions stripped out so that they serialize to strings without such table names. Table
-// 	names in GetField expressions are expected in much of the rest of the analyzer, so we do this after the bulk of
-// 	analyzer work.
+//   - validateColumnDefaults: ensures that newly created column defaults from a DDL statement are legal for the type of
+//     column, various other business logic checks to match MySQL's logic.
+//   - stripTableNamesFromDefault: column defaults headed for storage or serialization in a query result need the table
+//     names in any GetField expressions stripped out so that they serialize to strings without such table names. Table
+//     names in GetField expressions are expected in much of the rest of the analyzer, so we do this after the bulk of
+//     analyzer work.
 //
 // The `information_schema.columns` table also needs access to the default values of every column in the database, and
 // because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
