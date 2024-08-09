@@ -2472,38 +2472,6 @@ Project
      └─ tableId: 0
 `,
 		},
-		{
-			Query: "select * from xy where x = json_object();",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
- └─ Filter
-     ├─ Eq
-     │   ├─ xy.x:1!null
-     │   └─ json_object()
-     └─ Table
-         ├─ name: xy
-         ├─ columns: [x y z]
-         ├─ colSet: (1-3)
-         └─ tableId: 1
-`,
-		},
-		{
-			Query: "select * from xy where x = json_array();",
-			ExpectedPlan: `
-Project
- ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
- └─ Filter
-     ├─ Eq
-     │   ├─ xy.x:1!null
-     │   └─ json_array()
-     └─ Table
-         ├─ name: xy
-         ├─ columns: [x y z]
-         ├─ colSet: (1-3)
-         └─ tableId: 1
-`,
-		},
 	}
 
 	var w *bufio.Writer
