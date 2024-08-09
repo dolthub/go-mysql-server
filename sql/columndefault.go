@@ -16,7 +16,7 @@ package sql
 
 import (
 	"fmt"
-)
+	)
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
 // and a default expression. A nil pointer of this type represents an implicit default value and is thus valid, so all
@@ -142,6 +142,9 @@ func (e *ColumnDefaultValue) String() string {
 	}
 
 	str := e.Expr.String()
+	if e.Literal {
+		return str
+	}
 
 	// There's a special case for NOW()
 	switch str {
@@ -159,14 +162,6 @@ func (e *ColumnDefaultValue) String() string {
 		return "CURRENT_TIMESTAMP(5)"
 	case "NOW(6)":
 		return "CURRENT_TIMESTAMP(6)"
-	}
-
-	if str != "NULL" && e.Literal {
-		v, err := e.Eval(nil, nil)
-		if err != nil {
-			return str
-		}
-		return fmt.Sprintf("'%v'", v)
 	}
 
 	// Non-literal expressions are enclosed in parentheses

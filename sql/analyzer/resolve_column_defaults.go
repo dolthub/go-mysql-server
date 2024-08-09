@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Resolving column defaults is a multi-phase process, with different analyzer rules for each phase.
@@ -67,6 +68,7 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 			if err != nil {
 				return node, transform.SameTree, err
 			}
+			// TODO: normalize default here too?
 			return node, transform.SameTree, nil
 		case sql.SchemaTarget:
 			switch node.(type) {
@@ -104,7 +106,14 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 					return nil, transform.SameTree, err
 				}
 
-				return e, transform.SameTree, nil
+				newE, same, err := normalizeDefault(ctx, col, eWrapper)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return e, transform.SameTree, nil
+				}
+				return newE, transform.NewTree, nil
 			})
 		default:
 			return node, transform.SameTree, nil
@@ -413,3 +422,35 @@ func backtickDefault(wrap *expression.Wrapper) (sql.Expression, transform.TreeId
 	nd.Expr = newExpr
 	return expression.WrapExpression(&nd), transform.NewTree, nil
 }
+
+// normalizeDefault ensures that default values that are literals are normalized string literals. This is necessary for
+// the default value to be serialized correctly.
+func normalizeDefault(ctx *sql.Context, col *sql.Column, wrap *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+	colDefault, ok := wrap.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return wrap, transform.SameTree, nil
+	}
+	if colDefault == nil {
+		return wrap, transform.SameTree, nil
+	}
+	if !colDefault.IsLiteral() {
+		return wrap, transform.SameTree, nil
+	}
+	if types.IsTime(colDefault.Type()) {
+		return wrap, transform.SameTree, nil
+	}
+	if types.IsNull(colDefault.Expr) {
+		return wrap, transform.SameTree, nil
+	}
+	if types.IsText(colDefault.Expr.Type()) {
+		return wrap, transform.SameTree, nil
+	}
+	val, err := colDefault.Eval(ctx, nil)
+	if err != nil {
+		return wrap, transform.SameTree, nil
+	}
+	// TODO: floats should be rounded up
+	colDefault.Expr = expression.NewLiteral(val, types.Text)
+	return expression.WrapExpression(colDefault), transform.NewTree, nil
+}
+

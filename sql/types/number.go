@@ -835,6 +835,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		if err != nil {
 			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 		}
+		f = math.Round(f)
 		return int64(f), sql.InRange, nil
 	case bool:
 		if v {

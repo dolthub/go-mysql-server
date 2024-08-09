@@ -392,9 +392,11 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	// Statement creation parts for each column
+
 	tableCollation := table.Collation()
 	for i, col := range schema {
 		var colDefaultStr string
+		// TODO: maybe no longer necessary
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil && col.Generated == nil {
 			// TODO : string literals should have character set introducer
