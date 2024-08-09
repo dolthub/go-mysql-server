@@ -221,6 +221,9 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		b.leftover = append(b.leftover, leftover)
 	}
 	ranges, err := b.buildRangeCollection(root)
+	if sql.ErrInvalidValueType.Is(err) {
+		return nil, nil, nil, nil
+	}
 	if err != nil {
 		return nil, nil, nil, err
 	}
