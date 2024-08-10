@@ -775,4 +775,70 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "column default normalization: int column rounds",
+		SetUpScript: []string{
+			"create table t (i int default '1.999');",
+			"insert into t values ();",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int DEFAULT '2'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"i", "int", "YES", "", "2", ""},
+				},
+			},
+			{
+				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
+				Expected: []sql.Row{
+					{"t", "i", "2"},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		Name: "column default normalization: float column rounds",
+		SetUpScript: []string{
+			"create table t (f float default '1.000000');",
+			"insert into t values ();",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `f` float DEFAULT '1'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"f", "float", "YES", "", "1", ""},
+				},
+			},
+			{
+				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
+				Expected: []sql.Row{
+					{"t", "f", "1"},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1.0}},
+			},
+		},
+	},
 }
