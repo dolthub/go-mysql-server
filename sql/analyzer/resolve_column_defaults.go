@@ -449,4 +449,3 @@ func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql
 	colDefault.Expr = expression.NewLiteral(val, types.Text)
 	return colDefault, transform.NewTree, nil
 }
-
