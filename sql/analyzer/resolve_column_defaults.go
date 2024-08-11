@@ -438,14 +438,14 @@ func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql
 	if types.IsNull(colDefault.Expr) {
 		return colDefault, transform.SameTree, nil
 	}
-	if types.IsTime(colDefault.Type()) || types.IsTimespan(colDefault.Type()) || types.IsEnum(colDefault.Type()) || types.IsSet(colDefault.Type()) {
+	typ := colDefault.Type()
+	if types.IsTime(typ) || types.IsTimespan(typ) || types.IsEnum(typ) || types.IsSet(typ) || types.IsJSON(typ) {
 		return colDefault, transform.SameTree, nil
 	}
 	val, err := colDefault.Eval(ctx, nil)
 	if err != nil {
 		return colDefault, transform.SameTree, nil
 	}
-	// TODO: floats should be rounded up
 	colDefault.Expr = expression.NewLiteral(val, types.Text)
 	return colDefault, transform.NewTree, nil
 }
