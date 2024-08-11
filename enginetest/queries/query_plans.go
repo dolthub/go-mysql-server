@@ -25073,4 +25073,28 @@ order by x, y;
 			"     └─ keys: xy.x\n" +
 			"",
 	},
+	{
+		Query: "select * from xy where x = json_object();",
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ xy.x:0!null\n" +
+			" │   └─ {} (json)\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: "select * from xy where x = json_array();",
+		ExpectedPlan: "Filter\n" +
+			" ├─ Eq\n" +
+			" │   ├─ xy.x:0!null\n" +
+			" │   └─ [] (json)\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+	},
 }

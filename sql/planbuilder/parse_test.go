@@ -2448,7 +2448,6 @@ Project
 			Skip:  true,
 			Query: "select x + 1 as xx from xy join uv on (x = u) group by xx having avg(xx) = 123;",
 		},
-
 		{
 			Query: "select name_const('abc', 123);",
 			ExpectedPlan: `
@@ -2461,7 +2460,6 @@ Project
      └─ tableId: 0
 `,
 		},
-
 		{
 			Query: "select icu_version();",
 			ExpectedPlan: `
