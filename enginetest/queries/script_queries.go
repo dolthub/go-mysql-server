@@ -172,6 +172,31 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
+		Name: "null index access edge case",
+		SetUpScript: []string{
+			"CREATE TABLE tab2(pk INTEGER PRIMARY KEY, col0 INTEGER, col1 FLOAT, col2 TEXT, col3 INTEGER, col4 FLOAT, col5 TEXT)",
+			"CREATE UNIQUE INDEX idx_tab2_1 ON tab2 (col4 DESC,col3)",
+			"CREATE UNIQUE INDEX idx_tab2_2 ON tab2 (col3 DESC,col0)",
+			"CREATE UNIQUE INDEX idx_tab2_3 ON tab2 (col3 DESC,col1)",
+			"INSERT INTO tab2 VALUES(0,42,58.92,'fnbtk',54,68.41,'xmttf')",
+			"INSERT INTO tab2 VALUES(1,31,46.55,'sksjf',46,53.20,'wiuva')",
+			"INSERT INTO tab2 VALUES(2,30,31.11,'oldqn',41,5.26,'ulaay')",
+			"INSERT INTO tab2 VALUES(3,77,44.90,'pmsir',70,84.14,'vcmyo')",
+			"INSERT INTO tab2 VALUES(4,23,95.26,'qcwxh',32,48.53,'rvtbr')",
+			"INSERT INTO tab2 VALUES(5,43,6.75,'snvwg',3,14.38,'gnfxz')",
+			"INSERT INTO tab2 VALUES(6,47,98.26,'bzzva',60,15.2,'imzeq')",
+			"INSERT INTO tab2 VALUES(7,98,40.9,'lsrpi',78,66.30,'ephwy')",
+			"INSERT INTO tab2 VALUES(8,19,15.16,'ycvjz',55,38.70,'dnkkz')",
+			"INSERT INTO tab2 VALUES(9,7,84.4,'ptovf',17,2.46,'hrxsf')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    " SELECT pk FROM tab2 WHERE (col3 <= 87 AND col3 <= 42) OR (col0 IS NULL)",
+				Expected: []sql.Row{{5}, {9}, {4}, {2}},
+			},
+		},
+	},
+	{
 		Name: "histogram bucket merging error for implementor buckets",
 		SetUpScript: []string{
 			"CREATE TABLE xy (x int primary key, y varchar(10), key(y));",
