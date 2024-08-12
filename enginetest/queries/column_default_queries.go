@@ -1,4 +1,4 @@
-// Copyright 2023 Dolthub, Inc.
+// Copyright 2023-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -838,6 +838,105 @@ var ColumnDefaultTests = []ScriptTest{
 			{
 				Query:    "select * from t;",
 				Expected: []sql.Row{{1.0}},
+			},
+		},
+	},
+	{
+		Name: "column default normalization: double quotes",
+		SetUpScript: []string{
+			"create table t (f float default \"1.23000\");",
+			"insert into t values ();",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `f` float DEFAULT '1.23'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"f", "float", "YES", "", "1.23", ""},
+				},
+			},
+			{
+				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
+				Expected: []sql.Row{
+					{"t", "f", "1.23"},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1.23}},
+			},
+		},
+	},
+	{
+		Name: "column default normalization: expression string literal",
+		SetUpScript: []string{
+			"create table t (f float default ('1.23000'));",
+			"insert into t values ();",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `f` float DEFAULT ('1.23000')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"f", "float", "YES", "", "('1.23000')", "DEFAULT_GENERATED"},
+				},
+			},
+			{
+				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
+				Expected: []sql.Row{
+					{"t", "f", "'1.23000'"},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1.23}},
+			},
+		},
+	},
+	{
+		Name: "column default normalization: expression int literal",
+		SetUpScript: []string{
+			"create table t (i int default (1));",
+			"insert into t values ();",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int DEFAULT (1)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"i", "int", "YES", "", "(1)", "DEFAULT_GENERATED"},
+				},
+			},
+			{
+				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
+				Expected: []sql.Row{
+					{"t", "i", "1"},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
