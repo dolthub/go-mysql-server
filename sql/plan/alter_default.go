@@ -114,29 +114,30 @@ func (d *AlterDefaultSet) Expressions() []sql.Expression {
 	return append(transform.WrappedColumnDefaults(d.targetSchema), expression.WrapExpressions(d.Default)...)
 }
 
-func (d AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (d *AlterDefaultSet) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1+len(d.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), 1+len(d.targetSchema))
 	}
 
-	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	nd := *d
+	sch, err := transform.SchemaWithDefaults(nd.targetSchema, exprs[:len(nd.targetSchema)])
 	if err != nil {
 		return nil, err
 	}
-	d.targetSchema = sch
-
+	nd.targetSchema = sch
 	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
-		d.Default = unwrappedColDefVal
+		nd.Default = unwrappedColDefVal
 	} else { // nil fails type check
-		d.Default = nil
+		nd.Default = nil
 	}
-	return &d, nil
+	return &nd, nil
 }
 
-func (d AlterDefaultSet) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
-	d.targetSchema = schema
-	return &d, nil
+func (d *AlterDefaultSet) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	nd := *d
+	nd.targetSchema = schema
+	return &nd, nil
 }
 
 func (d *AlterDefaultSet) TargetSchema() sql.Schema {
@@ -149,10 +150,16 @@ func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) 
 	return &na, nil
 }
 
-func (d AlterDefaultSet) WithDefault(expr sql.Expression) (sql.Node, error) {
-	newDefault := expr.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
-	d.Default = newDefault
-	return &d, nil
+func (d *AlterDefaultSet) WithDefault(expr sql.Expression) (sql.Node, error) {
+	nd := *d
+	var newDefault *sql.ColumnDefaultValue
+	if wrap, ok := expr.(*expression.Wrapper); ok {
+		newDefault = wrap.Unwrap().(*sql.ColumnDefaultValue)
+	} else {
+		newDefault = expr.(*sql.ColumnDefaultValue)
+	}
+	nd.Default = newDefault
+	return &nd, nil
 }
 
 // NewAlterDefaultDrop returns a *AlterDefaultDrop node.
@@ -184,9 +191,10 @@ func (d *AlterDefaultDrop) Children() []sql.Node {
 	return []sql.Node{d.Table}
 }
 
-func (d AlterDefaultDrop) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
-	d.targetSchema = schema
-	return &d, nil
+func (d *AlterDefaultDrop) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	nd := *d
+	nd.targetSchema = schema
+	return &nd, nil
 }
 
 func (d *AlterDefaultDrop) TargetSchema() sql.Schema {
@@ -197,18 +205,17 @@ func (d *AlterDefaultDrop) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(d.targetSchema)
 }
 
-func (d AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (d *AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(d.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
-
-	sch, err := transform.SchemaWithDefaults(d.targetSchema, exprs[:len(d.targetSchema)])
+	nd := *d
+	sch, err := transform.SchemaWithDefaults(nd.targetSchema, exprs[:len(nd.targetSchema)])
 	if err != nil {
 		return nil, err
 	}
-	d.targetSchema = sch
-
-	return &d, nil
+	nd.targetSchema = sch
+	return &nd, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.

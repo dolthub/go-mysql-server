@@ -47,7 +47,7 @@ var InsertQueries = []WriteQueryTest{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '64.6');",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(64)}},
+		ExpectedSelect:      []sql.Row{{int64(65)}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', 999);",

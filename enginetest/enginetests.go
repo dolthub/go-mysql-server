@@ -5028,15 +5028,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		now := time.Now()
 		expectedDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 		expectedDatetimeString := now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)
-
-		sql.RunWithNowFunc(func() time.Time {
-			return now
-		}, func() error {
-			RunQueryWithContext(t, e, harness, ctx, "insert into t11(pk) values (1)")
-			return nil
-		})
-
-		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
+		ctx.SetQueryTime(now)
+		RunQueryWithContext(t, e, harness, ctx, "insert into t11(pk) values (1)")
 		TestQueryWithContext(t, ctx, e, harness, "select * from t11 order by 1", []sql.Row{{1, expectedDate, expectedDatetimeString}}, nil, nil, nil)
 	})
 

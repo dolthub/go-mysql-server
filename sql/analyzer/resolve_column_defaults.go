@@ -15,21 +15,20 @@
 package analyzer
 
 import (
-	"github.com/dolthub/vitess/go/sqltypes"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Resolving column defaults is a multi-phase process, with different analyzer rules for each phase.
 //
-// * parseColumnDefaults: Some integrators (dolt but not GMS) store their column defaults as strings, which we need to
-// 	parse into expressions before we can analyze them any further.
-// * resolveColumnDefaults: Once we have an expression for a default value, it may contain expressions that need
-// 	simplification before further phases of processing can take place.
+//   - parseColumnDefaults: Some integrators (dolt but not GMS) store their column defaults as strings, which we need to
+//     parse into expressions before we can analyze them any further.
+//   - resolveColumnDefaults: Once we have an expression for a default value, it may contain expressions that need
+//     simplification before further phases of processing can take place.
 //
 // After this stage, expressions in column default values are handled by the normal analyzer machinery responsible for
 // resolving expressions, including things like columns and functions. Every node that needs to do this for its default
@@ -37,17 +36,16 @@ import (
 // identify the correct indexes for column references, which can vary based on the node type.
 //
 // Finally there are cleanup phases:
-// * validateColumnDefaults: ensures that newly created column defaults from a DDL statement are legal for the type of
-// 	column, various other business logic checks to match MySQL's logic.
-// * stripTableNamesFromDefault: column defaults headed for storage or serialization in a query result need the table
-// 	names in any GetField expressions stripped out so that they serialize to strings without such table names. Table
-// 	names in GetField expressions are expected in much of the rest of the analyzer, so we do this after the bulk of
-// 	analyzer work.
+//   - validateColumnDefaults: ensures that newly created column defaults from a DDL statement are legal for the type of
+//     column, various other business logic checks to match MySQL's logic.
+//   - stripTableNamesFromDefault: column defaults headed for storage or serialization in a query result need the table
+//     names in any GetField expressions stripped out so that they serialize to strings without such table names. Table
+//     names in GetField expressions are expected in much of the rest of the analyzer, so we do this after the bulk of
+//     analyzer work.
 //
 // The `information_schema.columns` table also needs access to the default values of every column in the database, and
 // because it's a table it can't implement `sql.Expressioner` like other node types. Instead it has special handling
 // here, as well as in the `resolve_functions` rule.
-
 func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validateColumnDefaults")
 	defer span.End()
@@ -62,12 +60,25 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 				return nil, transform.SameTree, sql.ErrColumnNotFound.New(node.ColumnName)
 			}
 			col := sch[index]
-			eWrapper := expression.WrapExpression(node.Default)
-			err := validateColumnDefault(ctx, col, eWrapper)
+			err := validateColumnDefault(ctx, col, node.Default)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
-			return node, transform.SameTree, nil
+
+			newDefault, same, err := normalizeDefault(ctx, node.Default)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return node, transform.SameTree, nil
+			}
+
+			newNode, err := node.WithDefault(newDefault)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
+
 		case sql.SchemaTarget:
 			switch node.(type) {
 			case *plan.AlterPK, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultDrop, *plan.CreateTable, *plan.DropColumn:
@@ -90,7 +101,12 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 					i++
 				}()
 
-				if eWrapper.Unwrap() == nil {
+				eVal := eWrapper.Unwrap()
+				if eVal == nil {
+					return e, transform.SameTree, nil
+				}
+				colDefault, ok := eVal.(*sql.ColumnDefaultValue)
+				if !ok {
 					return e, transform.SameTree, nil
 				}
 
@@ -99,12 +115,19 @@ func validateColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.S
 					return nil, transform.SameTree, err
 				}
 
-				err = validateColumnDefault(ctx, col, eWrapper)
+				err = validateColumnDefault(ctx, col, colDefault)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 
-				return e, transform.SameTree, nil
+				newDefault, same, err := normalizeDefault(ctx, colDefault)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if same {
+					return e, transform.SameTree, nil
+				}
+				return expression.WrapExpression(newDefault), transform.NewTree, nil
 			})
 		default:
 			return node, transform.SameTree, nil
@@ -223,18 +246,13 @@ func lookupColumnForTargetSchema(_ *sql.Context, node sql.SchemaTarget, colIndex
 
 // validateColumnDefault validates that the column default expression is valid for the column type and returns an error
 // if not
-func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) error {
-	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
-	if !ok {
-		return nil
-	}
-
-	if newDefault == nil {
+func validateColumnDefault(ctx *sql.Context, col *sql.Column, colDefault *sql.ColumnDefaultValue) error {
+	if colDefault == nil {
 		return nil
 	}
 
 	var err error
-	sql.Inspect(newDefault.Expr, func(e sql.Expression) bool {
+	sql.Inspect(colDefault.Expr, func(e sql.Expression) bool {
 		switch e.(type) {
 		case sql.FunctionExpression, *expression.UnresolvedFunction:
 			var funcName string
@@ -247,30 +265,23 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 				funcName = expr.Name()
 			}
 
-			if !newDefault.IsParenthesized() {
-				if funcName == "now" || funcName == "current_timestamp" {
-					// now and current_timestamps are the only functions that don't have to be enclosed in
-					// parens when used as a column default value, but ONLY when they are used with a
-					// datetime or timestamp column, otherwise it's invalid.
-					if col.Type.Type() == sqltypes.Datetime || col.Type.Type() == sqltypes.Timestamp {
-						return true
-					} else {
-						err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
-						return false
-					}
-				}
+			// now and current_timestamps are the only functions that don't have to be enclosed in
+			// parens when used as a column default value, but ONLY when they are used with a
+			// datetime or timestamp column, otherwise it's invalid.
+			if (funcName == "now" || funcName == "current_timestamp") && !colDefault.IsParenthesized() && (!types.IsTimestampType(col.Type) && !types.IsDatetimeType(col.Type)) {
+				err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+				return false
 			}
 			return true
 		case *plan.Subquery:
 			err = sql.ErrColumnDefaultSubquery.New(col.Name)
 			return false
 		case *expression.GetField:
-			if newDefault.IsParenthesized() == false {
+			if !colDefault.IsParenthesized() {
 				err = sql.ErrInvalidColumnDefaultValue.New(col.Name)
 				return false
-			} else {
-				return true
 			}
+			return true
 		default:
 			return true
 		}
@@ -281,7 +292,7 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, e *expression.Wrap
 	}
 
 	// validate type of default expression
-	if err = newDefault.CheckType(ctx); err != nil {
+	if err = colDefault.CheckType(ctx); err != nil {
 		return err
 	}
 
@@ -412,4 +423,28 @@ func backtickDefault(wrap *expression.Wrapper) (sql.Expression, transform.TreeId
 	nd := *newDefault
 	nd.Expr = newExpr
 	return expression.WrapExpression(&nd), transform.NewTree, nil
+}
+
+// normalizeDefault ensures that default values that are literals are normalized literals of the appropriate type.
+// This is necessary for the default value to be serialized correctly.
+func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql.Expression, transform.TreeIdentity, error) {
+	if colDefault == nil {
+		return colDefault, transform.SameTree, nil
+	}
+	if !colDefault.IsLiteral() {
+		return colDefault, transform.SameTree, nil
+	}
+	if types.IsNull(colDefault.Expr) {
+		return colDefault, transform.SameTree, nil
+	}
+	typ := colDefault.Type()
+	if types.IsTime(typ) || types.IsTimespan(typ) || types.IsEnum(typ) || types.IsSet(typ) || types.IsJSON(typ) {
+		return colDefault, transform.SameTree, nil
+	}
+	val, err := colDefault.Eval(ctx, nil)
+	if err != nil {
+		return colDefault, transform.SameTree, nil
+	}
+	colDefault.Expr = expression.NewLiteral(val, typ)
+	return colDefault, transform.NewTree, nil
 }

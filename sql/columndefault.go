@@ -141,9 +141,6 @@ func (e *ColumnDefaultValue) String() string {
 		return ""
 	}
 
-	// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
-	// The default value specified in a DEFAULT clause can be a literal constant or an expression. With one exception,
-	// enclose expression default values within parentheses to distinguish them from literal constant default values.
 	str := e.Expr.String()
 	if e.Literal {
 		return str
@@ -166,6 +163,8 @@ func (e *ColumnDefaultValue) String() string {
 	case "NOW(6)":
 		return "CURRENT_TIMESTAMP(6)"
 	}
+
+	// Non-literal expressions are enclosed in parentheses
 	return fmt.Sprintf("(%s)", str)
 }
 
