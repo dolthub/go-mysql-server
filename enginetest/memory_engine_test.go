@@ -209,12 +209,11 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test script",
+			Name: "test script",
 			SetUpScript: []string{
 				"create table t1 (id int primary key, t2_id int);",
 				"create table t2 (id int primary key, t3_id int);",
 				"create table t3 (id int primary key);",
-
 
 				"insert into t1 values (1, 2);",
 				"insert into t2 values (2, 3);",
@@ -223,7 +222,7 @@ func TestSingleScript(t *testing.T) {
 				"create trigger trig1 after delete on t1 for each row begin delete from t2 where id = old.t2_id; end;",
 				"create trigger trig2 after delete on t2 for each row begin delete from t3 where id = old.t3_id; end;",
 			},
-			Assertions:  []queries.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "delete from t1 where id = 1;",
 					Expected: []sql.Row{
