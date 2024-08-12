@@ -446,6 +446,6 @@ func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql
 	if err != nil {
 		return colDefault, transform.SameTree, nil
 	}
-	colDefault.Expr = expression.NewLiteral(val, types.Text)
+	colDefault.Expr = expression.NewLiteral(val, typ)
 	return colDefault, transform.NewTree, nil
 }
