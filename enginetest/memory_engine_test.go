@@ -211,35 +211,29 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name:        "test script",
 			SetUpScript: []string{
-				"create table t1 (id int primary key, t2_id int);",
-				"create table t2 (id int primary key, t3_id int);",
-				"create table t3 (id int primary key);",
-
-
-				"insert into t1 values (1, 2);",
-				"insert into t2 values (2, 3);",
-				"insert into t3 values (3);",
-
-				"create trigger trig1 after delete on t1 for each row begin delete from t2 where id = old.t2_id; end;",
-				"create trigger trig2 after delete on t2 for each row begin delete from t3 where id = old.t3_id; end;",
+				"create table a (x int primary key)",
+				"create table b (y int primary key)",
+				"create table c (z int primary key)",
+				"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
+				"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
 			},
 			Assertions:  []queries.ScriptTestAssertion{
 				{
-					Query: "delete from t1 where id = 1;",
+					Query: "insert into a values (1), (2), (3)",
 					Expected: []sql.Row{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
 				//{
-				//	Query: "select * from t1;",
+				//	Query: "select * from a;",
 				//	Expected: []sql.Row{},
 				//},
 				//{
-				//	Query: "select * from t2;",
+				//	Query: "select * from b;",
 				//	Expected: []sql.Row{},
 				//},
 				//{
-				//	Query: "select * from t3;",
+				//	Query: "select * from c;",
 				//	Expected: []sql.Row{},
 				//},
 			},

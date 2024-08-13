@@ -1490,6 +1490,9 @@ end;`,
 			},
 		},
 	},
+
+
+
 	{
 		Name: "trigger with signal",
 		SetUpScript: []string{

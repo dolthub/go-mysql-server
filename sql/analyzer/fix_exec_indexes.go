@@ -490,7 +490,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 	case *plan.Update:
 		newScope := s.copy()
 		srcScope := s.childScopes[0]
-		// schema is |old_row|-|new_row|; checks only recieve half
+		// schema is |old_row|-|new_row|; checks only receive half
 		newScope.columns = append(newScope.columns, srcScope.columns[:len(srcScope.columns)/2]...)
 		for _, c := range n.Checks() {
 			newE := fixExprToScope(c.Expr, newScope)
@@ -651,6 +651,10 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
+			if e.String() == "old.t3_id" {
+				print()
+			}
+
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
