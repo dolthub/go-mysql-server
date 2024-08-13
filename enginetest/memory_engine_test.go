@@ -209,7 +209,7 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test script",
+			Name: "test script",
 			SetUpScript: []string{
 				"create table a (x int primary key)",
 				"create table b (y int primary key)",
@@ -217,7 +217,7 @@ func TestSingleScript(t *testing.T) {
 				"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
 				"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
 			},
-			Assertions:  []queries.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into a values (1), (2), (3)",
 					Expected: []sql.Row{
