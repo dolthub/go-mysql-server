@@ -206,37 +206,12 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "test script",
-			SetUpScript: []string{
-				"create table a (x int primary key)",
-				"create table b (y int primary key)",
-				"create table c (z int primary key)",
-				"create trigger a1 before insert on a for each row insert into b values (new.x * 2)",
-				"create trigger b1 before insert on b for each row insert into c values (new.y * 7)",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "insert into a values (1), (2), (3)",
-					Expected: []sql.Row{
-						{types.OkResult{RowsAffected: 1}},
-					},
-				},
-				//{
-				//	Query: "select * from a;",
-				//	Expected: []sql.Row{},
-				//},
-				//{
-				//	Query: "select * from b;",
-				//	Expected: []sql.Row{},
-				//},
-				//{
-				//	Query: "select * from c;",
-				//	Expected: []sql.Row{},
-				//},
-			},
+			SetUpScript: []string{},
+			Assertions: []queries.ScriptTestAssertion{},
 		},
 	}
 
@@ -247,8 +222,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		engine.EngineAnalyzer().Verbose = true
-		engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
