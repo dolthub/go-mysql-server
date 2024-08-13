@@ -222,9 +222,6 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Verbose = true
-		//engine.EngineAnalyzer().Debug = true
-
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
