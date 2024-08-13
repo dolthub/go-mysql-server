@@ -1635,19 +1635,16 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from a;",
-				Expected: []sql.Row{
-				},
+				Query:    "select x from a;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select y from b;",
-				Expected: []sql.Row{
-				},
+				Query:    "select y from b;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select z from c;",
-				Expected: []sql.Row{
-				},
+				Query:    "select z from c;",
+				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -1666,19 +1663,16 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from a;",
-				Expected: []sql.Row{
-				},
+				Query:    "select x from a;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select y from b;",
-				Expected: []sql.Row{
-				},
+				Query:    "select y from b;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select z from c;",
-				Expected: []sql.Row{
-				},
+				Query:    "select z from c;",
+				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -1697,19 +1691,16 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from a;",
-				Expected: []sql.Row{
-				},
+				Query:    "select x from a;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select y from b;",
-				Expected: []sql.Row{
-				},
+				Query:    "select y from b;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select z from c;",
-				Expected: []sql.Row{
-				},
+				Query:    "select z from c;",
+				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -1728,19 +1719,16 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select x from a;",
-				Expected: []sql.Row{
-				},
+				Query:    "select x from a;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select y from b;",
-				Expected: []sql.Row{
-				},
+				Query:    "select y from b;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select z from c;",
-				Expected: []sql.Row{
-				},
+				Query:    "select z from c;",
+				Expected: []sql.Row{},
 			},
 		},
 	},
