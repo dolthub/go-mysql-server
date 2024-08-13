@@ -310,7 +310,7 @@ func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 	}
 }
 
-// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
+// Function returns the function with the name given, or false if it doesn't exist.
 func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, bool) {
 	if fp, ok := c.DbProvider.(sql.FunctionProvider); ok {
 		f, ok := fp.Function(ctx, name)
