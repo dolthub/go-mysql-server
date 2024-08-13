@@ -27,7 +27,7 @@ var ComplexIndexQueries = []QueryTest{
 	},
 	{
 		Query:    `SELECT * FROM comp_index_t0 WHERE v1>98 or v2 is NULL;`,
-		Expected: []sql.Row{{99, 98, 51}, {100, 98, 61}}},
+		Expected: []sql.Row{{99, 98, 51}, {100, 98, 61}},
 	},
 	{
 		Query:    `SELECT * FROM comp_index_t0 WHERE ((v1>=99 AND v2<>83) OR (v1>=1));`,
