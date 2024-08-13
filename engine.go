@@ -173,7 +173,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	emptyCtx := sql.NewEmptyContext()
 
-	if fn, err := a.Catalog.Function(emptyCtx, "version"); fn == nil || err != nil {
+	if _, ok := a.Catalog.Function(emptyCtx, "version"); !ok {
 		a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
 			Name: "version",
 			Fn:   function.NewVersion(cfg.VersionPostfix),

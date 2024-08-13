@@ -19,7 +19,6 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
@@ -344,12 +343,11 @@ func (r Registry) Register(fn ...sql.Function) error {
 }
 
 // Function implements sql.FunctionProvider
-func (r Registry) Function(ctx *sql.Context, name string) (sql.Function, error) {
+func (r Registry) Function(ctx *sql.Context, name string) (sql.Function, bool) {
 	if fn, ok := r[name]; ok {
-		return fn, nil
+		return fn, true
 	}
-	similar := similartext.FindFromMap(r, name)
-	return nil, sql.ErrFunctionNotFound.New(name + similar)
+	return nil, false
 }
 
 func (r Registry) mustRegister(fn ...sql.Function) {

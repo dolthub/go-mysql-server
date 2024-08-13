@@ -18,11 +18,11 @@ func (t MapCatalog) WithTableFunctions(fns ...TableFunction) (TableFunctionProvi
 	panic("implement me")
 }
 
-func (t MapCatalog) Function(ctx *Context, name string) (Function, error) {
+func (t MapCatalog) Function(ctx *Context, name string) (Function, bool) {
 	if f, ok := t.Funcs[name]; ok {
-		return f, nil
+		return f, true
 	}
-	return nil, fmt.Errorf("func not found")
+	return nil, false
 }
 
 func (t MapCatalog) TableFunction(ctx *Context, name string) (TableFunction, error) {

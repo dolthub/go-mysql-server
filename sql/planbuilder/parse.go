@@ -76,7 +76,7 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 
 	outScope := b.build(nil, stmt, parsed)
 
-	return outScope.node, parsed, remainder, b.qProps, err
+	return outScope.node, parsed, remainder, b.qFlags, err
 }
 
 func (b *Builder) BindOnly(stmt ast.Statement, s string) (_ sql.Node, _ *sql.QueryFlags, err error) {
@@ -93,5 +93,5 @@ func (b *Builder) BindOnly(stmt ast.Statement, s string) (_ sql.Node, _ *sql.Que
 	}()
 
 	outScope := b.build(nil, stmt, s)
-	return outScope.node, b.qProps, err
+	return outScope.node, b.qFlags, err
 }

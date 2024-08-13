@@ -355,8 +355,8 @@ type TestProvider struct {
 	tableFunctions map[string]sql.TableFunction
 }
 
-func (t TestProvider) Function(_ *sql.Context, name string) (sql.Function, error) {
-	return nil, sql.ErrFunctionNotFound.New(name)
+func (t TestProvider) Function(ctx *sql.Context, name string) (sql.Function, bool) {
+	return nil, false
 }
 
 func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
