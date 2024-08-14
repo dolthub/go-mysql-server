@@ -658,11 +658,11 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		if !schemaFound {
 			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
 		}
-	} else if isScd && schema == "" && b.currentDatabase != nil {
-		// if the database is a SchemaDatabase but the schema name is empty,
-		// try using builder current database, if it's not empty
-		if _, curdbIsSdb := b.currentDatabase.(sql.SchemaDatabase); curdbIsSdb {
-			database = b.currentDatabase
+	} else if isScd && schema == "" {
+		// try using builder's current database, if it's SchemaDatabase
+		curDb := b.currentDb()
+		if _, curDbIsScd := curDb.(sql.SchemaDatabase); curDbIsScd {
+			database = curDb
 		}
 	}
 
@@ -831,8 +831,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			if err != nil {
 				b.handleErr(err)
 			}
-			b.currentDatabase = database
-			node, _, err := b.BindOnly(stmt, viewDef.CreateViewStatement)
+			node, _, err := b.bindOnlyWithDatabase(database, stmt, viewDef.CreateViewStatement)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.
@@ -880,4 +879,15 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 		b.handleErr(err)
 	}
 	return n
+}
+
+// bindOnlyWithDatabase sets the current database to given database before binding and sets it back to the original
+// database after binding. This function is used for binding a subquery using the same database as the original query.
+func (b *Builder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s string) (sql.Node, *sql.QueryFlags, error) {
+	curDb := b.currentDb()
+	defer func() {
+		b.currentDatabase = curDb
+	}()
+	b.currentDatabase = db
+	return b.BindOnly(stmt, s)
 }
