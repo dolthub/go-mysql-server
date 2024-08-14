@@ -149,8 +149,8 @@ func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName
 
 func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {}
 
-func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
-	return nil, sql.ErrFunctionNotFound.New(name)
+func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, bool) {
+	return nil, false
 }
 
 func (c *Catalog) LockTable(ctx *sql.Context, table string) {}
