@@ -2827,6 +2827,46 @@ end;
 			},
 		},
 	},
+
+	{
+		Name: "triggers with multiple references to same table",
+		SetUpScript: []string{
+			"create table t1 (i int);",
+			"create table t2 (j int);",
+			`
+create trigger trig before insert on t1 
+for each row 
+begin
+	insert into t2 values (10 * new.i);
+	insert into t2 values (20 * new.i);
+	insert into t2 values (30 * new.i);
+    update t2 set j = 100 * j;
+    delete from t2 where j = 2000 * new.i;
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t1 values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t1 order by i;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t2 order by j;",
+				Expected: []sql.Row{
+					{1000},
+					{3000},
+				},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{
