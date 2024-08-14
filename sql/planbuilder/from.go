@@ -660,9 +660,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		}
 	} else if isScd && schema == "" {
 		// try using builder's current database, if it's SchemaDatabase
-		curDb := b.currentDb()
-		if _, curDbIsScd := curDb.(sql.SchemaDatabase); curDbIsScd {
-			database = curDb
+		if _, curDbIsScd := b.currentDatabase.(sql.SchemaDatabase); curDbIsScd {
+			database = b.currentDatabase
 		}
 	}
 
