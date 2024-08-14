@@ -645,8 +645,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		b.handleErr(err)
 	}
 
+	scd, isScd := database.(sql.SchemaDatabase)
 	if schema != "" {
-		scd, ok := database.(sql.SchemaDatabase)
 		if !ok {
 			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
 		}
@@ -657,6 +657,12 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		}
 		if !schemaFound {
 			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
+		}
+	} else if isScd && schema == "" && b.currentDatabase != nil {
+		// if the database is a SchemaDatabase but the schema name is empty,
+		// try using builder current database, if it's not empty
+		if _, curdbIsSdb := b.currentDatabase.(sql.SchemaDatabase); curdbIsSdb {
+			database = b.currentDatabase
 		}
 	}
 
@@ -825,6 +831,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			if err != nil {
 				b.handleErr(err)
 			}
+			b.currentDatabase = database
 			node, _, err := b.BindOnly(stmt, viewDef.CreateViewStatement)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
