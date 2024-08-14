@@ -38,8 +38,8 @@ type routineTable struct {
 
 var (
 	_ Table           = (*routineTable)(nil)
-	_ Databaseable    = (*ColumnsTable)(nil)
-	_ StatisticsTable = (*ColumnsTable)(nil)
+	_ Databaseable    = (*routineTable)(nil)
+	_ StatisticsTable = (*routineTable)(nil)
 )
 
 func (r *routineTable) AssignCatalog(cat Catalog) Table {
