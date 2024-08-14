@@ -647,7 +647,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 
 	scd, isScd := database.(sql.SchemaDatabase)
 	if schema != "" {
-		if !ok {
+		if !isScd {
 			b.handleErr(sql.ErrDatabaseSchemasNotSupported.New(database.Name()))
 		}
 		var schemaFound bool
