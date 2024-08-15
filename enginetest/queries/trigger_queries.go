@@ -2867,8 +2867,6 @@ end;
 			},
 		},
 	},
-
-
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{
