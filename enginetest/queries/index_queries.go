@@ -4138,6 +4138,10 @@ var IndexQueries = []ScriptTest{
 					{"unique_2", "col2", nil, nil},
 				},
 			},
+			{
+				Query:    "SHOW CREATE TABLE t0;",
+				Expected: []sql.Row{{"t0", "CREATE TABLE `t0` (\n  `id` char(32) NOT NULL,\n  `col1` varchar(255) NOT NULL,\n  `col2` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `unique_1` (`col1`,`col2`),\n  UNIQUE KEY `unique_2` (`col1`,`col2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
 			// Create a new table with two indexes over the same column set
 			{
 				Query:    "CREATE TABLE `t2` (`id` char(32) NOT NULL PRIMARY KEY, `col1` varchar(255) NOT NULL, `col2` varchar(255) NOT NULL, UNIQUE KEY unique_1(col1, col2), UNIQUE KEY unique_2(col1, col2));",
@@ -4152,6 +4156,10 @@ var IndexQueries = []ScriptTest{
 					{"unique_1", "col2", nil, nil},
 					{"unique_2", "col2", nil, nil},
 				},
+			},
+			{
+				Query:    "SHOW CREATE TABLE t2;",
+				Expected: []sql.Row{{"t2", "CREATE TABLE `t2` (\n  `id` char(32) NOT NULL,\n  `col1` varchar(255) NOT NULL,\n  `col2` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `unique_1` (`col1`,`col2`),\n  UNIQUE KEY `unique_2` (`col1`,`col2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
