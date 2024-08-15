@@ -443,8 +443,8 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
-					plan.NewSubqueryAlias("old", "", updateSrc.Child), // TODO: maybe not this?
-					plan.NewSubqueryAlias("new", "", updateSrc.Child), // TODO: maybe not this?
+					plan.NewSubqueryAlias("old", "", updateSrc.Child),
+					plan.NewSubqueryAlias("new", "", updateSrc.Child),
 				),
 			)
 		}
