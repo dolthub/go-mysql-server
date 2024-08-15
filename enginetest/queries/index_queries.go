@@ -4117,6 +4117,7 @@ var IndexQueries = []ScriptTest{
 		Name: "multiple indexes over same set of columns",
 		SetUpScript: []string{
 			"CREATE TABLE `t0` (`id` char(32) NOT NULL PRIMARY KEY, `col1` varchar(255) NOT NULL, `col2` varchar(255) NOT NULL);",
+			"CREATE TABLE `t3` (`id` char(32) NOT NULL PRIMARY KEY, `col1` varchar(255) NOT NULL, `col2` varchar(255) NOT NULL);",
 		},
 		Assertions: []ScriptTestAssertion{
 			// Add two indexes over the same column set to t0
@@ -4160,6 +4161,29 @@ var IndexQueries = []ScriptTest{
 			{
 				Query:    "SHOW CREATE TABLE t2;",
 				Expected: []sql.Row{{"t2", "CREATE TABLE `t2` (\n  `id` char(32) NOT NULL,\n  `col1` varchar(255) NOT NULL,\n  `col2` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `unique_1` (`col1`,`col2`),\n  UNIQUE KEY `unique_2` (`col1`,`col2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			// Add unnamed duplicate indexes
+			{
+				Query:    "ALTER TABLE t3 ADD CONSTRAINT UNIQUE(col1, col2);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "ALTER TABLE t3 ADD CONSTRAINT UNIQUE(col1, col2);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT kc.`constraint_name`, kc.`column_name`, kc.`referenced_table_name`, kc.`referenced_column_name` FROM information_schema.key_column_usage AS kc WHERE kc.table_schema = DATABASE() AND kc.table_name = 't3' ORDER BY kc.`ordinal_position`;",
+				Expected: []sql.Row{
+					{"PRIMARY", "id", nil, nil},
+					{"col1", "col1", nil, nil},
+					{"col1_2", "col1", nil, nil},
+					{"col1", "col2", nil, nil},
+					{"col1_2", "col2", nil, nil},
+				},
+			},
+			{
+				Query:    "SHOW CREATE TABLE t3;",
+				Expected: []sql.Row{{"t3", "CREATE TABLE `t3` (\n  `id` char(32) NOT NULL,\n  `col1` varchar(255) NOT NULL,\n  `col2` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `col1` (`col1`,`col2`),\n  UNIQUE KEY `col1_2` (`col1`,`col2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
