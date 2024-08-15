@@ -2840,8 +2840,8 @@ begin
 	insert into t2 values (10 * new.i);
 	insert into t2 values (20 * new.i);
 	insert into t2 values (30 * new.i);
-    update t2 set j = 100 * j;
-    delete from t2 where j = 2000 * new.i;
+	update t2 set j = 100 * j;
+	delete from t2 where j = 2000 * new.i;
 end;
 `,
 		},
@@ -2867,6 +2867,8 @@ end;
 			},
 		},
 	},
+
+
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{

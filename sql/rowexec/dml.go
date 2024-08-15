@@ -262,20 +262,23 @@ func (b *BaseBuilder) buildTriggerRollback(ctx *sql.Context, n *plan.TriggerRoll
 		return nil, err
 	}
 
-	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", SavePointName)
+	savePointCounter := b.triggerSavePointCounter + 1
+	savePointName := fmt.Sprintf("%s%v", TriggerSavePointPrefix, savePointCounter)
+	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", savePointName)
 
 	ts, ok := ctx.Session.(sql.TransactionSession)
 	if !ok {
 		return nil, fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
 	}
 
-	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), savePointName); err != nil {
 		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
 	}
+	b.triggerSavePointCounter = savePointCounter
 
 	return &triggerRollbackIter{
-		child:        childIter,
-		hasSavepoint: true,
+		child:         childIter,
+		savePointName: savePointName,
 	}, nil
 }
 

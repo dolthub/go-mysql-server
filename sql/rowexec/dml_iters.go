@@ -26,11 +26,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-const SavePointName = "__go_mysql_server_starting_savepoint__"
+const TriggerSavePointPrefix = "__go_mysql_server_trigger_savepoint__"
 
 type triggerRollbackIter struct {
-	child        sql.RowIter
-	hasSavepoint bool
+	child         sql.RowIter
+	savePointName string
 }
 
 func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
@@ -43,13 +43,13 @@ func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr err
 
 	// Rollback if error occurred
 	if err != nil && err != io.EOF {
-		if err := ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		if err := ts.RollbackToSavepoint(ctx, ctx.GetTransaction(), t.savePointName); err != nil {
 			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling RollbackToSavePoint during triggerRollbackIter.Next()")
 		}
-		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), t.savePointName); err != nil {
 			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Next()")
 		} else {
-			t.hasSavepoint = false
+			t.savePointName = ""
 		}
 	}
 
@@ -62,11 +62,11 @@ func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
 		return fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
 	}
 
-	if t.hasSavepoint {
-		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), SavePointName); err != nil {
+	if len(t.savePointName) != 0 {
+		if err := ts.ReleaseSavepoint(ctx, ctx.GetTransaction(), t.savePointName); err != nil {
 			ctx.GetLogger().WithError(err).Errorf("Unexpected error when calling ReleaseSavepoint during triggerRollbackIter.Close()")
 		}
-		t.hasSavepoint = false
+		t.savePointName = ""
 	}
 	return t.child.Close(ctx)
 }

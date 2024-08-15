@@ -323,6 +323,9 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
+			if !strings.EqualFold(trigger.TriggerEvent, sqlparser.InsertStr) {
+				return c.Node, transform.SameTree, nil
+			}
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -336,6 +339,9 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.Update:
+			if !strings.EqualFold(trigger.TriggerEvent, sqlparser.UpdateStr) {
+				return c.Node, transform.SameTree, nil
+			}
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -350,6 +356,9 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.DeleteFrom:
+			if !strings.EqualFold(trigger.TriggerEvent, sqlparser.DeleteStr) {
+				return c.Node, transform.SameTree, nil
+			}
 			// TODO: This should work correctly when there is only one table that
 			//       has a trigger on it, but it won't work if a DELETE FROM JOIN
 			//       is deleting from two tables that both have triggers. Seems
@@ -415,14 +424,14 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	case sqlparser.InsertStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
-			plan.NewTableAlias("new", getResolvedTable(n)),
+			plan.NewTableAlias("new", trigger.Table),
 		)
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	case sqlparser.UpdateStr:
 		var scopeNode *plan.Project
 		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
-			resTbl := getResolvedTable(n)
+			resTbl := getResolvedTable(n) // TODO: maybe not this?
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
@@ -435,8 +444,8 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
-					plan.NewSubqueryAlias("old", "", updateSrc.Child),
-					plan.NewSubqueryAlias("new", "", updateSrc.Child),
+					plan.NewSubqueryAlias("old", "", updateSrc.Child), // TODO: maybe not this?
+					plan.NewSubqueryAlias("new", "", updateSrc.Child), // TODO: maybe not this?
 				),
 			)
 		}
@@ -444,9 +453,11 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		s := scope.NewScope(scopeNode)
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	case sqlparser.DeleteStr:
+		// TODO: find the actual table we are deleting from
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
-			plan.NewTableAlias("old", getResolvedTable(n)),
+			plan.NewTableAlias("old", trigger.Table),
+			//plan.NewTableAlias("old", getResolvedTable(n)),
 		)
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
 		s := scope.NewScope(scopeNode)
