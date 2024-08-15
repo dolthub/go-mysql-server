@@ -2834,16 +2834,16 @@ end;
 			"create table t1 (i int);",
 			"create table t2 (j int);",
 			`
-create trigger trig before insert on t1 
-for each row 
-begin
-	insert into t2 values (10 * new.i);
-	insert into t2 values (20 * new.i);
-	insert into t2 values (30 * new.i);
-	update t2 set j = 100 * j;
-	delete from t2 where j = 2000 * new.i;
-end;
-`,
+    create trigger trig before insert on t1 
+    for each row 
+    begin
+    	insert into t2 values (10 * new.i);
+    	insert into t2 values (20 * new.i);
+    	insert into t2 values (30 * new.i);
+    	update t2 set j = 100 * j;
+    	delete from t2 where j = 2000 * new.i;
+    end;
+    `,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2868,7 +2868,149 @@ end;
 		},
 	},
 
+	{
+		Name: "double nested triggers referencing multiple tables",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"create table tt (i int);",
+			"create table t1 (id int primary key, t2_id int);",
+			"create table t2 (id int primary key, t3_id int);",
+			"create table t3 (id int primary key);",
 
+			"insert into tt values (1), (2), (3);",
+			"insert into t1 values (1, 2);",
+			"insert into t2 values (2, 3);",
+			"insert into t3 values (3);",
+
+			`
+create trigger trig1 after delete on t1
+for each row
+  begin
+	insert into t values (old.id);
+    insert into t values (old.t2_id);
+    update tt set i = 10 * old.id where i = old.t2_id;
+    delete from t2 where id = old.t2_id;
+  end;
+`,
+			`
+create trigger trig2 after delete on t2
+for each row
+  begin
+	insert into t values (old.id);
+    insert into t values (old.t3_id);
+    update tt set i = 10 * old.id where i = old.t3_id;
+    delete from t3 where id = old.t3_id;
+  end;
+`,
+
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "delete from t1 where id = 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from tt order by i;",
+				Expected: []sql.Row{
+					{1},
+					{10},
+					{20},
+				},
+			},
+			{
+				Query: "select * from t1;",
+				Expected: []sql.Row{
+				},
+			},
+			{
+				Query: "select * from t2;",
+				Expected: []sql.Row{
+				},
+			},
+			{
+				Query: "select * from t3;",
+				Expected: []sql.Row{
+				},
+			},
+		},
+	},
+
+	{
+		Name: "nested triggers referencing multiple tables",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"create table t1 (id int primary key, t2_id int);",
+			"create table t2 (id int primary key, t3_id int);",
+			"create table t3 (id int primary key);",
+
+			"insert into t1 values (1, 2);",
+			"insert into t2 values (2, 3);",
+			"insert into t3 values (3);",
+
+			`
+create trigger trig1 after delete on t1
+for each row
+  begin
+	insert into t values (old.id);
+    insert into t values (old.t2_id);
+    delete from t2 where id = old.t2_id;
+  end;
+`,
+			`
+create trigger trig2 after delete on t2
+for each row
+  begin
+	insert into t values (old.id);
+    insert into t values (old.t3_id);
+    delete from t3 where id = old.t3_id;
+  end;
+`,
+
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "delete from t1 where id = 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t1;",
+				Expected: []sql.Row{
+				},
+			},
+			{
+				Query: "select * from t2;",
+				Expected: []sql.Row{
+				},
+			},
+			{
+				Query: "select * from t3;",
+				Expected: []sql.Row{
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{

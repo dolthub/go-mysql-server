@@ -431,12 +431,11 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	case sqlparser.UpdateStr:
 		var scopeNode *plan.Project
 		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
-			resTbl := getResolvedTable(n) // TODO: maybe not this?
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
-					plan.NewTableAlias("old", resTbl),
-					plan.NewTableAlias("new", resTbl),
+					plan.NewTableAlias("old", trigger.Table),
+					plan.NewTableAlias("new", trigger.Table),
 				),
 			)
 		} else {
