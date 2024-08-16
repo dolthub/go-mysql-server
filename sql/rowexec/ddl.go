@@ -1096,6 +1096,11 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 		if err != nil {
 			return err
 		}
+
+		err = warnOnDuplicateSecondaryIndex(ctx, idxDef.Name, idxAltTbl)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Evaluate our Full-Text indexes now

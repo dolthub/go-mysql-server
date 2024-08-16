@@ -4126,8 +4126,11 @@ var IndexQueries = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "ALTER TABLE t0 ADD CONSTRAINT unique_2 UNIQUE(col1, col2);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Query:                           "ALTER TABLE t0 ADD CONSTRAINT unique_2 UNIQUE(col1, col2);",
+				Expected:                        []sql.Row{{types.NewOkResult(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 1831,
+				ExpectedWarningMessageSubstring: "Duplicate index 'unique_2' defined on the table 'mydb.t0'",
 			},
 			{
 				Query: "SELECT kc.`constraint_name`, kc.`column_name`, kc.`referenced_table_name`, kc.`referenced_column_name` FROM information_schema.key_column_usage AS kc WHERE kc.table_schema = DATABASE() AND kc.table_name = 't0' ORDER BY kc.`ordinal_position`;",
@@ -4145,8 +4148,11 @@ var IndexQueries = []ScriptTest{
 			},
 			// Create a new table with two indexes over the same column set
 			{
-				Query:    "CREATE TABLE `t2` (`id` char(32) NOT NULL PRIMARY KEY, `col1` varchar(255) NOT NULL, `col2` varchar(255) NOT NULL, UNIQUE KEY unique_1(col1, col2), UNIQUE KEY unique_2(col1, col2));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Query:                           "CREATE TABLE `t2` (`id` char(32) NOT NULL PRIMARY KEY, `col1` varchar(255) NOT NULL, `col2` varchar(255) NOT NULL, UNIQUE KEY unique_1(col1, col2), UNIQUE KEY unique_2(col1, col2));",
+				Expected:                        []sql.Row{{types.NewOkResult(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 1831,
+				ExpectedWarningMessageSubstring: "Duplicate index 'unique_2' defined on the table 'mydb.t2'",
 			},
 			{
 				Query: "SELECT kc.`constraint_name`, kc.`column_name`, kc.`referenced_table_name`, kc.`referenced_column_name` FROM information_schema.key_column_usage AS kc WHERE kc.table_schema = DATABASE() AND kc.table_name = 't2' ORDER BY kc.`ordinal_position`;",
@@ -4168,8 +4174,11 @@ var IndexQueries = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "ALTER TABLE t3 ADD CONSTRAINT UNIQUE(col1, col2);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Query:                           "ALTER TABLE t3 ADD CONSTRAINT UNIQUE(col1, col2);",
+				Expected:                        []sql.Row{{types.NewOkResult(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 1831,
+				ExpectedWarningMessageSubstring: "Duplicate index 'col1_2' defined on the table 'mydb.t3'",
 			},
 			{
 				Query: "SELECT kc.`constraint_name`, kc.`column_name`, kc.`referenced_table_name`, kc.`referenced_column_name` FROM information_schema.key_column_usage AS kc WHERE kc.table_schema = DATABASE() AND kc.table_name = 't3' ORDER BY kc.`ordinal_position`;",
