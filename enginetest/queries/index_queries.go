@@ -4168,6 +4168,17 @@ var IndexQueries = []ScriptTest{
 				Query:    "SHOW CREATE TABLE t2;",
 				Expected: []sql.Row{{"t2", "CREATE TABLE `t2` (\n  `id` char(32) NOT NULL,\n  `col1` varchar(255) NOT NULL,\n  `col2` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `unique_1` (`col1`,`col2`),\n  UNIQUE KEY `unique_2` (`col1`,`col2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
+			{
+				Query:                           "ALTER TABLE t2 ADD CONSTRAINT unique_3 UNIQUE(col1, col2);",
+				Expected:                        []sql.Row{{types.NewOkResult(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 1831,
+				ExpectedWarningMessageSubstring: "Duplicate index 'unique_3' defined on the table 'mydb.t2'",
+			},
+			{
+				Query:    "SHOW CREATE TABLE t2;",
+				Expected: []sql.Row{{"t2", "CREATE TABLE `t2` (\n  `id` char(32) NOT NULL,\n  `col1` varchar(255) NOT NULL,\n  `col2` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `unique_1` (`col1`,`col2`),\n  UNIQUE KEY `unique_2` (`col1`,`col2`),\n  UNIQUE KEY `unique_3` (`col1`,`col2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
 			// Add unnamed duplicate indexes
 			{
 				Query:    "ALTER TABLE t3 ADD CONSTRAINT UNIQUE(col1, col2);",
