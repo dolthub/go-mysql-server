@@ -456,7 +456,6 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", trigger.Table),
-			//plan.NewTableAlias("old", getResolvedTable(n)),
 		)
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
 		s := scope.NewScope(scopeNode)

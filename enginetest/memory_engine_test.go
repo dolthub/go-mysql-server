@@ -206,89 +206,12 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "triple nested triggers referencing multiple tables",
-			SetUpScript: []string{
-				"create table t (i int);",
-				"create table tt (i int);",
-				"create table t1 (id int primary key, t2_id int);",
-				"create table t2 (id int primary key, t3_id int);",
-				"create table t3 (id int primary key);",
-
-				"insert into tt values (1), (2), (3);",
-				"insert into t1 values (1, 2);",
-				"insert into t2 values (2, 3);",
-				"insert into t3 values (3);",
-
-				`
-create trigger trig1 after delete on t1
-for each row
-  begin
-	insert into t values (old.id);
-    insert into t values (old.t2_id);
-    update tt set i = 10 * old.t2_id where i = old.id;
-    delete from t2 where id = old.t2_id;
-  end;
-`,
-				`
-create trigger trig2 after delete on t2
-for each row
-  begin
-	insert into t values (old.id);
-    insert into t values (old.t3_id);
-    update tt set i = 10 * old.t3_id where i = old.id;
-    delete from t3 where id = old.t3_id;
-  end;
-`,
-				`
-create trigger trig3 after delete on t3
-for each row
-  begin
-	insert into t values (old.id);
-    update tt set i = 9999 where i = old.id;
-  end;
-`,
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "delete from t1 where id = 1;",
-					Expected: []sql.Row{
-						{types.NewOkResult(1)},
-					},
-				},
-				{
-					Query: "select * from t order by i;",
-					Expected: []sql.Row{
-						{1},
-						{2},
-						{2},
-						{3},
-						{3},
-					},
-				},
-				{
-					Query: "select * from tt order by i;",
-					Expected: []sql.Row{
-						{20},
-						{30},
-						{9999},
-					},
-				},
-				{
-					Query:    "select * from t1;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "select * from t2;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "select * from t3;",
-					Expected: []sql.Row{},
-				},
-			},
+			Name: "test script",
+			SetUpScript: []string{},
+			Assertions: []queries.ScriptTestAssertion{},
 		},
 	}
 
@@ -298,9 +221,6 @@ for each row
 		if err != nil {
 			panic(err)
 		}
-
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
