@@ -1906,6 +1906,11 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			return err
 		}
 
+		err = warnOnDuplicateSecondaryIndex(ctx, indexDef.Name, idxAltTbl)
+		if err != nil {
+			return err
+		}
+
 		// Two ways to build an index for an integrator, implemented by two different interfaces.
 		// The first way is building just an index with a special Inserter, only if the integrator requests it
 		ibt, isIndexBuilding := idxAltTbl.(sql.IndexBuildingTable)
@@ -2033,6 +2038,57 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 	default:
 		return plan.ErrIndexActionNotImplemented.New(n.Action)
 	}
+}
+
+// warnOnDuplicateSecondaryIndex emits a session warning if the newly created index |newIndexName| duplicates
+// an existing index already existing on |idxAltTbl|.
+func warnOnDuplicateSecondaryIndex(ctx *sql.Context, newIndexName string, idxAltTbl sql.IndexAlterableTable) error {
+	idxTbl, ok := idxAltTbl.(sql.IndexAddressableTable)
+	if !ok {
+		return fmt.Errorf("error: %T doesn't implement IndexAddressableTable", idxAltTbl)
+	}
+
+	existingIndexes, err := idxTbl.GetIndexes(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Find the new sql.Index by name
+	var newIdx sql.Index
+	for _, existingIndex := range existingIndexes {
+		if existingIndex.ID() == newIndexName {
+			newIdx = existingIndex
+		}
+	}
+
+	// Then iterate through the existing indexes to look for a duplicate
+	if newIdx != nil {
+		for _, existingIndex := range existingIndexes {
+			if existingIndex == newIdx || existingIndex.ID() == "PRIMARY" {
+				continue
+			}
+
+			if len(newIdx.ColumnExpressionTypes()) != len(existingIndex.ColumnExpressionTypes()) {
+				continue
+			}
+
+			for i, existingColumnExpressionType := range existingIndex.ColumnExpressionTypes() {
+				if existingColumnExpressionType.Expression != newIdx.ColumnExpressionTypes()[i].Expression {
+					continue
+				}
+				if !existingColumnExpressionType.Type.Equals(newIdx.ColumnExpressionTypes()[i].Type) {
+					continue
+				}
+			}
+
+			// Log a session warning if we find a duplicate, then break, to avoid multiple warnings
+			ctx.Warn(1831, "Duplicate index '%s' defined on the table '%s.%s'. "+
+				"This is deprecated and will be disallowed in a future release.",
+				newIdx.ID(), newIdx.Database(), newIdx.Table())
+			break
+		}
+	}
+	return nil
 }
 
 // buildIndex builds an index on a table, as a less expensive alternative to doing a complete table rewrite.
