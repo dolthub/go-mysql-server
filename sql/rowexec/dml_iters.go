@@ -185,7 +185,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 
 func prependRowForTriggerExecutionSelector(ctx transform.Context) bool {
 	switch ctx.Node.(type) {
-	case *plan.TriggerBeginEndBlock:
+	case *plan.TriggerBeginEndBlock, *plan.TriggerRollback:
 		// we don't want to double prepend the row for nested trigger blocks
 		_, isTrig := ctx.Parent.(*plan.TriggerExecutor)
 		return !isTrig

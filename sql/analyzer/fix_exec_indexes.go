@@ -651,6 +651,9 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
+			if e.String() == "old.id" {
+				print()
+			}
 			if e.String() == "old.t3_id" {
 				print()
 			}
