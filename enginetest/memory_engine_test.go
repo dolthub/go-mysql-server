@@ -256,22 +256,18 @@ for each row
 				},
 				{
 					Query:    "select * from t1;",
-					Expected: []sql.Row{
-					},
+					Expected: []sql.Row{},
 				},
 				{
 					Query:    "select * from t2;",
-					Expected: []sql.Row{
-					},
+					Expected: []sql.Row{},
 				},
 				{
 					Query:    "select * from t3;",
-					Expected: []sql.Row{
-					},
+					Expected: []sql.Row{},
 				},
 			},
 		},
-
 	}
 
 	for _, test := range scripts {

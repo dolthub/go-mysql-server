@@ -2902,7 +2902,6 @@ for each row
     delete from t3 where id = old.t3_id;
   end;
 `,
-
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2929,19 +2928,16 @@ for each row
 				},
 			},
 			{
-				Query: "select * from t1;",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from t1;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select * from t2;",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from t2;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select * from t3;",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from t3;",
+				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -2997,19 +2993,16 @@ for each row
 				},
 			},
 			{
-				Query: "select * from t1;",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from t1;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select * from t2;",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from t2;",
+				Expected: []sql.Row{},
 			},
 			{
-				Query: "select * from t3;",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from t3;",
+				Expected: []sql.Row{},
 			},
 			{
 				Query: "select * from t order by i;",
