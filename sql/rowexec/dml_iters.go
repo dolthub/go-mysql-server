@@ -183,6 +183,17 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 	}
 }
 
+func prependRowForTriggerExecutionSelector(ctx transform.Context) bool {
+	switch ctx.Node.(type) {
+	case *plan.TriggerBeginEndBlock:
+		// we don't want to double prepend the row for nested trigger blocks
+		_, isTrig := ctx.Parent.(*plan.TriggerExecutor)
+		return !isTrig
+	default:
+		return true
+	}
+}
+
 func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	childRow, err := t.child.Next(ctx)
 	if err != nil {
@@ -190,7 +201,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	}
 
 	// Wrap the execution logic with the current child row before executing it.
-	logic, _, err := transform.NodeWithCtx(t.executionLogic, nil, prependRowInPlanForTriggerExecution(childRow))
+	logic, _, err := transform.NodeWithCtx(t.executionLogic, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(childRow))
 	if err != nil {
 		return nil, err
 	}

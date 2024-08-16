@@ -2947,13 +2947,15 @@ for each row
 	},
 
 	{
-		Name: "nested triggers referencing multiple tables",
+		Name: "triple nested triggers referencing multiple tables",
 		SetUpScript: []string{
 			"create table t (i int);",
+			"create table tt (i int);",
 			"create table t1 (id int primary key, t2_id int);",
 			"create table t2 (id int primary key, t3_id int);",
 			"create table t3 (id int primary key);",
 
+			"insert into tt values (1), (2), (3);",
 			"insert into t1 values (1, 2);",
 			"insert into t2 values (2, 3);",
 			"insert into t3 values (3);",
@@ -2964,6 +2966,7 @@ for each row
   begin
 	insert into t values (old.id);
     insert into t values (old.t2_id);
+    update tt set i = 10 * old.t2_id where i = old.id;
     delete from t2 where id = old.t2_id;
   end;
 `,
@@ -2973,10 +2976,18 @@ for each row
   begin
 	insert into t values (old.id);
     insert into t values (old.t3_id);
+    update tt set i = 10 * old.t3_id where i = old.id;
     delete from t3 where id = old.t3_id;
   end;
 `,
-
+			`
+create trigger trig3 after delete on t3
+for each row
+  begin
+	insert into t values (old.id);
+    update tt set i = 9999 where i = old.id;
+  end;
+`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
