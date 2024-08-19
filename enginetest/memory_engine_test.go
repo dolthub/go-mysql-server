@@ -206,13 +206,101 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test script",
-			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{},
+			Name:        "triple nested update triggers referencing multiple tables",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"create table tt (i int primary key, j int);",
+			"insert into tt values (1, 0), (2, 0), (3, 0);",
+			"create table ttt (i int primary key);",
+			"insert into ttt values (1), (2), (3);",
+			"create table t1 (i int primary key);",
+			"create table t2 (i int primary key, j int);",
+			"create table t3 (i int primary key, j int, k int);",
+			"insert into t1 values (1);",
+			"insert into t2 values (1, 0);",
+			"insert into t3 values (1, 0, 0);",
+			`
+create trigger trig1 after update on t1
+for each row
+  begin
+    update t2 set j = 10 * new.i where i = old.i;
+  end;
+`,
+			`
+create trigger trig2 after update on t2
+for each row
+  begin
+	insert into t values (old.i), (old.j), (new.i), (new.j);
+  end;
+`,
 		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query: "update t1 set i = 2 where i = 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			//{
+			//	Query: "select * from t order by i;",
+			//	Expected: []sql.Row{
+			//		{0},
+			//		{0},
+			//		{0},
+			//		{0},
+			//		{0},
+			//		{1},
+			//		{1},
+			//		{1},
+			//		{1},
+			//		{1},
+			//		{1},
+			//		{1},
+			//		{2},
+			//		{10},
+			//		{10},
+			//		{10},
+			//		{20},
+			//		{100},
+			//	},
+			//},
+			//{
+			//	Query: "select * from tt order by i;",
+			//	Expected: []sql.Row{
+			//		{1, 100},
+			//		{1, 200},
+			//		{3, 0},
+			//	},
+			//},
+			//{
+			//	Query: "select * from ttt order by i;",
+			//	Expected: []sql.Row{
+			//		{3},
+			//	},
+			//},
+			//{
+			//	Query:    "select * from t1;",
+			//	Expected: []sql.Row{
+			//		{2},
+			//	},
+			//},
+			//{
+			//	Query:    "select * from t2;",
+			//	Expected: []sql.Row{
+			//		{1, 20},
+			//	},
+			//},
+			//{
+			//	Query:    "select * from t3;",
+			//	Expected: []sql.Row{
+			//		{1, 10, 100},
+			//	},
+			//},
+		},
+	},
 	}
 
 	for _, test := range scripts {
@@ -221,6 +309,9 @@ func TestSingleScript(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
