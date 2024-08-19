@@ -2943,7 +2943,7 @@ for each row
 	},
 
 	{
-		Name: "triple nested triggers referencing multiple tables",
+		Name: "triple nested delete triggers referencing multiple tables",
 		SetUpScript: []string{
 			"create table t (i int);",
 			"create table tt (i int);",
@@ -3021,6 +3021,99 @@ for each row
 			{
 				Query:    "select * from t3;",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+
+	{
+		Name: "triple nested insert triggers referencing multiple tables",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"create table tt (i int primary key, j int);",
+			"create table ttt (i int primary key);",
+			"create table t1 (i int primary key);",
+			"create table t2 (i int primary key, j int);",
+			"create table t3 (i int primary key, j int, k int);",
+			"insert into tt values (1, 0), (2, 0), (3, 0);",
+			"insert into ttt values (1), (2), (3);",
+
+			`
+create trigger trig1 after insert on t1
+for each row
+  begin
+	insert into t values (new.i);
+    update tt set j = 100 * new.i where i = new.i;
+    delete from ttt where i = new.i;
+    insert into t2 values (new.i + 1, 10 * new.i);
+  end;
+`,
+			`
+create trigger trig2 after insert on t2
+for each row
+  begin
+	insert into t values (new.i), (new.j);
+    update tt set j = 100 * new.i where i = new.i;
+    delete from ttt where i = new.i;
+    insert into t3 values (new.i + 1, 10 * new.j, new.i + new.j);
+  end;
+`,
+			`
+create trigger trig3 after insert on t3
+for each row
+  begin
+	insert into t values (new.i), (new.j), (new.k);
+    update tt set j = 100 * new.i where i = new.i;
+    delete from ttt where i = new.i;
+  end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t1 values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t order by i;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+					{10},
+					{12},
+					{100},
+				},
+			},
+			{
+				Query: "select * from tt order by i;",
+				Expected: []sql.Row{
+					{1, 100},
+					{2, 200},
+					{3, 300},
+				},
+			},
+			{
+				Query: "select * from ttt order by i;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t1;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{
+					{2, 10},
+				},
+			},
+			{
+				Query:    "select * from t3;",
+				Expected: []sql.Row{
+					{3, 100, 12},
+				},
 			},
 		},
 	},

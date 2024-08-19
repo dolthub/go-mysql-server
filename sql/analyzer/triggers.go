@@ -123,6 +123,29 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		return n, transform.SameTree, nil
 	}
 
+	switch n := n.(type) {
+	case *plan.TriggerBeginEndBlock, *plan.BeginEndBlock, *plan.Block:
+		// Apply triggers to individual statements inside of blocks
+		newChildren := make([]sql.Node, len(n.Children()))
+		allSame := transform.SameTree
+		for i, c := range n.Children() {
+			nc, same, err := applyTriggers(ctx, a, c, scope, sel, qFlags)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			allSame = allSame && same
+			newChildren[i] = nc
+		}
+		if allSame {
+			return n, transform.SameTree, nil
+		}
+		newNode, err := n.WithChildren(newChildren...)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		return newNode, transform.NewTree, nil
+	}
+
 	var affectedTables []string
 	var triggerEvent plan.TriggerEvent
 	db := ctx.GetCurrentDatabase()
@@ -323,9 +346,6 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
-			if !strings.EqualFold(trigger.TriggerEvent, sqlparser.InsertStr) {
-				return c.Node, transform.SameTree, nil
-			}
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -339,9 +359,6 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.Update:
-			if !strings.EqualFold(trigger.TriggerEvent, sqlparser.UpdateStr) {
-				return c.Node, transform.SameTree, nil
-			}
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -356,9 +373,6 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.DeleteFrom:
-			if !strings.EqualFold(trigger.TriggerEvent, sqlparser.DeleteStr) {
-				return c.Node, transform.SameTree, nil
-			}
 			// TODO: This should work correctly when there is only one table that
 			//       has a trigger on it, but it won't work if a DELETE FROM JOIN
 			//       is deleting from two tables that both have triggers. Seems
@@ -452,7 +466,6 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		s := scope.NewScope(scopeNode)
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	case sqlparser.DeleteStr:
-		// TODO: find the actual table we are deleting from
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", trigger.Table),

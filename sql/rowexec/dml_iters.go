@@ -175,7 +175,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 			default:
 				return plan.NewPrependNode(n, row), transform.NewTree, nil
 			}
-		case *plan.ResolvedTable, *plan.IndexedTableAccess:
+		case *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.Values:
 			return plan.NewPrependNode(n, row), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
