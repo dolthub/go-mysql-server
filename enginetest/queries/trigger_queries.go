@@ -3167,7 +3167,7 @@ for each row
 			{
 				Query: "update t1 set i = 2 where i = 1;",
 				Expected: []sql.Row{
-					{types.NewOkResult(1)},
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
 			{
@@ -3197,7 +3197,7 @@ for each row
 				Query: "select * from tt order by i;",
 				Expected: []sql.Row{
 					{1, 100},
-					{1, 200},
+					{2, 200},
 					{3, 0},
 				},
 			},
