@@ -3208,19 +3208,19 @@ for each row
 				},
 			},
 			{
-				Query:    "select * from t1;",
+				Query: "select * from t1;",
 				Expected: []sql.Row{
 					{2},
 				},
 			},
 			{
-				Query:    "select * from t2;",
+				Query: "select * from t2;",
 				Expected: []sql.Row{
 					{1, 20},
 				},
 			},
 			{
-				Query:    "select * from t3;",
+				Query: "select * from t3;",
 				Expected: []sql.Row{
 					{1, 10, 100},
 				},
