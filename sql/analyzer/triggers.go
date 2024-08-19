@@ -123,6 +123,29 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		return n, transform.SameTree, nil
 	}
 
+	switch n := n.(type) {
+	case *plan.TriggerBeginEndBlock, *plan.BeginEndBlock, *plan.Block:
+		// Apply triggers to individual statements inside of blocks
+		newChildren := make([]sql.Node, len(n.Children()))
+		allSame := transform.SameTree
+		for i, c := range n.Children() {
+			nc, same, err := applyTriggers(ctx, a, c, scope, sel, qFlags)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			allSame = allSame && same
+			newChildren[i] = nc
+		}
+		if allSame {
+			return n, transform.SameTree, nil
+		}
+		newNode, err := n.WithChildren(newChildren...)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		return newNode, transform.NewTree, nil
+	}
+
 	var affectedTables []string
 	var triggerEvent plan.TriggerEvent
 	db := ctx.GetCurrentDatabase()
@@ -415,19 +438,18 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	case sqlparser.InsertStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
-			plan.NewTableAlias("new", getResolvedTable(n)),
+			plan.NewTableAlias("new", trigger.Table),
 		)
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	case sqlparser.UpdateStr:
 		var scopeNode *plan.Project
 		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
-			resTbl := getResolvedTable(n)
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
-					plan.NewTableAlias("old", resTbl),
-					plan.NewTableAlias("new", resTbl),
+					plan.NewTableAlias("old", trigger.Table),
+					plan.NewTableAlias("new", trigger.Table),
 				),
 			)
 		} else {
@@ -441,12 +463,12 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			)
 		}
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
-		s := scope.NewScope(scopeNode)
+		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
-			plan.NewTableAlias("old", getResolvedTable(n)),
+			plan.NewTableAlias("old", trigger.Table),
 		)
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
 		s := scope.NewScope(scopeNode)

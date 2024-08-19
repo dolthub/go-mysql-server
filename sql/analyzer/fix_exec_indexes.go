@@ -57,7 +57,6 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			// joins, subqueries, triggers, and procedures preclude fast indexing
 			return offsetAssignIndexes(n), transform.NewTree, nil
 		}
-
 	default:
 	}
 	ret, _, err := assignIndexesHelper(n, s)

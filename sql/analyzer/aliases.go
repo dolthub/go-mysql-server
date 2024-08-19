@@ -59,12 +59,12 @@ func (ta *TableAliases) addQualified(db string, alias string, target sql.Nameabl
 
 	lowerDbName := strings.ToLower(db)
 	_, hasExistingTarget := candidates.qualified[lowerDbName]
-
-	candidates.qualified[lowerDbName] = target
-	ta.aliases[lowerName] = candidates
 	if hasExistingTarget {
 		return sql.ErrDuplicateAliasOrTable.New(alias)
 	}
+
+	candidates.qualified[lowerDbName] = target
+	ta.aliases[lowerName] = candidates
 	return nil
 }
 
@@ -194,6 +194,24 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 			analysisErr = passAliases.addQualified(rt.Database().Name(), rt.Name(), rt)
 			return false
 		case *plan.Procedure:
+			return false
+		case *plan.TriggerBeginEndBlock:
+			// blocks should not be parsed as a whole, just their statements individually
+			for _, child := range node.Children() {
+				_, analysisErr = getTableAliases(child, recScope)
+				if analysisErr != nil {
+					break
+				}
+			}
+			return false
+		case *plan.BeginEndBlock:
+			// blocks should not be parsed as a whole, just their statements individually
+			for _, child := range node.Children() {
+				_, analysisErr = getTableAliases(child, recScope)
+				if analysisErr != nil {
+					break
+				}
+			}
 			return false
 		case *plan.Block:
 			// blocks should not be parsed as a whole, just their statements individually
