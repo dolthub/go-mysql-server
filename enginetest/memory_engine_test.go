@@ -209,9 +209,9 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "test script",
+			Name:        "test script",
 			SetUpScript: []string{},
-			Assertions: []queries.ScriptTestAssertion{},
+			Assertions:  []queries.ScriptTestAssertion{},
 		},
 	}
 
