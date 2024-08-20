@@ -228,22 +228,61 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
-		Name: "index match string is exact, no prefix match",
+		Name: "index match only exact string, no prefix",
 		SetUpScript: []string{
-			"CREATE TABLE x (x varchar(10) primary key)",
-			"INSERT INTO x values ('3'), ('30'), ('3#')",
+			"CREATE TABLE pk (x varchar(10) primary key)",
+			"INSERT INTO pk values ('3'), ('30'), ('3#')",
+			"CREATE TABLE uniq (y int primary key, x varchar(10), unique key (x))",
+			"INSERT INTO uniq values (1,'3'), (2,'30'), (3,'3#')",
+			"CREATE TABLE noncov (y int primary key, x varchar(10), z int, key (x))",
+			"INSERT INTO noncov values (1,'3',1), (2,'30',2), (3,'3#',3)",
+			"CREATE TABLE keyless (y int, x varchar(10),key (x))",
+			"INSERT INTO keyless values (1,'3'), (2,'30'), (3,'3#')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from x where x = '3'",
+				Query:    "select * from pk where x = '3'",
 				Expected: []sql.Row{{"3"}},
 			},
 			{
-				Query: "delete from x where x = '3' ",
+				Query: "delete from pk where x = '3' ",
 			},
 			{
-				Query:    "select * from x",
+				Query:    "select * from pk",
 				Expected: []sql.Row{{"30"}, {"3#"}},
+			},
+			{
+				Query:    "select * from uniq where x = '3'",
+				Expected: []sql.Row{{1, "3"}},
+			},
+			{
+				Query: "delete from uniq where x = '3' ",
+			},
+			{
+				Query:    "select * from uniq",
+				Expected: []sql.Row{{2, "30"}, {3, "3#"}},
+			},
+			{
+				Query:    "select * from noncov where x = '3'",
+				Expected: []sql.Row{{1, "3", 1}},
+			},
+			{
+				Query: "delete from noncov where x = '3' ",
+			},
+			{
+				Query:    "select * from noncov",
+				Expected: []sql.Row{{2, "30", 2}, {3, "3#", 3}},
+			},
+			{
+				Query:    "select * from keyless where x = '3'",
+				Expected: []sql.Row{{1, "3"}},
+			},
+			{
+				Query: "delete from keyless where x = '3' ",
+			},
+			{
+				Query:    "select * from keyless",
+				Expected: []sql.Row{{2, "30"}, {3, "3#"}},
 			},
 		},
 	},
