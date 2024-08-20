@@ -228,6 +228,26 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
+		Name: "index match string is exact, no prefix match",
+		SetUpScript: []string{
+			"CREATE TABLE x (x varchar(10) primary key)",
+			"INSERT INTO x values ('3'), ('30'), ('3#')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from x where x = '3'",
+				Expected: []sql.Row{{"3"}},
+			},
+			{
+				Query: "delete from x where x = '3' ",
+			},
+			{
+				Query:    "select * from x",
+				Expected: []sql.Row{{"30"}, {"3#"}},
+			},
+		},
+	},
+	{
 		Name: "keyless unique index bug",
 		SetUpScript: []string{
 			"CREATE TABLE mytable (pk int UNIQUE)",
