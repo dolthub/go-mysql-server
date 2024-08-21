@@ -245,7 +245,8 @@ CREATE TABLE sourceTable_test (
 				Expected: []sql.Row{{"3"}},
 			},
 			{
-				Query: "delete from pk where x = '3' ",
+				Query:    "delete from pk where x = '3' ",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from pk",
@@ -256,7 +257,8 @@ CREATE TABLE sourceTable_test (
 				Expected: []sql.Row{{1, "3"}},
 			},
 			{
-				Query: "delete from uniq where x = '3' ",
+				Query:    "delete from uniq where x = '3' ",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from uniq",
@@ -267,7 +269,8 @@ CREATE TABLE sourceTable_test (
 				Expected: []sql.Row{{1, "3", 1}},
 			},
 			{
-				Query: "delete from noncov where x = '3' ",
+				Query:    "delete from noncov where x = '3' ",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from noncov",
@@ -278,7 +281,8 @@ CREATE TABLE sourceTable_test (
 				Expected: []sql.Row{{1, "3"}},
 			},
 			{
-				Query: "delete from keyless where x = '3' ",
+				Query:    "delete from keyless where x = '3' ",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from keyless",
