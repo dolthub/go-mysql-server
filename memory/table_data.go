@@ -276,6 +276,14 @@ func (td *TableData) numRows(ctx *sql.Context) (uint64, error) {
 // throws an error if any two or more rows share the same |cols| values.
 func (td *TableData) errIfDuplicateEntryExist(cols []string, idxName string) error {
 	columnMapping, err := td.columnIndexes(cols)
+
+	// We currently skip validating duplicates on unique virtual columns.
+	for _, i := range columnMapping {
+		if td.schema.Schema[i].Virtual {
+			return nil
+		}
+	}
+
 	if err != nil {
 		return err
 	}
