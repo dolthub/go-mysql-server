@@ -47,7 +47,7 @@ type AlterIndex struct {
 	// ddlNode references to the database that is being operated on
 	ddlNode
 	// Table is the table that is being referenced
-	Table sql.Node
+	Table sql.TableNode
 	// IndexName is the index name, and in the case of a RENAME it represents the new name
 	IndexName string
 	// PreviousIndexName states the old name when renaming an index
@@ -72,7 +72,7 @@ var _ sql.Expressioner = (*AlterIndex)(nil)
 var _ sql.Node = (*AlterIndex)(nil)
 var _ sql.CollationCoercible = (*AlterIndex)(nil)
 
-func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.TableNode, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
 		Action:     IndexAction_Create,
 		ddlNode:    ddlNode{Db: db},
@@ -85,7 +85,7 @@ func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, usin
 	}
 }
 
-func NewAlterDropIndex(db sql.Database, table sql.Node, indexName string) *AlterIndex {
+func NewAlterDropIndex(db sql.Database, table sql.TableNode, indexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:    IndexAction_Drop,
 		ddlNode:   ddlNode{Db: db},
@@ -94,7 +94,7 @@ func NewAlterDropIndex(db sql.Database, table sql.Node, indexName string) *Alter
 	}
 }
 
-func NewAlterRenameIndex(db sql.Database, table sql.Node, fromIndexName, toIndexName string) *AlterIndex {
+func NewAlterRenameIndex(db sql.Database, table sql.TableNode, fromIndexName, toIndexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:            IndexAction_Rename,
 		ddlNode:           ddlNode{Db: db},
@@ -104,7 +104,7 @@ func NewAlterRenameIndex(db sql.Database, table sql.Node, fromIndexName, toIndex
 	}
 }
 
-func NewAlterDisableEnableKeys(db sql.Database, table sql.Node, disableKeys bool) *AlterIndex {
+func NewAlterDisableEnableKeys(db sql.Database, table sql.TableNode, disableKeys bool) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_DisableEnableKeys,
 		ddlNode:     ddlNode{Db: db},
@@ -125,9 +125,13 @@ func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
+	child, ok := children[0].(sql.TableNode)
+	if !ok {
+		return nil, fmt.Errorf("AlterIndex.WithChildren requires a TableNode")
+	}
 	switch p.Action {
 	case IndexAction_Create, IndexAction_Drop, IndexAction_Rename, IndexAction_DisableEnableKeys:
-		p.Table = children[0]
+		p.Table = child
 		return &p, nil
 	default:
 		return nil, ErrIndexActionNotImplemented.New(p.Action)
