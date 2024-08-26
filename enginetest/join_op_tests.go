@@ -1873,6 +1873,37 @@ SELECT SUM(x) FROM xy WHERE x IN (
 			},
 		},
 	},
+	{
+		name: "case insensitive key column names",
+		setup: [][]string{
+			{
+				"CREATE TABLE DEPARTMENTS (ID VARCHAR(8) PRIMARY KEY, NAME VARCHAR(255));",
+				"CREATE TABLE EMPLOYEES (ID VARCHAR(8) PRIMARY KEY, FIRSTNAME VARCHAR(255), DEPARTMENT_ID VARCHAR(8));",
+				"INSERT INTO DEPARTMENTS (ID, NAME) VALUES ('101', 'Human Resources'), ('102', 'Finance'), ('103', 'IT');",
+				"INSERT INTO EMPLOYEES (ID, FIRSTNAME,DEPARTMENT_ID) VALUES ('001', 'John', '101'), ('002', 'Jane','102'), ('003', 'Emily','103');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "SELECT * FROM EMPLOYEES e INNER JOIN DEPARTMENTS d ON e.DEPARTMENT_ID = d.ID WHERE e.DEPARTMENT_ID = '102';",
+				Expected: []sql.Row{
+					{"002", "Jane", "102", "102", "Finance"},
+				},
+			},
+			{
+				Query: "SELECT * FROM EMPLOYEES e INNER JOIN DEPARTMENTS d ON e.department_id = d.ID WHERE e.department_id = '102';",
+				Expected: []sql.Row{
+					{"002", "Jane", "102", "102", "Finance"},
+				},
+			},
+			{
+				Query: "SELECT * FROM EMPLOYEES e INNER JOIN DEPARTMENTS d ON e.DePaRtMeNt_Id = d.ID WHERE e.dEpArTmEnT_iD = '102';",
+				Expected: []sql.Row{
+					{"002", "Jane", "102", "102", "Finance"},
+				},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
