@@ -1162,14 +1162,14 @@ var JoinScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "case insensitive key lookup",
+		Name: "case insensitive key lookup",
 		SetUpScript: []string{
 			"CREATE TABLE DEPARTMENTS (ID VARCHAR(8) PRIMARY KEY, NAME VARCHAR(255));",
 			"CREATE TABLE EMPLOYEES (ID VARCHAR(8) PRIMARY KEY, FIRSTNAME VARCHAR(255), DEPARTMENT_ID VARCHAR(8));",
 			"INSERT INTO DEPARTMENTS (ID, NAME) VALUES ('101', 'Human Resources'), ('102', 'Finance'), ('103', 'IT');",
 			"INSERT INTO EMPLOYEES (ID, FIRSTNAME,DEPARTMENT_ID) VALUES ('001', 'John', '101'), ('002', 'Jane','102'), ('003', 'Emily','103');",
 		},
-		Assertions:  []ScriptTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM EMPLOYEES e INNER JOIN DEPARTMENTS d ON e.DEPARTMENT_ID = d.ID WHERE e.DEPARTMENT_ID = '102';",
 				Expected: []sql.Row{
