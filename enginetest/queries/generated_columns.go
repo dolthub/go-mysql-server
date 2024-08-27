@@ -275,8 +275,8 @@ var GeneratedColumnTests = []ScriptTest{
 	{
 		Name: "creating unique index on stored generated column",
 		SetUpScript: []string{
-			"create table t1 (a int primary key, b int as (a + 1) stored)",
-			"insert into t1(a) values (1), (2)",
+			"create table t1 (a int primary key, b int as (a * a) stored)",
+			"insert into t1(a) values (-1), (-2)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -288,22 +288,26 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` int GENERATED ALWAYS AS ((`a` + 1)) STORED,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)) STORED,\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  UNIQUE KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    "select * from t1 where b = 2 order by a",
-				Expected: []sql.Row{{1, 2}},
+				Query:    "select * from t1 where b = 4 order by a",
+				Expected: []sql.Row{{-2, 4}},
 			},
 			{
 				Query:    "select * from t1 order by a",
-				Expected: []sql.Row{{1, 2}, {2, 3}},
+				Expected: []sql.Row{{-2, 4}, {-1, 1}},
 			},
 			{
 				Query:    "select * from t1 order by b",
-				Expected: []sql.Row{{1, 2}, {2, 3}},
+				Expected: []sql.Row{{-1, 1}, {-2, 4}},
+			},
+			{
+				Query:       "insert into t1(a) values (2)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
 	},
@@ -332,7 +336,6 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 where b = 2 order by a",
 				Expected: []sql.Row{{1, 2}},
-				Skip:     true, // https://github.com/dolthub/dolt/issues/8276
 			},
 			{
 				Query:    "select * from t1 order by a",
@@ -404,7 +407,6 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 where b = 2 order by a",
 				Expected: []sql.Row{{1, float64(2)}},
-				Skip:     true, // https://github.com/dolthub/dolt/issues/8276
 			},
 			{
 				Query:    "select * from t1 order by a",
@@ -1086,7 +1088,6 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 where b = 2 order by a",
 				Expected: []sql.Row{{1, float64(2)}},
-				Skip:     true, // https://github.com/dolthub/dolt/issues/8276
 			},
 			{
 				Query:    "select * from t1 order by a",
@@ -1139,8 +1140,8 @@ var GeneratedColumnTests = []ScriptTest{
 	{
 		Name: "creating unique index on virtual generated column",
 		SetUpScript: []string{
-			"create table t1 (a int primary key, b int as (a + 1) virtual)",
-			"insert into t1(a) values (1), (2)",
+			"create table t1 (a int primary key, b int as (a * a) virtual)",
+			"insert into t1(a) values (-1), (-2)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1152,23 +1153,28 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
-						"  `b` int GENERATED ALWAYS AS ((`a` + 1)),\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)),\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 				Skip: true, // https://github.com/dolthub/dolt/issues/8275
 			},
 			{
-				Query:    "select * from t1 where b = 2 order by a",
-				Expected: []sql.Row{{1, 2}},
+				Query:    "select * from t1 where b = 4 order by a",
+				Expected: []sql.Row{{-2, 4}},
 			},
 			{
 				Query:    "select * from t1 order by a",
-				Expected: []sql.Row{{1, 2}, {2, 3}},
+				Expected: []sql.Row{{-2, 4}, {-1, 1}},
 			},
 			{
 				Query:    "select * from t1 order by b",
-				Expected: []sql.Row{{1, 2}, {2, 3}},
+				Expected: []sql.Row{{-1, 1}, {-2, 4}},
+			},
+			{
+				Query:       "insert into t1(a) values (2)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+				Skip:        true,
 			},
 		},
 	},

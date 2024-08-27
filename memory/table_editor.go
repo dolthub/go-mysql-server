@@ -28,7 +28,6 @@ import (
 type tableEditor struct {
 	editedTable  *Table
 	initialTable *Table
-	schema       sql.Schema
 
 	discardChanges bool
 	ea             tableEditAccumulator
@@ -314,12 +313,15 @@ func (t *tableEditor) pkColumnIndexes() []int {
 
 func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
-	return !columnsMatch(pkColIdxes, nil, row, row2)
+	return !columnsMatch(pkColIdxes, nil, row, row2, t.Schema())
 }
 
 // Returns whether the values for the columns given match in the two rows provided
-func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sql.Row) bool {
+func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sql.Row, schema sql.Schema) bool {
 	for i, idx := range colIndexes {
+		if schema[idx].Virtual {
+			continue
+		}
 		v1 := row[idx]
 		v2 := row2[idx]
 		if len(prefixLengths) > i && prefixLengths[i] > 0 {
@@ -446,7 +448,7 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 	pkColIdxes := pke.pkColumnIndexes()
 	for _, partition := range pke.tableData.partitions {
 		for _, partitionRow := range partition {
-			if columnsMatch(pkColIdxes, nil, partitionRow, value) {
+			if columnsMatch(pkColIdxes, nil, partitionRow, value, pke.tableData.schema.Schema) {
 				return partitionRow, true, nil
 			}
 		}
@@ -459,20 +461,20 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) {
 func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error) {
 	// If we have this row in any delete, bail.
 	if _, _, exists := pke.deletes.FindForeach(func(key string, r sql.Row) bool {
-		return columnsMatch(cols, prefixLengths, r, value)
+		return columnsMatch(cols, prefixLengths, r, value, pke.tableData.schema.Schema)
 	}); exists {
 		return nil, false, nil
 	}
 
 	if _, r, exists := pke.adds.FindForeach(func(key string, r sql.Row) bool {
-		return columnsMatch(cols, prefixLengths, r, value)
+		return columnsMatch(cols, prefixLengths, r, value, pke.tableData.schema.Schema)
 	}); exists {
 		return r, true, nil
 	}
 
 	for _, partition := range pke.tableData.partitions {
 		for _, partitionRow := range partition {
-			if columnsMatch(cols, prefixLengths, partitionRow, value) {
+			if columnsMatch(cols, prefixLengths, partitionRow, value, pke.tableData.schema.Schema) {
 				return partitionRow, true, nil
 			}
 		}
@@ -541,7 +543,7 @@ func (pke *pkTableEditAccumulator) deleteHelper(table *TableData, row sql.Row) e
 			// have the row to be replaced, so we need to consider primary key information.
 			pkColIdxes := pke.pkColumnIndexes()
 			if len(pkColIdxes) > 0 {
-				if columnsMatch(pkColIdxes, nil, partitionRow, row) {
+				if columnsMatch(pkColIdxes, nil, partitionRow, row, pke.tableData.schema.Schema) {
 					table.partitions[partName] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 					partKey = partName
 					rowIdx = partitionRowIndex
@@ -608,7 +610,7 @@ func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) e
 	if len(pkColIdxes) > 0 {
 		for partitionIndex, partition := range table.partitions {
 			for partitionRowIndex, partitionRow := range partition {
-				if columnsMatch(pkColIdxes, nil, partitionRow, row) {
+				if columnsMatch(pkColIdxes, nil, partitionRow, row, pke.tableData.schema.Schema) {
 					// Instead of throwing a unique key error, we perform an update operation to essentially represent
 					// map semantics for the keyed table.
 					savedPartitionIndex = partitionIndex
@@ -714,14 +716,14 @@ func (k *keylessTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, error) 
 func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error) {
 	deleteCount := 0
 	for _, r := range k.deletes {
-		if columnsMatch(cols, prefixLengths, r, value) {
+		if columnsMatch(cols, prefixLengths, r, value, k.tableData.schema.Schema) {
 			deleteCount++
 		}
 	}
 
 	for _, partition := range k.tableData.partitions {
 		for _, partitionRow := range partition {
-			if columnsMatch(cols, prefixLengths, partitionRow, value) {
+			if columnsMatch(cols, prefixLengths, partitionRow, value, k.tableData.schema.Schema) {
 				if deleteCount == 0 {
 					return partitionRow, true, nil
 				}
@@ -731,7 +733,7 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 	}
 
 	for _, r := range k.adds {
-		if columnsMatch(cols, prefixLengths, r, value) {
+		if columnsMatch(cols, prefixLengths, r, value, nil) {
 			if deleteCount == 0 {
 				return r, true, nil
 			}
