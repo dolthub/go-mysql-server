@@ -565,6 +565,13 @@ func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool)
 	if defaultVal, ok := e.(*sql.ColumnDefaultValue); ok {
 		return defaultVal, true
 	}
+	if defaultExpr, ok := e.(plan.ColDefaultExpression); ok {
+		if defaultExpr.Column.Default != nil {
+			return defaultExpr.Column.Default, true
+		} else if defaultExpr.Column.Generated != nil {
+			return defaultExpr.Column.Generated, true
+		}
+	}
 
 	return nil, false
 }
