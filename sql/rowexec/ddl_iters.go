@@ -2256,7 +2256,7 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 
 // indexRequiresBuild returns whether the given index requires a build operation to be performed as part of its creation
 func indexCreateRequiresBuild(n *plan.AlterIndex) bool {
-	return n.Constraint == sql.IndexConstraint_Unique || indexOnVirtualColumn(n.Columns, n.TargetSchema())
+	return n.Constraint == sql.IndexConstraint_Unique
 }
 
 func indexOnVirtualColumn(columns []sql.IndexColumn, schema sql.Schema) bool {
