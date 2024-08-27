@@ -2192,6 +2192,12 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
 
+	isVirtual := table.Schema().HasVirtualColumns()
+	var projections []sql.Expression
+	if isVirtual {
+		projections = virtualTableProjections(n.TargetSchema(), table.Name())
+	}
+
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -2200,6 +2206,13 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
 			return err
+		}
+
+		if isVirtual {
+			r, err = ProjectRow(ctx, projections, r)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = inserter.Insert(ctx, r)
