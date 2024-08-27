@@ -44,9 +44,13 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.SameTree, nil
 		}
 
+		mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
+		if !ok {
+			return n, transform.SameTree, nil
+		}
 		// if the resulting ranges are overlapping, we cannot drop the sort node
 		// it is possible we end up with blocks rows that intersect
-		if hasOverlapping(sfExprs, lookup.Ranges) {
+		if hasOverlapping(sfExprs, mysqlRanges) {
 			return n, transform.SameTree, nil
 		}
 
@@ -62,7 +66,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 
 		lookup = sql.NewIndexLookup(
 			lookup.Index,
-			lookup.Ranges,
+			mysqlRanges,
 			lookup.IsPointLookup,
 			lookup.IsEmptyRange,
 			lookup.IsSpatialLookup,
@@ -81,6 +85,9 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		table := n.UnderlyingTable()
 		idxTbl, ok := table.(sql.IndexAddressableTable)
 		if !ok {
+			return n, transform.SameTree, nil
+		}
+		if indexSearchable, ok := table.(sql.IndexSearchableTable); ok && indexSearchable.SkipIndexCosting() {
 			return n, transform.SameTree, nil
 		}
 
@@ -110,7 +117,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 
 		// Create lookup based off of index
-		indexBuilder := sql.NewIndexBuilder(idx)
+		indexBuilder := sql.NewMySQLIndexBuilder(idx)
 		lookup, err := indexBuilder.Build(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -118,7 +125,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if sortNode.SortFields[0].Order == sql.Descending {
 			lookup = sql.NewIndexLookup(
 				lookup.Index,
-				lookup.Ranges,
+				lookup.Ranges.(sql.MySQLRangeCollection),
 				lookup.IsPointLookup,
 				lookup.IsEmptyRange,
 				lookup.IsSpatialLookup,
@@ -129,7 +136,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if oi, ok := idx.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
 			return n, transform.SameTree, nil
 		}
-		if !idx.CanSupport(lookup.Ranges...) {
+		if !idx.CanSupport(lookup.Ranges.(sql.MySQLRangeCollection).ToRanges()...) {
 			return n, transform.SameTree, nil
 		}
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n, lookup)
@@ -303,7 +310,7 @@ func isValidSortFieldOrder(sfs sql.SortFields) bool {
 
 // hasOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are overlapping
 // This function assumes that the sort field exprs are a valid prefix of the index columns
-func hasOverlapping(sfExprs []sql.Expression, ranges sql.RangeCollection) bool {
+func hasOverlapping(sfExprs []sql.Expression, ranges sql.MySQLRangeCollection) bool {
 	for si := range sfExprs {
 		for ri := 0; ri < len(ranges)-1; ri++ {
 			for rj := ri + 1; rj < len(ranges); rj++ {

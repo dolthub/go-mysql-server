@@ -258,8 +258,12 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, children ...sql.Node) (sql.No
 }
 
 func checkIndexTypeMismatch(idx sql.Index, rang sql.Range) bool {
+	mysqlRange, ok := rang.(sql.MySQLRange)
+	if !ok {
+		return false
+	}
 	for i, typ := range idx.ColumnExpressionTypes() {
-		if !types.Null.Equals(rang[i].Typ) && !typ.Type.Equals(rang[i].Typ) {
+		if !types.Null.Equals(mysqlRange[i].Typ) && !typ.Type.Equals(mysqlRange[i].Typ) {
 			return true
 		}
 	}

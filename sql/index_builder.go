@@ -29,30 +29,30 @@ var (
 	ErrInvalidRangeType    = errors.NewKind("encountered the RangeType_Invalid")
 )
 
-// IndexBuilder builds ranges based on the combination of calls made for the given index, and then relies on the Index
+// MySQLIndexBuilder builds ranges based on the combination of calls made for the given index, and then relies on the Index
 // to return an IndexLookup from the created ranges.
-type IndexBuilder struct {
+type MySQLIndexBuilder struct {
 	idx          Index
 	isInvalid    bool
 	err          error
 	colExprTypes map[string]Type
-	ranges       map[string][]RangeColumnExpr
+	ranges       map[string][]MySQLRangeColumnExpr
 }
 
-// NewIndexBuilder returns a new IndexBuilder. Used internally to construct a range that will later be passed to
+// NewMySQLIndexBuilder returns a new MySQLIndexBuilder. Used internally to construct a range that will later be passed to
 // integrators through the Index function NewLookup.
-func NewIndexBuilder(idx Index) *IndexBuilder {
+func NewMySQLIndexBuilder(idx Index) *MySQLIndexBuilder {
 	colExprTypes := make(map[string]Type)
-	ranges := make(map[string][]RangeColumnExpr)
+	ranges := make(map[string][]MySQLRangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes() {
 		typ := cet.Type
 		if _, ok := typ.(StringType); ok {
 			typ = typ.Promote()
 		}
 		colExprTypes[strings.ToLower(cet.Expression)] = typ
-		ranges[strings.ToLower(cet.Expression)] = []RangeColumnExpr{AllRangeColumnExpr(typ)}
+		ranges[strings.ToLower(cet.Expression)] = []MySQLRangeColumnExpr{AllRangeColumnExpr(typ)}
 	}
-	return &IndexBuilder{
+	return &MySQLIndexBuilder{
 		idx:          idx,
 		isInvalid:    false,
 		err:          nil,
@@ -104,7 +104,7 @@ func floor(val interface{}) interface{} {
 }
 
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
-func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -114,7 +114,7 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	potentialRanges := make([]RangeColumnExpr, len(keys))
+	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
 		if t, ok := typ.(NumberType); ok && !t.IsFloat() {
@@ -147,7 +147,7 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 }
 
 // NotEquals represents colExpr <> key.
-func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -197,7 +197,7 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 }
 
 // GreaterThan represents colExpr > key.
-func (b *IndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -224,7 +224,7 @@ func (b *IndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}
 }
 
 // GreaterOrEqual represents colExpr >= key.
-func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -254,7 +254,7 @@ func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interfac
 		return b
 	}
 
-	var rangeColExpr RangeColumnExpr
+	var rangeColExpr MySQLRangeColumnExpr
 	if exclude {
 		rangeColExpr = GreaterThanRangeColumnExpr(key, typ)
 	} else {
@@ -266,7 +266,7 @@ func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interfac
 }
 
 // LessThan represents colExpr < key.
-func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -292,7 +292,7 @@ func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *
 }
 
 // LessOrEqual represents colExpr <= key.
-func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -322,7 +322,7 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 		return b
 	}
 
-	var rangeColExpr RangeColumnExpr
+	var rangeColExpr MySQLRangeColumnExpr
 	if exclude {
 		rangeColExpr = LessThanRangeColumnExpr(key, typ)
 	} else {
@@ -334,7 +334,7 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 }
 
 // IsNull represents colExpr = nil
-func (b *IndexBuilder) IsNull(ctx *Context, colExpr string) *IndexBuilder {
+func (b *MySQLIndexBuilder) IsNull(ctx *Context, colExpr string) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -350,7 +350,7 @@ func (b *IndexBuilder) IsNull(ctx *Context, colExpr string) *IndexBuilder {
 }
 
 // IsNotNull represents colExpr != nil
-func (b *IndexBuilder) IsNotNull(ctx *Context, colExpr string) *IndexBuilder {
+func (b *MySQLIndexBuilder) IsNotNull(ctx *Context, colExpr string) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -366,14 +366,14 @@ func (b *IndexBuilder) IsNotNull(ctx *Context, colExpr string) *IndexBuilder {
 }
 
 // Ranges returns all ranges for this index builder. If the builder is in an error state then this returns nil.
-func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
+func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 	if b.err != nil {
 		return nil
 	}
 	// An invalid builder that did not error got into a state where no columns will ever match, so we return an empty range
 	if b.isInvalid {
 		cets := b.idx.ColumnExpressionTypes()
-		emptyRange := make(Range, len(cets))
+		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
 			typ := cet.Type
 			if _, ok := typ.(StringType); ok {
@@ -381,9 +381,9 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 			}
 			emptyRange[i] = EmptyRangeColumnExpr(typ)
 		}
-		return RangeCollection{emptyRange}
+		return MySQLRangeCollection{emptyRange}
 	}
-	var allColumns [][]RangeColumnExpr
+	var allColumns [][]MySQLRangeColumnExpr
 	for _, colExpr := range b.idx.Expressions() {
 		ranges, ok := b.ranges[strings.ToLower(colExpr)]
 		if !ok {
@@ -401,11 +401,11 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	for i, rangeColumn := range allColumns {
 		colCounts[i] = len(rangeColumn)
 	}
-	var ranges []Range
+	var ranges MySQLRangeCollection
 	exit := false
 	for !exit {
 		exit = true
-		currentRange := make(Range, len(allColumns))
+		currentRange := make(MySQLRange, len(allColumns))
 		for colIdx, exprCount := range colCounts {
 			permutation[colIdx] = (permutation[colIdx] + 1) % exprCount
 			if permutation[colIdx] != 0 {
@@ -427,17 +427,17 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	}
 	if len(ranges) == 0 {
 		cets := b.idx.ColumnExpressionTypes()
-		emptyRange := make(Range, len(cets))
+		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
 			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
 		}
-		return RangeCollection{emptyRange}
+		return MySQLRangeCollection{emptyRange}
 	}
 	return ranges
 }
 
 // Build constructs a new IndexLookup based on the ranges that have been built internally by this builder.
-func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
+func (b *MySQLIndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	if b.err != nil {
 		return emptyLookup, b.err
 	} else {
@@ -452,7 +452,7 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 // updateCol updates the internal columns with the given ranges by intersecting each given range with each existing
 // range. That means that each given range is treated as an OR with respect to the other given ranges. If multiple
 // ranges are to be intersected with respect to one another, multiple calls to updateCol should be made.
-func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...RangeColumnExpr) {
+func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...MySQLRangeColumnExpr) {
 	if len(potentialRanges) == 0 {
 		return
 	}
@@ -463,7 +463,7 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 		return
 	}
 
-	var newRanges []RangeColumnExpr
+	var newRanges []MySQLRangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
 
@@ -497,11 +497,11 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 	b.ranges[colExpr] = newRanges
 }
 
-// SpatialIndexBuilder is like the IndexBuilder, but spatial
+// SpatialIndexBuilder is like the MySQLIndexBuilder, but spatial
 type SpatialIndexBuilder struct {
 	idx Index
 	typ Type
-	rng RangeColumnExpr
+	rng MySQLRangeColumnExpr
 }
 
 func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
@@ -509,7 +509,7 @@ func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
 }
 
 func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBuilder {
-	b.rng = RangeColumnExpr{
+	b.rng = MySQLRangeColumnExpr{
 		LowerBound: Below{Key: lower},
 		UpperBound: Above{Key: upper},
 		Typ:        b.typ,
@@ -520,7 +520,7 @@ func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBu
 func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
 	return IndexLookup{
 		Index:           b.idx,
-		Ranges:          RangeCollection{{b.rng}},
+		Ranges:          MySQLRangeCollection{{b.rng}},
 		IsSpatialLookup: true,
 	}, nil
 }
@@ -529,12 +529,12 @@ func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
 // more quickly than the default builder
 type EqualityIndexBuilder struct {
 	idx   Index
-	rng   Range
+	rng   MySQLRange
 	empty bool
 }
 
 func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
-	return &EqualityIndexBuilder{idx: idx, rng: make(Range, len(idx.Expressions()))}
+	return &EqualityIndexBuilder{idx: idx, rng: make(MySQLRange, len(idx.Expressions()))}
 }
 
 // AddEquality represents colExpr = key. For IN expressions, pass all of them in the same AddEquality call.
@@ -581,7 +581,7 @@ func (b *EqualityIndexBuilder) Build(_ *Context) (IndexLookup, error) {
 	}
 	return IndexLookup{
 		Index:        b.idx,
-		Ranges:       RangeCollection{b.rng},
+		Ranges:       MySQLRangeCollection{b.rng},
 		IsEmptyRange: b.empty,
 	}, nil
 }

@@ -33,7 +33,7 @@ func TestTryIntersect(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, sql.RangeType_GreaterThan, res.Type())
-	assert.False(t, sql.RangeCutIsBinding(res.LowerBound))
+	assert.False(t, sql.MySQLRangeCutIsBinding(res.LowerBound))
 
 	_, ok, err = sql.NotNullRangeColumnExpr(types.Int8).TryIntersect(sql.NullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)

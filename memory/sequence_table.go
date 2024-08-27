@@ -195,12 +195,12 @@ func (s IntSequenceTable) PartitionRows(ctx *sql.Context, partition sql.Partitio
 
 // LookupPartitions is a sql.IndexedTable interface function that takes an index lookup and returns the set of corresponding partitions.
 func (s IntSequenceTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	lowerBound := lookup.Ranges[0][0].LowerBound
+	lowerBound := lookup.Ranges.(sql.MySQLRangeCollection)[0][0].LowerBound
 	below, ok := lowerBound.(sql.Below)
 	if !ok {
 		return s.Partitions(context)
 	}
-	upperBound := lookup.Ranges[0][0].UpperBound
+	upperBound := lookup.Ranges.(sql.MySQLRangeCollection)[0][0].UpperBound
 	above, ok := upperBound.(sql.Above)
 	if !ok {
 		return s.Partitions(context)

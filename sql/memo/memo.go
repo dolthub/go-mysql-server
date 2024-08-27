@@ -253,7 +253,7 @@ func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexSc
 		SwapCmp:   swapCmp,
 	}
 
-	comparer, ok := filter[0].(*expression.Equals)
+	comparer, ok := filter[0].(expression.Equality)
 	if !ok {
 		err := sql.ErrMergeJoinExpectsComparerFilters.New(filter[0])
 		m.HandleErr(err)

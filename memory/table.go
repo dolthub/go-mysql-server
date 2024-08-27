@@ -1544,7 +1544,11 @@ var _ sql.StatisticsTable = (*IndexedTable)(nil)
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
 	memIdx := lookup.Index.(*Index)
-	filter, err := memIdx.rangeFilterExpr(ctx, lookup.Ranges...)
+	lookupRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
+	if !ok {
+		return nil, fmt.Errorf("expected MySQL ranges in memory indexed table")
+	}
+	filter, err := memIdx.rangeFilterExpr(ctx, lookupRanges...)
 	if err != nil {
 		return nil, err
 	}
@@ -1555,8 +1559,8 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 			return nil, err
 		}
 
-		lower := sql.GetRangeCutKey(lookup.Ranges[0][0].LowerBound)
-		upper := sql.GetRangeCutKey(lookup.Ranges[0][0].UpperBound)
+		lower := sql.GetMySQLRangeCutKey(lookupRanges[0][0].LowerBound)
+		upper := sql.GetMySQLRangeCutKey(lookupRanges[0][0].UpperBound)
 		minPoint, ok := lower.(types.Point)
 		if !ok {
 			return nil, sql.ErrInvalidGISData.New()

@@ -156,7 +156,7 @@ func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx in
 	return newRow, nil
 }
 
-func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.Range) (sql.Expression, error) {
+func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.MySQLRange) (sql.Expression, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}

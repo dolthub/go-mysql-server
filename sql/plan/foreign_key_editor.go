@@ -459,7 +459,7 @@ func (mapper *ForeignKeyRowMapper) IsInitialized() bool {
 
 // GetIter returns a row iterator for all rows that match the given source row.
 func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refCheck bool) (sql.RowIter, error) {
-	rang := make(sql.Range, len(mapper.IndexPositions)+len(mapper.AppendTypes))
+	rang := make(sql.MySQLRange, len(mapper.IndexPositions)+len(mapper.AppendTypes))
 	for rangPosition, rowPos := range mapper.IndexPositions {
 		rowVal := row[rowPos]
 		// If any value is NULL then it is ignored by foreign keys
@@ -476,7 +476,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
 	}
 	//TODO: profile this, may need to redesign this or add a fast path
-	lookup := sql.IndexLookup{Ranges: []sql.Range{rang}, Index: mapper.Index}
+	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{rang}, Index: mapper.Index}
 
 	editorData := mapper.Updater.IndexedAccess(lookup)
 

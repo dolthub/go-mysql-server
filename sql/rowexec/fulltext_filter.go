@@ -202,7 +202,7 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 				if reachedTheEnd {
 					return nil, io.EOF
 				}
-				lookup := sql.IndexLookup{Ranges: []sql.Range{{
+				lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{{
 					sql.ClosedRangeColumnExpr(word, word, f.matchAgainst.DocCountTable.Schema()[0].Type),
 				}}, Index: f.docCountIndex}
 
@@ -233,11 +233,11 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 
 			// Get the key so that we may get rows from the parent table
-			ranges := make(sql.Range, len(docRow)-2)
+			ranges := make(sql.MySQLRange, len(docRow)-2)
 			for i, val := range docRow[1 : len(docRow)-1] {
 				ranges[i] = sql.ClosedRangeColumnExpr(val, val, f.matchAgainst.DocCountTable.Schema()[i+1].Type)
 			}
-			lookup := sql.IndexLookup{Ranges: []sql.Range{ranges}, Index: f.parentIndex}
+			lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{ranges}, Index: f.parentIndex}
 
 			parentData := f.matchAgainst.ParentTable.IndexedAccess(lookup)
 			if err != nil {

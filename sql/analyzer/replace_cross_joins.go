@@ -32,7 +32,6 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.JoinNode
 	switch e := expr.(type) {
 	case *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 		*expression.LessThan, *expression.LessThanOrEqual, *expression.GreaterThanOrEqual:
-
 		ce, ok := e.(expression.Comparer)
 		if !ok {
 			return false
@@ -46,6 +45,20 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.JoinNode
 			return false
 		}
 	default:
+		if e, ok := e.(expression.Equality); ok && e.RepresentsEquality() {
+			ce, ok := e.(expression.Comparer)
+			if !ok {
+				return false
+			}
+			le, ok = ce.Left().(*expression.GetField)
+			if !ok {
+				return false
+			}
+			re, ok = ce.Right().(*expression.GetField)
+			if !ok {
+				return false
+			}
+		}
 		return false
 	}
 
