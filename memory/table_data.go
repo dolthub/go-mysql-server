@@ -278,6 +278,8 @@ func (td *TableData) errIfDuplicateEntryExist(cols []string, idxName string) err
 	columnMapping, err := td.columnIndexes(cols)
 
 	// We currently skip validating duplicates on unique virtual columns.
+	// Right now trying to validate them would just trigger a panic.
+	// See https://github.com/dolthub/go-mysql-server/issues/2643
 	for _, i := range columnMapping {
 		if td.schema.Schema[i].Virtual {
 			return nil

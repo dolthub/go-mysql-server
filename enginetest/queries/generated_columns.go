@@ -275,7 +275,7 @@ var GeneratedColumnTests = []ScriptTest{
 	{
 		Name: "creating unique index on stored generated column",
 		SetUpScript: []string{
-			"create table t1 (a int primary key, b int as (a * a) stored)",
+			"create table t1 (a int primary key, b int as (a * a) stored, c int as (0) stored)",
 			"insert into t1(a) values (-1), (-2)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -289,24 +289,29 @@ var GeneratedColumnTests = []ScriptTest{
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)) STORED,\n" +
+						"  `c` int GENERATED ALWAYS AS (0) STORED,\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  UNIQUE KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "select * from t1 where b = 4 order by a",
-				Expected: []sql.Row{{-2, 4}},
+				Expected: []sql.Row{{-2, 4, 0}},
 			},
 			{
 				Query:    "select * from t1 order by a",
-				Expected: []sql.Row{{-2, 4}, {-1, 1}},
+				Expected: []sql.Row{{-2, 4, 0}, {-1, 1, 0}},
 			},
 			{
 				Query:    "select * from t1 order by b",
-				Expected: []sql.Row{{-1, 1}, {-2, 4}},
+				Expected: []sql.Row{{-1, 1, 0}, {-2, 4, 0}},
 			},
 			{
 				Query:       "insert into t1(a) values (2)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:       "create unique index i2 on t1(c)",
 				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 		},
@@ -1140,7 +1145,7 @@ var GeneratedColumnTests = []ScriptTest{
 	{
 		Name: "creating unique index on virtual generated column",
 		SetUpScript: []string{
-			"create table t1 (a int primary key, b int as (a * a) virtual)",
+			"create table t1 (a int primary key, b int as (a * a) virtual, c int as (0) virtual)",
 			"insert into t1(a) values (-1), (-2)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -1154,6 +1159,7 @@ var GeneratedColumnTests = []ScriptTest{
 					"CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)),\n" +
+						"  `c` int GENERATED ALWAYS AS (0),\n" +
 						"  PRIMARY KEY (`a`),\n" +
 						"  KEY `i1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
@@ -1161,20 +1167,25 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "select * from t1 where b = 4 order by a",
-				Expected: []sql.Row{{-2, 4}},
+				Expected: []sql.Row{{-2, 4, 0}},
 			},
 			{
 				Query:    "select * from t1 order by a",
-				Expected: []sql.Row{{-2, 4}, {-1, 1}},
+				Expected: []sql.Row{{-2, 4, 0}, {-1, 1, 0}},
 			},
 			{
 				Query:    "select * from t1 order by b",
-				Expected: []sql.Row{{-1, 1}, {-2, 4}},
+				Expected: []sql.Row{{-1, 1, 0}, {-2, 4, 0}},
 			},
 			{
 				Query:       "insert into t1(a) values (2)",
 				ExpectedErr: sql.ErrUniqueKeyViolation,
-				Skip:        true,
+				Skip:        true, // https://github.com/dolthub/go-mysql-server/issues/2643
+			},
+			{
+				Query:       "create unique index i2 on t1(c)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+				Skip:        true, // https://github.com/dolthub/go-mysql-server/issues/2643
 			},
 		},
 	},

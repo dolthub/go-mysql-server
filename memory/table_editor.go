@@ -319,8 +319,11 @@ func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 // Returns whether the values for the columns given match in the two rows provided
 func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sql.Row, schema sql.Schema) bool {
 	for i, idx := range colIndexes {
+		// Skip validating unique virtual columns.
+		// Right now trying to validate them would just trigger a panic.
+		// See https://github.com/dolthub/go-mysql-server/issues/2643
 		if schema[idx].Virtual {
-			continue
+			return false
 		}
 		v1 := row[idx]
 		v2 := row2[idx]
@@ -733,7 +736,7 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 	}
 
 	for _, r := range k.adds {
-		if columnsMatch(cols, prefixLengths, r, value, nil) {
+		if columnsMatch(cols, prefixLengths, r, value, k.tableData.schema.Schema) {
 			if deleteCount == 0 {
 				return r, true, nil
 			}
