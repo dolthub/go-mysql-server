@@ -380,6 +380,9 @@ func (j joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 			case *expression.NullSafeEquals:
 				l, _ = f.Left().(*expression.GetField)
 				r, _ = f.Right().(*expression.GetField)
+			case expression.Equality:
+				l, _ = f.Left().(*expression.GetField)
+				r, _ = f.Right().(*expression.GetField)
 			}
 			if l == nil || r == nil {
 				continue

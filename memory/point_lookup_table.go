@@ -79,10 +79,11 @@ type pointLookupIndex struct {
 
 func (i pointLookupIndex) CanSupport(ranges ...sql.Range) bool {
 	for _, r := range ranges {
-		if len(r) != 1 {
+		mysqlRange, ok := r.(sql.MySQLRange)
+		if !ok || len(mysqlRange) != 1 {
 			return false
 		}
-		below, ok := r[0].LowerBound.(sql.Below)
+		below, ok := mysqlRange[0].LowerBound.(sql.Below)
 		if !ok {
 			return false
 		}
@@ -91,7 +92,7 @@ func (i pointLookupIndex) CanSupport(ranges ...sql.Range) bool {
 			return false
 		}
 
-		above, ok := r[0].UpperBound.(sql.Above)
+		above, ok := mysqlRange[0].UpperBound.(sql.Above)
 		if !ok {
 			return false
 		}

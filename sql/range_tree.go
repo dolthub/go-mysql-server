@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-// rangeTreeColor is a node's color for balancing a RangeColumnExprTree.
+// rangeTreeColor is a node's color for balancing a MySQLRangeColumnExprTree.
 type rangeTreeColor uint8
 
 const (
@@ -30,7 +30,7 @@ const (
 	red
 )
 
-// rangeTreeIterPos is the iterator's position for a RangeColumnExprTree.
+// rangeTreeIterPos is the iterator's position for a MySQLRangeColumnExprTree.
 type rangeTreeIterPos uint8
 
 const (
@@ -39,36 +39,36 @@ const (
 	end
 )
 
-// RangeColumnExprTree represents a red-black tree over a range column expression. To represent an entire range, each
+// MySQLRangeColumnExprTree represents a red-black tree over a range column expression. To represent an entire range, each
 // node has both an upper bound and lower bound that represents a single column expression. If the Range has another
 // dimension, then the node will have an inner tree representing the nested dimension ad infinitum. This implicitly
 // means that all column expressions on the lower dimension share the same column expression in the higher dimensions.
 // This way, a Range is deconstructed and sorted by its column expressions, but may easily be retrieved by walking down
 // a tree and all of its inner trees.
-type RangeColumnExprTree struct {
+type MySQLRangeColumnExprTree struct {
 	root *rangeColumnExprTreeNode
 	size int
 	typ  Type
 }
 
-// rangeColumnExprTreeNode is a node within a RangeColumnExprTree.
+// rangeColumnExprTreeNode is a node within a MySQLRangeColumnExprTree.
 type rangeColumnExprTreeNode struct {
 	color rangeTreeColor
 
-	LowerBound    RangeCut
-	UpperBound    RangeCut
-	MaxUpperbound RangeCut
+	LowerBound    MySQLRangeCut
+	UpperBound    MySQLRangeCut
+	MaxUpperbound MySQLRangeCut
 
-	Inner  *RangeColumnExprTree
+	Inner  *MySQLRangeColumnExprTree
 	Left   *rangeColumnExprTreeNode
 	Right  *rangeColumnExprTreeNode
 	Parent *rangeColumnExprTreeNode
 }
 
-// GetColExprTypes returns a list of RangeColumnExpr
+// GetColExprTypes returns a list of MySQLRangeColumnExpr
 // type fields, defaulting to Null types if all
 // columns expressions are Null.
-func GetColExprTypes(ranges []Range) []Type {
+func GetColExprTypes(ranges []MySQLRange) []Type {
 	if len(ranges) == 0 {
 		return []Type{}
 	}
@@ -93,23 +93,23 @@ func GetColExprTypes(ranges []Range) []Type {
 	return colExprTypes
 }
 
-// NewRangeColumnExprTree creates a new RangeColumnExprTree constructed from an initial range. As the initial Range may
+// NewMySQLRangeColumnExprTree creates a new MySQLRangeColumnExprTree constructed from an initial range. As the initial Range may
 // contain column expressions that have a NULL type, the expected non-NULL type for each column expression is given
 // separately. If all column expressions for a specific column will be NULL, then it is valid to use the NULL type.
 // Returns an error if the number of column expressions do not equal the number of types, or if the Range has a length
 // of zero.
-func NewRangeColumnExprTree(initialRange Range, columnExprTypes []Type) (*RangeColumnExprTree, error) {
+func NewMySQLRangeColumnExprTree(initialRange MySQLRange, columnExprTypes []Type) (*MySQLRangeColumnExprTree, error) {
 	if len(initialRange) != len(columnExprTypes) {
 		return nil, fmt.Errorf("number of types given do not correspond to the number of column expressions")
 	}
 	if len(initialRange) == 0 {
-		return nil, fmt.Errorf("a RangeColumnExprTree cannot be created from a Range of length 0")
+		return nil, fmt.Errorf("a RangeColumnExprTree cannot be created from a MySQLRange of length 0")
 	}
 
-	var tree *RangeColumnExprTree
-	var parent *RangeColumnExprTree
+	var tree *MySQLRangeColumnExprTree
+	var parent *MySQLRangeColumnExprTree
 	for i, colExpr := range initialRange {
-		innerTree := &RangeColumnExprTree{
+		innerTree := &MySQLRangeColumnExprTree{
 			typ:  columnExprTypes[i],
 			size: 1,
 			root: nil,
@@ -136,17 +136,17 @@ func NewRangeColumnExprTree(initialRange Range, columnExprTypes []Type) (*RangeC
 }
 
 // FindConnections returns all connecting Ranges found in the tree. They may or may not be mergeable or overlap.
-func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (RangeCollection, error) {
+func (tree *MySQLRangeColumnExprTree) FindConnections(rang MySQLRange, colExprIdx int) (MySQLRangeCollection, error) {
 	// Some potential optimizations that may significantly reduce the number of comparisons in a worst-case scenario:
 	// 1) Rewrite this function to return a single Range that is guaranteed to either merge or overlap, rather than
 	//    a slice of ranges that are all connected (either overlapping or adjacent) but may not be mergeable.
 	// 2) Move the overlap logic into this function, which would remove many redundant checks as the state would be local.
-	// 3) Pre-construct the Ranges (RangeColumnExpr slice) and assign to different index positions based on the index
+	// 3) Pre-construct the Ranges (MySQLRangeColumnExpr slice) and assign to different index positions based on the index
 	//    that is passed down. This is basically fixed by #1, however it can also be done separately.
 	if tree.root == nil {
 		return nil, nil
 	}
-	var rangeCollection RangeCollection
+	var rangeCollection MySQLRangeCollection
 	colExpr := rang[colExprIdx]
 	stack := []*rangeColumnExprTreeNode{tree.root}
 	for len(stack) > 0 {
@@ -166,18 +166,18 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (Ra
 			if typ == nil {
 				typ = colExpr.Typ
 			}
-			connectedColExpr := RangeColumnExpr{
+			connectedColExpr := MySQLRangeColumnExpr{
 				LowerBound: node.LowerBound,
 				UpperBound: node.UpperBound,
 				Typ:        typ,
 			}
 			if node.Inner == nil {
-				rangeCollection = append(rangeCollection, Range{connectedColExpr})
+				rangeCollection = append(rangeCollection, MySQLRange{connectedColExpr})
 			} else if connectedRanges, err := node.Inner.FindConnections(rang, colExprIdx+1); err != nil {
 				return nil, err
 			} else if connectedRanges != nil {
 				for _, connectedRange := range connectedRanges {
-					rang := append(Range{connectedColExpr}, connectedRange...)
+					rang := append(MySQLRange{connectedColExpr}, connectedRange...)
 					rangeCollection = append(rangeCollection, rang)
 				}
 			}
@@ -201,19 +201,19 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (Ra
 }
 
 // Insert adds the given Range into the tree.
-func (tree *RangeColumnExprTree) Insert(rang Range) error {
+func (tree *MySQLRangeColumnExprTree) Insert(rang MySQLRange) error {
 	return tree.insert(rang, 0)
 }
 
 // insert is the internal implementation of Insert.
-func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
+func (tree *MySQLRangeColumnExprTree) insert(rang MySQLRange, colExprIdx int) error {
 	colExpr := rang[colExprIdx]
 	var insertedNode *rangeColumnExprTreeNode
-	var inner *RangeColumnExprTree
+	var inner *MySQLRangeColumnExprTree
 	var err error
 	if tree.root == nil {
 		if len(rang)-colExprIdx > 1 {
-			inner, err = NewRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]Range{rang[colExprIdx+1:]}))
+			inner, err = NewMySQLRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]MySQLRange{rang[colExprIdx+1:]}))
 			if err != nil {
 				return err
 			}
@@ -244,14 +244,14 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 				}
 			}
 			if cmp < 0 {
-				node.MaxUpperbound, err = GetRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
+				node.MaxUpperbound, err = GetMySQLRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
 				if err != nil {
 					return err
 				}
 				if node.Left == nil {
-					var inner *RangeColumnExprTree
+					var inner *MySQLRangeColumnExprTree
 					if len(rang)-colExprIdx > 1 {
-						inner, err = NewRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]Range{rang[colExprIdx+1:]}))
+						inner, err = NewMySQLRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]MySQLRange{rang[colExprIdx+1:]}))
 						if err != nil {
 							return err
 						}
@@ -272,14 +272,14 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 					node = node.Left
 				}
 			} else if cmp > 0 {
-				node.MaxUpperbound, err = GetRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
+				node.MaxUpperbound, err = GetMySQLRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
 				if err != nil {
 					return err
 				}
 				if node.Right == nil {
-					var inner *RangeColumnExprTree
+					var inner *MySQLRangeColumnExprTree
 					if len(rang)-colExprIdx > 1 {
-						inner, err = NewRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]Range{rang[colExprIdx+1:]}))
+						inner, err = NewMySQLRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]MySQLRange{rang[colExprIdx+1:]}))
 						if err != nil {
 							return err
 						}
@@ -317,12 +317,12 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 }
 
 // Remove removes the given Range from the tree (and subtrees if applicable).
-func (tree *RangeColumnExprTree) Remove(rang Range) error {
+func (tree *MySQLRangeColumnExprTree) Remove(rang MySQLRange) error {
 	return tree.remove(rang, 0)
 }
 
 // remove is the internal implementation of Remove.
-func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
+func (tree *MySQLRangeColumnExprTree) remove(rang MySQLRange, colExprIdx int) error {
 	colExpr := rang[colExprIdx]
 	var child *rangeColumnExprTreeNode
 	node, err := tree.getNode(colExpr)
@@ -388,11 +388,11 @@ func (tree *RangeColumnExprTree) remove(rang Range, colExprIdx int) error {
 }
 
 // GetRangeCollection returns every Range that this tree contains.
-func (tree *RangeColumnExprTree) GetRangeCollection() (RangeCollection, error) {
-	var rangeCollection RangeCollection
-	var emptyRange Range
+func (tree *MySQLRangeColumnExprTree) GetRangeCollection() (MySQLRangeCollection, error) {
+	var rangeCollection MySQLRangeCollection
+	var emptyRange MySQLRange
 	iterStack := []*rangeTreeIter{tree.Iterator()}
-	rangeStack := Range{RangeColumnExpr{}}
+	rangeStack := MySQLRange{MySQLRangeColumnExpr{}}
 	for len(iterStack) > 0 {
 		iter := iterStack[len(iterStack)-1]
 		node, err := iter.Next()
@@ -400,16 +400,16 @@ func (tree *RangeColumnExprTree) GetRangeCollection() (RangeCollection, error) {
 			return nil, err
 		}
 		if node != nil {
-			rangeStack[len(rangeStack)-1] = RangeColumnExpr{
+			rangeStack[len(rangeStack)-1] = MySQLRangeColumnExpr{
 				LowerBound: node.LowerBound,
 				UpperBound: node.UpperBound,
 				Typ:        iter.tree.typ,
 			}
 			if node.Inner != nil {
 				iterStack = append(iterStack, node.Inner.Iterator())
-				rangeStack = append(rangeStack, RangeColumnExpr{})
+				rangeStack = append(rangeStack, MySQLRangeColumnExpr{})
 			} else {
-				rang := make(Range, len(rangeStack))
+				rang := make(MySQLRange, len(rangeStack))
 				copy(rang, rangeStack)
 				isempty, err := rang.IsEmpty()
 				if err != nil {
@@ -439,13 +439,13 @@ func (tree *RangeColumnExprTree) GetRangeCollection() (RangeCollection, error) {
 		}
 	}
 	if len(rangeCollection) == 0 {
-		return RangeCollection{emptyRange}, nil
+		return MySQLRangeCollection{emptyRange}, nil
 	}
 	return rangeCollection, nil
 }
 
 // String returns the tree as a formatted string. Does not display the inner trees.
-func (tree *RangeColumnExprTree) String() string {
+func (tree *MySQLRangeColumnExprTree) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("RangeColumnExprTree\n")
 	if tree.size > 0 {
@@ -474,7 +474,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 	} else {
 		sb.WriteString("┌── ")
 	}
-	sb.WriteString(RangeColumnExpr{
+	sb.WriteString(MySQLRangeColumnExpr{
 		LowerBound: node.LowerBound,
 		UpperBound: node.UpperBound,
 		Typ:        typ,
@@ -483,7 +483,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 	sb.WriteString(fmt.Sprintf(" color: %d", node.color))
 	// TODO: if we ever need to see one level deeper
 	//if node.Inner != nil {
-	//	innerStr := RangeColumnExpr{
+	//	innerStr := MySQLRangeColumnExpr{
 	//		LowerBound: node.Inner.root.LowerBound,
 	//		UpperBound: node.Inner.root.UpperBound,
 	//		Typ:        typ,
@@ -504,7 +504,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 }
 
 // getNode returns the node that matches the given column expression, if it exists. Returns nil otherwise.
-func (tree *RangeColumnExprTree) getNode(colExpr RangeColumnExpr) (*rangeColumnExprTreeNode, error) {
+func (tree *MySQLRangeColumnExprTree) getNode(colExpr MySQLRangeColumnExpr) (*rangeColumnExprTreeNode, error) {
 	node := tree.root
 	for node != nil {
 		cmp, err := colExpr.LowerBound.Compare(node.LowerBound, tree.typ)
@@ -529,7 +529,7 @@ func (tree *RangeColumnExprTree) getNode(colExpr RangeColumnExpr) (*rangeColumnE
 }
 
 // left returns the node with the smallest lowerbound.
-func (tree *RangeColumnExprTree) left() *rangeColumnExprTreeNode {
+func (tree *MySQLRangeColumnExprTree) left() *rangeColumnExprTreeNode {
 	var parent *rangeColumnExprTreeNode
 	current := tree.root
 	for current != nil {
@@ -540,7 +540,7 @@ func (tree *RangeColumnExprTree) left() *rangeColumnExprTreeNode {
 }
 
 // rotateLeft performs a left rotation. This also updates the max upperbounds of each affected node.
-func (tree *RangeColumnExprTree) rotateLeft(node *rangeColumnExprTreeNode) {
+func (tree *MySQLRangeColumnExprTree) rotateLeft(node *rangeColumnExprTreeNode) {
 	right := node.Right
 	tree.replaceNode(node, right)
 	node.Right = right.Left
@@ -557,7 +557,7 @@ func (tree *RangeColumnExprTree) rotateLeft(node *rangeColumnExprTreeNode) {
 }
 
 // rotateRight performs a right rotation. This also updates the max upperbounds of each affected node.
-func (tree *RangeColumnExprTree) rotateRight(node *rangeColumnExprTreeNode) {
+func (tree *MySQLRangeColumnExprTree) rotateRight(node *rangeColumnExprTreeNode) {
 	left := node.Left
 	tree.replaceNode(node, left)
 	node.Left = left.Right
@@ -570,7 +570,7 @@ func (tree *RangeColumnExprTree) rotateRight(node *rangeColumnExprTreeNode) {
 }
 
 // replaceNode updates the parent to point to the new node, and the new node to point to the parent; it does not update the children
-func (tree *RangeColumnExprTree) replaceNode(old *rangeColumnExprTreeNode, new *rangeColumnExprTreeNode) {
+func (tree *MySQLRangeColumnExprTree) replaceNode(old *rangeColumnExprTreeNode, new *rangeColumnExprTreeNode) {
 	if old.Parent == nil {
 		tree.root = new
 	} else {
@@ -586,7 +586,7 @@ func (tree *RangeColumnExprTree) replaceNode(old *rangeColumnExprTreeNode, new *
 }
 
 // insertBalance handles the balancing of the nodes after an insertion.
-func (tree *RangeColumnExprTree) insertBalance(node *rangeColumnExprTreeNode) {
+func (tree *MySQLRangeColumnExprTree) insertBalance(node *rangeColumnExprTreeNode) {
 	if node.Parent == nil {
 		node.color = black
 		return
@@ -622,7 +622,7 @@ func (tree *RangeColumnExprTree) insertBalance(node *rangeColumnExprTreeNode) {
 }
 
 // removeBalance handles the balancing of the nodes after a removal.
-func (tree *RangeColumnExprTree) removeBalance(node *rangeColumnExprTreeNode) {
+func (tree *MySQLRangeColumnExprTree) removeBalance(node *rangeColumnExprTreeNode) {
 	if node.Parent == nil {
 		return
 	}
@@ -731,7 +731,7 @@ func (node *rangeColumnExprTreeNode) nodeColor() rangeTreeColor {
 }
 
 // maxUpperBound is a nil-safe way to return this node's maximum upper bound.
-func (node *rangeColumnExprTreeNode) maxUpperBound() RangeCut {
+func (node *rangeColumnExprTreeNode) maxUpperBound() MySQLRangeCut {
 	if node == nil {
 		return nil
 	}
@@ -739,22 +739,22 @@ func (node *rangeColumnExprTreeNode) maxUpperBound() RangeCut {
 }
 
 // upperBound is a nil-safe way to return this node's upper bound.
-func (node *rangeColumnExprTreeNode) upperBound() RangeCut {
+func (node *rangeColumnExprTreeNode) upperBound() MySQLRangeCut {
 	if node == nil {
 		return nil
 	}
 	return node.UpperBound
 }
 
-// rangeTreeIter is an iterator for accessing a RangeColumnExprTree's column expression nodes in order.
+// rangeTreeIter is an iterator for accessing a MySQLRangeColumnExprTree's column expression nodes in order.
 type rangeTreeIter struct {
-	tree     *RangeColumnExprTree
+	tree     *MySQLRangeColumnExprTree
 	node     *rangeColumnExprTreeNode
 	position rangeTreeIterPos
 }
 
 // Iterator returns an iterator over the calling tree. Does not handle any inner trees.
-func (tree *RangeColumnExprTree) Iterator() *rangeTreeIter {
+func (tree *MySQLRangeColumnExprTree) Iterator() *rangeTreeIter {
 	return &rangeTreeIter{tree: tree, node: nil, position: begin}
 }
 

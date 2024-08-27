@@ -26,7 +26,7 @@ import (
 
 func TestRangeCutCompare(t *testing.T) {
 	type tc struct {
-		left, right sql.RangeCut
+		left, right sql.MySQLRangeCut
 		res         int
 	}
 	for _, testcase := range []tc{

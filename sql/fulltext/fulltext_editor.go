@@ -516,7 +516,7 @@ func (editor TableEditor) Close(ctx *sql.Context) error {
 
 // getRowCount returns the ROW_COUNT for the matching row's hash. A ROW_COUNT of zero means that there was no row.
 func (TableEditor) getRowCount(ctx *sql.Context, ie IndexEditors, hash string) (rowCount uint64, uniqueWords uint64, err error) {
-	lookup := sql.IndexLookup{Ranges: []sql.Range{
+	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{
 		{
 			sql.ClosedRangeColumnExpr(hash, hash, SchemaRowCount[0].Type),
 		},
@@ -545,7 +545,7 @@ func (TableEditor) getRowCount(ctx *sql.Context, ie IndexEditors, hash string) (
 
 // updateGlobalCount either increments or decrements the global count of the given word for the
 func (TableEditor) updateGlobalCount(ctx *sql.Context, ie IndexEditors, word string, increment bool) error {
-	lookup := sql.IndexLookup{Ranges: []sql.Range{{sql.ClosedRangeColumnExpr(word, word, ie.GlobalCount.Schema[0].Type)}},
+	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(word, word, ie.GlobalCount.Schema[0].Type)}},
 		Index: ie.GlobalCount.Index}
 	editorData := ie.GlobalCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(lookup)
 

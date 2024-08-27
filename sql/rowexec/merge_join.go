@@ -24,8 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-var ErrMergeJoinExpectsComparerFilters = errors.New("merge join expects expression.Comparer filters, found: %T")
-
 // NewMergeJoin returns a node that performs a presorted merge join on
 // two relations. We require 1) the join filter is an equality with disjoint
 // join attributes, 2) the free attributes for a relation are a prefix for
@@ -59,7 +57,14 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 	filters := expression.SplitConjunction(j.Filter)
 	cmp, ok := filters[0].(expression.Comparer)
 	if !ok {
-		return nil, sql.ErrMergeJoinExpectsComparerFilters.New(filters[0])
+		if equality, ok := filters[0].(expression.Equality); ok {
+			cmp, err = equality.ToComparer()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, sql.ErrMergeJoinExpectsComparerFilters.New(filters[0])
+		}
 	}
 
 	if len(filters) == 0 {

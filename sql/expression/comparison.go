@@ -306,6 +306,14 @@ func (c *comparison) Left() sql.Expression { return c.BinaryExpressionStub.LeftC
 // Right implements Comparer interface
 func (c *comparison) Right() sql.Expression { return c.BinaryExpressionStub.RightChild }
 
+// Equality is an expression that may represent equality between two parameters (the equals operator is one such example).
+type Equality interface {
+	BinaryExpression
+	RepresentsEquality() bool
+	SwapParameters(ctx *sql.Context) (Equality, error)
+	ToComparer() (Comparer, error)
+}
+
 // Equals is a comparison that checks an expression is equal to another.
 type Equals struct {
 	comparison
@@ -313,6 +321,7 @@ type Equals struct {
 
 var _ sql.Expression = (*Equals)(nil)
 var _ sql.CollationCoercible = (*Equals)(nil)
+var _ Equality = (*Equals)(nil)
 
 // NewEquals returns a new Equals expression.
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
@@ -362,6 +371,21 @@ func (e *Equals) DebugString() string {
 	children := []string{sql.DebugString(e.Left()), sql.DebugString(e.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
+}
+
+// RepresentsEquality implements the Equality interface.
+func (e *Equals) RepresentsEquality() bool {
+	return true
+}
+
+// SwapParameters implements the Equality interface.
+func (e *Equals) SwapParameters(ctx *sql.Context) (Equality, error) {
+	return NewEquals(e.RightChild, e.LeftChild), nil
+}
+
+// ToComparer implements the Equality interface.
+func (e *Equals) ToComparer() (Comparer, error) {
+	return e, nil
 }
 
 // NullSafeEquals is a comparison that checks an expression is equal to

@@ -301,14 +301,14 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		// 2) Grab the count to use in the relevancy calculation
 		var lookup sql.IndexLookup
 		if expr.KeyCols.Type != fulltext.KeyType_None {
-			ranges := make(sql.Range, 1+len(expr.KeyCols.Positions))
+			ranges := make(sql.MySQLRange, 1+len(expr.KeyCols.Positions))
 			ranges[0] = sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.DocCountTable.Schema()[0].Type)
 			for i, keyColPos := range expr.KeyCols.Positions {
 				ranges[i+1] = sql.ClosedRangeColumnExpr(row[keyColPos], row[keyColPos], expr.DocCountTable.Schema()[i+1].Type)
 			}
-			lookup = sql.IndexLookup{Ranges: []sql.Range{ranges}, Index: expr.docCountIndex}
+			lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{ranges}, Index: expr.docCountIndex}
 		} else {
-			lookup = sql.IndexLookup{Ranges: []sql.Range{
+			lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{
 				{
 					sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.DocCountTable.Schema()[0].Type),
 					sql.ClosedRangeColumnExpr(hash, hash, fulltext.SchemaRowCount[0].Type),
@@ -343,7 +343,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		}
 
 		// Otherwise, we've found a match, so we'll grab the global count as well
-		lookup = sql.IndexLookup{Ranges: []sql.Range{
+		lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{
 			{
 				sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.GlobalCountTable.Schema()[0].Type),
 			},
@@ -369,7 +369,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 		globalCountRow := globalCountRows[0]
 
 		// Lastly, grab the number of unique words within this row from the row count
-		lookup = sql.IndexLookup{Ranges: []sql.Range{
+		lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{
 			{
 				sql.ClosedRangeColumnExpr(hash, hash, expr.RowCountTable.Schema()[0].Type),
 			},

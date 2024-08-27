@@ -64,7 +64,7 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 	if err != nil {
 		return nil, err
 	}
-	if !lookup.Index.CanSupport(lookup.Ranges...) {
+	if !lookup.Index.CanSupport(lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	var indexedTable sql.IndexedTable
@@ -114,7 +114,7 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	if !lookup.Index.CanSupport(lookup.Ranges...) {
+	if !lookup.Index.CanSupport(lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	indexedTable := iaTable.IndexedAccess(lookup)
@@ -502,7 +502,7 @@ type LookupBuilder struct {
 	keyExprs  []sql.Expression
 	keyExprs2 []sql.Expression2
 
-	// When building the lookup, we will use an IndexBuilder. If the
+	// When building the lookup, we will use an MySQLIndexBuilder. If the
 	// extracted lookup value is NULL, but we have a non-NULL safe
 	// comparison, then the lookup should return no values. But if the
 	// comparison is NULL-safe, then the lookup should returns indexed
@@ -514,7 +514,7 @@ type LookupBuilder struct {
 	index sql.Index
 
 	key           lookupBuilderKey
-	rang          sql.Range
+	rang          sql.MySQLRange
 	nullSafe      bool
 	isPointLookup bool
 	emptyRange    bool
@@ -540,7 +540,7 @@ func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMas
 }
 
 func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
-	lb.rang = make(sql.Range, len(lb.cets))
+	lb.rang = make(sql.MySQLRange, len(lb.cets))
 	lb.emptyRange = false
 	lb.isPointLookup = len(key) == len(lb.cets)
 	var i int
@@ -574,7 +574,7 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 		lb.initializeRange(key)
 		return sql.IndexLookup{
 			Index:           lb.index,
-			Ranges:          []sql.Range{lb.rang},
+			Ranges:          sql.MySQLRangeCollection{lb.rang},
 			IsPointLookup:   lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 			IsEmptyRange:    lb.emptyRange,
 			IsSpatialLookup: false,
@@ -615,7 +615,7 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 
 	return sql.IndexLookup{
 		Index:           lb.index,
-		Ranges:          []sql.Range{lb.rang},
+		Ranges:          sql.MySQLRangeCollection{lb.rang},
 		IsPointLookup:   lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 		IsEmptyRange:    lb.emptyRange,
 		IsSpatialLookup: false,

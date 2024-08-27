@@ -154,7 +154,7 @@ type IndexLookup struct {
 
 var emptyLookup = IndexLookup{}
 
-func NewIndexLookup(idx Index, ranges RangeCollection, isPointLookup, isEmptyRange, isSpatialLookup, isReverse bool) IndexLookup {
+func NewIndexLookup(idx Index, ranges MySQLRangeCollection, isPointLookup, isEmptyRange, isSpatialLookup, isReverse bool) IndexLookup {
 	if isReverse {
 		for i, j := 0, len(ranges)-1; i < j; i, j = i+1, j-1 {
 			ranges[i], ranges[j] = ranges[j], ranges[i]

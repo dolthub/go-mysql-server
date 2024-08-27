@@ -27,7 +27,7 @@ import (
 // Ranges is the list of ranges to check against each expr.
 //
 // The length of each range must match the length of the exprs slice.
-func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.Range) (sql.Expression, error) {
+func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.MySQLRange) (sql.Expression, error) {
 	if len(ranges) == 0 {
 		return nil, nil
 	}
@@ -50,52 +50,52 @@ func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.Range) (sql.Express
 			case sql.RangeType_EqualNull:
 				rangeColumnExpr = NewIsNull(exprs[i])
 			case sql.RangeType_GreaterThan:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
-					rangeColumnExpr = NewGreaterThan(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
+				if sql.MySQLRangeCutIsBinding(rce.LowerBound) {
+					rangeColumnExpr = NewGreaterThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
 				} else {
 					rangeColumnExpr = NewNot(NewIsNull(exprs[i]))
 				}
 			case sql.RangeType_GreaterOrEqual:
-				rangeColumnExpr = NewGreaterThanOrEqual(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
+				rangeColumnExpr = NewGreaterThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
 			case sql.RangeType_LessThanOrNull:
 				rangeColumnExpr = JoinOr(
-					NewLessThan(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
+					NewLessThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
 					NewIsNull(exprs[i]),
 				)
 			case sql.RangeType_LessOrEqualOrNull:
 				rangeColumnExpr = JoinOr(
-					NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
+					NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
 					NewIsNull(exprs[i]),
 				)
 			case sql.RangeType_ClosedClosed:
 				rangeColumnExpr = JoinAnd(
-					NewGreaterThanOrEqual(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-					NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
+					NewGreaterThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
+					NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
 				)
 			case sql.RangeType_OpenOpen:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
+				if sql.MySQLRangeCutIsBinding(rce.LowerBound) {
 					rangeColumnExpr = JoinAnd(
-						NewGreaterThan(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-						NewLessThan(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
+						NewGreaterThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
+						NewLessThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
 					)
 				} else {
 					// Lower bound is (NULL, ...)
-					rangeColumnExpr = NewLessThan(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
+					rangeColumnExpr = NewLessThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
 				}
 			case sql.RangeType_OpenClosed:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
+				if sql.MySQLRangeCutIsBinding(rce.LowerBound) {
 					rangeColumnExpr = JoinAnd(
-						NewGreaterThan(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-						NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
+						NewGreaterThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
+						NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
 					)
 				} else {
 					// Lower bound is (NULL, ...]
-					rangeColumnExpr = NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
+					rangeColumnExpr = NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
 				}
 			case sql.RangeType_ClosedOpen:
 				rangeColumnExpr = JoinAnd(
-					NewGreaterThanOrEqual(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-					NewLessThan(exprs[i], NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
+					NewGreaterThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
+					NewLessThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
 				)
 			}
 			rangeExpr = JoinAnd(rangeExpr, rangeColumnExpr)

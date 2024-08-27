@@ -258,7 +258,7 @@ func (p *relProps) populateFds() {
 		var equiv [][2]sql.ColumnId
 		for _, f := range rel.Filters {
 			switch f := f.(type) {
-			case *expression.Equals:
+			case expression.Equality:
 				if l, ok := f.Left().(*expression.GetField); ok {
 					switch r := f.Right().(type) {
 					case *expression.GetField:
