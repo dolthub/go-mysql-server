@@ -387,29 +387,32 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 		return "", sql.ErrConvertToSQL.New(s, t)
 	}
 
-	s := t.(StringType)
-	if s.baseType == sqltypes.Text {
-		// for TEXT types, we use the byte length instead of the character length
-		if int64(len(val)) > s.maxByteLength {
-			return "", ErrLengthBeyondLimit.New(val, t.String())
-		}
-	} else {
-		if t.CharacterSet().MaxLength() == 1 {
-			// if the character set only has a max size of 1, we can just count the bytes
-			if int64(len(val)) > s.maxCharLength {
+	// TODO: add this checking to the interface, rather than relying on the StringType implementation
+	st, isStringType := t.(StringType)
+	if isStringType {
+		if st.baseType == sqltypes.Text {
+			// for TEXT types, we use the byte length instead of the character length
+			if int64(len(val)) > st.maxByteLength {
 				return "", ErrLengthBeyondLimit.New(val, t.String())
 			}
 		} else {
-			// TODO: this should count the string's length properly according to the character set
-			// convert 'val' string to rune to count the character length, not byte length
-			if int64(len([]rune(val))) > s.maxCharLength {
-				return "", ErrLengthBeyondLimit.New(val, t.String())
+			if t.CharacterSet().MaxLength() == 1 {
+				// if the character set only has a max size of 1, we can just count the bytes
+				if int64(len(val)) > st.maxCharLength {
+					return "", ErrLengthBeyondLimit.New(val, t.String())
+				}
+			} else {
+				// TODO: this should count the string's length properly according to the character set
+				// convert 'val' string to rune to count the character length, not byte length
+				if int64(len([]rune(val))) > st.maxCharLength {
+					return "", ErrLengthBeyondLimit.New(val, t.String())
+				}
 			}
 		}
-	}
 
-	if s.baseType == sqltypes.Binary {
-		val += strings2.Repeat(string([]byte{0}), int(s.maxCharLength)-len(val))
+		if st.baseType == sqltypes.Binary {
+			val += strings2.Repeat(string([]byte{0}), int(st.maxCharLength)-len(val))
+		}
 	}
 
 	// TODO: add exceptions for certain collations?
