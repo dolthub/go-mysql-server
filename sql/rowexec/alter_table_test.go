@@ -102,7 +102,7 @@ func TestAddColumnToSchema(t *testing.T) {
 			},
 			order: &sql.ColumnOrder{First: true},
 			newSchema: sql.Schema{
-				{Name: "i2", Type: types.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(0, types.Int64, "i", false), types.Int64, false, true, true)},
+				{Name: "i2", Type: types.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, types.Int64, "i", false), types.Int64, false, true, true)},
 				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
@@ -111,7 +111,7 @@ func TestAddColumnToSchema(t *testing.T) {
 					Name:    "i2",
 					Type:    types.Int64,
 					Source:  "mytable",
-					Default: mustDefault(expression.NewGetField(0, types.Int64, "i", false), types.Int64, false, true, true),
+					Default: mustDefault(expression.NewGetField(1, types.Int64, "i", false), types.Int64, false, true, true),
 				}},
 				expression.NewGetField(0, types.Int64, "i", false),
 				expression.NewGetField(1, varchar20, "s", false),
@@ -145,7 +145,7 @@ func TestAddColumnToSchema(t *testing.T) {
 			order: &sql.ColumnOrder{AfterColumn: "i"},
 			newSchema: sql.Schema{
 				{Name: "i", Type: types.Int64, Source: "mytable", PrimaryKey: true},
-				{Name: "i2", Type: types.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(1, types.Int64, "s", false), types.Int64, false, true, true)},
+				{Name: "i2", Type: types.Int64, Source: "mytable", Default: mustDefault(expression.NewGetField(2, types.Int64, "s", false), types.Int64, false, true, true)},
 				{Name: "s", Type: varchar20, Source: "mytable", Comment: "column s"},
 			},
 			projections: []sql.Expression{
@@ -154,7 +154,7 @@ func TestAddColumnToSchema(t *testing.T) {
 					Name:    "i2",
 					Type:    types.Int64,
 					Source:  "mytable",
-					Default: mustDefault(expression.NewGetField(1, types.Int64, "s", false), types.Int64, false, true, true),
+					Default: mustDefault(expression.NewGetField(2, types.Int64, "s", false), types.Int64, false, true, true),
 				}},
 				expression.NewGetField(1, varchar20, "s", false),
 			},

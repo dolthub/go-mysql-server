@@ -88,6 +88,30 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Add stored column first with literal",
+		SetUpScript: []string{
+			"CREATE TABLE t16(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
+			"INSERT INTO t16 (pk) VALUES (1), (2)",
+			"ALTER TABLE t16 ADD COLUMN v2 BIGINT AS (5) STORED FIRST",
+		},
+		Assertions: []ScriptTestAssertion{{
+			Query:    "SELECT * FROM t16",
+			Expected: []sql.Row{{5, 1, 4}, {5, 2, 4}}},
+		},
+	},
+	{
+		Name: "Add stored column first with expression",
+		SetUpScript: []string{
+			"CREATE TABLE t17(pk BIGINT PRIMARY KEY, v1 BIGINT)",
+			"INSERT INTO t17 VALUES (1, 3), (2, 4)",
+			"ALTER TABLE t17 ADD COLUMN v2 BIGINT AS (v1 + 2) STORED FIRST",
+		},
+		Assertions: []ScriptTestAssertion{{
+			Query:    "SELECT * FROM t17",
+			Expected: []sql.Row{{5, 1, 3}, {6, 2, 4}}},
+		},
+	},
+	{
 		Name: "index on stored generated column",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int as (a + 1) stored)",
@@ -177,6 +201,122 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "creating index on stored generated column with type conversion",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b float generated always as (a + 1) stored)",
+			"insert into t1(a) values (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create index i1 on t1(b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` float GENERATED ALWAYS AS ((`a` + 1)) STORED,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, float64(2)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, float64(2)}, {2, float64(3)}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, float64(2)}, {2, float64(3)}},
+			},
+		},
+	},
+	{
+		Name: "creating index on stored generated column within multi-alter statement",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int as (a + 1) stored)",
+			"insert into t1(a) values (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column c int as (b+1) stored, add index b1(b), add column d int as (b+2) stored",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` + 1)) STORED,\n" +
+						"  `c` int GENERATED ALWAYS AS ((`b` + 1)) STORED,\n" +
+						"  `d` int GENERATED ALWAYS AS ((`b` + 2)) STORED,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `b1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, 2, 3, 4}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2, 3, 4}, {2, 3, 4, 5}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 2, 3, 4}, {2, 3, 4, 5}},
+			},
+		},
+	},
+	{
+		Name: "creating unique index on stored generated column",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int as (a * a) stored, c int as (0) stored)",
+			"insert into t1(a) values (-1), (-2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create unique index i1 on t1(b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)) STORED,\n" +
+						"  `c` int GENERATED ALWAYS AS (0) STORED,\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  UNIQUE KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "select * from t1 where b = 4 order by a",
+				Expected: []sql.Row{{-2, 4, 0}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{-2, 4, 0}, {-1, 1, 0}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{-1, 1, 0}, {-2, 4, 0}},
+			},
+			{
+				Query:       "insert into t1(a) values (2)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+			{
+				Query:       "create unique index i2 on t1(c)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
+	{
 		Name: "creating index on virtual generated column",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int as (a + 1) virtual)",
@@ -201,7 +341,6 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 where b = 2 order by a",
 				Expected: []sql.Row{{1, 2}},
-				Skip:     true, // https://github.com/dolthub/dolt/issues/8276
 			},
 			{
 				Query:    "select * from t1 order by a",
@@ -273,7 +412,6 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 where b = 2 order by a",
 				Expected: []sql.Row{{1, float64(2)}},
-				Skip:     true, // https://github.com/dolthub/dolt/issues/8276
 			},
 			{
 				Query:    "select * from t1 order by a",
@@ -429,6 +567,94 @@ var GeneratedColumnTests = []ScriptTest{
 					{1, 2, 4},
 				},
 			},
+		},
+	},
+	{
+		Name: "virtual generated column with spaces",
+		SetUpScript: []string{
+			"create table tt (`col 1` int, `col 2` int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table t (`col 1` int, `col 2` int, `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) virtual);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `col 1` int,\n" +
+						"  `col 2` int,\n" +
+						"  `col 3` int GENERATED ALWAYS AS (((`col 1` + `col 2`) + power(`col 1`, `col 2`)))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t (`col 1`, `col 2`) values (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, 2, 4},
+				},
+			},
+			{
+				Query: "alter table tt add column `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) virtual;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table tt",
+				Expected: []sql.Row{
+					{"tt", "CREATE TABLE `tt` (\n" +
+						"  `col 1` int,\n" +
+						"  `col 2` int,\n" +
+						"  `col 3` int GENERATED ALWAYS AS (((`col 1` + `col 2`) + power(`col 1`, `col 2`)))\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into tt (`col 1`, `col 2`) values (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from tt",
+				Expected: []sql.Row{
+					{1, 2, 4},
+				},
+			},
+		},
+	},
+	{
+		Name: "Add virtual column first with literal",
+		SetUpScript: []string{
+			"CREATE TABLE t16(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
+			"INSERT INTO t16 (pk) VALUES (1), (2)",
+			"ALTER TABLE t16 ADD COLUMN v2 BIGINT AS (5) VIRTUAL FIRST",
+		},
+		Assertions: []ScriptTestAssertion{{
+			Query:    "SELECT * FROM t16",
+			Expected: []sql.Row{{5, 1, 4}, {5, 2, 4}}},
+		},
+	},
+	{
+		Name: "Add virtual column first with expression",
+		SetUpScript: []string{
+			"CREATE TABLE t17(pk BIGINT PRIMARY KEY, v1 BIGINT)",
+			"INSERT INTO t17 VALUES (1, 3), (2, 4)",
+			"ALTER TABLE t17 ADD COLUMN v2 BIGINT AS (v1 + 2) VIRTUAL FIRST",
+		},
+		Assertions: []ScriptTestAssertion{{
+			Query:    "SELECT * FROM t17",
+			Expected: []sql.Row{{5, 1, 3}, {6, 2, 4}}},
 		},
 	},
 	{
@@ -728,6 +954,42 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "creating index on virtual generated column",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int as (a + 1) virtual)",
+			"insert into t1(a) values (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create index i1 on t1(b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` + 1)),\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Skip: true, // https://github.com/dolthub/dolt/issues/8275
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2}, {2, 3}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 2}, {2, 3}},
+			},
+		},
+	},
+	{
 		Name: "virtual column index",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b int, c int generated always as (a + b) virtual, index idx_c (c))",
@@ -803,6 +1065,127 @@ var GeneratedColumnTests = []ScriptTest{
 					{"{\"b\": 3}", nil},
 					{"{\"a\": 1}", 1},
 				},
+			},
+		},
+	},
+	{
+		Name: "creating index on virtual generated column with type conversion",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b float generated always as (a + 1))",
+			"insert into t1(a) values (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create index i1 on t1(b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` float GENERATED ALWAYS AS ((`a` + 1)),\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Skip: true, // https://github.com/dolthub/dolt/issues/8275
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, float64(2)}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, float64(2)}, {2, float64(3)}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, float64(2)}, {2, float64(3)}},
+			},
+		},
+	},
+	{
+		Name: "creating index on virtual generated column within multi-alter statement",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int as (a + 1) virtual)",
+			"insert into t1(a) values (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t1 add column c int as (b+1) stored, add index b1(b), add column d int as (b+2) stored",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` + 1)),\n" +
+						"  `c` int GENERATED ALWAYS AS ((`b` + 1)),\n" +
+						"  `d` int GENERATED ALWAYS AS ((`b` + 2)),\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Skip: true, // https://github.com/dolthub/dolt/issues/8275
+			},
+			{
+				Query:    "select * from t1 where b = 2 order by a",
+				Expected: []sql.Row{{1, 2, 3, 4}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{1, 2, 3, 4}, {2, 3, 4, 5}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{1, 2, 3, 4}, {2, 3, 4, 5}},
+			},
+		},
+	},
+	{
+		Name: "creating unique index on virtual generated column",
+		SetUpScript: []string{
+			"create table t1 (a int primary key, b int as (a * a) virtual, c int as (0) virtual)",
+			"insert into t1(a) values (-1), (-2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "create unique index i1 on t1(b)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{{"t1",
+					"CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` int GENERATED ALWAYS AS ((`a` * `a`)),\n" +
+						"  `c` int GENERATED ALWAYS AS (0),\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `i1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Skip: true, // https://github.com/dolthub/dolt/issues/8275
+			},
+			{
+				Query:    "select * from t1 where b = 4 order by a",
+				Expected: []sql.Row{{-2, 4, 0}},
+			},
+			{
+				Query:    "select * from t1 order by a",
+				Expected: []sql.Row{{-2, 4, 0}, {-1, 1, 0}},
+			},
+			{
+				Query:    "select * from t1 order by b",
+				Expected: []sql.Row{{-1, 1, 0}, {-2, 4, 0}},
+			},
+			{
+				Query:       "insert into t1(a) values (2)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+				Skip:        true, // https://github.com/dolthub/go-mysql-server/issues/2643
+			},
+			{
+				Query:       "create unique index i2 on t1(c)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+				Skip:        true, // https://github.com/dolthub/go-mysql-server/issues/2643
 			},
 		},
 	},
