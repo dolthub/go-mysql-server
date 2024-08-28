@@ -485,7 +485,7 @@ func CheckResults(
 	e QueryEngine,
 ) {
 	if reh, ok := h.(ResultEvaluationHarness); ok {
-		reh.EvaluateQueryResults(expected, expectedCols, sch, rows, q)
+		reh.EvaluateQueryResults(t, expected, expectedCols, sch, rows, q)
 	} else {
 		checkResults(t, expected, expectedCols, sch, rows, q, e)
 	}
@@ -937,7 +937,7 @@ func AssertErrWithBindings(t *testing.T, e QueryEngine, h Harness, query string,
 	if len(errStr) >= 1 {
 		require.Equal(t, 1, len(errStr), "Expected 1 error string, but got %d", len(errStr))
 		if reh, ok := h.(ResultEvaluationHarness); ok {
-			reh.EvaluateExpectedError(errStr[0], err)
+			reh.EvaluateExpectedError(t, errStr[0], err)
 		} else {
 			require.Equal(t, errStr[0], err.Error())
 		}
@@ -964,7 +964,7 @@ func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Con
 	if len(errStr) >= 1 {
 		require.Equal(t, 1, len(errStr), "Expected 1 error string, but got %d", len(errStr))
 		if reh, ok := harness.(ResultEvaluationHarness); ok {
-			reh.EvaluateExpectedError(errStr[0], err)
+			reh.EvaluateExpectedError(t, errStr[0], err)
 		} else {
 			require.Equal(t, errStr[0], err.Error())
 		}

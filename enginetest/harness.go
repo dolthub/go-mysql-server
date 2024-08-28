@@ -155,7 +155,9 @@ type ResultEvaluationHarness interface {
 
 	// EvaluateQueryResults compares expected query results to actual results and emits failed test assertions in the event
 	// there are any
-	EvaluateQueryResults(expectedRows []sql.Row,
+	EvaluateQueryResults(
+		t *testing.T,
+		expectedRows []sql.Row,
 		expectedCols []*sql.Column,
 		expectdSch sql.Schema,
 		actualRows []sql.Row,
@@ -164,5 +166,5 @@ type ResultEvaluationHarness interface {
 
 	// EvaluateExpectedError compares expected error strings to actual errors and emits failed test assertions in the
 	// event there are any
-	EvaluateExpectedError(expected string, err error)
+	EvaluateExpectedError(t *testing.T, expected string, err error)
 }
