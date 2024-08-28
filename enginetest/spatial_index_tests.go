@@ -427,7 +427,7 @@ func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e QueryEngin
 		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
 
 		if exp != nil {
-			checkResults(t, exp, nil, sch, rows, q, e)
+			CheckResults(t, harness, exp, nil, sch, rows, q, e)
 		}
 
 		require.Equal(t, 0, ctx.Memory.NumCaches())
