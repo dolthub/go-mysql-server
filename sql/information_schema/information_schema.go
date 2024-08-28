@@ -2030,10 +2030,12 @@ type DbWithNames struct {
 // present. For Postgres, it will only return the schemas for the current database.
 func AllDatabases(ctx *Context, cat Catalog, privCheck bool) ([]DbWithNames, error) {
 	var dbs []DbWithNames
+	var schemaDbs []DbWithNames
 
 	currentDB := ctx.GetCurrentDatabase()
 
-	for _, db := range cat.AllDatabases(ctx) {
+	allDbs := cat.AllDatabases(ctx)
+	for _, db := range allDbs {
 		if privCheck {
 			if privDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
 				db = privDatabase.Unwrap()
@@ -2042,35 +2044,51 @@ func AllDatabases(ctx *Context, cat Catalog, privCheck bool) ([]DbWithNames, err
 
 		sdb, ok := db.(SchemaDatabase)
 		if ok {
-			var schemaDbs []DbWithNames
+			var dbsForSchema []DbWithNames
 			schemas, err := sdb.AllSchemas(ctx)
 			if err != nil {
 				return nil, err
 			}
 
 			for _, schema := range schemas {
-				if schema.SchemaName() != "" && db.Name() == currentDB {
-					schemaDbs = append(schemaDbs, DbWithNames{schema, schema.Name(), schema.SchemaName()})
+				dbName := db.Name()
+				revDb, _ := splitRevisionDbName(dbName)
+				if schema.SchemaName() != "" && (dbName == currentDB || revDb == currentDB) {
+					dbsForSchema = append(dbsForSchema, DbWithNames{schema, schema.Name(), schema.SchemaName()})
 				} else {
 					dbs = append(dbs, DbWithNames{schema, "def", schema.Name()})
 				}
 			}
 
-			if len(schemaDbs) > 0 {
+			if len(dbsForSchema) > 0 {
 				// TODO: information_schema should be included in the schema list
 				infoSchemaDB, err := cat.Database(ctx, InformationSchemaDatabaseName)
 				if err != nil {
 					return nil, err
 				}
-				schemaDbs = append(schemaDbs, DbWithNames{infoSchemaDB, sdb.Name(), InformationSchemaDatabaseName})
+				dbsForSchema = append(dbsForSchema, DbWithNames{infoSchemaDB, sdb.Name(), InformationSchemaDatabaseName})
 
-				return schemaDbs, nil
+				schemaDbs = append(schemaDbs, dbsForSchema...)
 			}
 		} else {
 			dbs = append(dbs, DbWithNames{db, "def", db.Name()})
 		}
 	}
+	if len(schemaDbs) > 0 {
+		return schemaDbs, nil
+	}
+
 	return dbs, nil
+}
+
+func splitRevisionDbName(dbName string) (string, string) {
+	var baseName, rev string
+	parts := strings.SplitN(dbName, "/", 2)
+	baseName = parts[0]
+	if len(parts) > 1 {
+		rev = parts[1]
+	}
+	return baseName, rev
 }
 
 // tablesExtensionsRowIter implements the sql.RowIter for the information_schema.TABLES_EXTENSIONS table.
