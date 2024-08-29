@@ -83,6 +83,12 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 	require.NoError(t, err, nil)
 
 	t.Run(script.Name, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Skip()
+			}
+		}
+
 		for _, statement := range script.SetUpScript {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(statement) {
