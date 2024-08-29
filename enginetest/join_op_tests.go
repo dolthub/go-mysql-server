@@ -134,6 +134,28 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
+		name: "unique covering source index",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"Create table ab (a int primary key, b int);",
+				"Create table xyz (x int primary key, y int, z int, unique key(y, z));",
+				"insert into ab values (4,0), (7,1)",
+				"insert into xyz values (0,2,4), (1,2,7)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xyz) */ a from ab join xyz on a = z where y = 2;",
+				Expected: []sql.Row{{4}, {7}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xyz,ab) */ a from ab join xyz on a = z where y = 2;",
+				Expected: []sql.Row{{4}, {7}},
+			},
+		},
+	},
+	{
 		name: "keyless lookup join indexes",
 		setup: [][]string{
 			setup.MydbData[0],
@@ -327,6 +349,14 @@ var DefaultJoinOpTests = []joinOpTest{
 			},
 			{
 				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and y = a",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = a and  c = 0",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = a and  c = 0",
 				Expected: []sql.Row{{0, 0, 0}},
 			},
 		},
