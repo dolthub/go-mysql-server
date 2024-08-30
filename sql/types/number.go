@@ -1010,7 +1010,9 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 			return i, sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			return convertToUint64(t, f)
+			if val, inRange, err := convertToUint64(t, f); err == nil && inRange {
+				return val, inRange, err
+			}
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
@@ -1108,7 +1110,9 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 			return uint32(i), sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			return convertToUint32(t, f)
+			if val, inRange, err := convertToUint32(t, f); err == nil && inRange {
+				return val, inRange, err
+			}
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
@@ -1202,7 +1206,9 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 			return uint16(i), sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			return convertToUint16(t, f)
+			if val, inRange, err := convertToUint16(t, f); err == nil && inRange {
+				return val, inRange, err
+			}
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
@@ -1300,7 +1306,9 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 			return uint8(i), sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			return convertToUint8(t, f)
+			if val, inRange, err := convertToUint8(t, f); err == nil && inRange {
+				return val, inRange, err
+			}
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
