@@ -118,27 +118,22 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			}
 		case *ast.SQLVal:
 			// literal -> index into targets
-			replace := b.normalizeValArg(e)
-			val, ok := replace.(*ast.SQLVal)
+			v, ok := b.normalizeIntVal(e)
 			if !ok {
-				// ast.NullVal
-				continue
+				b.handleErr(fmt.Errorf("expected integer order by literal"))
 			}
-			if val.Type == ast.IntVal {
-				lit := b.convertInt(string(val.Val), 10)
-				idx, _, err := types.Int64.Convert(lit.Value())
-				if err != nil {
-					b.handleErr(err)
-				}
-				intIdx, ok := idx.(int64)
-				if !ok {
-					b.handleErr(fmt.Errorf("expected integer order by literal"))
-				}
-				if intIdx < 1 {
-					b.handleErr(fmt.Errorf("expected positive integer order by literal"))
-				}
-				col = projScope.cols[intIdx-1]
+			idx, _, err := types.Int64.Convert(v)
+			if err != nil {
+				b.handleErr(err)
 			}
+			intIdx, ok := idx.(int64)
+			if !ok {
+				b.handleErr(fmt.Errorf("expected integer order by literal"))
+			}
+			if intIdx < 1 {
+				b.handleErr(fmt.Errorf("expected positive integer order by literal"))
+			}
+			col = projScope.cols[intIdx-1]
 		default:
 			expr := b.buildScalar(fromScope, e)
 			col = scopeColumn{

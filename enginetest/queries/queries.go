@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -33,7 +33,7 @@ type QueryTest struct {
 	Query            string
 	Expected         []sql.Row
 	ExpectedColumns  sql.Schema // only Name and Type matter here, because that's what we send on the wire
-	Bindings         map[string]*query.BindVariable
+	Bindings         map[string]sqlparser.Expr
 	SkipPrepared     bool
 	SkipServerEngine bool
 }
@@ -10368,7 +10368,7 @@ var DateParseQueries = []QueryTest{
 
 type QueryErrorTest struct {
 	Query          string
-	Bindings       map[string]*query.BindVariable
+	Bindings       map[string]sqlparser.Expr
 	ExpectedErr    *errors.Kind
 	ExpectedErrStr string
 }
@@ -11068,7 +11068,7 @@ type WriteQueryTest struct {
 	ExpectedWriteResult []sql.Row
 	SelectQuery         string
 	ExpectedSelect      []sql.Row
-	Bindings            map[string]*query.BindVariable
+	Bindings            map[string]sqlparser.Expr
 	Skip                bool
 	SkipServerEngine    bool
 }

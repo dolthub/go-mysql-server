@@ -145,11 +145,11 @@ func TestBrokenJSONTableScripts(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `select a.i,a.f, b.i2 from niltable a left join niltable b on a.i = b.i2 order by a.i`,
-		Expected: []sql.Row{{1, nil, nil}, {2, nil, 2}, {3, nil, nil}, {4, 4.0, 4}, {5, 5.0, nil}, {6, 6.0, 6}},
+		Query:    `select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);`,
+		Expected: []sql.Row{{true, 0, true}},
 	}
 
 	fmt.Sprintf("%v", test)

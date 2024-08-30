@@ -296,7 +296,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
 // TODO: this should take en engine
-func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
+func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -312,7 +312,7 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
+func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -339,7 +339,7 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 	})
 }
 
-func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) {
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -376,7 +376,7 @@ func GetFilterIndex(n sql.Node) sql.IndexLookup {
 	return lookup
 }
 
-func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]*querypb.BindVariable) {
+func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -446,7 +446,7 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 	})
 }
 
-func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, h Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindVars map[string]*querypb.BindVariable, checkIndexedAccess bool) {
+func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, h Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindVars map[string]sqlparser.Expr, checkIndexedAccess bool) {
 	require := require.New(t)
 	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q, bindVars, false)
 	if err != nil {
@@ -468,7 +468,7 @@ func injectBindVarsAndPrepare(
 	ctx *sql.Context,
 	e QueryEngine,
 	q string,
-) (string, map[string]*querypb.BindVariable, error) {
+) (string, map[string]sqlparser.Expr, error) {
 	sqlMode := sql.LoadSqlMode(ctx)
 	parsed, err := sqlparser.ParseWithOptions(ctx, q, sqlMode.ParserOptions())
 	if err != nil {
@@ -500,43 +500,30 @@ func injectBindVarsAndPrepare(
 	}
 
 	_, isInsert := resPlan.(*plan.InsertInto)
-	bindVars := make(map[string]*querypb.BindVariable)
+	bindVars := make(map[string]sqlparser.Expr)
 	var bindCnt int
 	var foundBindVar bool
 	var skipTypeConv bool
 	err = sqlparser.Walk(func(n sqlparser.SQLNode) (kontinue bool, err error) {
-		switch n := n.(type) {
+		switch sqlVal := n.(type) {
 		case *sqlparser.SQLVal:
 			if n == nil {
 				return false, nil
 			}
-			switch n.Type {
-			case sqlparser.HexNum, sqlparser.HexVal:
+			if sqlVal.Type == sqlparser.HexNum || sqlVal.Type == sqlparser.HexVal {
 				return false, nil
 			}
-			expr := b.ConvertVal(n)
-			var val interface{}
-			if l, ok := expr.(*expression.Literal); ok {
-				val, _, err = expr.Type().Promote().Convert(l.Value())
-				if err != nil {
-					skipTypeConv = true
-					return false, nil
-				}
-			} else {
-				// If the |expr| is not Literal, then |val| is nil
+			if _, ok := b.ConvertVal(sqlVal).(*expression.Literal); !ok {
+				// If not Literal, then |val| is nil
 				skipTypeConv = true
 				return false, nil
 			}
 
-			bindVar, err := sqltypes.BuildBindVariable(val)
-			if err != nil {
-				skipTypeConv = true
-				return false, nil
-			}
-			varName := fmt.Sprintf("v%d", bindCnt+1)
-			bindVars[varName] = bindVar
-			n.Type = sqlparser.ValArg
-			n.Val = []byte(fmt.Sprintf(":v%d", bindCnt+1))
+			val := *sqlVal
+			bindVars[fmt.Sprintf("v%d", bindCnt+1)] = &val
+
+			sqlVal.Type = sqlparser.ValArg
+			sqlVal.Val = []byte(fmt.Sprintf(":v%d", bindCnt+1))
 			bindCnt++
 		case *sqlparser.Insert:
 			isInsert = true
@@ -579,7 +566,7 @@ func injectBindVarsAndPrepare(
 	return buf.String(), bindVars, nil
 }
 
-func runQueryPreparedWithCtx(t *testing.T, ctx *sql.Context, e QueryEngine, q string, bindVars map[string]*querypb.BindVariable, checkIndexedAccess bool) ([]sql.Row, sql.Schema, error) {
+func runQueryPreparedWithCtx(t *testing.T, ctx *sql.Context, e QueryEngine, q string, bindVars map[string]sqlparser.Expr, checkIndexedAccess bool) ([]sql.Row, sql.Schema, error) {
 	// If bindvars were not provided, try to inject some
 	if bindVars == nil || len(bindVars) == 0 {
 		var err error
@@ -884,13 +871,13 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 }
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
-func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
+func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]sqlparser.Expr, expectedErrKind *errors.Kind, errStrs ...string) {
 	AssertErrWithCtx(t, e, harness, NewContext(harness), query, bindings, expectedErrKind, errStrs...)
 }
 
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
 // type of error.
-func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
+func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]sqlparser.Expr, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx := NewContext(harness)
 	_, iter, _, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
 	if err == nil {
@@ -908,7 +895,7 @@ func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query s
 }
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
-func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, bindings map[string]*querypb.BindVariable, expectedErrKind *errors.Kind, errStrs ...string) {
+func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, bindings map[string]sqlparser.Expr, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx = ctx.WithQuery(query)
 	_, iter, _, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
 	if err == nil {
