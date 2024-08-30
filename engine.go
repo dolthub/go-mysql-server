@@ -630,6 +630,9 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 			if err != nil {
 				return nil, nil
 			}
+			if t == nil {
+				t = types.Null
+			}
 			if val != nil {
 				val, _, err = t.Promote().Convert(val)
 				if err != nil {
