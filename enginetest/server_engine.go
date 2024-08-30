@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	gosql "database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,7 +35,9 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -193,7 +194,10 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 		return nil, nil, nil, trimMySQLErrCodePrefix(err)
 	}
 
-	args := prepareBindingArgs(bindings)
+	args, err := prepareBindingArgs(ctx, bindings)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	return s.queryOrExec(stmt, parsed, query, args)
 }
@@ -626,76 +630,25 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 // The binding variables need to be sorted in order of position in the query. The variable in binding map
 // is in random order. The function expects binding variables starting with `:v1` and do not skip number.
 // It cannot sort user-defined binding variables (e.g. :var, :foo)
-func prepareBindingArgs(bindings map[string]sqlparser.Expr) []any {
+func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([]any, error) {
+	// NOTE: using binder with nil catalog and parser since we're only using it to convert SQLVal.
+	binder := planbuilder.New(ctx, nil, nil)
 	numBindVars := len(bindings)
 	args := make([]any, numBindVars)
 	for i := 0; i < numBindVars; i++ {
 		k := fmt.Sprintf("v%d", i+1)
-		args[i] = convertVtQueryTypeToGoTypeValue(bindings[k])
+		sqlVal, ok := bindings[k].(*sqlparser.SQLVal)
+		if !ok {
+			return nil, fmt.Errorf("cannot get binding value")
+		}
+		v := binder.ConvertVal(sqlVal)
+		lit, ok := v.(*expression.Literal)
+		if !ok {
+			return nil, fmt.Errorf("cannot get binding value")
+		}
+		args[i] = lit.Value()
 	}
-	return args
-}
-
-// convertValue converts the row value scanned from go sql driver client to type that we expect.
-// This method helps with testing existing enginetests that expects specific type as returned value.
-func convertVtQueryTypeToGoTypeValue(b sqlparser.Expr) any {
-	sqlVal, ok := b.(*sqlparser.SQLVal)
-	if !ok {
-		return nil
-	}
-	str := string(sqlVal.Val)
-	switch sqlVal.Type {
-	case sqlparser.StrVal:
-		return str
-	case sqlparser.IntVal:
-		if i64, err := strconv.ParseInt(str, 10, 64); err == nil {
-			return i64
-		}
-		if ui64, err := strconv.ParseUint(str, 10, 64); err == nil {
-			return ui64
-		}
-		if decimal, _, err := types.InternalDecimalType.Convert(str); err == nil {
-			return decimal
-		}
-	case sqlparser.FloatVal:
-		if val, err := strconv.ParseFloat(str, 64); err == nil {
-			return val
-		}
-		if decimal, _, err := types.InternalDecimalType.Convert(str); err == nil {
-			return decimal
-		}
-	case sqlparser.HexNum:
-		//TODO: binary collation?
-		v := strings.ToLower(str)
-		if strings.HasPrefix(v, "0x") {
-			v = v[2:]
-		} else if strings.HasPrefix(v, "x") {
-			v = strings.Trim(v[1:], "'")
-		}
-		// pad string to even length
-		if len(v)%2 == 1 {
-			v = "0" + v
-		}
-		val, err := hex.DecodeString(v)
-		if err == nil {
-			return val
-		}
-	case sqlparser.HexVal:
-		//TODO: binary collation?
-		val, err := sqlVal.HexDecode()
-		if err == nil {
-			return val
-		}
-	case sqlparser.BitVal:
-		if len(str) == 0 {
-			return 0
-		}
-		res, err := strconv.ParseUint(str, 2, 64)
-		if err == nil {
-			return res
-		}
-	}
-	return nil
+	return args, nil
 }
 
 func findEmptyPort() (int, error) {
