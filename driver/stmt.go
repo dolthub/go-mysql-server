@@ -18,7 +18,7 @@ import (
 	"context"
 	"database/sql/driver"
 
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // Stmt is a prepared statement.
@@ -85,7 +85,7 @@ func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 	return s.query(ctx, bindings)
 }
 
-func (s *Stmt) exec(ctx context.Context, bindings map[string]*querypb.BindVariable) (driver.Result, error) {
+func (s *Stmt) exec(ctx context.Context, bindings map[string]sqlparser.Expr) (driver.Result, error) {
 	qctx, err := s.conn.newContextWithQuery(ctx, s.queryStr)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *Stmt) exec(ctx context.Context, bindings map[string]*querypb.BindVariab
 	return &Result{okr}, nil
 }
 
-func (s *Stmt) query(ctx context.Context, bindings map[string]*querypb.BindVariable) (driver.Rows, error) {
+func (s *Stmt) query(ctx context.Context, bindings map[string]sqlparser.Expr) (driver.Rows, error) {
 	qctx, err := s.conn.newContextWithQuery(ctx, s.queryStr)
 	if err != nil {
 		return nil, err
