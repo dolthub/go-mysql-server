@@ -152,12 +152,12 @@ var JoinPlanningTests = []struct {
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{4, 4, 3, 3}, {5, 4, 3, 3}},
 			},
-			//{
+			// {
 			// TODO: cannot hash join on compound expressions
 			//	q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on y = mod(s,2) order by 1, 3",
 			//	types: []plan.JoinType{plan.JoinTypeInner},
 			//	exp:   []sql.Row{{0,0,1,0},{0, 0, 1, 0},{2,0,1,0},{4,4,1,0}},
-			//},
+			// },
 			{
 				q:     "select /*+ JOIN_ORDER(rs, xy) MERGE_JOIN(rs, xy) */ * from rs join xy on 2 = s+y order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeInner},
@@ -434,22 +434,22 @@ order by 1;`,
 				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
 				exp:   []sql.Row{{1, 0}, {1, 1}, {1, 2}, {1, 3}},
 			},
-			//{
+			// {
 			// scope and parent row are non-nil
 			// TODO: subquery alias unable to track parent row from a different scope
 			//				q: `
-			//select * from uv where u > (
+			// select * from uv where u > (
 			//  select x from ab, (
 			//    select x from xy where x = (
 			//      select r from rs where r = 1
 			//    ) order by 1
 			//  ) sq
 			//  order by 1 limit 1
-			//)
-			//order by 1;`,
-			//types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
-			//exp:   []sql.Row{{2, 2}, {3, 2}},
-			//},
+			// )
+			// order by 1;`,
+			// types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLookup},
+			// exp:   []sql.Row{{2, 2}, {3, 2}},
+			// },
 			{
 				q:     "select * from xy where y-1 in (select cast(u as signed) from uv) order by 1;",
 				types: []plan.JoinType{},
@@ -1853,7 +1853,7 @@ func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q s
 		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
 		if exp != nil {
-			checkResults(t, exp, nil, sch, rows, q, e)
+			CheckResults(t, harness, exp, nil, sch, rows, q, e)
 		}
 
 		require.Equal(t, 0, ctx.Memory.NumCaches())
