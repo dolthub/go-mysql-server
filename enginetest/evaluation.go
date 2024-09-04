@@ -83,6 +83,12 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 	require.NoError(t, err, nil)
 
 	t.Run(script.Name, func(t *testing.T) {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Skip()
+			}
+		}
+
 		for _, statement := range script.SetUpScript {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(statement) {
@@ -339,7 +345,17 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 	})
 }
 
-func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) {
+func TestQueryWithContext(
+	t *testing.T,
+	ctx *sql.Context,
+	e QueryEngine,
+	harness Harness,
+	q string,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+	bindings map[string]sqlparser.Expr,
+	qFlags *sql.QueryFlags,
+) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -354,7 +370,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, harness
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		checkResults(t, expected, expectedCols, sch, rows, q, e)
+		CheckResults(t, harness, expected, expectedCols, sch, rows, q, e)
 	}
 
 	require.Equal(
@@ -397,7 +413,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		checkResults(t, expected, expectedCols, sch, rows, q, e)
+		CheckResults(t, harness, expected, expectedCols, sch, rows, q, e)
 	}
 
 	require.Equal(
@@ -456,11 +472,29 @@ func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine,
 
 	if expected != nil {
 		// TODO fix expected cols for prepared?
-		checkResults(t, expected, nil, sch, rows, q, e)
+		CheckResults(t, h, expected, expectedCols, sch, rows, q, e)
 	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, h, e)
+}
+
+// CheckResults compares the
+func CheckResults(
+	t *testing.T,
+	h Harness,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+	sch sql.Schema,
+	rows []sql.Row,
+	q string,
+	e QueryEngine,
+) {
+	if reh, ok := h.(ResultEvaluationHarness); ok {
+		reh.EvaluateQueryResults(t, expected, expectedCols, sch, rows, q)
+	} else {
+		checkResults(t, expected, expectedCols, sch, rows, q, e)
+	}
 }
 
 func injectBindVarsAndPrepare(
@@ -612,6 +646,8 @@ func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 	}
 }
 
+// checkResults is the default implementation for checking the results of a test query assertion for harnesses that
+// don't implement ResultEvaluationHarness. All numerical values are widened to their widest type before comparison.
 func checkResults(
 	t *testing.T,
 	expected []sql.Row,
@@ -877,8 +913,8 @@ func AssertErr(t *testing.T, e QueryEngine, harness Harness, query string, bindi
 
 // AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
 // type of error.
-func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query string, bindings map[string]sqlparser.Expr, expectedErrKind *errors.Kind, errStrs ...string) {
-	ctx := NewContext(harness)
+func AssertErrWithBindings(t *testing.T, e QueryEngine, h Harness, query string, bindings map[string]sqlparser.Expr, expectedErrKind *errors.Kind, errStr ...string) {
+	ctx := NewContext(h)
 	_, iter, _, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
@@ -888,14 +924,22 @@ func AssertErrWithBindings(t *testing.T, e QueryEngine, harness Harness, query s
 		if !IsServerEngine(e) {
 			require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 		}
-	} else if len(errStrs) >= 1 {
-		require.Equal(t, errStrs[0], err.Error())
 	}
-	validateEngine(t, ctx, harness, e)
+
+	// errStr is a single optional argument, so it must be length 0 or 1
+	if len(errStr) >= 1 {
+		require.Equal(t, 1, len(errStr), "Expected 1 error string, but got %d", len(errStr))
+		if reh, ok := h.(ResultEvaluationHarness); ok {
+			reh.EvaluateExpectedError(t, errStr[0], err)
+		} else {
+			require.Equal(t, errStr[0], err.Error())
+		}
+	}
+	validateEngine(t, ctx, h, e)
 }
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
-func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, bindings map[string]sqlparser.Expr, expectedErrKind *errors.Kind, errStrs ...string) {
+func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Context, query string, bindings map[string]sqlparser.Expr, expectedErrKind *errors.Kind, errStr ...string) {
 	ctx = ctx.WithQuery(query)
 	_, iter, _, err := e.QueryWithBindings(ctx, query, nil, bindings, nil)
 	if err == nil {
@@ -908,9 +952,15 @@ func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Con
 			require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 		}
 	}
-	// If there are multiple error strings then we only match against the first
-	if len(errStrs) >= 1 {
-		require.Equal(t, errStrs[0], err.Error())
+
+	// errStr is a single optional argument, so it must be length 0 or 1
+	if len(errStr) >= 1 {
+		require.Equal(t, 1, len(errStr), "Expected 1 error string, but got %d", len(errStr))
+		if reh, ok := harness.(ResultEvaluationHarness); ok {
+			reh.EvaluateExpectedError(t, errStr[0], err)
+		} else {
+			require.Equal(t, errStr[0], err.Error())
+		}
 	}
 	validateEngine(t, ctx, harness, e)
 }
@@ -986,7 +1036,7 @@ func AssertWarningAndTestQuery(
 	}
 
 	if !skipResultsCheck {
-		checkResults(t, expected, expectedCols, sch, rows, query, e)
+		CheckResults(t, harness, expected, expectedCols, sch, rows, query, e)
 	}
 	validateEngine(t, ctx, harness, e)
 }

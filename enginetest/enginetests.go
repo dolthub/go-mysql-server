@@ -1921,7 +1921,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
 					// nil in script.Expected as matching "any" non-error result.
 					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
-						checkResults(t, script.Expected, nil, sch, rows, lastQuery, engine)
+						CheckResults(t, harness, script.Expected, nil, sch, rows, lastQuery, engine)
 					}
 				})
 			}
@@ -3807,7 +3807,7 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "SELECT sum(y) over (w3) FROM a WINDOW w1 as (w2), w2 as (w3), w3 as (w1) order by x", nil, sql.ErrCircularWindowInheritance)
 
 	// TODO parser needs to differentiate between window replacement and copying -- window frames can't be copied
-	//AssertErr(t, e, harness, "SELECT sum(y) over w FROM a WINDOW (w) as (partition by z order by x rows unbounded preceding) order by x", sql.ErrInvalidWindowInheritance)
+	// AssertErr(t, e, harness, "SELECT sum(y) over w FROM a WINDOW (w) as (partition by z order by x rows unbounded preceding) order by x", sql.ErrInvalidWindowInheritance)
 }
 
 func TestNaturalJoin(t *testing.T, harness Harness) {
@@ -5229,14 +5229,14 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Expected: []sql.Row{{int64(3)}},
 		},
 		// todo(max): sort function expressions w/ bindvars are aliased incorrectly
-		//{
+		// {
 		//	Query: "SELECT sum(?) as x FROM mytable ORDER BY sum(?)",
 		//	Bindings: map[string]sqlparser.Expr{
 		//		"v1": querypb.&query{Val: 1, Type: sql.Int8},
 		//		"v2": {Value: mustConvertToValue().Val1, Type: sql.Int8},
 		//	},
 		//	Expected: []sql.Row{{float64(3)}},
-		//},
+		// },
 		{
 			Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
 			Bindings: map[string]sqlparser.Expr{
@@ -5700,7 +5700,7 @@ type memoryPersister struct {
 var _ mysql_db.MySQLDbPersistence = &memoryPersister{}
 
 func (p *memoryPersister) Persist(ctx *sql.Context, data []byte) error {
-	//erase everything from users and roles
+	// erase everything from users and roles
 	p.users = make([]*mysql_db.User, 0)
 	p.roles = make([]*mysql_db.RoleEdge, 0)
 

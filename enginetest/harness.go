@@ -148,3 +148,23 @@ type ValidatingHarness interface {
 	// ValidateEngine runs post-test assertions against an engine.
 	ValidateEngine(ctx *sql.Context, e *sqle.Engine) error
 }
+
+// ResultEvaluationHarness is a harness that wants to assert more control over how query results are evaluated
+type ResultEvaluationHarness interface {
+	Harness
+
+	// EvaluateQueryResults compares expected query results to actual results and emits failed test assertions in the event
+	// there are any
+	EvaluateQueryResults(
+		t *testing.T,
+		expectedRows []sql.Row,
+		expectedCols []*sql.Column,
+		expectdSch sql.Schema,
+		actualRows []sql.Row,
+		query string,
+	)
+
+	// EvaluateExpectedError compares expected error strings to actual errors and emits failed test assertions in the
+	// event there are any
+	EvaluateExpectedError(t *testing.T, expected string, err error)
+}
