@@ -3433,6 +3433,22 @@ Select * from (
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    "SELECT i FROM mytable WHERE i = 1 and s = 'first row' and i = 2",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE s = 'first row' and s = 'second row'",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE i = 1 and i between 2 and 2",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE i between 1 and 1 and i between 2 and 2",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
 		Expected: []sql.Row{{int64(1)}},
 	},
