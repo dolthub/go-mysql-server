@@ -3433,6 +3433,18 @@ Select * from (
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    "SELECT i FROM mytable WHERE I = 1 and i = 2",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE i = 1 and i = '1'",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE i = 1 and i = '2'",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and s = 'first row' and i = 2",
 		Expected: []sql.Row{},
 	},
