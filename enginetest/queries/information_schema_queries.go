@@ -1775,6 +1775,26 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 		},
 	},
+	{
+		Name: "information_schema.columns in expression uses info schema collation",
+		SetUpScript: []string{
+			"create table TEST (COL int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select table_schema, table_name, column_name table_comment from information_schema.columns where (table_name, column_name) in (('TEST', 'COL'));",
+				Expected: []sql.Row{
+					{"mydb", "TEST", "COL"},
+				},
+			},
+			{
+				Query: "select table_schema, table_name, column_name table_comment from information_schema.columns where (table_name, column_name) in (('test', 'col'));",
+				Expected: []sql.Row{
+					{"mydb", "TEST", "COL"},
+				},
+			},
+		},
+	},
 }
 
 var SkippedInfoSchemaScripts = []ScriptTest{

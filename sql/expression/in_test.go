@@ -415,6 +415,23 @@ func TestHashInTuple(t *testing.T) {
 			nil,
 		},
 		{
+			"heterogeneous collations with nested",
+			expression.NewTuple(
+					expression.NewLiteral("ABC", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
+					expression.NewLiteral("def", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_utf8mb4_0900_ai_ci)),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral("ABC", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
+					expression.NewLiteral("DEF", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
+				),
+			),
+			nil,
+			true,
+			nil,
+			nil,
+		},
+		{
 			"left get field tuple is in right",
 			expression.NewTuple(
 				expression.NewGetField(0, types.Int64, "foo", false),

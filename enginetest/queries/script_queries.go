@@ -7143,7 +7143,6 @@ where
 			},
 		},
 	},
-
 	{
 		Name: "unix_timestamp script tests",
 		SetUpScript: []string{
@@ -7174,7 +7173,6 @@ where
 			},
 		},
 	},
-
 	{
 		Name: "name_const queries",
 		SetUpScript: []string{
@@ -7257,6 +7255,31 @@ where
 				ExpectedErrStr: "incorrect parameter count in the call to native function NAME_CONST",
 			},
 		},
+	},
+	{
+		Name: "mismatched collation using hash in tuples",
+		SetUpScript: []string{
+			"create table t (t1 text collate utf8mb4_0900_bin, t2 text collate utf8mb4_0900_ai_ci)",
+			"insert into t values ('ABC', 'DEF')",
+		},
+		Assertions:  []ScriptTestAssertion{
+			{
+				Query: "select * from t where (t1, t2) in (('ABC', 'DEF'));",
+				Expected: []sql.Row{
+					{"ABC", "DEF"},
+				},
+			},
+			{
+				Query: "select * from t where (t1, t2) in (('ABC', 'def'));",
+				Expected: []sql.Row{
+					{"ABC", "DEF"},
+				},
+			},
+			{
+				Query: "select * from t where (t1, t2) in (('abc', 'DEF'));",
+				Expected: []sql.Row{},
+			},
+			},
 	},
 }
 
