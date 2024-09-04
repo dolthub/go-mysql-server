@@ -3438,7 +3438,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and i = '1'",
-		Expected: []sql.Row{},
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and i = '2'",
