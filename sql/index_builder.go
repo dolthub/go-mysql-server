@@ -545,6 +545,10 @@ func (b *EqualityIndexBuilder) AddEquality(_ *Context, colIdx int, k interface{}
 	if colIdx >= len(b.rng) {
 		return fmt.Errorf("invalid index for building index lookup")
 	}
+	if b.rng[colIdx].UpperBound != nil {
+		return fmt.Errorf("redundant restriction on index column")
+	}
+
 	typ := b.idx.ColumnExpressionTypes()[colIdx].Type
 	// if converting from float to int results in rounding, then it's empty range
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
