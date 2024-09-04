@@ -7262,7 +7262,7 @@ where
 			"create table t (t1 text collate utf8mb4_0900_bin, t2 text collate utf8mb4_0900_ai_ci)",
 			"insert into t values ('ABC', 'DEF')",
 		},
-		Assertions:  []ScriptTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t where (t1, t2) in (('ABC', 'DEF'));",
 				Expected: []sql.Row{
@@ -7276,10 +7276,10 @@ where
 				},
 			},
 			{
-				Query: "select * from t where (t1, t2) in (('abc', 'DEF'));",
+				Query:    "select * from t where (t1, t2) in (('abc', 'DEF'));",
 				Expected: []sql.Row{},
 			},
-			},
+		},
 	},
 }
 

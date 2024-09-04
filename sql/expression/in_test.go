@@ -417,8 +417,8 @@ func TestHashInTuple(t *testing.T) {
 		{
 			"heterogeneous collations with nested",
 			expression.NewTuple(
-					expression.NewLiteral("ABC", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
-					expression.NewLiteral("def", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_utf8mb4_0900_ai_ci)),
+				expression.NewLiteral("ABC", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
+				expression.NewLiteral("def", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_utf8mb4_0900_ai_ci)),
 			),
 			expression.NewTuple(
 				expression.NewTuple(
