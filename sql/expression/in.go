@@ -246,29 +246,6 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 	return elements, hasNull, nil
 }
 
-// getTupleCollation returns the collation to use for a tuple.
-// If the tuple consists entirely of string types with the same collation, that collation is returned.
-// Otherwise, Default collation is returned.
-func getTupleCollation(tup types.TupleType) sql.CollationID {
-	coll := sql.Collation_Unspecified
-	for _, typ := range tup {
-		// if any element is not text, return default
-		if !types.IsTextOnly(typ) {
-			return sql.Collation_Default
-		}
-		// all text elements must have the same collation
-		c := typ.(sql.StringType).Collation()
-		if coll == sql.Collation_Unspecified {
-			coll = c
-			continue
-		}
-		if coll != c {
-			return sql.Collation_Default
-		}
-	}
-	return coll
-}
-
 func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 	if i == nil {
 		return 0, nil
