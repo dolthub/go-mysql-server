@@ -253,7 +253,19 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 
 	var str string
 	coll := sql.Collation_Default
-	if types.IsTextOnly(t) {
+	if types.IsTuple(t) {
+		tup := i.([]interface{})
+		tupType := t.(types.TupleType)
+		hashes := make([]uint64, len(tup))
+		for idx, v := range tup {
+			h, err := hashOfSimple(ctx, v, tupType[idx])
+			if err != nil {
+				return 0, err
+			}
+			hashes[idx] = h
+		}
+		str = fmt.Sprintf("%v", hashes)
+	} else if types.IsTextOnly(t) {
 		coll = t.(sql.StringType).Collation()
 		if s, ok := i.(string); ok {
 			str = s
