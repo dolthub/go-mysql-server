@@ -47,7 +47,7 @@ var schemataSchema = Schema{
 
 // schemataRowIter implements the sql.RowIter for the information_schema.SCHEMATA table.
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
-	dbs, err := AllDatabases(ctx, c, false)
+	dbs, err := AllDatabasesWithNames(ctx, c, false)
 	if err != nil {
 		return nil, err
 	}

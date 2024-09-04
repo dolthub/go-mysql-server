@@ -151,7 +151,7 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 
 	var allColumns sql.Schema
 
-	databases, err := AllDatabases(ctx, c.catalog, false)
+	databases, err := AllDatabasesWithNames(ctx, c.catalog, false)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 	}
 	globalPrivSetMap = getCurrentPrivSetMapForColumn(privSet.ToSlice(), globalPrivSetMap)
 
-	databases, err := AllDatabases(ctx, catalog, false)
+	databases, err := AllDatabasesWithNames(ctx, catalog, false)
 	if err != nil {
 		return nil, err
 	}
