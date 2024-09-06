@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	trace2 "runtime/trace"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 )
 
@@ -205,6 +207,13 @@ type PartitionCounter interface {
 // Closer is a node that can be closed.
 type Closer interface {
 	Close(*Context) error
+}
+
+// ContextProvider creates sql.Context instances from a database connection.
+type ContextProvider interface {
+	// NewContext creates a new sql.Context instance for the connection |c|. The
+	// optional |query| can be specified to populate the sql.Context's query field.
+	NewContext(ctx context.Context, c *mysql.Conn, query string) (*Context, error)
 }
 
 // ExternalStoredProcedureProvider provides access to built-in stored procedures. These procedures are implemented
