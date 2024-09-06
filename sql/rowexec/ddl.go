@@ -138,6 +138,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 
 		linesTerminatedBy: n.LinesTerminatedBy,
 		linesStartingBy:   n.LinesStartingBy,
+
+		setExprs: n.SetExprs,
 	}, nil
 }
 

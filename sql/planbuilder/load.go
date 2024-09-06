@@ -16,7 +16,8 @@ package planbuilder
 
 import (
 	"fmt"
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -66,7 +67,6 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	}
 
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), ignoreNumVal, d.IgnoreOrReplace)
-
 	if d.Charset != "" {
 		// TODO: deal with charset; ignore for now
 		ld.Charset = d.Charset
@@ -101,6 +101,22 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		}
 		if d.Lines.TerminatedBy != nil {
 			ld.LinesTerminatedBy = string(d.Lines.TerminatedBy.Val)
+		}
+	}
+
+	if d.SetExprs != nil {
+		ld.SetExprs = make(map[int]sql.Expression)
+		for _, expr := range d.SetExprs {
+			col := b.buildScalar(destScope, expr.Name)
+			gf, isGf := col.(*expression.GetField)
+			if !isGf {
+				continue
+			}
+			idx := sch.IndexOfColName(gf.Name())
+			if idx == -1 {
+				b.handleErr(fmt.Errorf("column not found"))
+			}
+			ld.SetExprs[idx] = b.buildScalar(destScope, expr.Expr)
 		}
 	}
 

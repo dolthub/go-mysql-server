@@ -51,6 +51,8 @@ type loadDataIter struct {
 
 	linesStartingBy   string
 	linesTerminatedBy string
+
+	setExprs map[int]sql.Expression
 }
 
 func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
@@ -94,6 +96,14 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	for i, expr := range l.setExprs {
+		res, err := expr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		row[i] = res
 	}
 
 	return sql.NewRow(row...), nil

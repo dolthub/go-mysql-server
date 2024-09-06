@@ -17,9 +17,8 @@ package plan
 import (
 	"strings"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type LoadData struct {
@@ -41,6 +40,7 @@ type LoadData struct {
 
 	LinesStartingBy   string
 	LinesTerminatedBy string
+	SetExprs          map[int]sql.Expression
 }
 
 var _ sql.Node = (*LoadData)(nil)
