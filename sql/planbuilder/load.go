@@ -105,18 +105,33 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	}
 
 	if d.SetExprs != nil {
-		ld.SetExprs = make(map[int]sql.Expression)
+		ld.SetExprs = make([]sql.Expression, len(sch))
 		for _, expr := range d.SetExprs {
 			col := b.buildScalar(destScope, expr.Name)
 			gf, isGf := col.(*expression.GetField)
 			if !isGf {
 				continue
 			}
-			idx := sch.IndexOfColName(gf.Name())
+			colName := gf.Name()
+			idx := sch.IndexOfColName(colName)
 			if idx == -1 {
 				b.handleErr(fmt.Errorf("column not found"))
 			}
 			ld.SetExprs[idx] = b.buildScalar(destScope, expr.Expr)
+
+			// Add set column name to ld.ColumnNames (if not empty or already present), so it's not trimmed from projection
+			if len(ld.ColumnNames) != 0 {
+				exists := false
+				for _, name := range ld.ColumnNames {
+					if strings.EqualFold(name, colName) {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					ld.ColumnNames = append(ld.ColumnNames, colName)
+				}
+			}
 		}
 	}
 

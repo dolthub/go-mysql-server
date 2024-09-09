@@ -43,6 +43,7 @@ type loadDataIter struct {
 	reader           io.ReadCloser
 	columnCount      int
 	fieldToColumnMap []int
+	setExprs         []sql.Expression
 
 	fieldsTerminatedBy  string
 	fieldsEnclosedBy    string
@@ -51,8 +52,6 @@ type loadDataIter struct {
 
 	linesStartingBy   string
 	linesTerminatedBy string
-
-	setExprs map[int]sql.Expression
 }
 
 func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
@@ -96,14 +95,6 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	for i, expr := range l.setExprs {
-		res, err := expr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		row[i] = res
 	}
 
 	return sql.NewRow(row...), nil
@@ -175,6 +166,14 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 
 	destSch := l.destSch
 	for i := 0; i < limit; i++ {
+		if l.setExprs != nil {
+			setExpr := l.setExprs[l.fieldToColumnMap[i]]
+			if setExpr != nil {
+				exprs[i] = setExpr
+				continue
+			}
+		}
+
 		field := fields[i]
 		destCol := destSch[l.fieldToColumnMap[i]]
 		// Replace the empty string with defaults

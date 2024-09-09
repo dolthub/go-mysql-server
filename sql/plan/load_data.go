@@ -26,6 +26,7 @@ type LoadData struct {
 	File               string
 	DestSch            sql.Schema
 	ColumnNames        []string
+	SetExprs           []sql.Expression
 	ResponsePacketSent bool
 	IgnoreNum          int64
 	IsIgnore           bool
@@ -40,7 +41,6 @@ type LoadData struct {
 
 	LinesStartingBy   string
 	LinesTerminatedBy string
-	SetExprs          map[int]sql.Expression
 }
 
 var _ sql.Node = (*LoadData)(nil)
