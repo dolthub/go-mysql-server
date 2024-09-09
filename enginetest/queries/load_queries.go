@@ -262,21 +262,21 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from lt1 order by i, j, k",
+				Query: "select * from lt1 order by i, j, k",
 				Expected: []sql.Row{
 					{"123", "def", "ghi"},
 					{"123", "mno", "pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt2 order by i, j, k",
+				Query: "select * from lt2 order by i, j, k",
 				Expected: []sql.Row{
 					{"123", "456", "ghi"},
 					{"123", "456", "pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt3 order by i, j, k",
+				Query: "select * from lt3 order by i, j, k",
 				Expected: []sql.Row{
 					{"123", "456", "789"},
 					{"123", "456", "789"},
@@ -298,28 +298,28 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from lt1 order by i, j, k",
+				Query: "select * from lt1 order by i, j, k",
 				Expected: []sql.Row{
 					{"123", "def", "ghi"},
 					{"123", "mno", "pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt2 order by i, j, k",
+				Query: "select * from lt2 order by i, j, k",
 				Expected: []sql.Row{
 					{"123", "ghi", "abc"},
 					{"123", "pqr", "jkl"},
 				},
 			},
 			{
-				Query:    "select * from lt3 order by i, j, k",
+				Query: "select * from lt3 order by i, j, k",
 				Expected: []sql.Row{
 					{"123", "abc", "def"},
 					{"123", "jkl", "mno"},
 				},
 			},
 			{
-				Query:    "select * from lt4 order by i, j, k",
+				Query: "select * from lt4 order by i, j, k",
 				Expected: []sql.Row{
 					{"123", nil, "abc"},
 					{"123", nil, "jkl"},
