@@ -259,6 +259,8 @@ var LoadDataScripts = []ScriptTest{
 			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 set i = '123', j = '456'",
 			"create table lt3(i text, j text, k text);",
 			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 set i = '123', j = '456', k = '789'",
+			"create table lt4(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 set i = '123', i = '321'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -280,6 +282,13 @@ var LoadDataScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"123", "456", "789"},
 					{"123", "456", "789"},
+				},
+			},
+			{
+				Query:    "select * from lt4 order by i, j, k",
+				Expected: []sql.Row{
+					{"321", "def", "ghi"},
+					{"321", "mno", "pqr"},
 				},
 			},
 		},
@@ -324,6 +333,18 @@ var LoadDataScripts = []ScriptTest{
 					{"123", nil, "abc"},
 					{"123", nil, "jkl"},
 				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with set columns errors",
+		SetUpScript: []string{
+			"create table lt(i text, j text, k text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set noti = '123'",
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},
 	},
