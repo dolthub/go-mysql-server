@@ -285,7 +285,7 @@ var LoadDataScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:    "select * from lt4 order by i, j, k",
+				Query: "select * from lt4 order by i, j, k",
 				Expected: []sql.Row{
 					{"321", "def", "ghi"},
 					{"321", "mno", "pqr"},
@@ -343,7 +343,7 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set noti = '123'",
+				Query:       "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set noti = '123'",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},
