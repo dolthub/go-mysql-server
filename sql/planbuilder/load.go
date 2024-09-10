@@ -21,6 +21,7 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -66,7 +67,6 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 	}
 
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), ignoreNumVal, d.IgnoreOrReplace)
-
 	if d.Charset != "" {
 		// TODO: deal with charset; ignore for now
 		ld.Charset = d.Charset
@@ -101,6 +101,37 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		}
 		if d.Lines.TerminatedBy != nil {
 			ld.LinesTerminatedBy = string(d.Lines.TerminatedBy.Val)
+		}
+	}
+
+	if d.SetExprs != nil {
+		ld.SetExprs = make([]sql.Expression, len(sch))
+		for _, expr := range d.SetExprs {
+			col := b.buildScalar(destScope, expr.Name)
+			gf, isGf := col.(*expression.GetField)
+			if !isGf {
+				continue
+			}
+			colName := gf.Name()
+			idx := sch.IndexOfColName(colName)
+			if idx == -1 {
+				b.handleErr(fmt.Errorf("column not found"))
+			}
+			ld.SetExprs[idx] = b.buildScalar(destScope, expr.Expr)
+
+			// Add set column name to ld.ColumnNames (if not empty or already present), so it's not trimmed from projection
+			if len(ld.ColumnNames) != 0 {
+				exists := false
+				for _, name := range ld.ColumnNames {
+					if strings.EqualFold(name, colName) {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					ld.ColumnNames = append(ld.ColumnNames, colName)
+				}
+			}
 		}
 	}
 
