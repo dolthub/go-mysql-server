@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/rdparser"
 	"os"
 	"strconv"
 	"strings"
@@ -192,7 +193,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
-		Parser:            sql.NewMysqlParser(),
+		Parser:            rdparser.NewParser(),
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret
