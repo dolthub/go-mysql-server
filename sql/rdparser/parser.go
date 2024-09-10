@@ -2,8 +2,10 @@ package rdparser
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql"
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type parser struct {

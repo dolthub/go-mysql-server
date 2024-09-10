@@ -2,9 +2,10 @@ package rdparser
 
 import (
 	"context"
+	"testing"
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestParser(t *testing.T) {
