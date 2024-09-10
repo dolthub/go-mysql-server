@@ -261,14 +261,14 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from loadtable",
+				Query: "select * from loadtable",
 				Expected: []sql.Row{
 					{"\"hi\"", "\"1\""},
 					{"\"hello\"", "\"N\""},
 				},
 			},
 			{
-				Query:    "select * from loadtable2",
+				Query: "select * from loadtable2",
 				Expected: []sql.Row{
 					{"hi", "1"},
 					{"hello", "2"},
