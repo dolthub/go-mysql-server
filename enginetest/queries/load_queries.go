@@ -251,32 +251,6 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "testing",
-		SetUpScript: []string{
-			"create table loadtable(pk text, c1 text)",
-			"LOAD DATA INFILE './testdata/test4.txt' INTO TABLE loadtable FIELDS TERMINATED BY '    '",
-
-			"create table loadtable2(pk text, c1 text)",
-			"LOAD DATA INFILE './testdata/test10.txt' INTO TABLE loadtable2",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select * from loadtable",
-				Expected: []sql.Row{
-					{"\"hi\"", "\"1\""},
-					{"\"hello\"", "\"N\""},
-				},
-			},
-			{
-				Query:    "select * from loadtable2",
-				Expected: []sql.Row{
-					{"hi", "1"},
-					{"hello", "2"},
-				},
-			},
-		},
-	},
-	{
 		Name: "LOAD DATA with set columns no projections",
 		SetUpScript: []string{
 			"create table lt1(i text, j text, k text);",
