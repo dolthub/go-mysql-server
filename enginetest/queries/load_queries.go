@@ -250,6 +250,104 @@ var LoadDataScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "LOAD DATA with set columns no projections",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 FIELDS TERMINATED BY '\t' SET i = '123'",
+			"create table lt2(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 set i = '123', j = '456'",
+			"create table lt3(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 set i = '123', j = '456', k = '789'",
+			"create table lt4(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 set i = '123', i = '321'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "def", "ghi"},
+					{"123", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "456", "ghi"},
+					{"123", "456", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "456", "789"},
+					{"123", "456", "789"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j, k",
+				Expected: []sql.Row{
+					{"321", "def", "ghi"},
+					{"321", "mno", "pqr"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with set columns with projections",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 (i, j, k) set i = '123'",
+			"create table lt2(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 (k, i, j) set i = '123'",
+			"create table lt3(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (j, k) set i = '123'",
+			"create table lt4(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (k, i) set i = '123'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "def", "ghi"},
+					{"123", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "ghi", "abc"},
+					{"123", "pqr", "jkl"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "abc", "def"},
+					{"123", "jkl", "mno"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", nil, "abc"},
+					{"123", nil, "jkl"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with set columns errors",
+		SetUpScript: []string{
+			"create table lt(i text, j text, k text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set noti = '123'",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
 }
 
 var LoadDataErrorScripts = []ScriptTest{

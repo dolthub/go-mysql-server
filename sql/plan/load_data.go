@@ -27,6 +27,7 @@ type LoadData struct {
 	File               string
 	DestSch            sql.Schema
 	ColumnNames        []string
+	SetExprs           []sql.Expression
 	ResponsePacketSent bool
 	IgnoreNum          int64
 	IsIgnore           bool

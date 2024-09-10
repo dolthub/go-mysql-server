@@ -119,7 +119,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 			columnNames[i] = col.Name
 		}
 	}
-	fieldToColumnMap := make([]int, len(columnNames))
+
+	fieldToColumnMap := make([]int, len(sch))
 	for fieldIndex, columnName := range columnNames {
 		fieldToColumnMap[fieldIndex] = sch.IndexOf(columnName, source)
 	}
@@ -130,6 +131,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		scanner:          scanner,
 		columnCount:      len(n.ColumnNames), // Needs to be the original column count
 		fieldToColumnMap: fieldToColumnMap,
+		setExprs:         n.SetExprs,
 
 		fieldsTerminatedBy:  n.FieldsTerminatedBy,
 		fieldsEnclosedBy:    n.FieldsEnclosedBy,
