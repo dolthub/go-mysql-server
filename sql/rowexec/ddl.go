@@ -63,7 +63,6 @@ func (b *BaseBuilder) buildDropTrigger(ctx *sql.Context, n *plan.DropTrigger, ro
 func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.Row) (sql.RowIter, error) {
 	var reader io.ReadCloser
 	var err error
-
 	if n.Local {
 		_, localInfile, ok := sql.SystemVariables.GetGlobal("local_infile")
 		if !ok {
@@ -95,8 +94,6 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	}
 
 	scanner := bufio.NewScanner(reader)
-
-	// Set the split function for lines.
 	scanner.Split(n.SplitLines)
 
 	// Skip through the lines that need to be ignored.
@@ -112,17 +109,23 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 
 	sch := n.Schema()
 	source := sch[0].Source // Schema will always have at least one column
-	columnNames := n.ColumnNames
-	if len(columnNames) == 0 {
-		columnNames = make([]string, len(sch))
+	colNames := n.ColumnNames
+	if len(colNames) == 0 {
+		colNames = make([]string, len(sch))
 		for i, col := range sch {
-			columnNames[i] = col.Name
+			colNames[i] = col.Name
 		}
 	}
 
-	fieldToColumnMap := make([]int, len(sch))
-	for fieldIndex, columnName := range columnNames {
-		fieldToColumnMap[fieldIndex] = sch.IndexOf(columnName, source)
+	// TODO: account for offsets from user variables?
+	fieldToColMap := make([]int, len(n.UserSetFields))
+	for fieldIdx, colIdx := 0, 0; fieldIdx < len(n.UserSetFields) && colIdx < len(colNames); fieldIdx++ {
+		if n.UserSetFields[fieldIdx] != nil {
+			fieldToColMap[fieldIdx] = -1
+			continue
+		}
+		fieldToColMap[fieldIdx] = sch.IndexOf(colNames[colIdx], source)
+		colIdx++
 	}
 
 	return &loadDataIter{
@@ -130,8 +133,9 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		reader:           reader,
 		scanner:          scanner,
 		columnCount:      len(n.ColumnNames), // Needs to be the original column count
-		fieldToColumnMap: fieldToColumnMap,
+		fieldToColumnMap: fieldToColMap,
 		setExprs:         n.SetExprs,
+		userSetFields:    n.UserSetFields,
 
 		fieldsTerminatedBy:  n.FieldsTerminatedBy,
 		fieldsEnclosedBy:    n.FieldsEnclosedBy,

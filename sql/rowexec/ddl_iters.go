@@ -38,12 +38,14 @@ import (
 )
 
 type loadDataIter struct {
-	scanner          *bufio.Scanner
+	scanner *bufio.Scanner
+	reader  io.ReadCloser
+
 	destSch          sql.Schema
-	reader           io.ReadCloser
 	columnCount      int
 	fieldToColumnMap []int
 	setExprs         []sql.Expression
+	userSetFields    []sql.Expression
 
 	fieldsTerminatedBy  string
 	fieldsEnclosedBy    string
@@ -142,7 +144,7 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 		}
 	}
 
-	//Step 4: Handle the ESCAPED BY parameter.
+	// Step 4: Handle the ESCAPED BY parameter.
 	if l.fieldsEscapedBy != "" {
 		for i, field := range fields {
 			if field == "\\N" {
@@ -157,50 +159,71 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 		}
 	}
 
+	fieldRow := make(sql.Row, len(fields))
+	for i, field := range fields {
+		fieldRow[i] = field
+	}
+
 	exprs := make([]sql.Expression, len(l.destSch))
-
-	limit := len(exprs)
-	if len(fields) < limit {
-		limit = len(fields)
-	}
-
-	destSch := l.destSch
-	for i := 0; i < limit; i++ {
-		if l.setExprs != nil {
-			setExpr := l.setExprs[l.fieldToColumnMap[i]]
-			if setExpr != nil {
-				exprs[i] = setExpr
-				continue
+	for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields); fieldIdx++ {
+		if l.userSetFields[fieldIdx] != nil {
+			setField := l.userSetFields[fieldIdx].(*expression.SetField)
+			userVar := setField.LeftChild.(*expression.UserVar)
+			err := setUserVar(ctx, userVar, setField.RightChild, fieldRow)
+			if err != nil {
+				return nil, err
 			}
+			continue
 		}
 
-		field := fields[i]
-		destCol := destSch[l.fieldToColumnMap[i]]
-		// Replace the empty string with defaults
-		if field == "" {
-			_, ok := destCol.Type.(sql.StringType)
-			if !ok {
-				if destCol.Default != nil {
-					exprs[i] = destCol.Default
-				} else {
-					exprs[i] = expression.NewLiteral(nil, types.Null)
-				}
+		// don't check for `exprIdx < len(exprs)` in for loop
+		// because we still need to assign trailing user variables
+		if exprIdx >= len(exprs) {
+			continue
+		}
+
+		field := fields[fieldIdx]
+		destCol := l.destSch[l.fieldToColumnMap[fieldIdx]]
+		switch field {
+		case "":
+			// Replace the empty string with defaults if exists, otherwise NULL
+			if _, ok := destCol.Type.(sql.StringType); ok {
+				exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
 			} else {
-				exprs[i] = expression.NewLiteral(field, types.LongText)
+				if destCol.Default != nil {
+					exprs[exprIdx] = destCol.Default
+				} else {
+					exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
+				}
 			}
-		} else if field == "NULL" {
-			exprs[i] = expression.NewLiteral(nil, types.Null)
-		} else {
-			exprs[i] = expression.NewLiteral(field, types.LongText)
+		case "NULL":
+			exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
+		default:
+			exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
 		}
+		exprIdx++
 	}
 
+	// Apply Set Expressions by replacing the corresponding field expression with the set expression
+	for fieldIdx, exprIdx := 0, 0; len(l.setExprs) > 0 && fieldIdx < len(l.fieldToColumnMap) && exprIdx < len(exprs); fieldIdx++ {
+		setIdx := l.fieldToColumnMap[fieldIdx]
+		if setIdx == -1 {
+			continue
+		}
+		setExpr := l.setExprs[setIdx]
+		if setExpr != nil {
+			exprs[exprIdx] = setExpr
+		}
+		exprIdx++
+	}
+
+	// TODO: watch out for this block
 	// Due to how projections work, if no columns are provided (each row may have a variable number of values), the
 	// projection will not insert default values, so we must do it here.
 	if l.columnCount == 0 {
 		for i, expr := range exprs {
-			if expr == nil && destSch[i].Default != nil {
-				f := destSch[i]
+			if expr == nil && l.destSch[i].Default != nil {
+				f := l.destSch[i]
 				if !f.Nullable && f.Default == nil && !f.AutoIncrement {
 					return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 				}

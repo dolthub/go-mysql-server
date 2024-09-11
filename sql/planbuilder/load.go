@@ -16,7 +16,8 @@ package planbuilder
 
 import (
 	"fmt"
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/types"
+"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -66,7 +67,31 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
 
-	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), ignoreNumVal, d.IgnoreOrReplace)
+	// TODO: look through d.Columns and separate out the UserVars
+	// TODO: handle weird edge case where column names have @ in them
+	// TODO: @@variables are syntax error
+	colsOrVars := columnsToStrings(d.Columns)
+	colNames := make([]string, 0, len(d.Columns))
+	userSetFields := make([]sql.Expression, max(len(sch), len(d.Columns)))
+	for i, name := range colsOrVars {
+		varName, varScope, _, err := ast.VarScope(name)
+		if err != nil {
+			b.handleErr(err)
+		}
+		switch varScope {
+		case ast.SetScope_None:
+			colNames = append(colNames, name)
+			userSetFields[i] = nil
+		case ast.SetScope_User:
+			userVar := expression.NewUserVar(varName)
+			getField := expression.NewGetField(i, types.Text, name, true)
+			userSetFields[i] = expression.NewSetField(userVar, getField)
+		default:
+			b.handleErr(sql.ErrSyntaxError.New(fmt.Errorf("syntax error near '%s'", name)))
+		}
+	}
+
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, colNames, userSetFields, ignoreNumVal, d.IgnoreOrReplace)
 	if d.Charset != "" {
 		// TODO: deal with charset; ignore for now
 		ld.Charset = d.Charset
@@ -130,6 +155,7 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 				}
 				if !exists {
 					ld.ColumnNames = append(ld.ColumnNames, colName)
+					ld.UserSetFields = append(ld.UserSetFields, nil)
 				}
 			}
 		}
