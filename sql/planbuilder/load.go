@@ -67,9 +67,6 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
 
-	// TODO: look through d.Columns and separate out the UserVars
-	// TODO: handle weird edge case where column names have @ in them
-	// TODO: @@variables are syntax error
 	colsOrVars := columnsToStrings(d.Columns)
 	colNames := make([]string, 0, len(d.Columns))
 	userSetFields := make([]sql.Expression, max(len(sch), len(d.Columns)))
@@ -83,10 +80,17 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 			colNames = append(colNames, name)
 			userSetFields[i] = nil
 		case ast.SetScope_User:
+			// find matching column name, use that instead
+			if sch.IndexOfColName(name) != -1 {
+				colNames = append(colNames, name)
+				userSetFields[i] = nil
+				continue
+			}
 			userVar := expression.NewUserVar(varName)
 			getField := expression.NewGetField(i, types.Text, name, true)
 			userSetFields[i] = expression.NewSetField(userVar, getField)
 		default:
+			// TODO: system variable names are ok if they are escaped
 			b.handleErr(sql.ErrSyntaxError.New(fmt.Errorf("syntax error near '%s'", name)))
 		}
 	}
@@ -144,19 +148,19 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 			}
 			ld.SetExprs[idx] = b.buildScalar(destScope, expr.Expr)
 
-			// Add set column name to ld.ColumnNames (if not empty or already present), so it's not trimmed from projection
-			if len(ld.ColumnNames) != 0 {
-				exists := false
-				for _, name := range ld.ColumnNames {
-					if strings.EqualFold(name, colName) {
-						exists = true
-						break
-					}
+			// Add set column name to ld.ColumnNames (if not already present), so it's not trimmed from projection
+			exists := false
+			for _, name := range ld.ColumnNames {
+				if strings.EqualFold(name, colName) {
+					exists = true
+					break
 				}
-				if !exists {
+			}
+			if !exists {
+				if len(ld.ColumnNames) != 0 {
 					ld.ColumnNames = append(ld.ColumnNames, colName)
-					ld.UserSetFields = append(ld.UserSetFields, nil)
 				}
+				ld.UserSetFields = append(ld.UserSetFields, nil)
 			}
 		}
 	}

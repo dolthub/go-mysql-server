@@ -486,6 +486,14 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
+		if ld, isLoadData := n.Source.(*plan.LoadData); isLoadData {
+			for i, e := range ld.SetExprs {
+				if e == nil {
+					continue
+				}
+				ld.SetExprs[i] = fixExprToScope(e, dstScope)
+			}
+		}
 	case *plan.Update:
 		newScope := s.copy()
 		srcScope := s.childScopes[0]

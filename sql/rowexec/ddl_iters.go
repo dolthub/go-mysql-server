@@ -165,7 +165,7 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 	}
 
 	exprs := make([]sql.Expression, len(l.destSch))
-	for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields); fieldIdx++ {
+	for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields) && fieldIdx < len(l.userSetFields); fieldIdx++ {
 		if l.userSetFields[fieldIdx] != nil {
 			setField := l.userSetFields[fieldIdx].(*expression.SetField)
 			userVar := setField.LeftChild.(*expression.UserVar)
@@ -212,12 +212,15 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 		}
 		setExpr := l.setExprs[setIdx]
 		if setExpr != nil {
-			exprs[exprIdx] = setExpr
+			res, err := setExpr.Eval(ctx, fieldRow)
+			if err != nil {
+				return nil, err
+			}
+			exprs[exprIdx] = expression.NewLiteral(res, setExpr.Type())
 		}
 		exprIdx++
 	}
 
-	// TODO: watch out for this block
 	// Due to how projections work, if no columns are provided (each row may have a variable number of values), the
 	// projection will not insert default values, so we must do it here.
 	if l.columnCount == 0 {

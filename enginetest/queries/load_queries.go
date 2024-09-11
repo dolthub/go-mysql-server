@@ -294,11 +294,10 @@ var LoadDataScripts = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // self references are problematic
 				Query: "select * from lt5 order by i, j, k",
 				Expected: []sql.Row{
-					{"321", "defdef", "ghi"},
-					{"321", "mnomno", "pqr"},
+					{"abc", "defdef", "ghi"},
+					{"jkl", "mnomno", "pqr"},
 				},
 			},
 		},
@@ -465,12 +464,10 @@ var LoadDataScripts = []ScriptTest{
 			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 (i, j, @k) set j = concat(@k, @k)",
 			"create table lt3(i text, j text);",
 			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (i, @j, @k) set j = concat(@j, @k)",
-
-			// TODO: fix these
-			//"create table lt3(i text, j text);",
-			//"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (i, j, @k) set j = concat(j, @k)",
-			//"create table lt4(i text, j text);",
-			//"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (@i, @j) set i = @j, j = @i",
+			"create table lt4(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (i, j, @k) set j = concat(j, @k)",
+			"create table lt5(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt5 (@i, @j) set i = @j, j = @i",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -494,6 +491,20 @@ var LoadDataScripts = []ScriptTest{
 					{"jkl", "mnopqr"},
 				},
 			},
+			{
+				Query:    "select * from lt4 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "defghi"},
+					{"jkl", "mnopqr"},
+				},
+			},
+			{
+				Query:    "select * from lt5 order by i, j",
+				Expected: []sql.Row{
+					{"def", "abc"},
+					{"mno", "jkl"},
+				},
+			},
 		},
 	},
 	{
@@ -505,6 +516,26 @@ var LoadDataScripts = []ScriptTest{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set noti = '123'",
 				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with user var alias edge case",
+		SetUpScript: []string{
+			"create table lt(i text, `@j` text, `@@k` text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(@@k)",
+				ExpectedErrStr: "syntax error near '@@k'",
+			},
+			{
+				Skip:     true, // escaped column names are ok
+				Query:    "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(i, @j, `@@k`)",
+				Expected: []sql.Row{
+					{"abc", "def", "ghi"},
+					{"jkl", "mno", "pqr"},
+				},
 			},
 		},
 	},

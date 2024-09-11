@@ -117,7 +117,6 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		}
 	}
 
-	// TODO: account for offsets from user variables?
 	fieldToColMap := make([]int, len(n.UserSetFields))
 	for fieldIdx, colIdx := 0, 0; fieldIdx < len(n.UserSetFields) && colIdx < len(colNames); fieldIdx++ {
 		if n.UserSetFields[fieldIdx] != nil {
