@@ -492,14 +492,14 @@ var LoadDataScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:    "select * from lt4 order by i, j",
+				Query: "select * from lt4 order by i, j",
 				Expected: []sql.Row{
 					{"abc", "defghi"},
 					{"jkl", "mnopqr"},
 				},
 			},
 			{
-				Query:    "select * from lt5 order by i, j",
+				Query: "select * from lt5 order by i, j",
 				Expected: []sql.Row{
 					{"def", "abc"},
 					{"mno", "jkl"},
@@ -530,8 +530,8 @@ var LoadDataScripts = []ScriptTest{
 				ExpectedErrStr: "syntax error near '@@k'",
 			},
 			{
-				Skip:     true, // escaped column names are ok
-				Query:    "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(i, @j, `@@k`)",
+				Skip:  true, // escaped column names are ok
+				Query: "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(i, @j, `@@k`)",
 				Expected: []sql.Row{
 					{"abc", "def", "ghi"},
 					{"jkl", "mno", "pqr"},
