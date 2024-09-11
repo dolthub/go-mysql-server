@@ -294,7 +294,7 @@ var LoadDataScripts = []ScriptTest{
 				},
 			},
 			{
-				Skip: true, // self references are problematic
+				Skip:  true, // self references are problematic
 				Query: "select * from lt5 order by i, j, k",
 				Expected: []sql.Row{
 					{"321", "defdef", "ghi"},
@@ -359,7 +359,7 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from lt order by i, j, k",
+				Query: "select * from lt order by i, j, k",
 				Expected: []sql.Row{
 					{"123", "456", "789"},
 					{"123", "456", "789"},
@@ -389,67 +389,67 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from lt1 order by i, j, k",
+				Query: "select * from lt1 order by i, j, k",
 				Expected: []sql.Row{
 					{nil, "def", "ghi"},
 					{nil, "mno", "pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt2 order by i, j, k",
+				Query: "select * from lt2 order by i, j, k",
 				Expected: []sql.Row{
 					{"abc", nil, "ghi"},
 					{"jkl", nil, "pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt3 order by i, j, k",
+				Query: "select * from lt3 order by i, j, k",
 				Expected: []sql.Row{
 					{"abc", "def", nil},
 					{"jkl", "mno", nil},
 				},
 			},
 			{
-				Query:    "select @i, @j, @k",
+				Query: "select @i, @j, @k",
 				Expected: []sql.Row{
 					{"jkl", "mno", "pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt4 order by i, j, k",
+				Query: "select * from lt4 order by i, j, k",
 				Expected: []sql.Row{
 					{nil, nil, nil},
 					{nil, nil, nil},
 				},
 			},
 			{
-				Query:    "select @ii, @jj, @kk",
+				Query: "select @ii, @jj, @kk",
 				Expected: []sql.Row{
 					{"jkl", "mno", "pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt5 order by i, j",
+				Query: "select * from lt5 order by i, j",
 				Expected: []sql.Row{
 					{"abc", "def"},
 					{"jkl", "mno"},
 				},
 			},
 			{
-				Query:    "select @trash1",
+				Query: "select @trash1",
 				Expected: []sql.Row{
 					{"pqr"},
 				},
 			},
 			{
-				Query:    "select * from lt6 order by j",
+				Query: "select * from lt6 order by j",
 				Expected: []sql.Row{
 					{"def"},
 					{"mno"},
 				},
 			},
 			{
-				Query:    "select @trash2",
+				Query: "select @trash2",
 				Expected: []sql.Row{
 					{"pqr"},
 				},
@@ -474,21 +474,21 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from lt1 order by i, j, k",
+				Query: "select * from lt1 order by i, j, k",
 				Expected: []sql.Row{
 					{"ghi", "def", "abc"},
 					{"pqr", "mno", "jkl"},
 				},
 			},
 			{
-				Query:    "select * from lt2 order by i, j",
+				Query: "select * from lt2 order by i, j",
 				Expected: []sql.Row{
 					{"abc", "ghighi"},
 					{"jkl", "pqrpqr"},
 				},
 			},
 			{
-				Query:    "select * from lt3 order by i, j",
+				Query: "select * from lt3 order by i, j",
 				Expected: []sql.Row{
 					{"abc", "defghi"},
 					{"jkl", "mnopqr"},
