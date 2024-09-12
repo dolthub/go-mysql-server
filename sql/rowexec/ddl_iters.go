@@ -224,7 +224,7 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 	// projection will not insert default values, so we must do it here.
 	if l.colCount == 0 {
 		for exprIdx, expr := range exprs {
-			if expr != nil || l.destSch[exprIdx].Default == nil {
+			if expr != nil {
 				continue
 			}
 			col := l.destSch[exprIdx]
