@@ -41,11 +41,11 @@ type loadDataIter struct {
 	scanner *bufio.Scanner
 	reader  io.ReadCloser
 
-	destSch          sql.Schema
-	columnCount      int
-	fieldToColumnMap []int
-	setExprs         []sql.Expression
-	userSetFields    []sql.Expression
+	destSch       sql.Schema
+	colCount      int
+	fieldToColMap []int
+	setExprs      []sql.Expression
+	userVars      []sql.Expression
 
 	fieldsTerminatedBy  string
 	fieldsEnclosedBy    string
@@ -62,8 +62,7 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 	// If exprs is nil then this is a skipped line (see test cases). Keep skipping
 	// until exprs != nil
 	for exprs == nil {
-		keepGoing := l.scanner.Scan()
-		if !keepGoing {
+		if keepGoing := l.scanner.Scan(); !keepGoing {
 			if l.scanner.Err() != nil {
 				return nil, l.scanner.Err()
 			}
@@ -72,7 +71,6 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 
 		line := l.scanner.Text()
 		exprs, err = l.parseFields(ctx, line)
-
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +80,8 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 	var secondPass []int
 	for i, expr := range exprs {
 		if expr != nil {
-			if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok && !defaultVal.IsLiteral() {
+			// Non-literal default values may reference other columns, so we need to evaluate them in a second pass.
+			if defaultVal, isDef := expr.(*sql.ColumnDefaultValue); isDef && !defaultVal.IsLiteral() {
 				secondPass = append(secondPass, i)
 				continue
 			}
@@ -92,8 +91,8 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 			}
 		}
 	}
-	for _, index := range secondPass {
-		row[index], err = exprs[index].Eval(ctx, row)
+	for _, idx := range secondPass {
+		row[idx], err = exprs[idx].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -165,9 +164,9 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 	}
 
 	exprs := make([]sql.Expression, len(l.destSch))
-	for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields) && fieldIdx < len(l.userSetFields); fieldIdx++ {
-		if l.userSetFields[fieldIdx] != nil {
-			setField := l.userSetFields[fieldIdx].(*expression.SetField)
+	for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields) && fieldIdx < len(l.userVars); fieldIdx++ {
+		if l.userVars[fieldIdx] != nil {
+			setField := l.userVars[fieldIdx].(*expression.SetField)
 			userVar := setField.LeftChild.(*expression.UserVar)
 			err := setUserVar(ctx, userVar, setField.RightChild, fieldRow)
 			if err != nil {
@@ -183,10 +182,10 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 		}
 
 		field := fields[fieldIdx]
-		destCol := l.destSch[l.fieldToColumnMap[fieldIdx]]
 		switch field {
 		case "":
 			// Replace the empty string with defaults if exists, otherwise NULL
+			destCol := l.destSch[l.fieldToColMap[fieldIdx]]
 			if _, ok := destCol.Type.(sql.StringType); ok {
 				exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
 			} else {
@@ -205,8 +204,8 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 	}
 
 	// Apply Set Expressions by replacing the corresponding field expression with the set expression
-	for fieldIdx, exprIdx := 0, 0; len(l.setExprs) > 0 && fieldIdx < len(l.fieldToColumnMap) && exprIdx < len(exprs); fieldIdx++ {
-		setIdx := l.fieldToColumnMap[fieldIdx]
+	for fieldIdx, exprIdx := 0, 0; len(l.setExprs) > 0 && fieldIdx < len(l.fieldToColMap) && exprIdx < len(exprs); fieldIdx++ {
+		setIdx := l.fieldToColMap[fieldIdx]
 		if setIdx == -1 {
 			continue
 		}
@@ -223,36 +222,16 @@ func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expressi
 
 	// Due to how projections work, if no columns are provided (each row may have a variable number of values), the
 	// projection will not insert default values, so we must do it here.
-	if l.columnCount == 0 {
-		for i, expr := range exprs {
-			if expr == nil && l.destSch[i].Default != nil {
-				f := l.destSch[i]
-				if !f.Nullable && f.Default == nil && !f.AutoIncrement {
-					return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
-				}
-				var def sql.Expression = f.Default
-				var err error
-				colIdx := make(map[string]int)
-				for i, c := range l.destSch {
-					colIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
-				}
-				def, _, err = transform.Expr(f.Default, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					switch e := e.(type) {
-					case *expression.GetField:
-						idx, ok := colIdx[strings.ToLower(e.String())]
-						if !ok {
-							return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
-						}
-						return e.WithIndex(idx), transform.NewTree, nil
-					default:
-						return e, transform.SameTree, nil
-					}
-				})
-				if err != nil {
-					return nil, err
-				}
-				exprs[i] = def
+	if l.colCount == 0 {
+		for exprIdx, expr := range exprs {
+			if expr != nil || l.destSch[exprIdx].Default == nil {
+				continue
 			}
+			col := l.destSch[exprIdx]
+			if !col.Nullable && col.Default == nil && !col.AutoIncrement {
+				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
+			}
+			exprs[exprIdx] = col.Default
 		}
 	}
 

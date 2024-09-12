@@ -109,7 +109,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 
 	sch := n.Schema()
 	source := sch[0].Source // Schema will always have at least one column
-	colNames := n.ColumnNames
+	colNames := n.ColNames
 	if len(colNames) == 0 {
 		colNames = make([]string, len(sch))
 		for i, col := range sch {
@@ -117,9 +117,9 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		}
 	}
 
-	fieldToColMap := make([]int, len(n.UserSetFields))
-	for fieldIdx, colIdx := 0, 0; fieldIdx < len(n.UserSetFields) && colIdx < len(colNames); fieldIdx++ {
-		if n.UserSetFields[fieldIdx] != nil {
+	fieldToColMap := make([]int, len(n.UserVars))
+	for fieldIdx, colIdx := 0, 0; fieldIdx < len(n.UserVars) && colIdx < len(colNames); fieldIdx++ {
+		if n.UserVars[fieldIdx] != nil {
 			fieldToColMap[fieldIdx] = -1
 			continue
 		}
@@ -128,13 +128,13 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	}
 
 	return &loadDataIter{
-		destSch:          n.DestSch,
-		reader:           reader,
-		scanner:          scanner,
-		columnCount:      len(n.ColumnNames), // Needs to be the original column count
-		fieldToColumnMap: fieldToColMap,
-		setExprs:         n.SetExprs,
-		userSetFields:    n.UserSetFields,
+		destSch:       n.DestSch,
+		reader:        reader,
+		scanner:       scanner,
+		colCount:      len(n.ColNames), // Needs to be the original column count
+		fieldToColMap: fieldToColMap,
+		setExprs:      n.SetExprs,
+		userVars:      n.UserVars,
 
 		fieldsTerminatedBy:  n.FieldsTerminatedBy,
 		fieldsEnclosedBy:    n.FieldsEnclosedBy,

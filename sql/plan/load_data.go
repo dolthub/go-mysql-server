@@ -23,18 +23,16 @@ import (
 )
 
 type LoadData struct {
-	Local              bool
-	File               string
-	DestSch            sql.Schema
-	ColumnNames        []string
-	SetExprs           []sql.Expression
-	UserSetFields      []sql.Expression
-	ResponsePacketSent bool
-	IgnoreNum          int64
-	IsIgnore           bool
-	IsReplace          bool
-
-	Charset string
+	Local     bool
+	File      string
+	DestSch   sql.Schema
+	ColNames  []string
+	SetExprs  []sql.Expression
+	UserVars  []sql.Expression
+	IgnoreNum int64
+	IsIgnore  bool
+	IsReplace bool
+	Charset   string
 
 	FieldsTerminatedBy  string
 	FieldsEnclosedBy    string
@@ -108,18 +106,18 @@ func (*LoadData) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 7
 }
 
-func NewLoadData(local bool, file string, destSch sql.Schema, cols []string, userSetFields []sql.Expression, ignoreNum int64, ignoreOrReplace string) *LoadData {
+func NewLoadData(local bool, file string, destSch sql.Schema, cols []string, userVars []sql.Expression, ignoreNum int64, ignoreOrReplace string) *LoadData {
 	isReplace := ignoreOrReplace == sqlparser.ReplaceStr
 	isIgnore := ignoreOrReplace == sqlparser.IgnoreStr || (local && !isReplace)
 	return &LoadData{
-		Local:         local,
-		File:          file,
-		DestSch:       destSch,
-		ColumnNames:   cols,
-		UserSetFields: userSetFields,
-		IgnoreNum:     ignoreNum,
-		IsIgnore:      isIgnore,
-		IsReplace:     isReplace,
+		Local:     local,
+		File:      file,
+		DestSch:   destSch,
+		ColNames:  cols,
+		UserVars:  userVars,
+		IgnoreNum: ignoreNum,
+		IsIgnore:  isIgnore,
+		IsReplace: isReplace,
 
 		FieldsTerminatedBy:  defaultFieldsTerminatedBy,
 		FieldsEnclosedBy:    defaultFieldsEnclosedBy,

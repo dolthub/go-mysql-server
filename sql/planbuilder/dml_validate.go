@@ -189,7 +189,7 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 			}
 		}
 	case *plan.LoadData:
-		dataColLen := len(node.ColumnNames)
+		dataColLen := len(node.ColNames)
 		if dataColLen == 0 {
 			dataColLen = len(node.Schema())
 		}

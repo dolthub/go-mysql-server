@@ -69,7 +69,7 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 
 	colsOrVars := columnsToStrings(d.Columns)
 	colNames := make([]string, 0, len(d.Columns))
-	userSetFields := make([]sql.Expression, max(len(sch), len(d.Columns)))
+	userVars := make([]sql.Expression, max(len(sch), len(d.Columns)))
 	for i, name := range colsOrVars {
 		varName, varScope, _, err := ast.VarScope(name)
 		if err != nil {
@@ -78,24 +78,24 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		switch varScope {
 		case ast.SetScope_None:
 			colNames = append(colNames, name)
-			userSetFields[i] = nil
+			userVars[i] = nil
 		case ast.SetScope_User:
 			// find matching column name, use that instead
 			if sch.IndexOfColName(name) != -1 {
 				colNames = append(colNames, name)
-				userSetFields[i] = nil
+				userVars[i] = nil
 				continue
 			}
 			userVar := expression.NewUserVar(varName)
 			getField := expression.NewGetField(i, types.Text, name, true)
-			userSetFields[i] = expression.NewSetField(userVar, getField)
+			userVars[i] = expression.NewSetField(userVar, getField)
 		default:
 			// TODO: system variable names are ok if they are escaped
 			b.handleErr(sql.ErrSyntaxError.New(fmt.Errorf("syntax error near '%s'", name)))
 		}
 	}
 
-	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, colNames, userSetFields, ignoreNumVal, d.IgnoreOrReplace)
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, colNames, userVars, ignoreNumVal, d.IgnoreOrReplace)
 	if d.Charset != "" {
 		// TODO: deal with charset; ignore for now
 		ld.Charset = d.Charset
@@ -142,31 +142,33 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 				continue
 			}
 			colName := gf.Name()
-			idx := sch.IndexOfColName(colName)
-			if idx == -1 {
+			colIdx := sch.IndexOfColName(colName)
+			if colIdx == -1 {
 				b.handleErr(fmt.Errorf("column not found"))
 			}
-			ld.SetExprs[idx] = b.buildScalar(destScope, expr.Expr)
+			ld.SetExprs[colIdx] = b.buildScalar(destScope, expr.Expr)
 
-			// Add set column name to ld.ColumnNames (if not already present), so it's not trimmed from projection
+			// Add set column names missing from ld.ColNames, so they're not trimmed from projection
 			exists := false
-			for _, name := range ld.ColumnNames {
+			for _, name := range ld.ColNames {
 				if strings.EqualFold(name, colName) {
 					exists = true
 					break
 				}
 			}
 			if !exists {
-				if len(ld.ColumnNames) != 0 {
-					ld.ColumnNames = append(ld.ColumnNames, colName)
+				// Only append to ld.ColNames if it's not empty
+				if len(ld.ColNames) != 0 {
+					ld.ColNames = append(ld.ColNames, colName)
 				}
-				ld.UserSetFields = append(ld.UserSetFields, nil)
+				// Must also append to ld.UserVars, so we build the fieldToCol map correctly later
+				ld.UserVars = append(ld.UserVars, nil)
 			}
 		}
 	}
 
 	outScope = inScope.push()
-	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColNames, nil, ld.IsIgnore)
 	b.validateInsert(ins)
 	outScope.node = ins
 	if rt != nil {
