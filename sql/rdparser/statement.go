@@ -2,6 +2,7 @@ package rdparser
 
 import (
 	"context"
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 

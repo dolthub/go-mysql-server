@@ -16,7 +16,6 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/rdparser"
 	"os"
 	"strconv"
 	"strings"
@@ -35,6 +34,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/rdparser"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
