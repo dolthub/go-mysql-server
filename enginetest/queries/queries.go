@@ -9957,6 +9957,19 @@ from typestable`,
 			{"73.1"},
 		},
 	},
+	
+	{
+		Query: "select get_format(date, 'usa')",
+		Expected: []sql.Row{
+			{"%m.%d.%Y"},
+		},
+	},
+	{
+		Query: "select date_format('2003-10-03', get_format(date, 'eur'))",
+		Expected: []sql.Row{
+			{"03.10.2003"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
