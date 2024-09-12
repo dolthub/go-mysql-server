@@ -52,7 +52,9 @@ func (g *GetFormat) Description() string {
 }
 
 // Type implements the Expression interface.
-func (g *GetFormat) Type() sql.Type { return types.Int64 }
+func (g *GetFormat) Type() sql.Type {
+	return types.Text
+}
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*GetFormat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
