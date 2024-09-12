@@ -497,6 +497,22 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
+	case *plan.LoadData:
+		scope := &idxScope{}
+		scope.addSchema(n.DestSch)
+		for i, e := range n.SetExprs {
+			if e == nil {
+				continue
+			}
+			n.SetExprs[i] = fixExprToScope(e, scope)
+		}
+		for colIdx, col := range n.DestSch {
+			if col.Default == nil {
+				continue
+			}
+			newDef := fixExprToScope(sql.Expression(col.Default), scope)
+			n.DestSch[colIdx].Default = newDef.(*sql.ColumnDefaultValue)
+		}
 	default:
 		if ne, ok := n.(sql.Expressioner); ok {
 			scope := append(s.parentScopes, s.childScopes...)

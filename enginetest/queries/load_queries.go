@@ -261,6 +261,8 @@ var LoadDataScripts = []ScriptTest{
 			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 set i = '123', j = '456', k = '789'",
 			"create table lt4(i text, j text, k text);",
 			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 set i = '123', i = '321'",
+			"create table lt5(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt5 set j = concat(j, j)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -289,6 +291,13 @@ var LoadDataScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"321", "def", "ghi"},
 					{"321", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt5 order by i, j, k",
+				Expected: []sql.Row{
+					{"abc", "defdef", "ghi"},
+					{"jkl", "mnomno", "pqr"},
 				},
 			},
 		},
@@ -337,6 +346,168 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "LOAD DATA assign to static User Variables",
+		SetUpScript: []string{
+			"set @i = '123';",
+			"set @j = '456';",
+			"set @k = '789';",
+			"create table lt(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set i = @i",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set i = @i, j = @j",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set i = @i, j = @j, k = @k",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "456", "789"},
+					{"123", "456", "789"},
+					{"123", "456", "ghi"},
+					{"123", "456", "pqr"},
+					{"123", "def", "ghi"},
+					{"123", "mno", "pqr"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA assign to User Variables",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 (@i, j, k)",
+			"create table lt2(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 (i, @j, k)",
+			"create table lt3(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (i, j, @k)",
+			"create table lt4(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (@ii, @jj, @kk)",
+			"create table lt5(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt5 (i, j, @trash1)",
+			"create table lt6(j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt6 (@trash2, j, @trash2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{nil, "def", "ghi"},
+					{nil, "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j, k",
+				Expected: []sql.Row{
+					{"abc", nil, "ghi"},
+					{"jkl", nil, "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j, k",
+				Expected: []sql.Row{
+					{"abc", "def", nil},
+					{"jkl", "mno", nil},
+				},
+			},
+			{
+				Query: "select @i, @j, @k",
+				Expected: []sql.Row{
+					{"jkl", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j, k",
+				Expected: []sql.Row{
+					{nil, nil, nil},
+					{nil, nil, nil},
+				},
+			},
+			{
+				Query: "select @ii, @jj, @kk",
+				Expected: []sql.Row{
+					{"jkl", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt5 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "def"},
+					{"jkl", "mno"},
+				},
+			},
+			{
+				Query: "select @trash1",
+				Expected: []sql.Row{
+					{"pqr"},
+				},
+			},
+			{
+				Query: "select * from lt6 order by j",
+				Expected: []sql.Row{
+					{"def"},
+					{"mno"},
+				},
+			},
+			{
+				Query: "select @trash2",
+				Expected: []sql.Row{
+					{"pqr"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with user vars and set expressions",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 (k, @j, i) set j = @j",
+			"create table lt2(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 (i, j, @k) set j = concat(@k, @k)",
+			"create table lt3(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (i, @j, @k) set j = concat(@j, @k)",
+			"create table lt4(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (i, j, @k) set j = concat(j, @k)",
+			"create table lt5(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt5 (@i, @j) set i = @j, j = @i",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{"ghi", "def", "abc"},
+					{"pqr", "mno", "jkl"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "ghighi"},
+					{"jkl", "pqrpqr"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "defghi"},
+					{"jkl", "mnopqr"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "defghi"},
+					{"jkl", "mnopqr"},
+				},
+			},
+			{
+				Query: "select * from lt5 order by i, j",
+				Expected: []sql.Row{
+					{"def", "abc"},
+					{"mno", "jkl"},
+				},
+			},
+		},
+	},
+	{
 		Name: "LOAD DATA with set columns errors",
 		SetUpScript: []string{
 			"create table lt(i text, j text, k text);",
@@ -345,6 +516,26 @@ var LoadDataScripts = []ScriptTest{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set noti = '123'",
 				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with user var alias edge case",
+		SetUpScript: []string{
+			"create table lt(i text, `@j` text, `@@k` text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(@@k)",
+				ExpectedErrStr: "syntax error near '@@k'",
+			},
+			{
+				Skip:  true, // escaped column names are ok
+				Query: "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(i, @j, `@@k`)",
+				Expected: []sql.Row{
+					{"abc", "def", "ghi"},
+					{"jkl", "mno", "pqr"},
+				},
 			},
 		},
 	},
