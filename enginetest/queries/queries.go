@@ -9957,7 +9957,7 @@ from typestable`,
 			{"73.1"},
 		},
 	},
-	
+
 	{
 		Query: "select get_format(date, 'usa')",
 		Expected: []sql.Row{
