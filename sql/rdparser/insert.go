@@ -18,7 +18,7 @@ func (p *parser) insert(ctx context.Context) (ast.Statement, bool) {
 	p.push(id, cur)
 
 	var ok bool
-	ins.Table, ok = p.tableIdent(ctx)
+	ins.Table, ok = p.tableIdent()
 	if !ok {
 		return nil, false
 	}
@@ -61,7 +61,7 @@ func (p *parser) pop() (int, []byte) {
 	}
 }
 
-func (p *parser) tableIdent(ctx context.Context) (ast.TableName, bool) {
+func (p *parser) tableIdent() (ast.TableName, bool) {
 	// schema.database.table
 
 	id, firstTok := p.pop()
@@ -142,7 +142,7 @@ func (p *parser) valueList(ctx context.Context) (ast.InsertRows, bool) {
 			if id == ')' {
 				break
 			}
-			value, ok := p.value(ctx, id, tok)
+			value, ok := p.value(id, tok)
 			if !ok {
 				return nil, false
 			}
@@ -159,7 +159,7 @@ func (p *parser) valueList(ctx context.Context) (ast.InsertRows, bool) {
 	return &ast.AliasedValues{Values: rows}, true
 }
 
-func (p *parser) value(ctx context.Context, id int, tok []byte) (ast.Expr, bool) {
+func (p *parser) value(id int, tok []byte) (ast.Expr, bool) {
 	switch id {
 	case ast.STRING:
 		return ast.NewStrVal(tok), true

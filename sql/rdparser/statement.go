@@ -11,7 +11,7 @@ func (p *parser) statement(ctx context.Context) (ast.Statement, bool) {
 	case ast.INSERT:
 		return p.insert(ctx)
 	case ast.SELECT:
-		return p.sel(ctx)
+		return p.sel()
 	default:
 		return nil, false
 	}
