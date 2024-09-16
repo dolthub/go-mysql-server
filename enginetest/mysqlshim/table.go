@@ -217,6 +217,8 @@ func (t Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 		statement += " FULLTEXT INDEX"
 	case sql.IndexConstraint_Spatial:
 		statement += " SPATIAL INDEX"
+	case sql.IndexConstraint_Vector:
+		statement += " VECTOR INDEX"
 	default:
 		statement += " INDEX"
 	}

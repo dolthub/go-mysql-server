@@ -678,6 +678,10 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
 			constraint = sql.IndexConstraint_Fulltext
+		} else if idxDef.Info.Vector {
+			// TODO: different kinds of vector HNSW, IVFFLAT, etc...
+			constraint = sql.IndexConstraint_Vector
+			b.handleErr(sql.ErrUnsupportedFeature.New("vector index"))
 		}
 
 		columns := b.gatherIndexColumns(idxDef.Columns)
@@ -812,6 +816,9 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			constraint = sql.IndexConstraint_Fulltext
 		case ast.SpatialStr:
 			constraint = sql.IndexConstraint_Spatial
+		case ast.VectorStr:
+			constraint = sql.IndexConstraint_Vector
+			b.handleErr(sql.ErrUnsupportedFeature.New("vector index"))
 		case ast.PrimaryStr:
 			constraint = sql.IndexConstraint_Primary
 		default:

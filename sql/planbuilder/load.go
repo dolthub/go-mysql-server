@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
@@ -66,7 +67,35 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 		sch = b.resolveSchemaDefaults(destScope, rt.Schema())
 	}
 
-	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, columnsToStrings(d.Columns), ignoreNumVal, d.IgnoreOrReplace)
+	colsOrVars := columnsToStrings(d.Columns)
+	colNames := make([]string, 0, len(d.Columns))
+	userVars := make([]sql.Expression, max(len(sch), len(d.Columns)))
+	for i, name := range colsOrVars {
+		varName, varScope, _, err := ast.VarScope(name)
+		if err != nil {
+			b.handleErr(err)
+		}
+		switch varScope {
+		case ast.SetScope_None:
+			colNames = append(colNames, name)
+			userVars[i] = nil
+		case ast.SetScope_User:
+			// find matching column name, use that instead
+			if sch.IndexOfColName(name) != -1 {
+				colNames = append(colNames, name)
+				userVars[i] = nil
+				continue
+			}
+			userVar := expression.NewUserVar(varName)
+			getField := expression.NewGetField(i, types.Text, name, true)
+			userVars[i] = expression.NewSetField(userVar, getField)
+		default:
+			// TODO: system variable names are ok if they are escaped
+			b.handleErr(sql.ErrSyntaxError.New(fmt.Errorf("syntax error near '%s'", name)))
+		}
+	}
+
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, sch, colNames, userVars, ignoreNumVal, d.IgnoreOrReplace)
 	if d.Charset != "" {
 		// TODO: deal with charset; ignore for now
 		ld.Charset = d.Charset
@@ -113,30 +142,33 @@ func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
 				continue
 			}
 			colName := gf.Name()
-			idx := sch.IndexOfColName(colName)
-			if idx == -1 {
+			colIdx := sch.IndexOfColName(colName)
+			if colIdx == -1 {
 				b.handleErr(fmt.Errorf("column not found"))
 			}
-			ld.SetExprs[idx] = b.buildScalar(destScope, expr.Expr)
+			ld.SetExprs[colIdx] = b.buildScalar(destScope, expr.Expr)
 
-			// Add set column name to ld.ColumnNames (if not empty or already present), so it's not trimmed from projection
-			if len(ld.ColumnNames) != 0 {
-				exists := false
-				for _, name := range ld.ColumnNames {
-					if strings.EqualFold(name, colName) {
-						exists = true
-						break
-					}
+			// Add set column names missing from ld.ColNames, so they're not trimmed from projection
+			exists := false
+			for _, name := range ld.ColNames {
+				if strings.EqualFold(name, colName) {
+					exists = true
+					break
 				}
-				if !exists {
-					ld.ColumnNames = append(ld.ColumnNames, colName)
+			}
+			if !exists {
+				// Only append to ld.ColNames if it's not empty
+				if len(ld.ColNames) != 0 {
+					ld.ColNames = append(ld.ColNames, colName)
 				}
+				// Must also append to ld.UserVars, so we build the fieldToCol map correctly later
+				ld.UserVars = append(ld.UserVars, nil)
 			}
 		}
 	}
 
 	outScope = inScope.push()
-	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColumnNames, nil, ld.IsIgnore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), ld, ld.IsReplace, ld.ColNames, nil, ld.IsIgnore)
 	b.validateInsert(ins)
 	outScope.node = ins
 	if rt != nil {
