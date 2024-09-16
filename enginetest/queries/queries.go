@@ -9990,7 +9990,7 @@ from typestable`,
 		},
 	},
 	{
-		Query: "select charset(convert('abc'using latin1))",
+		Query: "select charset(convert('abc' using latin1))",
 		Expected: []sql.Row{
 			{"latin1"},
 		},
