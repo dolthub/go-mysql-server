@@ -684,7 +684,6 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 			b.handleErr(sql.ErrUnsupportedFeature.New("vector index"))
 		}
 
-
 		columns := b.gatherIndexColumns(idxDef.Columns)
 
 		var comment string
