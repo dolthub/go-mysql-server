@@ -144,3 +144,64 @@ func (c *Coercibility) Type() sql.Type {
 func (*Coercibility) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
+
+// Charset is a function that returns the collation of the inner expression.
+type Charset struct {
+	expression.UnaryExpression
+}
+
+var _ sql.FunctionExpression = (*Charset)(nil)
+var _ sql.CollationCoercible = (*Charset)(nil)
+
+// NewCharset creates a new Charset expression.
+func NewCharset(e sql.Expression) sql.Expression {
+	return &Charset{expression.UnaryExpression{Child: e}}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *Charset) FunctionName() string {
+	return "charset"
+}
+
+// Description implements sql.FunctionExpression
+func (c *Charset) Description() string {
+	return "Returns the charset of the inner expression"
+}
+
+// Eval implements the sql.Expression.
+func (c *Charset) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := c.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	// If the value is nil, then we return 'binary'
+	if val == nil {
+		return sql.CharacterSet_binary.Name(), nil
+	}
+	// Otherwise, we return the collation calculated from the expression
+	collation, _ := sql.GetCoercibility(ctx, c.Child)
+	return collation.CharacterSet().Name(), nil
+}
+
+// String implements the fmt.Stringer interface.
+func (c *Charset) String() string {
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+}
+
+// WithChildren implements the Expression interface.
+func (c *Charset) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+	}
+	return NewCharset(children[0]), nil
+}
+
+// Type implements the Expression interface.
+func (c *Charset) Type() sql.Type {
+	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Charset) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 4
+}
