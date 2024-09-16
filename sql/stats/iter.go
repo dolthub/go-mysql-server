@@ -16,6 +16,7 @@ package stats
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
 	"strings"
 	"time"
@@ -134,12 +135,17 @@ func ParseRow(rowStr string, types []sql.Type) (sql.Row, error) {
 	return row, nil
 }
 
-func StringifyKey(r sql.Row, types []sql.Type) string {
+func StringifyKey(r sql.Row, typs []sql.Type) string {
 	b := strings.Builder{}
 	sep := ""
 	for i, v := range r {
+		typ := typs[i]
+		if _, ok := typ.(sql.StringType); ok {
+			typ = types.LongText
+			v, _, _ = typ.Convert(v)
+		}
 		if v == nil {
-			v = types[i].Zero()
+			v = typ.Zero()
 		}
 		fmt.Fprintf(&b, "%s%v", sep, v)
 		sep = ","
