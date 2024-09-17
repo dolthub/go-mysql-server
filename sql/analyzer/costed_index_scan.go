@@ -1329,7 +1329,6 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buck
 		if idx.IsUnique() {
 			conjFDs = conj.getFds()
 		}
-		conjFDs = conj.getFds()
 		return conj.hist, conjFDs, true, conj.missingPrefix, nil
 	}
 }
