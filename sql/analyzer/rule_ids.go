@@ -111,6 +111,7 @@ const (
 	replaceAggId                 // replaceAgg
 	replaceIdxSortId             // replaceIdxSort
 	insertTopNId                 // insertTopN
+	replaceIdxOrderByDistanceId  // replaceIdxOrderByDistance
 	applyHashInId                // applyHashIn
 	resolveInsertRowsId          // resolveInsertRows
 	resolvePreparedInsertId      // resolvePreparedInsert
