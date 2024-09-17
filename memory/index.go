@@ -118,6 +118,10 @@ func (idx *Index) IsFullText() bool {
 	return idx.Fulltext
 }
 
+func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
+	return false
+}
+
 func (idx *Index) Comment() string {
 	return idx.CommentStr
 }

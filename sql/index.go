@@ -122,6 +122,10 @@ type Index interface {
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
 	CanSupport(...Range) bool
+	// CanSupportOrderBy returns whether this index can optimize ORDER BY a given expression type.
+	// Verifying that the expression's children match the index columns are done separately.
+	CanSupportOrderBy(expr Expression) bool
+
 	// PrefixLengths returns the prefix lengths for each column in this index
 	PrefixLengths() []uint16
 }

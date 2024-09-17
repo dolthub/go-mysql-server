@@ -164,6 +164,10 @@ func (testIndex) CanSupport(...sql.Range) bool {
 	return true
 }
 
+func (testIndex) CanSupportOrderBy(_ sql.Expression) bool {
+	return false
+}
+
 func (testIndex) ID() string {
 	return "test_index"
 }

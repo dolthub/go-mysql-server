@@ -1950,17 +1950,18 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	}
 
 	return &Index{
-		DB:         t.dbName(),
-		DriverName: "",
-		Tbl:        t,
-		TableName:  t.name,
-		Exprs:      exprs,
-		Name:       name,
-		Unique:     constraint == sql.IndexConstraint_Unique,
-		Spatial:    constraint == sql.IndexConstraint_Spatial,
-		Fulltext:   constraint == sql.IndexConstraint_Fulltext,
-		CommentStr: comment,
-		PrefixLens: prefixLengths,
+		DB:                      t.dbName(),
+		DriverName:              "",
+		Tbl:                     t,
+		TableName:               t.name,
+		Exprs:                   exprs,
+		Name:                    name,
+		Unique:                  constraint == sql.IndexConstraint_Unique,
+		Spatial:                 constraint == sql.IndexConstraint_Spatial,
+		Fulltext:                constraint == sql.IndexConstraint_Fulltext,
+		SupportedVectorFunction: nil,
+		CommentStr:              comment,
+		PrefixLens:              prefixLengths,
 	}, nil
 }
 
