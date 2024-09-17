@@ -15,7 +15,8 @@
 package queries
 
 import (
-	"time"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
+"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -7278,6 +7279,23 @@ where
 			{
 				Query:    "select * from t where (t1, t2) in (('abc', 'DEF'));",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name:        "not null not unique index works on server engine",
+		SetUpScript: []string{
+			"create table t (i int not null, index (i));",
+			"insert into t values (1), (1), (1);",
+		},
+		Assertions:  []ScriptTestAssertion{
+			{
+				Query: "select * from t where i = 1;",
+				Expected: []sql.Row{
+					{1},
+					{1},
+					{1},
+				},
 			},
 		},
 	},
