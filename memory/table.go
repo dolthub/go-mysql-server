@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/iters"
 	"io"
 	"sort"
 	"strconv"
@@ -345,6 +346,36 @@ type spatialRangePartitionIter struct {
 	minX, minY, maxX, maxY float64
 }
 
+// vectorPartitionIter is the sql.PartitionIter for vector indexes.
+// Because it only ever has one partition, it also implements sql.Partition
+// and returns itself in calls to Next.
+type vectorPartitionIter struct {
+	Column sql.Expression
+	sql.OrderAndLimit
+	visited bool
+}
+
+var _ sql.PartitionIter = (*vectorPartitionIter)(nil)
+var _ sql.Partition = (*vectorPartitionIter)(nil)
+
+// Key returns the key used to distinguish partitions. Since it only ever has one partition,
+// this value is unused.
+func (v *vectorPartitionIter) Key() []byte {
+	return nil
+}
+
+func (v *vectorPartitionIter) Close(_ *sql.Context) error {
+	return nil
+}
+
+func (v *vectorPartitionIter) Next(_ *sql.Context) (sql.Partition, error) {
+	if v.visited {
+		return nil, io.EOF
+	}
+	v.visited = true
+	return v, nil
+}
+
 var _ sql.PartitionIter = (*spatialRangePartitionIter)(nil)
 
 func (i spatialRangePartitionIter) Close(ctx *sql.Context) error {
@@ -513,6 +544,25 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	if r, ok := partition.(*rangePartition); ok && r.rang != nil {
 		// index lookup is currently a single filter applied to a full table scan
 		filters = append(t.filters, r.rang)
+	}
+
+	if vectorPartition, ok := partition.(*vectorPartitionIter); ok {
+		// Assume only one partition for now
+		rows := data.partitions[string(data.partitionKeys[0])]
+
+		sf := sql.SortFields{
+			{Column: vectorPartition.OrderBy, Order: sql.Ascending},
+		}
+
+		if vectorPartition.Limit != nil {
+			limit, err := iters.GetInt64Value(ctx, vectorPartition.Limit)
+			if err != nil {
+				return nil, err
+			}
+			return iters.NewTopRowsIter(sf, limit, vectorPartition.CalcFoundRows, sql.RowsToRowIter(rows...), 0), nil
+		}
+
+		return iters.NewSortIter(sf, sql.RowsToRowIter(rows...)), nil
 	}
 
 	rows, ok := data.partitions[string(partition.Key())]
@@ -1544,6 +1594,14 @@ var _ sql.StatisticsTable = (*IndexedTable)(nil)
 
 func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
 	memIdx := lookup.Index.(*Index)
+
+	if lookup.VectorOrderAndLimit.OrderBy != nil {
+		return &vectorPartitionIter{
+			Column:        lookup.Index.(*Index).Exprs[0],
+			OrderAndLimit: lookup.VectorOrderAndLimit,
+		}, nil
+	}
+
 	lookupRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
 	if !ok {
 		return nil, fmt.Errorf("expected MySQL ranges in memory indexed table")
@@ -1636,6 +1694,10 @@ func (t *IndexedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) 
 
 	// Sorting code below is only for spatial indexes, which use a different partition iterator
 	if _, ok := partition.(indexScanPartition); ok {
+		return iter, nil
+	}
+
+	if _, ok := partition.(*vectorPartitionIter); ok {
 		return iter, nil
 	}
 
@@ -2053,6 +2115,31 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 	}
 
 	// TODO: We should store the computed index name in the case of an empty index name being passed in
+	data.indexes[strings.ToLower(index.ID())] = index
+	sess.putTable(data)
+
+	return nil
+}
+
+func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceType expression.DistanceType) error {
+	if len(idx.Columns) > 1 {
+		return fmt.Errorf("vector indexes must have exactly one column")
+	}
+
+	sess := SessionFromContext(ctx)
+	data := sess.tableData(t)
+
+	if data.indexes == nil {
+		data.indexes = make(map[string]sql.Index)
+	}
+
+	index, err := t.createIndex(data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	if err != nil {
+		return err
+	}
+	index.(*Index).SupportedVectorFunction = distanceType
+
+	// Store the computed index name in the case of an empty index name being passed in
 	data.indexes[strings.ToLower(index.ID())] = index
 	sess.putTable(data)
 

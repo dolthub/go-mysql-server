@@ -313,6 +313,33 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
+func ConvertToVector(v interface{}) ([]float64, error) {
+	switch b := v.(type) {
+	case []float64:
+		return b, nil
+	case JSONWrapper:
+		val, err := b.ToInterface()
+		if err != nil {
+			return nil, err
+		}
+		array, ok := val.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("can't convert JSON to vector; expected array, got %v", val)
+		}
+		res := make([]float64, len(array))
+		for i, elem := range array {
+			floatElem, ok := elem.(float64)
+			if !ok {
+				return nil, fmt.Errorf("can't convert JSON to vector; expected array of floats, got %v", elem)
+			}
+			res[i] = floatElem
+		}
+		return res, nil
+	default:
+		return nil, fmt.Errorf("unable to cast %#v of type %T to vector", v, v)
+	}
+}
+
 // EvaluateCondition evaluates a condition, which is an expression whose value
 // will be nil or coerced boolean.
 func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, error) {

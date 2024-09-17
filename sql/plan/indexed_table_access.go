@@ -332,8 +332,11 @@ func (i *IndexedTableAccess) String() string {
 	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
-	if !i.lookup.IsEmpty() {
+	if !i.lookup.IsEmpty() && i.lookup.Ranges.Len() > 0 {
 		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString()))
+	}
+	if !i.lookup.IsEmpty() && i.lookup.VectorOrderAndLimit.OrderBy != nil {
+		children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString()))
 	}
 
 	if pt, ok := i.Table.(sql.ProjectedTable); ok {
@@ -385,7 +388,12 @@ func (i *IndexedTableAccess) DebugString() string {
 	var children []string
 	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
 	if !i.lookup.IsEmpty() {
-		children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
+		if i.lookup.Ranges.Len() > 0 {
+			children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString()))
+		}
+		if !i.lookup.IsEmpty() && i.lookup.VectorOrderAndLimit.OrderBy != nil {
+			children = append(children, fmt.Sprintf("order: %s", i.lookup.VectorOrderAndLimit.DebugString()))
+		}
 		if i.lookup.IsReverse {
 			children = append(children, fmt.Sprintf("reverse: %v", i.lookup.IsReverse))
 		}
