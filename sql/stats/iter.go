@@ -16,10 +16,11 @@ package stats
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
