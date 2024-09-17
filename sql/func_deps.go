@@ -313,8 +313,8 @@ func (f *FuncDepSet) AddStrictKey(cols ColSet) {
 
 func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 	nullableCols := cols.Difference(f.notNull)
-	if nullableCols.Empty() { // TODO: just because they are not null does not mean they are strict
-		//f.AddStrictKey(cols)
+	if nullableCols.Empty() {
+		f.AddStrictKey(cols)
 	}
 
 	cols = f.simplifyCols(cols, nil)
