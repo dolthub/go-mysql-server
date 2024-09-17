@@ -59,7 +59,7 @@ func (e *EquivSets) String() string {
 
 // Key maintains a strict or lax dependency
 type Key struct {
-	strict  bool
+	strict  bool // strict keys are unique and non-nullable
 	cols    ColSet
 	allCols ColSet
 }
@@ -313,8 +313,8 @@ func (f *FuncDepSet) AddStrictKey(cols ColSet) {
 
 func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 	nullableCols := cols.Difference(f.notNull)
-	if nullableCols.Empty() {
-		f.AddStrictKey(cols)
+	if nullableCols.Empty() { // TODO: just because they are not null does not mean they are strict
+		//f.AddStrictKey(cols)
 	}
 
 	cols = f.simplifyCols(cols, nil)
