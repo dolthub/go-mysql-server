@@ -15,6 +15,8 @@
 package function
 
 import (
+	"bytes"
+	"compress/zlib"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -231,4 +233,70 @@ func (f *SHA2) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
 	return NewSHA2(children[0], children[1]), nil
+}
+
+
+// Compress function returns the Compress hash of the input.
+// https://dev.mysql.com/doc/refman/8.0/en/encryption-functions.html#function_sha1
+type Compress struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Compress)(nil)
+var _ sql.CollationCoercible = (*Compress)(nil)
+
+// NewCompress returns a new Compress function expression
+func NewCompress(arg sql.Expression) sql.Expression {
+	return &Compress{NewUnaryFunc(arg, "Compress", types.LongText)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *Compress) Description() string {
+	return "calculates an SHA-1 160-bit checksum."
+}
+
+func (f *Compress) Type() sql.Type {
+	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Compress) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongText.Convert(arg)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	writer := zlib.NewWriter(&buf)
+	_, err = writer.Write([]byte(val.(string)))
+	if err != nil {
+		return nil, err
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// WithChildren implements sql.Expression
+func (f *Compress) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewCompress(children[0]), nil
 }
