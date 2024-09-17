@@ -145,7 +145,7 @@ func (*Coercibility) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 5
 }
 
-// Charset is a function that returns the collation of the inner expression.
+// Charset is a function that returns the character set of the inner expression.
 type Charset struct {
 	expression.UnaryExpression
 }
@@ -178,7 +178,7 @@ func (c *Charset) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if val == nil {
 		return sql.CharacterSet_binary.Name(), nil
 	}
-	// Otherwise, we return the collation calculated from the expression
+	// Otherwise, we return the character set calculated from the expression
 	collation, _ := sql.GetCoercibility(ctx, c.Child)
 	return collation.CharacterSet().Name(), nil
 }
