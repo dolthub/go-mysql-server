@@ -17,12 +17,14 @@ package iters
 import (
 	"container/heap"
 	"fmt"
+	"io"
+	"sort"
+
+	"github.com/dolthub/jsonpath"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/jsonpath"
-	"io"
-	"sort"
 )
 
 type topRowsIter struct {
