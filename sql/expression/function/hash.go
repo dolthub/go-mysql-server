@@ -408,3 +408,91 @@ func (f *Uncompress) WithChildren(children ...sql.Expression) (sql.Expression, e
 	}
 	return NewUncompress(children[0]), nil
 }
+
+// UncompressedLength function returns the length of the original string from the compressed string input.
+// https://dev.mysql.com/doc/refman/8.4/en/encryption-functions.html#function_uncompress
+type UncompressedLength struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*UncompressedLength)(nil)
+var _ sql.CollationCoercible = (*UncompressedLength)(nil)
+
+// NewUncompressedLength returns a new UncompressedLength function expression
+func NewUncompressedLength(arg sql.Expression) sql.Expression {
+	return &UncompressedLength{NewUnaryFunc(arg, "UncompressedLength", types.LongText)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *UncompressedLength) Description() string {
+	return "returns length of original uncompressed string from compressed string input."
+}
+
+func (f *UncompressedLength) Type() sql.Type {
+	return types.Uint32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UncompressedLength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongBlob.Convert(arg)
+	if err != nil {
+		ctx.Warn(1258, err.Error())
+		return nil, nil
+	}
+	valBytes := val.([]byte)
+	if len(valBytes) == 0 {
+		return []byte{}, nil
+	}
+	if len(valBytes) <= compressHeaderSize {
+		ctx.Warn(1258, "input data corrupted")
+		return nil, nil
+	}
+
+	var inBuf bytes.Buffer
+	inBuf.Write(valBytes[compressHeaderSize:]) // skip length header
+	reader, err := zlib.NewReader(&inBuf)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	outLen := binary.LittleEndian.Uint32(valBytes[:compressHeaderSize])
+	if outLen > compressMaxSize {
+		ctx.Warn(1258, fmt.Sprintf("UncompressedLengthed data too large; the maximum size is %d", compressMaxSize))
+		return nil, nil
+	}
+
+	outBuf := make([]byte, outLen)
+	readLen, err := reader.Read(outBuf)
+	if err != nil && err != io.EOF {
+		ctx.Warn(1258, err.Error())
+		return nil, nil
+	}
+	// if we don't receive io.EOF, then received outLen was too small
+	if err == nil {
+		ctx.Warn(1258, "not enough room in output buffer")
+		return nil, nil
+	}
+	return outBuf[:readLen], nil
+}
+
+// WithChildren implements sql.Expression
+func (f *UncompressedLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewUncompress(children[0]), nil
+}
