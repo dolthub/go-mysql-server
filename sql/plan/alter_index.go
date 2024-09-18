@@ -227,6 +227,8 @@ func (p AlterIndex) String() string {
 			children = append(children, "Constraint(SPATIAL)")
 		case sql.IndexConstraint_Fulltext:
 			children = append(children, "Constraint(FULLTEXT)")
+		case sql.IndexConstraint_Vector:
+			children = append(children, "Constraint(VECTOR)")
 		}
 		switch p.Using {
 		case sql.IndexUsing_BTree, sql.IndexUsing_Default:

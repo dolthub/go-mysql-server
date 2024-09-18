@@ -43,6 +43,10 @@ func (i *IndexDef) IsSpatial() bool {
 	return i.Constraint == IndexConstraint_Spatial
 }
 
+func (i *IndexDef) IsVector() bool {
+	return i.Constraint == IndexConstraint_Vector
+}
+
 func (i *IndexDef) IsPrimary() bool {
 	return i.Constraint == IndexConstraint_Primary
 }
@@ -73,6 +77,7 @@ const (
 	IndexConstraint_Unique
 	IndexConstraint_Fulltext
 	IndexConstraint_Spatial
+	IndexConstraint_Vector
 	IndexConstraint_Primary
 )
 
