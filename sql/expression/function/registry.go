@@ -298,6 +298,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "to_days", Fn: NewToDays},
 	sql.Function1{Name: "ucase", Fn: NewUpper},
 	sql.Function1{Name: "uncompress", Fn: NewUncompress},
+	sql.Function1{Name: "uncompressed_length", Fn: NewUncompressedLength},
 	sql.Function1{Name: "unhex", Fn: NewUnhex},
 	sql.FunctionN{Name: "unix_timestamp", Fn: NewUnixTimestamp},
 	sql.Function1{Name: "upper", Fn: NewUpper},

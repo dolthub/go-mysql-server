@@ -247,7 +247,7 @@ var _ sql.CollationCoercible = (*Compress)(nil)
 
 // NewCompress returns a new Compress function expression
 func NewCompress(arg sql.Expression) sql.Expression {
-	return &Compress{NewUnaryFunc(arg, "Compress", types.LongText)}
+	return &Compress{NewUnaryFunc(arg, "Compress", types.LongBlob)}
 }
 
 // Description implements sql.FunctionExpression
@@ -331,7 +331,7 @@ const (
 
 // NewUncompress returns a new Uncompress function expression
 func NewUncompress(arg sql.Expression) sql.Expression {
-	return &Uncompress{NewUnaryFunc(arg, "Uncompress", types.LongText)}
+	return &Uncompress{NewUnaryFunc(arg, "Uncompress", types.LongBlob)}
 }
 
 // Description implements sql.FunctionExpression
@@ -419,7 +419,7 @@ var _ sql.CollationCoercible = (*UncompressedLength)(nil)
 
 // NewUncompressedLength returns a new UncompressedLength function expression
 func NewUncompressedLength(arg sql.Expression) sql.Expression {
-	return &UncompressedLength{NewUnaryFunc(arg, "UncompressedLength", types.LongText)}
+	return &UncompressedLength{NewUnaryFunc(arg, "UncompressedLength", types.Uint32)}
 }
 
 // Description implements sql.FunctionExpression
@@ -453,39 +453,15 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 	}
 	valBytes := val.([]byte)
 	if len(valBytes) == 0 {
-		return []byte{}, nil
+		return uint32(0), nil
 	}
 	if len(valBytes) <= compressHeaderSize {
 		ctx.Warn(1258, "input data corrupted")
 		return nil, nil
 	}
 
-	var inBuf bytes.Buffer
-	inBuf.Write(valBytes[compressHeaderSize:]) // skip length header
-	reader, err := zlib.NewReader(&inBuf)
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-
 	outLen := binary.LittleEndian.Uint32(valBytes[:compressHeaderSize])
-	if outLen > compressMaxSize {
-		ctx.Warn(1258, fmt.Sprintf("UncompressedLengthed data too large; the maximum size is %d", compressMaxSize))
-		return nil, nil
-	}
-
-	outBuf := make([]byte, outLen)
-	readLen, err := reader.Read(outBuf)
-	if err != nil && err != io.EOF {
-		ctx.Warn(1258, err.Error())
-		return nil, nil
-	}
-	// if we don't receive io.EOF, then received outLen was too small
-	if err == nil {
-		ctx.Warn(1258, "not enough room in output buffer")
-		return nil, nil
-	}
-	return outBuf[:readLen], nil
+	return outLen, nil
 }
 
 // WithChildren implements sql.Expression
@@ -493,5 +469,5 @@ func (f *UncompressedLength) WithChildren(children ...sql.Expression) (sql.Expre
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewUncompress(children[0]), nil
+	return NewUncompressedLength(children[0]), nil
 }

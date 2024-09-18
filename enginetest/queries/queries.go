@@ -10013,6 +10013,12 @@ from typestable`,
 			{1000},
 		},
 	},
+	{
+		Query: "select uncompressed_length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{uint32(1000)},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
