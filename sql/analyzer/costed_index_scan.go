@@ -1325,7 +1325,11 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buck
 	default:
 		conj := newConjCollector(s, buckets, ordinals)
 		conj.add(filter)
-		return conj.hist, conj.getFds(), true, conj.missingPrefix, nil
+		var conjFDs *sql.FuncDepSet
+		if idx.IsUnique() {
+			conjFDs = conj.getFds()
+		}
+		return conj.hist, conjFDs, true, conj.missingPrefix, nil
 	}
 }
 

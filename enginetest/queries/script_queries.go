@@ -7281,6 +7281,23 @@ where
 			},
 		},
 	},
+	{
+		Name: "not null not unique index works on server engine",
+		SetUpScript: []string{
+			"create table t (i int not null, index (i));",
+			"insert into t values (1), (1), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where i = 1;",
+				Expected: []sql.Row{
+					{1},
+					{1},
+					{1},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
