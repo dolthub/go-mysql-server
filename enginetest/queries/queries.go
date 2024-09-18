@@ -9995,6 +9995,12 @@ from typestable`,
 			{"latin1"},
 		},
 	},
+	{
+		Query: "select uncompress(compress('thisisastring'))",
+		Expected: []sql.Row{
+			{[]byte{0x74, 0x68, 0x69, 0x73, 0x69, 0x73, 0x61, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67}},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

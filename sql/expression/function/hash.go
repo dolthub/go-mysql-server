@@ -21,7 +21,8 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/hex"
+	"encoding/binary"
+"encoding/hex"
 	"fmt"
 	"hash"
 	"io"
@@ -236,8 +237,8 @@ func (f *SHA2) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 }
 
 
-// Compress function returns the Compress hash of the input.
-// https://dev.mysql.com/doc/refman/8.0/en/encryption-functions.html#function_sha1
+// Compress function returns the compressed binary string of the input.
+// https://dev.mysql.com/doc/refman/8.4/en/encryption-functions.html#function_compress
 type Compress struct {
 	*UnaryFunc
 }
@@ -252,7 +253,7 @@ func NewCompress(arg sql.Expression) sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (f *Compress) Description() string {
-	return "calculates an SHA-1 160-bit checksum."
+	return "compresses a string and returns the result as a binary string."
 }
 
 func (f *Compress) Type() sql.Type {
@@ -274,14 +275,21 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(arg)
+	val, _, err := types.LongBlob.Convert(arg)
 	if err != nil {
 		return nil, err
 	}
+	valBytes := val.([]byte)
+	if len(valBytes) == 0 {
+		return []byte{}, nil
+	}
 
 	var buf bytes.Buffer
-	writer := zlib.NewWriter(&buf)
-	_, err = writer.Write([]byte(val.(string)))
+	writer, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	_, err = writer.Write(valBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +298,11 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return buf.Bytes(), nil
+	// Prepend length of original string
+	lenHeader := make([]byte, 4)
+	binary.LittleEndian.PutUint32(lenHeader, uint32(len(valBytes)))
+	res := append(lenHeader, buf.Bytes()...)
+	return res, nil
 }
 
 // WithChildren implements sql.Expression
@@ -299,4 +311,98 @@ func (f *Compress) WithChildren(children ...sql.Expression) (sql.Expression, err
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
 	return NewCompress(children[0]), nil
+}
+
+// Uncompress function returns the binary string from the compressed input.
+// https://dev.mysql.com/doc/refman/8.4/en/encryption-functions.html#function_uncompress
+type Uncompress struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Uncompress)(nil)
+var _ sql.CollationCoercible = (*Uncompress)(nil)
+
+const (
+	compressHeaderSize = 4
+	compressMaxSize    = 0x04000000
+)
+
+
+// NewUncompress returns a new Uncompress function expression
+func NewUncompress(arg sql.Expression) sql.Expression {
+	return &Uncompress{NewUnaryFunc(arg, "Uncompress", types.LongText)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *Uncompress) Description() string {
+	return "uncompresses a string compressed by the COMPRESS() function."
+}
+
+func (f *Uncompress) Type() sql.Type {
+	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Uncompress) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongBlob.Convert(arg)
+	if err != nil {
+		ctx.Warn(1258, err.Error())
+		return nil, nil
+	}
+	valBytes := val.([]byte)
+	if len(valBytes) == 0 {
+		return []byte{}, nil
+	}
+	if len(valBytes) <= compressHeaderSize {
+		ctx.Warn(1258, "input data corrupted")
+		return nil, nil
+	}
+
+	var inBuf bytes.Buffer
+	inBuf.Write(valBytes[compressHeaderSize:]) // skip length header
+	reader, err := zlib.NewReader(&inBuf)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	outLen := binary.LittleEndian.Uint32(valBytes[:compressHeaderSize])
+	if outLen > compressMaxSize {
+		ctx.Warn(1258, fmt.Sprintf("Uncompressed data too large; the maximum size is %d", compressMaxSize))
+		return nil, nil
+	}
+
+	outBuf := make([]byte, outLen)
+	_, err = reader.Read(outBuf)
+	if err != nil && err != io.EOF {
+		ctx.Warn(1258, err.Error())
+		return nil, nil
+	}
+	// if we don't receive io.EOF, then received outLen was too small
+	if err == nil {
+		ctx.Warn(1258, "not enough room in output buffer")
+		return nil, nil
+	}
+	return outBuf, nil
+}
+
+// WithChildren implements sql.Expression
+func (f *Uncompress) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewUncompress(children[0]), nil
 }

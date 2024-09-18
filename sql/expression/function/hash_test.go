@@ -15,7 +15,8 @@
 package function
 
 import (
-	"testing"
+	"fmt"
+"testing"
 
 	"github.com/stretchr/testify/require"
 
@@ -272,6 +273,102 @@ func TestSHA2Null(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, nil, res)
+		})
+	}
+}
+
+func TestCompress(t *testing.T) {
+	tests := []struct {
+		val  sql.Expression
+		exp  interface{}
+	}{
+		{
+			val: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral(int64(1), types.Int64),
+			exp: "0100000078DA3204040000FFFF00320032",
+		},
+		{
+			val: expression.NewLiteral("1", types.Text),
+			exp: "0100000078DA3204040000FFFF00320032",
+		},
+		{
+			val: expression.NewLiteral("", types.Text),
+			exp: "",
+		},
+		{
+			val: expression.NewLiteral("abc", types.Text),
+			exp: "0300000078DA4A4C4A06040000FFFF024D0127",
+		},
+		{
+			val: expression.NewLiteral("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", types.Text),
+			exp: "2A00000078DA72241A00020000FFFFE5710AAB",
+		},
+	}
+
+	for _, test := range tests {
+		f := NewCompress(test.val)
+		t.Run(fmt.Sprintf(f.String()), func(t *testing.T) {
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			if test.exp == nil {
+				require.Nil(t, res)
+				return
+			}
+			resStr := fmt.Sprintf("%X", res)
+			require.Equal(t, test.exp, resStr)
+		})
+	}
+}
+
+func TestUncompress(t *testing.T) {
+	tests := []struct {
+		val  sql.Expression
+		exp  interface{}
+	}{
+		{
+			val: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral(int64(1), types.Int64),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral("1", types.Text),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral("", types.Text),
+			exp: "",
+		},
+		{
+			val: expression.NewLiteral([]byte{0x03,0x00,0x00,0x00,0x78,0xDA,0x4A,0x4C,0x4A,0x06,0x04,0x00,0x00,0xFF,0xFF,0x02,0x4D,0x01,0x27},  types.Blob),
+			exp: "616263", // abc
+		},
+		{
+			val: expression.NewLiteral([]byte{0x2A,0x00,0x00,0x00,0x78,0xDA,0x72,0x24,0x1A,0x00,0x02,0x00,0x00,0xFF,0xFF,0xE5,0x71,0x0A,0xAB}, types.Blob),
+			exp: "414141414141414141414141414141414141414141414141414141414141414141414141414141414141", //AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+		},
+		{
+			val: expression.NewLiteral([]byte{0x0F,0x00,0x00,0x00,0x78,0x9C,0xCB,0xAD,0x2C,0x2E,0xCC,0x49,0xCE,0xCF,0x2D,0x28,0x4A,0x2D,0x2E,0x4E,0x4D,0x01,0x00,0x34,0x0C,0x06,0x6C}, types.Blob),
+			exp: "6D7973716C636F6D70726573736564", // mysqlcompressed
+		},
+	}
+
+	for _, test := range tests {
+		f := NewUncompress(test.val)
+		t.Run(fmt.Sprintf(f.String()), func(t *testing.T) {
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			if test.exp == nil {
+				require.Nil(t, res)
+				return
+			}
+			resStr := fmt.Sprintf("%X", res)
+			require.Equal(t, test.exp, resStr)
 		})
 	}
 }
