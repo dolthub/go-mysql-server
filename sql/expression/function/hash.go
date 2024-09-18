@@ -386,7 +386,7 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	outBuf := make([]byte, outLen)
-	_, err = reader.Read(outBuf)
+	readLen, err := reader.Read(outBuf)
 	if err != nil && err != io.EOF {
 		ctx.Warn(1258, err.Error())
 		return nil, nil
@@ -396,7 +396,7 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(1258, "not enough room in output buffer")
 		return nil, nil
 	}
-	return outBuf, nil
+	return outBuf[:readLen], nil
 }
 
 // WithChildren implements sql.Expression
