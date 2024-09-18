@@ -90,7 +90,7 @@ func parseMonth2DigitNumeric(result *datetime, chars string) (rest string, _ err
 		return "", err
 	}
 	if num < 1 || num > 12 {
-		return "", fmt.Errorf("expected 01-12, got %m", len(chars))
+		return "", fmt.Errorf("expected 01-12, got %s", string(chars))
 	}
 	month := time.Month(num)
 	result.month = &month
