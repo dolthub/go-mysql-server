@@ -284,6 +284,9 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return []byte{}, nil
 	}
 
+	// TODO: the golang standard library implementation of zlib is different than the original C implementation that
+	// MySQL uses. This means that the output of compressed data will be different. However, this library claims to be
+	// able to uncompress MySQL compressed data. There are unit tests for this in hash_test.go.
 	var buf bytes.Buffer
 	writer, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
 	if err != nil {
@@ -326,7 +329,6 @@ const (
 	compressHeaderSize = 4
 	compressMaxSize    = 0x04000000
 )
-
 
 // NewUncompress returns a new Uncompress function expression
 func NewUncompress(arg sql.Expression) sql.Expression {

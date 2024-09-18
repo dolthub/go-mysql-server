@@ -10001,6 +10001,18 @@ from typestable`,
 			{[]byte{0x74, 0x68, 0x69, 0x73, 0x69, 0x73, 0x61, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67}},
 		},
 	},
+	{
+		Query: "select length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{24}, // 21 in MySQL because of library implementation differences
+		},
+	},
+	{
+		Query: "select length(uncompress(compress(repeat('a', 1000))))",
+		Expected: []sql.Row{
+			{1000},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
