@@ -9970,6 +9970,31 @@ from typestable`,
 			{"03.10.2003"},
 		},
 	},
+
+	{
+		Query: "select charset(null)",
+		Expected: []sql.Row{
+			{"binary"},
+		},
+	},
+	{
+		Query: "select charset(123)",
+		Expected: []sql.Row{
+			{"binary"},
+		},
+	},
+	{
+		Query: "select charset('abc')",
+		Expected: []sql.Row{
+			{"utf8mb4"},
+		},
+	},
+	{
+		Query: "select charset(convert('abc' using latin1))",
+		Expected: []sql.Row{
+			{"latin1"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
