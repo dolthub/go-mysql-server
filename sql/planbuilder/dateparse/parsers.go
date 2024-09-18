@@ -75,7 +75,7 @@ func parseMonthAbbreviation(result *datetime, chars string) (rest string, _ erro
 }
 
 func parseMonthNumeric(result *datetime, chars string) (rest string, _ error) {
-	num, rest, err := takeNumberAtMostNChars(2, chars)
+	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
 	}
