@@ -233,8 +233,7 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 	logrus.WithField("connectionId", c.ConnectionID).Debug("COM_RESET_CONNECTION command received")
 
 	// Grab the currently selected database name
-	s := h.sm.session(c)
-	db := s.GetCurrentDatabase()
+	db := h.sm.GetCurrentDB(c)
 
 	// Dispose of the connection's current session
 	h.maybeReleaseAllLocks(c)
@@ -245,9 +244,8 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 	if err != nil {
 		return err
 	}
-	s = h.sm.session(c)
-	s.SetCurrentDatabase(db)
-	return nil
+
+	return h.sm.SetDB(c, db)
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {

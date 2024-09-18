@@ -119,6 +119,8 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	return err
 }
 
+// SetDB sets the current database of the given connection session.
+// If the session does not exist, it creates a new session with given connection.
 func (s *SessionManager) SetDB(conn *mysql.Conn, dbName string) error {
 	sess, err := s.getOrCreateSession(context.Background(), conn)
 	if err != nil {
@@ -147,6 +149,12 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, dbName string) error {
 
 	s.processlist.ConnectionReady(sess)
 	return nil
+}
+
+// GetCurrentDB returns the current database name of the given connection session.
+func (s *SessionManager) GetCurrentDB(conn *mysql.Conn) string {
+	sess := s.session(conn)
+	return sess.GetCurrentDatabase()
 }
 
 // Iter iterates over the active sessions and executes the specified callback function on each one.
