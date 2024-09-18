@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -97,7 +97,7 @@ type ScriptTestAssertion struct {
 	SkipResultCheckOnServerEngine bool
 
 	// Bindings are variable mappings only used for prepared tests
-	Bindings map[string]*querypb.BindVariable
+	Bindings map[string]sqlparser.Expr
 
 	// CheckIndexedAccess indicates whether we should verify the query plan uses an index
 	CheckIndexedAccess bool
@@ -8005,7 +8005,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @dt;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56.000000"},
+					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 				},
 			},
 			{
@@ -8019,7 +8019,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @ts;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56.000000"},
+					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 				},
 			},
 			{
@@ -8310,11 +8310,11 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `INSERT INTO test (data) values (?)`,
-				Bindings: map[string]*querypb.BindVariable{
+				Bindings: map[string]sqlparser.Expr{
 					// Vitess chooses VARBINARY as the bindvar type if the client sends CHAR data
 					// If we change how Vitess interprets client bindvar types, we should update this test
 					// Or better yet: have a test harness that uses the server directly
-					"v1": {Type: querypb.Type_VARBINARY, Value: []byte(
+					"v1": sqlparser.NewStrVal([]byte(
 						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
@@ -8327,7 +8327,7 @@ var PreparedScriptTests = []ScriptTest{
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"")},
+							"")),
 				},
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,

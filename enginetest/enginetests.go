@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/assert"
@@ -4010,9 +4010,9 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into test values (?, ?)",
-					Bindings: map[string]*query.BindVariable{
-						"v1": sqltypes.Int64BindVariable(1),
-						"v2": sqltypes.Int64BindVariable(1),
+					Bindings: map[string]sqlparser.Expr{
+						"v1": mustBuildBindVariable(1),
+						"v2": mustBuildBindVariable(1),
 					},
 					Expected: []sql.Row{
 						{types.OkResult{RowsAffected: 1}},
@@ -4028,7 +4028,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "INSERT INTO test(decimal_test, decimal_test_2, decimal_test_3) VALUES (?, ?, ?)",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable(10),
 						"v2": mustBuildBindVariable([]byte("10.5")),
 						"v3": mustBuildBindVariable(20.40),
@@ -4058,7 +4058,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("id1"),
 						"v2": mustBuildBindVariable("dabe"),
 						"v3": mustBuildBindVariable("off"),
@@ -4072,7 +4072,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("id2"),
 						"v2": mustBuildBindVariable("dabe"),
 						"v3": mustBuildBindVariable("off"),
@@ -4112,7 +4112,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner,status=new_nodes.status",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("id1"),
 						"v2": mustBuildBindVariable("milo"),
 						"v3": mustBuildBindVariable("on"),
@@ -4124,7 +4124,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 				{
 					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner,status=new_nodes.status",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("id2"),
 						"v2": mustBuildBindVariable("dabe"),
 						"v3": mustBuildBindVariable("off"),
@@ -4163,7 +4163,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into nodes(color,timestamp,owner,id) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner, color=VALUES(color)",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("green"),
 						"v2": mustBuildBindVariable(2),
 						"v3": mustBuildBindVariable("dabe"),
@@ -4175,7 +4175,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 				{
 					Query: "insert into nodes(color,timestamp,owner,id) values(?, ?, ?, ?) as new_nodes on duplicate key update owner=new_nodes.owner, color=VALUES(color)",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("blue"),
 						"v2": mustBuildBindVariable(3),
 						"v3": mustBuildBindVariable("dabe"),
@@ -4214,7 +4214,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into nodes(id,owner,status,color,timestamp) values(?, ?, ?, ?, ?) as new_nodes(new_id, new_owner, new_status, new_color, new_timestamp) on duplicate key update owner=new_nodes.new_owner,status=new_status,color=VALUES(color)",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("id1"),
 						"v2": mustBuildBindVariable("dabe"),
 						"v3": mustBuildBindVariable("on"),
@@ -4227,7 +4227,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 				{
 					Query: "insert into nodes(id,owner,status,color,timestamp) values(?, ?, ?, ?, ?) as new_nodes(new_id, new_owner, new_status, new_color, new_timestamp) on duplicate key update owner=new_nodes.new_owner,status=new_status,color=VALUES(color)",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("id2"),
 						"v2": mustBuildBindVariable("dabe"),
 						"v3": mustBuildBindVariable("off"),
@@ -4268,7 +4268,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into nodes(size,color,timestamp,owner,id) values(?, ?, ?, ?, ?) as new_nodes(new_size,new_color,new_timestamp,new_owner,new_id) on duplicate key update size=new_size, owner=new_nodes.new_owner, color=VALUES(color)",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("medium"),
 						"v2": mustBuildBindVariable("green"),
 						"v3": mustBuildBindVariable(2),
@@ -4281,7 +4281,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 				},
 				{
 					Query: "insert into nodes(size,color,timestamp,owner,id) values(?, ?, ?, ?, ?) as new_nodes(new_size,new_color,new_timestamp,new_owner,new_id) on duplicate key update size=new_size, owner=new_nodes.new_owner, color=VALUES(color)",
-					Bindings: map[string]*query.BindVariable{
+					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable("small"),
 						"v2": mustBuildBindVariable("blue"),
 						"v3": mustBuildBindVariable(3),
@@ -4309,15 +4309,15 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "insert into test values (?)",
-					Bindings: map[string]*query.BindVariable{
-						"v1": sqltypes.BytesBindVariable([]byte{0x99, 0x98, 0x97}),
+					Bindings: map[string]sqlparser.Expr{
+						"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
 					},
 					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
 				},
 				{
 					Query: "insert into test values (?)",
-					Bindings: map[string]*query.BindVariable{
-						"v1": sqltypes.StringBindVariable(string([]byte{0x99, 0x98, 0x97})),
+					Bindings: map[string]sqlparser.Expr{
+						"v1": mustBuildBindVariable(string([]byte{0x99, 0x98, 0x97})),
 					},
 					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
 				},
@@ -4329,8 +4329,17 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 	}
 }
 
-func mustBuildBindVariable(v interface{}) *query.BindVariable {
-	ret, err := sqltypes.BuildBindVariable(v)
+// TODO: find better way to do this
+func mustBuildBindVariable(v interface{}) sqlparser.Expr {
+	bv, err := sqltypes.BuildBindVariable(v)
+	if err != nil {
+		panic(err)
+	}
+	val, err := sqltypes.BindVariableToValue(bv)
+	if err != nil {
+		panic(err)
+	}
+	ret, err := sqlparser.ExprFromValue(val)
 	if err != nil {
 		panic(err)
 	}
@@ -5128,41 +5137,41 @@ func TestPrepared(t *testing.T, harness Harness) {
 		{
 			Query:    "select 1,2 limit ?,?",
 			Expected: []sql.Row{{1, 2}},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Float64BindVariable(0.0),
-				"v2": sqltypes.Float64BindVariable(1.0),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(0.0),
+				"v2": mustBuildBindVariable(1.0),
 			},
 		},
 		{
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(2)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(2)),
 			},
 		},
 		{
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a HAVING bar = ? ORDER BY foo, i",
 			Expected: []sql.Row{
 				{2, 1, 2}},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(2)),
-				"v2": sqltypes.Int64BindVariable(int64(2)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(2)),
+				"v2": mustBuildBindVariable(int64(2)),
 			},
 		},
 		{
 			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? ORDER BY foo, i;",
 			Expected: []sql.Row{},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(1)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(1)),
 			},
 		},
 		{
 			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? AND foo = ? ORDER BY foo, i;",
 			Expected: []sql.Row{},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(1)),
-				"v2": sqltypes.Int64BindVariable(int64(1)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(1)),
+				"v2": mustBuildBindVariable(int64(1)),
 			},
 		},
 		{
@@ -5170,8 +5179,8 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Expected: []sql.Row{
 				{2},
 			},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(1)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(1)),
 			},
 		},
 		{
@@ -5180,9 +5189,9 @@ func TestPrepared(t *testing.T, harness Harness) {
 				{1},
 				{2},
 			},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(1)),
-				"v2": sqltypes.Int64BindVariable(int64(2)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(1)),
+				"v2": mustBuildBindVariable(int64(2)),
 			},
 		},
 		{
@@ -5190,8 +5199,8 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Expected: []sql.Row{
 				{2},
 			},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(1)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(1)),
 			},
 		},
 		{
@@ -5201,28 +5210,28 @@ func TestPrepared(t *testing.T, harness Harness) {
 				{2},
 				{3},
 			},
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(2)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(2)),
 			},
 		},
 		{
 			Query: "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT ?;",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(1),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(1),
 			},
 			Expected: []sql.Row{{int64(1)}},
 		},
 		{
 			Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(1),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(1),
 			},
 			Expected: []sql.Row{{int64(3)}},
 		},
 		// todo(max): sort function expressions w/ bindvars are aliased incorrectly
 		// {
 		//	Query: "SELECT sum(?) as x FROM mytable ORDER BY sum(?)",
-		//	Bindings: map[string]*query.BindVariable{
+		//	Bindings: map[string]sqlparser.Expr{
 		//		"v1": querypb.&query{Val: 1, Type: sql.Int8},
 		//		"v2": {Value: mustConvertToValue().Val1, Type: sql.Int8},
 		//	},
@@ -5230,54 +5239,54 @@ func TestPrepared(t *testing.T, harness Harness) {
 		// },
 		{
 			Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(1),
-				"v2": sqltypes.Int64BindVariable(1),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(1),
+				"v2": mustBuildBindVariable(1),
 			},
 			Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
 		},
 		{
 			Query: "With x as (select sum(?) from mytable) select sum(?) from x ORDER BY (select sum(?) from mytable)",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(1),
-				"v2": sqltypes.Int64BindVariable(1),
-				"v3": sqltypes.Int64BindVariable(1),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(1),
+				"v2": mustBuildBindVariable(1),
+				"v3": mustBuildBindVariable(1),
 			},
 			Expected: []sql.Row{{float64(1)}},
 		},
 		{
 			Query: "SELECT CAST(? as CHAR) UNION SELECT CAST(? as CHAR)",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(1),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(1),
 				"v2": mustBuildBindVariable("1"),
 			},
 			Expected: []sql.Row{{"1"}},
 		},
 		{
 			Query: "SELECT GET_LOCK(?, 10)",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.StringBindVariable("10"),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable("10"),
 			},
 			Expected: []sql.Row{{1}},
 		},
 		{
 			Query: "Select IS_FREE_LOCK(?)",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.StringBindVariable("10"),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable("10"),
 			},
 			Expected: []sql.Row{{0}},
 		},
 		{
 			Query: "Select IS_USED_LOCK(?)",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.StringBindVariable("10"),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable("10"),
 			},
 			Expected: []sql.Row{{uint64(1)}},
 		},
 		{
 			Query: "Select RELEASE_LOCK(?)",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.StringBindVariable("10"),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable("10"),
 			},
 			Expected: []sql.Row{{1}},
 		},
@@ -5288,28 +5297,28 @@ func TestPrepared(t *testing.T, harness Harness) {
 		{
 			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
 			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
-			Bindings: map[string]*query.BindVariable{
+			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
 			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
-			Bindings: map[string]*query.BindVariable{
+			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
 			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
-			Bindings: map[string]*query.BindVariable{
+			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
 			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
-			Bindings: map[string]*query.BindVariable{
+			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
@@ -5318,9 +5327,9 @@ func TestPrepared(t *testing.T, harness Harness) {
 		{
 			Query:          "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
 			ExpectedErrStr: "invalid bind variable count: expected: 1, found: 2",
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(2)),
-				"v2": sqltypes.Int64BindVariable(int64(2)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": sqlparser.NewIntVal([]byte("2")),
+				"v2": mustBuildBindVariable(int64(2)),
 			},
 		},
 	}
@@ -5353,24 +5362,24 @@ func TestPrepared(t *testing.T, harness Harness) {
 
 	repeatTests := []queries.QueryTest{
 		{
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(2)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(2)),
 			},
 			Expected: []sql.Row{
 				{2, float64(4)},
 			},
 		},
 		{
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(2)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(2)),
 			},
 			Expected: []sql.Row{
 				{2, float64(4)},
 			},
 		},
 		{
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(0)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(0)),
 			},
 			Expected: []sql.Row{
 				{1, float64(2)},
@@ -5378,16 +5387,16 @@ func TestPrepared(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(3)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(3)),
 			},
 			Expected: []sql.Row{
 				{2, float64(2)},
 			},
 		},
 		{
-			Bindings: map[string]*query.BindVariable{
-				"v1": sqltypes.Int64BindVariable(int64(1)),
+			Bindings: map[string]sqlparser.Expr{
+				"v1": mustBuildBindVariable(int64(1)),
 			},
 			Expected: []sql.Row{
 				{1, float64(1)},

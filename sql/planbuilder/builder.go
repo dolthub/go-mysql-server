@@ -19,7 +19,6 @@ import (
 	"strings"
 	"sync"
 
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -54,14 +53,14 @@ type Builder struct {
 
 // BindvarContext holds bind variable replacement literals.
 type BindvarContext struct {
-	Bindings map[string]*querypb.BindVariable
+	Bindings map[string]sql.Expression
 	used     map[string]struct{}
 	// resolveOnly indicates that we are resolving plan names,
 	// but will not error for missing bindvar replacements.
 	resolveOnly bool
 }
 
-func (bv *BindvarContext) GetSubstitute(s string) (*querypb.BindVariable, bool) {
+func (bv *BindvarContext) GetSubstitute(s string) (sql.Expression, bool) {
 	if bv.Bindings != nil {
 		ret, ok := bv.Bindings[s]
 		bv.used[s] = struct{}{}
@@ -122,7 +121,18 @@ func (b *Builder) SetDebug(val bool) {
 	b.f.debug = val
 }
 
-func (b *Builder) SetBindings(bindings map[string]*querypb.BindVariable) {
+func (b *Builder) SetBindings(bindings map[string]ast.Expr) {
+	bindingExprs := make(map[string]sql.Expression)
+	for i, bv := range bindings {
+		bindingExprs[i] = b.buildScalar(&scope{}, bv)
+	}
+	b.bindCtx = &BindvarContext{
+		Bindings: bindingExprs,
+		used:     make(map[string]struct{}),
+	}
+}
+
+func (b *Builder) SetBindingsWithExpr(bindings map[string]sql.Expression) {
 	b.bindCtx = &BindvarContext{
 		Bindings: bindings,
 		used:     make(map[string]struct{}),

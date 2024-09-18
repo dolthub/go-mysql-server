@@ -35,7 +35,9 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -152,7 +154,7 @@ func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
 }
 
-func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*query.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
 		if err != nil {
@@ -192,7 +194,10 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 		return nil, nil, nil, trimMySQLErrCodePrefix(err)
 	}
 
-	args := prepareBindingArgs(bindings)
+	args, err := prepareBindingArgs(ctx, bindings)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	return s.queryOrExec(stmt, parsed, query, args)
 }
@@ -625,50 +630,25 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 // The binding variables need to be sorted in order of position in the query. The variable in binding map
 // is in random order. The function expects binding variables starting with `:v1` and do not skip number.
 // It cannot sort user-defined binding variables (e.g. :var, :foo)
-func prepareBindingArgs(bindings map[string]*query.BindVariable) []any {
+func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([]any, error) {
+	// NOTE: using binder with nil catalog and parser since we're only using it to convert SQLVal.
+	binder := planbuilder.New(ctx, nil, nil)
 	numBindVars := len(bindings)
 	args := make([]any, numBindVars)
 	for i := 0; i < numBindVars; i++ {
 		k := fmt.Sprintf("v%d", i+1)
-		args[i] = convertVtQueryTypeToGoTypeValue(bindings[k])
-	}
-	return args
-}
-
-// convertValue converts the row value scanned from go sql driver client to type that we expect.
-// This method helps with testing existing enginetests that expects specific type as returned value.
-func convertVtQueryTypeToGoTypeValue(b *query.BindVariable) any {
-	val := string(b.Value)
-	switch b.Type {
-	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT32, query.Type_INT64,
-		query.Type_BIT, query.Type_YEAR:
-		i, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return val
+		sqlVal, ok := bindings[k].(*sqlparser.SQLVal)
+		if !ok {
+			return nil, fmt.Errorf("cannot get binding value")
 		}
-		return i
-	case query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64:
-		i, err := strconv.ParseUint(val, 10, 64)
-		if err != nil {
-			return val
+		v := binder.ConvertVal(sqlVal)
+		lit, ok := v.(*expression.Literal)
+		if !ok {
+			return nil, fmt.Errorf("cannot get binding value")
 		}
-		return i
-	case query.Type_DATE, query.Type_DATETIME, query.Type_TIMESTAMP:
-		return val
-	case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR, query.Type_BINARY, query.Type_VARBINARY,
-		query.Type_ENUM, query.Type_SET, query.Type_DECIMAL:
-		return val
-	case query.Type_FLOAT32, query.Type_FLOAT64:
-		// TODO: maybe not?
-		return val
-	case query.Type_JSON, query.Type_BLOB, query.Type_TIME, query.Type_GEOMETRY:
-		return val
-	case query.Type_NULL_TYPE:
-		return nil
-	default:
-		return val
+		args[i] = lit.Value()
 	}
-
+	return args, nil
 }
 
 func findEmptyPort() (int, error) {

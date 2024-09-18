@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -75,10 +74,9 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		case *ast.SQLVal:
 			// integer literal into projScope
 			// else throw away
-			expr := b.normalizeValArg(e)
-			if val, ok := expr.(*ast.SQLVal); ok && val.Type == ast.IntVal {
-				lit := b.convertInt(string(val.Val), 10)
-				idx, _, err := types.Int64.Convert(lit.Value())
+			v, ok := b.normalizeIntVal(e)
+			if ok {
+				idx, _, err := types.Int64.Convert(v)
 				if err != nil {
 					b.handleErr(err)
 				}
@@ -167,9 +165,9 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 	return
 }
 
-func (b *Builder) normalizeValArg(e *ast.SQLVal) ast.Expr {
+func (b *Builder) normalizeValArg(e *ast.SQLVal) (sql.Expression, bool) {
 	if e.Type != ast.ValArg || b.bindCtx == nil {
-		return e
+		return nil, false
 	}
 	name := strings.TrimPrefix(string(e.Val), ":")
 	if b.bindCtx.Bindings == nil {
@@ -181,22 +179,19 @@ func (b *Builder) normalizeValArg(e *ast.SQLVal) ast.Expr {
 		err := fmt.Errorf("bind variable not provided: '%s'", name)
 		b.handleErr(err)
 	}
+	return bv, true
+}
 
-	val, err := sqltypes.BindVariableToValue(bv)
-	if err != nil {
-		b.handleErr(err)
+func (b *Builder) normalizeIntVal(e *ast.SQLVal) (any, bool) {
+	if e.Type == ast.IntVal {
+		lit := b.convertInt(string(e.Val), 10)
+		return lit.Value(), true
+	} else if replace, ok := b.normalizeValArg(e); ok {
+		if lit, ok := replace.(*expression.Literal); ok && types.IsNumber(lit.Type()) {
+			return lit.Value(), true
+		}
 	}
-	expr, err := ast.ExprFromValue(val)
-	switch e := expr.(type) {
-	case *ast.SQLVal:
-		return e
-	case *ast.NullVal:
-		return e
-	default:
-		err := fmt.Errorf("unknown ast.Expr: %T", e)
-		b.handleErr(err)
-	}
-	return nil
+	return nil, false
 }
 
 func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {

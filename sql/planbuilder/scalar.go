@@ -896,8 +896,10 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			if b.bindCtx.resolveOnly {
 				return expression.NewBindVar(name)
 			}
-			replacement := b.normalizeValArg(v)
-			return b.buildScalar(&scope{}, replacement)
+			replacement, ok := b.normalizeValArg(v)
+			if ok {
+				return replacement
+			}
 		}
 		return expression.NewBindVar(name)
 	case ast.BitVal:
