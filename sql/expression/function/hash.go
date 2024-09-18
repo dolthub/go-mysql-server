@@ -22,7 +22,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/binary"
-"encoding/hex"
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"io"
@@ -235,7 +235,6 @@ func (f *SHA2) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	}
 	return NewSHA2(children[0], children[1]), nil
 }
-
 
 // Compress function returns the compressed binary string of the input.
 // https://dev.mysql.com/doc/refman/8.4/en/encryption-functions.html#function_compress
