@@ -242,7 +242,7 @@ var formatSpecifiers = map[byte]parser{
 	// %M	Month name (January..December)
 	'M': parseMonthName,
 	// %m	Month, numeric (00..12)
-	'm': parseMonthNumeric,
+	'm': parseMonth2DigitNumeric,
 	// %p	AM or PM
 	'p': parseAmPm,
 	// %r	Time, 12-hour (hh:mm:ss followed by AM or PM)
