@@ -11,10 +11,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func ptrStr(s string) *string {
-	return &s
-}
-
 func TestStrToDate(t *testing.T) {
 	setupTimezone(t)
 
@@ -22,11 +18,11 @@ func TestStrToDate(t *testing.T) {
 		name     string
 		dateStr  string
 		fmtStr   string
-		expected *string
+		expected interface{}
 	}{
-		{"standard", "Dec 26, 2000 2:13:15", "%b %e, %Y %T", ptrStr("2000-12-26 02:13:15")},
-		{"ymd", "20240101", "%Y%m%d", ptrStr("2024-01-01")},
-		{"ymd", "2024121", "%Y%m%d", ptrStr("2024-12-01")},
+		{"standard", "Dec 26, 2000 2:13:15", "%b %e, %Y %T", "2000-12-26 02:13:15"},
+		{"ymd", "20240101", "%Y%m%d", "2024-01-01"},
+		{"ymd", "2024121", "%Y%m%d", "2024-12-01"},
 		{"ymd", "20241301", "%Y%m%d", nil},
 		{"ymd", "20240001", "%Y%m%d", nil},
 	}
@@ -41,11 +37,7 @@ func TestStrToDate(t *testing.T) {
 		}
 		t.Run(tt.name, func(t *testing.T) {
 			dtime := eval(t, f, sql.NewRow(tt.dateStr, tt.fmtStr))
-			if tt.expected != nil {
-				require.Equal(t, *tt.expected, dtime)
-			} else {
-				require.Equal(t, nil, dtime)
-			}
+			require.Equal(t, tt.expected, dtime)
 		})
 		req := require.New(t)
 		req.True(f.IsNullable())
