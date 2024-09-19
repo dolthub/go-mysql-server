@@ -7325,7 +7325,7 @@ where
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "set @@global.validate_password.length = @orig",
+				Query:            "set @@global.validate_password.length = @orig",
 			},
 		},
 	},

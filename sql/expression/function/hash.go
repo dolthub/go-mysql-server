@@ -594,4 +594,3 @@ func (f *ValidatePasswordStrength) WithChildren(children ...sql.Expression) (sql
 	}
 	return NewValidatePasswordStrength(children[0]), nil
 }
-
