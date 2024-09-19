@@ -9995,6 +9995,30 @@ from typestable`,
 			{"latin1"},
 		},
 	},
+	{
+		Query: "select uncompress(compress('thisisastring'))",
+		Expected: []sql.Row{
+			{[]byte{0x74, 0x68, 0x69, 0x73, 0x69, 0x73, 0x61, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67}},
+		},
+	},
+	{
+		Query: "select length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{24}, // 21 in MySQL because of library implementation differences
+		},
+	},
+	{
+		Query: "select length(uncompress(compress(repeat('a', 1000))))",
+		Expected: []sql.Row{
+			{1000},
+		},
+	},
+	{
+		Query: "select uncompressed_length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{uint32(1000)},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
