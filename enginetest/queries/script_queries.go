@@ -7325,7 +7325,7 @@ where
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "set @@global.validate_password.length = 1000",
+				Query:            "set @@global.validate_password.length = 1000",
 			},
 			{
 				Query: "select validate_password_strength('ABCabc123!@!#')",
@@ -7334,7 +7334,7 @@ where
 				},
 			},
 			{
-				Query:       "set @@session.validate_password.length = 123",
+				Query:          "set @@session.validate_password.length = 123",
 				ExpectedErrStr: "Variable 'validate_password.length' is a GLOBAL variable and should be set with SET GLOBAL",
 			},
 			{
@@ -7358,7 +7358,7 @@ where
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "set @@global.validate_password.number_count = 1000",
+				Query:            "set @@global.validate_password.number_count = 1000",
 			},
 			{
 				Query: "select validate_password_strength('ABCabc!!!!123456789012345678901234567890')",
@@ -7397,7 +7397,7 @@ where
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "set @@global.validate_password.mixed_case_count = 1000",
+				Query:            "set @@global.validate_password.mixed_case_count = 1000",
 			},
 			{
 				Query: "select validate_password_strength('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456!?!?!?')",
@@ -7430,7 +7430,7 @@ where
 			},
 			{
 				SkipResultsCheck: true,
-				Query: "set @@global.validate_password.special_char_count = 1000",
+				Query:            "set @@global.validate_password.special_char_count = 1000",
 			},
 			{
 				Query: "select validate_password_strength('abcABC123!@#$%^&*()                            ')",
