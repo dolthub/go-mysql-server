@@ -437,3 +437,48 @@ func TestUncompressedLength(t *testing.T) {
 		})
 	}
 }
+
+func TestValidatePasswordStrength(t *testing.T) {
+	tests := []struct {
+		val sql.Expression
+		exp interface{}
+	}{
+		{
+			val: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral(int64(1), types.Int64),
+			exp: 0,
+		},
+		{
+			val: expression.NewLiteral("1", types.Text),
+			exp: 0,
+		},
+		{
+			val: expression.NewLiteral("", types.Text),
+			exp: 0,
+		},
+		{
+			val: expression.NewLiteral("weak", types.Text),
+			exp: 25,
+		},
+		{
+			val: expression.NewLiteral("lessweak$_@123", types.Text),
+			exp: 50,
+		},
+		{
+			val: expression.NewLiteral("N0Tweak$_@123!", types.Text),
+			exp: 100,
+		},
+	}
+
+	for _, test := range tests {
+		f := NewValidatePasswordStrength(test.val)
+		t.Run(fmt.Sprintf(f.String()), func(t *testing.T) {
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			require.Equal(t, test.exp, res)
+		})
+	}
+}

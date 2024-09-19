@@ -308,6 +308,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "uuid_to_bin", Fn: NewUUIDToBin},
 	sql.FunctionN{Name: "week", Fn: NewWeek},
 	sql.Function1{Name: "values", Fn: NewValues},
+	sql.Function1{Name: "validate_password_strength", Fn: NewValidatePasswordStrength},
 	sql.Function1{Name: "weekday", Fn: NewWeekday},
 	sql.Function1{Name: "weekofyear", Fn: NewWeekOfYear},
 	sql.Function1{Name: "year", Fn: NewYear},
