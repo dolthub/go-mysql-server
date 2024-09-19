@@ -2895,24 +2895,24 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("validate_password.length", 0, 2147483647, false),
 		Default:           int8(8),
 	},
-	"validate_password_number_count": &sql.MysqlSystemVariable{
-		Name:              "validate_password_number_count",
+	"validate_password.number_count": &sql.MysqlSystemVariable{
+		Name:              "validate_password.number_count",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("validate_password.number_count", 0, 2147483647, false),
 		Default:           int8(1),
 	},
-	"validate_password_mixed_case_count": &sql.MysqlSystemVariable{
-		Name:              "validate_password_mixed_case_count",
+	"validate_password.mixed_case_count": &sql.MysqlSystemVariable{
+		Name:              "validate_password.mixed_case_count",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("validate_password.mixed_case_count", 0, 2147483647, false),
 		Default:           int8(1),
 	},
-	"validate_password_special_char_count": &sql.MysqlSystemVariable{
-		Name:              "validate_password_special_char_count",
+	"validate_password.special_char_count": &sql.MysqlSystemVariable{
+		Name:              "validate_password.special_char_count",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,

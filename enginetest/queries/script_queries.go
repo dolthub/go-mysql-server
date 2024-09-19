@@ -7299,7 +7299,7 @@ where
 		},
 	},
 	{
-		Name: "validate_password_strength alter length",
+		Name: "validate_password_strength and validate_password.length",
 		SetUpScript: []string{
 			"set @orig = @@global.validate_password.length",
 			"set @@global.validate_password.length = 0",
@@ -7325,7 +7325,126 @@ where
 			},
 			{
 				SkipResultsCheck: true,
+				Query: "set @@global.validate_password.length = 1000",
+			},
+			{
+				Query: "select validate_password_strength('ABCabc123!@!#')",
+				Expected: []sql.Row{
+					{25},
+				},
+			},
+			{
+				Query:       "set @@session.validate_password.length = 123",
+				ExpectedErrStr: "Variable 'validate_password.length' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
 				Query:            "set @@global.validate_password.length = @orig",
+			},
+		},
+	},
+	{
+		Name: "validate_password_strength and validate_password.number_count",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.number_count",
+			"set @@global.validate_password.number_count = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('ABCabc!@#')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query: "set @@global.validate_password.number_count = 1000",
+			},
+			{
+				Query: "select validate_password_strength('ABCabc!!!!123456789012345678901234567890')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				Query:          "set @@session.validate_password.number_count = 123",
+				ExpectedErrStr: "Variable 'validate_password.number_count' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.number_count = @orig",
+			},
+		},
+	},
+	{
+		Name: "validate_password_strength and validate_password.mixed_case_count",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.mixed_case_count",
+			"set @@global.validate_password.mixed_case_count = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('abcabc!@#123')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				Query: "select validate_password_strength('ABCABC!@#123')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query: "set @@global.validate_password.mixed_case_count = 1000",
+			},
+			{
+				Query: "select validate_password_strength('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456!?!?!?')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				Query:          "set @@session.validate_password.mixed_case_count = 123",
+				ExpectedErrStr: "Variable 'validate_password.mixed_case_count' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.mixed_case_count = @orig",
+			},
+		},
+	},
+	{
+		Name: "validate_password_strength and validate_password.special_char_count",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.special_char_count",
+			"set @@global.validate_password.special_char_count = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('abcABC123')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query: "set @@global.validate_password.special_char_count = 1000",
+			},
+			{
+				Query: "select validate_password_strength('abcABC123!@#$%^&*()                            ')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				Query:          "set @@session.validate_password.special_char_count = 123",
+				ExpectedErrStr: "Variable 'validate_password.special_char_count' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.special_char_count = @orig",
 			},
 		},
 	},
