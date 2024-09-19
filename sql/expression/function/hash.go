@@ -525,13 +525,13 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	strength += 25
 
 	// Requirements for LOW password strength
-	passLen, err := ctx.GetSessionVariable(ctx, "validate_password_length")
+	passLen, err := ctx.GetSessionVariable(ctx, "validate_password.length")
 	if err != nil {
 		return nil, err
 	}
 	passLenInt, ok := types.CoalesceInt(passLen)
 	if !ok {
-		return nil, fmt.Errorf("invalid value for validate_password_length: %v", passLen)
+		return nil, fmt.Errorf("invalid value for validate_password.length: %v", passLen)
 	}
 	if len(password) < passLenInt {
 		return strength, nil
@@ -539,7 +539,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	strength += 25
 
 	// Requirements for MEDIUM password strength
-	numCount, err := ctx.GetSessionVariable(ctx, "validate_password_number_count")
+	numCount, err := ctx.GetSessionVariable(ctx, "validate_password.number_count")
 	if err != nil {
 		return nil, err
 	}
@@ -556,7 +556,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 		return nil, fmt.Errorf("invalid value for validate_password.mixed_case_count: %v", mixCaseCount)
 	}
 	lowerCount, upperCount := mixCaseCountInt, mixCaseCountInt
-	specialCharCount, err := ctx.GetSessionVariable(ctx, "validate_password_special_char_count")
+	specialCharCount, err := ctx.GetSessionVariable(ctx, "validate_password.special_char_count")
 	if err != nil {
 		return nil, err
 	}
