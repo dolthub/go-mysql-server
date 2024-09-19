@@ -7298,6 +7298,37 @@ where
 			},
 		},
 	},
+	{
+		Name: "validate_password_strength alter length",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.length",
+			"set @@global.validate_password.length = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('')",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select validate_password_strength('123')",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select validate_password_strength('1234')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query: "set @@global.validate_password.length = @orig",
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

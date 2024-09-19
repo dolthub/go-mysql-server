@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -471,3 +472,126 @@ func (f *UncompressedLength) WithChildren(children ...sql.Expression) (sql.Expre
 	}
 	return NewUncompressedLength(children[0]), nil
 }
+
+// ValidatePasswordStrength function returns an integer to indicate how strong the password is.
+// https://dev.mysql.com/doc/refman/8.4/en/validate-password.html
+type ValidatePasswordStrength struct {
+	*UnaryFunc
+}
+
+const minPasswordLength = 4
+
+var _ sql.FunctionExpression = (*ValidatePasswordStrength)(nil)
+var _ sql.CollationCoercible = (*ValidatePasswordStrength)(nil)
+
+// NewValidatePasswordStrength returns a new ValidatePasswordStrength function expression
+func NewValidatePasswordStrength(arg sql.Expression) sql.Expression {
+	return &ValidatePasswordStrength{NewUnaryFunc(arg, "ValidatePasswordStrength", types.Uint32)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *ValidatePasswordStrength) Description() string {
+	return "returns an integer to indicate how strong the password is."
+}
+
+func (f *ValidatePasswordStrength) Type() sql.Type {
+	return types.Int32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ValidatePasswordStrength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongText.Convert(arg)
+	if err != nil {
+		return nil, nil
+	}
+	password := val.(string)
+	strength := 0
+	if len(password) < minPasswordLength {
+		return strength, nil
+	}
+	strength += 25
+
+	// Requirements for LOW password strength
+	passLen, err := ctx.GetSessionVariable(ctx, "validate_password_length")
+	if err != nil {
+		return nil, err
+	}
+	passLenInt, ok := types.CoalesceInt(passLen)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password_length: %v", passLen)
+	}
+	if len(password) < passLenInt {
+		return strength, nil
+	}
+	strength += 25
+
+	// Requirements for MEDIUM password strength
+	numCount, err := ctx.GetSessionVariable(ctx, "validate_password_number_count")
+	if err != nil {
+		return nil, err
+	}
+	numCountInt, ok := types.CoalesceInt(numCount)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password.number_count: %v", numCount)
+	}
+	mixCaseCount, err := ctx.GetSessionVariable(ctx, "validate_password_mixed_case_count")
+	if err != nil {
+		return nil, err
+	}
+	mixCaseCountInt, ok := types.CoalesceInt(mixCaseCount)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password.mixed_case_count: %v", mixCaseCount)
+	}
+	lowerCount, upperCount := mixCaseCountInt, mixCaseCountInt
+	specialCharCount, err := ctx.GetSessionVariable(ctx, "validate_password_special_char_count")
+	if err != nil {
+		return nil, err
+	}
+	specialCharCountInt, ok := types.CoalesceInt(specialCharCount)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password.special_char_count: %v", specialCharCount)
+	}
+	for _, c := range password {
+		if unicode.IsNumber(c) {
+			numCountInt--
+		} else if unicode.IsUpper(c) {
+			upperCount--
+		} else if unicode.IsLower(c) {
+			lowerCount--
+		} else {
+			specialCharCountInt--
+		}
+	}
+	if numCountInt > 0 || upperCount > 0 || lowerCount > 0 || specialCharCountInt > 0 {
+		return strength, nil
+	}
+	strength += 25
+
+	// Requirements for STRONG password strength
+	// TODO: support dictionary file substring matching
+	strength += 25
+
+	return strength, nil
+}
+
+// WithChildren implements sql.Expression
+func (f *ValidatePasswordStrength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewValidatePasswordStrength(children[0]), nil
+}
+
