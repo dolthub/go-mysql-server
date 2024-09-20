@@ -948,8 +948,12 @@ func AssertErrWithCtx(t *testing.T, e QueryEngine, harness Harness, ctx *sql.Con
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		err = sql.UnwrapError(err)
-		if !IsServerEngine(e) {
+		if reh, ok := harness.(ResultEvaluationHarness); ok {
+			reh.EvaluateExpectedErrorKind(t, expectedErrKind, err)
+		} else if !IsServerEngine(e) {
 			require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		} else {
+			t.Skipf("Unimplemented error kind check for harness %T", harness)
 		}
 	}
 
