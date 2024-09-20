@@ -21,6 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries
@@ -167,4 +168,7 @@ type ResultEvaluationHarness interface {
 	// EvaluateExpectedError compares expected error strings to actual errors and emits failed test assertions in the
 	// event there are any
 	EvaluateExpectedError(t *testing.T, expected string, err error)
+
+	// EvaluateExpectedErrorKind compares expected error kinds to actual errors and emits failed test assertions in the
+	EvaluateExpectedErrorKind(t *testing.T, expected *errors.Kind, err error)
 }
