@@ -220,7 +220,7 @@ var formatSpecifiers = map[byte]parser{
 	// %D	Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
 	'D': parseDayNumericWithEnglishSuffix,
 	// %d	Day of the month, numeric (00..31)
-	'd': parseDayOfMonthNumeric,
+	'd': parseDayOfMonth2DigitNumeric,
 	// %e	Day of the month, numeric (0..31)
 	'e': parseDayOfMonthNumeric,
 	// %f	Microseconds (000000..999999)

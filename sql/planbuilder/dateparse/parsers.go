@@ -106,6 +106,18 @@ func parseDayOfMonthNumeric(result *datetime, chars string) (rest string, _ erro
 	return rest, nil
 }
 
+func parseDayOfMonth2DigitNumeric(result *datetime, chars string) (rest string, _ error) {
+	num, rest, err := takeNumberAtMostNChars(2, chars)
+	if err != nil {
+		return "", err
+	}
+	if num < 1 || num > 31 {
+		return "", fmt.Errorf("expected 01-31, got %s", string(chars))
+	}
+	result.day = &num
+	return rest, nil
+}
+
 func parseMicrosecondsNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {

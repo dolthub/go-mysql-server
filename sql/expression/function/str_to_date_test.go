@@ -25,6 +25,10 @@ func TestStrToDate(t *testing.T) {
 		{"ymd", "2024121", "%Y%m%d", "2024-12-01"},
 		{"ymd", "20241301", "%Y%m%d", nil},
 		{"ymd", "20240001", "%Y%m%d", nil},
+		{"ymd-with-time", "2024010203:04:05", "%Y%m%d%T", "2024-01-02 03:04:05"},
+		{"ymd-with-time", "202408122:03:04", "%Y%m%d%T", "2024-08-12 02:03:04"},
+		// TODO: It shoud be nil, but returns "2024-02-31"
+		// {"ymd", "20240231", "%Y%m%d", nil},
 	}
 
 	for _, tt := range testCases {
