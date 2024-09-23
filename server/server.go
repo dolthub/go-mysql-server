@@ -63,8 +63,8 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 	} else {
 		tracer = sql.NoopTracer
 	}
-
 	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
+	e.Analyzer.ServerMode = true
 	handler := &Handler{
 		e:                 e,
 		sm:                sm,
@@ -98,6 +98,7 @@ func NewServerWithHandler(
 	}
 
 	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
+	e.Analyzer.ServerMode = true
 	h := &Handler{
 		e:                 e,
 		sm:                sm,
