@@ -94,7 +94,6 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch nn := n.(type) {
 		case *plan.IndexedTableAccess:
-			return n, transform.SameTree, nil
 		case sql.TableNode:
 			table := getTable(tableNode)
 			if table == nil {
@@ -111,9 +110,8 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 				return nil, transform.SameTree, err
 			}
 			return ret, transform.NewTree, nil
-		default:
-			return n, transform.SameTree, nil
 		}
+		return n, transform.SameTree, nil
 	})
 }
 

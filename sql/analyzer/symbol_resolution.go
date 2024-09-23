@@ -54,12 +54,12 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 
 	// the same table can appear in multiple table scans,
 	// so we use a counter to pin references
-	parentCols := make(map[sql.ColumnId]int)
-	parentStars := make(map[string]struct{}) // TODO: are there table ids?
+	parentCols := make(map[tableCol]int)
+	parentStars := make(map[string]struct{})
 	var unqualifiedStar bool
 
-	push := func(colIds []sql.ColumnId, nodeStars []string, nodeUnq bool) {
-		for _, c := range colIds {
+	push := func(cols []tableCol, nodeStars []string, nodeUnq bool) {
+		for _, c := range cols {
 			parentCols[c]++
 		}
 		for _, c := range nodeStars {
@@ -189,7 +189,7 @@ func hasMatchAgainstExpr(node sql.Node) bool {
 // qualified star, and no parent projects an unqualified star.
 func pruneTableCols(
 	n *plan.ResolvedTable,
-	parentCols map[sql.ColumnId]int,
+	parentCols map[tableCol]int,
 	parentStars map[string]struct{},
 	unqualifiedStar bool,
 ) (sql.Node, transform.TreeIdentity, error) {
@@ -208,15 +208,16 @@ func pruneTableCols(
 	}
 
 	// Don't prune columns if they're needed by a virtual column
-	virtualColDeps := make(map[sql.ColumnId]int)
+	virtualColDeps := make(map[tableCol]int)
 	if !selectStar { // if selectStar, we're adding all columns anyway
 		if vct, isVCT := n.WrappedTable().(*plan.VirtualColumnTable); isVCT {
 			for _, projection := range vct.Projections {
 				transform.InspectExpr(projection, func(e sql.Expression) bool {
 					if cd, isCD := e.(*sql.ColumnDefaultValue); isCD {
 						transform.InspectExpr(cd.Expr, func(e sql.Expression) bool {
-							if gf, isGF := e.(*expression.GetField); isGF {
-								virtualColDeps[gf.Id()]++
+							if gf, ok := e.(*expression.GetField); ok {
+								c := newTableCol(gf.Table(), gf.Name())
+								virtualColDeps[c]++
 							}
 							return false
 						})
@@ -228,12 +229,13 @@ func pruneTableCols(
 	}
 
 	cols := make([]string, 0)
-	n.Columns().ForEach(func(c sql.ColumnId) {
+	source := strings.ToLower(table.Name())
+	for _, col := range table.Schema() {
+		c := newTableCol(source, col.Name)
 		if selectStar || parentCols[c] > 0 || virtualColDeps[c] > 0 {
 			cols = append(cols, c.col)
 		}
-	})
-
+	}
 
 	ret, err := n.WithTable(ptab.WithProjections(cols))
 	if err != nil {
@@ -261,18 +263,15 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 			case *expression.Alias:
 				switch e := e.Child.(type) {
 				case *expression.GetField:
-					e.Id()
-					col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+					col = newTableCol(e.Table(), e.Name())
 				case *expression.UnresolvedColumn:
-					// TODO
-					//col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+					col = newTableCol(e.Table(), e.Name())
 				default:
 				}
 			case *expression.GetField:
-				col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+				col = newTableCol(e.Table(), e.Name())
 			case *expression.UnresolvedColumn:
-				// TODO
-				//col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+				col = newTableCol(e.Table(), e.Name())
 			case *expression.Star:
 				if len(e.Table) > 0 {
 					nodeStars = append(nodeStars, strings.ToLower(e.Table))
@@ -307,7 +306,6 @@ func gatherTableAlias(
 	var nodeStars []string
 	switch n := n.(type) {
 	case *plan.TableAlias:
-		n.Columns()
 		alias := strings.ToLower(n.Name())
 		var base string
 		if rt, ok := n.Child.(*plan.ResolvedTable); ok {
@@ -318,8 +316,8 @@ func gatherTableAlias(
 			starred = true
 		}
 		for _, col := range n.Schema() {
-			baseCol := tableCol{table: strings.ToLower(base), col: strings.ToLower(col.Name)}
-			aliasCol := tableCol{table: strings.ToLower(alias), col: strings.ToLower(col.Name)}
+			baseCol := newTableCol(base, col.Name)
+			aliasCol := newTableCol(alias, col.Name)
 			if starred || parentCols[aliasCol] > 0 {
 				// if the outer scope requests an aliased column
 				// a table lower in the tree must provide the source
