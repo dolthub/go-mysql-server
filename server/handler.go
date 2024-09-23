@@ -528,7 +528,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 		return nil, err
 	}
 
-	outputRow, err := rowToSQL(ctx, schema, row, nil)
+	outputRow, err := RowToSQL(ctx, schema, row, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -650,7 +650,7 @@ func (h *Handler) resultForDefaultIter(
 					continue
 				}
 
-				outputRow, err := rowToSQL(ctx, schema, row, projections)
+				outputRow, err := RowToSQL(ctx, schema, row, projections)
 				if err != nil {
 					return err
 				}
@@ -912,7 +912,7 @@ func updateMaxUsedConnectionsStatusVariable() {
 	}()
 }
 
-func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row, projections []sql.Expression) ([]sqltypes.Value, error) {
+func RowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row, projections []sql.Expression) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, max(len(row), len(projections))) // TODO: maybe should be length of schema?
 	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
 	if len(s) == 0 {

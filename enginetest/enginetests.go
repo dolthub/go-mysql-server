@@ -5636,6 +5636,16 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 					require.NoError(t, err)
 					expectedRowSet := script.Results[queryIdx]
 					expectedRowIdx := 0
+					var projections []sql.Expression
+					if trackedIter, ok := engineIter.(*plan.TrackedRowIter); ok {
+						if commitNode, ok := trackedIter.Node.(*plan.TransactionCommittingNode); ok {
+							if proj, ok := commitNode.Child().(*plan.Project); ok {
+								if proj.Deferred {
+									projections = proj.Projections
+								}
+							}
+						}
+					}
 					var engineRow sql.Row
 					for engineRow, err = engineIter.Next(ctx); err == nil; engineRow, err = engineIter.Next(ctx) {
 						if !assert.True(t, r.Next()) {
@@ -5653,11 +5663,11 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 							break
 						}
 						expectedEngineRow := make([]*string, len(engineRow))
-						for i := range engineRow {
-							sqlVal, err := sch[i].Type.SQL(ctx, nil, engineRow[i])
-							if !assert.NoError(t, err) {
-								break
-							}
+						row, err := server.RowToSQL(ctx, sch, engineRow, projections)
+						if !assert.NoError(t, err) {
+							break
+						}
+						for i, sqlVal := range row {
 							if !sqlVal.IsNull() {
 								str := sqlVal.ToString()
 								expectedEngineRow[i] = &str
