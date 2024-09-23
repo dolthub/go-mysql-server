@@ -42,7 +42,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	)
+)
 
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
 var ErrRowTimeout = errors.NewKind("row read wait bigger than connection timeout")

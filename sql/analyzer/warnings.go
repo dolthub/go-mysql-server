@@ -42,7 +42,6 @@ func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Sco
 	return node, transform.SameTree, nil
 }
 
-
 // TODO: move this somewhere else
 func deferProjections(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !a.ServerMode {
