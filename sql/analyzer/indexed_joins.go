@@ -1396,7 +1396,7 @@ func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
 	transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
-			newTc := tableCol{col: strings.ToLower(e.Name()), table: strings.ToLower(e.Table())}
+			newTc := newTableCol(e.Table(), e.Name())
 			if tc.table == "" && !invalid {
 				tc = newTc
 			} else if tc != newTc {

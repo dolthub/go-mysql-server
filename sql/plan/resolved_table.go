@@ -252,28 +252,29 @@ func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 
 // WithTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was
 // wrapping it prior to this call.
-func (t ResolvedTable) WithTable(table sql.Table) (sql.MutableTableNode, error) {
+func (t *ResolvedTable) WithTable(table sql.Table) (sql.MutableTableNode, error) {
 	if t.Name() != table.Name() {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
 
-	if mtw, ok := t.Table.(sql.MutableTableWrapper); ok {
-		t.Table = mtw.WithUnderlying(table)
+	nt := *t
+	if mtw, ok := nt.Table.(sql.MutableTableWrapper); ok {
+		nt.Table = mtw.WithUnderlying(table)
 	} else {
-		t.Table = table
+		nt.Table = table
 	}
 
-	return &t, nil
+	return &nt, nil
 }
 
 // ReplaceTable returns this Node with the given table without performing any re-wrapping of any MutableTableWrapper
-func (t ResolvedTable) ReplaceTable(table sql.Table) (sql.MutableTableNode, error) {
+func (t *ResolvedTable) ReplaceTable(table sql.Table) (sql.MutableTableNode, error) {
 	if t.Name() != table.Name() {
 		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
-
-	t.Table = table
-	return &t, nil
+	nt := *t
+	nt.Table = table
+	return &nt, nil
 }
 
 // TableIdNode is a distinct source of rows associated with a table
