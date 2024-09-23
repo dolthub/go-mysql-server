@@ -903,18 +903,19 @@ func updateMaxUsedConnectionsStatusVariable() {
 
 func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
+	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
+	if len(s) == 0 {
+		return o, nil
+	}
 	var err error
 	for i, v := range row {
 		if v == nil {
 			o[i] = sqltypes.NULL
 			continue
 		}
-		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if len(s) > 0 {
-			o[i], err = s[i].Type.SQL(ctx, nil, v)
-			if err != nil {
-				return nil, err
-			}
+		o[i], err = s[i].Type.SQL(ctx, nil, v)
+		if err != nil {
+			return nil, err
 		}
 	}
 
