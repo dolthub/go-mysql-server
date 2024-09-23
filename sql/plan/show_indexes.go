@@ -21,13 +21,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ShowIndexes is a node that shows the indexes on a table.
+// ShowIndexes is a Node that shows the indexes on a table.
 type ShowIndexes struct {
 	UnaryNode
 	IndexesToShow []sql.Index
 }
 
-// NewShowIndexes creates a new ShowIndexes node. The node must represent a table.
+// NewShowIndexes creates a new ShowIndexes Node. The Node must represent a table.
 func NewShowIndexes(table sql.Node) *ShowIndexes {
 	return &ShowIndexes{
 		UnaryNode: UnaryNode{table},

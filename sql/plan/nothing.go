@@ -16,7 +16,7 @@ package plan
 
 import "github.com/dolthub/go-mysql-server/sql"
 
-// NothingImpl is a node that will return no rows.
+// NothingImpl is a Node that will return no rows.
 var NothingImpl Nothing
 
 type Nothing struct{}

@@ -8,7 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// TableCopier is a supporting node that allows for the optimization of copying tables. It should be used in two cases.
+// TableCopier is a supporting Node that allows for the optimization of copying tables. It should be used in two cases.
 // 1) CREATE TABLE SELECT *
 // 2) INSERT INTO SELECT * where the inserted table is empty. // TODO: Implement this optimization
 type TableCopier struct {

@@ -21,13 +21,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Sort is the sort node.
+// Sort is the sort Node.
 type Sort struct {
 	UnaryNode
 	SortFields sql.SortFields
 }
 
-// NewSort creates a new Sort node.
+// NewSort creates a new Sort Node.
 func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
 	return &Sort{
 		UnaryNode:  UnaryNode{child},
@@ -114,7 +114,7 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewSort(fields, s.Child), nil
 }
 
-// TopN was a sort node that has a limit. It doesn't need to buffer everything,
+// TopN was a sort Node that has a limit. It doesn't need to buffer everything,
 // but can calculate the top n on the fly.
 type TopN struct {
 	UnaryNode
@@ -123,7 +123,7 @@ type TopN struct {
 	CalcFoundRows bool
 }
 
-// NewTopN creates a new TopN node.
+// NewTopN creates a new TopN Node.
 func NewTopN(fields sql.SortFields, limit sql.Expression, child sql.Node) *TopN {
 	return &TopN{
 		UnaryNode: UnaryNode{child},

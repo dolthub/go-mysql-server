@@ -38,7 +38,7 @@ var _ sql.CollationCoercible = (*Call)(nil)
 var _ sql.Expressioner = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
-// NewCall returns a *Call node.
+// NewCall returns a *Call Node.
 func NewCall(db sql.Database, name string, params []sql.Expression, asOf sql.Expression, catalog sql.Catalog) *Call {
 	return &Call{
 		db:     db,

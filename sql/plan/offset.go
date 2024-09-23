@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Offset is a node that skips the first N rows.
+// Offset is a Node that skips the first N rows.
 type Offset struct {
 	UnaryNode
 	Offset sql.Expression
@@ -27,7 +27,7 @@ type Offset struct {
 var _ sql.Node = (*Offset)(nil)
 var _ sql.CollationCoercible = (*Offset)(nil)
 
-// NewOffset creates a new Offset node.
+// NewOffset creates a new Offset Node.
 func NewOffset(n sql.Expression, child sql.Node) *Offset {
 	return &Offset{
 		UnaryNode: UnaryNode{Child: child},

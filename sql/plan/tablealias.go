@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// TableAlias is a node that acts as a table with a given name.
+// TableAlias is a Node that acts as a table with a given name.
 type TableAlias struct {
 	*UnaryNode
 	name    string
@@ -31,7 +31,7 @@ var _ sql.RenameableNode = (*TableAlias)(nil)
 var _ sql.CommentedNode = (*TableAlias)(nil)
 var _ sql.CollationCoercible = (*TableAlias)(nil)
 
-// NewTableAlias returns a new Table alias node.
+// NewTableAlias returns a new Table alias Node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
 	ret := &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
 	if tin, ok := node.(TableIdNode); ok {

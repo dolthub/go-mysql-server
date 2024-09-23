@@ -21,8 +21,8 @@ import (
 
 // Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
 type Scope struct {
-	// Stack of nested node scopes, with innermost scope first. A scope node is the node in which the subquery is
-	// defined, or an appropriate sibling, NOT the child node of the Subquery node.
+	// Stack of nested Node scopes, with innermost scope first. A scope Node is the Node in which the subquery is
+	// defined, or an appropriate sibling, NOT the child Node of the Subquery Node.
 	nodes []sql.Node
 	// Memo nodes are nodes in the execution context that shouldn't be considered for name resolution, but are still
 	// important for analysis.
@@ -94,9 +94,9 @@ func (s *Scope) NewScope(node sql.Node) *Scope {
 }
 
 // NewScopeFromSubqueryExpression returns a new subscope created from a
-// subquery expression contained by the specified node. |corr| is the
+// subquery expression contained by the specified Node. |corr| is the
 // set of correlated columns referenced in this subquery, which is only
-// implicit here because the subquery is distanced from its parent |node|.
+// implicit here because the subquery is distanced from its parent |Node|.
 func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *Scope {
 	subScope := s.NewScope(node)
 	subScope.CurrentNodeIsFromSubqueryExpression = true
@@ -108,7 +108,7 @@ func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *
 }
 
 // NewScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
-// node.
+// Node.
 func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 	for {
 		var done bool
@@ -140,7 +140,7 @@ func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 }
 
 // newScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
-// node.
+// Node.
 func (s *Scope) NewScopeNoJoin() *Scope {
 	return &Scope{
 		nodes:           s.nodes,
@@ -164,7 +164,7 @@ func (s *Scope) NewScopeFromSubqueryAlias(sqa *SubqueryAlias) *Scope {
 			// gives a derived table visibility to the adjacent expressions where the subquery is defined, OUTER scope visibility
 			// gives a derived table visibility to the OUTER scope where the subquery is defined.
 			// https://dev.mysql.com/blog-archive/supporting-all-kinds-of-outer-references-in-derived-tables-lateral-or-not/
-			// We don't include the current inner node so that the outer scope nodes are still present, but not the lateral nodes
+			// We don't include the current inner Node so that the outer scope nodes are still present, but not the lateral nodes
 			if s.CurrentNodeIsFromSubqueryExpression { // TODO: probably copy this for lateral
 				sqa.OuterScopeVisibility = true
 				subScope.nodes = append(subScope.nodes, s.InnerToOuter()...)
@@ -186,7 +186,7 @@ func newScopeWithDepth(depth int) *Scope {
 	return &Scope{recursionDepth: depth}
 }
 
-// Memo creates a new Scope object with the Memo node given. Memo nodes don't affect name resolution, but are used in
+// Memo creates a new Scope object with the Memo Node given. Memo nodes don't affect name resolution, but are used in
 // other parts of analysis, such as error handling for trigger / procedure execution.
 func (s *Scope) Memo(node sql.Node) *Scope {
 	if s == nil {
@@ -252,7 +252,7 @@ func (s *Scope) ProceduresPopulating() bool {
 
 // InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope. When using these nodes for
 // analysis, always inspect the children of the nodes, rather than the nodes themselves. The children define the schema
-// of the rows being processed by the scope node itself.
+// of the rows being processed by the scope Node itself.
 func (s *Scope) InnerToOuter() []sql.Node {
 	if s == nil {
 		return nil
@@ -262,7 +262,7 @@ func (s *Scope) InnerToOuter() []sql.Node {
 
 // OuterToInner returns the scope nodes in order of outermost scope to innermost scope. When using these nodes for
 // analysis, always inspect the children of the nodes, rather than the nodes themselves. The children define the schema
-// of the rows being processed by the scope node itself.
+// of the rows being processed by the scope Node itself.
 func (s *Scope) OuterToInner() []sql.Node {
 	if s == nil {
 		return nil
@@ -286,7 +286,7 @@ func (s *Scope) Schema() sql.Schema {
 				continue
 			}
 
-			// If this scope node isn't resolved, we can't use Schema() on it. Instead, assemble an equivalent Schema, with
+			// If this scope Node isn't resolved, we can't use Schema() on it. Instead, assemble an equivalent Schema, with
 			// placeholder columns where necessary, for the purpose of analysis.
 			switch n := n.(type) {
 			case *Project:
@@ -305,7 +305,7 @@ func (s *Scope) Schema() sql.Schema {
 				}
 			default:
 				// TODO: log this
-				// panic(fmt.Sprintf("Unsupported scope node %T", n))
+				// panic(fmt.Sprintf("Unsupported scope Node %T", n))
 			}
 		}
 	}

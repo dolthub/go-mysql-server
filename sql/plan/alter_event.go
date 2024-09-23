@@ -68,7 +68,7 @@ type AlterEvent struct {
 	scheduler sql.EventScheduler
 }
 
-// NewAlterEvent returns a *AlterEvent node.
+// NewAlterEvent returns a *AlterEvent Node.
 func NewAlterEvent(
 	db sql.Database,
 	name, definer string,

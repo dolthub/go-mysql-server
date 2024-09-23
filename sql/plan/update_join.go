@@ -23,7 +23,7 @@ type UpdateJoin struct {
 	UnaryNode
 }
 
-// NewUpdateJoin returns an *UpdateJoin node.
+// NewUpdateJoin returns an *UpdateJoin Node.
 func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
 		Updaters:  editorMap,

@@ -38,7 +38,7 @@ type ShowProcessList struct {
 var _ sql.Node = (*ShowProcessList)(nil)
 var _ sql.CollationCoercible = (*ShowProcessList)(nil)
 
-// NewShowProcessList creates a new ProcessList node.
+// NewShowProcessList creates a new ProcessList Node.
 func NewShowProcessList() *ShowProcessList { return new(ShowProcessList) }
 
 // Children implements the Node interface.

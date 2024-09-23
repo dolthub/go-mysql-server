@@ -27,7 +27,7 @@ type Filter struct {
 var _ sql.Node = (*Filter)(nil)
 var _ sql.CollationCoercible = (*Filter)(nil)
 
-// NewFilter creates a new filter node.
+// NewFilter creates a new filter Node.
 func NewFilter(expression sql.Expression, child sql.Node) *Filter {
 	return &Filter{
 		UnaryNode:  UnaryNode{Child: child},

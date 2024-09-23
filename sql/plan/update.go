@@ -27,7 +27,7 @@ var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")
 var ErrUpdateForTableNotSupported = errors.NewKind("The target table %s of the UPDATE is not updatable")
 var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but expression returned %T")
 
-// Update is a node for updating rows on tables.
+// Update is a Node for updating rows on tables.
 type Update struct {
 	UnaryNode
 	checks       sql.CheckConstraints
@@ -42,7 +42,7 @@ var _ sql.Databaseable = (*Update)(nil)
 var _ sql.CollationCoercible = (*Update)(nil)
 var _ sql.CheckConstraintNode = (*Update)(nil)
 
-// NewUpdate creates an Update node.
+// NewUpdate creates an Update Node.
 func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
 	return &Update{
 		UnaryNode: UnaryNode{NewUpdateSource(
@@ -94,7 +94,7 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	}
 }
 
-// GetDatabase returns the first database found in the node tree given
+// GetDatabase returns the first database found in the Node tree given
 func GetDatabase(node sql.Node) sql.Database {
 	switch node := node.(type) {
 	case *IndexedTableAccess:

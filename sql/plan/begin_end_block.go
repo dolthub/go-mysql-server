@@ -25,7 +25,7 @@ type BeginEndBlock struct {
 	Label string
 }
 
-// NewBeginEndBlock creates a new *BeginEndBlock node.
+// NewBeginEndBlock creates a new *BeginEndBlock Node.
 func NewBeginEndBlock(label string, block *Block) *BeginEndBlock {
 	return &BeginEndBlock{
 		Block: block,

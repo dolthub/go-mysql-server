@@ -45,7 +45,7 @@ func (dv *SingleDropView) Children() []sql.Node {
 	return nil
 }
 
-// Resolved implements the Node interface. This node is resolved if and only if
+// Resolved implements the Node interface. This Node is resolved if and only if
 // its database is resolved.
 func (dv *SingleDropView) Resolved() bool {
 	_, ok := dv.database.(sql.UnresolvedDatabase)
@@ -97,13 +97,13 @@ func (*SingleDropView) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 	return sql.Collation_binary, 7
 }
 
-// Database implements the sql.Databaser interface. It returns the node's database.
+// Database implements the sql.Databaser interface. It returns the Node's database.
 func (dv *SingleDropView) Database() sql.Database {
 	return dv.database
 }
 
 // WithDatabase implements the sql.Databaser interface, and it returns a copy of this
-// node with the specified database.
+// Node with the specified database.
 func (dv *SingleDropView) WithDatabase(database sql.Database) (sql.Node, error) {
 	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()
@@ -113,9 +113,9 @@ func (dv *SingleDropView) WithDatabase(database sql.Database) (sql.Node, error) 
 	return &newDrop, nil
 }
 
-// DropView is a node representing the removal of a list of views, defined by
+// DropView is a Node representing the removal of a list of views, defined by
 // the children member. The flag ifExists represents whether the user wants the
-// node to fail if any of the views in children does not exist.
+// Node to fail if any of the views in children does not exist.
 type DropView struct {
 	children []sql.Node
 	IfExists bool
@@ -124,19 +124,19 @@ type DropView struct {
 var _ sql.Node = (*DropView)(nil)
 var _ sql.CollationCoercible = (*DropView)(nil)
 
-// NewDropView creates a DropView node with the specified parameters,
+// NewDropView creates a DropView Node with the specified parameters,
 // setting its catalog to nil.
 func NewDropView(children []sql.Node, ifExists bool) *DropView {
 	return &DropView{children: children, IfExists: ifExists}
 }
 
 // Children implements the Node interface. It returns the children of the
-// CreateView node; i.e., all the views that will be dropped.
+// CreateView Node; i.e., all the views that will be dropped.
 func (dvs *DropView) Children() []sql.Node {
 	return dvs.children
 }
 
-// Resolved implements the Node interface. This node is resolved if and only if
+// Resolved implements the Node interface. This Node is resolved if and only if
 // all of its children are resolved.
 func (dvs *DropView) Resolved() bool {
 	for _, child := range dvs.children {
@@ -166,7 +166,7 @@ func (dvs *DropView) String() string {
 }
 
 // WithChildren implements the Node interface. It always suceeds, returning a
-// copy of this node with the new array of nodes as children.
+// copy of this Node with the new array of nodes as children.
 func (dvs *DropView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	newDrop := dvs
 	newDrop.children = children

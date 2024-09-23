@@ -26,7 +26,7 @@ import (
 
 var ErrNotView = errors.NewKind("'%' is not VIEW")
 
-// ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
+// ShowCreateTable is a Node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
 	IsView           bool
@@ -44,12 +44,12 @@ var _ sql.CheckConstraintNode = (*ShowCreateTable)(nil)
 var _ sql.CollationCoercible = (*ShowCreateTable)(nil)
 var _ Versionable = (*ShowCreateTable)(nil)
 
-// NewShowCreateTable creates a new ShowCreateTable node.
+// NewShowCreateTable creates a new ShowCreateTable Node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
 	return NewShowCreateTableWithAsOf(table, isView, nil)
 }
 
-// NewShowCreateTableWithAsOf creates a new ShowCreateTable node for a specific version of a table.
+// NewShowCreateTableWithAsOf creates a new ShowCreateTable Node for a specific version of a table.
 func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression) *ShowCreateTable {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},

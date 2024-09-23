@@ -36,7 +36,7 @@ type LockTables struct {
 var _ sql.Node = (*LockTables)(nil)
 var _ sql.CollationCoercible = (*LockTables)(nil)
 
-// NewLockTables creates a new LockTables node.
+// NewLockTables creates a new LockTables Node.
 func NewLockTables(locks []*TableLock) *LockTables {
 	return &LockTables{Locks: locks}
 }
@@ -127,7 +127,7 @@ type UnlockTables struct {
 var _ sql.Node = (*UnlockTables)(nil)
 var _ sql.CollationCoercible = (*UnlockTables)(nil)
 
-// NewUnlockTables returns a new UnlockTables node.
+// NewUnlockTables returns a new UnlockTables Node.
 func NewUnlockTables() *UnlockTables {
 	return new(UnlockTables)
 }

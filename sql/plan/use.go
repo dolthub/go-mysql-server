@@ -27,7 +27,7 @@ type Use struct {
 	Catalog sql.Catalog
 }
 
-// NewUse creates a new Use node.
+// NewUse creates a new Use Node.
 func NewUse(db sql.Database) *Use {
 	return &Use{db: db}
 }

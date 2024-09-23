@@ -35,7 +35,7 @@ var _ sql.Node = (*DropUser)(nil)
 var _ sql.Databaser = (*DropUser)(nil)
 var _ sql.CollationCoercible = (*DropUser)(nil)
 
-// NewDropUser returns a new DropUser node.
+// NewDropUser returns a new DropUser Node.
 func NewDropUser(ifExists bool, users []UserName) *DropUser {
 	return &DropUser{
 		IfExists: ifExists,

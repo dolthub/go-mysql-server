@@ -305,7 +305,7 @@ func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 }
 
 // NewUsingJoin creates a UsingJoin that joins on the specified columns with the same name.
-// This is a placeholder node, and should be transformed into the appropriate join during analysis.
+// This is a placeholder Node, and should be transformed into the appropriate join during analysis.
 func NewUsingJoin(left, right sql.Node, op JoinType, cols []string) *JoinNode {
 	return &JoinNode{
 		Op:         op,
@@ -513,7 +513,7 @@ func NewCrossJoin(left, right sql.Node) *JoinNode {
 
 // NaturalJoin is a join that automatically joins by all the columns with the
 // same name.
-// NaturalJoin is a placeholder node, it should be transformed into an INNER
+// NaturalJoin is a placeholder Node, it should be transformed into an INNER
 // JOIN during analysis.
 func NewNaturalJoin(left, right sql.Node) *JoinNode {
 	return NewJoin(left, right, JoinTypeUsing, nil)

@@ -34,7 +34,7 @@ var _ sql.CollationCoercible = (*DeclareHandler)(nil)
 var _ sql.DebugStringer = (*DeclareHandler)(nil)
 var _ expression.ProcedureReferencable = (*DeclareHandler)(nil)
 
-// NewDeclareHandler returns a new *DeclareHandler node.
+// NewDeclareHandler returns a new *DeclareHandler Node.
 func NewDeclareHandler(action expression.DeclareHandlerAction, statement sql.Node, cond expression.HandlerCondition) (*DeclareHandler, error) {
 	if action == expression.DeclareHandlerAction_Undo {
 		return nil, sql.ErrDeclareHandlerUndo.New()

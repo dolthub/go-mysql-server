@@ -42,7 +42,7 @@ var showTriggersSchema = sql.Schema{
 	&sql.Column{Name: "Database Collation", Type: types.LongText, Nullable: false},
 }
 
-// NewShowCreateTrigger creates a new ShowCreateTrigger node for SHOW TRIGGER statements.
+// NewShowCreateTrigger creates a new ShowCreateTrigger Node for SHOW TRIGGER statements.
 func NewShowTriggers(db sql.Database) *ShowTriggers {
 	return &ShowTriggers{
 		db: db,

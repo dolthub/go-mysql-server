@@ -41,7 +41,7 @@ var showCreateProcedureSchema = sql.Schema{
 	&sql.Column{Name: "Database Collation", Type: types.LongText, Nullable: false},
 }
 
-// NewShowCreateProcedure creates a new ShowCreateProcedure node for SHOW CREATE PROCEDURE statements.
+// NewShowCreateProcedure creates a new ShowCreateProcedure Node for SHOW CREATE PROCEDURE statements.
 func NewShowCreateProcedure(db sql.Database, procedure string) *ShowCreateProcedure {
 	return &ShowCreateProcedure{
 		db:            db,
@@ -165,7 +165,7 @@ func (s *ShowCreateProcedure) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &ns, nil
 }
 
-// WithExternalStoredProcedure returns a new ShowCreateProcedure node with the specified external stored procedure set
+// WithExternalStoredProcedure returns a new ShowCreateProcedure Node with the specified external stored procedure set
 // as the procedure to be shown.
 func (s *ShowCreateProcedure) WithExternalStoredProcedure(procedure sql.ExternalStoredProcedureDetails) sql.Node {
 	ns := *s

@@ -23,11 +23,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// Project is a projection of certain expression from the children node.
+// Project is a projection of certain expression from the children Node.
 type Project struct {
 	UnaryNode
 	// Expression projected.
 	Projections []sql.Expression
+	Deferred     bool
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -43,7 +44,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
-// findDefault finds the matching GetField in the node's Schema and fills the default value in the column.
+// findDefault finds the matching GetField in the Node's Schema and fills the default value in the column.
 func findDefault(node sql.Node, gf *expression.GetField) *sql.ColumnDefaultValue {
 	colSet := sql.NewColSet()
 	switch n := node.(type) {
@@ -161,7 +162,9 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
-	return NewProject(p.Projections, children[0]), nil
+	np := NewProject(p.Projections, children[0])
+	np.Deferred = p.Deferred
+	return np, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -179,6 +182,7 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(p.Projections) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), len(p.Projections))
 	}
-
-	return NewProject(exprs, p.Child), nil
+	np := NewProject(exprs, p.Child)
+	np.Deferred = p.Deferred
+	return np, nil
 }

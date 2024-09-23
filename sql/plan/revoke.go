@@ -432,7 +432,7 @@ type RevokeAll struct {
 var _ sql.Node = (*RevokeAll)(nil)
 var _ sql.CollationCoercible = (*RevokeAll)(nil)
 
-// NewRevokeAll returns a new RevokeAll node.
+// NewRevokeAll returns a new RevokeAll Node.
 func NewRevokeAll(users []UserName) *RevokeAll {
 	return &RevokeAll{
 		Users: users,
@@ -504,7 +504,7 @@ var _ sql.Node = (*RevokeRole)(nil)
 var _ sql.Databaser = (*RevokeRole)(nil)
 var _ sql.CollationCoercible = (*RevokeRole)(nil)
 
-// NewRevokeRole returns a new RevokeRole node.
+// NewRevokeRole returns a new RevokeRole Node.
 func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
 	return &RevokeRole{
 		Roles:       roles,
@@ -617,7 +617,7 @@ type RevokeProxy struct {
 var _ sql.Node = (*RevokeProxy)(nil)
 var _ sql.CollationCoercible = (*RevokeProxy)(nil)
 
-// NewRevokeProxy returns a new RevokeProxy node.
+// NewRevokeProxy returns a new RevokeProxy Node.
 func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
 	return &RevokeProxy{
 		On:   on,

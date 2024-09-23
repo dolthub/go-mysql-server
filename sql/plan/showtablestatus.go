@@ -29,7 +29,7 @@ var _ sql.Node = (*ShowTableStatus)(nil)
 var _ sql.Databaser = (*ShowTableStatus)(nil)
 var _ sql.CollationCoercible = (*ShowTableStatus)(nil)
 
-// NewShowTableStatus creates a new ShowTableStatus node.
+// NewShowTableStatus creates a new ShowTableStatus Node.
 func NewShowTableStatus(db sql.Database) *ShowTableStatus {
 	return &ShowTableStatus{db: db}
 }

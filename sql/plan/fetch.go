@@ -35,7 +35,7 @@ var _ sql.Node = (*Fetch)(nil)
 var _ sql.CollationCoercible = (*Fetch)(nil)
 var _ expression.ProcedureReferencable = (*Fetch)(nil)
 
-// NewFetch returns a new *Fetch node.
+// NewFetch returns a new *Fetch Node.
 func NewFetch(name string, toSet []sql.Expression) *Fetch {
 	return &Fetch{
 		Name:  name,

@@ -23,8 +23,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// CreateView is a node representing the creation (or replacement) of a view,
-// which is defined by the Child node. The Columns member represent the
+// CreateView is a Node representing the creation (or replacement) of a view,
+// which is defined by the Child Node. The Columns member represent the
 // explicit columns specified by the query, if any.
 type CreateView struct {
 	UnaryNode
@@ -42,7 +42,7 @@ type CreateView struct {
 var _ sql.Node = (*CreateView)(nil)
 var _ sql.CollationCoercible = (*CreateView)(nil)
 
-// NewCreateView creates a CreateView node with the specified parameters,
+// NewCreateView creates a CreateView Node with the specified parameters,
 // setting its catalog to nil.
 func NewCreateView(database sql.Database, name string, definition *SubqueryAlias, isReplace bool, createViewStr, algorithm, definer, security string) *CreateView {
 	return &CreateView{
@@ -58,18 +58,18 @@ func NewCreateView(database sql.Database, name string, definition *SubqueryAlias
 	}
 }
 
-// View returns the view that will be created by this node.
+// View returns the view that will be created by this Node.
 func (cv *CreateView) View() *sql.View {
 	return cv.Definition.AsView(cv.CreateViewString)
 }
 
 // Children implements the Node interface. It returns the Child of the
-// CreateView node; i.e., the definition of the view that will be created.
+// CreateView Node; i.e., the definition of the view that will be created.
 func (cv *CreateView) Children() []sql.Node {
 	return []sql.Node{cv.Child}
 }
 
-// Resolved implements the Node interface. This node is resolved if and only if
+// Resolved implements the Node interface. This Node is resolved if and only if
 // the database and the Child are both resolved.
 func (cv *CreateView) Resolved() bool {
 	_, ok := cv.database.(sql.UnresolvedDatabase)
@@ -125,7 +125,7 @@ func (cv *CreateView) Database() sql.Database {
 }
 
 // WithDatabase implements the Databaser interface, and it returns a copy of this
-// node with the specified database.
+// Node with the specified database.
 func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
 	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		database = privilegedDatabase.Unwrap()

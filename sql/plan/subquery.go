@@ -196,7 +196,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // PrependRowInPlan returns a transformation function that prepends the row given to any row source in a query
-// plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
+// plan. Any source of rows, as well as any Node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
 func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -356,7 +356,7 @@ func (s *Subquery) canCacheResults() bool {
 }
 
 func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
-	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// Any source of rows, as well as any Node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
 	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
 	if err != nil {
@@ -441,7 +441,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 		return len(s.cache) > 0, nil
 	}
 
-	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// Any source of rows, as well as any Node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
 	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
 	if err != nil {
@@ -553,7 +553,7 @@ func (s *Subquery) WithNodeChildren(children ...sql.Node) (sql.ExpressionWithNod
 	return s.WithQuery(children[0]), nil
 }
 
-// WithQuery returns the subquery with the query node changed.
+// WithQuery returns the subquery with the query Node changed.
 func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	ns := *s
 	ns.Query = node

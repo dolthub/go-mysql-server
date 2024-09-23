@@ -31,7 +31,7 @@ var _ sql.CollationCoercible = (*TriggerBeginEndBlock)(nil)
 var _ RepresentsLabeledBlock = (*TriggerBeginEndBlock)(nil)
 var _ RepresentsScope = (*TriggerBeginEndBlock)(nil)
 
-// NewTriggerBeginEndBlock creates a new *TriggerBeginEndBlock node.
+// NewTriggerBeginEndBlock creates a new *TriggerBeginEndBlock Node.
 func NewTriggerBeginEndBlock(block *BeginEndBlock) *TriggerBeginEndBlock {
 	return &TriggerBeginEndBlock{
 		BeginEndBlock: block,

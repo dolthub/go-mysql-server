@@ -31,12 +31,12 @@ type Values struct {
 var _ sql.Node = (*Values)(nil)
 var _ sql.CollationCoercible = (*Values)(nil)
 
-// NewValues creates a Values node with the given tuples.
+// NewValues creates a Values Node with the given tuples.
 func NewValues(tuples [][]sql.Expression) *Values {
 	return &Values{ExpressionTuples: tuples}
 }
 
-// NewValuesWithAliasName creates a Values node with the given row and column aliases.
+// NewValuesWithAliasName creates a Values Node with the given row and column aliases.
 func NewValuesWithAlias(tableName string, columnNames map[string]string, tuples [][]sql.Expression) *Values {
 	return &Values{ExpressionTuples: tuples, AliasName: tableName, ColumnNames: columnNames}
 }

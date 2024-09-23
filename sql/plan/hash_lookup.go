@@ -23,9 +23,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// NewHashLookup returns a node that performs an indexed hash lookup
+// NewHashLookup returns a Node that performs an indexed hash lookup
 // of cached rows for fulfilling RowIter() calls. In particular, this
-// node sits directly on top of a `CachedResults` node and has two
+// Node sits directly on top of a `CachedResults` Node and has two
 // expressions: a projection for hashing the Child row results and
 // another projection for hashing the parent row values when
 // performing a lookup. When RowIter is called, if cached results are

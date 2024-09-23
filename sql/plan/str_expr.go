@@ -24,7 +24,7 @@ func AliasSubqueryString(e sql.Expression) string {
 }
 
 // StrExpr is used exclusively for overriding the .String()
-// method of a node.
+// method of a Node.
 type StrExpr struct {
 	s string
 }

@@ -20,17 +20,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// IsUnary returns whether the node is unary or not.
+// IsUnary returns whether the Node is unary or not.
 func IsUnary(node sql.Node) bool {
 	return len(node.Children()) == 1
 }
 
-// IsBinary returns whether the node is binary or not.
+// IsBinary returns whether the Node is binary or not.
 func IsBinary(node sql.Node) bool {
 	return len(node.Children()) == 2
 }
 
-// NillaryNode is a node with no children. This is a common WithChildren implementation for all nodes that have none.
+// NillaryNode is a Node with no children. This is a common WithChildren implementation for all nodes that have none.
 func NillaryWithChildren(node sql.Node, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(node, len(children), 0)
@@ -38,7 +38,7 @@ func NillaryWithChildren(node sql.Node, children ...sql.Node) (sql.Node, error) 
 	return node, nil
 }
 
-// UnaryNode is a node that has only one child.
+// UnaryNode is a Node that has only one child.
 type UnaryNode struct {
 	Child sql.Node
 }
@@ -58,7 +58,7 @@ func (n UnaryNode) Children() []sql.Node {
 	return []sql.Node{n.Child}
 }
 
-// BinaryNode is a node with two children.
+// BinaryNode is a Node with two children.
 type BinaryNode struct {
 	left  sql.Node
 	right sql.Node
@@ -117,7 +117,7 @@ func NodeRepresentsSelect(s sql.Node) bool {
 	return isSelect
 }
 
-// getTableName attempts to fetch the table name from the node. If not found directly on the node, searches the
+// getTableName attempts to fetch the table name from the Node. If not found directly on the Node, searches the
 // children. Returns the first table name found, regardless of whether there are more, therefore this is only intended
 // to be used in situations where only a single table is expected to be found.
 func getTableName(nodeToSearch sql.Node) string {
@@ -145,11 +145,11 @@ func getTableName(nodeToSearch sql.Node) string {
 	return ""
 }
 
-// GetDatabaseName attempts to fetch the database name from the node. If not found directly on the node, searches the
+// GetDatabaseName attempts to fetch the database name from the Node. If not found directly on the Node, searches the
 // children. Returns the first database name found, regardless of whether there are more, therefore this is only
 // intended to be used in situations where only a single database is expected to be found. Unlike how tables are handled
 // in most nodes, databases may be stored as a string field therefore there will be situations where a database name
-// exists on a node, but cannot be found through inspection.
+// exists on a Node, but cannot be found through inspection.
 func GetDatabaseName(nodeToSearch sql.Node) string {
 	nodeStack := []sql.Node{nodeToSearch}
 	for len(nodeStack) > 0 {

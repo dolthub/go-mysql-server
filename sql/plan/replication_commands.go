@@ -52,7 +52,7 @@ type BinlogPrimaryControllerCommand interface {
 	WithBinlogPrimaryController(controller binlogreplication.BinlogPrimaryController) sql.Node
 }
 
-// ChangeReplicationSource is the plan node for the "CHANGE REPLICATION SOURCE TO" statement.
+// ChangeReplicationSource is the plan Node for the "CHANGE REPLICATION SOURCE TO" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ChangeReplicationSource struct {
 	ReplicaController binlogreplication.BinlogReplicaController
@@ -123,7 +123,7 @@ func (*ChangeReplicationSource) CollationCoercibility(ctx *sql.Context) (collati
 	return sql.Collation_binary, 7
 }
 
-// ChangeReplicationFilter is a plan node for the "CHANGE REPLICATION FILTER" statement.
+// ChangeReplicationFilter is a plan Node for the "CHANGE REPLICATION FILTER" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-filter.html
 type ChangeReplicationFilter struct {
 	ReplicaController binlogreplication.BinlogReplicaController
@@ -197,7 +197,7 @@ func (*ChangeReplicationFilter) CollationCoercibility(ctx *sql.Context) (collati
 	return sql.Collation_binary, 7
 }
 
-// StartReplica is a plan node for the "START REPLICA" statement.
+// StartReplica is a plan Node for the "START REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/start-replica.html
 type StartReplica struct {
 	ReplicaController binlogreplication.BinlogReplicaController
@@ -257,7 +257,7 @@ func (*StartReplica) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 7
 }
 
-// StopReplica is the plan node for the "STOP REPLICA" statement.
+// StopReplica is the plan Node for the "STOP REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/stop-replica.html
 type StopReplica struct {
 	ReplicaController binlogreplication.BinlogReplicaController
@@ -317,7 +317,7 @@ func (*StopReplica) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-// ResetReplica is a plan node for the "RESET REPLICA" statement.
+// ResetReplica is a plan Node for the "RESET REPLICA" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/reset-replica.html
 type ResetReplica struct {
 	ReplicaController binlogreplication.BinlogReplicaController

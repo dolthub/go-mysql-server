@@ -34,7 +34,7 @@ var _ sql.Databaser = (*CreateProcedure)(nil)
 var _ sql.DebugStringer = (*CreateProcedure)(nil)
 var _ sql.CollationCoercible = (*CreateProcedure)(nil)
 
-// NewCreateProcedure returns a *CreateProcedure node.
+// NewCreateProcedure returns a *CreateProcedure Node.
 func NewCreateProcedure(
 	db sql.Database,
 	name,

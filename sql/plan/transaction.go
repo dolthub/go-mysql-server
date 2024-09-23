@@ -61,7 +61,7 @@ type StartTransaction struct {
 var _ sql.Node = (*StartTransaction)(nil)
 var _ sql.CollationCoercible = (*StartTransaction)(nil)
 
-// NewStartTransaction creates a new StartTransaction node.
+// NewStartTransaction creates a new StartTransaction Node.
 func NewStartTransaction(transactionChar sql.TransactionCharacteristic) *StartTransaction {
 	return &StartTransaction{
 		TransChar: transactionChar,
@@ -120,7 +120,7 @@ type Commit struct {
 var _ sql.Node = (*Commit)(nil)
 var _ sql.CollationCoercible = (*Commit)(nil)
 
-// NewCommit creates a new Commit node.
+// NewCommit creates a new Commit Node.
 func NewCommit() *Commit {
 	return &Commit{}
 }
@@ -169,7 +169,7 @@ type Rollback struct {
 var _ sql.Node = (*Rollback)(nil)
 var _ sql.CollationCoercible = (*Rollback)(nil)
 
-// NewRollback creates a new Rollback node.
+// NewRollback creates a new Rollback Node.
 func NewRollback() *Rollback {
 	return &Rollback{}
 }
@@ -220,7 +220,7 @@ type CreateSavepoint struct {
 var _ sql.Node = (*CreateSavepoint)(nil)
 var _ sql.CollationCoercible = (*CreateSavepoint)(nil)
 
-// NewCreateSavepoint creates a new CreateSavepoint node.
+// NewCreateSavepoint creates a new CreateSavepoint Node.
 func NewCreateSavepoint(name string) *CreateSavepoint {
 	return &CreateSavepoint{Name: name}
 }
@@ -267,7 +267,7 @@ type RollbackSavepoint struct {
 var _ sql.Node = (*RollbackSavepoint)(nil)
 var _ sql.CollationCoercible = (*RollbackSavepoint)(nil)
 
-// NewRollbackSavepoint creates a new RollbackSavepoint node.
+// NewRollbackSavepoint creates a new RollbackSavepoint Node.
 func NewRollbackSavepoint(name string) *RollbackSavepoint {
 	return &RollbackSavepoint{
 		Name: name,
@@ -316,7 +316,7 @@ type ReleaseSavepoint struct {
 var _ sql.Node = (*ReleaseSavepoint)(nil)
 var _ sql.CollationCoercible = (*ReleaseSavepoint)(nil)
 
-// NewReleaseSavepoint creates a new ReleaseSavepoint node.
+// NewReleaseSavepoint creates a new ReleaseSavepoint Node.
 func NewReleaseSavepoint(name string) *ReleaseSavepoint {
 	return &ReleaseSavepoint{
 		Name: name,

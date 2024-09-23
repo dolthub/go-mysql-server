@@ -549,7 +549,7 @@ var _ sql.Node = (*GrantRole)(nil)
 var _ sql.Databaser = (*GrantRole)(nil)
 var _ sql.CollationCoercible = (*GrantRole)(nil)
 
-// NewGrantRole returns a new GrantRole node.
+// NewGrantRole returns a new GrantRole Node.
 func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole {
 	return &GrantRole{
 		Roles:           roles,
@@ -663,7 +663,7 @@ type GrantProxy struct {
 var _ sql.Node = (*GrantProxy)(nil)
 var _ sql.CollationCoercible = (*GrantProxy)(nil)
 
-// NewGrantProxy returns a new GrantProxy node.
+// NewGrantProxy returns a new GrantProxy Node.
 func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
 	return &GrantProxy{
 		On:              on,

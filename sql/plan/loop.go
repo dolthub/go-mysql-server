@@ -34,7 +34,7 @@ var _ sql.Expressioner = (*Loop)(nil)
 var _ sql.CollationCoercible = (*Loop)(nil)
 var _ RepresentsLabeledBlock = (*Loop)(nil)
 
-// NewLoop returns a new *Loop node.
+// NewLoop returns a new *Loop Node.
 func NewLoop(label string, block *Block) *Loop {
 	return &Loop{
 		Label:          label,

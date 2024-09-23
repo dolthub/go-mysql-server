@@ -32,7 +32,7 @@ var (
 	ErrIndexNotAvailable = errors.NewKind("index %q is still not ready for usage and can't be deleted")
 )
 
-// DropIndex is a node to drop an index.
+// DropIndex is a Node to drop an index.
 type DropIndex struct {
 	Name            string
 	Table           sql.Node
@@ -40,7 +40,7 @@ type DropIndex struct {
 	CurrentDatabase string
 }
 
-// NewDropIndex creates a new DropIndex node.
+// NewDropIndex creates a new DropIndex Node.
 func NewDropIndex(name string, table sql.Node) *DropIndex {
 	return &DropIndex{name, table, nil, ""}
 }

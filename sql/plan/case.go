@@ -34,7 +34,7 @@ var _ sql.DebugStringer = (*CaseStatement)(nil)
 var _ sql.Expressioner = (*CaseStatement)(nil)
 var _ sql.CollationCoercible = (*CaseStatement)(nil)
 
-// NewCaseStatement creates a new *NewCaseStatement or *IfElseBlock node.
+// NewCaseStatement creates a new *NewCaseStatement or *IfElseBlock Node.
 func NewCaseStatement(caseExpr sql.Expression, ifConditionals []*IfConditional, elseStatement sql.Node) sql.Node {
 	if elseStatement == nil {
 		elseStatement = ElseCaseError{}

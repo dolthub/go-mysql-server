@@ -33,7 +33,7 @@ var _ sql.Databaser = (*DropTrigger)(nil)
 var _ sql.Node = (*DropTrigger)(nil)
 var _ sql.CollationCoercible = (*DropTrigger)(nil)
 
-// NewDropTrigger creates a new NewDropTrigger node for DROP TRIGGER statements.
+// NewDropTrigger creates a new NewDropTrigger Node for DROP TRIGGER statements.
 func NewDropTrigger(db sql.Database, trigger string, ifExists bool) *DropTrigger {
 	return &DropTrigger{
 		Db:          db,

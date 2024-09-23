@@ -51,7 +51,7 @@ var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 var _ sql.CollationCoercible = (*IndexedTableAccess)(nil)
 var _ sql.TableNode = (*IndexedTableAccess)(nil)
 
-// NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
+// NewIndexedAccessForTableNode creates an IndexedTableAccess Node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
 func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
 	var table = node.UnderlyingTable()
@@ -104,7 +104,7 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 	}, nil
 }
 
-// NewStaticIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
+// NewStaticIndexedAccessForTableNode creates an IndexedTableAccess Node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
 func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
@@ -151,7 +151,7 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 	}, nil
 }
 
-// NewStaticIndexedAccessForFullTextTable creates an IndexedTableAccess node for Full-Text tables, which have a
+// NewStaticIndexedAccessForFullTextTable creates an IndexedTableAccess Node for Full-Text tables, which have a
 // different behavior compared to other indexed tables.
 func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
 	return &IndexedTableAccess{
@@ -497,7 +497,7 @@ type lookupBuilderKey []interface{}
 //
 // Currently the analyzer constructs one of these and uses it for the
 // IndexedTableAccess nodes below an indexed join, for example. This struct is
-// also used to implement Expressioner on the IndexedTableAccess node.
+// also used to implement Expressioner on the IndexedTableAccess Node.
 type LookupBuilder struct {
 	keyExprs  []sql.Expression
 	keyExprs2 []sql.Expression2

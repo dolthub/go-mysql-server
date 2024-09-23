@@ -40,7 +40,7 @@ type RowUpdateAccumulator struct {
 var _ sql.Node = RowUpdateAccumulator{}
 var _ sql.CollationCoercible = RowUpdateAccumulator{}
 
-// NewRowUpdateResult returns a new RowUpdateResult with the given node to wrap.
+// NewRowUpdateResult returns a new RowUpdateResult with the given Node to wrap.
 func NewRowUpdateAccumulator(n sql.Node, updateType RowUpdateType) *RowUpdateAccumulator {
 	return &RowUpdateAccumulator{
 		UnaryNode: UnaryNode{

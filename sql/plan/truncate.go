@@ -24,7 +24,7 @@ import (
 
 var ErrTruncateNotSupported = errors.NewKind("table doesn't support TRUNCATE")
 
-// Truncate is a node describing the deletion of all rows from some table.
+// Truncate is a Node describing the deletion of all rows from some table.
 type Truncate struct {
 	db string
 	UnaryNode
@@ -34,7 +34,7 @@ var _ sql.Node = (*Truncate)(nil)
 var _ sql.DebugStringer = (*Truncate)(nil)
 var _ sql.CollationCoercible = (*Truncate)(nil)
 
-// NewTruncate creates a Truncate node.
+// NewTruncate creates a Truncate Node.
 func NewTruncate(db string, table sql.Node) *Truncate {
 	return &Truncate{
 		db:        db,

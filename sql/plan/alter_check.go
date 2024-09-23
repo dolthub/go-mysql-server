@@ -192,7 +192,7 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 	}, nil
 }
 
-// DropConstraint is a temporary node to handle dropping a named constraint on a table. The type of the constraint is
+// DropConstraint is a temporary Node to handle dropping a named constraint on a table. The type of the constraint is
 // not known, and is determined during analysis.
 type DropConstraint struct {
 	UnaryNode
@@ -236,7 +236,7 @@ func (d *DropConstraint) CollationCoercibility(ctx *sql.Context) (collation sql.
 	return sql.Collation_binary, 7
 }
 
-// NewDropConstraint returns a new DropConstraint node
+// NewDropConstraint returns a new DropConstraint Node
 func NewDropConstraint(table *UnresolvedTable, name string) *DropConstraint {
 	return &DropConstraint{
 		UnaryNode: UnaryNode{table},

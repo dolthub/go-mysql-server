@@ -141,6 +141,7 @@ const (
 	cacheSubqueryResultsId           // cacheSubqueryResults
 	cacheSubqueryAliasesInJoinsId    // cacheSubqueryAliasesInJoins
 	backtickDefaulColumnValueNamesId // backtickDefaulColumnValueNames
+	deferProjectionsId               // deferProjections
 	AutocommitId                     // addAutocommitNode
 	TrackProcessId                   // trackProcess
 	parallelizeId                    // parallelize

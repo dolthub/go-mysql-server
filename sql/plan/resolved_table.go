@@ -227,7 +227,7 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
+	// It is assumed that if we've landed upon this Node, then we're doing a SELECT operation. Most other nodes that
 	// may contain a TableNode will have their own privilege checks, so we should only end up here if the parent
 	// nodes are things such as indexed access, filters, limits, etc.
 	if IsDualTable(t) {

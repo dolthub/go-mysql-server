@@ -33,11 +33,11 @@ const (
 	AfterTrigger              = "after"
 )
 
-// TriggerExecutor is node that wraps, or is wrapped by, an INSERT, UPDATE, or DELETE node to execute defined trigger
+// TriggerExecutor is Node that wraps, or is wrapped by, an INSERT, UPDATE, or DELETE Node to execute defined trigger
 // logic either before or after that operation. When a table has multiple triggers defined, TriggerExecutor nodes can
 // wrap each other as well.
 type TriggerExecutor struct {
-	BinaryNode        // Left = wrapped node, Right = trigger execution logic
+	BinaryNode        // Left = wrapped Node, Right = trigger execution logic
 	TriggerEvent      TriggerEvent
 	TriggerTime       TriggerTime
 	TriggerDefinition sql.TriggerDefinition
@@ -104,7 +104,7 @@ func (t *TriggerExecutor) CollationCoercibility(ctx *sql.Context) (collation sql
 	return sql.GetCoercibility(ctx, t.left)
 }
 
-// TriggerRollback is a node that wraps the entire tree iff it contains a trigger, creates a savepoint, and performs a
+// TriggerRollback is a Node that wraps the entire tree iff it contains a trigger, creates a savepoint, and performs a
 // rollback if something went wrong during execution
 type TriggerRollback struct {
 	UnaryNode

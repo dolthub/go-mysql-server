@@ -84,7 +84,7 @@ var _ sql.Expressioner = (*Signal)(nil)
 var _ sql.CollationCoercible = (*Signal)(nil)
 var _ sql.CollationCoercible = (*SignalName)(nil)
 
-// NewSignal returns a *Signal node.
+// NewSignal returns a *Signal Node.
 func NewSignal(sqlstate string, info map[SignalConditionItemName]SignalInfo) *Signal {
 	// https://dev.mysql.com/doc/refman/8.0/en/signal.html#signal-condition-information-items
 	// https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
@@ -123,7 +123,7 @@ func NewSignal(sqlstate string, info map[SignalConditionItemName]SignalInfo) *Si
 	}
 }
 
-// NewSignalName returns a *SignalName node.
+// NewSignalName returns a *SignalName Node.
 func NewSignalName(name string, info map[SignalConditionItemName]SignalInfo) *SignalName {
 	return &SignalName{
 		Signal: &Signal{
@@ -336,7 +336,7 @@ func (s *SignalName) IsReadOnly() bool {
 
 // Children implements the sql.Node interface.
 func (s *SignalName) Children() []sql.Node {
-	return nil // SignalName is an alternate form of Signal rather than an encapsulating node, thus no children
+	return nil // SignalName is an alternate form of Signal rather than an encapsulating Node, thus no children
 }
 
 // WithChildren implements the sql.Node interface.
@@ -356,7 +356,7 @@ func (*SignalName) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // RowIter implements the sql.Node interface.
 func (s *SignalName) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("may not iterate over unresolved node *SignalName")
+	return nil, fmt.Errorf("may not iterate over unresolved Node *SignalName")
 }
 
 func (s SignalInfo) IsReadOnly() bool {

@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// With is a node to wrap the top-level node in a query plan so that any common table expressions can be applied in
+// With is a Node to wrap the top-level Node in a query plan so that any common table expressions can be applied in
 // analysis. It is removed during analysis.
 type With struct {
 	UnaryNode
@@ -74,7 +74,7 @@ func (w *With) DebugString() string {
 }
 
 func (w *With) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("Cannot call RowIter on With node")
+	panic("Cannot call RowIter on With Node")
 }
 
 func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {

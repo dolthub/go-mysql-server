@@ -23,7 +23,7 @@ import (
 
 // ExistsSubquery is an expression that checks that a subquery returns a non-empty result set. It's in the plan package,
 // instead of the expression package, because Subquery is itself in the plan package (because it functions more like a
-// plan node than an expression in its evaluation).
+// plan Node than an expression in its evaluation).
 type ExistsSubquery struct {
 	Query *Subquery
 }

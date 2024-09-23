@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Limit is a node that only allows up to N rows to be retrieved.
+// Limit is a Node that only allows up to N rows to be retrieved.
 type Limit struct {
 	UnaryNode
 	Limit         sql.Expression
@@ -28,7 +28,7 @@ type Limit struct {
 var _ sql.Node = (*Limit)(nil)
 var _ sql.CollationCoercible = (*Limit)(nil)
 
-// NewLimit creates a new Limit node with the given size.
+// NewLimit creates a new Limit Node with the given size.
 func NewLimit(size sql.Expression, child sql.Node) *Limit {
 	return &Limit{
 		UnaryNode: UnaryNode{Child: child},

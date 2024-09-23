@@ -33,7 +33,7 @@ var _ sql.Databaser = (*DropProcedure)(nil)
 var _ sql.Node = (*DropProcedure)(nil)
 var _ sql.CollationCoercible = (*DropProcedure)(nil)
 
-// NewDropProcedure creates a new *DropProcedure node.
+// NewDropProcedure creates a new *DropProcedure Node.
 func NewDropProcedure(db sql.Database, procedureName string, ifExists bool) *DropProcedure {
 	return &DropProcedure{
 		Db:            db,

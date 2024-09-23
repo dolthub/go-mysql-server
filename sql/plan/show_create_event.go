@@ -40,7 +40,7 @@ var showCreateEventSchema = sql.Schema{
 	&sql.Column{Name: "Database Collation", Type: types.LongText, Nullable: false},
 }
 
-// NewShowCreateEvent creates a new ShowCreateEvent node for SHOW CREATE EVENT statements.
+// NewShowCreateEvent creates a new ShowCreateEvent Node for SHOW CREATE EVENT statements.
 func NewShowCreateEvent(db sql.Database, event sql.EventDefinition) *ShowCreateEvent {
 	return &ShowCreateEvent{
 		db:    db,

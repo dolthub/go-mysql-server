@@ -29,7 +29,7 @@ var _ sql.Expressioner = (*While)(nil)
 var _ sql.CollationCoercible = (*While)(nil)
 var _ RepresentsLabeledBlock = (*While)(nil)
 
-// NewWhile returns a new *While node.
+// NewWhile returns a new *While Node.
 func NewWhile(label string, condition sql.Expression, block *Block) *While {
 	return &While{
 		&Loop{

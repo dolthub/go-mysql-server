@@ -32,7 +32,7 @@ var _ sql.Node = (*Open)(nil)
 var _ sql.CollationCoercible = (*Open)(nil)
 var _ expression.ProcedureReferencable = (*Open)(nil)
 
-// NewOpen returns a new *Open node.
+// NewOpen returns a new *Open Node.
 func NewOpen(name string) *Open {
 	return &Open{
 		Name: name,

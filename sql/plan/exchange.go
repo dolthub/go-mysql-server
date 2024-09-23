@@ -22,11 +22,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// ErrNoPartitionable is returned when no Partitionable node is found
+// ErrNoPartitionable is returned when no Partitionable Node is found
 // in the Exchange tree.
-var ErrNoPartitionable = errors.NewKind("no partitionable node found in exchange tree")
+var ErrNoPartitionable = errors.NewKind("no partitionable Node found in exchange tree")
 
-// Exchange is a node that can parallelize the underlying tree iterating
+// Exchange is a Node that can parallelize the underlying tree iterating
 // partitions concurrently.
 type Exchange struct {
 	UnaryNode
@@ -36,7 +36,7 @@ type Exchange struct {
 var _ sql.Node = (*Exchange)(nil)
 var _ sql.CollationCoercible = (*Exchange)(nil)
 
-// NewExchange creates a new Exchange node.
+// NewExchange creates a new Exchange Node.
 func NewExchange(
 	parallelism int,
 	child sql.Node,
@@ -118,7 +118,7 @@ func (p *ExchangePartition) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 	if node, ok := p.Table.(sql.Node); ok {
 		return node.CheckPrivileges(ctx, opChecker)
 	}
-	// If the table is not a TableNode or other such node, then I guess we'll return true as to not fail.
+	// If the table is not a TableNode or other such Node, then I guess we'll return true as to not fail.
 	// This may not be the correct behavior though, as it's just a guess.
 	return true
 }

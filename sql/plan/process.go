@@ -22,9 +22,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// QueryProcess represents a running query process node. It will use a callback
+// QueryProcess represents a running query process Node. It will use a callback
 // to notify when it has finished running.
-// TODO: QueryProcess -> trackedRowIter is required to dispose certain iter caches.
+// TODO: QueryProcess -> TrackedRowIter is required to dispose certain iter caches.
 // Make a proper scheduler interface to perform lifecycle management, caching, and
 // scan attaching
 type QueryProcess struct {
@@ -38,7 +38,7 @@ var _ sql.CollationCoercible = (*QueryProcess)(nil)
 // NotifyFunc is a function to notify about some event.
 type NotifyFunc func()
 
-// NewQueryProcess creates a new QueryProcess node.
+// NewQueryProcess creates a new QueryProcess Node.
 func NewQueryProcess(node sql.Node, notify NotifyFunc) *QueryProcess {
 	return &QueryProcess{UnaryNode{Child: node}, notify}
 }
@@ -80,7 +80,7 @@ func (p *QueryProcess) DebugString() string {
 }
 
 // ShouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
-// any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
+// any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit Node itself.
 func (p *QueryProcess) ShouldSetFoundRows() bool {
 	var fromLimit *bool
 	var fromTopN *bool
@@ -121,7 +121,7 @@ type ProcessIndexableTable struct {
 
 func (t *ProcessIndexableTable) DebugString() string {
 	tp := sql.NewTreePrinter()
-	// This is a bit of a misnomer -- some db implementations get this node, rather than ProcessTable, but the two
+	// This is a bit of a misnomer -- some db implementations get this Node, rather than ProcessTable, but the two
 	// nodes are functionally equivalent for testing which is where this output is used. We could fix this by making a
 	// version of the memory package that doesn't implement sql.DriverIndexableTable
 	_ = tp.WriteNode("ProcessTable")
@@ -306,8 +306,8 @@ const (
 	QueryTypeUpdate
 )
 
-type trackedRowIter struct {
-	node               sql.Node
+type TrackedRowIter struct {
+	Node               sql.Node
 	iter               sql.RowIter
 	numRows            int64
 	QueryType          queryType
@@ -321,18 +321,18 @@ func NewTrackedRowIter(
 	iter sql.RowIter,
 	onNext NotifyFunc,
 	onDone NotifyFunc,
-) *trackedRowIter {
-	return &trackedRowIter{node: node, iter: iter, onDone: onDone, onNext: onNext}
+) *TrackedRowIter {
+	return &TrackedRowIter{Node: node, iter: iter, onDone: onDone, onNext: onNext}
 }
 
-func (i *trackedRowIter) done() {
+func (i *TrackedRowIter) done() {
 	if i.onDone != nil {
 		i.onDone()
 		i.onDone = nil
 	}
-	if i.node != nil {
+	if i.Node != nil {
 		i.Dispose()
-		i.node = nil
+		i.Node = nil
 	}
 }
 
@@ -347,13 +347,13 @@ func disposeNode(n sql.Node) {
 	})
 }
 
-func (i *trackedRowIter) Dispose() {
-	if i.node != nil {
-		disposeNode(i.node)
+func (i *TrackedRowIter) Dispose() {
+	if i.Node != nil {
+		disposeNode(i.Node)
 	}
 }
 
-func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, err
@@ -368,7 +368,7 @@ func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
-func (i *trackedRowIter) Close(ctx *sql.Context) error {
+func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
 
 	i.updateSessionVars(ctx)
@@ -377,7 +377,7 @@ func (i *trackedRowIter) Close(ctx *sql.Context) error {
 	return err
 }
 
-func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
+func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
 	switch i.QueryType {
 	case QueryTypeSelect:
 		ctx.SetLastQueryInfoInt(sql.RowCount, -1)
@@ -484,7 +484,7 @@ func IsDDLNode(node sql.Node) bool {
 		*CreateForeignKey, *DropForeignKey,
 		*CreateCheck, *DropCheck,
 		*CreateTrigger, *DropTrigger, *AlterPK,
-		*Block: // Block as a top level node wraps a set of ALTER TABLE statements
+		*Block: // Block as a top level Node wraps a set of ALTER TABLE statements
 		return true
 	default:
 		return false
@@ -506,7 +506,7 @@ func IsShowNode(node sql.Node) bool {
 	}
 }
 
-// IsNoRowNode returns whether this are node interacts only with schema and the catalog, not with any table
+// IsNoRowNode returns whether this are Node interacts only with schema and the catalog, not with any table
 // rows.
 func IsNoRowNode(node sql.Node) bool {
 	return IsDDLNode(node) || IsShowNode(node)

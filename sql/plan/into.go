@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Into is a node to wrap the top-level node in a query plan so that any result will set user-defined or others
+// Into is a Node to wrap the top-level Node in a query plan so that any result will set user-defined or others
 // variables given
 type Into struct {
 	UnaryNode

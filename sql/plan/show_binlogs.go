@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ShowBinlogs is the plan node for the "SHOW BINARY LOGS" statement.
+// ShowBinlogs is the plan Node for the "SHOW BINARY LOGS" statement.
 // https://dev.mysql.com/doc/refman/8.4/en/show-binary-logs.html
 type ShowBinlogs struct {
 	PrimaryController binlogreplication.BinlogPrimaryController

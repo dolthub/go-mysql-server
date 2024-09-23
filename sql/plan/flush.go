@@ -30,7 +30,7 @@ var _ sql.Node = (*FlushPrivileges)(nil)
 var _ sql.CollationCoercible = (*FlushPrivileges)(nil)
 var _ sql.Databaser = (*FlushPrivileges)(nil)
 
-// NewFlushPrivileges creates a new FlushPrivileges node.
+// NewFlushPrivileges creates a new FlushPrivileges Node.
 func NewFlushPrivileges(ft bool) *FlushPrivileges {
 	return &FlushPrivileges{
 		writesToBinlog: ft,

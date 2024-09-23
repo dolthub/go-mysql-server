@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Distinct is a node that ensures all rows that come from it are unique.
+// Distinct is a Node that ensures all rows that come from it are unique.
 type Distinct struct {
 	UnaryNode
 }
@@ -26,7 +26,7 @@ type Distinct struct {
 var _ sql.Node = (*Distinct)(nil)
 var _ sql.CollationCoercible = (*Distinct)(nil)
 
-// NewDistinct creates a new Distinct node.
+// NewDistinct creates a new Distinct Node.
 func NewDistinct(child sql.Node) *Distinct {
 	return &Distinct{
 		UnaryNode: UnaryNode{Child: child},
@@ -85,7 +85,7 @@ func (d Distinct) DebugString() string {
 	return p.String()
 }
 
-// OrderedDistinct is a Distinct node optimized for sorted row sets.
+// OrderedDistinct is a Distinct Node optimized for sorted row sets.
 // It's 2 orders of magnitude faster and uses 2 orders of magnitude less memory.
 type OrderedDistinct struct {
 	UnaryNode
@@ -94,7 +94,7 @@ type OrderedDistinct struct {
 var _ sql.Node = (*OrderedDistinct)(nil)
 var _ sql.CollationCoercible = (*OrderedDistinct)(nil)
 
-// NewOrderedDistinct creates a new OrderedDistinct node.
+// NewOrderedDistinct creates a new OrderedDistinct Node.
 func NewOrderedDistinct(child sql.Node) *OrderedDistinct {
 	if d, ok := child.(*OrderedDistinct); ok {
 		child = d.Child

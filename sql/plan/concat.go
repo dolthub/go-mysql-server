@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Concat is a node that returns everything in Left and then everything in
+// Concat is a Node that returns everything in Left and then everything in
 // Right, but it excludes any results in Right that already appeared in Left.
 // Similar to Distinct(Union(...)) but allows Left to return the same row
 // more than once.
@@ -29,7 +29,7 @@ type Concat struct {
 var _ sql.Node = (*Concat)(nil)
 var _ sql.CollationCoercible = (*Concat)(nil)
 
-// NewConcat creates a new Concat node with the given children.
+// NewConcat creates a new Concat Node with the given children.
 // See concatJoin memo expression for more details.
 func NewConcat(left, right sql.Node) *Concat {
 	return &Concat{

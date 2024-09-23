@@ -27,7 +27,7 @@ const (
 	ExceptType
 )
 
-// SetOp is a node that returns everything in Left and then everything in Right
+// SetOp is a Node that returns everything in Left and then everything in Right
 type SetOp struct {
 	BinaryNode
 	SetOpType  int
@@ -47,7 +47,7 @@ var _ sql.CollationCoercible = (*SetOp)(nil)
 // var _ sql.NameableNode = (*SetOp)(nil)
 var _ TableIdNode = (*SetOp)(nil)
 
-// NewSetOp creates a new SetOp node with the given children.
+// NewSetOp creates a new SetOp Node with the given children.
 func NewSetOp(setOpType int, left, right sql.Node, distinct bool, limit, offset sql.Expression, sortFields sql.SortFields) *SetOp {
 	return &SetOp{
 		BinaryNode: BinaryNode{left: left, right: right},

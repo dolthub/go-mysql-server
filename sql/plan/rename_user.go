@@ -31,7 +31,7 @@ type RenameUser struct {
 var _ sql.Node = (*RenameUser)(nil)
 var _ sql.CollationCoercible = (*RenameUser)(nil)
 
-// NewRenameUser returns a new RenameUser node.
+// NewRenameUser returns a new RenameUser Node.
 func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 	return &RenameUser{
 		OldName: oldNames,

@@ -29,7 +29,7 @@ type Set struct {
 var _ sql.Node = (*Set)(nil)
 var _ sql.CollationCoercible = (*Set)(nil)
 
-// NewSet creates a new Set node.
+// NewSet creates a new Set Node.
 func NewSet(vars []sql.Expression) *Set {
 	return &Set{Exprs: vars}
 }

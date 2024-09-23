@@ -25,7 +25,7 @@ type ShowPrivileges struct{}
 var _ sql.Node = (*ShowPrivileges)(nil)
 var _ sql.CollationCoercible = (*ShowPrivileges)(nil)
 
-// NewShowPrivileges returns a new ShowPrivileges node.
+// NewShowPrivileges returns a new ShowPrivileges Node.
 func NewShowPrivileges() *ShowPrivileges {
 	return &ShowPrivileges{}
 }

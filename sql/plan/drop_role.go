@@ -30,7 +30,7 @@ type DropRole struct {
 	MySQLDb  sql.Database
 }
 
-// NewDropRole returns a new DropRole node.
+// NewDropRole returns a new DropRole Node.
 func NewDropRole(ifExists bool, roles []UserName) *DropRole {
 	return &DropRole{
 		IfExists: ifExists,

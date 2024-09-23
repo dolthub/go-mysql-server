@@ -39,7 +39,7 @@ var _ sql.Node = (*GroupBy)(nil)
 var _ sql.Projector = (*GroupBy)(nil)
 var _ sql.CollationCoercible = (*GroupBy)(nil)
 
-// NewGroupBy creates a new GroupBy node. Like Project, GroupBy is a top-level node, and contains all the fields that
+// NewGroupBy creates a new GroupBy Node. Like Project, GroupBy is a top-level Node, and contains all the fields that
 // will appear in the output of the query. Some of these fields may be aggregate functions, some may be columns or
 // other expressions. Unlike a project, the GroupBy also has a list of group-by expressions, which usually also appear
 // in the list of selected expressions.

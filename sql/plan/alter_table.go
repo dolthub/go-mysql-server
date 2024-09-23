@@ -35,7 +35,7 @@ var _ sql.Node = (*RenameTable)(nil)
 var _ sql.Databaser = (*RenameTable)(nil)
 var _ sql.CollationCoercible = (*RenameTable)(nil)
 
-// NewRenameTable creates a new RenameTable node
+// NewRenameTable creates a new RenameTable Node
 func NewRenameTable(db sql.Database, oldNames, newNames []string, alterTbl bool) *RenameTable {
 	return &RenameTable{
 		ddlNode:     ddlNode{db},
@@ -322,7 +322,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, err
 	}
 
-	// *sql.Column is a reference type, make a copy before we modify it so we don't affect the original node
+	// *sql.Column is a reference type, make a copy before we modify it so we don't affect the original Node
 	a.column = colSchema[0]
 	return &a, nil
 }

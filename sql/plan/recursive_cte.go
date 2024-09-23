@@ -31,7 +31,7 @@ import (
 // not recursive, the optimizer will fold the RecursiveCte into a
 // SubqueryAlias.
 //
-// The node is executed as follows:
+// The Node is executed as follows:
 //  1. First, iterate the [Init] subquery.
 //  2. Collect the outputs of [Init] in a [temporary] buffer.
 //  3. When the iterator is exhausted, populate the recursive

@@ -30,7 +30,7 @@ type CreateRole struct {
 	MySQLDb     sql.Database
 }
 
-// NewCreateRole returns a new CreateRole node.
+// NewCreateRole returns a new CreateRole Node.
 func NewCreateRole(ifNotExists bool, roles []UserName) *CreateRole {
 	return &CreateRole{
 		IfNotExists: ifNotExists,

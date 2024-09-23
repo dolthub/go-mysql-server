@@ -48,7 +48,7 @@ var _ sql.Node = (*AlterDefaultDrop)(nil)
 var _ sql.SchemaTarget = (*AlterDefaultDrop)(nil)
 var _ sql.CollationCoercible = (*AlterDefaultDrop)(nil)
 
-// NewAlterDefaultSet returns a *AlterDefaultSet node.
+// NewAlterDefaultSet returns a *AlterDefaultSet Node.
 func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
 	return &AlterDefaultSet{
 		ddlNode:    ddlNode{Db: database},
@@ -162,7 +162,7 @@ func (d *AlterDefaultSet) WithDefault(expr sql.Expression) (sql.Node, error) {
 	return &nd, nil
 }
 
-// NewAlterDefaultDrop returns a *AlterDefaultDrop node.
+// NewAlterDefaultDrop returns a *AlterDefaultDrop Node.
 func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName string) *AlterDefaultDrop {
 	return &AlterDefaultDrop{
 		ddlNode:    ddlNode{Db: database},

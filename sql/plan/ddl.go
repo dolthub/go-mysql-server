@@ -47,7 +47,7 @@ func (*ddlNode) Schema() sql.Schema {
 // Children implements the Node interface.
 func (c *ddlNode) Children() []sql.Node { return nil }
 
-// TableSpec is a node describing the schema of a table.
+// TableSpec is a Node describing the schema of a table.
 type TableSpec struct {
 	Schema    sql.PrimaryKeySchema
 	FkDefs    sql.ForeignKeyConstraints
@@ -58,7 +58,7 @@ type TableSpec struct {
 	Comment   string
 }
 
-// CreateTable is a node describing the creation of some table.
+// CreateTable is a Node describing the creation of some table.
 type CreateTable struct {
 	ddlNode
 	name         string
@@ -85,7 +85,7 @@ var _ sql.SchemaTarget = (*CreateTable)(nil)
 var _ sql.CheckConstraintNode = (*CreateTable)(nil)
 var _ sql.CollationCoercible = (*CreateTable)(nil)
 
-// NewCreateTable creates a new CreateTable node
+// NewCreateTable creates a new CreateTable Node
 func NewCreateTable(db sql.Database, name string, ifn, temp bool, tableSpec *TableSpec) *CreateTable {
 	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
@@ -105,7 +105,7 @@ func NewCreateTable(db sql.Database, name string, ifn, temp bool, tableSpec *Tab
 	}
 }
 
-// NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
+// NewCreateTableSelect create a new CreateTable Node for CREATE TABLE [AS] SELECT
 func NewCreateTableSelect(db sql.Database, name string, ifn, temp bool, selectNode sql.Node, tableSpec *TableSpec) *CreateTable {
 	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
@@ -441,7 +441,7 @@ func (c *CreateTable) Checks() sql.CheckConstraints {
 	return c.checks
 }
 
-// WithChecks returns a new CreateTable node with the given check constraints.
+// WithChecks returns a new CreateTable Node with the given check constraints.
 func (c *CreateTable) WithChecks(checks sql.CheckConstraints) sql.Node {
 	ret := *c
 	ret.checks = checks
@@ -482,7 +482,7 @@ func (c *CreateTable) ValidateDefaultPosition() error {
 	return nil
 }
 
-// DropTable is a node describing dropping one or more tables
+// DropTable is a Node describing dropping one or more tables
 type DropTable struct {
 	Tables       []sql.Node
 	ifExists     bool
@@ -492,7 +492,7 @@ type DropTable struct {
 var _ sql.Node = (*DropTable)(nil)
 var _ sql.CollationCoercible = (*DropTable)(nil)
 
-// NewDropTable creates a new DropTable node
+// NewDropTable creates a new DropTable Node
 func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
 	return &DropTable{
 		Tables:   tbls,
@@ -500,7 +500,7 @@ func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
 	}
 }
 
-// WithTriggers returns this node but with the given triggers.
+// WithTriggers returns this Node but with the given triggers.
 func (d *DropTable) WithTriggers(triggers []string) sql.Node {
 	nd := *d
 	nd.TriggerNames = triggers

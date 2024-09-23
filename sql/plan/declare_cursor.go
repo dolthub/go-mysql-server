@@ -34,7 +34,7 @@ var _ sql.CollationCoercible = (*DeclareCursor)(nil)
 var _ sql.DebugStringer = (*DeclareCursor)(nil)
 var _ expression.ProcedureReferencable = (*DeclareCursor)(nil)
 
-// NewDeclareCursor returns a new *DeclareCursor node.
+// NewDeclareCursor returns a new *DeclareCursor Node.
 func NewDeclareCursor(name string, selectStatement sql.Node) *DeclareCursor {
 	return &DeclareCursor{
 		Name:   name,

@@ -16,10 +16,10 @@ package plan
 
 import "github.com/dolthub/go-mysql-server/sql"
 
-// Having node is a filter that supports aggregate expressions. A having node
-// is identical to a filter node in behaviour. The difference is that some
+// Having Node is a filter that supports aggregate expressions. A having Node
+// is identical to a filter Node in behaviour. The difference is that some
 // analyzer rules work specifically on having clauses and not filters. For
-// that reason, Having is a completely new node instead of using just filter.
+// that reason, Having is a completely new Node instead of using just filter.
 type Having struct {
 	UnaryNode
 	Cond sql.Expression
@@ -29,7 +29,7 @@ var _ sql.Node = (*Having)(nil)
 var _ sql.Expressioner = (*Having)(nil)
 var _ sql.CollationCoercible = (*Having)(nil)
 
-// NewHaving creates a new having node.
+// NewHaving creates a new having Node.
 func NewHaving(cond sql.Expression, child sql.Node) *Having {
 	return &Having{UnaryNode{Child: child}, cond}
 }

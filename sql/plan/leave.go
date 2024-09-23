@@ -28,7 +28,7 @@ type Leave struct {
 var _ sql.Node = (*Leave)(nil)
 var _ sql.CollationCoercible = (*Leave)(nil)
 
-// NewLeave returns a new *Leave node.
+// NewLeave returns a new *Leave Node.
 func NewLeave(label string) *Leave {
 	return &Leave{
 		Label: label,

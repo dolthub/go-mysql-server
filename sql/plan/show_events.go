@@ -47,7 +47,7 @@ var showEventsSchema = sql.Schema{
 	&sql.Column{Name: "Database Collation", Type: types.LongText, Nullable: false},
 }
 
-// NewShowEvents creates a new ShowEvents node for SHOW EVENTS statements.
+// NewShowEvents creates a new ShowEvents Node for SHOW EVENTS statements.
 func NewShowEvents(db sql.Database) *ShowEvents {
 	return &ShowEvents{
 		db: db,

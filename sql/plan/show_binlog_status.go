@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ShowBinlogStatus is the plan node for the "SHOW BINARY LOG STATUS" statement.
+// ShowBinlogStatus is the plan Node for the "SHOW BINARY LOG STATUS" statement.
 // https://dev.mysql.com/doc/refman/8.3/en/show-binary-log-status.html
 type ShowBinlogStatus struct {
 	PrimaryController binlogreplication.BinlogPrimaryController

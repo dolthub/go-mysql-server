@@ -298,6 +298,8 @@ type Analyzer struct {
 	// EventScheduler is used to communiate with the event scheduler
 	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
 	EventScheduler sql.EventScheduler
+
+	ServerMode bool
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

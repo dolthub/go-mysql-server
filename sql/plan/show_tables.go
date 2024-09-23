@@ -23,14 +23,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// ShowTables is a node that shows the database tables.
+// ShowTables is a Node that shows the database tables.
 type ShowTables struct {
 	db   sql.Database
 	Full bool
 	asOf sql.Expression
 }
 
-// NewShowTables creates a new show tables node given a database.
+// NewShowTables creates a new show tables Node given a database.
 func NewShowTables(database sql.Database, full bool, asOf sql.Expression) *ShowTables {
 	return &ShowTables{
 		db:   database,

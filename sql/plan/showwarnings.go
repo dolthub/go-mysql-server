@@ -19,7 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ShowWarnings is a node that shows the session warnings
+// ShowWarnings is a Node that shows the session warnings
 type ShowWarnings []*sql.Warning
 
 var _ sql.Node = (*ShowWarnings)(nil)

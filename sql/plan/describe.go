@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Describe is a node that describes its children.
+// Describe is a Node that describes its children.
 type Describe struct {
 	UnaryNode
 }
@@ -26,7 +26,7 @@ type Describe struct {
 var _ sql.Node = (*Describe)(nil)
 var _ sql.CollationCoercible = (*Describe)(nil)
 
-// NewDescribe creates a new Describe node.
+// NewDescribe creates a new Describe Node.
 func NewDescribe(child sql.Node) *Describe {
 	return &Describe{UnaryNode{child}}
 }
@@ -110,12 +110,12 @@ func (*DescribeQuery) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-// DescribeSchema is the schema returned by a DescribeQuery node.
+// DescribeSchema is the schema returned by a DescribeQuery Node.
 var DescribeSchema = sql.Schema{
 	{Name: "plan", Type: VarChar25000},
 }
 
-// NewDescribeQuery creates a new DescribeQuery node.
+// NewDescribeQuery creates a new DescribeQuery Node.
 func NewDescribeQuery(format sql.DescribeOptions, child sql.Node) *DescribeQuery {
 	return &DescribeQuery{UnaryNode{Child: child}, format}
 }
@@ -152,12 +152,12 @@ func (d *DescribeQuery) DebugString() string {
 	})
 }
 
-// Query returns the query node being described
+// Query returns the query Node being described
 func (d *DescribeQuery) Query() sql.Node {
 	return d.Child
 }
 
-// WithQuery returns a copy of this node with the query node given
+// WithQuery returns a copy of this Node with the query Node given
 func (d *DescribeQuery) WithQuery(child sql.Node) sql.Node {
 	res := *d
 	res.Child = child

@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// PrepareQuery is a node that prepares the query
+// PrepareQuery is a Node that prepares the query
 type PrepareQuery struct {
 	Name  string
 	Child sql.Node
@@ -30,7 +30,7 @@ type PrepareQuery struct {
 var _ sql.Node = (*PrepareQuery)(nil)
 var _ sql.CollationCoercible = (*PrepareQuery)(nil)
 
-// NewPrepareQuery creates a new PrepareQuery node.
+// NewPrepareQuery creates a new PrepareQuery Node.
 func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
 	return &PrepareQuery{Name: name, Child: child}
 }
@@ -89,7 +89,7 @@ func (p *PrepareQuery) String() string {
 	return fmt.Sprintf("Prepare(%s)", p.Child.String())
 }
 
-// ExecuteQuery is a node that prepares the query
+// ExecuteQuery is a Node that prepares the query
 type ExecuteQuery struct {
 	Name     string
 	BindVars []sql.Expression
@@ -145,7 +145,7 @@ func (p *ExecuteQuery) String() string {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
-// DeallocateQuery is a node that prepares the query
+// DeallocateQuery is a Node that prepares the query
 type DeallocateQuery struct {
 	Name string
 }

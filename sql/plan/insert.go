@@ -55,7 +55,7 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrCheckConstraintViolated,
 }
 
-// InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
+// InsertInto is the top level Node for INSERT INTO statements. It has a source for rows and a destination to insert
 // them into.
 type InsertInto struct {
 	db          sql.Database
@@ -67,7 +67,7 @@ type InsertInto struct {
 	checks      sql.CheckConstraints
 	Ignore      bool
 	// LiteralValueSource is set to |true| when |Source| is
-	// a |Values| node with only literal expressions.
+	// a |Values| Node with only literal expressions.
 	LiteralValueSource bool
 
 	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
@@ -80,7 +80,7 @@ var _ sql.Expressioner = (*InsertInto)(nil)
 var _ sql.CollationCoercible = (*InsertInto)(nil)
 var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
-// NewInsertInto creates an InsertInto node.
+// NewInsertInto creates an InsertInto Node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
 	return &InsertInto{
 		db:          db,
@@ -124,7 +124,7 @@ func (ii *InsertInto) Schema() sql.Schema {
 
 // Children implements the sql.Node interface.
 func (ii *InsertInto) Children() []sql.Node {
-	// The source node is analyzed completely independently, so we don't include it in children
+	// The source Node is analyzed completely independently, so we don't include it in children
 	return []sql.Node{ii.Destination}
 }
 
@@ -202,7 +202,7 @@ func (ii *InsertInto) WithDisjointedChildren(children [][]sql.Node) (sql.Node, e
 	return &np, nil
 }
 
-// WithSource sets the source node for this insert, which is analyzed separately
+// WithSource sets the source Node for this insert, which is analyzed separately
 func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
 	np := *ii
 	np.Source = src

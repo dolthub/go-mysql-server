@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 )
 
-// ShowReplicaStatus is the plan node for the "SHOW REPLICA STATUS" statement.
+// ShowReplicaStatus is the plan Node for the "SHOW REPLICA STATUS" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
 	ReplicaController binlogreplication.BinlogReplicaController

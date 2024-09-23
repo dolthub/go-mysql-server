@@ -41,7 +41,7 @@ var showCreateTriggerSchema = sql.Schema{
 	&sql.Column{Name: "Created", Type: types.Datetime, Nullable: false},
 }
 
-// NewShowCreateTrigger creates a new ShowCreateTrigger node for SHOW CREATE TRIGGER statements.
+// NewShowCreateTrigger creates a new ShowCreateTrigger Node for SHOW CREATE TRIGGER statements.
 func NewShowCreateTrigger(db sql.Database, trigger string) *ShowCreateTrigger {
 	return &ShowCreateTrigger{
 		db:          db,

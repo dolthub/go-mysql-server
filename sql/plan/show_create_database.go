@@ -32,7 +32,7 @@ var showCreateDatabaseSchema = sql.Schema{
 	{Name: "Create Database", Type: types.LongText},
 }
 
-// NewShowCreateDatabase creates a new ShowCreateDatabase node.
+// NewShowCreateDatabase creates a new ShowCreateDatabase Node.
 func NewShowCreateDatabase(db sql.Database, ifNotExists bool) *ShowCreateDatabase {
 	return &ShowCreateDatabase{db, ifNotExists}
 }

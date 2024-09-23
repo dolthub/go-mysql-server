@@ -35,7 +35,7 @@ var (
 	ErrExprTypeNotIndexable = errors.NewKind("expression %q with type %s cannot be indexed")
 )
 
-// CreateIndex is a node to create an index.
+// CreateIndex is a Node to create an index.
 type CreateIndex struct {
 	Name            string
 	Table           sql.Node
@@ -50,7 +50,7 @@ var _ sql.Node = (*CreateIndex)(nil)
 var _ sql.Databaseable = (*CreateIndex)(nil)
 var _ sql.CollationCoercible = (*CreateIndex)(nil)
 
-// NewCreateIndex creates a new CreateIndex node.
+// NewCreateIndex creates a new CreateIndex Node.
 func NewCreateIndex(
 	name string,
 	table sql.Node,

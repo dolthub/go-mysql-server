@@ -32,7 +32,7 @@ var _ sql.Node = (*Close)(nil)
 var _ sql.CollationCoercible = (*Close)(nil)
 var _ expression.ProcedureReferencable = (*Close)(nil)
 
-// NewClose returns a new *Close node.
+// NewClose returns a new *Close Node.
 func NewClose(name string) *Close {
 	return &Close{
 		Name: name,

@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ShowVariables is a node that shows the global and session variables
+// ShowVariables is a Node that shows the global and session variables
 type ShowVariables struct {
 	Filter sql.Expression
 	Global bool

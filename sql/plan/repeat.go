@@ -30,7 +30,7 @@ var _ sql.Expressioner = (*Repeat)(nil)
 var _ sql.CollationCoercible = (*Repeat)(nil)
 var _ RepresentsLabeledBlock = (*Repeat)(nil)
 
-// NewRepeat returns a new *Repeat node.
+// NewRepeat returns a new *Repeat Node.
 func NewRepeat(label string, condition sql.Expression, block *Block) *Repeat {
 	return &Repeat{
 		&Loop{

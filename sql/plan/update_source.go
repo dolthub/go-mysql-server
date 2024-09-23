@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// UpdateSource is the source of updates for an Update node. Its schema is the concatenation of the old and new rows,
+// UpdateSource is the source of updates for an Update Node. Its schema is the concatenation of the old and new rows,
 // before and after being updated.
 type UpdateSource struct {
 	UnaryNode
@@ -33,7 +33,7 @@ type UpdateSource struct {
 var _ sql.Node = (*UpdateSource)(nil)
 var _ sql.CollationCoercible = (*UpdateSource)(nil)
 
-// NewUpdateSource returns a new UpdateSource from the node and expressions given.
+// NewUpdateSource returns a new UpdateSource from the Node and expressions given.
 func NewUpdateSource(node sql.Node, ignore bool, updateExprs []sql.Expression) *UpdateSource {
 	return &UpdateSource{
 		UnaryNode:   UnaryNode{node},

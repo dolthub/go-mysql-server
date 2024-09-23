@@ -32,7 +32,7 @@ var _ sql.Expressioner = (*IfConditional)(nil)
 var _ sql.CollationCoercible = (*IfConditional)(nil)
 var _ RepresentsBlock = (*IfConditional)(nil)
 
-// NewIfConditional creates a new *IfConditional node.
+// NewIfConditional creates a new *IfConditional Node.
 func NewIfConditional(condition sql.Expression, body sql.Node) *IfConditional {
 	return &IfConditional{
 		Condition: condition,
@@ -125,7 +125,7 @@ var _ sql.CollationCoercible = (*IfElseBlock)(nil)
 var _ sql.DebugStringer = (*IfElseBlock)(nil)
 var _ RepresentsBlock = (*IfElseBlock)(nil)
 
-// NewIfElse creates a new *IfElseBlock node.
+// NewIfElse creates a new *IfElseBlock Node.
 func NewIfElse(ifConditionals []*IfConditional, elseStatement sql.Node) *IfElseBlock {
 	return &IfElseBlock{
 		IfConditionals: ifConditionals,

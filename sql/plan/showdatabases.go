@@ -19,7 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// ShowDatabases is a node that shows the databases.
+// ShowDatabases is a Node that shows the databases.
 type ShowDatabases struct {
 	Catalog sql.Catalog
 }
@@ -27,7 +27,7 @@ type ShowDatabases struct {
 var _ sql.Node = (*ShowDatabases)(nil)
 var _ sql.CollationCoercible = (*ShowDatabases)(nil)
 
-// NewShowDatabases creates a new show databases node.
+// NewShowDatabases creates a new show databases Node.
 func NewShowDatabases() *ShowDatabases {
 	return new(ShowDatabases)
 }

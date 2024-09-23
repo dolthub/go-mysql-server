@@ -52,7 +52,7 @@ type CreateEvent struct {
 	eventScheduler sql.EventScheduler
 }
 
-// NewCreateEvent returns a *CreateEvent node.
+// NewCreateEvent returns a *CreateEvent Node.
 func NewCreateEvent(
 	db sql.Database,
 	name, definer string,
@@ -591,7 +591,7 @@ type DropEvent struct {
 	eventScheduler sql.EventScheduler
 }
 
-// NewDropEvent creates a new *DropEvent node.
+// NewDropEvent creates a new *DropEvent Node.
 func NewDropEvent(db sql.Database, eventName string, ifExists bool) *DropEvent {
 	return &DropEvent{
 		ddlNode:   ddlNode{db},

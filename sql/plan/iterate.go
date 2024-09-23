@@ -29,7 +29,7 @@ type Iterate struct {
 var _ sql.Node = (*Iterate)(nil)
 var _ sql.CollationCoercible = (*Iterate)(nil)
 
-// NewIterate returns a new *Iterate node.
+// NewIterate returns a new *Iterate Node.
 func NewIterate(label string) *Iterate {
 	return &Iterate{
 		Label: label,

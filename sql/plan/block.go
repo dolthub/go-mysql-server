@@ -26,15 +26,15 @@ type Block struct {
 	Pref       *expression.ProcedureReference
 }
 
-// RepresentsBlock is an interface that defines whether a node contains a Block node, or contains multiple child
-// statements similar to a block node. As a rule of thumb, if a parent node depends upon a child node, either explicitly
+// RepresentsBlock is an interface that defines whether a Node contains a Block Node, or contains multiple child
+// statements similar to a block Node. As a rule of thumb, if a parent Node depends upon a child Node, either explicitly
 // or implicitly, then it does not represent a Block.
 type RepresentsBlock interface {
 	sql.Node
 	implementsRepresentsBlock()
 }
 
-// RepresentsLabeledBlock is an interface that defines whether a node represents a Block node, while also carrying a
+// RepresentsLabeledBlock is an interface that defines whether a Node represents a Block Node, while also carrying a
 // label that may be referenced by statements within the block (such as LEAVE, ITERATE, etc.). Some statements that use
 // labels only look for labels on statements that loop (such as LOOP and REPEAT), so there's an additional function
 // to check whether this also represents a loop.
@@ -44,7 +44,7 @@ type RepresentsLabeledBlock interface {
 	RepresentsLoop() bool
 }
 
-// RepresentsScope is an interface that defines whether a node represents a new scope. Scopes define boundaries that
+// RepresentsScope is an interface that defines whether a Node represents a new scope. Scopes define boundaries that
 // are used for variable resolution and control flow modification (via condition handling, etc.).
 type RepresentsScope interface {
 	RepresentsBlock
@@ -56,7 +56,7 @@ var _ sql.DebugStringer = (*Block)(nil)
 var _ sql.CollationCoercible = (*Block)(nil)
 var _ RepresentsBlock = (*Block)(nil)
 
-// NewBlock creates a new *Block node.
+// NewBlock creates a new *Block Node.
 func NewBlock(statements []sql.Node) *Block {
 	return &Block{statements: statements}
 }

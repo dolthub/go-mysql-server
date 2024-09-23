@@ -54,7 +54,7 @@ var (
 	}
 )
 
-// NewShowColumns creates a new ShowColumns node.
+// NewShowColumns creates a new ShowColumns Node.
 func NewShowColumns(full bool, child sql.Node) *ShowColumns {
 	return &ShowColumns{UnaryNode: UnaryNode{Child: child}, Full: full}
 }

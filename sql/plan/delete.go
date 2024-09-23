@@ -24,7 +24,7 @@ import (
 
 var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FROM")
 
-// DeleteFrom is a node describing a deletion from some table.
+// DeleteFrom is a Node describing a deletion from some table.
 type DeleteFrom struct {
 	UnaryNode
 	// targets are the explicitly specified table nodes from which rows should be deleted. For simple DELETES against a
@@ -39,7 +39,7 @@ var _ sql.Databaseable = (*DeleteFrom)(nil)
 var _ sql.Node = (*DeleteFrom)(nil)
 var _ sql.CollationCoercible = (*DeleteFrom)(nil)
 
-// NewDeleteFrom creates a DeleteFrom node.
+// NewDeleteFrom creates a DeleteFrom Node.
 func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
 	return &DeleteFrom{
 		UnaryNode:       UnaryNode{n},
@@ -54,7 +54,7 @@ func (p *DeleteFrom) HasExplicitTargets() bool {
 	return len(p.explicitTargets) > 0
 }
 
-// WithExplicitTargets returns a new DeleteFrom node instance with the specified |targets| set as the explicitly
+// WithExplicitTargets returns a new DeleteFrom Node instance with the specified |targets| set as the explicitly
 // specified targets of the delete operation.
 func (p *DeleteFrom) WithExplicitTargets(targets []sql.Node) *DeleteFrom {
 	copy := *p

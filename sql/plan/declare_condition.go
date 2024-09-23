@@ -30,7 +30,7 @@ type DeclareCondition struct {
 var _ sql.Node = (*DeclareCondition)(nil)
 var _ sql.CollationCoercible = (*DeclareCondition)(nil)
 
-// NewDeclareCondition returns a *DeclareCondition node.
+// NewDeclareCondition returns a *DeclareCondition Node.
 func NewDeclareCondition(name string, errCode int64, sqlStateValue string) *DeclareCondition {
 	return &DeclareCondition{
 		Name:          name,

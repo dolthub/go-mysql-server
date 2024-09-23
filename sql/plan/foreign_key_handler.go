@@ -114,7 +114,7 @@ func (n *ForeignKeyHandler) Name() string {
 func (n *ForeignKeyHandler) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	originalTable, ok := n.OriginalNode.(sql.Table)
 	if !ok {
-		return nil, fmt.Errorf("cannot partition foreign key handler due to the original node not being a table")
+		return nil, fmt.Errorf("cannot partition foreign key handler due to the original Node not being a table")
 	}
 	return originalTable.Partitions(ctx)
 }
@@ -123,7 +123,7 @@ func (n *ForeignKeyHandler) Partitions(ctx *sql.Context) (sql.PartitionIter, err
 func (n *ForeignKeyHandler) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	originalTable, ok := n.OriginalNode.(sql.Table)
 	if !ok {
-		return nil, fmt.Errorf("cannot partition rows on foreign key handler due to the original node not being a table")
+		return nil, fmt.Errorf("cannot partition rows on foreign key handler due to the original Node not being a table")
 	}
 	return originalTable.PartitionRows(ctx, partition)
 }

@@ -20,7 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// SubqueryAlias is a node that gives a subquery a name.
+// SubqueryAlias is a Node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
 	ColumnNames    []string
@@ -42,7 +42,7 @@ var _ sql.Node = (*SubqueryAlias)(nil)
 var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
 var _ sql.RenameableNode = (*SubqueryAlias)(nil)
 
-// NewSubqueryAlias creates a new SubqueryAlias node.
+// NewSubqueryAlias creates a new SubqueryAlias Node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
 	return &SubqueryAlias{
 		UnaryNode:            UnaryNode{Child: node},

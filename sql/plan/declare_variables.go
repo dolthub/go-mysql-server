@@ -34,7 +34,7 @@ var _ sql.Node = (*DeclareVariables)(nil)
 var _ sql.CollationCoercible = (*DeclareVariables)(nil)
 var _ expression.ProcedureReferencable = (*DeclareVariables)(nil)
 
-// NewDeclareVariables returns a new *DeclareVariables node.
+// NewDeclareVariables returns a new *DeclareVariables Node.
 func NewDeclareVariables(names []string, typ sql.Type, defaultVal *sql.ColumnDefaultValue) *DeclareVariables {
 	return &DeclareVariables{
 		Names:      names,
