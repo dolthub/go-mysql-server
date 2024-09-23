@@ -306,8 +306,8 @@ const (
 	QueryTypeUpdate
 )
 
-type trackedRowIter struct {
-	node               sql.Node
+type TrackedRowIter struct {
+	Node               sql.Node
 	iter               sql.RowIter
 	numRows            int64
 	QueryType          queryType
@@ -321,18 +321,18 @@ func NewTrackedRowIter(
 	iter sql.RowIter,
 	onNext NotifyFunc,
 	onDone NotifyFunc,
-) *trackedRowIter {
-	return &trackedRowIter{node: node, iter: iter, onDone: onDone, onNext: onNext}
+) *TrackedRowIter {
+	return &TrackedRowIter{Node: node, iter: iter, onDone: onDone, onNext: onNext}
 }
 
-func (i *trackedRowIter) done() {
+func (i *TrackedRowIter) done() {
 	if i.onDone != nil {
 		i.onDone()
 		i.onDone = nil
 	}
-	if i.node != nil {
+	if i.Node != nil {
 		i.Dispose()
-		i.node = nil
+		i.Node = nil
 	}
 }
 
@@ -347,13 +347,13 @@ func disposeNode(n sql.Node) {
 	})
 }
 
-func (i *trackedRowIter) Dispose() {
-	if i.node != nil {
-		disposeNode(i.node)
+func (i *TrackedRowIter) Dispose() {
+	if i.Node != nil {
+		disposeNode(i.Node)
 	}
 }
 
-func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, err
@@ -368,7 +368,7 @@ func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
-func (i *trackedRowIter) Close(ctx *sql.Context) error {
+func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
 
 	i.updateSessionVars(ctx)
@@ -377,7 +377,7 @@ func (i *trackedRowIter) Close(ctx *sql.Context) error {
 	return err
 }
 
-func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
+func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
 	switch i.QueryType {
 	case QueryTypeSelect:
 		ctx.SetLastQueryInfoInt(sql.RowCount, -1)

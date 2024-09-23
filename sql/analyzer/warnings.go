@@ -16,7 +16,8 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -38,5 +39,25 @@ func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Sco
 	}
 
 	ctx.ClearWarnings()
+	return node, transform.SameTree, nil
+}
+
+// TODO: move this somewhere else
+func deferProjections(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	if !a.ServerMode {
+		return node, transform.SameTree, nil
+	}
+	// Find top-level projection, and mark as deferred
+	if proj, ok := node.(*plan.Project); ok {
+		// Default value expressions require a second pass, so punt on deferring for now
+		for _, expr := range proj.Projections {
+			switch expr.(type) {
+			case *expression.Wrapper, *sql.ColumnDefaultValue:
+				return node, transform.SameTree, nil
+			}
+		}
+		proj.Deferred = true
+		return proj, transform.NewTree, nil
+	}
 	return node, transform.SameTree, nil
 }

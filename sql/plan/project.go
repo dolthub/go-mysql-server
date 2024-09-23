@@ -28,6 +28,7 @@ type Project struct {
 	UnaryNode
 	// Expression projected.
 	Projections []sql.Expression
+	Deferred    bool
 }
 
 var _ sql.Expressioner = (*Project)(nil)

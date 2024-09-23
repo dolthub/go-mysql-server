@@ -182,6 +182,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		vtListener.RequireSecureTransport = cfg.RequireSecureTransport
 	}
 
+	e.Analyzer.ServerMode = true
 	return &Server{
 		Listener:   protocolListener,
 		handler:    handler,

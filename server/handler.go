@@ -528,7 +528,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 		return nil, err
 	}
 
-	outputRow, err := rowToSQL(ctx, schema, row)
+	outputRow, err := rowToSQL(ctx, schema, row, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -605,6 +605,15 @@ func (h *Handler) resultForDefaultIter(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
+	var projections []sql.Expression
+	if trackedIter, ok := iter.(*plan.TrackedRowIter); ok {
+		if commitNode, ok := trackedIter.Node.(*plan.TransactionCommittingNode); ok {
+			if proj, ok := commitNode.Child().(*plan.Project); ok {
+				projections = proj.Projections
+			}
+		}
+	}
+
 	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
@@ -639,7 +648,7 @@ func (h *Handler) resultForDefaultIter(
 					continue
 				}
 
-				outputRow, err := rowToSQL(ctx, schema, row)
+				outputRow, err := rowToSQL(ctx, schema, row, projections)
 				if err != nil {
 					return err
 				}
@@ -901,21 +910,34 @@ func updateMaxUsedConnectionsStatusVariable() {
 	}()
 }
 
-func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row))
+func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row, projections []sql.Expression) ([]sqltypes.Value, error) {
+	o := make([]sqltypes.Value, max(len(row), len(projections))) // TODO: maybe should be length of schema?
 	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
 	if len(s) == 0 {
 		return o, nil
 	}
-	var err error
-	for i, v := range row {
-		if v == nil {
-			o[i] = sqltypes.NULL
-			continue
+	if len(projections) > 0 {
+		for i, proj := range projections {
+			field, err := proj.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			o[i], err = s[i].Type.SQL(ctx, nil, field)
+			if err != nil {
+				return nil, err
+			}
 		}
-		o[i], err = s[i].Type.SQL(ctx, nil, v)
-		if err != nil {
-			return nil, err
+	} else {
+		var err error
+		for i, v := range row {
+			if v == nil {
+				o[i] = sqltypes.NULL
+				continue
+			}
+			o[i], err = s[i].Type.SQL(ctx, nil, v)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
