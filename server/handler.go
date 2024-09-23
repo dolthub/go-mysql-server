@@ -609,7 +609,9 @@ func (h *Handler) resultForDefaultIter(
 	if trackedIter, ok := iter.(*plan.TrackedRowIter); ok {
 		if commitNode, ok := trackedIter.Node.(*plan.TransactionCommittingNode); ok {
 			if proj, ok := commitNode.Child().(*plan.Project); ok {
-				projections = proj.Projections
+				if proj.Deferred {
+					projections = proj.Projections
+				}
 			}
 		}
 	}
