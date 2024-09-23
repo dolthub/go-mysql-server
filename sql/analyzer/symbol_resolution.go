@@ -170,7 +170,7 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 	return nil
 }
 
-// hasMatchAgainstExpr searches for an *expression.MatchAgainst within the node, returning the node or nil.
+// hasMatchAgainstExpr searches for an *expression.MatchAgainst within the node's expressions
 func hasMatchAgainstExpr(node sql.Node) bool {
 	var foundMatchAgainstExpr bool
 	transform.InspectExpressions(node, func(expr sql.Expression) bool {
