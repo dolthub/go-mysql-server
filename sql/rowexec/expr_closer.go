@@ -19,14 +19,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// exprCloserIter ensures that all expressions that implement sql.Closer are closed. This is implemented as a capturing
+// ExprCloserIter ensures that all expressions that implement sql.Closer are closed. This is implemented as a capturing
 // iterator, as our workflow only supports closing nodes, not expressions.
-type exprCloserIter struct {
-	iter  sql.RowIter
+type ExprCloserIter struct {
+	Iter  sql.RowIter
 	exprs []sql.Closer
 }
 
-var _ sql.RowIter = (*exprCloserIter)(nil)
+var _ sql.RowIter = (*ExprCloserIter)(nil)
 
 // AddExpressionCloser returns a new iterator that ensures that any expressions that implement sql.Closer are closed.
 // If there are no expressions that implement sql.Closer in the tree, then the original iterator is returned.
@@ -43,20 +43,20 @@ func AddExpressionCloser(node sql.Node, iter sql.RowIter) sql.RowIter {
 	if len(exprs) == 0 {
 		return iter
 	}
-	return &exprCloserIter{
-		iter:  iter,
+	return &ExprCloserIter{
+		Iter:  iter,
 		exprs: exprs,
 	}
 }
 
 // Next implements the interface sql.RowIter.
-func (eci *exprCloserIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return eci.iter.Next(ctx)
+func (eci *ExprCloserIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return eci.Iter.Next(ctx)
 }
 
 // Close implements the interface sql.RowIter.
-func (eci *exprCloserIter) Close(ctx *sql.Context) error {
-	err := eci.iter.Close(ctx)
+func (eci *ExprCloserIter) Close(ctx *sql.Context) error {
+	err := eci.Iter.Close(ctx)
 	for _, expr := range eci.exprs {
 		if nErr := expr.Close(ctx); err == nil {
 			err = nErr

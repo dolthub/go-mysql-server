@@ -18,7 +18,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
+"io"
 	"net"
 	"regexp"
 	"runtime/trace"
@@ -606,7 +607,11 @@ func (h *Handler) resultForDefaultIter(
 	defer timer.Stop()
 
 	var projections []sql.Expression
-	if trackedIter, ok := iter.(*plan.TrackedRowIter); ok {
+	iiter := iter
+	if exprIter, ok := iter.(*rowexec.ExprCloserIter); ok {
+		iiter = exprIter.Iter
+	}
+	if trackedIter, ok := iiter.(*plan.TrackedRowIter); ok {
 		if commitNode, ok := trackedIter.Node.(*plan.TransactionCommittingNode); ok {
 			if proj, ok := commitNode.Child().(*plan.Project); ok {
 				if proj.Deferred {
