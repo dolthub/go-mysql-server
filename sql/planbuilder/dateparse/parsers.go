@@ -84,10 +84,35 @@ func parseMonthNumeric(result *datetime, chars string) (rest string, _ error) {
 	return rest, nil
 }
 
+func parseMonth2DigitNumeric(result *datetime, chars string) (rest string, _ error) {
+	num, rest, err := takeNumberAtMostNChars(2, chars)
+	if err != nil {
+		return "", err
+	}
+	if num < 1 || num > 12 {
+		return "", fmt.Errorf("expected 01-12, got %s", string(chars))
+	}
+	month := time.Month(num)
+	result.month = &month
+	return rest, nil
+}
+
 func parseDayOfMonthNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
+	}
+	result.day = &num
+	return rest, nil
+}
+
+func parseDayOfMonth2DigitNumeric(result *datetime, chars string) (rest string, _ error) {
+	num, rest, err := takeNumberAtMostNChars(2, chars)
+	if err != nil {
+		return "", err
+	}
+	if num < 1 || num > 31 {
+		return "", fmt.Errorf("expected 01-31, got %s", string(chars))
 	}
 	result.day = &num
 	return rest, nil
@@ -224,7 +249,7 @@ func parseYear4DigitNumeric(result *datetime, chars string) (rest string, _ erro
 	if len(chars) < 4 {
 		return "", fmt.Errorf("expected at least 4 chars, got %d", len(chars))
 	}
-	year, rest, err := takeNumber(chars)
+	year, rest, err := takeNumberAtMostNChars(4, chars)
 	if err != nil {
 		return "", err
 	}

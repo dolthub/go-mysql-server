@@ -365,7 +365,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 
 // QueryWithBindings executes the query given with the bindings provided.
 // If parsed is non-nil, it will be used instead of parsing the query from text.
-func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	sql.IncrementStatusVariable(ctx, "Questions", 1)
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
@@ -461,7 +461,7 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
-func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sql.Node, error) {
+func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (sql.Node, error) {
 	if parsed == nil {
 		return nil, errors.New("parsed statement must not be nil")
 	}
@@ -506,7 +506,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 	return analyzed, nil
 }
 
-func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable) (sqlparser.Statement, *planbuilder.Builder, error) {
+func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (sqlparser.Statement, *planbuilder.Builder, error) {
 	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 
 	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the
@@ -582,7 +582,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFl
 // bindQuery binds any bind variables to the plan node or query given and returns it.
 // |parsed| is the parsed AST without bindings applied, if the statement was previously parsed / prepared.
 // If it wasn't (|parsed| is nil), then the query is parsed.
-func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder, qFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {
+func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, binder *planbuilder.Builder, qFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {
 	var bound sql.Node
 	var err error
 	if parsed == nil {
@@ -612,7 +612,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 }
 
 // bindExecuteQueryNode returns the
-func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.ExecuteQuery, bindings map[string]*querypb.BindVariable, binder *planbuilder.Builder) (sql.Node, error) {
+func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.ExecuteQuery, bindings map[string]sqlparser.Expr, binder *planbuilder.Builder) (sql.Node, error) {
 	prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), eq.Name)
 	if !ok {
 		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
@@ -621,14 +621,17 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 	// if prep.ArgCount() < 1 {
 	//	return nil, nil, fmt.Errorf("invalid bind variable count: expected %d, found %d", prep.ArgCount(), len(bindings))
 	// }
+
+	// TODO: overwrite the current binding if bindings are not empty???
+	tempBindings := make(map[string]sql.Expression)
 	for i, name := range eq.BindVars {
-		if bindings == nil {
-			bindings = make(map[string]*querypb.BindVariable)
-		}
 		if strings.HasPrefix(name.String(), "@") {
 			t, val, err := ctx.GetUserVariable(ctx, strings.TrimPrefix(name.String(), "@"))
 			if err != nil {
 				return nil, nil
+			}
+			if t == nil {
+				t = types.Null
 			}
 			if val != nil {
 				val, _, err = t.Promote().Convert(val)
@@ -636,15 +639,17 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 					return nil, nil
 				}
 			}
-			bindings[fmt.Sprintf("v%d", i+1)], err = sqltypes.BuildBindVariable(val)
-			if err != nil {
-				return nil, err
-			}
+			tempBindings[fmt.Sprintf("v%d", i+1)] = expression.NewLiteral(val, t)
 		} else {
-			bindings[fmt.Sprintf("v%d", i)] = sqltypes.StringBindVariable(name.String())
+			tempBindings[fmt.Sprintf("v%d", i)] = name
 		}
 	}
-	binder.SetBindings(bindings)
+
+	if len(tempBindings) == 0 {
+		binder.SetBindings(bindings)
+	} else {
+		binder.SetBindingsWithExpr(tempBindings)
+	}
 
 	bound, _, err := binder.BindOnly(prep, query)
 	if err != nil {

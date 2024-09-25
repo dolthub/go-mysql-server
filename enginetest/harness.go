@@ -17,6 +17,8 @@ package enginetest
 import (
 	"testing"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/server"
@@ -167,4 +169,7 @@ type ResultEvaluationHarness interface {
 	// EvaluateExpectedError compares expected error strings to actual errors and emits failed test assertions in the
 	// event there are any
 	EvaluateExpectedError(t *testing.T, expected string, err error)
+
+	// EvaluateExpectedErrorKind compares expected error kinds to actual errors and emits failed test assertions in the
+	EvaluateExpectedErrorKind(t *testing.T, expected *errors.Kind, err error)
 }

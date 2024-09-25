@@ -123,6 +123,8 @@ func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 				return int16(2000), sql.InRange, nil
 			}
 			return t.Convert(i)
+		} else if f, err := strconv.ParseFloat(value, 64); err == nil {
+			return t.Convert(f)
 		}
 	case time.Time:
 		year := value.Year()

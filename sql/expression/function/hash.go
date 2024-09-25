@@ -15,14 +15,18 @@
 package function
 
 import (
+	"bytes"
+	"compress/zlib"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"hash"
 	"io"
+	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -231,4 +235,362 @@ func (f *SHA2) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
 	return NewSHA2(children[0], children[1]), nil
+}
+
+// Compress function returns the compressed binary string of the input.
+// https://dev.mysql.com/doc/refman/8.4/en/encryption-functions.html#function_compress
+type Compress struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Compress)(nil)
+var _ sql.CollationCoercible = (*Compress)(nil)
+
+// NewCompress returns a new Compress function expression
+func NewCompress(arg sql.Expression) sql.Expression {
+	return &Compress{NewUnaryFunc(arg, "Compress", types.LongBlob)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *Compress) Description() string {
+	return "compresses a string and returns the result as a binary string."
+}
+
+func (f *Compress) Type() sql.Type {
+	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Compress) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongBlob.Convert(arg)
+	if err != nil {
+		return nil, err
+	}
+	valBytes := val.([]byte)
+	if len(valBytes) == 0 {
+		return []byte{}, nil
+	}
+
+	// TODO: the golang standard library implementation of zlib is different than the original C implementation that
+	// MySQL uses. This means that the output of compressed data will be different. However, this library claims to be
+	// able to uncompress MySQL compressed data. There are unit tests for this in hash_test.go.
+	var buf bytes.Buffer
+	writer, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	_, err = writer.Write(valBytes)
+	if err != nil {
+		return nil, err
+	}
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepend length of original string
+	lenHeader := make([]byte, 4)
+	binary.LittleEndian.PutUint32(lenHeader, uint32(len(valBytes)))
+	res := append(lenHeader, buf.Bytes()...)
+	return res, nil
+}
+
+// WithChildren implements sql.Expression
+func (f *Compress) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewCompress(children[0]), nil
+}
+
+// Uncompress function returns the binary string from the compressed input.
+// https://dev.mysql.com/doc/refman/8.4/en/encryption-functions.html#function_uncompress
+type Uncompress struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Uncompress)(nil)
+var _ sql.CollationCoercible = (*Uncompress)(nil)
+
+const (
+	compressHeaderSize = 4
+	compressMaxSize    = 0x04000000
+)
+
+// NewUncompress returns a new Uncompress function expression
+func NewUncompress(arg sql.Expression) sql.Expression {
+	return &Uncompress{NewUnaryFunc(arg, "Uncompress", types.LongBlob)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *Uncompress) Description() string {
+	return "uncompresses a string compressed by the COMPRESS() function."
+}
+
+func (f *Uncompress) Type() sql.Type {
+	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Uncompress) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongBlob.Convert(arg)
+	if err != nil {
+		ctx.Warn(1258, err.Error())
+		return nil, nil
+	}
+	valBytes := val.([]byte)
+	if len(valBytes) == 0 {
+		return []byte{}, nil
+	}
+	if len(valBytes) <= compressHeaderSize {
+		ctx.Warn(1258, "input data corrupted")
+		return nil, nil
+	}
+
+	var inBuf bytes.Buffer
+	inBuf.Write(valBytes[compressHeaderSize:]) // skip length header
+	reader, err := zlib.NewReader(&inBuf)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+
+	outLen := binary.LittleEndian.Uint32(valBytes[:compressHeaderSize])
+	if outLen > compressMaxSize {
+		ctx.Warn(1258, fmt.Sprintf("Uncompressed data too large; the maximum size is %d", compressMaxSize))
+		return nil, nil
+	}
+
+	outBuf := make([]byte, outLen)
+	readLen, err := reader.Read(outBuf)
+	if err != nil && err != io.EOF {
+		ctx.Warn(1258, err.Error())
+		return nil, nil
+	}
+	// if we don't receive io.EOF, then received outLen was too small
+	if err == nil {
+		ctx.Warn(1258, "not enough room in output buffer")
+		return nil, nil
+	}
+	return outBuf[:readLen], nil
+}
+
+// WithChildren implements sql.Expression
+func (f *Uncompress) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewUncompress(children[0]), nil
+}
+
+// UncompressedLength function returns the length of the original string from the compressed string input.
+// https://dev.mysql.com/doc/refman/8.4/en/encryption-functions.html#function_uncompress
+type UncompressedLength struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*UncompressedLength)(nil)
+var _ sql.CollationCoercible = (*UncompressedLength)(nil)
+
+// NewUncompressedLength returns a new UncompressedLength function expression
+func NewUncompressedLength(arg sql.Expression) sql.Expression {
+	return &UncompressedLength{NewUnaryFunc(arg, "UncompressedLength", types.Uint32)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *UncompressedLength) Description() string {
+	return "returns length of original uncompressed string from compressed string input."
+}
+
+func (f *UncompressedLength) Type() sql.Type {
+	return types.Uint32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UncompressedLength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongBlob.Convert(arg)
+	if err != nil {
+		ctx.Warn(1258, err.Error())
+		return nil, nil
+	}
+	valBytes := val.([]byte)
+	if len(valBytes) == 0 {
+		return uint32(0), nil
+	}
+	if len(valBytes) <= compressHeaderSize {
+		ctx.Warn(1258, "input data corrupted")
+		return nil, nil
+	}
+
+	outLen := binary.LittleEndian.Uint32(valBytes[:compressHeaderSize])
+	return outLen, nil
+}
+
+// WithChildren implements sql.Expression
+func (f *UncompressedLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewUncompressedLength(children[0]), nil
+}
+
+// ValidatePasswordStrength function returns an integer to indicate how strong the password is.
+// https://dev.mysql.com/doc/refman/8.4/en/validate-password.html
+type ValidatePasswordStrength struct {
+	*UnaryFunc
+}
+
+const minPasswordLength = 4
+
+var _ sql.FunctionExpression = (*ValidatePasswordStrength)(nil)
+var _ sql.CollationCoercible = (*ValidatePasswordStrength)(nil)
+
+// NewValidatePasswordStrength returns a new ValidatePasswordStrength function expression
+func NewValidatePasswordStrength(arg sql.Expression) sql.Expression {
+	return &ValidatePasswordStrength{NewUnaryFunc(arg, "ValidatePasswordStrength", types.Uint32)}
+}
+
+// Description implements sql.FunctionExpression
+func (f *ValidatePasswordStrength) Description() string {
+	return "returns an integer to indicate how strong the password is."
+}
+
+func (f *ValidatePasswordStrength) Type() sql.Type {
+	return types.Int32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ValidatePasswordStrength) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
+
+// Eval implements sql.Expression
+func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := f.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if arg == nil {
+		return nil, nil
+	}
+
+	val, _, err := types.LongText.Convert(arg)
+	if err != nil {
+		return nil, nil
+	}
+	password := val.(string)
+	strength := 0
+	if len(password) < minPasswordLength {
+		return strength, nil
+	}
+	strength += 25
+
+	// Requirements for LOW password strength
+	_, passLen, ok := sql.SystemVariables.GetGlobal("validate_password.length")
+	if !ok {
+		return nil, err
+	}
+	passLenInt, ok := types.CoalesceInt(passLen)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password.length: %v", passLen)
+	}
+	if len(password) < passLenInt {
+		return strength, nil
+	}
+	strength += 25
+
+	// Requirements for MEDIUM password strength
+	_, numCount, ok := sql.SystemVariables.GetGlobal("validate_password.number_count")
+	if !ok {
+		return nil, fmt.Errorf("error: validate_password.number_count variable was not found")
+	}
+	numCountInt, ok := types.CoalesceInt(numCount)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password.number_count: %v", numCount)
+	}
+	_, mixCaseCount, ok := sql.SystemVariables.GetGlobal("validate_password.mixed_case_count")
+	if !ok {
+		return nil, fmt.Errorf("error: validate_password.mixed_case_count variable was not found")
+	}
+	mixCaseCountInt, ok := types.CoalesceInt(mixCaseCount)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password.mixed_case_count: %v", mixCaseCount)
+	}
+	lowerCount, upperCount := mixCaseCountInt, mixCaseCountInt
+	_, specialCharCount, ok := sql.SystemVariables.GetGlobal("validate_password.special_char_count")
+	if !ok {
+		return nil, fmt.Errorf("error: validate_password.special_char_count variable was not found")
+	}
+	specialCharCountInt, ok := types.CoalesceInt(specialCharCount)
+	if !ok {
+		return nil, fmt.Errorf("invalid value for validate_password.special_char_count: %v", specialCharCount)
+	}
+	for _, c := range password {
+		if unicode.IsNumber(c) {
+			numCountInt--
+		} else if unicode.IsUpper(c) {
+			upperCount--
+		} else if unicode.IsLower(c) {
+			lowerCount--
+		} else {
+			specialCharCountInt--
+		}
+	}
+	if numCountInt > 0 || upperCount > 0 || lowerCount > 0 || specialCharCountInt > 0 {
+		return strength, nil
+	}
+	strength += 25
+
+	// Requirements for STRONG password strength
+	// TODO: support dictionary file substring matching
+	strength += 25
+
+	return strength, nil
+}
+
+// WithChildren implements sql.Expression
+func (f *ValidatePasswordStrength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
+	}
+	return NewValidatePasswordStrength(children[0]), nil
 }

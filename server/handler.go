@@ -193,7 +193,12 @@ func (h *Handler) ComBind(ctx context.Context, c *mysql.Conn, query string, pars
 		return nil, nil, fmt.Errorf("parsedQuery must be a sqlparser.Statement, but got %T", parsedQuery)
 	}
 
-	queryPlan, err := h.e.BoundQueryPlan(sqlCtx, query, stmt, prepare.BindVars)
+	bindingExprs, err := bindingsToExprs(prepare.BindVars)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	queryPlan, err := h.e.BoundQueryPlan(sqlCtx, query, stmt, bindingExprs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -228,8 +233,7 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 	logrus.WithField("connectionId", c.ConnectionID).Debug("COM_RESET_CONNECTION command received")
 
 	// Grab the currently selected database name
-	s := h.sm.session(c)
-	db := s.GetCurrentDatabase()
+	db := h.sm.GetCurrentDB(c)
 
 	// Dispose of the connection's current session
 	h.maybeReleaseAllLocks(c)
@@ -240,9 +244,8 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 	if err != nil {
 		return err
 	}
-	s = h.sm.session(c)
-	s.SetCurrentDatabase(db)
-	return nil
+
+	return h.sm.SetDB(c, db)
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
@@ -1017,7 +1020,11 @@ type QueryExecutor func(
 // executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
 // statement, which may be nil.
 func (h *Handler) executeQuery(ctx *sql.Context, query string, parsed sqlparser.Statement, _ sql.Node, bindings map[string]*querypb.BindVariable, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
-	return h.e.QueryWithBindings(ctx, query, parsed, bindings, qFlags)
+	bindingExprs, err := bindingsToExprs(bindings)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return h.e.QueryWithBindings(ctx, query, parsed, bindingExprs, qFlags)
 }
 
 // executeQuery is a QueryExecutor that calls QueryWithBindings on the given engine using the given query and parsed
@@ -1031,4 +1038,20 @@ func (h *Handler) executeBoundPlan(
 	_ *sql.QueryFlags,
 ) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	return h.e.PrepQueryPlanForExecution(ctx, query, plan)
+}
+
+func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sqlparser.Expr, error) {
+	res := make(map[string]sqlparser.Expr, len(bindings))
+	for name, bv := range bindings {
+		val, err := sqltypes.BindVariableToValue(bv)
+		if err != nil {
+			return nil, err
+		}
+		expr, err := sqlparser.ExprFromValue(val)
+		if err != nil {
+			return nil, err
+		}
+		res[name] = expr
+	}
+	return res, nil
 }

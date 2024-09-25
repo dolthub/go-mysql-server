@@ -197,21 +197,12 @@ func ExpressionToColumn(e sql.Expression, name string) *sql.Column {
 		db = t.Database()
 	}
 
-	// TODO: Is this still necessary?
-	if e.Resolved() {
-		return &sql.Column{
-			Name:           name,
-			Source:         table,
-			DatabaseSource: db,
-			Type:           e.Type(),
-			Nullable:       e.IsNullable(),
-		}
-	} else {
-		return &sql.Column{
-			Name:           name,
-			Source:         table,
-			DatabaseSource: db,
-		}
+	return &sql.Column{
+		Name:           name,
+		Source:         table,
+		DatabaseSource: db,
+		Type:           e.Type(),
+		Nullable:       e.IsNullable(),
 	}
 }
 

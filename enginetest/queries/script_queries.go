@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	gmstime "github.com/dolthub/go-mysql-server/internal/time"
@@ -97,7 +97,7 @@ type ScriptTestAssertion struct {
 	SkipResultCheckOnServerEngine bool
 
 	// Bindings are variable mappings only used for prepared tests
-	Bindings map[string]*querypb.BindVariable
+	Bindings map[string]sqlparser.Expr
 
 	// CheckIndexedAccess indicates whether we should verify the query plan uses an index
 	CheckIndexedAccess bool
@@ -7281,6 +7281,173 @@ where
 			},
 		},
 	},
+	{
+		Name: "not null not unique index works on server engine",
+		SetUpScript: []string{
+			"create table t (i int not null, index (i));",
+			"insert into t values (1), (1), (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where i = 1;",
+				Expected: []sql.Row{
+					{1},
+					{1},
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "validate_password_strength and validate_password.length",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.length",
+			"set @@global.validate_password.length = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('')",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select validate_password_strength('123')",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select validate_password_strength('1234')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.length = 1000",
+			},
+			{
+				Query: "select validate_password_strength('ABCabc123!@!#')",
+				Expected: []sql.Row{
+					{25},
+				},
+			},
+			{
+				Query:          "set @@session.validate_password.length = 123",
+				ExpectedErrStr: "Variable 'validate_password.length' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.length = @orig",
+			},
+		},
+	},
+	{
+		Name: "validate_password_strength and validate_password.number_count",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.number_count",
+			"set @@global.validate_password.number_count = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('ABCabc!@#')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.number_count = 1000",
+			},
+			{
+				Query: "select validate_password_strength('ABCabc!!!!123456789012345678901234567890')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				Query:          "set @@session.validate_password.number_count = 123",
+				ExpectedErrStr: "Variable 'validate_password.number_count' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.number_count = @orig",
+			},
+		},
+	},
+	{
+		Name: "validate_password_strength and validate_password.mixed_case_count",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.mixed_case_count",
+			"set @@global.validate_password.mixed_case_count = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('abcabc!@#123')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				Query: "select validate_password_strength('ABCABC!@#123')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.mixed_case_count = 1000",
+			},
+			{
+				Query: "select validate_password_strength('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456!?!?!?')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				Query:          "set @@session.validate_password.mixed_case_count = 123",
+				ExpectedErrStr: "Variable 'validate_password.mixed_case_count' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.mixed_case_count = @orig",
+			},
+		},
+	},
+	{
+		Name: "validate_password_strength and validate_password.special_char_count",
+		SetUpScript: []string{
+			"set @orig = @@global.validate_password.special_char_count",
+			"set @@global.validate_password.special_char_count = 0",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select validate_password_strength('abcABC123')",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.special_char_count = 1000",
+			},
+			{
+				Query: "select validate_password_strength('abcABC123!@#$%^&*()                            ')",
+				Expected: []sql.Row{
+					{50},
+				},
+			},
+			{
+				Query:          "set @@session.validate_password.special_char_count = 123",
+				ExpectedErrStr: "Variable 'validate_password.special_char_count' is a GLOBAL variable and should be set with SET GLOBAL",
+			},
+			{
+				SkipResultsCheck: true,
+				Query:            "set @@global.validate_password.special_char_count = @orig",
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -7988,7 +8155,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @dt;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56.000000"},
+					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 				},
 			},
 			{
@@ -8002,7 +8169,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Query: "execute s using @ts;",
 				Expected: []sql.Row{
-					{"2001-02-03 12:34:56.000000"},
+					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 				},
 			},
 			{
@@ -8293,11 +8460,11 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `INSERT INTO test (data) values (?)`,
-				Bindings: map[string]*querypb.BindVariable{
+				Bindings: map[string]sqlparser.Expr{
 					// Vitess chooses VARBINARY as the bindvar type if the client sends CHAR data
 					// If we change how Vitess interprets client bindvar types, we should update this test
 					// Or better yet: have a test harness that uses the server directly
-					"v1": {Type: querypb.Type_VARBINARY, Value: []byte(
+					"v1": sqlparser.NewStrVal([]byte(
 						"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
@@ -8310,7 +8477,7 @@ var PreparedScriptTests = []ScriptTest{
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
-							"")},
+							"")),
 				},
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,

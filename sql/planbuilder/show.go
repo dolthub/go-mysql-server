@@ -580,13 +580,13 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 		if v.Type == ast.ValArg && (b.bindCtx == nil || b.bindCtx.resolveOnly) {
 			return nil
 		}
-		repl := b.normalizeValArg(v)
-		val, ok := repl.(*ast.SQLVal)
-		if !ok {
-			// *ast.NullVal
-			return nil
+		repl, ok := b.normalizeValArg(v)
+		if ok {
+			if lit, ok := repl.(*expression.Literal); ok {
+				return lit
+			}
 		}
-		ret, _, err := types.Text.Convert(val.Val)
+		ret, _, err := types.Text.Convert(v.Val)
 		if err != nil {
 			b.handleErr(err)
 		}

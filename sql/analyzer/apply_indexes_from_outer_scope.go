@@ -92,24 +92,24 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 // sql.IndexAddressableTable
 func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
+		switch nn := n.(type) {
 		case *plan.IndexedTableAccess:
 		case sql.TableNode:
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
 			}
-			if _, ok := table.(sql.IndexAddressableTable); ok {
-				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				lb := plan.NewLookupBuilder(index, keyExpr, nullmask)
-
-				ret, err := plan.NewIndexedAccessForTableNode(n, lb)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-
-				return ret, transform.NewTree, nil
+			_, isIdxAddrTbl := table.(sql.IndexAddressableTable)
+			if !isIdxAddrTbl {
+				return n, transform.SameTree, nil
 			}
+			a.Log("table %q transformed with pushdown of index", tableNode.Name())
+			lb := plan.NewLookupBuilder(index, keyExpr, nullmask)
+			ret, err := plan.NewIndexedAccessForTableNode(nn, lb)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return ret, transform.NewTree, nil
 		}
 		return n, transform.SameTree, nil
 	})

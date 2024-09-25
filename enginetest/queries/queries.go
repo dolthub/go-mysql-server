@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -33,7 +33,7 @@ type QueryTest struct {
 	Query            string
 	Expected         []sql.Row
 	ExpectedColumns  sql.Schema // only Name and Type matter here, because that's what we send on the wire
-	Bindings         map[string]*query.BindVariable
+	Bindings         map[string]sqlparser.Expr
 	SkipPrepared     bool
 	SkipServerEngine bool
 }
@@ -9970,6 +9970,55 @@ from typestable`,
 			{"03.10.2003"},
 		},
 	},
+
+	{
+		Query: "select charset(null)",
+		Expected: []sql.Row{
+			{"binary"},
+		},
+	},
+	{
+		Query: "select charset(123)",
+		Expected: []sql.Row{
+			{"binary"},
+		},
+	},
+	{
+		Query: "select charset('abc')",
+		Expected: []sql.Row{
+			{"utf8mb4"},
+		},
+	},
+	{
+		Query: "select charset(convert('abc' using latin1))",
+		Expected: []sql.Row{
+			{"latin1"},
+		},
+	},
+	{
+		Query: "select uncompress(compress('thisisastring'))",
+		Expected: []sql.Row{
+			{[]byte{0x74, 0x68, 0x69, 0x73, 0x69, 0x73, 0x61, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67}},
+		},
+	},
+	{
+		Query: "select length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{24}, // 21 in MySQL because of library implementation differences
+		},
+	},
+	{
+		Query: "select length(uncompress(compress(repeat('a', 1000))))",
+		Expected: []sql.Row{
+			{1000},
+		},
+	},
+	{
+		Query: "select uncompressed_length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{uint32(1000)},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -10413,7 +10462,7 @@ var DateParseQueries = []QueryTest{
 
 type QueryErrorTest struct {
 	Query          string
-	Bindings       map[string]*query.BindVariable
+	Bindings       map[string]sqlparser.Expr
 	ExpectedErr    *errors.Kind
 	ExpectedErrStr string
 }
@@ -11113,7 +11162,7 @@ type WriteQueryTest struct {
 	ExpectedWriteResult []sql.Row
 	SelectQuery         string
 	ExpectedSelect      []sql.Row
-	Bindings            map[string]*query.BindVariable
+	Bindings            map[string]sqlparser.Expr
 	Skip                bool
 	SkipServerEngine    bool
 }

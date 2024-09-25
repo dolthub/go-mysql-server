@@ -148,8 +148,8 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `select a.i,a.f, b.i2 from niltable a left join niltable b on a.i = b.i2 order by a.i`,
-		Expected: []sql.Row{{1, nil, nil}, {2, nil, 2}, {3, nil, nil}, {4, 4.0, 4}, {5, 5.0, nil}, {6, 6.0, 6}},
+		Query:    `select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);`,
+		Expected: []sql.Row{{true, 0, true}},
 	}
 
 	fmt.Sprintf("%v", test)
@@ -175,7 +175,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 			{
 				// Original Issue: https://github.com/dolthub/dolt/issues/5714
 				Query: `select 1.0/0.0 from dual`,
-
 				Expected: []sql.Row{
 					{4},
 				},

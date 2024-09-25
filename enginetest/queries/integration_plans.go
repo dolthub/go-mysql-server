@@ -17717,8 +17717,8 @@ WHERE LUEVY IN ('1', '2', '3')`,
 		ExpectedPlan: "RowUpdateAccumulator\n" +
 			" └─ Delete\n" +
 			"     └─ IndexedTableAccess(AMYXQ)\n" +
-			"         ├─ index: [AMYXQ.LUEVY]\n" +
-			"         ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
+			"         ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
+			"         ├─ static: [{[NULL, ∞), [1, 1]}, {[NULL, ∞), [2, 2]}, {[NULL, ∞), [3, 3]}]\n" +
 			"         ├─ colSet: (1-8)\n" +
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +

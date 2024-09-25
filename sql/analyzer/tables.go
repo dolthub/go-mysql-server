@@ -71,21 +71,23 @@ func getUnaliasedTableName(node sql.Node) string {
 // Finds first table node that is a descendant of the node given
 func getTable(node sql.Node) sql.Table {
 	var table sql.Table
-	transform.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(n sql.Node) bool {
+		// Inspect is called on all children of a node even if an earlier child's call returns false.
+		// We only want the first TableNode match.
 		if table != nil {
 			return false
 		}
-
-		switch n := node.(type) {
+		switch nn := n.(type) {
 		case sql.TableNode:
-			table = n.UnderlyingTable()
-			// TODO unwinding a table wrapper here causes infinite analyzer recursion
+			// TODO: unwinding a table wrapper here causes infinite analyzer recursion
+			table = nn.UnderlyingTable()
 			return false
 		case *plan.IndexedTableAccess:
-			table = n.TableNode.UnderlyingTable()
+			table = nn.TableNode.UnderlyingTable()
 			return false
+		default:
+			return true
 		}
-		return true
 	})
 	return table
 }
@@ -94,25 +96,23 @@ func getTable(node sql.Node) sql.Table {
 // This function will not look inside SubqueryAliases
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
-	transform.Inspect(node, func(node sql.Node) bool {
-		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first TableNode match.
+	transform.Inspect(node, func(n sql.Node) bool {
+		// Inspect is called on all children of a node even if an earlier child's call returns false.
+		// We only want the first TableNode match.
 		if table != nil {
 			return false
 		}
-
-		switch n := node.(type) {
+		switch nn := n.(type) {
 		case *plan.SubqueryAlias:
 			// We should not be matching with ResolvedTables inside SubqueryAliases
 			return false
 		case *plan.ResolvedTable:
-			if !plan.IsDualTable(n) {
-				table = n
+			if !plan.IsDualTable(nn) {
+				table = nn
 				return false
 			}
 		case *plan.IndexedTableAccess:
-			rt, ok := n.TableNode.(*plan.ResolvedTable)
-			if ok {
+			if rt, ok := nn.TableNode.(*plan.ResolvedTable); ok {
 				table = rt
 				return false
 			}
