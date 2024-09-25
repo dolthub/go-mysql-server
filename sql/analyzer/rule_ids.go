@@ -16,45 +16,45 @@ const (
 	resolveNamedWindowsId                        // resolveNamedWindows
 	resolveSetVariablesId                        // resolveSetVariables
 	resolveViewsId                               // resolveViews
-	liftCtesId                                   // liftCtes
-	resolveCtesId                                // resolveCtes
-	liftRecursiveCtesId                          // liftRecursiveCtes
-	resolveDatabasesId                           // resolveDatabases
-	resolveTablesId                              // resolveTables
-	loadStoredProceduresId                       // loadStoredProcedures
-	validateDropTablesId                         // validateDropTables
-	pruneDropTablesId                            // pruneDropTables
-	setTargetSchemasId                           // setTargetSchemas
-	resolveCreateLikeId                          // resolveCreateLike
-	parseColumnDefaultsId                        // parseColumnDefaults
-	resolveDropConstraintId                      // resolveDropConstraint
-	validateDropConstraintId                     // validateDropConstraint
-	loadCheckConstraintsId                       // loadCheckConstraints
-	assignCatalogId                              // assignCatalog
-	resolveAnalyzeTablesId                       // resolveAnalyzeTables
-	resolveCreateSelectId                        // resolveCreateSelect
-	resolveSubqueriesId                          // resolveSubqueries
-	setViewTargetSchemaId                        // setViewTargetSchema
-	resolveUnionsId                              // resolveUnions
-	resolveDescribeQueryId                       // resolveDescribeQuery
-	checkUniqueTableNamesId                      // checkUniqueTableNames
-	resolveTableFunctionsId                      // resolveTableFunctions
-	resolveDeclarationsId                        // resolveDeclarations
-	resolveColumnDefaultsId                      // resolveColumnDefaults
-	ValidateColumnDefaultsId                     // validateColumnDefaults
-	validateCreateTriggerId                      // validateCreateTrigger
-	validateCreateProcedureId                    // validateCreateProcedure
-	resolveCreateProcedureId                     // resolveCreateProcedure
-	loadInfoSchemaId                             // loadInfoSchema
-	validateReadOnlyDatabaseId                   // validateReadOnlyDatabase
-	validateReadOnlyTransactionId                // validateReadOnlyTransaction
-	validateDatabaseSetId                        // validateDatabaseSet
-	validatePrivilegesId                         // validatePrivileges
-	reresolveTablesId                            // reresolveTables
-	setInsertColumnsId                           // setInsertColumns
-	validateJoinComplexityId                     // validateJoinComplexity
-	applyBinlogReplicaControllerId               // applyBinlogReplicaController
-	applyEventSchedulerId                        // applyEventScheduler
+	liftCtesId                                  // liftCtes
+	resolveCtesId                               // resolveCtes
+	liftRecursiveCtesId                         // liftRecursiveCtes
+	resolveDatabasesId                          // resolveDatabases
+	resolveTablesId                             // resolveTables
+	loadStoredProceduresId                      // loadStoredProcedures
+	validateDropTablesId                        // validateDropTables
+	pruneDropTablesId                           // pruneDropTables
+	setTargetSchemasId                          // setTargetSchemas
+	resolveCreateLikeId                         // resolveCreateLike
+	parseColumnDefaultsId                       // parseColumnDefaults
+	resolveDropConstraintId                     // resolveDropConstraint
+	validateDropConstraintId                    // validateDropConstraint
+	loadCheckConstraintsId                      // loadCheckConstraints
+	assignCatalogId                             // assignCatalog
+	resolveAnalyzeTablesId                      // resolveAnalyzeTables
+	resolveCreateSelectId                       // resolveCreateSelect
+	resolveSubqueriesId                         // resolveSubqueries
+	setViewTargetSchemaId                       // setViewTargetSchema
+	resolveUnionsId                             // resolveUnions
+	resolveDescribeQueryId                      // resolveDescribeQuery
+	checkUniqueTableNamesId                     // checkUniqueTableNames
+	resolveTableFunctionsId                     // resolveTableFunctions
+	resolveDeclarationsId                       // resolveDeclarations
+	resolveColumnDefaultsId                     // resolveColumnDefaults
+	ValidateColumnDefaultsId                    // validateColumnDefaults
+	validateCreateTriggerId                     // validateCreateTrigger
+	validateCreateProcedureId                   // validateCreateProcedure
+	resolveCreateProcedureId                    // resolveCreateProcedure
+	loadInfoSchemaId                            // loadInfoSchema
+	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
+	validateReadOnlyTransactionId               // validateReadOnlyTransaction
+	validateDatabaseSetId                       // validateDatabaseSet
+	validatePrivilegesId                        // validatePrivileges
+	reresolveTablesId                           // reresolveTables
+	setInsertColumnsId                          // setInsertColumns
+	validateJoinComplexityId                    // validateJoinComplexity
+	applyBinlogReplicaControllerId              // applyBinlogReplicaController
+	applyEventSchedulerId                       // applyEventScheduler
 
 	// default
 	resolveUsingJoinsId            // resolveUsingJoins
@@ -111,6 +111,7 @@ const (
 	replaceAggId                 // replaceAgg
 	replaceIdxSortId             // replaceIdxSort
 	insertTopNId                 // insertTopN
+	replaceIdxOrderByDistanceId  // replaceIdxOrderByDistance
 	applyHashInId                // applyHashIn
 	resolveInsertRowsId          // resolveInsertRows
 	resolvePreparedInsertId      // resolvePreparedInsert
