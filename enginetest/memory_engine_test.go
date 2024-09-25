@@ -205,25 +205,17 @@ func newUpdateResult(matched, updated int) types.OkResult {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name:        "test script",
 			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{
-				{
-					Query: "SELECT REGEXP_LIKE('testing', 'TESTING');",
-					Expected: []sql.Row{
-						{0},
-					},
-				},
-			},
+			Assertions:  []queries.ScriptTestAssertion{},
 		},
 	}
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)

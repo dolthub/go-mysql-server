@@ -516,7 +516,7 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	switch i := iter.(type) {
 	case *rowexec.ExprCloserIter:
-		return GetDeferredProjections(i.Iter)
+		return GetDeferredProjections(i.GetIter())
 	case *plan.TrackedRowIter:
 		if commit, isCommit := i.GetNode().(*plan.TransactionCommittingNode); isCommit {
 			if proj, isProj := commit.Child().(*plan.Project); isProj {

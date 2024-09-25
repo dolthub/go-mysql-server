@@ -22,7 +22,7 @@ import (
 // ExprCloserIter ensures that all expressions that implement sql.Closer are closed. This is implemented as a capturing
 // iterator, as our workflow only supports closing nodes, not expressions.
 type ExprCloserIter struct {
-	Iter  sql.RowIter
+	iter  sql.RowIter
 	exprs []sql.Closer
 }
 
@@ -44,23 +44,27 @@ func AddExpressionCloser(node sql.Node, iter sql.RowIter) sql.RowIter {
 		return iter
 	}
 	return &ExprCloserIter{
-		Iter:  iter,
+		iter:  iter,
 		exprs: exprs,
 	}
 }
 
 // Next implements the interface sql.RowIter.
 func (eci *ExprCloserIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return eci.Iter.Next(ctx)
+	return eci.iter.Next(ctx)
 }
 
 // Close implements the interface sql.RowIter.
 func (eci *ExprCloserIter) Close(ctx *sql.Context) error {
-	err := eci.Iter.Close(ctx)
+	err := eci.iter.Close(ctx)
 	for _, expr := range eci.exprs {
 		if nErr := expr.Close(ctx); err == nil {
 			err = nErr
 		}
 	}
 	return err
+}
+
+func (eci *ExprCloserIter) GetIter() sql.RowIter {
+	return eci.iter
 }

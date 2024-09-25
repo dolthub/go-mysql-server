@@ -503,13 +503,13 @@ func (di *orderedDistinctIter) Close(ctx *sql.Context) error {
 	return di.childIter.Close(ctx)
 }
 
-type ProjectIter struct {
-	Projs     []sql.Expression
+type projectIter struct {
+	projs     []sql.Expression
 	deferred  bool
 	childIter sql.RowIter
 }
 
-func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
@@ -517,10 +517,10 @@ func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.deferred {
 		return childRow, nil
 	}
-	return ProjectRow(ctx, i.Projs, childRow)
+	return ProjectRow(ctx, i.projs, childRow)
 }
 
-func (i *ProjectIter) Close(ctx *sql.Context) error {
+func (i *projectIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 
