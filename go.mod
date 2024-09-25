@@ -17,9 +17,9 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/stretchr/testify v1.8.2
-	go.opentelemetry.io/otel v1.7.0
-	go.opentelemetry.io/otel/trace v1.7.0
+	github.com/stretchr/testify v1.9.0
+	go.opentelemetry.io/otel v1.30.0
+	go.opentelemetry.io/otel/trace v1.30.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.12.0

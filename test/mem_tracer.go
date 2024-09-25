@@ -19,14 +19,17 @@ import (
 	"sync"
 
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/embedded"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
-var _, noopSpan = trace.NewNoopTracerProvider().Tracer("").Start(context.Background(), "")
+var _, noopSpan = noop.NewTracerProvider().Tracer("").Start(context.Background(), "")
 
 // MemTracer implements a simple tracer in memory for testing.
 type MemTracer struct {
 	Spans []string
 	sync.Mutex
+	embedded.Tracer
 }
 
 type memSpan struct {
