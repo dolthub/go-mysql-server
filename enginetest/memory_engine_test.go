@@ -210,7 +210,7 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name:        "test script",
 			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{},
+			Assertions: []queries.ScriptTestAssertion{},
 		},
 	}
 
