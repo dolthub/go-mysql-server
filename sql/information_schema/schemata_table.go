@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// newMySQLColumnsTable returns a ColumnsTable for MySQL.
+// newMySQLSchemataTable returns a InformationSchemaTable for MySQL.
 func newMySQLSchemataTable() *InformationSchemaTable {
 	return &InformationSchemaTable{
 		TableName:   SchemataTableName,
