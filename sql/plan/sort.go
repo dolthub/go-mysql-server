@@ -21,6 +21,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+type Sortable interface {
+	sql.Node
+	GetSortFields() sql.SortFields
+}
+
 // Sort is the sort node.
 type Sort struct {
 	UnaryNode
@@ -38,6 +43,7 @@ func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
 var _ sql.Expressioner = (*Sort)(nil)
 var _ sql.Node = (*Sort)(nil)
 var _ sql.CollationCoercible = (*Sort)(nil)
+var _ Sortable = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
@@ -112,6 +118,10 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 	fields := s.SortFields.FromExpressions(exprs...)
 	return NewSort(fields, s.Child), nil
+}
+
+func (s *Sort) GetSortFields() sql.SortFields {
+	return s.SortFields
 }
 
 // TopN was a sort node that has a limit. It doesn't need to buffer everything,
@@ -217,4 +227,8 @@ func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	topn := NewTopN(fields, limit, n.Child)
 	topn.CalcFoundRows = n.CalcFoundRows
 	return topn, nil
+}
+
+func (n *TopN) GetSortFields() sql.SortFields {
+	return n.Fields
 }

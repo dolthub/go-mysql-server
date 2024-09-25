@@ -96,6 +96,7 @@ var OnceAfterDefault = []Rule{
 	{eraseProjectionId, eraseProjection},
 	{flattenDistinctId, flattenDistinct},
 	{insertTopNId, insertTopNNodes},
+	{replaceIdxOrderByDistanceId, replaceIdxOrderByDistance},
 	{applyHashInId, applyHashIn},
 	{assignRoutinesId, assignRoutines},
 	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},

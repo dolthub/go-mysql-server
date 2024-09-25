@@ -32,6 +32,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
+	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -44,11 +45,11 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 		return nil, err
 	}
 
-	limit, err := getInt64Value(ctx, n.Limit)
+	limit, err := iters.GetInt64Value(ctx, n.Limit)
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))), nil
+	return sql.NewSpanIter(span, iters.NewTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))), nil
 }
 
 func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDerivedTable, row sql.Row) (sql.RowIter, error) {
@@ -124,7 +125,7 @@ func (b *BaseBuilder) buildWindow(ctx *sql.Context, n *plan.Window, row sql.Row)
 func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Offset", trace.WithAttributes(attribute.Stringer("offset", n.Offset)))
 
-	offset, err := getInt64Value(ctx, n.Offset)
+	offset, err := iters.GetInt64Value(ctx, n.Offset)
 	if err != nil {
 		span.End()
 		return nil, err
@@ -138,17 +139,17 @@ func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row)
 	return sql.NewSpanIter(span, &offsetIter{offset, it}), nil
 }
 
-func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row) ([]*jsonTableCol, error) {
-	var cols []*jsonTableCol
+func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row) ([]*iters.JsonTableCol, error) {
+	var cols []*iters.JsonTableCol
 	for _, col := range jtCols {
 		if col.Opts == nil {
 			innerCols, err := b.buildJSONTableCols(ctx, col.NestedCols, row)
 			if err != nil {
 				return nil, err
 			}
-			cols = append(cols, &jsonTableCol{
-				path: col.Path,
-				cols: innerCols,
+			cols = append(cols, &iters.JsonTableCol{
+				Path: col.Path,
+				Cols: innerCols,
 			})
 			continue
 		}
@@ -161,17 +162,17 @@ func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTab
 		if err != nil {
 			return nil, err
 		}
-		cols = append(cols, &jsonTableCol{
-			path: col.Path,
-			opts: &jsonTableColOpts{
-				name:      col.Opts.Name,
-				typ:       col.Opts.Type,
-				forOrd:    col.Opts.ForOrd,
-				exists:    col.Opts.Exists,
-				defErrVal: defErrVal,
-				defEmpVal: defEmpVal,
-				errOnErr:  col.Opts.ErrorOnError,
-				errOnEmp:  col.Opts.ErrorOnEmpty,
+		cols = append(cols, &iters.JsonTableCol{
+			Path: col.Path,
+			Opts: &iters.JsonTableColOpts{
+				Name:      col.Opts.Name,
+				Typ:       col.Opts.Type,
+				ForOrd:    col.Opts.ForOrd,
+				Exists:    col.Opts.Exists,
+				DefErrVal: defErrVal,
+				DefEmpVal: defEmpVal,
+				ErrOnErr:  col.Opts.ErrorOnError,
+				ErrOnEmp:  col.Opts.ErrorOnEmpty,
 			},
 		})
 	}
@@ -186,7 +187,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 	}
 
 	if data == nil {
-		return &jsonTableRowIter{}, nil
+		return &iters.JsonTableRowIter{}, nil
 	}
 
 	jsonData, err := json.GetJSONFromWrapperOrCoercibleString(data, "json_table", 1)
@@ -204,9 +205,9 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 
 	cols, err := b.buildJSONTableCols(ctx, n.Cols, row)
 
-	rowIter := &jsonTableRowIter{
-		data: jsonPathData.([]interface{}),
-		cols: cols,
+	rowIter := &iters.JsonTableRowIter{
+		Data: jsonPathData.([]interface{}),
+		Cols: cols,
 	}
 	rowIter.NextSibling() // set to first sibling
 
@@ -292,7 +293,7 @@ func (b *BaseBuilder) buildOrderedDistinct(ctx *sql.Context, n *plan.OrderedDist
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, newOrderedDistinctIter(it, n.Child.Schema())), nil
+	return sql.NewSpanIter(span, iters.NewOrderedDistinctIter(it, n.Child.Schema())), nil
 }
 
 func (b *BaseBuilder) buildWith(ctx *sql.Context, n *plan.With, row sql.Row) (sql.RowIter, error) {
@@ -332,7 +333,7 @@ func (b *BaseBuilder) buildProcedure(ctx *sql.Context, n *plan.Procedure, row sq
 }
 
 func (b *BaseBuilder) buildRecursiveTable(ctx *sql.Context, n *plan.RecursiveTable, row sql.Row) (sql.RowIter, error) {
-	return &recursiveTableIter{buf: n.Buf}, nil
+	return &iters.RecursiveTableIter{Buf: n.Buf}, nil
 }
 
 func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.RowIter, error) {
@@ -439,19 +440,19 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 		b:           b,
 	}
 	if n.Union().Limit != nil && len(n.Union().SortFields) > 0 {
-		limit, err := getInt64Value(ctx, n.Union().Limit)
+		limit, err := iters.GetInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema()))
+		iter = iters.NewTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema()))
 	} else if n.Union().Limit != nil {
-		limit, err := getInt64Value(ctx, n.Union().Limit)
+		limit, err := iters.GetInt64Value(ctx, n.Union().Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = &limitIter{limit: limit, childIter: iter}
+		iter = &iters.LimitIter{Limit: limit, ChildIter: iter}
 	} else if len(n.Union().SortFields) > 0 {
-		iter = newSortIter(n.Union().SortFields, iter)
+		iter = iters.NewSortIter(n.Union().SortFields, iter)
 	}
 	return iter, nil
 }
@@ -459,7 +460,7 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 func (b *BaseBuilder) buildLimit(ctx *sql.Context, n *plan.Limit, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Limit", trace.WithAttributes(attribute.Stringer("limit", n.Limit)))
 
-	limit, err := getInt64Value(ctx, n.Limit)
+	limit, err := iters.GetInt64Value(ctx, n.Limit)
 	if err != nil {
 		span.End()
 		return nil, err
@@ -470,10 +471,10 @@ func (b *BaseBuilder) buildLimit(ctx *sql.Context, n *plan.Limit, row sql.Row) (
 		span.End()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &limitIter{
-		calcFoundRows: n.CalcFoundRows,
-		limit:         limit,
-		childIter:     childIter,
+	return sql.NewSpanIter(span, &iters.LimitIter{
+		CalcFoundRows: n.CalcFoundRows,
+		Limit:         limit,
+		ChildIter:     childIter,
 	}), nil
 }
 
@@ -760,7 +761,7 @@ func (b *BaseBuilder) buildDistinct(ctx *sql.Context, n *plan.Distinct, row sql.
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, newDistinctIter(ctx, it)), nil
+	return sql.NewSpanIter(span, iters.NewDistinctIter(ctx, it)), nil
 }
 
 func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedTableAccess, row sql.Row) (sql.RowIter, error) {
@@ -800,9 +801,9 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 	}
 	switch s.SetOpType {
 	case plan.UnionType:
-		iter = &unionIter{
-			cur: iter,
-			nextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+		iter = &iters.UnionIter{
+			Cur: iter,
+			NextIter: func(ctx *sql.Context) (sql.RowIter, error) {
 				return b.buildNodeExec(ctx, s.Right(), row)
 			},
 		}
@@ -813,9 +814,9 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 			span.End()
 			return nil, err
 		}
-		iter = &intersectIter{
-			lIter: iter,
-			rIter: iter2,
+		iter = &iters.IntersectIter{
+			LIter: iter,
+			RIter: iter2,
 		}
 	case plan.ExceptType:
 		var iter2 sql.RowIter
@@ -825,48 +826,48 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 			return nil, err
 		}
 		if s.Distinct {
-			dIter := newDistinctIter(ctx, iter)
-			s.AddDispose(dIter.dispose)
+			dIter := iters.NewDistinctIter(ctx, iter)
+			s.AddDispose(dIter.DisposeFunc)
 			iter = dIter
 
-			dIter2 := newDistinctIter(ctx, iter2)
-			s.AddDispose(dIter2.dispose)
+			dIter2 := iters.NewDistinctIter(ctx, iter2)
+			s.AddDispose(dIter2.DisposeFunc)
 			iter2 = dIter2
 		}
-		iter = &exceptIter{
-			lIter: iter,
-			rIter: iter2,
+		iter = &iters.ExceptIter{
+			LIter: iter,
+			RIter: iter2,
 		}
 	}
 
 	if s.Distinct && s.SetOpType != plan.ExceptType {
-		dIter := newDistinctIter(ctx, iter)
-		s.AddDispose(dIter.dispose)
+		dIter := iters.NewDistinctIter(ctx, iter)
+		s.AddDispose(dIter.DisposeFunc)
 		iter = dIter
 	}
 	// Limit must wrap offset, and not vice-versa, so that
 	// skipped rows don't count toward the returned row count.
 	if s.Offset != nil {
-		offset, err := getInt64Value(ctx, s.Offset)
+		offset, err := iters.GetInt64Value(ctx, s.Offset)
 		if err != nil {
 			return nil, err
 		}
 		iter = &offsetIter{skip: offset, childIter: iter}
 	}
 	if s.Limit != nil && len(s.SortFields) > 0 {
-		limit, err := getInt64Value(ctx, s.Limit)
+		limit, err := iters.GetInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = newTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema()))
+		iter = iters.NewTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema()))
 	} else if s.Limit != nil {
-		limit, err := getInt64Value(ctx, s.Limit)
+		limit, err := iters.GetInt64Value(ctx, s.Limit)
 		if err != nil {
 			return nil, err
 		}
-		iter = &limitIter{limit: limit, childIter: iter}
+		iter = &iters.LimitIter{Limit: limit, ChildIter: iter}
 	} else if len(s.SortFields) > 0 {
-		iter = newSortIter(s.SortFields, iter)
+		iter = iters.NewSortIter(s.SortFields, iter)
 	}
 	return sql.NewSpanIter(span, iter), nil
 }
@@ -893,7 +894,7 @@ func (b *BaseBuilder) buildSort(ctx *sql.Context, n *plan.Sort, row sql.Row) (sq
 		span.End()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newSortIter(n.SortFields, i)), nil
+	return sql.NewSpanIter(span, iters.NewSortIter(n.SortFields, i)), nil
 }
 
 func (b *BaseBuilder) buildPrepareQuery(ctx *sql.Context, n *plan.PrepareQuery, row sql.Row) (sql.RowIter, error) {

@@ -36,8 +36,11 @@ type Index struct {
 	Unique     bool
 	Spatial    bool
 	Fulltext   bool
-	CommentStr string
-	PrefixLens []uint16
+	// If SupportedVectorFunction is non-nil, this index can be used to optimize ORDER BY
+	// expressions on this type of distance function.
+	SupportedVectorFunction expression.DistanceType
+	CommentStr              string
+	PrefixLens              []uint16
 	fulltextInfo
 }
 
@@ -116,6 +119,14 @@ func (idx *Index) IsSpatial() bool {
 
 func (idx *Index) IsFullText() bool {
 	return idx.Fulltext
+}
+
+func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
+	if idx.SupportedVectorFunction == nil {
+		return false
+	}
+	dist, isDist := expr.(*expression.Distance)
+	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceType)
 }
 
 func (idx *Index) Comment() string {
