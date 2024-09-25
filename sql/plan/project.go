@@ -26,7 +26,6 @@ import (
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
-	// Expression projected.
 	Projections []sql.Expression
 	Deferred    bool
 }
@@ -161,10 +160,9 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-
-	np := NewProject(p.Projections, children[0])
-	np.Deferred = p.Deferred
-	return np, nil
+	np := *p
+	np.Child = children[0]
+	return &np, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -182,8 +180,13 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(p.Projections) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), len(p.Projections))
 	}
+	np := *p
+	np.Projections = exprs
+	return &np, nil
+}
 
-	np := NewProject(exprs, p.Child)
-	np.Deferred = p.Deferred
-	return np, nil
+func (p *Project) WithDeferred(deferred bool) *Project {
+	np := *p
+	np.Deferred = deferred
+	return &np
 }

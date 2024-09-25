@@ -5636,12 +5636,12 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 					require.NoError(t, err)
 					expectedRowSet := script.Results[queryIdx]
 					expectedRowIdx := 0
-					var projections []sql.Expression
+					var projs []sql.Expression
 					if trackedIter, ok := engineIter.(*plan.TrackedRowIter); ok {
 						if commitNode, ok := trackedIter.Node.(*plan.TransactionCommittingNode); ok {
 							if proj, ok := commitNode.Child().(*plan.Project); ok {
 								if proj.Deferred {
-									projections = proj.Projections
+									projs = proj.Projections
 								}
 							}
 						}
@@ -5663,7 +5663,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 							break
 						}
 						expectedEngineRow := make([]*string, len(engineRow))
-						row, err := server.RowToSQL(ctx, sch, engineRow, projections)
+						row, err := server.RowToSQL(ctx, sch, engineRow, projs)
 						if !assert.NoError(t, err) {
 							break
 						}

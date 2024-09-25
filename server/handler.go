@@ -18,8 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/rowexec"
-"io"
+	"io"
 	"net"
 	"regexp"
 	"runtime/trace"
@@ -42,6 +41,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -512,6 +512,23 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 	return &sqltypes.Result{Fields: resultFields}, nil
 }
 
+// getDeferredProjections looks for a top-level deferred projection
+func getDeferredProjections(iter sql.RowIter) []sql.Expression {
+	switch i := iter.(type) {
+	case *rowexec.ExprCloserIter:
+		return getDeferredProjections(i.Iter)
+	case *plan.TrackedRowIter:
+		if commit, isCommit := i.GetNode().(*plan.TransactionCommittingNode); isCommit {
+			if proj, isProj := commit.Child().(*plan.Project); isProj {
+				if proj.Deferred {
+					return proj.Projections
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // resultForMax1RowIter ensures that an empty iterator returns at most one row
 func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForMax1RowIter").End()
@@ -529,7 +546,8 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 		return nil, err
 	}
 
-	outputRow, err := RowToSQL(ctx, schema, row, nil)
+	projs := getDeferredProjections(iter)
+	outputRow, err := RowToSQL(ctx, schema, row, projs)
 	if err != nil {
 		return nil, err
 	}
@@ -606,21 +624,7 @@ func (h *Handler) resultForDefaultIter(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	var projections []sql.Expression
-	iiter := iter
-	if exprIter, ok := iter.(*rowexec.ExprCloserIter); ok {
-		iiter = exprIter.Iter
-	}
-	if trackedIter, ok := iiter.(*plan.TrackedRowIter); ok {
-		if commitNode, ok := trackedIter.Node.(*plan.TransactionCommittingNode); ok {
-			if proj, ok := commitNode.Child().(*plan.Project); ok {
-				if proj.Deferred {
-					projections = proj.Projections
-				}
-			}
-		}
-	}
-
+	projs := getDeferredProjections(iter)
 	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
@@ -655,7 +659,7 @@ func (h *Handler) resultForDefaultIter(
 					continue
 				}
 
-				outputRow, err := RowToSQL(ctx, schema, row, projections)
+				outputRow, err := RowToSQL(ctx, schema, row, projs)
 				if err != nil {
 					return err
 				}
@@ -917,38 +921,33 @@ func updateMaxUsedConnectionsStatusVariable() {
 	}()
 }
 
-func RowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row, projections []sql.Expression) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, max(len(row), len(projections))) // TODO: maybe should be length of schema?
+func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression) ([]sqltypes.Value, error) {
 	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-	if len(s) == 0 {
-		return o, nil
+	if len(sch) == 0 {
+		return []sqltypes.Value{}, nil
 	}
-	if len(projections) > 0 {
-		for i, proj := range projections {
-			field, err := proj.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-			o[i], err = s[i].Type.SQL(ctx, nil, field)
+	var field interface{}
+	var err error
+	outVals := make([]sqltypes.Value, len(sch))
+	for i, col := range sch {
+		if len(projs) == 0 {
+			field = row[i]
+		} else {
+			field, err = projs[i].Eval(ctx, row)
 			if err != nil {
 				return nil, err
 			}
 		}
-	} else {
-		var err error
-		for i, v := range row {
-			if v == nil {
-				o[i] = sqltypes.NULL
-				continue
-			}
-			o[i], err = s[i].Type.SQL(ctx, nil, v)
-			if err != nil {
-				return nil, err
-			}
+		if field == nil {
+			outVals[i] = sqltypes.NULL
+			continue
+		}
+		outVals[i], err = col.Type.SQL(ctx, nil, field)
+		if err != nil {
+			return nil, err
 		}
 	}
-
-	return o, nil
+	return outVals, nil
 }
 
 func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {

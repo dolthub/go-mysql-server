@@ -29,8 +29,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// validateLimitAndOffset ensures that only integer literals are used for limit and offset values
-func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+// validateOffsetAndLimit ensures that only integer literals are used for limit and offset values
+func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	var i, i64 interface{}
 	transform.Inspect(n, func(n sql.Node) bool {

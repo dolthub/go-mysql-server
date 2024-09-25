@@ -40,7 +40,7 @@ var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{replaceCountStarId, replaceCountStar},
 	{applyEventSchedulerId, applyEventScheduler},
-	{validateOffsetAndLimitId, validateLimitAndOffset},
+	{validateOffsetAndLimitId, validateOffsetAndLimit},
 	{validateCreateTableId, validateCreateTable},
 	{validateAlterTableId, validateAlterTable},
 	{validateExprSemId, validateExprSem},

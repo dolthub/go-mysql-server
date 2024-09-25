@@ -307,7 +307,7 @@ const (
 )
 
 type TrackedRowIter struct {
-	Node               sql.Node
+	node               sql.Node
 	iter               sql.RowIter
 	numRows            int64
 	QueryType          queryType
@@ -322,7 +322,7 @@ func NewTrackedRowIter(
 	onNext NotifyFunc,
 	onDone NotifyFunc,
 ) *TrackedRowIter {
-	return &TrackedRowIter{Node: node, iter: iter, onDone: onDone, onNext: onNext}
+	return &TrackedRowIter{node: node, iter: iter, onDone: onDone, onNext: onNext}
 }
 
 func (i *TrackedRowIter) done() {
@@ -330,9 +330,9 @@ func (i *TrackedRowIter) done() {
 		i.onDone()
 		i.onDone = nil
 	}
-	if i.Node != nil {
+	if i.node != nil {
 		i.Dispose()
-		i.Node = nil
+		i.node = nil
 	}
 }
 
@@ -348,8 +348,8 @@ func disposeNode(n sql.Node) {
 }
 
 func (i *TrackedRowIter) Dispose() {
-	if i.Node != nil {
-		disposeNode(i.Node)
+	if i.node != nil {
+		disposeNode(i.node)
 	}
 }
 
@@ -375,6 +375,10 @@ func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 
 	i.done()
 	return err
+}
+
+func (i *TrackedRowIter) GetNode() sql.Node {
+	return i.node
 }
 
 func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
