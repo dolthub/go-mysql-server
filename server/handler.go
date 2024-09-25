@@ -512,11 +512,11 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 	return &sqltypes.Result{Fields: resultFields}, nil
 }
 
-// getDeferredProjections looks for a top-level deferred projection
-func getDeferredProjections(iter sql.RowIter) []sql.Expression {
+// GetDeferredProjections looks for a top-level deferred projection
+func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	switch i := iter.(type) {
 	case *rowexec.ExprCloserIter:
-		return getDeferredProjections(i.Iter)
+		return GetDeferredProjections(i.Iter)
 	case *plan.TrackedRowIter:
 		if commit, isCommit := i.GetNode().(*plan.TransactionCommittingNode); isCommit {
 			if proj, isProj := commit.Child().(*plan.Project); isProj {
@@ -546,7 +546,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 		return nil, err
 	}
 
-	projs := getDeferredProjections(iter)
+	projs := GetDeferredProjections(iter)
 	outputRow, err := RowToSQL(ctx, schema, row, projs)
 	if err != nil {
 		return nil, err
@@ -624,7 +624,7 @@ func (h *Handler) resultForDefaultIter(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	projs := getDeferredProjections(iter)
+	projs := GetDeferredProjections(iter)
 	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
