@@ -15,11 +15,13 @@
 package expression
 
 import (
+	"testing"
+
+	assert "github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/sql/types/jsontests"
-	assert "github.com/stretchr/testify/require"
-	"testing"
 )
 
 func jsonExpression(t *testing.T, val interface{}) sql.Expression {
