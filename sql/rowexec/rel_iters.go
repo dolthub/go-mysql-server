@@ -148,8 +148,8 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
-	var secondPass []int
-	var fields sql.Row
+	var fields = make(sql.Row, len(projections))
+	var secondPass = make([]int, 0, len(projections))
 	for i, expr := range projections {
 		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
 		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
@@ -157,16 +157,15 @@ func ProjectRow(
 		// Since literals do not reference other columns, they're evaluated on the first pass.
 		defaultVal, isDefaultVal := defaultValFromProjectExpr(expr)
 		if isDefaultVal && !defaultVal.IsLiteral() {
-			fields = append(fields, nil)
 			secondPass = append(secondPass, i)
 			continue
 		}
-		f, fErr := expr.Eval(ctx, row)
+		field, fErr := expr.Eval(ctx, row)
 		if fErr != nil {
 			return nil, fErr
 		}
-		f = normalizeNegativeZeros(f)
-		fields = append(fields, f)
+		field = normalizeNegativeZeros(field)
+		fields[i] = field
 	}
 	for _, index := range secondPass {
 		field, err := projections[index].Eval(ctx, fields)
@@ -176,7 +175,7 @@ func ProjectRow(
 		field = normalizeNegativeZeros(field)
 		fields[index] = field
 	}
-	return sql.NewRow(fields...), nil
+	return fields, nil
 }
 
 func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool) {

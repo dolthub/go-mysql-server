@@ -552,19 +552,23 @@ func (h *Handler) resultForDefaultIter(
 
 	eg, ctx := ctx.NewErrgroup()
 
-	var rowChan chan sql.Row
-
-	rowChan = make(chan sql.Row, 512)
-
 	pan2err := func() {
 		if recoveredPanic := recover(); recoveredPanic != nil {
 			returnErr = fmt.Errorf("handler caught panic: %v", recoveredPanic)
 		}
 	}
 
+	pollCtx, cancelF := ctx.NewSubContext()
+	eg.Go(func() error {
+		defer pan2err()
+		return h.pollForClosedConnection(pollCtx, c)
+	})
+
 	wg := sync.WaitGroup{}
 	wg.Add(2)
+
 	// Read rows off the row iterator and send them to the row channel.
+	var rowChan = make(chan sql.Row, 512)
 	eg.Go(func() error {
 		defer pan2err()
 		defer wg.Done()
@@ -590,12 +594,6 @@ func (h *Handler) resultForDefaultIter(
 		}
 	})
 
-	pollCtx, cancelF := ctx.NewSubContext()
-	eg.Go(func() error {
-		defer pan2err()
-		return h.pollForClosedConnection(pollCtx, c)
-	})
-
 	// Default waitTime is one minute if there is no timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
 	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
@@ -607,7 +605,7 @@ func (h *Handler) resultForDefaultIter(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// reads rows from the channel, converts them to wire format,
+	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
 		defer pan2err()
@@ -679,7 +677,6 @@ func (h *Handler) resultForDefaultIter(
 		}
 		returnErr = err
 	}
-
 	return
 }
 
@@ -906,18 +903,19 @@ func updateMaxUsedConnectionsStatusVariable() {
 
 func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 	o := make([]sqltypes.Value, len(row))
+	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
+	if len(s) == 0 {
+		return o, nil
+	}
 	var err error
 	for i, v := range row {
 		if v == nil {
 			o[i] = sqltypes.NULL
 			continue
 		}
-		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if len(s) > 0 {
-			o[i], err = s[i].Type.SQL(ctx, nil, v)
-			if err != nil {
-				return nil, err
-			}
+		o[i], err = s[i].Type.SQL(ctx, nil, v)
+		if err != nil {
+			return nil, err
 		}
 	}
 
