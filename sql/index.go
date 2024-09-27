@@ -122,6 +122,10 @@ type Index interface {
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
 	CanSupport(...Range) bool
+	// CanSupportOrderBy returns whether this index can optimize ORDER BY a given expression type.
+	// Verifying that the expression's children match the index columns are done separately.
+	CanSupportOrderBy(expr Expression) bool
+
 	// PrefixLengths returns the prefix lengths for each column in this index
 	PrefixLengths() []uint16
 }
@@ -151,10 +155,11 @@ type IndexLookup struct {
 	// values; the range is null safe, the index is unique, every index
 	// column has a range expression, and every range expression is an
 	// exact equality.
-	IsPointLookup   bool
-	IsEmptyRange    bool
-	IsSpatialLookup bool
-	IsReverse       bool
+	IsPointLookup       bool
+	IsEmptyRange        bool
+	IsSpatialLookup     bool
+	IsReverse           bool
+	VectorOrderAndLimit OrderAndLimit
 }
 
 var emptyLookup = IndexLookup{}

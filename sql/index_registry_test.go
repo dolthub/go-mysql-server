@@ -426,6 +426,10 @@ type dummyIdx struct {
 	table    string
 }
 
+func (i dummyIdx) CanSupportOrderBy(Expression) bool {
+	return false
+}
+
 var _ DriverIndex = (*dummyIdx)(nil)
 
 func (i dummyIdx) CanSupport(r ...Range) bool {

@@ -229,6 +229,10 @@ func (dummyIndex) IsFullText() bool {
 	return false
 }
 
+func (dummyIndex) CanSupportOrderBy(sql.Expression) bool {
+	return false
+}
+
 func (dummyIndex) Comment() string {
 	return ""
 }
