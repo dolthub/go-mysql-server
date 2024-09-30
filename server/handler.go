@@ -932,17 +932,27 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 	if len(sch) == 0 {
 		return []sqltypes.Value{}, nil
 	}
-	var field interface{}
-	var err error
+
 	outVals := make([]sqltypes.Value, len(sch))
-	for i, col := range sch {
-		if len(projs) == 0 {
-			field = row[i]
-		} else {
-			field, err = projs[i].Eval(ctx, row)
+	if len(projs) == 0 {
+		for i, col := range sch {
+			if row[i] == nil {
+				outVals[i] = sqltypes.NULL
+				continue
+			}
+			var err error
+			outVals[i], err = col.Type.SQL(ctx, nil, row[i])
 			if err != nil {
 				return nil, err
 			}
+		}
+		return outVals, nil
+	}
+
+	for i, col := range sch {
+		field, err := projs[i].Eval(ctx, row)
+		if err != nil {
+			return nil, err
 		}
 		if field == nil {
 			outVals[i] = sqltypes.NULL
