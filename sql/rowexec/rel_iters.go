@@ -137,7 +137,7 @@ func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 	if i.deferred {
-		//return childRow, nil
+		return childRow, nil
 	}
 	return ProjectRow(ctx, i.projs, childRow)
 }
