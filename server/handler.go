@@ -518,6 +518,11 @@ func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	case *rowexec.ExprCloserIter:
 		return GetDeferredProjections(i.GetIter())
 	case *plan.TrackedRowIter:
+		// TODO: absolutely no idea why i.GetNode() is nil sometimes and why that means the deferred projections
+		//   don't work but that is how it is
+		if i.GetNode() == nil {
+			return nil
+		}
 		if commitIter, isCommitIter := i.GetIter().(*rowexec.TransactionCommittingIter); isCommitIter {
 			if projIter, isProjIter := commitIter.GetIter().(*rowexec.ProjectIter); isProjIter {
 				if projIter.CanDefer() {
@@ -588,6 +593,7 @@ func (h *Handler) resultForDefaultIter(
 	wg.Add(2)
 
 	// Read rows off the row iterator and send them to the row channel.
+	projs := GetDeferredProjections(iter)
 	var rowChan = make(chan sql.Row, 512)
 	eg.Go(func() error {
 		defer pan2err()
@@ -625,7 +631,6 @@ func (h *Handler) resultForDefaultIter(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	projs := GetDeferredProjections(iter)
 	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
