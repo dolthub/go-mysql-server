@@ -15,7 +15,8 @@
 package analyzer
 
 import (
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -69,7 +70,7 @@ func deferProjections(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.
 	// Default value expressions require a second pass, so punt on deferring for now
 	for _, expr := range proj.Projections {
 		switch expr.(type) {
-		case *expression.Wrapper, *sql.ColumnDefaultValue:
+		case *expression.Wrapper, *sql.ColumnDefaultValue, function.RowCount:
 			return node, transform.SameTree, nil
 		}
 	}
