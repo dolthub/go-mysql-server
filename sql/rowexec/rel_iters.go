@@ -124,13 +124,14 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 
 var _ sql.RowIter = &iters.JsonTableRowIter{}
 
-type projectIter struct {
+type ProjectIter struct {
 	projs     []sql.Expression
+	canDefer  bool
 	deferred  bool
 	childIter sql.RowIter
 }
 
-func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
@@ -141,8 +142,20 @@ func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return ProjectRow(ctx, i.projs, childRow)
 }
 
-func (i *projectIter) Close(ctx *sql.Context) error {
+func (i *ProjectIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
+}
+
+func (i *ProjectIter) GetProjections() []sql.Expression {
+	return i.projs
+}
+
+func (i *ProjectIter) CanDefer() bool {
+	return i.canDefer
+}
+
+func (i *ProjectIter) Defer() {
+	i.deferred = true
 }
 
 // ProjectRow evaluates a set of projections.

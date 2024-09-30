@@ -381,6 +381,10 @@ func (i *TrackedRowIter) GetNode() sql.Node {
 	return i.node
 }
 
+func (i *TrackedRowIter) GetIter() sql.RowIter {
+	return i.iter
+}
+
 func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
 	switch i.QueryType {
 	case QueryTypeSelect:

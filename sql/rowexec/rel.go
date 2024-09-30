@@ -311,9 +311,9 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, &projectIter{
+	return sql.NewSpanIter(span, &ProjectIter{
 		projs:     n.Projections,
-		deferred:  n.Deferred,
+		canDefer:  n.CanDefer,
 		childIter: i,
 	}), nil
 }
@@ -323,7 +323,7 @@ func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualC
 		attribute.Int("projections", len(n.Projections)),
 	))
 
-	return sql.NewSpanIter(span, &projectIter{
+	return sql.NewSpanIter(span, &ProjectIter{
 		projs:     n.Projections,
 		childIter: tableIter,
 	}), nil

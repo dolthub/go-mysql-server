@@ -512,16 +512,17 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 	return &sqltypes.Result{Fields: resultFields}, nil
 }
 
-// GetDeferredProjections looks for a top-level deferred projection
+// GetDeferredProjections looks for a top-level deferred projection, marks it as deferred, and retrieves its projections
 func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	switch i := iter.(type) {
 	case *rowexec.ExprCloserIter:
 		return GetDeferredProjections(i.GetIter())
 	case *plan.TrackedRowIter:
-		if commit, isCommit := i.GetNode().(*plan.TransactionCommittingNode); isCommit {
-			if proj, isProj := commit.Child().(*plan.Project); isProj {
-				if proj.Deferred {
-					return proj.Projections
+		if commitIter, isCommitIter := i.GetIter().(*rowexec.TransactionCommittingIter); isCommitIter {
+			if projIter, isProjIter := commitIter.GetIter().(*rowexec.ProjectIter); isProjIter {
+				if projIter.CanDefer() {
+					projIter.Defer()
+					return projIter.GetProjections()
 				}
 			}
 		}
