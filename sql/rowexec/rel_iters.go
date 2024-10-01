@@ -165,7 +165,7 @@ func ProjectRow(
 	row sql.Row,
 ) (sql.Row, error) {
 	var fields = make(sql.Row, len(projections))
-	var secondPass = make([]int, 0, len(projections))
+	var secondPass []int
 	for i, expr := range projections {
 		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
 		// Also default expressions may not refer to other columns that come after them if they also have a default expr.

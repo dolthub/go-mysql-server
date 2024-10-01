@@ -577,12 +577,6 @@ func (h *Handler) resultForDefaultIter(
 		}
 	}
 
-	pollCtx, cancelF := ctx.NewSubContext()
-	eg.Go(func() error {
-		defer pan2err()
-		return h.pollForClosedConnection(pollCtx, c)
-	})
-
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
@@ -612,6 +606,12 @@ func (h *Handler) resultForDefaultIter(
 				}
 			}
 		}
+	})
+
+	pollCtx, cancelF := ctx.NewSubContext()
+	eg.Go(func() error {
+		defer pan2err()
+		return h.pollForClosedConnection(pollCtx, c)
 	})
 
 	// Default waitTime is one minute if there is no timeout configured, in which case
