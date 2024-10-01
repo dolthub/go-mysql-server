@@ -175,7 +175,7 @@ func ProjectRow(
 		field = normalizeNegativeZeros(field)
 		fields[index] = field
 	}
-	return fields, nil
+	return sql.NewRow(fields...), nil
 }
 
 func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool) {
