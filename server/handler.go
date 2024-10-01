@@ -518,11 +518,6 @@ func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	case *rowexec.ExprCloserIter:
 		return GetDeferredProjections(i.GetIter())
 	case *plan.TrackedRowIter:
-		// TODO: absolutely no idea why i.GetNode() is nil sometimes and why that means the deferred projections
-		//   don't work but that is how it is
-		if i.GetNode() == nil {
-			return nil
-		}
 		if commitIter, isCommitIter := i.GetIter().(*rowexec.TransactionCommittingIter); isCommitIter {
 			if projIter, isProjIter := commitIter.GetIter().(*rowexec.ProjectIter); isProjIter {
 				if projIter.CanDefer() {
