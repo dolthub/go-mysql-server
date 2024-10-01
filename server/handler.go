@@ -533,7 +533,6 @@ func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 // resultForMax1RowIter ensures that an empty iterator returns at most one row
 func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForMax1RowIter").End()
-	projs := GetDeferredProjections(iter)
 	row, err := iter.Next(ctx)
 	if err == io.EOF {
 		return &sqltypes.Result{Fields: resultFields}, nil
@@ -547,7 +546,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 	if err := iter.Close(ctx); err != nil {
 		return nil, err
 	}
-	outputRow, err := RowToSQL(ctx, schema, row, projs)
+	outputRow, err := RowToSQL(ctx, schema, row, nil)
 	if err != nil {
 		return nil, err
 	}
