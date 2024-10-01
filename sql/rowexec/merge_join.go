@@ -244,9 +244,15 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		case msIncLeft:
 			err = i.incLeft(ctx)
+			if err != nil {
+				return nil, err
+			}
 			nextState = msExhaustCheck
 		case msIncRight:
 			err = i.incRight(ctx)
+			if err != nil {
+				return nil, err
+			}
 			nextState = msExhaustCheck
 		case msSelect:
 			ret = i.copyReturnRow()
