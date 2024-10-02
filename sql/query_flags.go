@@ -43,6 +43,8 @@ const (
 	// QFlagMax1Row indicates that a query can only return at most one row
 	QFlagMax1Row
 
+	// QFlagDeferProjections indicates that a top-level projections for this query should be deferred and handled by
+	// RowToSQL
 	QFlagDeferProjections
 )
 
