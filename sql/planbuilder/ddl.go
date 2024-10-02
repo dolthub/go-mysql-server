@@ -937,19 +937,20 @@ func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.Re
 	spec := ddl.NotNullSpec
 	for _, c := range table.Schema() {
 		if strings.EqualFold(c.Name, spec.Column.String()) {
+			colCopy := *c
 			switch strings.ToLower(spec.Action) {
 			case ast.SetStr:
 				// Set NOT NULL constraint
-				c.Nullable = false
+				colCopy.Nullable = false
 			case ast.DropStr:
 				// Drop NOT NULL constraint
-				c.Nullable = true
+				colCopy.Nullable = true
 			default:
 				err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
 				b.handleErr(err)
 			}
 
-			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, *c, nil)
+			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, colCopy, nil)
 			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema())
 			return
 		}
@@ -964,13 +965,14 @@ func (b *Builder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table
 	spec := ddl.ColumnTypeSpec
 	for _, c := range table.Schema() {
 		if strings.EqualFold(c.Name, spec.Column.String()) {
+			colCopy := *c
 			typ, err := types.ColumnTypeToType(&spec.Type)
 			if err != nil {
 				b.handleErr(err)
 				return
 			}
-			c.Type = typ
-			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, *c, nil)
+			colCopy.Type = typ
+			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, colCopy, nil)
 			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema())
 			return
 		}
