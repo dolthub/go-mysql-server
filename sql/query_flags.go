@@ -42,6 +42,8 @@ const (
 
 	// QFlagMax1Row indicates that a query can only return at most one row
 	QFlagMax1Row
+
+	QFlagDeferProjections
 )
 
 type QueryFlags struct {

@@ -19,7 +19,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -53,29 +52,6 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 		return node, transform.SameTree, nil
 	})
-}
-
-// deferProjections marks projection nodes that can defer projections to the end of the query execution.
-// This can avoid an unnecessary slice allocation specifically in the case where we are spooling rows
-// from the server to the client.
-func deferProjections(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if !a.ServerMode {
-		return node, transform.SameTree, nil
-	}
-	// Only defer top-level projections
-	proj, isProj := node.(*plan.Project)
-	if !isProj {
-		return node, transform.SameTree, nil
-	}
-	// Default value expressions require a second pass, so punt on deferring for now
-	for _, expr := range proj.Projections {
-		switch expr.(type) {
-		case *expression.Wrapper, *sql.ColumnDefaultValue, function.RowCount:
-			return node, transform.SameTree, nil
-		}
-	}
-	newProj := proj.WithCanDefer(true)
-	return newProj, transform.NewTree, nil
 }
 
 func flattenDistinct(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {

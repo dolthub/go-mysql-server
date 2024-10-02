@@ -219,7 +219,7 @@ func (h *Handler) ComExecuteBound(ctx context.Context, conn *mysql.Conn, query s
 func (h *Handler) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	_, err := h.errorWrappedDoQuery(ctx, c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
-	}, nil)
+	}, &sql.QueryFlags{})
 	return err
 }
 
@@ -296,7 +296,7 @@ func (h *Handler) ComMultiQuery(
 	query string,
 	callback mysql.ResultSpoolFn,
 ) (string, error) {
-	return h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOn, nil, callback, nil)
+	return h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOn, nil, callback, &sql.QueryFlags{})
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
@@ -306,7 +306,7 @@ func (h *Handler) ComQuery(
 	query string,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOff, nil, callback, nil)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOff, nil, callback, &sql.QueryFlags{})
 	return err
 }
 
@@ -318,7 +318,7 @@ func (h *Handler) ComParsedQuery(
 	parsed sqlparser.Statement,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(ctx, c, query, parsed, MultiStmtModeOff, nil, callback, nil)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, parsed, MultiStmtModeOff, nil, callback, &sql.QueryFlags{})
 	return err
 }
 
@@ -520,8 +520,7 @@ func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	case *plan.TrackedRowIter:
 		if commitIter, isCommitIter := i.GetIter().(*rowexec.TransactionCommittingIter); isCommitIter {
 			if projIter, isProjIter := commitIter.GetIter().(*rowexec.ProjectIter); isProjIter {
-				if projIter.CanDefer() {
-					projIter.Defer()
+				if projIter.Deferred() {
 					return projIter.GetProjections()
 				}
 			}

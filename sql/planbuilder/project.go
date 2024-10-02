@@ -15,13 +15,14 @@
 package planbuilder
 
 import (
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
+		"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -204,6 +205,23 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 		b.handleErr(err)
 	}
 	outScope.node = proj
+	if !b.qFlags.IsSet(sql.QFlagDeferProjections) {
+		return
+	}
+	if inScope.parent != nil && inScope.parent.activeSubquery != nil {
+		return
+	}
+	if _, isProj := proj.(*plan.Project); !isProj {
+		return
+	}
+	for _, sc := range outScope.cols {
+		switch sc.scalar.(type) {
+		// TODO: column default expression are also not deferrable, but they don't appear in top level projections
+		case function.RowCount:
+			return
+		}
+	}
+	proj.(*plan.Project).Deferred = true
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {

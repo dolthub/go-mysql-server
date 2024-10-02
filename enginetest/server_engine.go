@@ -78,7 +78,6 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 		_ = s.Start()
 	}()
 
-	engine.Analyzer.ServerMode = true
 	return &ServerQueryEngine{
 		t:      t,
 		engine: engine,

@@ -126,7 +126,6 @@ var _ sql.RowIter = &iters.JsonTableRowIter{}
 
 type ProjectIter struct {
 	projs     []sql.Expression
-	canDefer  bool
 	deferred  bool
 	childIter sql.RowIter
 }
@@ -150,12 +149,8 @@ func (i *ProjectIter) GetProjections() []sql.Expression {
 	return i.projs
 }
 
-func (i *ProjectIter) CanDefer() bool {
-	return i.canDefer
-}
-
-func (i *ProjectIter) Defer() {
-	i.deferred = true
+func (i *ProjectIter) Deferred() bool {
+	return i.deferred
 }
 
 // ProjectRow evaluates a set of projections.

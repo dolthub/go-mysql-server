@@ -888,5 +888,5 @@ func (b *Builder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s st
 		b.currentDatabase = curDb
 	}()
 	b.currentDatabase = db
-	return b.BindOnly(stmt, s)
+	return b.BindOnly(stmt, s, nil)
 }
