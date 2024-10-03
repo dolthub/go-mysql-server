@@ -839,7 +839,7 @@ from information_schema.engines
 
 func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", nil,false)
+	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
