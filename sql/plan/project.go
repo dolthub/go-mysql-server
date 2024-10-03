@@ -26,8 +26,8 @@ import (
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
-	// Expression projected.
 	Projections []sql.Expression
+	CanDefer    bool
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -160,8 +160,9 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-
-	return NewProject(p.Projections, children[0]), nil
+	np := *p
+	np.Child = children[0]
+	return &np, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
@@ -179,6 +180,13 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(p.Projections) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), len(p.Projections))
 	}
+	np := *p
+	np.Projections = exprs
+	return &np, nil
+}
 
-	return NewProject(exprs, p.Child), nil
+func (p *Project) WithCanDefer(canDefer bool) *Project {
+	np := *p
+	np.CanDefer = canDefer
+	return &np
 }

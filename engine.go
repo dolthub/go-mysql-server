@@ -210,7 +210,7 @@ func (e *Engine) AnalyzeQuery(
 	query string,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	parsed, _, _, qFlags, err := binder.Parse(query, false)
+	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func (e *Engine) PrepareParsedQuery(
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	node, _, err := binder.BindOnly(stmt, query)
+	node, _, err := binder.BindOnly(stmt, query, nil)
 
 	if err != nil {
 		return nil, err
@@ -586,7 +586,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 	var bound sql.Node
 	var err error
 	if parsed == nil {
-		bound, _, _, qFlags, err = binder.Parse(query, false)
+		bound, _, _, qFlags, err = binder.Parse(query, qFlags, false)
 		if err != nil {
 			clearAutocommitErr := clearAutocommitTransaction(ctx)
 			if clearAutocommitErr != nil {
@@ -595,7 +595,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 			return nil, nil, err
 		}
 	} else {
-		bound, qFlags, err = binder.BindOnly(parsed, query)
+		bound, qFlags, err = binder.BindOnly(parsed, query, qFlags)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -651,7 +651,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 		binder.SetBindingsWithExpr(tempBindings)
 	}
 
-	bound, _, err := binder.BindOnly(prep, query)
+	bound, _, err := binder.BindOnly(prep, query, nil)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {

@@ -169,6 +169,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 
+		switch rf.(type) {
+		case *function.Sleep, sql.NonDeterministicExpression:
+			b.qFlags.Set(sql.QFlagUndeferrableExprs)
+		}
+
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
 		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
 		if v.Distinct {

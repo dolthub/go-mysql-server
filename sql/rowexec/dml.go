@@ -375,7 +375,7 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 			case *updateJoinIter:
 				i.accumulator = rowHandler.(*updateJoinRowHandler)
 				done = true
-			case *projectIter:
+			case *ProjectIter:
 				iter = i.childIter
 			case *plan.CheckpointingTableEditorIter:
 				iter = i.InnerIter()

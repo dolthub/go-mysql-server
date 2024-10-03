@@ -311,8 +311,8 @@ type rowIterPartitionFunc func(ctx *sql.Context, partition sql.Partition) (sql.R
 // iterPartitionRows is the parallel worker for an Exchange node. It
 // is meant to be run as a goroutine in an errgroup.Group. It will
 // values read off of |partitions|. For each value it reads, it will
-// call |getRowIter| to get a row projectIter, and will then call |Next| on
-// that row projectIter, passing every row it gets into |rows|. If it
+// call |getRowIter| to get a row ProjectIter, and will then call |Next| on
+// that row ProjectIter, passing every row it gets into |rows|. If it
 // receives an error at any point, it returns it. |iterPartitionRows|
 // stops iterating and returns |nil| when |partitions| is closed.
 func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partitions <-chan sql.Partition, rows chan<- sql.Row) (rerr error) {

@@ -306,5 +306,5 @@ func (b *BaseBuilder) buildTransactionCommittingNode(ctx *sql.Context, n *plan.T
 	if err != nil {
 		return nil, err
 	}
-	return transactionCommittingIter{childIter: iter}, nil
+	return &TransactionCommittingIter{childIter: iter}, nil
 }

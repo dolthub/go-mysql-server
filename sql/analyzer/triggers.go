@@ -204,7 +204,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
-			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, false)
+			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 			b.Reset()
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -225,7 +225,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				// first pass allows unresolved before we know whether trigger is relevant
 				// TODO store destination table name with trigger, so we don't have to do parse twice
 				b.TriggerCtx().Call = true
-				parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, false)
+				parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 				b.TriggerCtx().Call = false
 				b.Reset()
 				if err != nil {

@@ -67,18 +67,18 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 	}
 }
 
-// transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
+// TransactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
 // during the Close() operation
-type transactionCommittingIter struct {
+type TransactionCommittingIter struct {
 	childIter           sql.RowIter
 	transactionDatabase string
 }
 
-func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
 }
 
-func (t transactionCommittingIter) Close(ctx *sql.Context) error {
+func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	var err error
 	if t.childIter != nil {
 		err = t.childIter.Close(ctx)
@@ -113,4 +113,14 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	return nil
+}
+
+func (t *TransactionCommittingIter) GetIter() sql.RowIter {
+	return t.childIter
+}
+
+func (t *TransactionCommittingIter) WithChildIter(childIter sql.RowIter) sql.RowIter {
+	nt := *t
+	t.childIter = childIter
+	return &nt
 }

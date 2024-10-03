@@ -124,22 +124,34 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 
 var _ sql.RowIter = &iters.JsonTableRowIter{}
 
-type projectIter struct {
-	p         []sql.Expression
+type ProjectIter struct {
+	projs     []sql.Expression
+	canDefer  bool
 	childIter sql.RowIter
 }
 
-func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	return ProjectRow(ctx, i.p, childRow)
+	return ProjectRow(ctx, i.projs, childRow)
 }
 
-func (i *projectIter) Close(ctx *sql.Context) error {
+func (i *ProjectIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
+}
+
+func (i *ProjectIter) GetProjections() []sql.Expression {
+	return i.projs
+}
+
+func (i *ProjectIter) CanDefer() bool {
+	return i.canDefer
+}
+
+func (i *ProjectIter) GetChildIter() sql.RowIter {
+	return i.childIter
 }
 
 // ProjectRow evaluates a set of projections.
@@ -149,7 +161,7 @@ func ProjectRow(
 	row sql.Row,
 ) (sql.Row, error) {
 	var fields = make(sql.Row, len(projections))
-	var secondPass = make([]int, 0, len(projections))
+	var secondPass []int
 	for i, expr := range projections {
 		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
 		// Also default expressions may not refer to other columns that come after them if they also have a default expr.

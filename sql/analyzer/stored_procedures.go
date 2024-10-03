@@ -56,7 +56,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 				var parsedProcedure sql.Node
 				b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
 				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
-				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, false)
+				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
 				if err != nil {
 					procToRegister = &plan.Procedure{
 						CreateProcedureString: procedure.CreateStatement,
@@ -300,7 +300,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				b.ProcCtx().AsOf = asOf
 			}
 			b.ProcCtx().DbName = call.Database().Name()
-			parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, false)
+			parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
