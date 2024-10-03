@@ -1804,7 +1804,7 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 		}
 
 		if sql.IsFalse(res) {
-			return plan.ErrCheckViolated.New(c.Check.Name)
+			return sql.ErrCheckConstraintViolated.New(c.Check.Name)
 		}
 	}
 

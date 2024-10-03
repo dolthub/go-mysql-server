@@ -28,9 +28,6 @@ import (
 var (
 	// ErrNoCheckConstraintSupport is returned when the table does not support CONSTRAINT CHECK operations.
 	ErrNoCheckConstraintSupport = errors.NewKind("the table does not support check constraint operations: %s")
-
-	// ErrCheckViolated is returned when the check constraint evaluates to false
-	ErrCheckViolated = errors.NewKind("check constraint %s is violated.")
 )
 
 type CreateCheck struct {

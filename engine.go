@@ -192,7 +192,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
-		Parser:            sql.NewMysqlParser(),
+		Parser:            sql.GlobalParser,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret

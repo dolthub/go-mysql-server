@@ -293,7 +293,7 @@ CREATE TABLE t4
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE test ADD CONSTRAINT bad_check CHECK (pk < 5)",
-				ExpectedErr: plan.ErrCheckViolated,
+				ExpectedErr: sql.ErrCheckConstraintViolated,
 			},
 		},
 	},
