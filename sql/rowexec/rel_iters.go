@@ -127,7 +127,6 @@ var _ sql.RowIter = &iters.JsonTableRowIter{}
 type ProjectIter struct {
 	projs     []sql.Expression
 	canDefer  bool
-	deferred  bool
 	childIter sql.RowIter
 }
 
@@ -135,9 +134,6 @@ func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
-	}
-	if i.deferred {
-		return childRow, nil
 	}
 	return ProjectRow(ctx, i.projs, childRow)
 }
@@ -152,10 +148,6 @@ func (i *ProjectIter) GetProjections() []sql.Expression {
 
 func (i *ProjectIter) CanDefer() bool {
 	return i.canDefer
-}
-
-func (i *ProjectIter) Defer() {
-	i.deferred = true
 }
 
 func (i *ProjectIter) GetChildIter() sql.RowIter {

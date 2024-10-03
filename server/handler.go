@@ -425,7 +425,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	qFlags.Set(sql.QFlagDeferProjections) // TODO: this somehow breaks timeout???????
+	qFlags.Set(sql.QFlagDeferProjections)
 	schema, rowIter, qFlags, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
@@ -513,7 +513,8 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 	return &sqltypes.Result{Fields: resultFields}, nil
 }
 
-// GetDeferredProjections looks for a top-level deferred projection, marks it as deferred, and retrieves its projections
+// GetDeferredProjections looks for a top-level deferred projection, retrieves its projections, and removes it from the
+// iterator tree.
 func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	switch i := iter.(type) {
 	case *rowexec.ExprCloserIter:
