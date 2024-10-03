@@ -526,6 +526,14 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 			outScopes = append(outScopes, b.buildAlterCollationSpec(tableScope, ddl, rt))
 		}
 
+		if ddl.NotNullSpec != nil {
+			outScopes = append(outScopes, b.buildAlterNotNull(tableScope, ddl, rt))
+		}
+
+		if ddl.ColumnTypeSpec != nil {
+			outScopes = append(outScopes, b.buildAlterChangeColumnType(tableScope, ddl, rt))
+		}
+
 		for _, s := range outScopes {
 			if ts, ok := s.node.(sql.SchemaTarget); ok {
 				s.node = b.modifySchemaTarget(s, ts, rt.Schema())
@@ -921,6 +929,56 @@ func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL, table *p
 	}
 
 	outScope.node = plan.NewAlterAutoIncrement(table.Database(), table, autoVal)
+	return
+}
+
+func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+	outScope = inScope
+	spec := ddl.NotNullSpec
+	for _, c := range table.Schema() {
+		if strings.EqualFold(c.Name, spec.Column.String()) {
+			colCopy := *c
+			switch strings.ToLower(spec.Action) {
+			case ast.SetStr:
+				// Set NOT NULL constraint
+				colCopy.Nullable = false
+			case ast.DropStr:
+				// Drop NOT NULL constraint
+				colCopy.Nullable = true
+			default:
+				err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
+				b.handleErr(err)
+			}
+
+			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, colCopy, nil)
+			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema())
+			return
+		}
+	}
+	err := sql.ErrTableColumnNotFound.New(table.Name(), spec.Column.String())
+	b.handleErr(err)
+	return
+}
+
+func (b *Builder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+	outScope = inScope
+	spec := ddl.ColumnTypeSpec
+	for _, c := range table.Schema() {
+		if strings.EqualFold(c.Name, spec.Column.String()) {
+			colCopy := *c
+			typ, err := types.ColumnTypeToType(&spec.Type)
+			if err != nil {
+				b.handleErr(err)
+				return
+			}
+			colCopy.Type = typ
+			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, colCopy, nil)
+			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema())
+			return
+		}
+	}
+	err := sql.ErrTableColumnNotFound.New(table.Name(), spec.Column.String())
+	b.handleErr(err)
 	return
 }
 
