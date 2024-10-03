@@ -195,7 +195,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 }
 
 func (b *Builder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
-	if !b.qFlags.IsSet(sql.QFlagDeferProjections) {
+	if !b.qFlags.IsSet(sql.QFlagDeferProjections) || b.qFlags.IsSet(sql.QFlagUndeferrableExprs) {
 		return
 	}
 	if inScope.parent != nil && inScope.parent.activeSubquery != nil {

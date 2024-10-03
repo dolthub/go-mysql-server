@@ -46,6 +46,8 @@ const (
 	// QFlagDeferProjections indicates that a top-level projections for this query should be deferred and handled by
 	// RowToSQL
 	QFlagDeferProjections
+	// QFlagUndeferrableExprs indicates that the query has expressions that cannot be deferred
+	QFlagUndeferrableExprs
 )
 
 type QueryFlags struct {

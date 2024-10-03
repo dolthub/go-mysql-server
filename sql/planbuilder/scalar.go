@@ -171,7 +171,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 		switch rf.(type) {
 		case *function.Sleep, sql.NonDeterministicExpression:
-			b.qFlags.Unset(sql.QFlagDeferProjections)
+			b.qFlags.Set(sql.QFlagUndeferrableExprs)
 		}
 
 		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
