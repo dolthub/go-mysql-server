@@ -527,7 +527,7 @@ func GetDeferredProjections(iter sql.RowIter) (sql.RowIter, []sql.Expression) {
 	case *rowexec.TransactionCommittingIter:
 		newChild, projs := GetDeferredProjections(i.GetIter())
 		if projs != nil {
-			 i.WithChildIter(newChild)
+			i.WithChildIter(newChild)
 		}
 		return i, projs
 	case *iters.LimitIter:
