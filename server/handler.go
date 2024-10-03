@@ -425,7 +425,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	qFlags.Set(sql.QFlagDeferProjections)
+	qFlags.Set(sql.QFlagDeferProjections) // TODO: this somehow breaks timeout???????
 	schema, rowIter, qFlags, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
@@ -522,7 +522,7 @@ func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 		if commitIter, isCommitIter := i.GetIter().(*rowexec.TransactionCommittingIter); isCommitIter {
 			if projIter, isProjIter := commitIter.GetIter().(*rowexec.ProjectIter); isProjIter {
 				if projIter.CanDefer() {
-					projIter.Defer()
+					commitIter.WithChildIter(projIter.GetChildIter())
 					return projIter.GetProjections()
 				}
 			}
@@ -668,6 +668,7 @@ func (h *Handler) resultForDefaultIter(
 				r.Rows = append(r.Rows, outputRow)
 				r.RowsAffected++
 			case <-timer.C:
+				// TODO: timer should probably go in its own thread, as rowChan is blocking
 				if h.readTimeout != 0 {
 					// Cancel and return so Vitess can call the CloseConnection callback
 					ctx.GetLogger().Tracef("connection timeout")

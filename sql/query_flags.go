@@ -59,6 +59,13 @@ func (qp *QueryFlags) Set(flag int) {
 	qp.Flags.Add(flag)
 }
 
+func (qp *QueryFlags) Unset(flag int) {
+	if qp == nil {
+		return
+	}
+	qp.Flags.Remove(flag)
+}
+
 func (qp *QueryFlags) IsSet(flag int) bool {
 	return qp.Flags.Contains(flag)
 }

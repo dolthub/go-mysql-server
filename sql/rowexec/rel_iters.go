@@ -158,6 +158,10 @@ func (i *ProjectIter) Defer() {
 	i.deferred = true
 }
 
+func (i *ProjectIter) GetChildIter() sql.RowIter {
+	return i.childIter
+}
+
 // ProjectRow evaluates a set of projections.
 func ProjectRow(
 	ctx *sql.Context,

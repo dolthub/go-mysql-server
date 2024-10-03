@@ -21,8 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/plan"
+		"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -195,16 +194,7 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 	return nil
 }
 
-func (b *Builder) buildProjection(inScope, outScope *scope) {
-	projections := make([]sql.Expression, len(outScope.cols))
-	for i, sc := range outScope.cols {
-		projections[i] = sc.scalar
-	}
-	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node), outScope.refsSubquery)
-	if err != nil {
-		b.handleErr(err)
-	}
-	outScope.node = proj
+func (b *Builder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
 	if !b.qFlags.IsSet(sql.QFlagDeferProjections) {
 		return
 	}
@@ -214,14 +204,20 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	if _, isProj := proj.(*plan.Project); !isProj {
 		return
 	}
-	for _, sc := range outScope.cols {
-		switch sc.scalar.(type) {
-		// TODO: column default expression are also not deferrable, but they don't appear in top level projections
-		case function.RowCount:
-			return
-		}
-	}
 	proj.(*plan.Project).CanDefer = true
+}
+
+func (b *Builder) buildProjection(inScope, outScope *scope) {
+	projections := make([]sql.Expression, len(outScope.cols))
+	for i, sc := range outScope.cols {
+		projections[i] = sc.scalar
+	}
+	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node), outScope.refsSubquery)
+	if err != nil {
+		b.handleErr(err)
+	}
+	b.markDeferProjection(proj, inScope, outScope)
+	outScope.node = proj
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {

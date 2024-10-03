@@ -118,3 +118,9 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 func (t *TransactionCommittingIter) GetIter() sql.RowIter {
 	return t.childIter
 }
+
+func (t *TransactionCommittingIter) WithChildIter(childIter sql.RowIter) sql.RowIter {
+	nt := *t
+	t.childIter = childIter
+	return &nt
+}
