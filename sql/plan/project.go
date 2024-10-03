@@ -27,7 +27,7 @@ import (
 type Project struct {
 	UnaryNode
 	Projections []sql.Expression
-	Deferred    bool
+	CanDefer    bool
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -187,6 +187,6 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 func (p *Project) WithCanDefer(canDefer bool) *Project {
 	np := *p
-	np.Deferred = canDefer
+	np.CanDefer = canDefer
 	return &np
 }

@@ -425,6 +425,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
+	qFlags.Set(sql.QFlagDeferProjections)
 	schema, rowIter, qFlags, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
@@ -520,7 +521,8 @@ func GetDeferredProjections(iter sql.RowIter) []sql.Expression {
 	case *plan.TrackedRowIter:
 		if commitIter, isCommitIter := i.GetIter().(*rowexec.TransactionCommittingIter); isCommitIter {
 			if projIter, isProjIter := commitIter.GetIter().(*rowexec.ProjectIter); isProjIter {
-				if projIter.Deferred() {
+				if projIter.CanDefer() {
+					projIter.Defer()
 					return projIter.GetProjections()
 				}
 			}

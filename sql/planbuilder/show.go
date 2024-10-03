@@ -343,7 +343,7 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, CHARACTER_SET_CLIENT as `character_set_client`, COLLATION_CONNECTION as `collation_connection`,"+
-		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'", false)
+		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -379,7 +379,7 @@ func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope
 	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, character_set_client, collation_connection,"+
-		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'", false)
+		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -783,7 +783,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	// information_schema, with slightly different syntax and with some columns aliased.
 	// TODO: install information_schema automatically for all catalogs
 	node, _, _, _, err := b.Parse("select collation_name as `collation`, character_set_name as charset, id,"+
-		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations order by collation_name", false)
+		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations order by collation_name", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -828,7 +828,7 @@ select
     XA as XA,
     SAVEPOINTS as Savepoints
 from information_schema.engines
-`, false)
+`, nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -839,7 +839,7 @@ from information_schema.engines
 
 func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", false)
+	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", nil,false)
 	if err != nil {
 		b.handleErr(err)
 	}

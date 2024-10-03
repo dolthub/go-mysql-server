@@ -210,7 +210,7 @@ func (e *Engine) AnalyzeQuery(
 	query string,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	parsed, _, _, qFlags, err := binder.Parse(query, false)
+	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -586,7 +586,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 	var bound sql.Node
 	var err error
 	if parsed == nil {
-		bound, _, _, qFlags, err = binder.Parse(query, false)
+		bound, _, _, qFlags, err = binder.Parse(query, qFlags, false)
 		if err != nil {
 			clearAutocommitErr := clearAutocommitTransaction(ctx)
 			if clearAutocommitErr != nil {

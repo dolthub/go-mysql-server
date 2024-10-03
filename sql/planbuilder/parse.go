@@ -41,11 +41,11 @@ func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options a
 	// TODO: need correct parser
 	b := New(ctx, cat, sql.NewMysqlParser())
 	b.SetParserOptions(options)
-	node, _, _, qFlags, err := b.Parse(query, false)
+	node, _, _, qFlags, err := b.Parse(query, nil, false)
 	return node, qFlags, err
 }
 
-func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remainder string, qProps *sql.QueryFlags, err error) {
+func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret sql.Node, parsed, remainder string, qProps *sql.QueryFlags, err error) {
 	defer trace.StartRegion(b.ctx, "ParseOnly").End()
 	b.nesting++
 	if b.nesting > maxAnalysisIterations {
@@ -72,6 +72,10 @@ func (b *Builder) Parse(query string, multi bool) (ret sql.Node, parsed, remaind
 			return plan.NothingImpl, parsed, remainder, nil, nil
 		}
 		return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
+	}
+
+	if qFlags != nil {
+		b.qFlags = qFlags
 	}
 
 	outScope := b.build(nil, stmt, parsed)

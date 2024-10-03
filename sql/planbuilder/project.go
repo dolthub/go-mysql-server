@@ -221,7 +221,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 			return
 		}
 	}
-	proj.(*plan.Project).Deferred = true
+	proj.(*plan.Project).CanDefer = true
 }
 
 func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
