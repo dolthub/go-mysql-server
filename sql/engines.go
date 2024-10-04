@@ -16,6 +16,15 @@ package sql
 
 import "fmt"
 
+// EngineType indicates which type of database is being emulated. This is used to switch
+// between MySQL behavior and PostgreSQL behavior.
+type EngineType byte
+
+const (
+	EngineType_MySql EngineType = iota
+	EngineType_Postgres
+)
+
 // Engine represents a sql engine.
 type Engine struct {
 	Name        string

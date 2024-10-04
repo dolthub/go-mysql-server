@@ -274,6 +274,7 @@ func (ab *Builder) Build() *Analyzer {
 		Parallelism:  ab.parallelism,
 		Coster:       memo.NewDefaultCoster(),
 		ExecBuilder:  rowexec.DefaultBuilder,
+		DatabaseType: sql.EngineType_MySql,
 	}
 }
 
@@ -298,6 +299,9 @@ type Analyzer struct {
 	// EventScheduler is used to communiate with the event scheduler
 	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
 	EventScheduler sql.EventScheduler
+	// DatabaseType indicates whether the analyzer's behavior is compatible with a MySQL
+	// database or a PostgreSQL database.
+	DatabaseType sql.EngineType
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
