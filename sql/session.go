@@ -27,6 +27,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type key uint
@@ -239,6 +241,7 @@ type Context struct {
 	services    Services
 	pid         uint64
 	query       string
+	parsedQuery sqlparser.Statement
 	queryTime   time.Time
 	tracer      trace.Tracer
 	rootSpan    trace.Span
@@ -397,6 +400,20 @@ func (c *Context) WithQuery(q string) *Context {
 	nc := *c
 	nc.query = q
 	return &nc
+}
+
+// ParsedQuery returns the parsed query associated with this context.
+// May return nil.
+func (c *Context) ParsedQuery() sqlparser.Statement {
+	if c == nil {
+		return nil
+	}
+	return c.parsedQuery
+}
+
+// SetParsedQuery adds the given parsed query to the context.
+func (c *Context) SetParsedQuery(parsed sqlparser.Statement) {
+	c.parsedQuery = parsed
 }
 
 // QueryTime returns the time.Time when the context associated with this query was created

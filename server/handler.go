@@ -392,6 +392,8 @@ func (h *Handler) doQuery(
 		}
 	}
 
+	sqlCtx.SetParsedQuery(parsed)
+
 	more := remainder != ""
 
 	var queryStr string
