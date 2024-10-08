@@ -6,28 +6,28 @@ type RuleId int
 
 const (
 	// once before
-	applyDefaultSelectLimitId RuleId = iota // applyDefaultSelectLimit
-	validateOffsetAndLimitId                // validateOffsetAndLimit
-	validateStarExpressionsId               // validateStarExpressions
-	validateCreateTableId                   // validateCreateTable
-	validateAlterTableId                    // validateAlterTable
-	validateExprSemId                       // validateExprSem
-	loadStoredProceduresId                  // loadStoredProcedures
-	validateDropTablesId                    // validateDropTables
-	resolveDropConstraintId                 // resolveDropConstraint
-	validateDropConstraintId                // validateDropConstraint
-	resolveCreateSelectId                  // resolveCreateSelect
-	resolveSubqueriesId                    // resolveSubqueries
-	resolveUnionsId                        // resolveUnions
-	resolveDescribeQueryId                 // resolveDescribeQuery
-	validateColumnDefaultsId               // validateColumnDefaults
-	validateCreateTriggerId                // validateCreateTrigger
-	validateCreateProcedureId              // validateCreateProcedure
-	validateReadOnlyDatabaseId             // validateReadOnlyDatabase
-	validateReadOnlyTransactionId          // validateReadOnlyTransaction
-	validateDatabaseSetId                  // validateDatabaseSet
-	validatePrivilegesId                   // validatePrivileges
-	applyEventSchedulerId                  // applyEventScheduler
+	applyDefaultSelectLimitId     RuleId = iota // applyDefaultSelectLimit
+	validateOffsetAndLimitId                    // validateOffsetAndLimit
+	validateStarExpressionsId                   // validateStarExpressions
+	validateCreateTableId                       // validateCreateTable
+	validateAlterTableId                        // validateAlterTable
+	validateExprSemId                           // validateExprSem
+	loadStoredProceduresId                      // loadStoredProcedures
+	validateDropTablesId                        // validateDropTables
+	resolveDropConstraintId                     // resolveDropConstraint
+	validateDropConstraintId                    // validateDropConstraint
+	resolveCreateSelectId                       // resolveCreateSelect
+	resolveSubqueriesId                         // resolveSubqueries
+	resolveUnionsId                             // resolveUnions
+	resolveDescribeQueryId                      // resolveDescribeQuery
+	validateColumnDefaultsId                    // validateColumnDefaults
+	validateCreateTriggerId                     // validateCreateTrigger
+	validateCreateProcedureId                   // validateCreateProcedure
+	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
+	validateReadOnlyTransactionId               // validateReadOnlyTransaction
+	validateDatabaseSetId                       // validateDatabaseSet
+	validatePrivilegesId                        // validatePrivileges
+	applyEventSchedulerId                       // applyEventScheduler
 
 	// default
 	flattenTableAliasesId          // flattenTableAliases
