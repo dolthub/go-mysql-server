@@ -541,7 +541,7 @@ func (b *Builder) buildJSONTableCols(inScope *scope, jtSpec *ast.JSONTableSpec) 
 			continue
 		}
 
-		typ, err := types.ColumnTypeToType(&jtColDef.Type)
+		typ, err := types.ColumnTypeToType(jtColDef.Type)
 		if err != nil {
 			b.handleErr(err)
 		}

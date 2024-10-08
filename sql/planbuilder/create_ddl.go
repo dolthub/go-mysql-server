@@ -143,7 +143,7 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 			err := fmt.Errorf("unknown procedure parameter direction: `%s`", string(param.Direction))
 			b.handleErr(err)
 		}
-		internalTyp, err := types.ColumnTypeToType(&param.Type)
+		internalTyp, err := types.ColumnTypeToType(param.Type)
 		if err != nil {
 			b.handleErr(err)
 		}
