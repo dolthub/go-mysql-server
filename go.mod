@@ -39,7 +39,7 @@ require (
 	github.com/tetratelabs/wazero v1.1.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 )
 
