@@ -483,7 +483,7 @@ func TestValidateOperands(t *testing.T) {
 		},
 	}
 
-	rule := getValidationRule(ValidateOperandsId)
+	rule := getValidationRule(validateOperandsId)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)

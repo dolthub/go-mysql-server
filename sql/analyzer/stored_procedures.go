@@ -134,7 +134,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 				return nil, transform.SameTree, err
 			}
 			// Blocks may have expressions declared directly on them, so we explicitly analyze the block node for variables
-			rulesToRun := []RuleId{resolveVariablesId}
+			var rulesToRun []RuleId
 			// If a block node also has expressions (e.g. IfConditional), then we need to run the
 			// finalizeSubqueries analyzer rule in case the expressions contain any subqueries.
 			if _, ok := child.(sql.Expressioner); ok {
