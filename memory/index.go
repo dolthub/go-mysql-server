@@ -137,6 +137,10 @@ func (idx *Index) PrefixLengths() []uint16 {
 	return idx.PrefixLens
 }
 
+func (idx *Index) SetPrefixLengths(prefixLengths []uint16) {
+	idx.PrefixLens = prefixLengths
+}
+
 func (idx *Index) IndexType() string {
 	if len(idx.DriverName) > 0 {
 		return idx.DriverName

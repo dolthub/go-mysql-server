@@ -26,6 +26,10 @@ import (
 
 const MaxBytePrefix = 3072
 
+// defaultPrefixLength is used for PostgreSQL compatibility. We don't support secondary indexes including address
+// encoded types such as TEXT/BLOB, so we must apply an implicit prefix length.
+const defaultPrefixLength = 200
+
 // validateCreateTable validates various constraints about CREATE TABLE statements.
 func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
@@ -44,7 +48,10 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	validatePrefixLengths := a.DatabaseType == sql.EngineType_MySql
+
+	// For MySQL compatibility, users must specify a prefix length for any TEXT or BLOB columns used in an index,
+	// otherwise we will apply an implicit prefix length.
+	validatePrefixLengths := a.EngineType == sql.EngineType_MySql
 	err = validateIndexes(ctx, sch, idxs, strictMySQLCompat, validatePrefixLengths)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -225,9 +232,11 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
-
 	addedColumn := false
-	validatePrefixLengths := a.DatabaseType == sql.EngineType_MySql
+
+	// For MySQL compatibility, users must specify a prefix length for any TEXT or BLOB columns used in an index,
+	// otherwise we will apply an implicit prefix length.
+	validatePrefixLengths := a.EngineType == sql.EngineType_MySql
 
 	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
@@ -519,6 +528,24 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 					return nil, err
 				}
 			}
+		}
+
+		// If we aren't validating user-specified prefix lengths, then apply an implicit prefix length for TEXT columns
+		if !validatePrefixLengths {
+			prefixLengths := make([]uint16, len(index.Expressions()))
+			for i, expr := range index.Expressions() {
+				col := plan.GetColumnFromIndexExpr(expr, tbl)
+				if !strings.EqualFold(col.Name, oldColName) {
+					continue
+				}
+				if types.IsJSON(newCol.Type) {
+					return nil, sql.ErrJSONIndex.New(col.Name)
+				}
+				if types.IsText(newCol.Type) {
+					prefixLengths[i] = defaultPrefixLength
+				}
+			}
+			index.SetPrefixLengths(prefixLengths)
 		}
 	}
 
@@ -903,6 +930,25 @@ func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	// If we aren't validating user-specified prefix lengths, then we need to apply implicit prefix lengths for
+	// any TEXT columns.
+	if !validatePrefixLengths {
+		prefixLengths := make([]uint16, len(idxDef.Columns))
+		for i, idxCol := range idxDef.Columns {
+			schCol, exists := colMap[strings.ToLower(idxCol.Name)]
+			if !exists {
+				return sql.ErrKeyColumnDoesNotExist.New(idxCol.Name)
+			}
+			if types.IsJSON(schCol.Type) {
+				return sql.ErrJSONIndex.New(schCol.Name)
+			}
+			if types.IsText(schCol.Type) {
+				prefixLengths[i] = defaultPrefixLength
+			}
+			idxDef.Columns[i].Length = int64(prefixLengths[i])
 		}
 	}
 
