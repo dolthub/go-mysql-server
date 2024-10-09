@@ -723,11 +723,11 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	} else if s.Table.DbQualifier.String() != "" {
 		dbName = s.Table.DbQualifier.String()
 	}
-	
+
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.SchemaName != "" {
 		schemaName = s.ShowTablesOpt.SchemaName
 	}
-	
+
 	tableScope, ok := b.buildResolvedTable(inScope, dbName, schemaName, s.Table.Name.String(), asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(s.Table.Name.String())
