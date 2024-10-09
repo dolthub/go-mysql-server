@@ -404,7 +404,7 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 			unnestInSubqueriesId,
 
 			// once after default rules should only be run once
-			addAutoCommitId,
+			AutocommitId,
 			TrackProcessId,
 			parallelizeId,
 			clearWarningsId:

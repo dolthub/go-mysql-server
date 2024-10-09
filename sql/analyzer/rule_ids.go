@@ -20,7 +20,7 @@ const (
 	resolveSubqueriesId                         // resolveSubqueries
 	resolveUnionsId                             // resolveUnions
 	resolveDescribeQueryId                      // resolveDescribeQuery
-	validateColumnDefaultsId                    // validateColumnDefaults
+	ValidateColumnDefaultsId                    // validateColumnDefaults
 	validateCreateTriggerId                     // validateCreateTrigger
 	validateCreateProcedureId                   // validateCreateProcedure
 	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
@@ -77,7 +77,7 @@ const (
 	validateGroupById           // validateGroupBy
 	validateSchemaSourceId      // validateSchemaSource
 	validateIndexCreationId     // validateIndexCreation
-	validateOperandsId          // validateOperands
+	ValidateOperandsId          // validateOperands
 	validateIntervalUsageId     // validateIntervalUsage
 	validateSubqueryColumnsId   // validateSubqueryColumns
 	validateUnionSchemasMatchId // validateUnionSchemasMatch
@@ -87,7 +87,7 @@ const (
 	// after all
 	cacheSubqueryAliasesInJoinsId    // cacheSubqueryAliasesInJoins
 	backtickDefaulColumnValueNamesId // backtickDefaultColumnValueNames
-	addAutoCommitId                  // addAutocommit
+	AutocommitId                     // addAutocommit
 	TrackProcessId                   // trackProcess
 	parallelizeId                    // parallelize
 	clearWarningsId                  // clearWarnings
