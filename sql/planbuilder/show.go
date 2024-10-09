@@ -612,10 +612,12 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	outScope = inScope.push()
 
 	var dbName string
+	var schemaName string
 	var filter sql.Expression
 	var asOf sql.Expression
 	if s.ShowTablesOpt != nil {
 		dbName = s.ShowTablesOpt.DbName
+		schemaName = s.ShowTablesOpt.SchemaName
 		if s.ShowTablesOpt.AsOf != nil {
 			asOf = b.buildAsOfExpr(inScope, s.ShowTablesOpt.AsOf)
 		}
@@ -625,6 +627,25 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
+	
+	if schemaName != "" {
+		sdb, ok := db.(sql.SchemaDatabase)
+		if !ok {
+			err := sql.ErrDatabaseSchemasNotSupported.New(db.Name())
+			b.handleErr(err)
+		}
+
+		s, ok, err := sdb.GetSchema(b.ctx, schemaName)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !ok {
+			err := sql.ErrDatabaseSchemaNotFound.New(schemaName)
+			b.handleErr(err)
+		}
+		
+		db = s
+	}
 
 	b.qFlags.Set(sql.QFlagSetDatabase)
 	showTabs := plan.NewShowTables(db, s.Full, asOf)
