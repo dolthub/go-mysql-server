@@ -26,6 +26,10 @@ import (
 
 const MaxBytePrefix = 3072
 
+// defaultPrefixLength is used for PostgreSQL compatibility. We don't support secondary indexes including address
+// encoded types such as TEXT/BLOB, so we must apply an implicit prefix length.
+const defaultPrefixLength = 200
+
 // validateCreateTable validates various constraints about CREATE TABLE statements.
 func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
@@ -44,7 +48,11 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	err = validateIndexes(ctx, sch, idxs, strictMySQLCompat)
+
+	// For MySQL compatibility, users must specify a prefix length for any TEXT or BLOB columns used in an index,
+	// otherwise we will apply an implicit prefix length.
+	validatePrefixLengths := a.EngineType == sql.EngineType_MySql
+	err = validateIndexes(ctx, sch, idxs, strictMySQLCompat, validatePrefixLengths)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -224,8 +232,11 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
-
 	addedColumn := false
+
+	// For MySQL compatibility, users must specify a prefix length for any TEXT or BLOB columns used in an index,
+	// otherwise we will apply an implicit prefix length.
+	validatePrefixLengths := a.EngineType == sql.EngineType_MySql
 
 	// Need a TransformUp here because multiple of these statement types can be nested under a Block node.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
@@ -237,7 +248,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return nil, transform.SameTree, err
 			}
 
-			sch, err = validateModifyColumn(ctx, initialSch, sch, n.(*plan.ModifyColumn), keyedColumns)
+			sch, err = validateModifyColumn(ctx, initialSch, sch, n.(*plan.ModifyColumn), keyedColumns, validatePrefixLengths)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -282,7 +293,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			indexes, err = validateAlterIndex(ctx, initialSch, sch, n.(*plan.AlterIndex), indexes)
+			indexes, err = validateAlterIndex(ctx, sch, n.(*plan.AlterIndex), indexes, validatePrefixLengths)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -294,7 +305,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			sch, err = validatePrimaryKey(ctx, initialSch, sch, n.(*plan.AlterPK))
+			sch, err = validatePrimaryKey(ctx, sch, n.(*plan.AlterPK), validatePrefixLengths)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -446,7 +457,9 @@ func isStrictMysqlCompatibilityEnabled(ctx *sql.Context) (bool, error) {
 	return i == 1, nil
 }
 
-func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
+// validateModifyColumn validates the |mc| ModifyColumn node and returns the updated schema. If
+// |validatePrefixLengths| is true, then prefix lengths on TEXT/BLOB columns will also be validated.
+func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool, validatePrefixLengths bool) (sql.Schema, error) {
 	table := mc.Table
 	tableName := table.(sql.Nameable).Name()
 
@@ -496,7 +509,6 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 		if index.IsFullText() {
 			continue
 		}
-		prefixLengths := index.PrefixLengths()
 		for i, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, tbl)
 			if !strings.EqualFold(col.Name, oldColName) {
@@ -505,14 +517,35 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 			if types.IsJSON(newCol.Type) {
 				return nil, sql.ErrJSONIndex.New(col.Name)
 			}
-			var prefixLen int64
-			if i < len(prefixLengths) {
-				prefixLen = int64(prefixLengths[i])
+
+			if validatePrefixLengths {
+				var prefixLen int64
+				if i < len(index.PrefixLengths()) {
+					prefixLen = int64(index.PrefixLengths()[i])
+				}
+				err = validatePrefixLength(ctx, oldColName, prefixLen, newCol.Type, strictMySQLCompat, index.IsUnique())
+				if err != nil {
+					return nil, err
+				}
 			}
-			err = validatePrefixLength(ctx, oldColName, prefixLen, newCol.Type, strictMySQLCompat, index.IsUnique())
-			if err != nil {
-				return nil, err
+		}
+
+		// If we aren't validating user-specified prefix lengths, then apply an implicit prefix length for TEXT columns
+		if !validatePrefixLengths {
+			prefixLengths := make([]uint16, len(index.Expressions()))
+			for i, expr := range index.Expressions() {
+				col := plan.GetColumnFromIndexExpr(expr, tbl)
+				if !strings.EqualFold(col.Name, oldColName) {
+					continue
+				}
+				if types.IsJSON(newCol.Type) {
+					return nil, sql.ErrJSONIndex.New(col.Name)
+				}
+				if types.IsText(newCol.Type) {
+					prefixLengths[i] = defaultPrefixLength
+				}
 			}
+			index.SetPrefixLengths(prefixLengths)
 		}
 	}
 
@@ -619,8 +652,9 @@ func validateColumnSafeToDropWithCheckConstraint(columnName string, checks sql.C
 }
 
 // validateAlterIndex validates the specified column can have an index added, dropped, or renamed. Returns an updated
-// list of index name given the add, drop, or rename operations.
-func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
+// list of index name given the add, drop, or rename operations. If |validatePrefixLengths| is true, then index prefix
+// lengths on TEXT and BLOB columns will also be validated.
+func validateAlterIndex(ctx *sql.Context, sch sql.Schema, ai *plan.AlterIndex, indexes []string, validatePrefixLengths bool) ([]string, error) {
 	switch ai.Action {
 	case plan.IndexAction_Create:
 		err := validateIdentifier(ai.IndexName)
@@ -640,7 +674,7 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			Storage:    ai.Using,
 			Comment:    ai.Comment,
 		}
-		err = validateIndex(ctx, colMap, indexDef, strictMySQLCompat)
+		err = validateIndex(ctx, colMap, indexDef, strictMySQLCompat, validatePrefixLengths)
 		if err != nil {
 			return nil, err
 		}
@@ -839,14 +873,14 @@ func schToColMap(sch sql.Schema) map[string]*sql.Column {
 }
 
 // validateIndexes prevents creating tables with blob/text primary keys and indexes without a specified length
-func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs, strictMySQLCompat bool) error {
+func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs, strictMySQLCompat bool, validatePrefixLengths bool) error {
 	colMap := schToColMap(sch)
 	var hasPkIndexDef bool
 	for _, idxDef := range idxDefs {
 		if idxDef.IsPrimary() {
 			hasPkIndexDef = true
 		}
-		if err := validateIndex(ctx, colMap, idxDef, strictMySQLCompat); err != nil {
+		if err := validateIndex(ctx, colMap, idxDef, strictMySQLCompat, validatePrefixLengths); err != nil {
 			return err
 		}
 	}
@@ -865,13 +899,14 @@ func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs, st
 }
 
 // validateIndex ensures that the Index Definition is valid for the table schema.
-// This function will throw errors and warnings as needed.
-// All columns in the index must be:
+// This function will throw errors and warnings as needed. If |validatePrefixLengths| is
+// true, then TEXT and BLOB columns included in the index will also be checked to ensure
+// they include a valid prefix length. All columns in the index must be:
 //   - in the schema
 //   - not duplicated
 //   - not JSON Type
 //   - have the proper prefix length
-func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.IndexDef, strictMySQLCompat bool) error {
+func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.IndexDef, strictMySQLCompat, validatePrefixLengths bool) error {
 	seenCols := make(map[string]struct{})
 	for _, idxCol := range idxDef.Columns {
 		schCol, exists := colMap[strings.ToLower(idxCol.Name)]
@@ -890,9 +925,30 @@ func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.
 			continue
 		}
 
-		err := validatePrefixLength(ctx, idxCol.Name, idxCol.Length, schCol.Type, strictMySQLCompat, idxDef.IsUnique())
-		if err != nil {
-			return err
+		if validatePrefixLengths {
+			err := validatePrefixLength(ctx, idxCol.Name, idxCol.Length, schCol.Type, strictMySQLCompat, idxDef.IsUnique())
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// If we aren't validating user-specified prefix lengths, then we need to apply implicit prefix lengths for
+	// any TEXT columns.
+	if !validatePrefixLengths {
+		prefixLengths := make([]uint16, len(idxDef.Columns))
+		for i, idxCol := range idxDef.Columns {
+			schCol, exists := colMap[strings.ToLower(idxCol.Name)]
+			if !exists {
+				return sql.ErrKeyColumnDoesNotExist.New(idxCol.Name)
+			}
+			if types.IsJSON(schCol.Type) {
+				return sql.ErrJSONIndex.New(schCol.Name)
+			}
+			if types.IsText(schCol.Type) {
+				prefixLengths[i] = defaultPrefixLength
+			}
+			idxDef.Columns[i].Length = int64(prefixLengths[i])
 		}
 	}
 
@@ -957,8 +1013,9 @@ func getTableIndexNames(ctx *sql.Context, _ *Analyzer, table sql.Node) ([]string
 	return names, nil
 }
 
-// validatePrimaryKey validates a primary key add or drop operation.
-func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
+// validatePrimaryKey validates a primary key add or drop operation. If |validatePrefixLengths| is true, then
+// TEXT and BLOB columns will be checked for a valid prefix length.
+func validatePrimaryKey(ctx *sql.Context, sch sql.Schema, ai *plan.AlterPK, validatePrefixLengths bool) (sql.Schema, error) {
 	tableName := getTableName(ai.Table)
 	switch ai.Action {
 	case plan.PrimaryKeyAction_Create:
@@ -976,7 +1033,7 @@ func validatePrimaryKey(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 		if err != nil {
 			return nil, err
 		}
-		err = validateIndex(ctx, colMap, idxDef, strictMySQLCompat)
+		err = validateIndex(ctx, colMap, idxDef, strictMySQLCompat, validatePrefixLengths)
 		if err != nil {
 			return nil, err
 		}

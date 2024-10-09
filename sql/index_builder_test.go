@@ -225,4 +225,6 @@ func (testIndex) PrefixLengths() []uint16 {
 	return nil
 }
 
+func (i testIndex) SetPrefixLengths(uint16s []uint16) {}
+
 var _ sql.Index = testIndex{}

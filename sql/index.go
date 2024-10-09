@@ -126,8 +126,10 @@ type Index interface {
 	// Verifying that the expression's children match the index columns are done separately.
 	CanSupportOrderBy(expr Expression) bool
 
-	// PrefixLengths returns the prefix lengths for each column in this index
+	// PrefixLengths returns the prefix lengths for each column in this index.
 	PrefixLengths() []uint16
+	// SetPrefixLengths sets the prefix lengths for each column in this index.
+	SetPrefixLengths([]uint16)
 }
 
 // ExtendedIndex is an extension of Index, that allows access to appended primary keys. MySQL internally represents an

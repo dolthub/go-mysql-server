@@ -257,5 +257,6 @@ func (i dummyIndex) ColumnExpressionTypes() []sql.ColumnExpressionType {
 func (dummyIndex) PrefixLengths() []uint16 {
 	return nil
 }
+func (i dummyIndex) SetPrefixLengths(uint16s []uint16) {}
 
 var _ sql.Index = dummyIndex{}

@@ -152,8 +152,9 @@ func (i *dummyIdx) Comment() string                       { return "" }
 func (i *dummyIdx) IsGenerated() bool                     { return false }
 func (i *dummyIdx) CanSupportOrderBy(sql.Expression) bool { return false }
 
-func (i *dummyIdx) IndexType() string       { return "BTREE" }
-func (i *dummyIdx) PrefixLengths() []uint16 { return nil }
+func (i *dummyIdx) IndexType() string                { return "BTREE" }
+func (i *dummyIdx) PrefixLengths() []uint16          { return nil }
+func (i dummyIdx) SetPrefixLengths(uint16s []uint16) {}
 
 func (i *dummyIdx) NewLookup(*sql.Context, ...sql.Range) (sql.IndexLookup, error) {
 	panic("not implemented")
