@@ -627,7 +627,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
-	
+
 	if schemaName != "" {
 		sdb, ok := db.(sql.SchemaDatabase)
 		if !ok {
@@ -643,7 +643,7 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 			err := sql.ErrDatabaseSchemaNotFound.New(schemaName)
 			b.handleErr(err)
 		}
-		
+
 		db = s
 	}
 
