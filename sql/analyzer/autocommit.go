@@ -20,8 +20,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// addAutocommitNode wraps each query with a TransactionCommittingNode.
-func addAutocommitNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+// addAutocommit wraps each query with a TransactionCommittingNode.
+func addAutocommit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if FlagIsSet(qFlags, sql.QFlagShowWarnings) {
 		return n, transform.SameTree, nil
