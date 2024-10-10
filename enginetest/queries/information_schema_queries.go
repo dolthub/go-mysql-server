@@ -1158,15 +1158,18 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		SetUpScript: []string{
 			"USE foo",
 			"drop table othertable",
-			"CREATE TABLE t (i int)",
-			"CREATE VIEW v as select * from t",
+			"CREATE TABLE t (i int primary key, j int)",
+			"CREATE VIEW v as select i + 1, j * 2, mod(i, j) from t",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
 				Expected: []sql.Row{
-					{"def", "foo", "t", "i", uint32(1), nil, "YES", "int", nil, nil, int64(10), int64(0), nil, nil, nil, "int", "", "", "insert,references,select,update", "", "", nil},
-					{"def", "foo", "v", "", uint32(0), nil, "", nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", nil},
+					{"def", "foo", "t", "i", uint32(1), nil, "NO", "int", nil, nil, 10, 0, nil, nil, nil, "int", "PRI", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "t", "j", uint32(2), nil, "YES", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "v", "i + 1", uint32(1), nil, "NO", "bigint", nil, nil, 19, 0, nil, nil, nil, "bigint", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "v", "j * 2", uint32(2), nil, "YES", "bigint", nil, nil, 19, 0, nil, nil, nil, "bigint", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "v", "mod(i, j)", uint32(3), nil, "YES", "decimal", nil, nil, 10, 0, nil, nil, nil, "decimal(10,0)", "", "", "insert,references,select,update", "", "", nil},
 				},
 			},
 		},
