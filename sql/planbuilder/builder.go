@@ -117,6 +117,10 @@ func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
 	}
 }
 
+func (b *Builder) BuildScalar(expr ast.Expr) sql.Expression {
+	return b.buildScalar(&scope{b: b}, expr)
+}
+
 func (b *Builder) SetDebug(val bool) {
 	b.f.debug = val
 }
