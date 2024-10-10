@@ -514,7 +514,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
 	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
-	if isOldEnum && isNewEnum {
+	if isOldEnum && isNewEnum && !oldEnum.Equals(newEnum) {
 		rewriteRequired = true
 	}
 
@@ -559,7 +559,6 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			oldStr, _ := oldEnum.At(oldIdx)
 			newIdx := newEnum.IndexOf(oldStr)
 			if newIdx == -1 {
-				// TODO: convert to truncated warning, and somehow still show old enum value
 				return false, fmt.Errorf("data truncated for column %s", newCol.Name)
 			}
 			newRow[newColIdx] = uint16(newIdx)
