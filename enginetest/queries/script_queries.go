@@ -7495,7 +7495,7 @@ where
 			},
 			{
 				// TODO: MySQL preserves the original enum val and enum string, and throws a warning.
-				Query: "alter table t modify column e enum('abc');",
+				Query:          "alter table t modify column e enum('abc');",
 				ExpectedErrStr: "value 2 is not valid for this Enum",
 			},
 		},
