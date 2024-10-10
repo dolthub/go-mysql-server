@@ -28,6 +28,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -371,17 +372,19 @@ func getRowsFromViews(ctx *sql.Context, catalog sql.Catalog, db DbWithNames, pri
 	if err != nil {
 		return nil, err
 	}
-
-	for i, view := range views {
-		node, _, err := planbuilder.Parse(ctx, catalog, view.TextDefinition)
+	privSetDb := privSet.Database(db.Database.Name())
+	for _, view := range views {
+		node, _, err := planbuilder.Parse(ctx, catalog, view.CreateViewStatement)
 		if err != nil {
-			// TODO: should we error?
+			continue // sometimes views contains views from other databases
+		}
+		createViewNode, ok := node.(*plan.CreateView)
+		if !ok {
 			continue
 		}
-		privSetDb := privSet.Database(db.Database.Name())
 		privSetTbl := privSetDb.Table(view.Name)
 		curPrivSetMap := getCurrentPrivSetMapForColumn(privSetDb.ToSlice(), privSetMap)
-		for _, col := range node.Schema() {
+		for i, col := range createViewNode.Definition.Schema() {
 			r := getRowFromColumn(ctx, i, col, db.CatalogName, db.SchemaName, view.Name, "", privSetTbl, curPrivSetMap)
 			if r != nil {
 				rows = append(rows, r)
