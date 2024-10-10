@@ -2581,6 +2581,41 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/7857
+		Name: "partial foreign key update",
+		SetUpScript: []string{
+			"create table parent1 (i int primary key);",
+			"create table child1 (" +
+				"i int primary key, " +
+				"j int, " +
+				"k int, " +
+				"index(j), " +
+				"index(k), " +
+				"foreign key (j) references parent1 (i)," +
+				"foreign key (k) references parent1 (i));",
+			"insert into parent1 values (1);",
+			"insert into child1 values (100, 1, 1);",
+			"set foreign_key_checks = 0;",
+			"insert into child1 values (101, 2, 2);",
+			"set foreign_key_checks = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update child1 set j = 1 where i = 101;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from child1",
+				Expected: []sql.Row{
+					{100, 1, 1},
+					{101, 1, 2},
+				},
+			},
+		},
+	},
 }
 
 var CreateForeignKeyTests = []ScriptTest{
