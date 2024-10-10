@@ -1299,7 +1299,7 @@ func (b *Builder) jsonTableSpecToSchemaHelper(jsonTableSpec *ast.JSONTableSpec, 
 			b.jsonTableSpecToSchemaHelper(cd.Spec, sch)
 			continue
 		}
-		typ, err := types.ColumnTypeToType(&cd.Type)
+		typ, err := types.ColumnTypeToType(cd.Type)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -1362,7 +1362,7 @@ func getPkOrdinals(ts *ast.TableSpec) []int {
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table
 // statement. Defaults and generated expressions must be handled separately.
 func (b *Builder) columnDefinitionToColumn(inScope *scope, cd *ast.ColumnDefinition, indexes []*ast.IndexDefinition) *sql.Column {
-	internalTyp, err := types.ColumnTypeToType(&cd.Type)
+	internalTyp, err := types.ColumnTypeToType(cd.Type)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -1703,7 +1703,7 @@ func ParseColumnTypeString(columnType string) (sql.Type, error) {
 		return nil, fmt.Errorf("failed to parse type info for column: %s", columnType)
 	}
 	parsedTyp := ddl.TableSpec.Columns[0].Type
-	typ, err := types.ColumnTypeToType(&parsedTyp)
+	typ, err := types.ColumnTypeToType(parsedTyp)
 	if err != nil {
 		return nil, err
 	}

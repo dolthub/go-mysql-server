@@ -837,6 +837,9 @@ func (b *Builder) convertInt(value string, base int) *expression.Literal {
 }
 
 func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
+	if v == nil {
+		return nil
+	}
 	switch v.Type {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))

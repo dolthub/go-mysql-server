@@ -312,7 +312,7 @@ func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScop
 	outScope = inScope.push()
 	dVars := d.Variables
 	names := make([]string, len(dVars.Names))
-	typ, err := types.ColumnTypeToType(&dVars.VarType)
+	typ, err := types.ColumnTypeToType(dVars.VarType)
 	if err != nil {
 		err := err
 		b.handleErr(err)
