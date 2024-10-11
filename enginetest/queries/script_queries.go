@@ -8810,8 +8810,8 @@ var CreateDatabaseScripts = []ScriptTest{
 			},
 			{
 				//SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921. Also for when run with prepares, the warning is added twice
-				Query:                         "SHOW WARNINGS /* 1 */",
-				Expected:                      []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				Query:    "SHOW WARNINGS /* 1 */",
+				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
 			},
 			{
 				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
