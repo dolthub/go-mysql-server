@@ -41,7 +41,7 @@ type BaseSession struct {
 	viewReg          *ViewRegistry
 	warnings         []*Warning
 	warningLock      bool
-	warncnt          uint16
+	warningCount     uint16 // num of warnings from recent query; does not always equal to len(warnings)
 	locks            map[string]bool
 	queriedDb        string
 	lastQueryInfo    map[string]*atomic.Value
@@ -331,6 +331,7 @@ func (s *BaseSession) SetConnectionId(id uint32) {
 // Warn stores the warning in the session.
 func (s *BaseSession) Warn(warn *Warning) {
 	s.warnings = append(s.warnings, warn)
+	s.warningCount = uint16(len(s.warnings))
 }
 
 // Warnings returns a copy of session warnings (from the most recent - the last one)
@@ -354,25 +355,25 @@ func (s *BaseSession) UnlockWarnings() {
 	s.warningLock = false
 }
 
+// ClearWarningCount cleans up session warnings
+func (s *BaseSession) ClearWarningCount() {
+	s.warningCount = 0
+}
+
 // ClearWarnings cleans up session warnings
 func (s *BaseSession) ClearWarnings() {
 	if s.warningLock {
 		return
 	}
-	cnt := uint16(len(s.warnings))
-	if s.warncnt != cnt {
-		s.warncnt = cnt
-		return
-	}
 	if s.warnings != nil {
 		s.warnings = s.warnings[:0]
 	}
-	s.warncnt = 0
+	s.ClearWarningCount()
 }
 
 // WarningCount returns a number of session warnings
 func (s *BaseSession) WarningCount() uint16 {
-	return uint16(len(s.warnings))
+	return s.warningCount
 }
 
 // AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates

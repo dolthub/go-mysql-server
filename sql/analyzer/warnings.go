@@ -20,23 +20,25 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// clearWarnings resets the warning count to 0 and removes any warnings from the current context.
 func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	// This is an analyzer rule because we need to clear the warnings from the previous query before executing
+	// the current query, except for the case of `show warnings` which should not clear the warnings.
 	children := node.Children()
 	if len(children) == 0 {
 		return node, transform.SameTree, nil
 	}
 
 	switch ch := children[0].(type) {
+	case *plan.Offset, *plan.Limit:
+		// `show warning limit x offset y` is valid, so we need to recurse
+		return clearWarnings(ctx, a, ch, scope, sel, qFlags)
 	case plan.ShowWarnings:
+		// ShowWarnings should not clear the warnings, but should still reset the warning count.
+		ctx.ClearWarningCount()
 		return node, transform.SameTree, nil
-	case *plan.Offset:
-		clearWarnings(ctx, a, ch, scope, sel, qFlags)
-		return node, transform.SameTree, nil
-	case *plan.Limit:
-		clearWarnings(ctx, a, ch, scope, sel, qFlags)
+	default:
+		ctx.ClearWarnings()
 		return node, transform.SameTree, nil
 	}
-
-	ctx.ClearWarnings()
-	return node, transform.SameTree, nil
 }
