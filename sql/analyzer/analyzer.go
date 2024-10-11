@@ -406,8 +406,7 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 			// once after default rules should only be run once
 			AutocommitId,
 			TrackProcessId,
-			parallelizeId,
-			clearWarningsId:
+			parallelizeId:
 			return false
 		}
 		return sel(id)

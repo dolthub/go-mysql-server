@@ -253,6 +253,23 @@ func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter,
 	return e.QueryWithBindings(ctx, query, nil, nil, nil)
 }
 
+func clearWarnings(ctx *sql.Context, node sql.Node) {
+	if ctx == nil || ctx.Session == nil {
+		return
+	}
+
+	switch n := node.(type) {
+	case *plan.Offset, *plan.Limit:
+		// `show warning limit x offset y` is valid, so we need to recurse
+		clearWarnings(ctx, n.Children()[0])
+	case plan.ShowWarnings:
+		// ShowWarnings should not clear the warnings, but should still reset the warning count.
+		ctx.ClearWarningCount()
+	default:
+		ctx.ClearWarnings()
+	}
+}
+
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
 	res := make(map[string]sql.Expression, len(bindings))
 	for k, v := range bindings {
@@ -387,9 +404,17 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
+	// planbuilding can produce warnings, so we need to preserve them
+	numPrevWarnings := len(ctx.Session.Warnings())
 	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, qFlags)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	newWarnings := ctx.Session.Warnings()[numPrevWarnings:]
+	clearWarnings(ctx, bound)
+	// restore new warnings (backwards because they are in reverse order)
+	for i := len(newWarnings) - 1; i >= 0; i-- {
+		ctx.Session.Warn(newWarnings[i])
 	}
 
 	analyzed, err := e.analyzeNode(ctx, query, bound, qFlags)

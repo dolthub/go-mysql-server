@@ -29,7 +29,6 @@ func init() {
 		{AutocommitId, addAutocommit},
 		{TrackProcessId, trackProcess},
 		{parallelizeId, parallelize},
-		{clearWarningsId, clearWarnings},
 	}
 }
 
