@@ -81,6 +81,21 @@ func (fkEditor *ForeignKeyEditor) IsInitialized(editors map[*ForeignKeyEditor]st
 // Update handles both the standard UPDATE statement and propagated referential actions from a parent table's ON UPDATE.
 func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.Row, depth int) error {
 	for _, reference := range fkEditor.References {
+		// Only check the reference for the columns that are updated
+		hasChange := false
+		for _, idx := range reference.RowMapper.IndexPositions {
+			cmp, err := fkEditor.Schema[idx].Type.Compare(old[idx], new[idx])
+			if err != nil {
+				return err
+			}
+			if cmp != 0 {
+				hasChange = true
+				break
+			}
+		}
+		if !hasChange {
+			continue
+		}
 		if err := reference.CheckReference(ctx, new); err != nil {
 			return err
 		}
