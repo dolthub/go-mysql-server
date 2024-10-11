@@ -424,7 +424,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	// statements, we need the raw output from them.
 	var noRowUpdateAccumulators RuleSelector
 	noRowUpdateAccumulators = func(id RuleId) bool {
-		return DefaultRuleSelector(id) && id != applyRowUpdateAccumulatorsId
+		return DefaultRuleSelector(id) && id != applyUpdateAccumulatorsId
 	}
 
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
@@ -518,8 +518,8 @@ func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 	return strings.ToLower((string)(event)) == strings.ToLower(event2)
 }
 
-// wrapWritesWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
-func wrapWritesWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+// wrapWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
+func wrapWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	// Check if tree contains a TriggerExecutor
 	containsTrigger := false
 	transform.Inspect(n, func(n sql.Node) bool {
