@@ -84,7 +84,11 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 		// Only check the reference for the columns that are updated
 		hasChange := false
 		for _, idx := range reference.RowMapper.IndexPositions {
-			if old[idx] != new[idx] {
+			cmp, err := fkEditor.Schema[idx].Type.Compare(old[idx], new[idx])
+			if err != nil {
+				return err
+			}
+			if cmp != 0 {
 				hasChange = true
 				break
 			}
