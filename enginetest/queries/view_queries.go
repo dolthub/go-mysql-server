@@ -232,6 +232,12 @@ CREATE TABLE tab1 (
 				},
 			},
 			{
+				Query: "select * from v",
+				Expected: []sql.Row{
+					{1, 100},
+				},
+			},
+			{
 				Query: "show full columns from v1;",
 				Expected: []sql.Row{
 					{"i", "int", nil, "NO", "", nil, "", "", ""},
@@ -250,6 +256,12 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{
 					{"i", "int", "NO", "", nil, ""},
 					{"jj", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "select * from v1",
+				Expected: []sql.Row{
+					{1, 110},
 				},
 			},
 			{
@@ -280,6 +292,12 @@ CREATE TABLE tab1 (
 					{"j", "int", "YES", "", "100", ""},
 					{"jj", "int", "YES", "", "(power(11, 2))", "DEFAULT_GENERATED"},
 					{"i + ii + j + jj", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "select * from vv",
+				Expected: []sql.Row{
+					{1, 1, 100, 121, 223},
 				},
 			},
 		},
