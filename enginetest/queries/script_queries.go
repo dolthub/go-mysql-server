@@ -7499,6 +7499,22 @@ where
 			},
 		},
 	},
+	{
+		Name: "coalesce with system types",
+		SetUpScript: []string{
+			"create table t as select @@admin_port as port1, @@port as port2, COALESCE(@@admin_port, @@port) as\n port3;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"port1", "bigint", "NO", "", nil, ""},
+					{"port2", "bigint", "NO", "", nil, ""},
+					{"port3", "bigint", "NO", "", nil, ""},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
