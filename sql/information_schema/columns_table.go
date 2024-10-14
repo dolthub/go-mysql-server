@@ -384,7 +384,7 @@ func getRowsFromViews(ctx *sql.Context, catalog sql.Catalog, db DbWithNames, pri
 		}
 		privSetTbl := privSetDb.Table(view.Name)
 		curPrivSetMap := getCurrentPrivSetMapForColumn(privSetDb.ToSlice(), privSetMap)
-		for i, col := range createViewNode.Definition.Schema() {
+		for i, col := range createViewNode.TargetSchema() {
 			r := getRowFromColumn(ctx, i, col, db.CatalogName, db.SchemaName, view.Name, "", privSetTbl, curPrivSetMap)
 			if r != nil {
 				rows = append(rows, r)

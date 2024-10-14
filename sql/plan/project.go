@@ -53,6 +53,8 @@ func findDefault(node sql.Node, gf *expression.GetField) *sql.ColumnDefaultValue
 		return findDefault(n.Child, gf)
 	case *HashLookup:
 		return findDefault(n.Child, gf)
+	case *Filter:
+		return findDefault(n.Child, gf)
 	case *JoinNode:
 		if defVal := findDefault(n.Left(), gf); defVal != nil {
 			return defVal
