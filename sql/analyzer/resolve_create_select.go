@@ -31,6 +31,10 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	for i, col := range mergedSchema {
 		tempCol := *col
 		tempCol.Source = ct.Name()
+		// replace system variable types with their underlying types
+		if sysType, isSysTyp := tempCol.Type.(sql.SystemVariableType); isSysTyp {
+			tempCol.Type = sysType.UnderlyingType()
+		}
 		newSch[i] = &tempCol
 	}
 
