@@ -2616,6 +2616,74 @@ var ForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "multiple foreign key refs",
+		SetUpScript: []string{
+			"create table parent1 (i int primary key);",
+			"create table child1 (j int, k int, foreign key (j) references parent1(i) on delete cascade on update cascade, foreign key (k) references parent1 (i) on delete cascade on update cascade);",
+			"insert into parent1 values (1), (2), (3);",
+			"insert into child1 values (1, 2), (2, 3), (3, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from parent1;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from child1 order by j, k;",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 3},
+					{3, 1},
+				},
+			},
+			{
+				Query: "update parent1 set i = 20 where i = 2;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from parent1 order by i;",
+				Expected: []sql.Row{
+					{1},
+					{3},
+					{20},
+				},
+			},
+			{
+				Query: "select * from child1 order by j, k;",
+				Expected: []sql.Row{
+					{1, 20},
+					{3, 1},
+					{20, 3},
+				},
+			},
+			{
+				Query: "delete from parent1 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select * from parent1;",
+				Expected: []sql.Row{
+					{3},
+					{20},
+				},
+			},
+			{
+				Query: "select * from child1 order by j, k;",
+				Expected: []sql.Row{
+					{20, 3},
+				},
+			},
+		},
+	},
 }
 
 var CreateForeignKeyTests = []ScriptTest{

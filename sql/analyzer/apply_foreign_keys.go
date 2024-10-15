@@ -40,9 +40,7 @@ func applyForeignKeys(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 // and caching of table editors.
 func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *foreignKeyCache) (sql.Node, transform.TreeIdentity, error) {
 	var err error
-	fkChain := foreignKeyChain{
-		fkUpdate: make(map[foreignKeyTableName]sql.ForeignKeyEditor),
-	}
+	fkChain := newForeignKeyChain()
 
 	switch n := n.(type) {
 	case *plan.CreateTable:
@@ -242,7 +240,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	if err != nil {
 		return nil, err
 	}
-	fkChain = fkChain.AddTableUpdater(fks[0].Database, fks[0].Table, updater)
+	fkChain = fkChain.AddTable(fks[0].Database, fks[0].Table).AddTableUpdater(fks[0].Database, fks[0].Table, updater)
 
 	tblSch := tbl.Schema()
 	fkEditor := &plan.ForeignKeyEditor{
@@ -356,6 +354,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		// If either referential action is not equivalent to RESTRICT, then the updater has the possibility of having
 		// its contents modified, therefore we add it to the chain.
 		if !fk.OnUpdate.IsEquivalentToRestrict() || !fk.OnDelete.IsEquivalentToRestrict() {
+			// TODO: why would I add the updater without the table here?
 			fkChain = fkChain.AddTableUpdater(fk.Database, fk.Table, childUpdater)
 		}
 
@@ -387,6 +386,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
+		// TODO: does this need to be a deep copy or no???
 		fkChain = fkChain.AddForeignKey(fk.Name)
 		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain, checkRows)
 		if err != nil {
@@ -429,6 +429,13 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 type foreignKeyTableName struct {
 	dbName  string
 	tblName string
+}
+
+func newForeignKeyTableName(dbName, tblName string) foreignKeyTableName {
+	return foreignKeyTableName{
+		dbName:  strings.ToLower(dbName),
+		tblName: strings.ToLower(tblName),
+	}
 }
 
 // foreignKeyTableUpdater is a foreign key table along with its updater.
@@ -544,9 +551,17 @@ func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName 
 // updaters that are not a part of this chain. In addition, any updaters that cannot be modified (such as those
 // belonging to strictly RESTRICT referential actions) will not appear in the chain.
 type foreignKeyChain struct {
-	fkNames  map[string]struct{}
-	fkTables map[foreignKeyTableName]struct{}
-	fkUpdate map[foreignKeyTableName]sql.ForeignKeyEditor // TODO: why is this even a map?
+	fkNames    map[string]struct{}
+	fkTables   map[foreignKeyTableName]struct{}
+	fkUpdaters map[foreignKeyTableName]sql.ForeignKeyEditor
+}
+
+func newForeignKeyChain() foreignKeyChain {
+	return foreignKeyChain{
+		fkNames:    make(map[string]struct{}),
+		fkTables:   make(map[foreignKeyTableName]struct{}),
+		fkUpdaters: make(map[foreignKeyTableName]sql.ForeignKeyEditor),
+	}
 }
 
 // AddTable returns a new chain with the added table.
@@ -556,26 +571,17 @@ func (chain foreignKeyChain) AddTable(dbName string, tblName string) foreignKeyC
 	for fkName := range chain.fkNames {
 		newFkNames[fkName] = struct{}{}
 	}
-	for fkTable := range chain.fkTables {
-		newFkTables[fkTable] = struct{}{}
-	}
-	newFkTables[foreignKeyTableName{
-		dbName:  strings.ToLower(dbName),
-		tblName: strings.ToLower(tblName),
-	}] = struct{}{}
+	newFkTables[newForeignKeyTableName(dbName, tblName)] = struct{}{}
 	return foreignKeyChain{
-		fkNames:  newFkNames,
-		fkTables: newFkTables,
-		fkUpdate: chain.fkUpdate,
+		fkNames:    newFkNames,
+		fkTables:   newFkTables,
+		fkUpdaters: chain.fkUpdaters,
 	}
 }
 
 // AddTableUpdater returns a new chain with the added foreign key updater.
 func (chain foreignKeyChain) AddTableUpdater(dbName string, tblName string, fkUpdater sql.ForeignKeyEditor) foreignKeyChain {
-	chain.fkUpdate[foreignKeyTableName{
-		dbName:  strings.ToLower(dbName),
-		tblName: strings.ToLower(tblName),
-	}] = fkUpdater
+	chain.fkUpdaters[newForeignKeyTableName(dbName, tblName)] = fkUpdater
 	return chain
 }
 
@@ -593,33 +599,26 @@ func (chain foreignKeyChain) AddForeignKey(fkName string) foreignKeyChain {
 	return foreignKeyChain{
 		fkNames:  newFkNames,
 		fkTables: newFkTables,
-		fkUpdate: chain.fkUpdate,
+		fkUpdaters: chain.fkUpdaters,
 	}
 }
 
 // HasTable returns whether the chain contains the given table. Case-insensitive.
 func (chain foreignKeyChain) HasTable(dbName string, tblName string) bool {
-	if _, ok := chain.fkTables[foreignKeyTableName{
-		dbName:  strings.ToLower(dbName),
-		tblName: strings.ToLower(tblName),
-	}]; ok {
-		return true
-	}
-	return false
+	_, ok := chain.fkTables[newForeignKeyTableName(dbName, tblName)]
+	return ok
 }
 
 // HasForeignKey returns whether the chain contains the given foreign key. Case-insensitive.
 func (chain foreignKeyChain) HasForeignKey(fkName string) bool {
-	if _, ok := chain.fkNames[strings.ToLower(fkName)]; ok {
-		return true
-	}
-	return false
+	_, ok := chain.fkNames[strings.ToLower(fkName)]
+	return ok
 }
 
 // GetUpdaters returns all foreign key updaters that have been added to the chain.
 func (chain foreignKeyChain) GetUpdaters() []sql.ForeignKeyEditor {
-	updaters := make([]sql.ForeignKeyEditor, 0, len(chain.fkUpdate))
-	for _, updater := range chain.fkUpdate {
+	updaters := make([]sql.ForeignKeyEditor, 0, len(chain.fkUpdaters))
+	for _, updater := range chain.fkUpdaters {
 		updaters = append(updaters, updater)
 	}
 	return updaters
