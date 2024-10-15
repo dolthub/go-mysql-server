@@ -15,10 +15,10 @@
 package function
 
 import (
-	"github.com/shopspring/decimal"
-"testing"
+	"testing"
 
-		"github.com/stretchr/testify/require"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
