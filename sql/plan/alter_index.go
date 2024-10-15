@@ -138,6 +138,11 @@ func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 }
 
+func (p AlterIndex) WithColumns(columns []sql.IndexColumn) (sql.Node, error) {
+	p.Columns = columns
+	return &p, nil
+}
+
 func (p AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	p.targetSchema = schema
 	return &p, nil

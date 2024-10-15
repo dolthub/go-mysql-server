@@ -828,8 +828,6 @@ func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) err
 	return nil
 }
 
-const textIndexPrefix = 1000
-
 func schToColMap(sch sql.Schema) map[string]*sql.Column {
 	colMap := make(map[string]*sql.Column, len(sch))
 	for _, col := range sch {
