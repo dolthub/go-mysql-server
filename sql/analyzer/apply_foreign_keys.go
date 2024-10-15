@@ -209,7 +209,11 @@ func getForeignKeyEditor(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTable,
 	if err != nil {
 		return nil, err
 	}
-	return getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, fkEditor, checkRows)
+	fkEditor, err = getForeignKeyRefActions(ctx, a, tbl, cache, fkChain, fkEditor, checkRows)
+	if err != nil {
+		return nil, err
+	}
+	return fkEditor, err
 }
 
 // getForeignKeyReferences returns an editor containing only the references for the given table.
@@ -238,7 +242,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	if err != nil {
 		return nil, err
 	}
-	fkChain = fkChain.AddTable(fks[0].ParentDatabase, fks[0].ParentTable).AddTableUpdater(fks[0].ParentDatabase, fks[0].ParentTable, updater)
+	fkChain = fkChain.AddTableUpdater(fks[0].Database, fks[0].Table, updater)
 
 	tblSch := tbl.Schema()
 	fkEditor := &plan.ForeignKeyEditor{
@@ -383,7 +387,8 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain.AddForeignKey(fk.Name), checkRows)
+		fkChain = fkChain.AddForeignKey(fk.Name)
+		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain, checkRows)
 		if err != nil {
 			return nil, err
 		}
@@ -541,7 +546,7 @@ func (cache *foreignKeyCache) GetEditor(fkEditor *plan.ForeignKeyEditor, dbName 
 type foreignKeyChain struct {
 	fkNames  map[string]struct{}
 	fkTables map[foreignKeyTableName]struct{}
-	fkUpdate map[foreignKeyTableName]sql.ForeignKeyEditor
+	fkUpdate map[foreignKeyTableName]sql.ForeignKeyEditor // TODO: why is this even a map?
 }
 
 // AddTable returns a new chain with the added table.
