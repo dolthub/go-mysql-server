@@ -26,7 +26,7 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 					Iterations: 1,
 					Rules: []Rule{
 						{
-							Id:    applyFKsId,
+							Id:    applyForeignKeysId,
 							Apply: applyForeignKeys,
 						},
 						{
@@ -71,7 +71,7 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 							Apply: validateReadOnlyTransaction,
 						},
 						{
-							Id:    applyFKsId,
+							Id:    applyForeignKeysId,
 							Apply: applyForeignKeys,
 						},
 						{
@@ -120,7 +120,7 @@ func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
 							Apply: processTruncate,
 						},
 						{
-							Id:    applyFKsId,
+							Id:    applyForeignKeysId,
 							Apply: applyForeignKeys,
 						},
 						{

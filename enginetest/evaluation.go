@@ -528,7 +528,7 @@ func injectBindVarsAndPrepare(
 
 	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
 	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
-	resPlan, _, err := b.BindOnly(parsed, q)
+	resPlan, _, err := b.BindOnly(parsed, q, nil)
 	if err != nil {
 		return q, nil, err
 	}

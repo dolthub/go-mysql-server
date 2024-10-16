@@ -394,12 +394,6 @@ func (a *Analyzer) PopDebugContext() {
 func SelectAllBatches(string) bool { return true }
 
 func DefaultRuleSelector(id RuleId) bool {
-	switch id {
-	// prepared statement rules are incompatible with default rules
-	case reresolveTablesId,
-		resolvePreparedInsertId:
-		return false
-	}
 	return true
 }
 
@@ -412,8 +406,7 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 			// once after default rules should only be run once
 			AutocommitId,
 			TrackProcessId,
-			parallelizeId,
-			clearWarningsId:
+			parallelizeId:
 			return false
 		}
 		return sel(id)
@@ -441,13 +434,11 @@ func NewFinalizeSubquerySel(sel RuleSelector) RuleSelector {
 		switch id {
 		case
 			// skip recursive resolve rules
-			resolveSubqueryExprsId,
 			resolveSubqueriesId,
 			resolveUnionsId,
 			// skip redundant finalize rules
 			finalizeSubqueriesId,
 			hoistOutOfScopeFiltersId,
-			cacheSubqueryResultsId,
 			TrackProcessId,
 			assignExecIndexesId:
 			return false
@@ -461,7 +452,6 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 		switch id {
 		case
 			// skip recursive resolve rules
-			resolveSubqueryExprsId,
 			resolveSubqueriesId,
 			resolveUnionsId,
 			parallelizeId:

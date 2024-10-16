@@ -28,6 +28,8 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -235,7 +237,7 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 		}
 		rows = append(rows, rs...)
 
-		rs, err = getRowsFromViews(ctx, db)
+		rs, err = getRowsFromViews(ctx, catalog, db, privSet, globalPrivSetMap)
 		if err != nil {
 			return nil, err
 		}
@@ -364,41 +366,30 @@ func getRowsFromTable(ctx *sql.Context, db DbWithNames, t sql.Table, privSetDb s
 }
 
 // getRowsFromViews returns array or rows for columns for all views for given database.
-func getRowsFromViews(ctx *sql.Context, db DbWithNames) ([]sql.Row, error) {
+func getRowsFromViews(ctx *sql.Context, catalog sql.Catalog, db DbWithNames, privSet sql.PrivilegeSet, privSetMap map[string]struct{}) ([]sql.Row, error) {
 	var rows []sql.Row
-	// TODO: View Definition is lacking information to properly fill out these table
-	// TODO: Should somehow get reference to table(s) view is referencing
-	// TODO: Each column that view references should also show up as unique entries as well
 	views, err := ViewsInDatabase(ctx, db.Database)
 	if err != nil {
 		return nil, err
 	}
-
+	privSetDb := privSet.Database(db.Database.Name())
 	for _, view := range views {
-		rows = append(rows, sql.Row{
-			db.CatalogName, // table_catalog
-			db.SchemaName,  // table_schema
-			view.Name,      // table_name
-			"",             // column_name
-			uint32(0),      // ordinal_position
-			nil,            // column_default
-			"",             // is_nullable
-			nil,            // data_type
-			nil,            // character_maximum_length
-			nil,            // character_octet_length
-			nil,            // numeric_precision
-			nil,            // numeric_scale
-			nil,            // datetime_precision
-			"",             // character_set_name
-			"",             // collation_name
-			"",             // column_type
-			"",             // column_key
-			"",             // extra
-			"select",       // privileges
-			"",             // column_comment
-			"",             // generation_expression
-			nil,            // srs_id
-		})
+		node, _, err := planbuilder.Parse(ctx, catalog, view.CreateViewStatement)
+		if err != nil {
+			continue // sometimes views contains views from other databases
+		}
+		createViewNode, ok := node.(*plan.CreateView)
+		if !ok {
+			continue
+		}
+		privSetTbl := privSetDb.Table(view.Name)
+		curPrivSetMap := getCurrentPrivSetMapForColumn(privSetDb.ToSlice(), privSetMap)
+		for i, col := range createViewNode.TargetSchema() {
+			r := getRowFromColumn(ctx, i, col, db.CatalogName, db.SchemaName, view.Name, "", privSetTbl, curPrivSetMap)
+			if r != nil {
+				rows = append(rows, r)
+			}
+		}
 	}
 
 	return rows, nil

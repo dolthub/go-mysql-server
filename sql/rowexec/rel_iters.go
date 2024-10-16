@@ -124,22 +124,34 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 
 var _ sql.RowIter = &iters.JsonTableRowIter{}
 
-type projectIter struct {
-	p         []sql.Expression
+type ProjectIter struct {
+	projs     []sql.Expression
+	canDefer  bool
 	childIter sql.RowIter
 }
 
-func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
+func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	return ProjectRow(ctx, i.p, childRow)
+	return ProjectRow(ctx, i.projs, childRow)
 }
 
-func (i *projectIter) Close(ctx *sql.Context) error {
+func (i *ProjectIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
+}
+
+func (i *ProjectIter) GetProjections() []sql.Expression {
+	return i.projs
+}
+
+func (i *ProjectIter) CanDefer() bool {
+	return i.canDefer
+}
+
+func (i *ProjectIter) GetChildIter() sql.RowIter {
+	return i.childIter
 }
 
 // ProjectRow evaluates a set of projections.
@@ -148,8 +160,8 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
+	var fields = make(sql.Row, len(projections))
 	var secondPass []int
-	var fields sql.Row
 	for i, expr := range projections {
 		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
 		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
@@ -157,16 +169,15 @@ func ProjectRow(
 		// Since literals do not reference other columns, they're evaluated on the first pass.
 		defaultVal, isDefaultVal := defaultValFromProjectExpr(expr)
 		if isDefaultVal && !defaultVal.IsLiteral() {
-			fields = append(fields, nil)
 			secondPass = append(secondPass, i)
 			continue
 		}
-		f, fErr := expr.Eval(ctx, row)
+		field, fErr := expr.Eval(ctx, row)
 		if fErr != nil {
 			return nil, fErr
 		}
-		f = normalizeNegativeZeros(f)
-		fields = append(fields, f)
+		field = normalizeNegativeZeros(field)
+		fields[i] = field
 	}
 	for _, index := range secondPass {
 		field, err := projections[index].Eval(ctx, fields)
@@ -176,7 +187,7 @@ func ProjectRow(
 		field = normalizeNegativeZeros(field)
 		fields[index] = field
 	}
-	return sql.NewRow(fields...), nil
+	return fields, nil
 }
 
 func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool) {

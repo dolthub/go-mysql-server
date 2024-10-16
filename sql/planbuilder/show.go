@@ -343,7 +343,7 @@ func (b *Builder) buildShowProcedureStatus(inScope *scope, s *ast.Show) (outScop
 	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, CHARACTER_SET_CLIENT as `character_set_client`, COLLATION_CONNECTION as `collation_connection`,"+
-		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'", false)
+		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -379,7 +379,7 @@ func (b *Builder) buildShowFunctionStatus(inScope *scope, s *ast.Show) (outScope
 	node, _, _, _, err := b.Parse("select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
 		"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
 		"routine_comment as `Comment`, character_set_client, collation_connection,"+
-		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'", false)
+		"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -612,10 +612,12 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 	outScope = inScope.push()
 
 	var dbName string
+	var schemaName string
 	var filter sql.Expression
 	var asOf sql.Expression
 	if s.ShowTablesOpt != nil {
 		dbName = s.ShowTablesOpt.DbName
+		schemaName = s.ShowTablesOpt.SchemaName
 		if s.ShowTablesOpt.AsOf != nil {
 			asOf = b.buildAsOfExpr(inScope, s.ShowTablesOpt.AsOf)
 		}
@@ -625,6 +627,25 @@ func (b *Builder) buildShowAllTables(inScope *scope, s *ast.Show) (outScope *sco
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
+
+	if schemaName != "" {
+		sdb, ok := db.(sql.SchemaDatabase)
+		if !ok {
+			err := sql.ErrDatabaseSchemasNotSupported.New(db.Name())
+			b.handleErr(err)
+		}
+
+		s, ok, err := sdb.GetSchema(b.ctx, schemaName)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if !ok {
+			err := sql.ErrDatabaseSchemaNotFound.New(schemaName)
+			b.handleErr(err)
+		}
+
+		db = s
+	}
 
 	b.qFlags.Set(sql.QFlagSetDatabase)
 	showTabs := plan.NewShowTables(db, s.Full, asOf)
@@ -696,13 +717,18 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	}
 
 	var dbName string
+	var schemaName string
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.DbName != "" {
 		dbName = s.ShowTablesOpt.DbName
 	} else if s.Table.DbQualifier.String() != "" {
 		dbName = s.Table.DbQualifier.String()
 	}
 
-	tableScope, ok := b.buildResolvedTable(inScope, dbName, "", s.Table.Name.String(), asOf)
+	if s.ShowTablesOpt != nil && s.ShowTablesOpt.SchemaName != "" {
+		schemaName = s.ShowTablesOpt.SchemaName
+	}
+
+	tableScope, ok := b.buildResolvedTable(inScope, dbName, schemaName, s.Table.Name.String(), asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(s.Table.Name.String())
 		b.handleErr(err)
@@ -783,7 +809,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 	// information_schema, with slightly different syntax and with some columns aliased.
 	// TODO: install information_schema automatically for all catalogs
 	node, _, _, _, err := b.Parse("select collation_name as `collation`, character_set_name as charset, id,"+
-		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations order by collation_name", false)
+		"is_default as `default`, is_compiled as compiled, sortlen, pad_attribute from information_schema.collations order by collation_name", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -828,7 +854,7 @@ select
     XA as XA,
     SAVEPOINTS as Savepoints
 from information_schema.engines
-`, false)
+`, nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}
@@ -839,7 +865,7 @@ from information_schema.engines
 
 func (b *Builder) buildShowPlugins(inScope *scope, s *ast.Show) (outScope *scope) {
 	outScope = inScope.push()
-	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", false)
+	infoSchemaSelect, _, _, _, err := b.Parse("select * from information_schema.plugins", nil, false)
 	if err != nil {
 		b.handleErr(err)
 	}

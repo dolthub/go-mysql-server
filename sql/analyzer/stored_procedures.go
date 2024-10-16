@@ -56,7 +56,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 				var parsedProcedure sql.Node
 				b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
 				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
-				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, false)
+				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
 				if err != nil {
 					procToRegister = &plan.Procedure{
 						CreateProcedureString: procedure.CreateStatement,
@@ -133,10 +133,9 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			// Blocks may have expressions declared directly on them, so we explicitly analyze the block node for variables
-			rulesToRun := []RuleId{resolveVariablesId}
 			// If a block node also has expressions (e.g. IfConditional), then we need to run the
 			// finalizeSubqueries analyzer rule in case the expressions contain any subqueries.
+			var rulesToRun []RuleId
 			if _, ok := child.(sql.Expressioner); ok {
 				rulesToRun = append(rulesToRun, finalizeSubqueriesId, assignExecIndexesId)
 			}
@@ -300,7 +299,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				b.ProcCtx().AsOf = asOf
 			}
 			b.ProcCtx().DbName = call.Database().Name()
-			parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, false)
+			parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

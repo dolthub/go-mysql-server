@@ -2871,7 +2871,7 @@ func TestPlanBuilderErr(t *testing.T) {
 			stmt, err := sqlparser.Parse(tt.Query)
 			require.NoError(t, err)
 
-			_, _, err = b.BindOnly(stmt, tt.Query)
+			_, _, err = b.BindOnly(stmt, tt.Query, nil)
 			defer b.Reset()
 
 			require.Error(t, err)

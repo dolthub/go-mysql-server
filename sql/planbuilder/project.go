@@ -194,6 +194,19 @@ func (b *Builder) selectExprToExpression(inScope *scope, se ast.SelectExpr) sql.
 	return nil
 }
 
+func (b *Builder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
+	if !b.qFlags.IsSet(sql.QFlagDeferProjections) || b.qFlags.IsSet(sql.QFlagUndeferrableExprs) {
+		return
+	}
+	if inScope.parent != nil && inScope.parent.activeSubquery != nil {
+		return
+	}
+	if _, isProj := proj.(*plan.Project); !isProj {
+		return
+	}
+	proj.(*plan.Project).CanDefer = true
+}
+
 func (b *Builder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
@@ -203,6 +216,7 @@ func (b *Builder) buildProjection(inScope, outScope *scope) {
 	if err != nil {
 		b.handleErr(err)
 	}
+	b.markDeferProjection(proj, inScope, outScope)
 	outScope.node = proj
 }
 

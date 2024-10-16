@@ -40,7 +40,9 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -218,7 +220,7 @@ func (h *Handler) ComExecuteBound(ctx context.Context, conn *mysql.Conn, query s
 func (h *Handler) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	_, err := h.errorWrappedDoQuery(ctx, c, prepare.PrepareStmt, nil, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
-	}, nil)
+	}, &sql.QueryFlags{})
 	return err
 }
 
@@ -295,7 +297,7 @@ func (h *Handler) ComMultiQuery(
 	query string,
 	callback mysql.ResultSpoolFn,
 ) (string, error) {
-	return h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOn, nil, callback, nil)
+	return h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOn, nil, callback, &sql.QueryFlags{})
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
@@ -305,7 +307,7 @@ func (h *Handler) ComQuery(
 	query string,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOff, nil, callback, nil)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, nil, MultiStmtModeOff, nil, callback, &sql.QueryFlags{})
 	return err
 }
 
@@ -317,7 +319,7 @@ func (h *Handler) ComParsedQuery(
 	parsed sqlparser.Statement,
 	callback mysql.ResultSpoolFn,
 ) error {
-	_, err := h.errorWrappedDoQuery(ctx, c, query, parsed, MultiStmtModeOff, nil, callback, nil)
+	_, err := h.errorWrappedDoQuery(ctx, c, query, parsed, MultiStmtModeOff, nil, callback, &sql.QueryFlags{})
 	return err
 }
 
@@ -424,6 +426,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
+	qFlags.Set(sql.QFlagDeferProjections)
 	schema, rowIter, qFlags, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
@@ -511,6 +514,37 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 	return &sqltypes.Result{Fields: resultFields}, nil
 }
 
+// GetDeferredProjections looks for a top-level deferred projection, retrieves its projections, and removes it from the
+// iterator tree.
+func GetDeferredProjections(iter sql.RowIter) (sql.RowIter, []sql.Expression) {
+	switch i := iter.(type) {
+	case *rowexec.ExprCloserIter:
+		_, projs := GetDeferredProjections(i.GetIter())
+		return i, projs
+	case *plan.TrackedRowIter:
+		_, projs := GetDeferredProjections(i.GetIter())
+		return i, projs
+	case *rowexec.TransactionCommittingIter:
+		newChild, projs := GetDeferredProjections(i.GetIter())
+		if projs != nil {
+			i.WithChildIter(newChild)
+		}
+		return i, projs
+	case *iters.LimitIter:
+		newChild, projs := GetDeferredProjections(i.ChildIter)
+		if projs != nil {
+			i.ChildIter = newChild
+		}
+		return i, projs
+	case *rowexec.ProjectIter:
+		if i.CanDefer() {
+			return i.GetChildIter(), i.GetProjections()
+		}
+		return i, nil
+	}
+	return iter, nil
+}
+
 // resultForMax1RowIter ensures that an empty iterator returns at most one row
 func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForMax1RowIter").End()
@@ -527,8 +561,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 	if err := iter.Close(ctx); err != nil {
 		return nil, err
 	}
-
-	outputRow, err := rowToSQL(ctx, schema, row)
+	outputRow, err := RowToSQL(ctx, schema, row, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -552,10 +585,6 @@ func (h *Handler) resultForDefaultIter(
 
 	eg, ctx := ctx.NewErrgroup()
 
-	var rowChan chan sql.Row
-
-	rowChan = make(chan sql.Row, 512)
-
 	pan2err := func() {
 		if recoveredPanic := recover(); recoveredPanic != nil {
 			returnErr = fmt.Errorf("handler caught panic: %v", recoveredPanic)
@@ -564,7 +593,10 @@ func (h *Handler) resultForDefaultIter(
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
+
 	// Read rows off the row iterator and send them to the row channel.
+	iter, projs := GetDeferredProjections(iter)
+	var rowChan = make(chan sql.Row, 512)
 	eg.Go(func() error {
 		defer pan2err()
 		defer wg.Done()
@@ -607,7 +639,7 @@ func (h *Handler) resultForDefaultIter(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// reads rows from the channel, converts them to wire format,
+	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
 		defer pan2err()
@@ -641,7 +673,7 @@ func (h *Handler) resultForDefaultIter(
 					continue
 				}
 
-				outputRow, err := rowToSQL(ctx, schema, row)
+				outputRow, err := RowToSQL(ctx, schema, row, projs)
 				if err != nil {
 					return err
 				}
@@ -650,6 +682,7 @@ func (h *Handler) resultForDefaultIter(
 				r.Rows = append(r.Rows, outputRow)
 				r.RowsAffected++
 			case <-timer.C:
+				// TODO: timer should probably go in its own thread, as rowChan is blocking
 				if h.readTimeout != 0 {
 					// Cancel and return so Vitess can call the CloseConnection callback
 					ctx.GetLogger().Tracef("connection timeout")
@@ -679,7 +712,6 @@ func (h *Handler) resultForDefaultIter(
 		}
 		returnErr = err
 	}
-
 	return
 }
 
@@ -904,24 +936,43 @@ func updateMaxUsedConnectionsStatusVariable() {
 	}()
 }
 
-func rowToSQL(ctx *sql.Context, s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row))
-	var err error
-	for i, v := range row {
-		if v == nil {
-			o[i] = sqltypes.NULL
-			continue
-		}
-		// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
-		if len(s) > 0 {
-			o[i], err = s[i].Type.SQL(ctx, nil, v)
+func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression) ([]sqltypes.Value, error) {
+	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
+	if len(sch) == 0 {
+		return []sqltypes.Value{}, nil
+	}
+
+	outVals := make([]sqltypes.Value, len(sch))
+	if len(projs) == 0 {
+		for i, col := range sch {
+			if row[i] == nil {
+				outVals[i] = sqltypes.NULL
+				continue
+			}
+			var err error
+			outVals[i], err = col.Type.SQL(ctx, nil, row[i])
 			if err != nil {
 				return nil, err
 			}
 		}
+		return outVals, nil
 	}
 
-	return o, nil
+	for i, col := range sch {
+		field, err := projs[i].Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if field == nil {
+			outVals[i] = sqltypes.NULL
+			continue
+		}
+		outVals[i], err = col.Type.SQL(ctx, nil, field)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return outVals, nil
 }
 
 func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {

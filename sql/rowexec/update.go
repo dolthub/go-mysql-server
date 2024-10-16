@@ -183,7 +183,7 @@ func newUpdateIter(
 	}
 }
 
-// updateJoinIter wraps the child UpdateSource projectIter and returns join row in such a way that updates per table row are
+// updateJoinIter wraps the child UpdateSource ProjectIter and returns join row in such a way that updates per table row are
 // done once.
 type updateJoinIter struct {
 	updateSourceIter sql.RowIter

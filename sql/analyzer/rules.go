@@ -21,15 +21,14 @@ func init() {
 		{resolveInsertRowsId, resolveInsertRows},
 		{applyTriggersId, applyTriggers},
 		{applyProceduresId, applyProcedures},
-		{applyRowUpdateAccumulatorsId, applyUpdateAccumulators},
-		{wrapWithRollbackId, wrapWritesWithRollback},
+		{applyUpdateAccumulatorsId, applyUpdateAccumulators},
+		{wrapWithRollbackId, wrapWithRollback},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 		{backtickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
-		{AutocommitId, addAutocommitNode},
+		{AutocommitId, addAutocommit},
 		{TrackProcessId, trackProcess},
 		{parallelizeId, parallelize},
-		{clearWarningsId, clearWarnings},
 	}
 }
 
@@ -39,7 +38,7 @@ var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{replaceCountStarId, replaceCountStar},
 	{applyEventSchedulerId, applyEventScheduler},
-	{validateOffsetAndLimitId, validateLimitAndOffset},
+	{validateOffsetAndLimitId, validateOffsetAndLimit},
 	{validateCreateTableId, validateCreateTable},
 	{validateAlterTableId, validateAlterTable},
 	{validateExprSemId, validateExprSem},
@@ -99,13 +98,13 @@ var OnceAfterDefault = []Rule{
 	{replaceIdxOrderByDistanceId, replaceIdxOrderByDistance},
 	{applyHashInId, applyHashIn},
 	{assignRoutinesId, assignRoutines},
-	{modifyUpdateExprsForJoinId, modifyUpdateExpressionsForJoin},
-	{applyFKsId, applyForeignKeys},
+	{modifyUpdateExprsForJoinId, modifyUpdateExprsForJoin},
+	{applyForeignKeysId, applyForeignKeys},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.
 var DefaultValidationRules = []Rule{
-	{validateResolvedId, validateIsResolved},
+	{validateResolvedId, validateResolved},
 	{validateOrderById, validateOrderBy},
 	{validateGroupById, validateGroupBy},
 	{validateSchemaSourceId, validateSchemaSource},

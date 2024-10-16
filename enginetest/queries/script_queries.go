@@ -7448,6 +7448,73 @@ where
 			},
 		},
 	},
+	{
+		Name: "preserve enums through alter statements",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('a', 'b', 'c'));",
+			"insert into t values (1, 'a');",
+			"insert into t values (2, 'b');",
+			"insert into t values (3, 'c');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{1, "a", float64(1)},
+					{2, "b", float64(2)},
+					{3, "c", float64(3)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('c', 'a', 'b');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(1)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(4)},
+				},
+			},
+			{
+				Query:          "alter table t modify column e enum('abc');",
+				ExpectedErrStr: "value 2 is not valid for this Enum",
+			},
+		},
+	},
+	{
+		Name: "coalesce with system types",
+		SetUpScript: []string{
+			"create table t as select @@admin_port as port1, @@port as port2, COALESCE(@@admin_port, @@port) as\n port3;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"port1", "bigint", "NO", "", nil, ""},
+					{"port2", "bigint", "NO", "", nil, ""},
+					{"port3", "bigint", "NO", "", nil, ""},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -8758,20 +8825,16 @@ var CreateDatabaseScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921. Also for when run with prepares, the warning is added twice
-				Query:                         "SHOW WARNINGS /* 1 */",
-				Expected:                      []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				Query:    "SHOW WARNINGS /* 1 */",
+				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
 			},
 			{
 				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				SkipResultCheckOnServerEngine: true, // tracking issue here, https://github.com/dolthub/dolt/issues/6921.
-				// TODO: There should only be one warning (the warnings are not clearing for create database query) AND 'PREPARE' statements should not create warning from its query
 				Query: "SHOW WARNINGS /* 2 */",
 				Expected: []sql.Row{
-					{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"},
 					{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"},
 				},
 			},
@@ -8888,10 +8951,8 @@ var DropDatabaseScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
-				// TODO: there should not be warning
-				//  https://github.com/dolthub/dolt/issues/6921
 				Query:    "SHOW WARNINGS",
-				Expected: []sql.Row{{"Note", 1008, "Can't drop database mydb; database doesn't exist "}},
+				Expected: []sql.Row{},
 			},
 			{
 				Query:    "SELECT DATABASE()",

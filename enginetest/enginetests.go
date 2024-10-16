@@ -5653,11 +5653,11 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 							break
 						}
 						expectedEngineRow := make([]*string, len(engineRow))
-						for i := range engineRow {
-							sqlVal, err := sch[i].Type.SQL(ctx, nil, engineRow[i])
-							if !assert.NoError(t, err) {
-								break
-							}
+						row, err := server.RowToSQL(ctx, sch, engineRow, nil)
+						if !assert.NoError(t, err) {
+							break
+						}
+						for i, sqlVal := range row {
 							if !sqlVal.IsNull() {
 								str := sqlVal.ToString()
 								expectedEngineRow[i] = &str

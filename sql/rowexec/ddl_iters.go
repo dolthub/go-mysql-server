@@ -471,13 +471,17 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	oldColIdx := i.m.TargetSchema().IndexOfColName(i.m.Column())
+	targetSchema := i.m.TargetSchema()
+	oldColName := i.m.Column()
+	oldColIdx := targetSchema.IndexOfColName(oldColName)
 	if oldColIdx == -1 {
 		// Should be impossible, checked in analyzer
-		return false, sql.ErrTableColumnNotFound.New(rwt.Name(), i.m.Column())
+		return false, sql.ErrTableColumnNotFound.New(rwt.Name(), oldColName)
 	}
 
-	newSch, projections, err := modifyColumnInSchema(i.m.TargetSchema(), i.m.Column(), i.m.NewColumn(), i.m.Order())
+	oldCol := i.m.TargetSchema()[oldColIdx]
+	newCol := i.m.NewColumn()
+	newSch, projections, err := modifyColumnInSchema(targetSchema, oldColName, newCol, i.m.Order())
 	if err != nil {
 		return false, err
 	}
@@ -494,9 +498,9 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	}
 
 	var renames []sql.ColumnRename
-	if i.m.Column() != i.m.NewColumn().Name {
+	if oldColName != newCol.Name {
 		renames = []sql.ColumnRename{{
-			Before: i.m.Column(), After: i.m.NewColumn().Name,
+			Before: oldColName, After: newCol.Name,
 		}}
 	}
 
@@ -504,17 +508,23 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	newPkSchema := sql.SchemaToPrimaryKeySchema(rwt, newSch, renames...)
 
 	rewriteRequired := false
-	if i.m.TargetSchema()[oldColIdx].Nullable && !i.m.NewColumn().Nullable {
+	if oldCol.Nullable && !newCol.Nullable {
+		rewriteRequired = true
+	}
+
+	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
+	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
+	if isOldEnum && isNewEnum && !oldEnum.Equals(newEnum) {
 		rewriteRequired = true
 	}
 
 	// TODO: codify rewrite requirements
-	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, i.m.TargetSchema()[oldColIdx], i.m.NewColumn())
+	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldCol, newCol)
 	if !rewriteRequired && !rewriteRequested {
 		return false, nil
 	}
 
-	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, i.m.TargetSchema()[oldColIdx], i.m.NewColumn(), nil)
+	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldCol, newCol, nil)
 	if err != nil {
 		return false, err
 	}
@@ -524,8 +534,8 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
+	newColIdx := newSch.IndexOf(newCol.Name, newCol.Source)
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
-
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -541,6 +551,17 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
 			return false, err
+		}
+
+		// remap old enum values to new enum values
+		if isOldEnum && isNewEnum {
+			oldIdx := int(newRow[newColIdx].(uint16))
+			oldStr, _ := oldEnum.At(oldIdx)
+			newIdx := newEnum.IndexOf(oldStr)
+			if newIdx == -1 {
+				return false, fmt.Errorf("data truncated for column %s", newCol.Name)
+			}
+			newRow[newColIdx] = uint16(newIdx)
 		}
 
 		err = i.validateNullability(ctx, newSch, newRow)
@@ -1804,7 +1825,7 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 		}
 
 		if sql.IsFalse(res) {
-			return plan.ErrCheckViolated.New(c.Check.Name)
+			return sql.ErrCheckConstraintViolated.New(c.Check.Name)
 		}
 	}
 

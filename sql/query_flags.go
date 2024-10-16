@@ -42,6 +42,12 @@ const (
 
 	// QFlagMax1Row indicates that a query can only return at most one row
 	QFlagMax1Row
+
+	// QFlagDeferProjections indicates that a top-level projections for this query should be deferred and handled by
+	// RowToSQL
+	QFlagDeferProjections
+	// QFlagUndeferrableExprs indicates that the query has expressions that cannot be deferred
+	QFlagUndeferrableExprs
 )
 
 type QueryFlags struct {
@@ -53,6 +59,13 @@ func (qp *QueryFlags) Set(flag int) {
 		return
 	}
 	qp.Flags.Add(flag)
+}
+
+func (qp *QueryFlags) Unset(flag int) {
+	if qp == nil {
+		return
+	}
+	qp.Flags.Remove(flag)
 }
 
 func (qp *QueryFlags) IsSet(flag int) bool {

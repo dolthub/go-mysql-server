@@ -511,7 +511,7 @@ func TestAnalyzer_Exp(t *testing.T) {
 
 			ctx := enginetest.NewContext(harness)
 			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
-			parsed, _, _, _, err := b.Parse(tt.query, false)
+			parsed, _, _, _, err := b.Parse(tt.query, nil, false)
 			require.NoError(t, err)
 
 			analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, nil)

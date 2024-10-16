@@ -152,17 +152,86 @@ func TestCoalesce(t *testing.T) {
 			typ:      types.Float64,
 			nullable: false,
 		},
+		{
+			name: "coalesce(sysInt, sysInt)",
+			input: []sql.Expression{
+				expression.NewLiteral(1, types.NewSystemIntType("int1", 0, 10, false)),
+				expression.NewLiteral(2, types.NewSystemIntType("int2", 0, 10, false)),
+			},
+			expected: 1,
+			typ:      types.Int64,
+			nullable: false,
+		},
+		{
+			name: "coalesce(sysInt, sysUint)",
+			input: []sql.Expression{
+				expression.NewLiteral(1, types.NewSystemIntType("int1", 0, 10, false)),
+				expression.NewLiteral(2, types.NewSystemUintType("int2", 0, 10)),
+			},
+			expected: 1,
+			typ:      types.MustCreateDecimalType(20, 0),
+			nullable: false,
+		},
+		{
+			name: "coalesce(sysUint, sysUint)",
+			input: []sql.Expression{
+				expression.NewLiteral(1, types.NewSystemUintType("int1", 0, 10)),
+				expression.NewLiteral(2, types.NewSystemUintType("int2", 0, 10)),
+			},
+			expected: 1,
+			typ:      types.Uint64,
+			nullable: false,
+		},
+		{
+			name: "coalesce(sysDouble, sysDouble)",
+			input: []sql.Expression{
+				expression.NewLiteral(1.0, types.NewSystemDoubleType("dbl1", 0.0, 10.0)),
+				expression.NewLiteral(2.0, types.NewSystemDoubleType("dbl2", 0.0, 10.0)),
+			},
+			expected: 1.0,
+			typ:      types.Float64,
+			nullable: false,
+		},
+		{
+			name: "coalesce(sysText)",
+			input: []sql.Expression{
+				expression.NewLiteral("abc", types.NewSystemStringType("str1")),
+			},
+			expected: "abc",
+			typ:      types.LongText,
+			nullable: false,
+		},
+		{
+			name: "coalesce(sysEnum)",
+			input: []sql.Expression{
+				expression.NewLiteral("abc", types.NewSystemEnumType("str1")),
+			},
+			expected: "abc",
+			typ:      types.EnumType{},
+			nullable: false,
+		},
+		{
+			name: "coalesce(sysSet)",
+			input: []sql.Expression{
+				expression.NewLiteral("abc", types.NewSystemSetType("str1", "abc")),
+			},
+			expected: "abc",
+			typ:      types.MustCreateSetType([]string{"abc"}, sql.Collation_Default),
+			nullable: false,
+		},
 	}
 
 	for _, tt := range testCases {
-		c, err := NewCoalesce(tt.input...)
-		require.NoError(t, err)
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewCoalesce(tt.input...)
+			require.NoError(t, err)
 
-		require.Equal(t, tt.typ, c.Type())
-		require.Equal(t, tt.nullable, c.IsNullable())
-		v, err := c.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(t, err)
-		require.Equal(t, tt.expected, v)
+			require.Equal(t, tt.typ, c.Type())
+			require.Equal(t, tt.nullable, c.IsNullable())
+			v, err := c.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, v)
+		})
 	}
 }
 

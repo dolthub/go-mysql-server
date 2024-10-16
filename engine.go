@@ -192,7 +192,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
-		Parser:            sql.NewMysqlParser(),
+		Parser:            sql.GlobalParser,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret
@@ -210,7 +210,7 @@ func (e *Engine) AnalyzeQuery(
 	query string,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	parsed, _, _, qFlags, err := binder.Parse(query, false)
+	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func (e *Engine) PrepareParsedQuery(
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
-	node, _, err := binder.BindOnly(stmt, query)
+	node, _, err := binder.BindOnly(stmt, query, nil)
 
 	if err != nil {
 		return nil, err
@@ -251,6 +251,23 @@ func (e *Engine) PrepareParsedQuery(
 // Query executes a query.
 func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	return e.QueryWithBindings(ctx, query, nil, nil, nil)
+}
+
+func clearWarnings(ctx *sql.Context, node sql.Node) {
+	if ctx == nil || ctx.Session == nil {
+		return
+	}
+
+	switch n := node.(type) {
+	case *plan.Offset, *plan.Limit:
+		// `show warning limit x offset y` is valid, so we need to recurse
+		clearWarnings(ctx, n.Children()[0])
+	case plan.ShowWarnings:
+		// ShowWarnings should not clear the warnings, but should still reset the warning count.
+		ctx.ClearWarningCount()
+	default:
+		ctx.ClearWarnings()
+	}
 }
 
 func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
@@ -387,9 +404,17 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
+	// planbuilding can produce warnings, so we need to preserve them
+	numPrevWarnings := len(ctx.Session.Warnings())
 	bound, qFlags, err := e.bindQuery(ctx, query, parsed, bindings, binder, qFlags)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	newWarnings := ctx.Session.Warnings()[numPrevWarnings:]
+	clearWarnings(ctx, bound)
+	// restore new warnings (backwards because they are in reverse order)
+	for i := len(newWarnings) - 1; i >= 0; i-- {
+		ctx.Session.Warn(newWarnings[i])
 	}
 
 	analyzed, err := e.analyzeNode(ctx, query, bound, qFlags)
@@ -586,7 +611,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 	var bound sql.Node
 	var err error
 	if parsed == nil {
-		bound, _, _, qFlags, err = binder.Parse(query, false)
+		bound, _, _, qFlags, err = binder.Parse(query, qFlags, false)
 		if err != nil {
 			clearAutocommitErr := clearAutocommitTransaction(ctx)
 			if clearAutocommitErr != nil {
@@ -595,7 +620,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 			return nil, nil, err
 		}
 	} else {
-		bound, qFlags, err = binder.BindOnly(parsed, query)
+		bound, qFlags, err = binder.BindOnly(parsed, query, qFlags)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -651,7 +676,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 		binder.SetBindingsWithExpr(tempBindings)
 	}
 
-	bound, _, err := binder.BindOnly(prep, query)
+	bound, _, err := binder.BindOnly(prep, query, nil)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {

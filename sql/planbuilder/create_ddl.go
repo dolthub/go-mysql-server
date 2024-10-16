@@ -472,6 +472,8 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 		dbName = b.ctx.GetCurrentDatabase()
 	}
 	db := b.resolveDb(dbName)
-	outScope.node = plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
+	createView := plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
+	outScope.node = b.modifySchemaTarget(queryScope, createView, createView.Definition.Schema())
+
 	return outScope
 }
