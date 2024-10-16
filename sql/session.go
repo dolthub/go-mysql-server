@@ -104,6 +104,8 @@ type Session interface {
 	Warn(warn *Warning)
 	// Warnings returns a copy of session warnings (from the most recent).
 	Warnings() []*Warning
+	// ClearWarningCount clears the warning count without clearing the actual warnings.
+	ClearWarningCount()
 	// ClearWarnings cleans up session warnings.
 	ClearWarnings()
 	// WarningCount returns a number of session warnings

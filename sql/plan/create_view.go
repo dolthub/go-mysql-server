@@ -29,6 +29,7 @@ import (
 type CreateView struct {
 	UnaryNode
 	database         sql.Database
+	targetSchema     sql.Schema
 	Name             string
 	IsReplace        bool
 	Definition       *SubqueryAlias
@@ -41,6 +42,7 @@ type CreateView struct {
 
 var _ sql.Node = (*CreateView)(nil)
 var _ sql.CollationCoercible = (*CreateView)(nil)
+var _ sql.SchemaTarget = (*CreateView)(nil)
 
 // NewCreateView creates a CreateView node with the specified parameters,
 // setting its catalog to nil.
@@ -133,6 +135,18 @@ func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
 	newCreate := *cv
 	newCreate.database = database
 	return &newCreate, nil
+}
+
+// WithTargetSchema implements the SchemaTarget interface.
+func (cv *CreateView) WithTargetSchema(sch sql.Schema) (sql.Node, error) {
+	ncv := *cv
+	ncv.targetSchema = sch
+	return &ncv, nil
+}
+
+// TargetSchema implements the SchemaTarget interface.
+func (cv *CreateView) TargetSchema() sql.Schema {
+	return cv.targetSchema
 }
 
 // GetIsUpdatableFromCreateView returns whether the view is updatable or not.

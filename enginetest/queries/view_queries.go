@@ -203,8 +203,11 @@ CREATE TABLE tab1 (
 		SetUpScript: []string{
 			"create table t (i int primary key, j int default 100);",
 			"insert into t(i) values (1);",
+			"create table tt (ii int primary key, jj int default (pow(11, 2)));",
+			"insert into tt values (1, default), (3, 4);",
 			"create view v as select * from t;",
 			"create view v1 as select i, j + 10 as jj from t;",
+			"create view vv as select i, ii, j, jj, i + ii + j + jj from t join tt where i = ii;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -229,6 +232,12 @@ CREATE TABLE tab1 (
 				},
 			},
 			{
+				Query: "select * from v",
+				Expected: []sql.Row{
+					{1, 100},
+				},
+			},
+			{
 				Query: "show full columns from v1;",
 				Expected: []sql.Row{
 					{"i", "int", nil, "NO", "", nil, "", "", ""},
@@ -247,6 +256,48 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{
 					{"i", "int", "NO", "", nil, ""},
 					{"jj", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "select * from v1",
+				Expected: []sql.Row{
+					{1, 110},
+				},
+			},
+			{
+				Query: "show full columns from vv;",
+				Expected: []sql.Row{
+					{"i", "int", nil, "NO", "", nil, "", "", ""},
+					{"ii", "int", nil, "NO", "", nil, "", "", ""},
+					{"j", "int", nil, "YES", "", "100", "", "", ""},
+					{"jj", "int", nil, "YES", "", "(power(11, 2))", "DEFAULT_GENERATED", "", ""},
+					{"i + ii + j + jj", "bigint", nil, "YES", "", nil, "", "", ""},
+				},
+			},
+			{
+				Query: "show columns from vv;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "", nil, ""},
+					{"ii", "int", "NO", "", nil, ""},
+					{"j", "int", "YES", "", "100", ""},
+					{"jj", "int", "YES", "", "(power(11, 2))", "DEFAULT_GENERATED"},
+					{"i + ii + j + jj", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "describe vv;",
+				Expected: []sql.Row{
+					{"i", "int", "NO", "", nil, ""},
+					{"ii", "int", "NO", "", nil, ""},
+					{"j", "int", "YES", "", "100", ""},
+					{"jj", "int", "YES", "", "(power(11, 2))", "DEFAULT_GENERATED"},
+					{"i + ii + j + jj", "bigint", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "select * from vv",
+				Expected: []sql.Row{
+					{1, 1, 100, 121, 223},
 				},
 			},
 		},

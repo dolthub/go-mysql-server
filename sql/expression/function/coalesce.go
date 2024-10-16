@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -53,61 +54,73 @@ func (c *Coalesce) Description() string {
 // Type implements the sql.Expression interface.
 // The return type of Type() is the aggregated type of the argument types.
 func (c *Coalesce) Type() sql.Type {
-	typ := types.Null
-	for _, arg := range c.args {
+	retType := types.Null
+	for i, arg := range c.args {
 		if arg == nil {
 			continue
 		}
-		t := arg.Type()
-		// special case for signed and unsigned integers
-		if (types.IsSigned(typ) && types.IsUnsigned(t)) || (types.IsUnsigned(typ) && types.IsSigned(t)) {
-			typ = types.MustCreateDecimalType(20, 0)
+		argType := arg.Type()
+		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
+			argType = sysVarType.UnderlyingType()
+		}
+		if i == 0 {
+			retType = argType
+			continue
+		}
+		if argType == nil || argType == types.Null {
+			continue
+		}
+		if retType.Equals(argType) {
 			continue
 		}
 
-		if t != nil && t != types.Null {
-			convType := expression.GetConvertToType(typ, t)
-			switch convType {
-			case expression.ConvertToChar:
-				// special case for float64s
-				if (t == types.Float64 || typ == types.Float64) && !types.IsText(t) && !types.IsText(typ) {
-					typ = types.Float64
-					continue
-				}
-				// Can't get any larger than this
-				return types.LongText
-			case expression.ConvertToDecimal:
-				if typ == types.Float64 || t == types.Float64 {
-					typ = types.Float64
-				} else if types.IsDecimal(t) {
-					typ = t
-				} else if !types.IsDecimal(typ) {
-					typ = types.MustCreateDecimalType(10, 0)
-				}
-			case expression.ConvertToUnsigned:
-				if typ == types.Uint64 || t == types.Uint64 {
-					typ = types.Uint64
-				} else {
-					typ = types.Uint32
-				}
-			case expression.ConvertToSigned:
-				if typ == types.Int64 || t == types.Int64 {
-					typ = types.Int64
-				} else {
-					typ = types.Int32
-				}
-			case expression.ConvertToFloat:
-				if typ == types.Float64 || t == types.Float64 {
-					typ = types.Float64
-				} else {
-					typ = types.Float32
-				}
-			default:
+		// special case for signed and unsigned integers
+		if (types.IsSigned(retType) && types.IsUnsigned(argType)) || (types.IsUnsigned(retType) && types.IsSigned(argType)) {
+			retType = types.MustCreateDecimalType(20, 0)
+			continue
+		}
+
+		convType := expression.GetConvertToType(retType, argType)
+		switch convType {
+		case expression.ConvertToChar:
+			// special case for float64s
+			if (argType == types.Float64 || retType == types.Float64) && !types.IsText(argType) && !types.IsText(retType) {
+				retType = types.Float64
+				continue
 			}
+			// Can't get any larger than this
+			return types.LongText
+		case expression.ConvertToDecimal:
+			if retType == types.Float64 || argType == types.Float64 {
+				retType = types.Float64
+			} else if types.IsDecimal(argType) {
+				retType = argType
+			} else if !types.IsDecimal(retType) {
+				retType = types.MustCreateDecimalType(10, 0)
+			}
+		case expression.ConvertToUnsigned:
+			if retType == types.Uint64 || argType == types.Uint64 {
+				retType = types.Uint64
+			} else {
+				retType = types.Uint32
+			}
+		case expression.ConvertToSigned:
+			if retType == types.Int64 || argType == types.Int64 {
+				retType = types.Int64
+			} else {
+				retType = types.Int32
+			}
+		case expression.ConvertToFloat:
+			if retType == types.Float64 || argType == types.Float64 {
+				retType = types.Float64
+			} else {
+				retType = types.Float32
+			}
+		default:
 		}
 	}
 
-	return typ
+	return retType
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
