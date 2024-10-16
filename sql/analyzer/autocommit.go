@@ -32,17 +32,3 @@ func addAutocommit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 	}
 	return plan.NewTransactionCommittingNode(n), transform.NewTree, nil
 }
-
-func hasShowWarningsNode(n sql.Node) bool {
-	var ret bool
-	transform.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(plan.ShowWarnings); ok {
-			ret = true
-			return false
-		}
-
-		return true
-	})
-
-	return ret
-}
