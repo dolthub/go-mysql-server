@@ -133,6 +133,14 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
+// WithIndexDefs returns a copy of this CreateTable instance, with the index definitions
+// set to |idxDefs|.
+func (c *CreateTable) WithIndexDefs(idxDefs sql.IndexDefs) (*CreateTable, error) {
+	nc := *c
+	nc.idxDefs = idxDefs
+	return &nc, nil
+}
+
 // Name implements the Nameable interface.
 func (c *CreateTable) Name() string {
 	return c.name
