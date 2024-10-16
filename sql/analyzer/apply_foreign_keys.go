@@ -597,8 +597,8 @@ func (chain foreignKeyChain) AddForeignKey(fkName string) foreignKeyChain {
 	}
 	newFkNames[strings.ToLower(fkName)] = struct{}{}
 	return foreignKeyChain{
-		fkNames:  newFkNames,
-		fkTables: newFkTables,
+		fkNames:    newFkNames,
+		fkTables:   newFkTables,
 		fkUpdaters: chain.fkUpdaters,
 	}
 }
