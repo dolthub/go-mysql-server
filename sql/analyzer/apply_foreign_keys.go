@@ -354,7 +354,6 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		// If either referential action is not equivalent to RESTRICT, then the updater has the possibility of having
 		// its contents modified, therefore we add it to the chain.
 		if !fk.OnUpdate.IsEquivalentToRestrict() || !fk.OnDelete.IsEquivalentToRestrict() {
-			// TODO: why would I add the updater without the table here?
 			fkChain = fkChain.AddTableUpdater(fk.Database, fk.Table, childUpdater)
 		}
 
@@ -386,7 +385,6 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		// TODO: does this need to be a deep copy or no???
 		fkChain = fkChain.AddForeignKey(fk.Name)
 		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain, checkRows)
 		if err != nil {
