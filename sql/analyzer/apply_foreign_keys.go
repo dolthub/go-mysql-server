@@ -385,8 +385,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		fkChain = fkChain.AddForeignKey(fk.Name)
-		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain, checkRows)
+		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain.AddForeignKey(fk.Name), checkRows)
 		if err != nil {
 			return nil, err
 		}
@@ -568,6 +567,9 @@ func (chain foreignKeyChain) AddTable(dbName string, tblName string) foreignKeyC
 	newFkTables := make(map[foreignKeyTableName]struct{})
 	for fkName := range chain.fkNames {
 		newFkNames[fkName] = struct{}{}
+	}
+	for fkTable := range chain.fkTables {
+		newFkTables[fkTable] = struct{}{}
 	}
 	newFkTables[newForeignKeyTableName(dbName, tblName)] = struct{}{}
 	return foreignKeyChain{
