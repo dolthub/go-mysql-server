@@ -213,7 +213,7 @@ func TestCoalesce(t *testing.T) {
 		{
 			name: "coalesce(sysSet)",
 			input: []sql.Expression{
-				expression.NewLiteral("abc", types.NewSystemSetType("str1", "abc")),
+				expression.NewLiteral("abc", types.NewSystemSetType("str1", sql.Collation_utf8mb4_0900_ai_ci, "abc")),
 			},
 			expected: "abc",
 			typ:      types.MustCreateSetType([]string{"abc"}, sql.Collation_Default),

@@ -34,8 +34,8 @@ var _ sql.SystemVariableType = systemSetType{}
 var _ sql.CollationCoercible = systemSetType{}
 
 // NewSystemSetType returns a new systemSetType.
-func NewSystemSetType(varName string, values ...string) sql.SystemVariableType {
-	return systemSetType{MustCreateSetType(values, sql.Collation_ascii_general_ci), varName}
+func NewSystemSetType(varName string, collation sql.CollationID, values ...string) sql.SystemVariableType {
+	return systemSetType{MustCreateSetType(values, collation), varName}
 }
 
 // Compare implements Type interface.
