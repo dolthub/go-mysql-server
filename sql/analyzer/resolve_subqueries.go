@@ -296,8 +296,6 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 		switch tn := n.(type) {
 		case *plan.QueryProcess:
 			n = tn.Child()
-		case *plan.TransactionCommittingNode:
-			n = tn.Child()
 		default:
 			nodeIsPassthrough = false
 		}

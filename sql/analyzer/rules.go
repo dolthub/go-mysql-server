@@ -26,7 +26,6 @@ func init() {
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 		{backtickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
-		{AutocommitId, addAutocommit},
 		{TrackProcessId, trackProcess},
 		{parallelizeId, parallelize},
 	}

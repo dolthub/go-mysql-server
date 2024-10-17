@@ -74,6 +74,14 @@ type TransactionCommittingIter struct {
 	transactionDatabase string
 }
 
+func AddTransactionCommittingIter(child sql.RowIter, qFlags *sql.QueryFlags) sql.RowIter {
+	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
+	if qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings) {
+		return child
+	}
+	return &TransactionCommittingIter{childIter: child}
+}
+
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
 }

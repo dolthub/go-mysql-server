@@ -54,8 +54,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildCreateRole(ctx, n, row)
 	case *plan.Loop:
 		return b.buildLoop(ctx, n, row)
-	case *plan.TransactionCommittingNode:
-		return b.buildTransactionCommittingNode(ctx, n, row)
 	case *plan.DropColumn:
 		return b.buildDropColumn(ctx, n, row)
 	case *plan.AnalyzeTable:
