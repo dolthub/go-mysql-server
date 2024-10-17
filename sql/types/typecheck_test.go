@@ -17,8 +17,9 @@ package types
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestIsGeometry(t *testing.T) {

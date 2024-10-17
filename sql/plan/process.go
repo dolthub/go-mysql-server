@@ -402,6 +402,12 @@ func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
 	}
 }
 
+func (i *TrackedRowIter) WithChildIter(childIter sql.RowIter) sql.RowIter {
+	ni := *i
+	ni.iter = childIter
+	return &ni
+}
+
 type trackedPartitionIndexKeyValueIter struct {
 	sql.PartitionIndexKeyValueIter
 	OnPartitionDone  NamedNotifyFunc

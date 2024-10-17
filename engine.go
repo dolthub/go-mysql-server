@@ -446,6 +446,8 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 
 		return nil, nil, nil, err
 	}
+
+	iter = rowexec.AddTransactionCommittingIter(iter, qFlags)
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
 
 	return analyzed.Schema(), iter, qFlags, nil
@@ -720,31 +722,6 @@ func (e *Engine) CloseSession(connID uint32) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.PreparedDataCache.DeleteSessionData(connID)
-}
-
-// Count number of BindVars in given tree
-func countBindVars(node sql.Node) int {
-	var bindVars map[string]bool
-	bindCntFunc := func(e sql.Expression) bool {
-		if bv, ok := e.(*expression.BindVar); ok {
-			if bindVars == nil {
-				bindVars = make(map[string]bool)
-			}
-			bindVars[bv.Name] = true
-		}
-		return true
-	}
-	transform.InspectExpressions(node, bindCntFunc)
-
-	// InsertInto.Source not a child of InsertInto, so also need to traverse those
-	transform.Inspect(node, func(n sql.Node) bool {
-		if in, ok := n.(*plan.InsertInto); ok {
-			transform.InspectExpressions(in.Source, bindCntFunc)
-			return false
-		}
-		return true
-	})
-	return len(bindVars)
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context) error {
