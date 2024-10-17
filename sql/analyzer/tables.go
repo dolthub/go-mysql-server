@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -147,27 +146,4 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	})
 
 	return ret
-}
-
-// Returns the tables used in the expressions given
-func findTables(exprs ...sql.Expression) []string {
-	tables := make(map[string]bool)
-	for _, e := range exprs {
-		sql.Inspect(e, func(e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.GetField:
-				tables[e.Table()] = true
-				return false
-			default:
-				return true
-			}
-		})
-	}
-
-	var names []string
-	for table := range tables {
-		names = append(names, table)
-	}
-
-	return names
 }

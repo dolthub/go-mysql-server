@@ -218,30 +218,6 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	})
 }
 
-// flattenTableAliases transforms TableAlias nodes that contain a SubqueryAlias or TableAlias node as the immediate
-// child so that the top level TableAlias is removed and the nested SubqueryAlias or nested TableAlias is the new top
-// level node, making sure to capture the alias name and transfer it to the new node. The parser doesn't directly
-// create this nested structure; it occurs as the execution plan is built and altered during analysis, for
-// example with CTEs that get plugged into the execution plan as the analyzer processes it.
-func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("flatten_table_aliases")
-	defer span.End()
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.TableAlias:
-			if sa, isSA := n.Children()[0].(*plan.SubqueryAlias); isSA {
-				return sa.WithName(n.Name()), transform.NewTree, nil
-			}
-			if ta, isTA := n.Children()[0].(*plan.TableAlias); isTA {
-				return ta.WithName(n.Name()), transform.NewTree, nil
-			}
-			return n, transform.SameTree, nil
-		default:
-			return n, transform.SameTree, nil
-		}
-	})
-}
-
 // analyzeSubqueryExpression runs analysis on the specified subquery expression, |sq|. The specified node |n| is the node
 // that contains the subquery expression and |finalize| indicates if this is the final run of the analyzer on the query
 // before execution, which means all analyzer rules are included, otherwise SubqueryExprResolveSelector is used to prevent

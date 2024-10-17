@@ -294,25 +294,6 @@ func aliasedExpressionsInNode(n sql.Node) map[string]string {
 	return aliasesFromExpressionToName
 }
 
-// aliasesDefinedInNode returns the expression aliases that are defined in the first Projector node found, starting
-// the search from the specified node. All returned alias names are normalized to lower case.
-func aliasesDefinedInNode(n sql.Node) []string {
-	projector := findFirstProjectorNode(n)
-	if projector == nil {
-		return nil
-	}
-
-	var aliases []string
-	for _, e := range projector.ProjectedExprs() {
-		alias, ok := e.(*expression.Alias)
-		if ok {
-			aliases = append(aliases, strings.ToLower(alias.Name()))
-		}
-	}
-
-	return aliases
-}
-
 // normalizeExpressions returns the expressions given after normalizing them to replace table and expression aliases
 // with their underlying names. This is necessary to match such expressions against those declared by implementors of
 // various interfaces that declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
