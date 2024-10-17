@@ -1951,7 +1951,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              types.NewSystemSetType("protocol_compression_algorithms", sql.Collation_utf8mb4_0900_ai_ci, "zlib", "zstd", "uncompressed"),
+		Type:              types.NewSystemSetType("protocol_compression_algorithms", sql.Collation_latin1_general_ci, "zlib", "zstd", "uncompressed"),
 		Default:           "zlib,zstd,uncompressed",
 	},
 	"protocol_version": &sql.MysqlSystemVariable{
