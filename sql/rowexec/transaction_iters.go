@@ -129,6 +129,6 @@ func (t *TransactionCommittingIter) GetIter() sql.RowIter {
 
 func (t *TransactionCommittingIter) WithChildIter(childIter sql.RowIter) sql.RowIter {
 	nt := *t
-	t.childIter = childIter
+	nt.childIter = childIter
 	return &nt
 }

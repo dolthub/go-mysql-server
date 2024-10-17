@@ -15,23 +15,8 @@
 package plan
 
 import (
-	"os"
-
-	"github.com/dolthub/go-mysql-server/sql"
+		"github.com/dolthub/go-mysql-server/sql"
 )
-
-const (
-	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-)
-
-var fakeReadCommitted bool
-
-func init() {
-	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
-	if ok {
-		fakeReadCommitted = true
-	}
-}
 
 // IsSessionAutocommit returns true if the current session is using implicit transaction management
 // through autocommit.
@@ -48,10 +33,6 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 }
 
 func ReadCommitted(ctx *sql.Context) bool {
-	if !fakeReadCommitted {
-		return false
-	}
-
 	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
 	if err != nil {
 		return false
