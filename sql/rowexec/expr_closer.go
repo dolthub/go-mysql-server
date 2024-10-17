@@ -73,4 +73,4 @@ func (eci *ExprCloserIter) WithChildIter(childIter sql.RowIter) sql.RowIter {
 	neci := *eci
 	neci.iter = childIter
 	return &neci
- }
+}

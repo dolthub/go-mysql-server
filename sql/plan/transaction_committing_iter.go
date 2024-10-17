@@ -15,7 +15,7 @@
 package plan
 
 import (
-		"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // IsSessionAutocommit returns true if the current session is using implicit transaction management
