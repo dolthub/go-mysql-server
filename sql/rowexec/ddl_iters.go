@@ -16,7 +16,7 @@ package rowexec
 
 import (
 	"bufio"
-		"fmt"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
