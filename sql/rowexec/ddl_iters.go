@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -38,14 +39,17 @@ import (
 )
 
 type loadDataIter struct {
-	scanner *bufio.Scanner
+	scanner *bufio.Reader
 	reader  io.ReadCloser
+	buffer  bytes.Buffer
 
 	destSch       sql.Schema
 	colCount      int
 	fieldToColMap []int
 	setExprs      []sql.Expression
 	userVars      []sql.Expression
+
+	ignoreNum int64
 
 	fieldsTerminatedBy  string
 	fieldsEnclosedBy    string
@@ -56,21 +60,43 @@ type loadDataIter struct {
 	linesTerminatedBy string
 }
 
+// readLine reads a line from the scanner.
+func (l loadDataIter) readLine() ([]byte, error) {
+	// last byte of the line terminator
+	delim := []byte(l.linesTerminatedBy)
+	delimDelim := delim[len(delim)-1]
+	l.buffer.Reset()
+	for {
+		chunk, err := l.scanner.ReadBytes(delimDelim)
+		if err != nil {
+			return nil, err
+		}
+		l.buffer.Write(chunk)
+		buf := l.buffer.Bytes()
+		if bytes.HasSuffix(buf, delim) {
+			return buf, nil
+		}
+	}
+}
+
 func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
-	var exprs []sql.Expression
-	var err error
+	// skip first ignoreNum lines
+	for ; l.ignoreNum > 0; l.ignoreNum-- {
+		_, err := l.readLine()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// If exprs is nil then this is a skipped line (see test cases). Keep skipping
 	// until exprs != nil
+	var exprs []sql.Expression
 	for exprs == nil {
-		if keepGoing := l.scanner.Scan(); !keepGoing {
-			if l.scanner.Err() != nil {
-				return nil, l.scanner.Err()
-			}
-			return nil, io.EOF
+		line, err := l.readLine()
+		if err != nil {
+			 return nil, err
 		}
-
-		line := l.scanner.Text()
-		exprs, err = l.parseFields(ctx, line)
+		exprs, err = l.parseFields(ctx, string(line))
 		if err != nil {
 			return nil, err
 		}
@@ -78,6 +104,7 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 
 	row := make(sql.Row, len(exprs))
 	var secondPass []int
+	var err error
 	for i, expr := range exprs {
 		if expr != nil {
 			// Non-literal default values may reference other columns, so we need to evaluate them in a second pass.
