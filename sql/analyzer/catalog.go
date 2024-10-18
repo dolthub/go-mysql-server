@@ -247,6 +247,34 @@ func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, 
 	return c.DatabaseTable(ctx, db, tableName)
 }
 
+// TableSchema returns the table in the given database with the given name, in the given schema name
+func (c *Catalog) TableSchema(ctx *sql.Context, dbName, schemaName, tableName string) (sql.Table, sql.Database, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	db, err := c.Database(ctx, dbName)
+	if err != nil {
+		return nil, nil, err
+	}
+	
+	if schemaName != "" {
+		sdb, ok := db.(sql.SchemaDatabase)
+		if !ok {
+			return nil, nil, sql.ErrDatabaseSchemasNotSupported.New(db.Name())
+		}
+		
+		db, ok, err = sdb.GetSchema(ctx, schemaName)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !ok {
+			return nil, nil, sql.ErrDatabaseSchemaNotFound.New(schemaName)
+		}
+	}
+
+	return c.DatabaseTable(ctx, db, tableName)
+}
+
 func (c *Catalog) DatabaseTable(ctx *sql.Context, db sql.Database, tableName string) (sql.Table, sql.Database, error) {
 	_, ok := db.(sql.UnresolvedDatabase)
 	if ok {
