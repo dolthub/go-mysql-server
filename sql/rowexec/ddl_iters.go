@@ -47,6 +47,8 @@ type loadDataIter struct {
 	setExprs      []sql.Expression
 	userVars      []sql.Expression
 
+	ignoreNum int64
+
 	fieldsTerminatedBy  string
 	fieldsEnclosedBy    string
 	fieldsEnclosedByOpt bool
@@ -56,21 +58,30 @@ type loadDataIter struct {
 	linesTerminatedBy string
 }
 
-func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
-	var exprs []sql.Expression
+var _ sql.RowIter = (*loadDataIter)(nil)
+var _ sql.Closer = (*loadDataIter)(nil)
+
+func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
+	// skip first ignoreNum lines
 	var err error
+	for ; l.ignoreNum > 0 && l.scanner.Scan(); l.ignoreNum-- {
+		if err = l.scanner.Err(); err != nil {
+			l.reader.Close()
+			return nil, err
+		}
+	}
+
 	// If exprs is nil then this is a skipped line (see test cases). Keep skipping
 	// until exprs != nil
+	var exprs []sql.Expression
 	for exprs == nil {
 		if keepGoing := l.scanner.Scan(); !keepGoing {
-			if l.scanner.Err() != nil {
-				return nil, l.scanner.Err()
+			if err = l.scanner.Err(); err != nil {
+				return nil, err
 			}
 			return nil, io.EOF
 		}
-
-		line := l.scanner.Text()
-		exprs, err = l.parseFields(ctx, line)
+		exprs, err = l.parseFields(ctx, l.scanner.Text())
 		if err != nil {
 			return nil, err
 		}
@@ -101,12 +112,12 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 	return sql.NewRow(row...), nil
 }
 
-func (l loadDataIter) Close(ctx *sql.Context) error {
+func (l *loadDataIter) Close(ctx *sql.Context) error {
 	return l.reader.Close()
 }
 
 // parseLinePrefix searches for the delim defined by linesStartingByDelim.
-func (l loadDataIter) parseLinePrefix(line string) string {
+func (l *loadDataIter) parseLinePrefix(line string) string {
 	if l.linesStartingBy == "" {
 		return line
 	}
@@ -121,7 +132,7 @@ func (l loadDataIter) parseLinePrefix(line string) string {
 	}
 }
 
-func (l loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expression, error) {
+func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expression, error) {
 	// Step 1. Start by Searching for prefix if there is one
 	line = l.parseLinePrefix(line)
 	if line == "" {

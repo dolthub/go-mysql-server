@@ -15,7 +15,7 @@
 package plan
 
 import (
-	"strings"
+	"bytes"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -76,7 +76,7 @@ func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byt
 	}
 
 	// Find the index of the LINES TERMINATED BY delim.
-	if i := strings.Index(string(data), l.LinesTerminatedBy); i >= 0 {
+	if i := bytes.Index(data, []byte(l.LinesTerminatedBy)); i >= 0 {
 		return i + len(l.LinesTerminatedBy), data[0:i], nil
 	}
 
