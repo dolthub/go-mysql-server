@@ -1278,10 +1278,10 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "sql_mode=NO_AUTO_VALUE_ON_ZERO",
+		Name: "sql_mode=NO_auto_value_ON_ZERO",
 		SetUpScript: []string{
 			"set @old_sql_mode=@@sql_mode;",
-			"set @@sql_mode='NO_AUTO_VALUE_ON_ZERO';",
+			"set @@sql_mode='NO_auto_value_ON_ZERO';",
 			"create table auto (i int auto_increment, index (i));",
 			"create table auto_pk (i int auto_increment primary key);",
 		},

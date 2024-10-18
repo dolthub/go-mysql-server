@@ -145,25 +145,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	})
 }
 
-// containsSources checks that all `needle` sources are contained inside `haystack`.
-func containsSources(haystack, needle []sql.TableId) bool {
-	for _, s := range needle {
-		var found bool
-		for _, s2 := range haystack {
-			if s2 == s {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return false
-		}
-	}
-
-	return true
-}
-
 // nodeSources returns the set of column sources from the schema of the node given.
 func nodeSources(n sql.Node) sql.FastIntSet {
 	var tables sql.FastIntSet

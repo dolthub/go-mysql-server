@@ -1283,7 +1283,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              types.NewSystemSetType("log_output", "TABLE", "FILE", "NONE"),
+		Type:              types.NewSystemSetType("log_output", sql.Collation_utf8mb4_0900_ai_ci, "TABLE", "FILE", "NONE"),
 		Default:           "FILE",
 	},
 	"log_queries_not_using_indexes": &sql.MysqlSystemVariable{
@@ -1951,7 +1951,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              types.NewSystemSetType("protocol_compression_algorithms", "zlib", "zstd", "uncompressed"),
+		Type:              types.NewSystemSetType("protocol_compression_algorithms", sql.Collation_latin1_swedish_ci, "zlib", "zstd", "uncompressed"),
 		Default:           "zlib,zstd,uncompressed",
 	},
 	"protocol_version": &sql.MysqlSystemVariable{
@@ -2430,7 +2430,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
-		Type:              types.NewSystemSetType("sql_mode", "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL", "ANSI"),
+		Type:              types.NewSystemSetType("sql_mode", sql.Collation_utf8mb4_0900_ai_ci, "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL", "ANSI"),
 		Default:           sql.DefaultSqlMode,
 	},
 	"sql_notes": &sql.MysqlSystemVariable{

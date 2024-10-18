@@ -258,7 +258,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 				return nil, transform.SameTree, err
 			}
 
-			sch, err = validateAddColumn(initialSch, sch, n.(*plan.AddColumn))
+			sch, err = ValidateAddColumn(sch, n.(*plan.AddColumn))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -395,7 +395,10 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	return renameInSchema(sch, rc.ColumnName, rc.NewColumnName, nameable.Name()), nil
 }
 
-func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
+// ValidateAddColumn validates that the column specified in |ac| can be added to the specified
+// |schema|. A new Schema is returned, with the added column, if the column can be added. Otherwise,
+// an error is returned if there are any validation errors.
+func ValidateAddColumn(schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
 	table := ac.Table
 	nameable := table.(sql.Nameable)
 
@@ -827,8 +830,6 @@ func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) err
 	}
 	return nil
 }
-
-const textIndexPrefix = 1000
 
 func schToColMap(sch sql.Schema) map[string]*sql.Column {
 	colMap := make(map[string]*sql.Column, len(sch))
