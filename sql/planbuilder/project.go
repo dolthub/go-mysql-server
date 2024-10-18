@@ -243,5 +243,12 @@ func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
 		}
 	})
 
-	return complex || e.InputExpression != expr.String()
+	// If the expression's input value matches expr.String() (or a quoted version of it), then we
+	// know that it is referenceable and does not need an alias. Note that when InputExpression is
+	// assigned, in Vitess, it always trims quotes from the input expression.
+	exprString := expr.String()
+	inputExpressionMatch := strings.EqualFold(e.InputExpression, exprString) ||
+		strings.EqualFold("'"+e.InputExpression+"'", exprString)
+
+	return complex || !inputExpressionMatch
 }
