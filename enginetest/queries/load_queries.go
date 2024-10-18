@@ -549,7 +549,7 @@ var LoadDataScripts = []ScriptTest{
 			{
 				Query: "select id, length(lt) from t order by id",
 				Expected: []sql.Row{
-					{1, 65536},
+					{1, 65535},
 					{2, 100000},
 					{3, 1000000},
 				},

@@ -122,6 +122,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		setExprs:      n.SetExprs,
 		userVars:      n.UserVars,
 
+		ignoreNum: n.IgnoreNum,
+
 		fieldsTerminatedBy:  n.FieldsTerminatedBy,
 		fieldsEnclosedBy:    n.FieldsEnclosedBy,
 		fieldsEnclosedByOpt: n.FieldsEnclosedByOpt,
