@@ -519,28 +519,26 @@ func resultForEmptyIter(ctx *sql.Context, iter sql.RowIter, resultFields []*quer
 func GetDeferredProjections(iter sql.RowIter) (sql.RowIter, []sql.Expression) {
 	switch i := iter.(type) {
 	case *rowexec.ExprCloserIter:
-		_, projs := GetDeferredProjections(i.GetIter())
-		return i, projs
+		if newChild, projs := GetDeferredProjections(i.GetIter()); projs != nil {
+			return i.WithChildIter(newChild), projs
+		}
 	case *plan.TrackedRowIter:
-		_, projs := GetDeferredProjections(i.GetIter())
-		return i, projs
+		if newChild, projs := GetDeferredProjections(i.GetIter()); projs != nil {
+			return i.WithChildIter(newChild), projs
+		}
 	case *rowexec.TransactionCommittingIter:
-		newChild, projs := GetDeferredProjections(i.GetIter())
-		if projs != nil {
-			i.WithChildIter(newChild)
+		if newChild, projs := GetDeferredProjections(i.GetIter()); projs != nil {
+			return i.WithChildIter(newChild), projs
 		}
-		return i, projs
 	case *iters.LimitIter:
-		newChild, projs := GetDeferredProjections(i.ChildIter)
-		if projs != nil {
+		if newChild, projs := GetDeferredProjections(i.ChildIter); projs != nil {
 			i.ChildIter = newChild
+			return i, projs
 		}
-		return i, projs
 	case *rowexec.ProjectIter:
 		if i.CanDefer() {
 			return i.GetChildIter(), i.GetProjections()
 		}
-		return i, nil
 	}
 	return iter, nil
 }

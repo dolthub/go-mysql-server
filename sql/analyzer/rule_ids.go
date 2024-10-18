@@ -87,7 +87,6 @@ const (
 	// after all
 	cacheSubqueryAliasesInJoinsId    // cacheSubqueryAliasesInJoins
 	backtickDefaulColumnValueNamesId // backtickDefaultColumnValueNames
-	AutocommitId                     // addAutocommit
 	TrackProcessId                   // trackProcess
 	parallelizeId                    // parallelize
 )
