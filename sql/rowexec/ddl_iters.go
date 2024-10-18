@@ -94,7 +94,7 @@ func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error
 	for exprs == nil {
 		line, err := l.readLine()
 		if err != nil {
-			 return nil, err
+			return nil, err
 		}
 		exprs, err = l.parseFields(ctx, string(line))
 		if err != nil {
