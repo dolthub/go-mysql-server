@@ -15,9 +15,10 @@
 package plan
 
 import (
-	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"bytes"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type LoadData struct {
@@ -65,6 +66,25 @@ func (l *LoadData) Children() []sql.Node {
 
 func (l *LoadData) IsReadOnly() bool {
 	return false
+}
+
+func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	// Return Nothing if at end of file and no data passed.
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	// Find the index of the LINES TERMINATED BY delim.
+	if i := bytes.Index(data, []byte(l.LinesTerminatedBy)); i >= 0 {
+		return i + len(l.LinesTerminatedBy), data[0:i], nil
+	}
+
+	// If at end of file with data return the data.
+	if atEOF {
+		return len(data), data, nil
+	}
+
+	return
 }
 
 func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {

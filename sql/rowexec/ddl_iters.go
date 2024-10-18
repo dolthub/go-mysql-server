@@ -16,8 +16,7 @@ package rowexec
 
 import (
 	"bufio"
-	"bytes"
-	"fmt"
+		"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -39,10 +38,8 @@ import (
 )
 
 type loadDataIter struct {
-	scanner *bufio.Reader
+	scanner *bufio.Scanner
 	reader  io.ReadCloser
-	buffer  bytes.Buffer
-	hitEOF  bool
 
 	destSch       sql.Schema
 	colCount      int
@@ -64,38 +61,12 @@ type loadDataIter struct {
 var _ sql.RowIter = (*loadDataIter)(nil)
 var _ sql.Closer = (*loadDataIter)(nil)
 
-// readLine reads a line from the scanner. It does not include the delimiter.
-func (l *loadDataIter) readLine() ([]byte, error) {
-	// return EOF on the call after EOF
-	if l.hitEOF {
-		return nil, io.EOF
-	}
-	delim := []byte(l.linesTerminatedBy)
-	delimDelim := delim[len(delim)-1]
-	l.buffer.Reset()
-	var buf []byte
-	for {
-		chunk, err := l.scanner.ReadBytes(delimDelim)
-		if err != nil && err != io.EOF {
-			return nil, err
-		}
-		l.buffer.Write(chunk)
-		buf = l.buffer.Bytes()
-		if bytes.HasSuffix(buf, delim) {
-			return buf[:len(buf)-len(delim)], nil
-		}
-		if err == io.EOF {
-			l.hitEOF = true
-			return buf, nil
-		}
-	}
-}
-
 func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
 	// skip first ignoreNum lines
-	for ; l.ignoreNum > 0; l.ignoreNum-- {
-		_, err := l.readLine()
-		if err != nil {
+	var err error
+	for ; l.ignoreNum > 0 && l.scanner.Scan(); l.ignoreNum-- {
+		if err = l.scanner.Err(); err != nil {
+			l.reader.Close()
 			return nil, err
 		}
 	}
@@ -104,11 +75,13 @@ func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr erro
 	// until exprs != nil
 	var exprs []sql.Expression
 	for exprs == nil {
-		line, err := l.readLine()
-		if err != nil {
-			return nil, err
+		if keepGoing := l.scanner.Scan(); !keepGoing {
+			if err = l.scanner.Err(); err != nil {
+				return nil, err
+			}
+			return nil, io.EOF
 		}
-		exprs, err = l.parseFields(ctx, string(line))
+		exprs, err = l.parseFields(ctx, l.scanner.Text())
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +89,6 @@ func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr erro
 
 	row := make(sql.Row, len(exprs))
 	var secondPass []int
-	var err error
 	for i, expr := range exprs {
 		if expr != nil {
 			// Non-literal default values may reference other columns, so we need to evaluate them in a second pass.

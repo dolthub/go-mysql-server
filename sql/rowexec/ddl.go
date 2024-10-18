@@ -93,6 +93,10 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		reader = file
 	}
 
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(nil, int(types.LongTextBlobMax))
+	scanner.Split(n.SplitLines)
+
 	sch := n.Schema()
 	source := sch[0].Source // Schema will always have at least one column
 	colNames := n.ColNames
@@ -116,7 +120,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	return &loadDataIter{
 		destSch:       n.DestSch,
 		reader:        reader,
-		scanner:       bufio.NewReader(reader),
+		scanner:       scanner,
 		colCount:      len(n.ColNames), // Needs to be the original column count
 		fieldToColMap: fieldToColMap,
 		setExprs:      n.SetExprs,
