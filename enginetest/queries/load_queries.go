@@ -539,6 +539,23 @@ var LoadDataScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "LOAD DATA with column data larger than 64KB",
+		SetUpScript: []string{
+			"create table t(id int primary key, lt longtext);",
+			"load data infile './testdata/test10.txt' into table t fields terminated by ',' lines terminated by '\n';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select id, length(lt) from t order by id",
+				Expected: []sql.Row{
+					{1, 65535},
+					{2, 100000},
+					{3, 1000000},
+				},
+			},
+		},
+	},
 }
 
 var LoadDataErrorScripts = []ScriptTest{
