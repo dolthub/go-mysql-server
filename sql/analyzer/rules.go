@@ -25,7 +25,7 @@ func init() {
 		{wrapWithRollbackId, wrapWithRollback},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-		{backtickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
+		{BacktickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
 		{TrackProcessId, trackProcess},
 		{parallelizeId, parallelize},
 	}

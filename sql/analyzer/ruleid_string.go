@@ -80,7 +80,7 @@ func _() {
 	_ = x[validateAggregationsId-69]
 	_ = x[validateDeleteFromId-70]
 	_ = x[cacheSubqueryAliasesInJoinsId-71]
-	_ = x[backtickDefaulColumnValueNamesId-72]
+	_ = x[BacktickDefaulColumnValueNamesId-72]
 	_ = x[TrackProcessId-73]
 	_ = x[parallelizeId-74]
 }
