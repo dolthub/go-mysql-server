@@ -79,6 +79,11 @@ func AddTransactionCommittingIter(child sql.RowIter, qFlags *sql.QueryFlags) sql
 	if qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings) {
 		return child
 	}
+	// TODO: remove this once trackedRowIter is moved out of planbuilder
+	// Insert TransactionCommittingIter as child of TrackedRowIter
+	if trackedRowIter, ok := child.(*plan.TrackedRowIter); ok {
+		return trackedRowIter.WithChildIter(&TransactionCommittingIter{childIter: trackedRowIter.GetIter()})
+	}
 	return &TransactionCommittingIter{childIter: child}
 }
 
