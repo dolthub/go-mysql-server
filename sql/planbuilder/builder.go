@@ -439,3 +439,21 @@ func assignColumnIndexes(e sql.Expression, schema sql.Schema) sql.Expression {
 	})
 	return e
 }
+
+// Below methods are used in Doltgres. TODO: maybe find way to not expose these methods
+
+func (b *Builder) BuildScalarWithTable(expr ast.Expr, tableExpr ast.TableExpr) sql.Expression {
+	outscope := b.newScope()
+	if tableExpr != nil {
+		outscope = b.buildDataSource(outscope, tableExpr)
+	}
+	return b.buildScalar(outscope, expr)
+}
+
+func (b *Builder) BuildColumnDefaultValueWithTable(defExpr ast.Expr, tableExpr ast.TableExpr, typ sql.Type, nullable bool) *sql.ColumnDefaultValue {
+	outscope := b.newScope()
+	if tableExpr != nil {
+		outscope = b.buildDataSource(outscope, tableExpr)
+	}
+	return b.convertDefaultExpression(outscope, defExpr, typ, nullable)
+}

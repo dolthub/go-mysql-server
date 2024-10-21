@@ -30,7 +30,7 @@ func IsBinary(node sql.Node) bool {
 	return len(node.Children()) == 2
 }
 
-// NillaryNode is a node with no children. This is a common WithChildren implementation for all nodes that have none.
+// NillaryWithChildren is a node with no children. This is a common WithChildren implementation for all nodes that have none.
 func NillaryWithChildren(node sql.Node, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(node, len(children), 0)
