@@ -242,6 +242,9 @@ func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
 			return true
 		}
 	})
+	if complex {
+		return true
+	}
 
 	// If the expression's string representation is quoted, trim the quotes before comparing it to the input expression.
 	// InputExpression is assigned in the Vitess layer, and it always trims quotes at that time, too.
@@ -250,7 +253,7 @@ func selectExprNeedsAlias(e *ast.AliasedExpr, expr sql.Expression) bool {
 		exprString = exprString[1 : len(exprString)-1]
 	}
 
-	// If the expression's input value matches expr.String(), then we know that it is referenceable and
-	// does not need an alias.
-	return complex || e.InputExpression != exprString
+	// If the expression's input value does not match expr.String(), then we know that it is not
+	// referenceable and will need an alias.
+	return e.InputExpression != exprString
 }
