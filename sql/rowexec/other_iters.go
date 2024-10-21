@@ -398,6 +398,14 @@ type exchangeRowIter struct {
 
 var _ sql.RowIter = (*exchangeRowIter)(nil)
 
+func AddExchangeRowIter(parallelism int, node sql.Node, iter sql.RowIter) sql.RowIter {
+	if parallelism <= 1 {
+		return iter
+	}
+
+	return iter
+}
+
 func (i *exchangeRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.rows == nil {
 		panic("Next called for a Next2 iterator")

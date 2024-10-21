@@ -74,17 +74,17 @@ type TransactionCommittingIter struct {
 	transactionDatabase string
 }
 
-func AddTransactionCommittingIter(child sql.RowIter, qFlags *sql.QueryFlags) sql.RowIter {
+func AddTransactionCommittingIter(qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings) {
-		return child
+		return iter
 	}
 	// TODO: remove this once trackedRowIter is moved out of planbuilder
 	// Insert TransactionCommittingIter as child of TrackedRowIter
-	if trackedRowIter, ok := child.(*plan.TrackedRowIter); ok {
+	if trackedRowIter, ok := iter.(*plan.TrackedRowIter); ok {
 		return trackedRowIter.WithChildIter(&TransactionCommittingIter{childIter: trackedRowIter.GetIter()})
 	}
-	return &TransactionCommittingIter{childIter: child}
+	return &TransactionCommittingIter{childIter: iter}
 }
 
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -102,9 +102,9 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 
 	tx := ctx.GetTransaction()
 	// TODO: In the future we should ensure that analyzer supports implicit commits instead of directly
-	// accessing autocommit here.
+	//   accessing autocommit here.
 	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
-	autocommit, err := plan.IsSessionAutocommit(ctx)
+	autocommit, err := IsSessionAutocommit(ctx)
 	if err != nil {
 		return err
 	}
@@ -136,4 +136,32 @@ func (t *TransactionCommittingIter) WithChildIter(childIter sql.RowIter) sql.Row
 	nt := *t
 	nt.childIter = childIter
 	return &nt
+}
+
+// IsSessionAutocommit returns true if the current session is using implicit transaction management
+// through autocommit.
+func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
+	if ReadCommitted(ctx) {
+		return true, nil
+	}
+
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return sql.ConvertToBool(ctx, autoCommitSessionVar)
+}
+
+func ReadCommitted(ctx *sql.Context) bool {
+	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
+	if err != nil {
+		return false
+	}
+
+	valStr, ok := val.(string)
+	if !ok {
+		return false
+	}
+
+	return valStr == "READ-COMMITTED"
 }
