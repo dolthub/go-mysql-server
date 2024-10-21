@@ -15,83 +15,8 @@
 package plan
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
-
-const (
-	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-)
-
-var fakeReadCommitted bool
-
-func init() {
-	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
-	if ok {
-		fakeReadCommitted = true
-	}
-}
-
-// TransactionCommittingNode implements autocommit logic. It wraps relevant queries and ensures the database commits
-// the transaction.
-type TransactionCommittingNode struct {
-	UnaryNode
-}
-
-var _ sql.Node = (*TransactionCommittingNode)(nil)
-var _ sql.CollationCoercible = (*TransactionCommittingNode)(nil)
-
-// NewTransactionCommittingNode returns a TransactionCommittingNode.
-func NewTransactionCommittingNode(child sql.Node) *TransactionCommittingNode {
-	return &TransactionCommittingNode{UnaryNode: UnaryNode{Child: child}}
-}
-
-// String implements the sql.Node interface.
-func (t *TransactionCommittingNode) String() string {
-	return t.Child().String()
-}
-
-// DebugString implements the sql.DebugStringer interface.
-func (t *TransactionCommittingNode) DebugString() string {
-	return sql.DebugString(t.Child())
-}
-
-// Describe implements the sql.Describable interface.
-func (t *TransactionCommittingNode) Describe(options sql.DescribeOptions) string {
-	return sql.Describe(t.Child(), options)
-}
-
-func (t *TransactionCommittingNode) IsReadOnly() bool {
-	return t.Child().IsReadOnly()
-}
-
-// WithChildren implements the sql.Node interface.
-func (t *TransactionCommittingNode) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, fmt.Errorf("ds")
-	}
-
-	t2 := *t
-	t2.UnaryNode = UnaryNode{Child: children[0]}
-	return &t2, nil
-}
-
-// CheckPrivileges implements the sql.Node interface.
-func (t *TransactionCommittingNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return t.Child().CheckPrivileges(ctx, opChecker)
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (*TransactionCommittingNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 7
-}
-
-// Child implements the sql.UnaryNode interface.
-func (t *TransactionCommittingNode) Child() sql.Node {
-	return t.UnaryNode.Child
-}
 
 // IsSessionAutocommit returns true if the current session is using implicit transaction management
 // through autocommit.
@@ -108,10 +33,6 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 }
 
 func ReadCommitted(ctx *sql.Context) bool {
-	if !fakeReadCommitted {
-		return false
-	}
-
 	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
 	if err != nil {
 		return false
