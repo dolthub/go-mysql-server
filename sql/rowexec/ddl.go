@@ -1187,7 +1187,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if n.FkDef.SchemaName != "" {
 		sdb, ok := db.(sql.SchemaDatabase)
 		if !ok {
@@ -1202,7 +1202,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 		}
 		db = sch
 	}
-	
+
 	tbl, ok, err := db.GetTableInsensitive(ctx, n.FkDef.Table)
 	if err != nil {
 		return nil, err
@@ -1215,7 +1215,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if n.FkDef.ParentSchema != "" {
 		sdb, ok := refDb.(sql.SchemaDatabase)
 		if !ok {
@@ -1230,7 +1230,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 		}
 		refDb = sch
 	}
-	
+
 	refTbl, ok, err := refDb.GetTableInsensitive(ctx, n.FkDef.ParentTable)
 	if err != nil {
 		return nil, err
@@ -1238,8 +1238,8 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if !ok {
 		return nil, sql.ErrTableNotFound.New(n.FkDef.ParentTable)
 	}
-	
-	// If we didn't have an explicit schema, fill in the resolved schema for the fk table defn 
+
+	// If we didn't have an explicit schema, fill in the resolved schema for the fk table defn
 	if n.FkDef.ParentSchema == "" {
 		dst, ok := refTbl.(sql.DatabaseSchemaTable)
 		if ok {
@@ -1255,7 +1255,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if !ok {
 		return nil, sql.ErrNoForeignKeySupport.New(n.FkDef.ParentTable)
 	}
-	
+
 	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
 	if err != nil {
 		return nil, err

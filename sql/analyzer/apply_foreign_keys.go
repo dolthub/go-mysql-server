@@ -64,7 +64,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 				return nil, transform.SameTree, err
 			}
 
-			// If we are working with a schema-enabled database, alter the foreign key defn to apply the schema name we 
+			// If we are working with a schema-enabled database, alter the foreign key defn to apply the schema name we
 			// just resolved
 			dst, ok := parentTbl.(sql.DatabaseSchemaTable)
 			if ok {
@@ -434,16 +434,16 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 // foreignKeyTableName is the combination of a table's database along with their name, both lowercased.
 type foreignKeyTableName struct {
-	dbName  string
+	dbName     string
 	schemaName string
-	tblName string
+	tblName    string
 }
 
 func newForeignKeyTableName(dbName, schemaName, tblName string) foreignKeyTableName {
 	return foreignKeyTableName{
-		dbName:  strings.ToLower(dbName),
+		dbName:     strings.ToLower(dbName),
 		schemaName: strings.ToLower(schemaName),
-		tblName: strings.ToLower(tblName),
+		tblName:    strings.ToLower(tblName),
 	}
 }
 

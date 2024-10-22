@@ -256,13 +256,13 @@ func (c *Catalog) TableSchema(ctx *sql.Context, dbName, schemaName, tableName st
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	if schemaName != "" {
 		sdb, ok := db.(sql.SchemaDatabase)
 		if !ok {
 			return nil, nil, sql.ErrDatabaseSchemasNotSupported.New(db.Name())
 		}
-		
+
 		db, ok, err = sdb.GetSchema(ctx, schemaName)
 		if err != nil {
 			return nil, nil, err
