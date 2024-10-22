@@ -637,6 +637,12 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 				b.handleErr(err)
 			}
 			database := table.SqlDatabase.Name()
+
+			ds, ok := table.SqlDatabase.(sql.DatabaseSchema)
+			if ok {
+				c.SchemaName = ds.SchemaName()
+			}
+
 			dropFk := plan.NewAlterRenameForeignKey(database, table.Name(), c.Name, cc.Name)
 			dropFk.DbProvider = b.cat
 			outScope.node = dropFk
