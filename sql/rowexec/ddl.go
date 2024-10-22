@@ -1187,6 +1187,22 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if err != nil {
 		return nil, err
 	}
+	
+	if n.FkDef.SchemaName != "" {
+		sdb, ok := db.(sql.SchemaDatabase)
+		if !ok {
+			return nil, sql.ErrDatabaseSchemasNotSupported.New(n.FkDef.Database)
+		}
+		sch, schemaExists, err := sdb.GetSchema(ctx, n.FkDef.SchemaName)
+		if err != nil {
+			return nil, err
+		}
+		if !schemaExists {
+			return nil, sql.ErrDatabaseSchemaNotFound.New(n.FkDef.SchemaName)
+		}
+		db = sch
+	}
+	
 	tbl, ok, err := db.GetTableInsensitive(ctx, n.FkDef.Table)
 	if err != nil {
 		return nil, err
@@ -1199,6 +1215,22 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if err != nil {
 		return nil, err
 	}
+	
+	if n.FkDef.ParentSchema != "" {
+		sdb, ok := refDb.(sql.SchemaDatabase)
+		if !ok {
+			return nil, sql.ErrDatabaseSchemasNotSupported.New(n.FkDef.ParentDatabase)
+		}
+		sch, schemaExists, err := sdb.GetSchema(ctx, n.FkDef.ParentSchema)
+		if err != nil {
+			return nil, err
+		}
+		if !schemaExists {
+			return nil, sql.ErrDatabaseSchemaNotFound.New(n.FkDef.ParentSchema)
+		}
+		refDb = sch
+	}
+	
 	refTbl, ok, err := refDb.GetTableInsensitive(ctx, n.FkDef.ParentTable)
 	if err != nil {
 		return nil, err
