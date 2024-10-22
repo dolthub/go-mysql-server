@@ -760,6 +760,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 			Name:           cd.Name,
 			Columns:        columns,
 			ParentDatabase: refDatabase,
+			ParentSchema:   fkConstraint.ReferencedTable.SchemaQualifier.String(),
 			ParentTable:    fkConstraint.ReferencedTable.Name.String(),
 			ParentColumns:  refColumns,
 			OnUpdate:       b.buildReferentialAction(fkConstraint.OnUpdate),
