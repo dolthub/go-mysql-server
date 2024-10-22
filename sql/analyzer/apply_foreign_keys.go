@@ -58,10 +58,20 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 				fkParentTbls[i] = nil
 				continue
 			}
+
 			parentTbl, _, err := a.Catalog.TableSchema(ctx, fkDef.ParentDatabase, fkDef.ParentSchema, fkDef.ParentTable)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
+			// If we are working with a schema-enabled database, alter the foreign key defn to apply the schema name we 
+			// just resolved
+			dst, ok := parentTbl.(sql.DatabaseSchemaTable)
+			if ok {
+				schemaName := dst.DatabaseSchema().SchemaName()
+				fkDef.ParentSchema = schemaName
+			}
+
 			fkParentTbl, ok := parentTbl.(sql.ForeignKeyTable)
 			if !ok {
 				return nil, transform.SameTree, sql.ErrNoForeignKeySupport.New(fkDef.ParentTable)
