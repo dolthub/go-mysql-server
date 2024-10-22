@@ -590,6 +590,12 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 		case *sql.ForeignKeyConstraint:
 			c.Database = table.SqlDatabase.Name()
 			c.Table = table.Name()
+			
+			ds, ok := table.SqlDatabase.(sql.DatabaseSchema)
+			if ok {
+				c.SchemaName = ds.SchemaName()
+			}
+			
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
 			outScope.node = alterFk
