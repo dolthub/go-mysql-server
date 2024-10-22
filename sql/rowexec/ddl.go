@@ -1238,6 +1238,14 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if !ok {
 		return nil, sql.ErrTableNotFound.New(n.FkDef.ParentTable)
 	}
+	
+	// If we didn't have an explicit schema, fill in the resolved schema for the fk table defn 
+	if n.FkDef.SchemaName == "" {
+		dst, ok := refTbl.(sql.DatabaseSchemaTable)
+		if ok {
+			n.FkDef.ParentSchema = dst.DatabaseSchema().SchemaName()
+		}
+	}
 
 	fkTbl, ok := tbl.(sql.ForeignKeyTable)
 	if !ok {
@@ -1247,7 +1255,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	if !ok {
 		return nil, sql.ErrNoForeignKeySupport.New(n.FkDef.ParentTable)
 	}
-
+	
 	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
 	if err != nil {
 		return nil, err
