@@ -1240,7 +1240,7 @@ func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateFore
 	}
 	
 	// If we didn't have an explicit schema, fill in the resolved schema for the fk table defn 
-	if n.FkDef.SchemaName == "" {
+	if n.FkDef.ParentSchema == "" {
 		dst, ok := refTbl.(sql.DatabaseSchemaTable)
 		if ok {
 			n.FkDef.ParentSchema = dst.DatabaseSchema().SchemaName()
