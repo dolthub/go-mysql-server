@@ -4695,7 +4695,7 @@ Select * from (
 	{
 		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null as count(*), emptytable.i:1!null, concat(emptytable.i:1!null,emptytable.i:1!null) as concat(i, i), 123 (tinyint), abc (longtext) as abc, concat(abc (longtext),def (longtext)) as concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1):0!null as count(*), emptytable.i:1!null, concat(emptytable.i:1!null,emptytable.i:1!null) as concat(i, i), 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext)) as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), emptytable.i:0!null\n" +
 			"     ├─ group: \n" +
@@ -4705,7 +4705,7 @@ Select * from (
 			"             └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc' as abc, concat('abc','def') as concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1), emptytable.i)\n" +
 			"     ├─ Grouping()\n" +
@@ -4714,7 +4714,7 @@ Select * from (
 			"         └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc' as abc, concat('abc','def') as concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1), emptytable.i)\n" +
 			"     ├─ Grouping()\n" +
@@ -4726,21 +4726,21 @@ Select * from (
 	{
 		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null as count(*), mytable.i:1!null, concat(mytable.i:1!null,mytable.i:1!null) as concat(i, i), 123 (tinyint), abc (longtext) as abc, concat(abc (longtext),def (longtext)) as concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1):0!null as count(*), mytable.i:1!null, concat(mytable.i:1!null,mytable.i:1!null) as concat(i, i), 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext)) as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), mytable.i:0!null\n" +
 			"     ├─ group: \n" +
 			"     └─ EmptyTable\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc' as abc, concat('abc','def') as concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1), mytable.i)\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ EmptyTable\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc' as abc, concat('abc','def') as concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectedExprs(COUNT(1), mytable.i)\n" +
 			"     ├─ Grouping()\n" +
@@ -6705,7 +6705,7 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [i:0!null, s:1!null]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [t1.i:1!null, hello (longtext) as hello]\n" +
+			"             ├─ columns: [t1.i:1!null, hello (longtext)]\n" +
 			"             └─ InnerJoin\n" +
 			"                 ├─ Eq\n" +
 			"                 │   ├─ t1.i:1!null\n" +
@@ -23946,7 +23946,7 @@ WHERE keyless.c0 IN (
 		Query: `select 1, 2.0, '3', max(x) from xy`,
 		ExpectedPlan: "Limit(1)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [1 (tinyint), 2 (decimal(2,1)), 3 (longtext) as 3, xy.x:0!null as max(x)]\n" +
+			"     ├─ columns: [1 (tinyint), 2 (decimal(2,1)), 3 (longtext), xy.x:0!null as max(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
@@ -23959,7 +23959,7 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedEstimates: "Limit(1)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [1, 2.0, '3' as 3, xy.x as max(x)]\n" +
+			"     ├─ columns: [1, 2.0, '3', xy.x as max(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ filters: [{[NULL, ∞)}]\n" +
@@ -23968,7 +23968,7 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedAnalysis: "Limit(1)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [1, 2.0, '3' as 3, xy.x as max(x)]\n" +
+			"     ├─ columns: [1, 2.0, '3', xy.x as max(x)]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.x]\n" +
 			"         ├─ filters: [{[NULL, ∞)}]\n" +
