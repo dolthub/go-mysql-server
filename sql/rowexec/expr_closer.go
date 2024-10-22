@@ -68,3 +68,9 @@ func (eci *ExprCloserIter) Close(ctx *sql.Context) error {
 func (eci *ExprCloserIter) GetIter() sql.RowIter {
 	return eci.iter
 }
+
+func (eci *ExprCloserIter) WithChildIter(childIter sql.RowIter) sql.RowIter {
+	neci := *eci
+	neci.iter = childIter
+	return &neci
+}

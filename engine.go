@@ -446,7 +446,8 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 
 		return nil, nil, nil, err
 	}
-	iter = rowexec.AddExpressionCloser(analyzed, iter)
+
+	iter = finalizeIters(analyzed, qFlags, iter)
 
 	return analyzed.Schema(), iter, qFlags, nil
 }
@@ -480,7 +481,8 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 
 		return nil, nil, nil, err
 	}
-	iter = rowexec.AddExpressionCloser(plan, iter)
+
+	iter = finalizeIters(plan, nil, iter)
 
 	return plan.Schema(), iter, nil, nil
 }
@@ -722,31 +724,6 @@ func (e *Engine) CloseSession(connID uint32) {
 	e.PreparedDataCache.DeleteSessionData(connID)
 }
 
-// Count number of BindVars in given tree
-func countBindVars(node sql.Node) int {
-	var bindVars map[string]bool
-	bindCntFunc := func(e sql.Expression) bool {
-		if bv, ok := e.(*expression.BindVar); ok {
-			if bindVars == nil {
-				bindVars = make(map[string]bool)
-			}
-			bindVars[bv.Name] = true
-		}
-		return true
-	}
-	transform.InspectExpressions(node, bindCntFunc)
-
-	// InsertInto.Source not a child of InsertInto, so also need to traverse those
-	transform.Inspect(node, func(n sql.Node) bool {
-		if in, ok := n.(*plan.InsertInto); ok {
-			transform.InspectExpressions(in.Source, bindCntFunc)
-			return false
-		}
-		return true
-	})
-	return len(bindVars)
-}
-
 func (e *Engine) beginTransaction(ctx *sql.Context) error {
 	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
 	if beginNewTransaction {
@@ -852,7 +829,8 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 		}
 		return err
 	}
-	iter = rowexec.AddExpressionCloser(definitionNode, iter)
+
+	iter = finalizeIters(definitionNode, nil, iter)
 
 	// Drain the iterate to execute the event body/definition
 	// NOTE: No row data is returned for an event; we just need to execute the statements
@@ -884,4 +862,11 @@ func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 	}
 
 	return createEventNode, nil
+}
+
+// finalizeIters applies the final transformations on sql.RowIter before execution.
+func finalizeIters(analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
+	iter = rowexec.AddTransactionCommittingIter(iter, qFlags)
+	iter = rowexec.AddExpressionCloser(analyzed, iter)
+	return iter
 }

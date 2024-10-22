@@ -300,11 +300,3 @@ func (b *BaseBuilder) buildExecuteQuery(ctx *sql.Context, n *plan.ExecuteQuery, 
 func (b *BaseBuilder) buildUse(ctx *sql.Context, n *plan.Use, row sql.Row) (sql.RowIter, error) {
 	return n.RowIter(ctx, row)
 }
-
-func (b *BaseBuilder) buildTransactionCommittingNode(ctx *sql.Context, n *plan.TransactionCommittingNode, row sql.Row) (sql.RowIter, error) {
-	iter, err := b.Build(ctx, n.Child(), row)
-	if err != nil {
-		return nil, err
-	}
-	return &TransactionCommittingIter{childIter: iter}, nil
-}

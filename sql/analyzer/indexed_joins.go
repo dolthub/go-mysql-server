@@ -1387,24 +1387,3 @@ func isWeaklyMonotonic(e sql.Expression) bool {
 		}
 	})
 }
-
-// attrsRefSingleTableCol returns false if there are
-// getFields sourced from zero or more than one table.
-func attrsRefSingleTableCol(e sql.Expression) (tableCol, bool) {
-	var tc tableCol
-	var invalid bool
-	transform.InspectExpr(e, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.GetField:
-			newTc := newTableCol(e.Table(), e.Name())
-			if tc.table == "" && !invalid {
-				tc = newTc
-			} else if tc != newTc {
-				invalid = true
-			}
-		default:
-		}
-		return invalid
-	})
-	return tc, !invalid && tc.table != ""
-}

@@ -20,8 +20,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-const maxCteDepth = 5
-
 // schemaLength returns the length of a node's schema without actually accessing it. Useful when a node isn't yet
 // resolved, so Schema() could fail.
 func schemaLength(node sql.Node) int {

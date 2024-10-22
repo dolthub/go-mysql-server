@@ -94,18 +94,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	}
 
 	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(nil, int(types.LongTextBlobMax))
 	scanner.Split(n.SplitLines)
-
-	// Skip through the lines that need to be ignored.
-	for n.IgnoreNum > 0 && scanner.Scan() {
-		scanner.Text()
-		n.IgnoreNum--
-	}
-
-	if scanner.Err() != nil {
-		reader.Close()
-		return nil, scanner.Err()
-	}
 
 	sch := n.Schema()
 	source := sch[0].Source // Schema will always have at least one column
@@ -135,6 +125,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 		fieldToColMap: fieldToColMap,
 		setExprs:      n.SetExprs,
 		userVars:      n.UserVars,
+
+		ignoreNum: n.IgnoreNum,
 
 		fieldsTerminatedBy:  n.FieldsTerminatedBy,
 		fieldsEnclosedBy:    n.FieldsEnclosedBy,

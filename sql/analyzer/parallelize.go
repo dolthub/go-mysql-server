@@ -54,10 +54,6 @@ func shouldParallelize(node sql.Node, scope *plan.Scope) bool {
 		return false
 	}
 
-	if tc, ok := node.(*plan.TransactionCommittingNode); ok {
-		return shouldParallelize(tc.Child(), scope)
-	}
-
 	// Do not try to parallelize DDL or descriptive operations
 	return !plan.IsNoRowNode(node)
 }

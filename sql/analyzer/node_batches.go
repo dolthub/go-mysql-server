@@ -7,8 +7,8 @@ import (
 
 // getBatchesForNode returns a partial analyzer ruleset for simple node
 // types that require little prior validation before execution.
-func getBatchesForNode(n sql.Node, orig []*Batch) ([]*Batch, bool) {
-	switch n := n.(type) {
+func getBatchesForNode(node sql.Node) ([]*Batch, bool) {
+	switch n := node.(type) {
 	case *plan.Commit:
 		return nil, true
 	case *plan.StartTransaction:

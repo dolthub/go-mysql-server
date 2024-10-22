@@ -235,20 +235,6 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	}
 }
 
-// checkSqlMode checks if the option is set for the Session in ctx
-func checkSqlMode(ctx *sql.Context, option string) (bool, error) {
-	// session variable overrides global
-	sysVal, err := ctx.Session.GetSessionVariable(ctx, "sql_mode")
-	if err != nil {
-		return false, err
-	}
-	val, ok := sysVal.(string)
-	if !ok {
-		return false, sql.ErrSystemVariableCodeFail.New("sql_mode", val)
-	}
-	return strings.Contains(val, option), nil
-}
-
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return n, transform.SameTree, nil
@@ -662,15 +648,6 @@ func stringContains(strs []string, target string) bool {
 	lowerTarget := strings.ToLower(target)
 	for _, s := range strs {
 		if lowerTarget == strings.ToLower(s) {
-			return true
-		}
-	}
-	return false
-}
-
-func tableColsContains(strs []tableCol, target tableCol) bool {
-	for _, s := range strs {
-		if s == target {
 			return true
 		}
 	}
