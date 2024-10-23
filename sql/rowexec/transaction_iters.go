@@ -74,17 +74,12 @@ type TransactionCommittingIter struct {
 	transactionDatabase string
 }
 
-func AddTransactionCommittingIter(child sql.RowIter, qFlags *sql.QueryFlags) sql.RowIter {
+func AddTransactionCommittingIter(qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings) {
-		return child
+		return iter
 	}
-	// TODO: remove this once trackedRowIter is moved out of planbuilder
-	// Insert TransactionCommittingIter as child of TrackedRowIter
-	if trackedRowIter, ok := child.(*plan.TrackedRowIter); ok {
-		return trackedRowIter.WithChildIter(&TransactionCommittingIter{childIter: trackedRowIter.GetIter()})
-	}
-	return &TransactionCommittingIter{childIter: child}
+	return &TransactionCommittingIter{childIter: iter}
 }
 
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {

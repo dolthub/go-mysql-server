@@ -1080,8 +1080,6 @@ func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) b
 
 func ExtractQueryNode(node sql.Node) sql.Node {
 	switch node := node.(type) {
-	case *plan.QueryProcess:
-		return ExtractQueryNode(node.Child())
 	case *plan.Releaser:
 		return ExtractQueryNode(node.Child)
 	default:

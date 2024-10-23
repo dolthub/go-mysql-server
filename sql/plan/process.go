@@ -22,91 +22,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// QueryProcess represents a running query process node. It will use a callback
-// to notify when it has finished running.
-// TODO: QueryProcess -> trackedRowIter is required to dispose certain iter caches.
-// Make a proper scheduler interface to perform lifecycle management, caching, and
-// scan attaching
-type QueryProcess struct {
-	UnaryNode
-	Notify NotifyFunc
-}
-
-var _ sql.Node = (*QueryProcess)(nil)
-var _ sql.CollationCoercible = (*QueryProcess)(nil)
-
 // NotifyFunc is a function to notify about some event.
 type NotifyFunc func()
-
-// NewQueryProcess creates a new QueryProcess node.
-func NewQueryProcess(node sql.Node, notify NotifyFunc) *QueryProcess {
-	return &QueryProcess{UnaryNode{Child: node}, notify}
-}
-
-func (p *QueryProcess) Child() sql.Node {
-	return p.UnaryNode.Child
-}
-
-func (p *QueryProcess) IsReadOnly() bool {
-	return p.Child().IsReadOnly()
-}
-
-// WithChildren implements the Node interface.
-func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
-	}
-
-	return NewQueryProcess(children[0], p.Notify), nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (p *QueryProcess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child().CheckPrivileges(ctx, opChecker)
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (p *QueryProcess) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.GetCoercibility(ctx, p.Child())
-}
-
-func (p *QueryProcess) String() string { return p.Child().String() }
-
-func (p *QueryProcess) DebugString() string {
-	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("QueryProcess")
-	_ = tp.WriteChildren(sql.DebugString(p.Child()))
-	return tp.String()
-}
-
-// ShouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
-// any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
-func (p *QueryProcess) ShouldSetFoundRows() bool {
-	var fromLimit *bool
-	var fromTopN *bool
-	transform.Inspect(p.Child(), func(n sql.Node) bool {
-		switch n := n.(type) {
-		case *StartTransaction:
-			return true
-		case *Limit:
-			fromLimit = &n.CalcFoundRows
-			return true
-		case *TopN:
-			fromTopN = &n.CalcFoundRows
-			return true
-		default:
-			return true
-		}
-	})
-
-	if fromLimit == nil && fromTopN == nil {
-		return true
-	}
-	if fromTopN != nil {
-		return !*fromTopN
-	}
-	return !*fromLimit
-}
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
 // that support indexing.
@@ -323,6 +240,38 @@ func NewTrackedRowIter(
 	onDone NotifyFunc,
 ) *TrackedRowIter {
 	return &TrackedRowIter{node: node, iter: iter, onDone: onDone, onNext: onNext}
+}
+
+// ShouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
+// any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
+func shouldSetFoundRows(node sql.Node) bool {
+	result := true
+	transform.Inspect(node, func(n sql.Node) bool {
+		switch nn := n.(type) {
+		case *Limit:
+			if nn.CalcFoundRows {
+				result = false
+			}
+		case *TopN:
+			if nn.CalcFoundRows {
+				result = false
+			}
+		}
+		return true
+	})
+	return result
+}
+
+func AddTrackedRowIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
+	trackedIter := NewTrackedRowIter(node, iter, nil, func() {
+		ctx.ProcessList.EndQuery(ctx)
+		if span := ctx.RootSpan(); span != nil {
+			span.End()
+		}
+	})
+	trackedIter.QueryType = GetQueryType(node)
+	trackedIter.ShouldSetFoundRows = trackedIter.QueryType == QueryTypeSelect && shouldSetFoundRows(node)
+	return trackedIter
 }
 
 func (i *TrackedRowIter) done() {

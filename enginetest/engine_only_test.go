@@ -293,74 +293,6 @@ b (2/6 partitions)
 	require.ElementsMatch(expected, rows)
 }
 
-// TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
-func TestTrackProcess(t *testing.T) {
-	require := require.New(t)
-	db := memory.NewDatabase("db")
-	provider := memory.NewDBProvider(db)
-	a := analyzer.NewDefault(provider)
-	sess := memory.NewSession(sql.NewBaseSession(), provider)
-
-	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil, 2)}, nil, nil),
-		plan.NewResolvedTable(memory.NewPartitionedTable(db.BaseDatabase, "bar", sql.PrimaryKeySchema{}, nil, 4), nil, nil),
-		expression.NewLiteral(int64(1), types.Int64),
-	)
-
-	pl := sqle.NewProcessList()
-
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
-	pl.AddConnection(ctx.Session.ID(), "localhost")
-	pl.ConnectionReady(ctx.Session)
-	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")
-	require.NoError(err)
-
-	rule := getRuleFrom(analyzer.OnceAfterAll, analyzer.TrackProcessId)
-	result, _, err := rule.Apply(ctx, a, node, nil, analyzer.DefaultRuleSelector, nil)
-	require.NoError(err)
-
-	processes := ctx.ProcessList.Processes()
-	require.Len(processes, 1)
-	require.Equal("SELECT foo", processes[0].Query)
-	require.Equal(
-		map[string]sql.TableProgress{
-			"foo": sql.TableProgress{
-				Progress:           sql.Progress{Name: "foo", Done: 0, Total: 2},
-				PartitionsProgress: map[string]sql.PartitionProgress{}},
-			"bar": sql.TableProgress{
-				Progress:           sql.Progress{Name: "bar", Done: 0, Total: 4},
-				PartitionsProgress: map[string]sql.PartitionProgress{}},
-		},
-		processes[0].Progress)
-
-	proc, ok := result.(*plan.QueryProcess)
-	require.True(ok)
-
-	join, ok := proc.Child().(*plan.JoinNode)
-	require.True(ok)
-	require.Equal(join.JoinType(), plan.JoinTypeInner)
-
-	lhs, ok := join.Left().(*plan.ResolvedTable)
-	require.True(ok)
-	_, ok = lhs.Table.(*plan.ProcessTable)
-	require.True(ok)
-
-	rhs, ok := join.Right().(*plan.ResolvedTable)
-	require.True(ok)
-	_, ok = rhs.Table.(*plan.ProcessTable)
-	require.True(ok)
-
-	iter, err := rowexec.DefaultBuilder.Build(ctx, proc, nil)
-	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, iter)
-	require.NoError(err)
-
-	procs := ctx.ProcessList.Processes()
-	require.Len(procs, 1)
-	require.Equal(procs[0].Command, sql.ProcessCommandSleep)
-	require.Error(ctx.Err())
-}
-
 func TestConcurrentProcessList(t *testing.T) {
 	enginetest.TestConcurrentProcessList(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -515,7 +447,6 @@ func TestAnalyzer_Exp(t *testing.T) {
 			require.NoError(t, err)
 
 			analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, nil)
-			analyzed = analyzer.StripPassthroughNodes(analyzed)
 			if tt.err != nil {
 				require.Error(t, err)
 				assert.True(t, tt.err.Is(err))
@@ -527,10 +458,6 @@ func TestAnalyzer_Exp(t *testing.T) {
 }
 
 func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
-	if x, ok := actual.(*plan.QueryProcess); ok {
-		actual = x.Child()
-	}
-
 	if !assert.Equal(t, expected, actual) {
 		expectedStr := sql.DebugString(expected)
 		actualStr := sql.DebugString(actual)

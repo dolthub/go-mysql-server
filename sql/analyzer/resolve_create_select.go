@@ -55,7 +55,7 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return nil, transform.SameTree, err
 	}
 
-	return plan.NewTableCopier(ct.Database(), StripPassthroughNodes(analyzedCreate), StripPassthroughNodes(analyzedSelect), plan.CopierProps{}), transform.NewTree, nil
+	return plan.NewTableCopier(ct.Database(), analyzedCreate, analyzedSelect, plan.CopierProps{}), transform.NewTree, nil
 }
 
 // stripSchema removes all non-type information from a schema, such as the key info, default value, etc.
