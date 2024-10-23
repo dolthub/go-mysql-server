@@ -337,7 +337,7 @@ func TestTrackProcess(t *testing.T) {
 
 	join, ok := result.(*plan.JoinNode)
 	require.True(ok)
-	require.Equal(join.JoinType(), plan.JoinTypeInner)
+	require.Equal(plan.JoinTypeInner, join.JoinType())
 
 	lhs, ok := join.Left().(*plan.ResolvedTable)
 	require.True(ok)
@@ -354,9 +354,8 @@ func TestTrackProcess(t *testing.T) {
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	procs := ctx.ProcessList.Processes()
-	require.Len(procs, 1)
-	require.Equal(sql.ProcessCommandSleep, procs[0].Command)
+	require.Len(processes, 1)
+	require.Equal(sql.ProcessCommandSleep, processes[0].Command)
 	require.Error(ctx.Err())
 }
 
