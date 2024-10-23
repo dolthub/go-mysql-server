@@ -164,18 +164,7 @@ func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(ii.db),
-		Table:    getTableName(ii.Destination),
-	}
-
-	if ii.IsReplace {
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Insert, sql.PrivilegeType_Delete))
-	} else {
-		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Insert))
-	}
+	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

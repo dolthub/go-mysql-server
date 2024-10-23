@@ -164,58 +164,12 @@ func (pdb PrivilegedDatabase) Name() string {
 
 // GetTableInsensitive implements the interface sql.Database.
 func (pdb PrivilegedDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
-	checkName := pdb.db.Name()
-	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
-		checkName = adb.AliasedName()
-	}
-
-	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-	dbSet := privSet.Database(checkName)
-	// If there are no usable privileges for this database then the table is inaccessible.
-	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
-		return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), checkName)
-	}
-
-	tblSet := dbSet.Table(tblName)
-	// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
-	// table is not accessible.
-	if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
-		return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
-	}
 	return pdb.db.GetTableInsensitive(ctx, tblName)
 }
 
 // GetTableNames implements the interface sql.Database.
 func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
-	var tablesWithAccess []string
-	var err error
-	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-
-	checkName := pdb.db.Name()
-	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
-		checkName = adb.AliasedName()
-	}
-
-	dbSet := privSet.Database(checkName)
-	// If there are no usable privileges for this database then no table is accessible.
-	privSetCount := privSet.Count()
-	if privSetCount == 0 && !dbSet.HasPrivileges() {
-		return nil, nil
-	}
-
-	tblNames, err := pdb.db.GetTableNames(ctx)
-	if err != nil {
-		return nil, err
-	}
-	dbSetCount := dbSet.Count()
-	for _, tblName := range tblNames {
-		// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
-		// table is accessible.
-		if privSetCount > 0 || dbSetCount > 0 || dbSet.Table(tblName).HasPrivileges() {
-			tablesWithAccess = append(tablesWithAccess, tblName)
-		}
-	}
-	return tablesWithAccess, nil
+	return pdb.db.GetTableNames(ctx)
 }
 
 // GetTableInsensitiveAsOf returns a new sql.VersionedDatabase.
@@ -223,26 +177,6 @@ func (pdb PrivilegedDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName 
 	db, ok := pdb.db.(sql.VersionedDatabase)
 	if !ok {
 		return nil, false, sql.ErrAsOfNotSupported.New(pdb.db.Name())
-	}
-
-	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-
-	checkName := pdb.db.Name()
-	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
-		checkName = adb.AliasedName()
-	}
-
-	dbSet := privSet.Database(checkName)
-	// If there are no usable privileges for this database then the table is inaccessible.
-	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
-		return nil, false, sql.ErrDatabaseAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), checkName)
-	}
-
-	tblSet := dbSet.Table(tblName)
-	// If the user has no global static privileges, database-level privileges, or table-relevant privileges then the
-	// table is not accessible.
-	if privSet.Count() == 0 && dbSet.Count() == 0 && !tblSet.HasPrivileges() {
-		return nil, false, sql.ErrTableAccessDeniedForUser.New(pdb.usernameFromCtx(ctx), tblName)
 	}
 	return db.GetTableInsensitiveAsOf(ctx, tblName, asOf)
 }
@@ -253,37 +187,7 @@ func (pdb PrivilegedDatabase) GetTableNamesAsOf(ctx *sql.Context, asOf interface
 	if !ok {
 		return nil, nil
 	}
-
-	var tablesWithAccess []string
-	var err error
-	privSet := pdb.grantTables.UserActivePrivilegeSet(ctx)
-
-	checkName := pdb.db.Name()
-	if adb, ok := pdb.db.(sql.AliasedDatabase); ok {
-		checkName = adb.AliasedName()
-	}
-
-	dbSet := privSet.Database(checkName)
-	// If there are no usable privileges for this database then no table is accessible.
-	if privSet.Count() == 0 && !dbSet.HasPrivileges() {
-		return nil, nil
-	}
-
-	tblNames, err := db.GetTableNamesAsOf(ctx, asOf)
-	if err != nil {
-		return nil, err
-	}
-	privSetCount := privSet.Count()
-	dbSetCount := dbSet.Count()
-	for _, tblName := range tblNames {
-		// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
-		// table is accessible.
-		if privSetCount > 0 || dbSetCount > 0 && dbSet.Table(tblName).HasPrivileges() {
-			tablesWithAccess = append(tablesWithAccess, tblName)
-		}
-	}
-
-	return tablesWithAccess, nil
+	return db.GetTableNamesAsOf(ctx, asOf)
 }
 
 // CreateTable implements the interface sql.TableCreator.
