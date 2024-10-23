@@ -21,8 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
+		"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func (b *BaseBuilder) buildStripRowNode(ctx *sql.Context, n *plan.StripRowNode, row sql.Row) (sql.RowIter, error) {
@@ -108,73 +107,6 @@ func (b *BaseBuilder) buildDeferredFilteredTable(ctx *sql.Context, n *plan.Defer
 
 func (b *BaseBuilder) buildNamedWindows(ctx *sql.Context, n *plan.NamedWindows, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("%T has no execution iterator", n)
-}
-
-func (b *BaseBuilder) buildExchange(ctx *sql.Context, n *plan.Exchange, row sql.Row) (sql.RowIter, error) {
-	var t sql.Table
-	transform.Inspect(n.Child, func(n sql.Node) bool {
-		if table, ok := n.(sql.Table); ok {
-			t = table
-			return false
-		}
-		return true
-	})
-	if t == nil {
-		return nil, plan.ErrNoPartitionable.New()
-	}
-
-	partitions, err := t.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// How this is structured is a little subtle. A top-level
-	// errgroup run |iterPartitions| and listens on the shutdown
-	// hook.  A different, dependent, errgroup runs
-	// |e.Parallelism| instances of |iterPartitionRows|. A
-	// goroutine within the top-level errgroup |Wait|s on the
-	// dependent errgroup and closes |rowsCh| once all its
-	// goroutines are completed.
-
-	partitionsCh := make(chan sql.Partition)
-	rowsCh := make(chan sql.Row, n.Parallelism*16)
-
-	eg, egCtx := ctx.NewErrgroup()
-	eg.Go(func() error {
-		defer close(partitionsCh)
-		return iterPartitions(egCtx, partitions, partitionsCh)
-	})
-
-	// Spawn |iterPartitionRows| goroutines in the dependent
-	// errgroup.
-	getRowIter := b.exchangeIterGen(n, row)
-	seg, segCtx := egCtx.NewErrgroup()
-	for i := 0; i < n.Parallelism; i++ {
-		seg.Go(func() error {
-			return iterPartitionRows(segCtx, getRowIter, partitionsCh, rowsCh)
-		})
-	}
-
-	eg.Go(func() error {
-		defer close(rowsCh)
-		err := seg.Wait()
-		if err != nil {
-			return err
-		}
-		// If everything in |seg| returned |nil|,
-		// |iterPartitions| is done, |partitionsCh| is closed,
-		// and every partition RowIter returned |EOF|. That
-		// means we're EOF here.
-		return io.EOF
-	})
-
-	waiter := func() error { return eg.Wait() }
-	shutdownHook := newShutdownHook(eg, egCtx)
-	return &exchangeRowIter{shutdownHook: shutdownHook, waiter: waiter, rows: rowsCh}, nil
-}
-
-func (b *BaseBuilder) buildExchangePartition(ctx *sql.Context, n *plan.ExchangePartition, row sql.Row) (sql.RowIter, error) {
-	return n.Table.PartitionRows(ctx, n.Partition)
 }
 
 func (b *BaseBuilder) buildEmptyTable(ctx *sql.Context, n *plan.EmptyTable, row sql.Row) (sql.RowIter, error) {

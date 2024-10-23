@@ -387,8 +387,6 @@ func (id *InsertDestination) CollationCoercibility(ctx *sql.Context) (collation 
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 	switch node := node.(type) {
-	case *Exchange:
-		return GetInsertable(node.Child)
 	case sql.InsertableTable:
 		return node, nil
 	case *ResolvedTable:

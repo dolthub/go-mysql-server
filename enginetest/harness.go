@@ -35,8 +35,6 @@ import (
 // times during a single test run, and must return a "fresh" engine instance each time, i.e. an instance that contains
 // exactly the test data provided via other setup methods.
 type Harness interface {
-	// Parallelism returns how many parallel go routines to use when constructing an engine for test.
-	Parallelism() int
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
 	// their engine implementation. Every harnessed engine test uses the context created by this method, with some
 	// additional information (e.g. current DB) set uniformly. To replicate the behavior of tests during setup,

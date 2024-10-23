@@ -164,7 +164,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 		_, _ = w.WriteString("\n")
 
 		if !tt.Skip {
-			ctx := enginetest.NewContextWithEngine(harness, engine)
+			ctx := enginetest.NewContext(harness)
 			binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, sql.NewMysqlParser())
 			parsed, _, _, qFlags, err := binder.Parse(tt.Query, nil, false)
 			if err != nil {

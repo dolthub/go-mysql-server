@@ -380,10 +380,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildJSONTable(ctx, n, row)
 	case *plan.UnlockTables:
 		return b.buildUnlockTables(ctx, n, row)
-	case *plan.Exchange:
-		return b.buildExchange(ctx, n, row)
-	case *plan.ExchangePartition:
-		return b.buildExchangePartition(ctx, n, row)
 	case *plan.HashLookup:
 		return b.buildHashLookup(ctx, n, row)
 	case *plan.Iterate:

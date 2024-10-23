@@ -451,12 +451,8 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 			null = "YES"
 		}
 
-		node := n.Child
-		if exchange, ok := node.(*plan.Exchange); ok {
-			node = exchange.Child
-		}
 		key := ""
-		switch table := node.(type) {
+		switch table := n.Child.(type) {
 		case *plan.ResolvedTable:
 			if col.PrimaryKey {
 				key = "PRI"

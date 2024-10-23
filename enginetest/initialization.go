@@ -37,11 +37,6 @@ func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context
 	return newContextSetup(harness.NewContextWithClient(client))
 }
 
-// TODO: remove
-func NewContextWithEngine(harness Harness, engine QueryEngine) *sql.Context {
-	return NewContext(harness)
-}
-
 var pid uint64
 
 func newContextSetup(ctx *sql.Context) *sql.Context {
@@ -84,22 +79,15 @@ func NewBaseSession() *sql.BaseSession {
 
 // NewEngineWithProvider returns a new engine with the specified provider
 func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
-	var a *analyzer.Analyzer
-
-	if harness.Parallelism() > 1 {
-		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
-	} else {
-		a = analyzer.NewDefault(provider)
-	}
+	analyzer := analyzer.NewDefault(provider)
 
 	// All tests will run with all privileges on the built-in root account
-	a.Catalog.MySQLDb.AddRootAccount()
+	analyzer.Catalog.MySQLDb.AddRootAccount()
 	// Almost no tests require an information schema that can be updated, but test setup makes it difficult to not
 	// provide everywhere
-	a.Catalog.InfoSchema = information_schema.NewInformationSchemaDatabase()
+	analyzer.Catalog.InfoSchema = information_schema.NewInformationSchemaDatabase()
 
-	engine := sqle.New(a, new(sqle.Config))
-
+	engine := sqle.New(analyzer, new(sqle.Config))
 	if idh, ok := harness.(IndexDriverHarness); ok {
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(NewContext(harness)))
 	}
