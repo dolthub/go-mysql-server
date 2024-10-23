@@ -484,10 +484,6 @@ func TestIndexQueryPlans(t *testing.T) {
 	}
 }
 
-func TestParallelismQueries(t *testing.T) {
-	enginetest.TestParallelismQueries(t, enginetest.NewMemoryHarness("default", 2, testNumPartitions, true, nil))
-}
-
 func TestQueryErrors(t *testing.T) {
 	enginetest.TestQueryErrors(t, enginetest.NewDefaultMemoryHarness())
 }

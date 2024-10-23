@@ -84,8 +84,6 @@ func TestGenBuilder(t *testing.T) {
 		"SingleDropView":            "*plan.SingleDropView",
 		"DropView":                  "*plan.DropView",
 		"EmptyTable":                "*plan.EmptyTable",
-		"Exchange":                  "*plan.Exchange",
-		"exchangePartition":         "*plan.exchangePartition",
 		"ExternalProcedure":         "*plan.ExternalProcedure",
 		"Fetch":                     "*plan.Fetch",
 		"Filter":                    "*plan.Filter",

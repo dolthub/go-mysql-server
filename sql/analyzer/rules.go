@@ -27,7 +27,6 @@ func init() {
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 		{BacktickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
 		{TrackProcessId, trackProcess},
-		{parallelizeId, parallelize},
 	}
 }
 

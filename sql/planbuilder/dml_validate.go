@@ -177,10 +177,6 @@ func validGeneratedColumnValue(idx int, source sql.Node) bool {
 }
 
 func validateValueCount(columnNames []string, values sql.Node) error {
-	if exchange, ok := values.(*plan.Exchange); ok {
-		values = exchange.Child
-	}
-
 	switch node := values.(type) {
 	case *plan.Values:
 		for _, exprTuple := range node.ExpressionTuples {

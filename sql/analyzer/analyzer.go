@@ -74,7 +74,6 @@ type Builder struct {
 	afterAllRules       []Rule
 	provider            sql.DatabaseProvider
 	debug               bool
-	parallelism         int
 }
 
 // NewBuilder creates a new Builder from a specific catalog.
@@ -97,12 +96,6 @@ func NewBuilder(pro sql.DatabaseProvider) *Builder {
 func (ab *Builder) WithDebug() *Builder {
 	ab.debug = true
 
-	return ab
-}
-
-// WithParallelism sets the parallelism level on the analyzer.
-func (ab *Builder) WithParallelism(parallelism int) *Builder {
-	ab.parallelism = parallelism
 	return ab
 }
 
@@ -271,7 +264,6 @@ func (ab *Builder) Build() *Analyzer {
 		contextStack: make([]string, 0),
 		Batches:      batches,
 		Catalog:      NewCatalog(ab.provider),
-		Parallelism:  ab.parallelism,
 		Coster:       memo.NewDefaultCoster(),
 		ExecBuilder:  rowexec.DefaultBuilder,
 	}
@@ -286,7 +278,6 @@ type Analyzer struct {
 	Verbose bool
 	// A stack of debugger context. See PushDebugContext, PopDebugContext
 	contextStack []string
-	Parallelism  int
 	// Batches of Rules to apply.
 	Batches []*Batch
 	// Catalog of databases and registered functions.
@@ -304,7 +295,6 @@ type Analyzer struct {
 // To add custom rules, the easiest way is use the Builder.
 func NewDefault(provider sql.DatabaseProvider) *Analyzer {
 	return NewBuilder(provider).Build()
-
 }
 
 // NewDefaultWithVersion creates a default Analyzer instance either
@@ -402,10 +392,8 @@ func NewProcRuleSelector(sel RuleSelector) RuleSelector {
 		switch id {
 		case pruneTablesId,
 			unnestInSubqueriesId,
-
 			// once after default rules should only be run once
-			TrackProcessId,
-			parallelizeId:
+			TrackProcessId:
 			return false
 		}
 		return sel(id)
@@ -452,8 +440,7 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 		case
 			// skip recursive resolve rules
 			resolveSubqueriesId,
-			resolveUnionsId,
-			parallelizeId:
+			resolveUnionsId:
 			return false
 		case finalizeSubqueriesId,
 			hoistOutOfScopeFiltersId:
