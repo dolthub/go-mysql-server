@@ -262,7 +262,6 @@ func shouldSetFoundRows(node sql.Node) bool {
 	return result
 }
 
-// TODO: possible to move to rowexec package?
 func AddTrackedRowIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
 	trackedIter := NewTrackedRowIter(node, iter, nil, func() {
 		ctx.ProcessList.EndQuery(ctx)
