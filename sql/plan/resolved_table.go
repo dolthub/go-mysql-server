@@ -227,22 +227,7 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
-	// may contain a TableNode will have their own privilege checks, so we should only end up here if the parent
-	// nodes are things such as indexed access, filters, limits, etc.
-	if IsDualTable(t) {
-		return true
-	}
-
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(t.SqlDatabase),
-		Table:    t.Table.Name(),
-	}
-	if subject.Database == sql.InformationSchemaDatabaseName {
-		return true
-	}
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select))
+	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

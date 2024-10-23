@@ -34,6 +34,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	sql.IncrementStatusVariable(b.ctx, "Com_insert", 1)
 	b.qFlags.Set(sql.QFlagInsert)
 
+	Authorization(b, i.Auth)
 	if i.With != nil {
 		inScope = b.buildWith(inScope, i.With)
 	}
