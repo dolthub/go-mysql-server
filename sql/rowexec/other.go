@@ -367,21 +367,6 @@ func (b *BaseBuilder) buildPrependNode(ctx *sql.Context, n *plan.PrependNode, ro
 	}, nil
 }
 
-func (b *BaseBuilder) buildQueryProcess(ctx *sql.Context, n *plan.QueryProcess, row sql.Row) (sql.RowIter, error) {
-	iter, err := b.Build(ctx, n.Child(), row)
-	if err != nil {
-		return nil, err
-	}
-
-	qType := plan.GetQueryType(n.Child())
-
-	trackedIter := plan.NewTrackedRowIter(n.Child(), iter, nil, n.Notify)
-	trackedIter.QueryType = qType
-	trackedIter.ShouldSetFoundRows = qType == plan.QueryTypeSelect && n.ShouldSetFoundRows()
-
-	return trackedIter, nil
-}
-
 func (b *BaseBuilder) buildAnalyzeTable(ctx *sql.Context, n *plan.AnalyzeTable, row sql.Row) (sql.RowIter, error) {
 	// Assume table is in current database
 	database := ctx.GetCurrentDatabase()

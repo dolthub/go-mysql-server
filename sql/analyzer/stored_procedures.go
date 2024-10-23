@@ -154,7 +154,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		newChildren[i] = StripPassthroughNodes(newChild)
+		newChildren[i] = newChild
 	}
 	node, err = node.WithChildren(newChildren...)
 	if err != nil {

@@ -252,7 +252,7 @@ func analyzeSubqueryExpression(ctx *sql.Context, a *Analyzer, n sql.Node, sq *pl
 	// to the expense of positive errors, where a rule reports a change when the plan
 	// is the same before/after.
 	// .Resolved() might be useful for fixing these bugs.
-	return sq.WithQuery(StripPassthroughNodes(analyzed)).WithExecBuilder(a.ExecBuilder), transform.NewTree, nil
+	return sq.WithQuery(analyzed).WithExecBuilder(a.ExecBuilder), transform.NewTree, nil
 }
 
 // analyzeSubqueryAlias runs analysis on the specified subquery alias, |sqa|. The |finalize| parameter indicates if this is
@@ -282,26 +282,8 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, sqa *plan.SubqueryAlias
 	if same {
 		return sqa, transform.SameTree, nil
 	}
-	newn, err := sqa.WithChildren(StripPassthroughNodes(child))
+	newn, err := sqa.WithChildren(child)
 	return newn, transform.NewTree, err
-}
-
-// StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query
-// tracking, transaction logic, etc) from the node tree given and return the first non-passthrough child element. This
-// is useful for when we invoke the analyzer recursively when e.g. analyzing subqueries or triggers
-// TODO: instead of stripping this node off after analysis, it would be better to just not add it in the first place.
-func StripPassthroughNodes(n sql.Node) sql.Node {
-	nodeIsPassthrough := true
-	for nodeIsPassthrough {
-		switch tn := n.(type) {
-		case *plan.QueryProcess:
-			n = tn.Child()
-		default:
-			nodeIsPassthrough = false
-		}
-	}
-
-	return n
 }
 
 // cacheSubqueryAlisesInJoins will look for joins against subquery aliases that

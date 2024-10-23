@@ -26,49 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestQueryProcess(t *testing.T) {
-	require := require.New(t)
-
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	ctx := newContext(pro)
-
-	table := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: types.Int64},
-	}), nil)
-
-	table.Insert(ctx, sql.NewRow(int64(1)))
-	table.Insert(ctx, sql.NewRow(int64(2)))
-
-	var notifications int
-
-	node := plan.NewQueryProcess(
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetField(0, types.Int64, "a", false),
-			},
-			plan.NewResolvedTable(table, nil, nil),
-		),
-		func() {
-			notifications++
-		},
-	)
-
-	iter, err := DefaultBuilder.Build(ctx, node, nil)
-	require.NoError(err)
-
-	rows, err := sql.RowIterToRows(ctx, iter)
-	require.NoError(err)
-
-	expected := []sql.Row{
-		{int64(1)},
-		{int64(2)},
-	}
-
-	require.ElementsMatch(expected, rows)
-	require.Equal(1, notifications)
-}
-
 func TestProcessTable(t *testing.T) {
 	require := require.New(t)
 
