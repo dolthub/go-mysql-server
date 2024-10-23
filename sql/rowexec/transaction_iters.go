@@ -74,7 +74,7 @@ type TransactionCommittingIter struct {
 	transactionDatabase string
 }
 
-func AddTransactionCommittingIter(child sql.RowIter, qFlags *sql.QueryFlags) sql.RowIter {
+func AddTransactionCommittingIter(qFlags *sql.QueryFlags, child sql.RowIter) sql.RowIter {
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings) {
 		return child

@@ -32,5 +32,5 @@ func resolveDescribeQuery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 		return nil, transform.SameTree, err
 	}
 
-	return d.WithQuery(StripPassthroughNodes(q)), transform.NewTree, nil
+	return d.WithQuery(q), transform.NewTree, nil
 }

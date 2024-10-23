@@ -51,7 +51,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
-		ret, err := n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
+		ret, err := n.WithChildren(left, right)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -95,7 +95,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 
 		scope.SetJoin(false)
 
-		newn, err := n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
+		newn, err := n.WithChildren(left, right)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

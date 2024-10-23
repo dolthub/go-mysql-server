@@ -62,8 +62,6 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-
-			source = StripPassthroughNodes(source)
 		}
 
 		dstSchema := insertable.Schema()

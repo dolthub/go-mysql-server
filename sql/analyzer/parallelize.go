@@ -63,8 +63,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope
 		return node, transform.SameTree, nil
 	}
 
-	proc, ok := node.(*plan.QueryProcess)
-	if (ok && !shouldParallelize(proc.Child(), nil)) || !shouldParallelize(node, scope) {
+	if !shouldParallelize(node, scope) {
 		return node, transform.SameTree, nil
 	}
 

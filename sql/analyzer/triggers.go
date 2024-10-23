@@ -475,7 +475,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
 	}
 
-	return StripPassthroughNodes(triggerLogic), err
+	return triggerLogic, err
 }
 
 // validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any
