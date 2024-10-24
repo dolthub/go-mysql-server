@@ -122,6 +122,10 @@ func (idx *Index) IsFullText() bool {
 	return idx.Fulltext
 }
 
+func (idx *Index) IsVector() bool {
+	return idx.SupportedVectorFunction != nil
+}
+
 func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
 	if idx.SupportedVectorFunction == nil {
 		return false
