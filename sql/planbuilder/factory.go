@@ -178,6 +178,12 @@ func (f *factory) buildTableAlias(name string, child sql.Node) (plan.TableIdNode
 	}
 }
 
+
+// buildDistinct will wrap the child node in a distinct node depending on the Sort nodes and Projections there.
+// if the sort fields are a subset of the projection fields
+//    sort(project(table)) -> sort(distinct(project(table)))
+// else
+//    sort(project(table)) -> distinct(sort(project(table)))
 func (f *factory) buildDistinct(child sql.Node) sql.Node {
 	if proj, isProj := child.(*plan.Project); isProj {
 		// TODO: if projection columns are just primary key, distinct is no-op
