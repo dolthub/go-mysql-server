@@ -4773,9 +4773,9 @@ func TestTracing(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	spans := tracer.Spans
-	// TODO: restore TopN
 	var expectedSpans = []string{
-		"plan.Limit",
+		"plan.Limit", // why Limit if there's already TopN?
+		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",
 		"plan.IndexedTableAccess",

@@ -218,6 +218,7 @@ func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
 				proj.Child = sort.Child
 				sort.Child = plan.NewDistinct(proj)
 				inScope.node = sort
+				return
 			}
 		}
 	}
