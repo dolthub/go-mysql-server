@@ -198,33 +198,7 @@ func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
 	if !distinct {
 		return
 	}
-	// TODO: move this to factory.go
-	node := inScope.node
-	if proj, isProj := node.(*plan.Project); isProj {
-		// TODO: if projection columns are just primary key, distinct is no-op
-		// TODO: distinct literals are just one row
-		if sort, isSort := proj.Child.(*plan.Sort); isSort {
-			projMap := make(map[string]struct{})
-			for _, p := range proj.Projections {
-				// TODO: to lower
-				projMap[p.String()] = struct{}{}
-			}
-			hasDiff := false
-			for _, s := range sort.SortFields {
-				if _, ok := projMap[s.Column.String()]; !ok {
-					hasDiff = true
-					break
-				}
-			}
-			if !hasDiff {
-				proj.Child = sort.Child
-				sort.Child = plan.NewDistinct(proj)
-				inScope.node = sort
-				return
-			}
-		}
-	}
-	inScope.node = plan.NewDistinct(node)
+	inScope.node = b.f.buildDistinct(inScope.node)
 }
 
 func (b *Builder) currentDb() sql.Database {
