@@ -590,6 +590,12 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 		case *sql.ForeignKeyConstraint:
 			c.Database = table.SqlDatabase.Name()
 			c.Table = table.Name()
+
+			ds, ok := table.SqlDatabase.(sql.DatabaseSchema)
+			if ok {
+				c.SchemaName = ds.SchemaName()
+			}
+
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
 			outScope.node = alterFk
@@ -631,6 +637,12 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 				b.handleErr(err)
 			}
 			database := table.SqlDatabase.Name()
+
+			ds, ok := table.SqlDatabase.(sql.DatabaseSchema)
+			if ok {
+				c.SchemaName = ds.SchemaName()
+			}
+
 			dropFk := plan.NewAlterRenameForeignKey(database, table.Name(), c.Name, cc.Name)
 			dropFk.DbProvider = b.cat
 			outScope.node = dropFk
@@ -760,6 +772,7 @@ func (b *Builder) convertConstraintDefinition(inScope *scope, cd *ast.Constraint
 			Name:           cd.Name,
 			Columns:        columns,
 			ParentDatabase: refDatabase,
+			ParentSchema:   fkConstraint.ReferencedTable.SchemaQualifier.String(),
 			ParentTable:    fkConstraint.ReferencedTable.Name.String(),
 			ParentColumns:  refColumns,
 			OnUpdate:       b.buildReferentialAction(fkConstraint.OnUpdate),
