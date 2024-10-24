@@ -134,6 +134,46 @@ func TestVectorIndex(t *testing.T) {
 	}
 }
 
+func TestShowCreateTableWithVectorIndex(t *testing.T) {
+	var require = require.New(t)
+
+	db := memory.NewDatabase("test")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	schema := sql.Schema{
+		&sql.Column{Name: "pk", Source: "test-table", Type: types.Int32, Nullable: true, PrimaryKey: true},
+		&sql.Column{Name: "v", Source: "test-table", Type: types.JSON, Default: nil, Nullable: true},
+	}
+
+	table := memory.NewTable(db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
+
+	showCreateTable, err := plan.NewShowCreateTable(plan.NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
+	require.NoError(err)
+
+	// This mimics what happens during analysis (indexes get filled in for the table)
+	showCreateTable.(*plan.ShowCreateTable).Indexes = []sql.Index{
+		&vectorIndex,
+	}
+
+	rowIter, _ := rowexec.DefaultBuilder.Build(ctx, showCreateTable, nil)
+
+	row, err := rowIter.Next(ctx)
+
+	require.NoError(err)
+
+	expected := sql.NewRow(
+		table.Name(),
+		"CREATE TABLE `test-table` (\n  `pk` int,\n"+
+			"  `v` json,\n"+
+			"  PRIMARY KEY (`pk`),\n"+
+			"  VECTOR KEY `test` (`v`),\n"+
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+	)
+
+	require.Equal(expected, row)
+}
+
 type vectorIndexTable struct {
 	underlying sql.IndexedTable
 }
@@ -195,7 +235,7 @@ var vectorIndex = memory.Index{
 		expression.NewGetField(1, types.JSON, "v", false),
 	},
 	Name:                    "test",
-	Unique:                  true,
+	Unique:                  false,
 	Spatial:                 false,
 	Fulltext:                false,
 	SupportedVectorFunction: vector.DistanceL2Squared{},
