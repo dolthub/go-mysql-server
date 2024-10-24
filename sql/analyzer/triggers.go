@@ -192,8 +192,8 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
-		b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
+		// TODO: should this use the MySQL parser and default auth, or ones from the engine?
+		b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser(), planbuilder.DefaultAuthorizationHandler())
 		prevActive := b.TriggerCtx().Active
 		b.TriggerCtx().Active = true
 		defer func() {

@@ -54,7 +54,8 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			for _, procedure := range procedures {
 				var procToRegister *plan.Procedure
 				var parsedProcedure sql.Node
-				b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
+				// TODO: should this use the MySQL parser and default auth, or ones from the engine?
+				b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser(), planbuilder.DefaultAuthorizationHandler())
 				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
 				if err != nil {
@@ -289,7 +290,8 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return nil, transform.SameTree, err
 			}
 			var parsedProcedure sql.Node
-			b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
+			// TODO: should this use the MySQL parser and default auth, or ones from the engine?
+			b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser(), planbuilder.DefaultAuthorizationHandler())
 			b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 			if call.AsOf() != nil {
 				asOf, err := call.AsOf().Eval(ctx, nil)

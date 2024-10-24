@@ -374,7 +374,8 @@ func getRowsFromViews(ctx *sql.Context, catalog sql.Catalog, db DbWithNames, pri
 	}
 	privSetDb := privSet.Database(db.Database.Name())
 	for _, view := range views {
-		node, _, err := planbuilder.Parse(ctx, catalog, view.CreateViewStatement)
+		// TODO: figure out how auth works in this case
+		node, _, err := planbuilder.Parse(ctx, catalog, nil, view.CreateViewStatement)
 		if err != nil {
 			continue // sometimes views contains views from other databases
 		}

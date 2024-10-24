@@ -49,6 +49,8 @@ type Builder struct {
 	nesting         int
 	parser          sql.Parser
 	qFlags          *sql.QueryFlags
+	authHandler     AuthorizationHandler
+	queryHandler    QueryAuthorizationHandler
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -104,16 +106,29 @@ type ProcContext struct {
 }
 
 // New takes ctx, catalog and parser. If the parser is nil, then default parser is mysql parser.
-func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
+func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser, handler AuthorizationHandler) *Builder {
 	sqlMode := sql.LoadSqlMode(ctx)
-
+	var queryHandler QueryAuthorizationHandler
+	if handler == nil {
+		// The errorQueryAuthorizationHandler with a nil error functions the same as a handler that never fails.
+		// This way, we don't have to worry about a nil handler (which is a valid way to disable auth handling).
+		queryHandler = errorQueryAuthorizationHandler{err: nil}
+	} else {
+		var err error
+		queryHandler, err = handler.NewQueryHandler(ctx, cat)
+		if err != nil {
+			queryHandler = errorQueryAuthorizationHandler{err: err}
+		}
+	}
 	return &Builder{
-		ctx:        ctx,
-		cat:        cat,
-		parserOpts: sqlMode.ParserOptions(),
-		f:          &factory{},
-		parser:     p,
-		qFlags:     &sql.QueryFlags{},
+		ctx:          ctx,
+		cat:          cat,
+		parserOpts:   sqlMode.ParserOptions(),
+		f:            &factory{},
+		parser:       p,
+		qFlags:       &sql.QueryFlags{},
+		authHandler:  handler,
+		queryHandler: queryHandler,
 	}
 }
 
@@ -184,6 +199,13 @@ func (b *Builder) Reset() {
 	b.viewCtx = nil
 	b.nesting = 0
 	b.qFlags = &sql.QueryFlags{}
+	if b.authHandler != nil {
+		var err error
+		b.queryHandler, err = b.authHandler.NewQueryHandler(b.ctx, b.cat)
+		if err != nil {
+			b.queryHandler = errorQueryAuthorizationHandler{err: err}
+		}
+	}
 }
 
 type parseErr struct {

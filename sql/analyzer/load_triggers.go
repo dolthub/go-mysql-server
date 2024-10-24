@@ -105,7 +105,8 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
-			parsedTrigger, _, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlMode.ParserOptions())
+			// TODO: should perhaps add the auth query handler to the analyzer? does this even use auth?
+			parsedTrigger, _, err = planbuilder.ParseWithOptions(ctx, a.Catalog, nil, trigger.CreateStatement, sqlMode.ParserOptions())
 			if err != nil {
 				return nil, err
 			}

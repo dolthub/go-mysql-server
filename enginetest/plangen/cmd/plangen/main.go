@@ -165,7 +165,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 
 		if !tt.Skip {
 			ctx := enginetest.NewContextWithEngine(harness, engine)
-			binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, sql.NewMysqlParser())
+			binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, sql.NewMysqlParser(), engine.AuthorizationHandler())
 			parsed, _, _, qFlags, err := binder.Parse(tt.Query, nil, false)
 			if err != nil {
 				exit(fmt.Errorf("%w\nfailed to parse query: %s", err, tt.Query))

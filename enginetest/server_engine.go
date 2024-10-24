@@ -154,6 +154,10 @@ func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
 	return s.engine.PreparedDataCache
 }
 
+func (s *ServerQueryEngine) AuthorizationHandler() planbuilder.AuthorizationHandler {
+	return s.engine.AuthHandler
+}
+
 func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
@@ -632,7 +636,7 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 // It cannot sort user-defined binding variables (e.g. :var, :foo)
 func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([]any, error) {
 	// NOTE: using binder with nil catalog and parser since we're only using it to convert SQLVal.
-	binder := planbuilder.New(ctx, nil, nil)
+	binder := planbuilder.New(ctx, nil, nil, nil)
 	numBindVars := len(bindings)
 	args := make([]any, numBindVars)
 	for i := 0; i < numBindVars; i++ {

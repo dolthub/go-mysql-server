@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 )
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries
@@ -172,4 +173,12 @@ type ResultEvaluationHarness interface {
 
 	// EvaluateExpectedErrorKind compares expected error kinds to actual errors and emits failed test assertions in the
 	EvaluateExpectedErrorKind(t *testing.T, expected *errors.Kind, err error)
+}
+
+// AuthorizingHarness specifies the AuthorizationHandler that should be used.
+type AuthorizingHarness interface {
+	Harness
+
+	// AuthorizationHandler returns the handler to use.
+	AuthorizationHandler() planbuilder.AuthorizationHandler
 }

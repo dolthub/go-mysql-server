@@ -63,6 +63,9 @@ type Config struct {
 	// disabled, and including any users here will enable authentication. All users in this list will have full access.
 	// This field is only temporary, and will be removed as development on users and authentication continues.
 	TemporaryUsers []TemporaryUser
+	// AuthorizationHandler sets the handler that will be used for authorization on all calls. Will use the default
+	// handler if one is not specified.
+	AuthorizationHandler planbuilder.AuthorizationHandler
 }
 
 // TemporaryUser is a user that will be added to the engine. This is for temporary use while the remaining features
@@ -148,6 +151,7 @@ type Engine struct {
 	Version           sql.AnalyzerVersion
 	EventScheduler    *eventscheduler.EventScheduler
 	Parser            sql.Parser
+	AuthHandler       planbuilder.AuthorizationHandler
 }
 
 type ColumnWithRawDefault struct {
@@ -165,6 +169,13 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	if cfg.IncludeRootAccount {
 		a.Catalog.MySQLDb.AddRootAccount()
+	}
+
+	var authHandler planbuilder.AuthorizationHandler
+	if cfg.AuthorizationHandler != nil {
+		authHandler = cfg.AuthorizationHandler
+	} else {
+		authHandler = planbuilder.DefaultAuthorizationHandler()
 	}
 
 	ls := sql.NewLockSubsystem()
@@ -193,6 +204,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
 		Parser:            sql.GlobalParser,
+		AuthHandler:       authHandler,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	return ret
@@ -209,7 +221,7 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser, e.AuthHandler)
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		return nil, err
@@ -237,7 +249,7 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser, e.AuthHandler)
 	node, _, err := binder.BindOnly(stmt, query, nil)
 
 	if err != nil {
@@ -495,7 +507,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser, e.AuthHandler)
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
@@ -549,7 +561,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 	}
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser, e.AuthHandler)
 	if preparedDataFound {
 		parsed = preparedAst
 		binder.SetBindings(bindings)
@@ -780,6 +792,10 @@ func (e *Engine) EnginePreparedDataCache() *PreparedDataCache {
 
 func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
 	return e.Analyzer
+}
+
+func (e *Engine) AuthorizationHandler() planbuilder.AuthorizationHandler {
+	return e.AuthHandler
 }
 
 // InitializeEventScheduler initializes the EventScheduler for the engine with the given sql.Context

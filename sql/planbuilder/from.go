@@ -272,6 +272,9 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 	// build individual table, collect column definitions
 	switch t := (te).(type) {
 	case *ast.AliasedTableExpr:
+		if err := b.queryHandler.Handle(t.Auth); err != nil {
+			b.handleErr(err)
+		}
 		switch e := t.Expr.(type) {
 		case ast.TableName:
 			tableName := strings.ToLower(e.Name.String())

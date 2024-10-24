@@ -17,6 +17,8 @@ package enginetest
 import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -30,6 +32,7 @@ type QueryEngine interface {
 	EngineAnalyzer() *analyzer.Analyzer
 	// TODO: get rid of this, should not be exposed to engine tests
 	EnginePreparedDataCache() *sqle.PreparedDataCache
+	AuthorizationHandler() planbuilder.AuthorizationHandler
 	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)
 	CloseSession(connID uint32)
 	Close() error
