@@ -453,7 +453,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 
 		colStmts = append(colStmts, sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(),
-			index.IsFullText(), index.ID(), indexCols, index.Comment()))
+			index.IsFullText(), index.IsVector(), index.ID(), indexCols, index.Comment()))
 	}
 
 	fkt, err := getForeignKeyTable(table)
