@@ -28,16 +28,21 @@ import (
 var GlobalParser Parser = NewMysqlParser()
 
 type Parser interface {
-	// ParseSimple takes only query string and returns the parsed statement.
+	// ParseSimple takes a |query| and returns the parsed statement. If |query| represents a no-op statement,
+	// such as ";" or "-- comment", then implementations must return Vitess' ErrEmpty error.
 	ParseSimple(query string) (ast.Statement, error)
-	// Parse parses using default parser options of the ctx and returns the parsed statement
-	// along with the query string and remainder string if it's multiple queries.
+	// Parse parses |query| using the default parser options of the ctx and returns the parsed statement
+	// along with the query string and remainder string if it's multiple queries. If |query| represents a
+	// no-op statement, such as ";" or "-- comment", then implementations must return Vitess' ErrEmpty error.
 	Parse(ctx *Context, query string, multi bool) (ast.Statement, string, string, error)
-	// ParseWithOptions parses using given parser options and returns the parsed statement
-	// along with the query string and remainder string if it's multiple queries.
+	// ParseWithOptions parses |query| using the given parser |options| and specified |delimiter|. The parsed statement
+	// is returned, along with the query string and remainder string if |multi| has been set to true and there are
+	// multiple statements in |query|. If |query| represents a no-op statement, such as ";" or "-- comment", then
+	// implementations must return Vitess' ErrEmpty error.
 	ParseWithOptions(ctx context.Context, query string, delimiter rune, multi bool, options ast.ParserOptions) (ast.Statement, string, string, error)
 	// ParseOneWithOptions parses the first query using specified parsing returns the parsed statement along with
-	// the index of the start of the next query.
+	// the index of the start of the next query. If |query| represents a no-op statement, such as ";" or "-- comment",
+	// then implementations must return Vitess' ErrEmpty error.
 	ParseOneWithOptions(context.Context, string, ast.ParserOptions) (ast.Statement, int, error)
 }
 
