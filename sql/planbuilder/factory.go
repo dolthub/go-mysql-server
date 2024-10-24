@@ -203,4 +203,3 @@ func (f *factory) buildDistinct(child sql.Node) sql.Node {
 	}
 	return plan.NewDistinct(child)
 }
-
