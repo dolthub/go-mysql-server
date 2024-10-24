@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -38,7 +39,7 @@ type Index struct {
 	Fulltext   bool
 	// If SupportedVectorFunction is non-nil, this index can be used to optimize ORDER BY
 	// expressions on this type of distance function.
-	SupportedVectorFunction expression.DistanceType
+	SupportedVectorFunction vector.DistanceType
 	CommentStr              string
 	PrefixLens              []uint16
 	fulltextInfo
@@ -125,7 +126,7 @@ func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
 	if idx.SupportedVectorFunction == nil {
 		return false
 	}
-	dist, isDist := expr.(*expression.Distance)
+	dist, isDist := expr.(*vector.Distance)
 	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceType)
 }
 

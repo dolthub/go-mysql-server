@@ -3,6 +3,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -49,7 +50,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		if len(sfExprs) != 1 {
 			return n, transform.SameTree, nil
 		}
-		distance, isDistance := sfExprs[0].(*expression.Distance)
+		distance, isDistance := sfExprs[0].(*vector.Distance)
 		if !isDistance {
 			return n, transform.SameTree, nil
 		}

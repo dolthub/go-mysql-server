@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -49,7 +50,7 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 			name: "without limit",
 			inputPlan: plan.NewSort(
 				sql.SortFields{
-					{Column: expression.NewDistance(expression.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetField(1, types.JSON, "v", false)), Order: sql.Ascending},
+					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetField(1, types.JSON, "v", false)), Order: sql.Ascending},
 				}, plan.NewResolvedTable(table, db, nil)),
 			expectedPlan: `
 IndexedTableAccess(test)
@@ -66,7 +67,7 @@ IndexedTableAccess(test)
 			name: "with limit",
 			inputPlan: plan.NewTopN(
 				sql.SortFields{
-					{Column: expression.NewDistance(expression.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetField(1, types.JSON, "v", false)), Order: sql.Ascending},
+					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetField(1, types.JSON, "v", false)), Order: sql.Ascending},
 				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
 			expectedPlan: `
 IndexedTableAccess(test)
@@ -197,7 +198,7 @@ var vectorIndex = memory.Index{
 	Unique:                  true,
 	Spatial:                 false,
 	Fulltext:                false,
-	SupportedVectorFunction: expression.DistanceL2Squared{},
+	SupportedVectorFunction: vector.DistanceL2Squared{},
 	CommentStr:              "",
 	PrefixLens:              nil,
 }

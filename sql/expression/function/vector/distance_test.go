@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package expression
+package vector
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"testing"
 
 	assert "github.com/stretchr/testify/require"
@@ -25,7 +26,7 @@ import (
 )
 
 func jsonExpression(t *testing.T, val interface{}) sql.Expression {
-	return NewLiteral(jsontests.ConvertToJson(t, val), types.JSON)
+	return expression.NewLiteral(jsontests.ConvertToJson(t, val), types.JSON)
 }
 
 func TestDistance(t *testing.T) {
