@@ -195,9 +195,33 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 // buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
 // If the query has both DISTINCT and ALL, an error is returned.
 func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
-	if distinct {
-		inScope.node = plan.NewDistinct(inScope.node)
+	if !distinct {
+		return
 	}
+	// TODO: move this to factory.go
+	node := inScope.node
+	if proj, isProj := node.(*plan.Project); isProj {
+		if sort, isSort := proj.Child.(*plan.Sort); isSort {
+			projMap := make(map[string]struct{})
+			for _, p := range proj.Projections {
+				projMap[p.String()] = struct{}{}
+			}
+			hasDiff := false
+			for _, s := range sort.SortFields {
+				if _, ok := projMap[s.Column.String()]; !ok {
+					hasDiff = true
+					break
+				}
+			}
+			if !hasDiff {
+				// TODO: use WithChild?
+				proj.Child = sort.Child
+				sort.Child = plan.NewDistinct(proj)
+				inScope.node = sort
+			}
+		}
+	}
+	inScope.node = plan.NewDistinct(node)
 }
 
 func (b *Builder) currentDb() sql.Database {

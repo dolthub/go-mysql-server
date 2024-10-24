@@ -4773,12 +4773,11 @@ func TestTracing(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	spans := tracer.Spans
-	// TODO restore TopN
+	// TODO: restore TopN
 	var expectedSpans = []string{
 		"plan.Limit",
 		"plan.Distinct",
 		"plan.Project",
-		"plan.Sort",
 		"plan.IndexedTableAccess",
 	}
 
