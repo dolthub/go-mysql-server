@@ -25074,7 +25074,7 @@ order by x, y;
 			"",
 	},
 	{
-		Query: "select * from xy where x = json_object();",
+		Query: `select * from xy where x = json_object();`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Eq\n" +
 			" │   ├─ xy.x:0!null\n" +
@@ -25084,9 +25084,21 @@ order by x, y;
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
 			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (xy.x = {})\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (xy.x = {})\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
 	},
 	{
-		Query: "select * from xy where x = json_array();",
+		Query: `select * from xy where x = json_array();`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Eq\n" +
 			" │   ├─ xy.x:0!null\n" +
@@ -25095,6 +25107,18 @@ order by x, y;
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (xy.x = [])\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (xy.x = [])\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
 			"",
 	},
 }
