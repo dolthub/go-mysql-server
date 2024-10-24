@@ -359,10 +359,10 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `
 select
-  case when x is null then 0
-  when x in (select x from xy where not x in (select u from uv)) then 1
-  else 2
-  end as s
+ case when x is null then 0
+ when x in (select x from xy where not x in (select u from uv)) then 1
+ else 2
+ end as s
 From xy;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [CASE  WHEN xy.x:0!null IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
@@ -1035,13 +1035,13 @@ From xy;`,
 SELECT COUNT(DISTINCT (s_i_id))
 FROM order_line1, stock1
 WHERE
-  ol_w_id = 5 AND
-  ol_d_id = 2 AND
-  ol_o_id < 3001 AND
-  ol_o_id >= 2981 AND
-  s_w_id= 5 AND
-  s_i_id=ol_i_id AND
-  s_quantity < 15;`,
+ ol_w_id = 5 AND
+ ol_d_id = 2 AND
+ ol_o_id < 3001 AND
+ ol_o_id >= 2981 AND
+ s_w_id= 5 AND
+ s_i_id=ol_i_id AND
+ s_quantity < 15;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [countdistinct([stock1.s_i_id]):0!null as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
@@ -1123,10 +1123,10 @@ WHERE
 SELECT c_discount, c_last, c_credit, w_tax
 FROM customer1, warehouse1
 WHERE
-  w_id = 1 AND
-  c_w_id = w_id AND
-  c_d_id = 2 AND
-  c_id = 2327;
+ w_id = 1 AND
+ c_w_id = w_id AND
+ c_d_id = 2 AND
+ c_id = 2327;
 `,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [customer1.c_discount:7, customer1.c_last:5, customer1.c_credit:6, warehouse1.w_tax:1]\n" +
@@ -1242,19 +1242,19 @@ WHERE
 select /*+ LOOKUP_JOIN(style, dimension) LOOKUP_JOIN(dimension, color) */ style.assetId
 from asset style
 join asset dimension
-  on style.assetId = dimension.assetId
+ on style.assetId = dimension.assetId
 join asset color
-  on style.assetId = color.assetId
+ on style.assetId = color.assetId
 where
-  dimension.val = 'wide' and
-  style.val = 'curve' and
-  color.val = 'blue' and
-  dimension.name = 'dimension' and
-  style.name = 'style' and
-  color.name = 'color' and
-  dimension.orgId = 'org1' and
-  style.orgId = 'org1' and
-  color.orgId = 'org1';
+ dimension.val = 'wide' and
+ style.val = 'curve' and
+ color.val = 'blue' and
+ dimension.name = 'dimension' and
+ style.name = 'style' and
+ color.name = 'color' and
+ dimension.orgId = 'org1' and
+ style.orgId = 'org1' and
+ color.orgId = 'org1';
 `,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [style.assetId:1]\n" +
@@ -1718,11 +1718,11 @@ offset 2;`,
 	{
 		Query: `
 Select * from (
-  With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
-  Select * from cte
-  Union
-  Select x from xy where x in (select * from cte where x = 1)
- ) dt;`,
+ With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
+ Select * from cte
+ Union
+ Select x from xy where x in (select * from cte where x = 1)
+) dt;`,
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: dt\n" +
 			" ├─ outerVisibility: false\n" +
@@ -1936,11 +1936,11 @@ Select * from (
 	{
 		Query: `
 Select * from (
-  With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
-  Select * from cte
-  Union
-  Select x from xy where x in (select * from cte)
- ) dt;`,
+ With recursive cte(s) as (select 1 union select x from xy join cte on x = s)
+ Select * from cte
+ Union
+ Select x from xy where x in (select * from cte)
+) dt;`,
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: dt\n" +
 			" ├─ outerVisibility: false\n" +
@@ -2333,7 +2333,7 @@ Select * from (
 	{
 		Query: `select x from xy where x in (
 	select (select u from uv where u = sq.p)
-    from (select p from pq) sq);
+   from (select p from pq) sq);
 `,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [xy.x:0!null]\n" +
@@ -5392,9 +5392,9 @@ Select * from (
 		Query: `
 select * from
 (
-  select * from ab
-  left join uv on a = u
-  where exists (select * from pq where u = p)
+ select * from ab
+ left join uv on a = u
+ where exists (select * from pq where u = p)
 ) alias2
 inner join xy on a = x;`,
 		ExpectedPlan: "LookupJoin\n" +
@@ -5503,9 +5503,9 @@ inner join xy on a = x;`,
 select * from ab
 where exists
 (
-  select * from uv
-  left join pq on u = p
-  where a = u
+ select * from uv
+ left join pq on u = p
+ where a = u
 );`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:1!null, ab.b:2]\n" +
@@ -5592,8 +5592,8 @@ where exists
 		Query: `
 select * from
 (
-  select * from ab
-  where not exists (select * from uv where a = u)
+ select * from ab
+ where not exists (select * from uv where a = u)
 ) alias1
 where exists (select * from pq where a = p)
 `,
@@ -5783,8 +5783,8 @@ full join pq on a = p
 		Query: `
 select * from
 (
-  select * from ab
-  inner join xy on true
+ select * from ab
+ inner join xy on true
 ) alias1
 inner join uv on true
 inner join pq on true
@@ -21800,22 +21800,22 @@ inner join pq on true
 	{
 		Query: `
 With c as (
-  select * from (
-    select a.s
-    From mytable a
-    Join (
-      Select t2.*
-      From mytable t2
-      Where t2.i in (1,2)
-    ) b
-    On a.i = b.i
-    Join (
-      select t1.*
-      from mytable t1
-      Where t1.I in (2,3)
-    ) e
-    On b.I = e.i
-  ) d
+ select * from (
+   select a.s
+   From mytable a
+   Join (
+     Select t2.*
+     From mytable t2
+     Where t2.i in (1,2)
+   ) b
+   On a.i = b.i
+   Join (
+     select t1.*
+     from mytable t1
+     Where t1.I in (2,3)
+   ) e
+   On b.I = e.i
+ ) d
 ) select * from c;`,
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
@@ -22689,21 +22689,21 @@ With c as (
 SELECT COUNT(*)
 FROM keyless
 WHERE keyless.c0 IN (
-    WITH RECURSIVE cte(depth, i, j) AS (
-        SELECT 0, T1.c0, T1.c1
-        FROM keyless T1
-        WHERE T1.c0 = 0
+   WITH RECURSIVE cte(depth, i, j) AS (
+       SELECT 0, T1.c0, T1.c1
+       FROM keyless T1
+       WHERE T1.c0 = 0
 
-        UNION ALL
+       UNION ALL
 
-        SELECT cte.depth + 1, cte.i, T2.c1 + 1
-        FROM cte, keyless T2
-        WHERE cte.depth = T2.c0
-    )
+       SELECT cte.depth + 1, cte.i, T2.c1 + 1
+       FROM cte, keyless T2
+       WHERE cte.depth = T2.c0
+   )
 
-    SELECT U0.c0
-    FROM keyless U0, cte
-    WHERE cte.j = keyless.c0
+   SELECT U0.c0
+   FROM keyless U0, cte
+   WHERE cte.j = keyless.c0
 );`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null as COUNT(*)]\n" +
@@ -22884,21 +22884,21 @@ WHERE keyless.c0 IN (
 SELECT COUNT(*)
 FROM keyless
 WHERE keyless.c0 IN (
-    WITH RECURSIVE cte(depth, i, j) AS (
-        SELECT 0, T1.c0, T1.c1
-        FROM keyless T1
-        WHERE T1.c0 = 0
+   WITH RECURSIVE cte(depth, i, j) AS (
+       SELECT 0, T1.c0, T1.c1
+       FROM keyless T1
+       WHERE T1.c0 = 0
 
-        UNION ALL
+       UNION ALL
 
-        SELECT cte.depth + 1, cte.i, T2.c1 + 1
-        FROM cte, keyless T2
-        WHERE cte.depth = T2.c0
-    )
+       SELECT cte.depth + 1, cte.i, T2.c1 + 1
+       FROM cte, keyless T2
+       WHERE cte.depth = T2.c0
+   )
 
-    SELECT U0.c0
-    FROM cte, keyless U0
-    WHERE cte.j = keyless.c0
+   SELECT U0.c0
+   FROM cte, keyless U0
+   WHERE cte.j = keyless.c0
 );`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null as COUNT(*)]\n" +
@@ -24733,13 +24733,13 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 select a, b
 from ab as ab2
 where exists (
-    select *
-    from ab
+   select *
+   from ab
 	where ab.b = (
-        select max(v)
-        from uv
-        where uv.v = ab2.a and uv.v = ab.a
-    )
+       select max(v)
+       from uv
+       where uv.v = ab2.a and uv.v = ab.a
+   )
 );`,
 		ExpectedPlan: "SemiJoin\n" +
 			" ├─ Eq\n" +
@@ -24822,13 +24822,13 @@ where exists (
 select x, y
 from xy as xy2
 where exists (
-    select *
-    from xy
-        where xy.y = (
-        select max(v)
-        from uv
-        where uv.v = xy2.x and uv.v = xy.x
-    )
+   select *
+   from xy
+       where xy.y = (
+       select max(v)
+       from uv
+       where uv.v = xy2.x and uv.v = xy.x
+   )
 )
 order by x, y;
 `,
@@ -25074,7 +25074,7 @@ order by x, y;
 			"",
 	},
 	{
-		Query: "select * from xy where x = json_object();",
+		Query: `select * from xy where x = json_object();`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Eq\n" +
 			" │   ├─ xy.x:0!null\n" +
@@ -25084,9 +25084,21 @@ order by x, y;
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
 			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (xy.x = {})\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (xy.x = {})\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
 	},
 	{
-		Query: "select * from xy where x = json_array();",
+		Query: `select * from xy where x = json_array();`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Eq\n" +
 			" │   ├─ xy.x:0!null\n" +
@@ -25095,6 +25107,345 @@ order by x, y;
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
+			"",
+		ExpectedEstimates: "Filter\n" +
+			" ├─ (xy.x = [])\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ (xy.x = [])\n" +
+			" └─ Table\n" +
+			"     ├─ name: xy\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk1 from two_pk order by pk1`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1:0!null]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk2 from two_pk order by pk2`,
+		ExpectedPlan: "Sort(two_pk.pk2:0!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk2:1!null]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Sort(two_pk.pk2 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk2]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+		ExpectedAnalysis: "Sort(two_pk.pk2 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk2]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk1 from two_pk order by pk2`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1:0!null]\n" +
+			"     └─ Sort(two_pk.pk2:1!null ASC nullsFirst)\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1]\n" +
+			"     └─ Sort(two_pk.pk2 ASC)\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1]\n" +
+			"     └─ Sort(two_pk.pk2 ASC)\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk2 from two_pk order by pk1`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2:1!null]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk1`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk2`,
+		ExpectedPlan: "Sort(two_pk.pk2:1!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Sort(two_pk.pk2 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+		ExpectedAnalysis: "Sort(two_pk.pk2 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk1, pk2`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk2, pk1`,
+		ExpectedPlan: "Sort(two_pk.pk2:1!null ASC nullsFirst, two_pk.pk1:0!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+		ExpectedAnalysis: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk2, pk1 from two_pk order by pk1, pk2`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2:1!null, two_pk.pk1:0!null]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-7)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
+			"     └─ IndexedTableAccess(two_pk)\n" +
+			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk2, pk1 from two_pk order by pk2, pk1`,
+		ExpectedPlan: "Sort(two_pk.pk2:0!null ASC nullsFirst, two_pk.pk1:1!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk2:1!null, two_pk.pk1:0!null]\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+		ExpectedAnalysis: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk1 + 1 from two_pk order by pk1 + 1`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(two_pk.pk1:0!null + 1 (tinyint)) as pk1 + 1]\n" +
+			"     └─ Sort((two_pk.pk1:0!null + 1 (tinyint)) ASC nullsFirst)\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(two_pk.pk1 + 1) as pk1 + 1]\n" +
+			"     └─ Sort((two_pk.pk1 + 1) ASC)\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(two_pk.pk1 + 1) as pk1 + 1]\n" +
+			"     └─ Sort((two_pk.pk1 + 1) ASC)\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+	},
+	{
+		Query: `select distinct pk2 + 1 from two_pk order by pk2 + 1`,
+		ExpectedPlan: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(two_pk.pk2:1!null + 1 (tinyint)) as pk2 + 1]\n" +
+			"     └─ Sort((two_pk.pk2:1!null + 1 (tinyint)) ASC nullsFirst)\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(two_pk.pk2 + 1) as pk2 + 1]\n" +
+			"     └─ Sort((two_pk.pk2 + 1) ASC)\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
+			"",
+		ExpectedAnalysis: "Distinct\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [(two_pk.pk2 + 1) as pk2 + 1]\n" +
+			"     └─ Sort((two_pk.pk2 + 1) ASC)\n" +
+			"         └─ Table\n" +
+			"             └─ name: two_pk\n" +
 			"",
 	},
 }
