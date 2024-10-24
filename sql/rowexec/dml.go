@@ -395,33 +395,6 @@ func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpd
 	}, nil
 }
 
-func findInsertIter(rowIter sql.RowIter) (*insertIter, error) {
-	var insertItr *insertIter
-	switch rowIter := rowIter.(type) {
-	case *plan.TableEditorIter:
-		var ok bool
-		insertItr, ok = rowIter.InnerIter().(*insertIter)
-		if !ok {
-			return nil, fmt.Errorf("unexpected iter type %T", rowIter)
-		}
-	case *plan.CheckpointingTableEditorIter:
-		var ok bool
-		insertItr, ok = rowIter.InnerIter().(*insertIter)
-		if !ok {
-			return nil, fmt.Errorf("unexpected iter type %T", rowIter)
-		}
-	case *triggerIter:
-		var err error
-		insertItr, err = findInsertIter(rowIter.child)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("unexpected iter type %T", rowIter)
-	}
-	return insertItr, nil
-}
-
 func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.Row) (sql.RowIter, error) {
 	truncatable, err := plan.GetTruncatable(n.Child)
 	if err != nil {

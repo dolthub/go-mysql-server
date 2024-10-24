@@ -16,7 +16,8 @@ package rowexec
 
 import (
 	"fmt"
-	"io"
+	"github.com/dolthub/vitess/go/mysql"
+"io"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -491,6 +492,89 @@ type accumulatorIter struct {
 	iter             sql.RowIter
 	once             sync.Once
 	updateRowHandler accumulatorRowHandler
+}
+
+func AddAccumulatorIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) (sql.RowIter, error) {
+	clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
+
+	var rowHandler accumulatorRowHandler
+	switch n := node.(type) {
+	case *plan.TriggerExecutor:
+		return AddAccumulatorIter(ctx, n.Left(), iter)
+	case *plan.InsertInto:
+		if n.IsReplace {
+			rowHandler = &replaceRowHandler{}
+		} else if len(n.OnDupExprs) > 0 {
+			rowHandler = &onDuplicateUpdateHandler{schema: n.Schema(), clientFoundRowsCapability: clientFoundRowsToggled}
+		} else {
+			rowHandler = &insertRowHandler{}
+		}
+	case *plan.DeleteFrom:
+		rowHandler = &deleteRowHandler{}
+	case *plan.Update:
+		// search for a join
+		hasJoin := false
+		transform.Inspect(n, func(node sql.Node) bool {
+			switch node.(type) {
+			case *plan.JoinNode:
+				hasJoin = true
+				return false
+			}
+			return true
+		})
+		if hasJoin {
+			var schema sql.Schema
+			var updaterMap map[string]sql.RowUpdater
+			transform.Inspect(n, func(node sql.Node) bool {
+				switch nn := node.(type) {
+				case *plan.JoinNode, *plan.Project:
+					schema = node.Schema()
+					return false
+				case *plan.UpdateJoin:
+					updaterMap = nn.Updaters
+					return true
+				default:
+					return true
+				}
+			})
+			if schema == nil {
+				return nil, fmt.Errorf("error: No JoinNode found in query plan to go along with an UpdateTypeJoinUpdate")
+			}
+			// assign row handler to updateJoinIter
+			rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: plan.RecreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
+			for iter, done := iter, false; !done; {
+				switch i := iter.(type) {
+				case *plan.TableEditorIter:
+					iter = i.InnerIter()
+				case *ProjectIter:
+					iter = i.childIter
+				case *plan.CheckpointingTableEditorIter:
+					iter = i.InnerIter()
+				case *triggerIter:
+					iter = i.child
+				case *updateIter:
+					iter = i.childIter
+				case *updateJoinIter:
+					i.accumulator = rowHandler.(*updateJoinRowHandler)
+					done = true
+				default:
+					return nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
+				}
+			}
+		} else {
+			// the schema of the update node is a self-concatenation of the underlying table's, so split it in half
+			// for new / old row comparison purposes
+			sch := n.Schema()
+			rowHandler = &updateRowHandler{schema: sch[:len(sch)/2], clientFoundRowsCapability: clientFoundRowsToggled}
+		}
+	default:
+		return iter, nil
+	}
+
+	return &accumulatorIter{
+		iter:             iter,
+		updateRowHandler: rowHandler,
+	}, nil
 }
 
 func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {

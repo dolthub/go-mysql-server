@@ -26,6 +26,7 @@ import (
 // applyUpdateAccumulators wraps any Insert, Update, or Delete nodes with RowUpdateAccumulators to tally the results
 // for report to the client.
 func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	return n, transform.SameTree, nil
 	switch n := n.(type) {
 	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 		accumulatorType, err := getUpdateAccumulatorType(n)
@@ -40,6 +41,7 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 
 // getUpdateAccumulatorType returns the type of accumulator needed for the node given, or an error if there's no match.
 func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
+	return -1, nil
 	switch n := n.(type) {
 	case *plan.TriggerExecutor:
 		return getUpdateAccumulatorType(n.Left())
