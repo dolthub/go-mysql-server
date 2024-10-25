@@ -890,6 +890,14 @@ func TestIndexes(t *testing.T) {
 	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestVectorIndexes(t *testing.T) {
+	enginetest.TestVectorIndexes(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestVectorFunctions(t *testing.T) {
+	enginetest.TestVectorFunctions(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
 }

@@ -5871,6 +5871,18 @@ func TestIndexes(t *testing.T, h Harness) {
 	}
 }
 
+func TestVectorIndexes(t *testing.T, h Harness) {
+	for _, tt := range queries.VectorIndexQueries {
+		TestScript(t, h, tt)
+	}
+}
+
+func TestVectorFunctions(t *testing.T, h Harness) {
+	for _, tt := range queries.VectorFunctionQueries {
+		TestScript(t, h, tt)
+	}
+}
+
 func TestIndexPrefix(t *testing.T, h Harness) {
 	for _, tt := range queries.IndexPrefixQueries {
 		TestScript(t, h, tt)
