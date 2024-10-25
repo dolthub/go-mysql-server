@@ -195,9 +195,10 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 // buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
 // If the query has both DISTINCT and ALL, an error is returned.
 func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
-	if distinct {
-		inScope.node = plan.NewDistinct(inScope.node)
+	if !distinct {
+		return
 	}
+	inScope.node = b.f.buildDistinct(inScope.node)
 }
 
 func (b *Builder) currentDb() sql.Database {

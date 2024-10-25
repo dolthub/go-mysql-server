@@ -9331,10 +9331,10 @@ WHERE
 	   FROM NOXN3) CKELE
 	ON CKELE.LWQ6O = OXXEI.BDNYB
 	ORDER BY CKELE.M6T2N ASC`,
-		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
-			"     └─ Sort(ckele.M6T2N:12!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(ckele.M6T2N:4!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [oxxei.T4IBQ:0!null, oxxei.BDNYB:1!null, oxxei.BTXC5:2, oxxei.Z7CP5:3!null, oxxei.vaf:4, oxxei.QCGTS:5, oxxei.SNY4H:6!null, e52ap.KUXQY:7!null, e52ap.BDNYB:8!null, e52ap.YHVEZ:9!null, e52ap.YAZ4X:10!null, ckele.LWQ6O:11!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
 			"             └─ HashJoin\n" +
@@ -9532,10 +9532,10 @@ WHERE
 			"                                     ├─ colSet: (137-146)\n" +
 			"                                     └─ tableId: 17\n" +
 			"",
-		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
-			"     └─ Sort(ckele.M6T2N ASC)\n" +
+		ExpectedEstimates: "Sort(ckele.M6T2N ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [oxxei.T4IBQ, oxxei.BDNYB, oxxei.BTXC5, oxxei.Z7CP5, oxxei.vaf, oxxei.QCGTS, oxxei.SNY4H, e52ap.KUXQY, e52ap.BDNYB, e52ap.YHVEZ, e52ap.YAZ4X, ckele.LWQ6O, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"             └─ HashJoin\n" +
@@ -9651,10 +9651,10 @@ WHERE
 			"                                     ├─ name: NOXN3\n" +
 			"                                     └─ columns: [id]\n" +
 			"",
-		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
-			"     └─ Sort(ckele.M6T2N ASC)\n" +
+		ExpectedAnalysis: "Sort(ckele.M6T2N ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [oxxei.T4IBQ, oxxei.BDNYB, oxxei.BTXC5, oxxei.Z7CP5, oxxei.vaf, oxxei.QCGTS, oxxei.SNY4H, e52ap.KUXQY, e52ap.BDNYB, e52ap.YHVEZ, e52ap.YAZ4X, ckele.LWQ6O, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"             └─ HashJoin\n" +
@@ -9837,10 +9837,10 @@ WHERE
 	   FROM NOXN3) CKELE
 	ON CKELE.LWQ6O = OXXEI.BDNYB
 	ORDER BY CKELE.M6T2N ASC`,
-		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
-			"     └─ Sort(ckele.M6T2N:12!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(ckele.M6T2N:4!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [oxxei.T4IBQ:0!null, oxxei.BDNYB:1!null, oxxei.BTXC5:2, oxxei.Z7CP5:3!null, oxxei.vaf:4, oxxei.QCGTS:5, oxxei.SNY4H:6!null, e52ap.KUXQY:7!null, e52ap.BDNYB:8!null, e52ap.YHVEZ:9!null, e52ap.YAZ4X:10!null, ckele.LWQ6O:11!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
 			"             └─ HashJoin\n" +
@@ -10032,10 +10032,10 @@ WHERE
 			"                                     ├─ colSet: (137-146)\n" +
 			"                                     └─ tableId: 17\n" +
 			"",
-		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
-			"     └─ Sort(ckele.M6T2N ASC)\n" +
+		ExpectedEstimates: "Sort(ckele.M6T2N ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [oxxei.T4IBQ, oxxei.BDNYB, oxxei.BTXC5, oxxei.Z7CP5, oxxei.vaf, oxxei.QCGTS, oxxei.SNY4H, e52ap.KUXQY, e52ap.BDNYB, e52ap.YHVEZ, e52ap.YAZ4X, ckele.LWQ6O, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"             └─ HashJoin\n" +
@@ -10149,10 +10149,10 @@ WHERE
 			"                                     ├─ name: NOXN3\n" +
 			"                                     └─ columns: [id]\n" +
 			"",
-		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
-			"     └─ Sort(ckele.M6T2N ASC)\n" +
+		ExpectedAnalysis: "Sort(ckele.M6T2N ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [oxxei.T4IBQ, oxxei.Z7CP5, e52ap.KUXQY, oxxei.BDNYB, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [oxxei.T4IBQ, oxxei.BDNYB, oxxei.BTXC5, oxxei.Z7CP5, oxxei.vaf, oxxei.QCGTS, oxxei.SNY4H, e52ap.KUXQY, e52ap.BDNYB, e52ap.YHVEZ, e52ap.YAZ4X, ckele.LWQ6O, ckele.M6T2N, oxxei.BTXC5 as BTXC5, oxxei.vaf as vaf, oxxei.QCGTS as QCGTS, oxxei.SNY4H as SNY4H, e52ap.YHVEZ as YHVEZ, e52ap.YAZ4X as YAZ4X]\n" +
 			"             └─ HashJoin\n" +
@@ -16286,10 +16286,10 @@ WHERE
             AND bs.id IN (SELECT GXLUB FROM AMYXQ)
     )
 ORDER BY cla.FTQLQ ASC`,
-		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ:1!null]\n" +
-			"     └─ Sort(cla.FTQLQ:1!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(cla.FTQLQ:0!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [cla.id:1!null, cla.FTQLQ:2!null, cla.TUXML:3, cla.PAEF5:4, cla.RUCY4:5, cla.TPNJ6:6!null, cla.LBL53:7, cla.NB3QS:8, cla.EO7IV:9, cla.MUHJF:10, cla.FM34L:11, cla.TY5RF:12, cla.ZHTLH:13, cla.NPB7W:14, cla.SX3HH:15, cla.ISBNF:16, cla.YA7YB:17, cla.C5YKB:18, cla.QK7KT:19, cla.FFGE6:20, cla.FIIGJ:21, cla.SH3NC:22, cla.NTENA:23, cla.M4AUB:24, cla.X5AIR:25, cla.SAB6M:26, cla.G5QI5:27, cla.ZVQVD:28, cla.YKSSU:29, cla.FHCYT:30]\n" +
 			"             └─ HashJoin\n" +
@@ -16344,10 +16344,10 @@ ORDER BY cla.FTQLQ ASC`,
 			"                                 ├─ name: YK2GW\n" +
 			"                                 └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
 			"",
-		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ]\n" +
-			"     └─ Sort(cla.FTQLQ ASC)\n" +
+		ExpectedEstimates: "Sort(cla.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [cla.id, cla.FTQLQ, cla.TUXML, cla.PAEF5, cla.RUCY4, cla.TPNJ6, cla.LBL53, cla.NB3QS, cla.EO7IV, cla.MUHJF, cla.FM34L, cla.TY5RF, cla.ZHTLH, cla.NPB7W, cla.SX3HH, cla.ISBNF, cla.YA7YB, cla.C5YKB, cla.QK7KT, cla.FFGE6, cla.FIIGJ, cla.SH3NC, cla.NTENA, cla.M4AUB, cla.X5AIR, cla.SAB6M, cla.G5QI5, cla.ZVQVD, cla.YKSSU, cla.FHCYT]\n" +
 			"             └─ HashJoin\n" +
@@ -16381,10 +16381,10 @@ ORDER BY cla.FTQLQ ASC`,
 			"                         └─ Table\n" +
 			"                             └─ name: YK2GW\n" +
 			"",
-		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ]\n" +
-			"     └─ Sort(cla.FTQLQ ASC)\n" +
+		ExpectedAnalysis: "Sort(cla.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [cla.id, cla.FTQLQ, cla.TUXML, cla.PAEF5, cla.RUCY4, cla.TPNJ6, cla.LBL53, cla.NB3QS, cla.EO7IV, cla.MUHJF, cla.FM34L, cla.TY5RF, cla.ZHTLH, cla.NPB7W, cla.SX3HH, cla.ISBNF, cla.YA7YB, cla.C5YKB, cla.QK7KT, cla.FFGE6, cla.FIIGJ, cla.SH3NC, cla.NTENA, cla.M4AUB, cla.X5AIR, cla.SAB6M, cla.G5QI5, cla.ZVQVD, cla.YKSSU, cla.FHCYT]\n" +
 			"             └─ HashJoin\n" +
@@ -16429,10 +16429,10 @@ INNER JOIN THNTS bs
 INNER JOIN YK2GW cla
     ON bs.IXUXU = cla.id
 ORDER BY cla.FTQLQ ASC`,
-		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ:22!null]\n" +
-			"     └─ Sort(cla.FTQLQ:22!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(cla.FTQLQ:0!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ:22!null]\n" +
 			"         └─ HashJoin\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ mf.GXLUB:1!null\n" +
@@ -16468,10 +16468,10 @@ ORDER BY cla.FTQLQ ASC`,
 			"                                 ├─ name: YK2GW\n" +
 			"                                 └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
 			"",
-		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ]\n" +
-			"     └─ Sort(cla.FTQLQ ASC)\n" +
+		ExpectedEstimates: "Sort(cla.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ]\n" +
 			"         └─ HashJoin\n" +
 			"             ├─ (mf.GXLUB = bs.id)\n" +
 			"             ├─ TableAlias(mf)\n" +
@@ -16491,10 +16491,10 @@ ORDER BY cla.FTQLQ ASC`,
 			"                             ├─ index: [YK2GW.id]\n" +
 			"                             └─ filters: [{[NULL, ∞)}]\n" +
 			"",
-		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ]\n" +
-			"     └─ Sort(cla.FTQLQ ASC)\n" +
+		ExpectedAnalysis: "Sort(cla.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ]\n" +
 			"         └─ HashJoin\n" +
 			"             ├─ (mf.GXLUB = bs.id)\n" +
 			"             ├─ TableAlias(mf)\n" +
@@ -16524,10 +16524,10 @@ WHERE cla.id IN
     (SELECT IXUXU FROM THNTS bs
         WHERE bs.id IN (SELECT GXLUB FROM AMYXQ))
 ORDER BY cla.FTQLQ ASC`,
-		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ:1!null]\n" +
-			"     └─ Sort(cla.FTQLQ:1!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(cla.FTQLQ:0!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ:1!null]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [cla.id:1!null, cla.FTQLQ:2!null, cla.TUXML:3, cla.PAEF5:4, cla.RUCY4:5, cla.TPNJ6:6!null, cla.LBL53:7, cla.NB3QS:8, cla.EO7IV:9, cla.MUHJF:10, cla.FM34L:11, cla.TY5RF:12, cla.ZHTLH:13, cla.NPB7W:14, cla.SX3HH:15, cla.ISBNF:16, cla.YA7YB:17, cla.C5YKB:18, cla.QK7KT:19, cla.FFGE6:20, cla.FIIGJ:21, cla.SH3NC:22, cla.NTENA:23, cla.M4AUB:24, cla.X5AIR:25, cla.SAB6M:26, cla.G5QI5:27, cla.ZVQVD:28, cla.YKSSU:29, cla.FHCYT:30]\n" +
 			"             └─ HashJoin\n" +
@@ -16571,10 +16571,10 @@ ORDER BY cla.FTQLQ ASC`,
 			"                                 ├─ name: YK2GW\n" +
 			"                                 └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
 			"",
-		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ]\n" +
-			"     └─ Sort(cla.FTQLQ ASC)\n" +
+		ExpectedEstimates: "Sort(cla.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [cla.id, cla.FTQLQ, cla.TUXML, cla.PAEF5, cla.RUCY4, cla.TPNJ6, cla.LBL53, cla.NB3QS, cla.EO7IV, cla.MUHJF, cla.FM34L, cla.TY5RF, cla.ZHTLH, cla.NPB7W, cla.SX3HH, cla.ISBNF, cla.YA7YB, cla.C5YKB, cla.QK7KT, cla.FFGE6, cla.FIIGJ, cla.SH3NC, cla.NTENA, cla.M4AUB, cla.X5AIR, cla.SAB6M, cla.G5QI5, cla.ZVQVD, cla.YKSSU, cla.FHCYT]\n" +
 			"             └─ HashJoin\n" +
@@ -16602,10 +16602,10 @@ ORDER BY cla.FTQLQ ASC`,
 			"                         └─ Table\n" +
 			"                             └─ name: YK2GW\n" +
 			"",
-		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [cla.FTQLQ]\n" +
-			"     └─ Sort(cla.FTQLQ ASC)\n" +
+		ExpectedAnalysis: "Sort(cla.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [cla.FTQLQ]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [cla.id, cla.FTQLQ, cla.TUXML, cla.PAEF5, cla.RUCY4, cla.TPNJ6, cla.LBL53, cla.NB3QS, cla.EO7IV, cla.MUHJF, cla.FM34L, cla.TY5RF, cla.ZHTLH, cla.NPB7W, cla.SX3HH, cla.ISBNF, cla.YA7YB, cla.C5YKB, cla.QK7KT, cla.FFGE6, cla.FIIGJ, cla.SH3NC, cla.NTENA, cla.M4AUB, cla.X5AIR, cla.SAB6M, cla.G5QI5, cla.ZVQVD, cla.YKSSU, cla.FHCYT]\n" +
 			"             └─ HashJoin\n" +
@@ -16642,10 +16642,10 @@ FROM FLQLP ct
 INNER JOIN JDLNA ci
     ON ct.FZ2R5 = ci.id
 ORDER BY ci.FTQLQ`,
-		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [ci.FTQLQ:13!null]\n" +
-			"     └─ Sort(ci.FTQLQ:13!null ASC nullsFirst)\n" +
+		ExpectedPlan: "Sort(ci.FTQLQ:0!null ASC nullsFirst)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ci.FTQLQ:13!null]\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: Eq\n" +
 			"             │   ├─ ct.FZ2R5:1!null\n" +
@@ -16669,10 +16669,10 @@ ORDER BY ci.FTQLQ`,
 			"                         ├─ name: JDLNA\n" +
 			"                         └─ columns: [id ftqlq fwwiq o3qxw fhcyt]\n" +
 			"",
-		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [ci.FTQLQ]\n" +
-			"     └─ Sort(ci.FTQLQ ASC)\n" +
+		ExpectedEstimates: "Sort(ci.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ci.FTQLQ]\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: (ct.FZ2R5 = ci.id)\n" +
 			"             ├─ TableAlias(ct)\n" +
@@ -16684,10 +16684,10 @@ ORDER BY ci.FTQLQ`,
 			"                     ├─ index: [JDLNA.id]\n" +
 			"                     └─ filters: [{[NULL, ∞)}]\n" +
 			"",
-		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [ci.FTQLQ]\n" +
-			"     └─ Sort(ci.FTQLQ ASC)\n" +
+		ExpectedAnalysis: "Sort(ci.FTQLQ ASC)\n" +
+			" └─ Distinct\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [ci.FTQLQ]\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: (ct.FZ2R5 = ci.id)\n" +
 			"             ├─ TableAlias(ct)\n" +
