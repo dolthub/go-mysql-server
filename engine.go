@@ -450,7 +450,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: " + clearAutocommitErr.Error())
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
 		}
 		return nil, nil, nil, err
 	}
@@ -491,7 +491,7 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
-			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: " + clearAutocommitErr.Error())
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
 		}
 		return nil, nil, nil, err
 	}
