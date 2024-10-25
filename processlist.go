@@ -135,7 +135,7 @@ func (pl *ProcessList) BeginQuery(
 	p.Query = query
 	p.QueryPid = pid
 	p.StartedAt = time.Now()
-	p.Kill = func(){
+	p.Kill = func() {
 		print("KILL QUERY!!!\n")
 		cancel()
 	}
