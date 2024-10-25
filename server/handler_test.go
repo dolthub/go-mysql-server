@@ -742,6 +742,92 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.sm.sessions, 1)
 }
 
+func TestHandlerKillQuery(t *testing.T) {
+	require := require.New(t)
+	e, pro := setupMemDB(require)
+	dbFunc := pro.Database
+
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
+			},
+			sql.NoopTracer,
+			dbFunc,
+			e.MemoryManager,
+			e.ProcessList,
+			"foo",
+		),
+	}
+
+	var err error
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+
+	require.Len(handler.sm.connections, 2)
+	require.Len(handler.sm.sessions, 0)
+
+	handler.ComInitDB(conn1, "test")
+	err = handler.sm.SetDB(conn1, "test")
+	require.NoError(err)
+
+	err = handler.sm.SetDB(conn2, "test")
+	require.NoError(err)
+
+	require.False(conn1.Conn.(*mockConn).closed)
+	require.False(conn2.Conn.(*mockConn).closed)
+	require.Len(handler.sm.connections, 2)
+	require.Len(handler.sm.sessions, 2)
+
+
+	sleepQuery := "SELECT SLEEP(1000)"
+	go func() {
+		err = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
+			return nil
+		})
+		require.Error(err)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	var sleepQueryID string
+	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
+		// 1,  ,  , test, Query, 0, ...    , SELECT SLEEP(1000)
+		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
+		require.Equal(2, len(res.Rows))
+		sleepQueryID = res.Rows[0][0].ToString()
+		require.Equal("Query", res.Rows[0][4].ToString())
+		require.Equal(sleepQuery, res.Rows[0][7].ToString())
+		return nil
+	})
+	require.NoError(err)
+
+	time.Sleep(100 * time.Millisecond)
+	err = handler.ComQuery(context.Background(), conn2, "KILL QUERY " + sleepQueryID, func(res *sqltypes.Result, more bool) error {
+		return nil
+	})
+	require.NoError(err)
+
+	time.Sleep(100 * time.Millisecond)
+	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
+		// 1,  ,  , test, Sleep, 0,        ,
+		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
+		require.Equal(2, len(res.Rows))
+		require.Equal("Sleep", res.Rows[0][4].ToString())
+		require.Equal("",      res.Rows[0][7].ToString())
+		return nil
+	})
+	require.NoError(err)
+
+	require.False(conn1.Conn.(*mockConn).closed)
+	require.False(conn2.Conn.(*mockConn).closed)
+	require.Len(handler.sm.connections, 2)
+	require.Len(handler.sm.sessions, 2)
+}
+
 func TestSchemaToFields(t *testing.T) {
 	require := require.New(t)
 
