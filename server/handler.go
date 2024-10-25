@@ -415,14 +415,12 @@ func (h *Handler) doQuery(
 
 	sqlCtx.GetLogger().Tracef("beginning execution")
 
-	//oCtx := ctx
-
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
 	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
 	defer func() {
 		if err != nil && ctx != nil {
-			sqlCtx.ProcessList.EndQuery(sqlCtx) // TODO: should this be ctx?
+			sqlCtx.ProcessList.EndQuery(sqlCtx)
 		}
 	}()
 
@@ -454,9 +452,6 @@ func (h *Handler) doQuery(
 	if err != nil {
 		return remainder, err
 	}
-
-	// errGroup context is now canceled
-	//ctx = oCtx
 
 	if err = setConnStatusFlags(sqlCtx, c); err != nil {
 		return remainder, err
