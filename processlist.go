@@ -135,10 +135,7 @@ func (pl *ProcessList) BeginQuery(
 	p.Query = query
 	p.QueryPid = pid
 	p.StartedAt = time.Now()
-	p.Kill = func() {
-		print("KILL QUERY!!!\n")
-		cancel()
-	}
+	p.Kill = cancel
 	p.Progress = make(map[string]sql.TableProgress)
 
 	pl.byQueryPid[ctx.Pid()] = ctx.Session.ID()
