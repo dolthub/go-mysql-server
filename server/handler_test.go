@@ -783,7 +783,6 @@ func TestHandlerKillQuery(t *testing.T) {
 	require.Len(handler.sm.connections, 2)
 	require.Len(handler.sm.sessions, 2)
 
-
 	sleepQuery := "SELECT SLEEP(1000)"
 	go func() {
 		err = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
@@ -806,7 +805,7 @@ func TestHandlerKillQuery(t *testing.T) {
 	require.NoError(err)
 
 	time.Sleep(100 * time.Millisecond)
-	err = handler.ComQuery(context.Background(), conn2, "KILL QUERY " + sleepQueryID, func(res *sqltypes.Result, more bool) error {
+	err = handler.ComQuery(context.Background(), conn2, "KILL QUERY "+sleepQueryID, func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -817,7 +816,7 @@ func TestHandlerKillQuery(t *testing.T) {
 		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
 		require.Equal(2, len(res.Rows))
 		require.Equal("Sleep", res.Rows[0][4].ToString())
-		require.Equal("",      res.Rows[0][7].ToString())
+		require.Equal("", res.Rows[0][7].ToString())
 		return nil
 	})
 	require.NoError(err)
