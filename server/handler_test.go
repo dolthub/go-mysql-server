@@ -783,8 +783,11 @@ func TestHandlerKillQuery(t *testing.T) {
 	require.Len(handler.sm.connections, 2)
 	require.Len(handler.sm.sessions, 2)
 
-	sleepQuery := "SELECT SLEEP(1000)"
+	var wg sync.WaitGroup
+	wg.Add(1)
+	sleepQuery := "SELECT SLEEP(100)"
 	go func() {
+		defer wg.Done()
 		err = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
 			return nil
 		})
@@ -820,6 +823,8 @@ func TestHandlerKillQuery(t *testing.T) {
 		return nil
 	})
 	require.NoError(err)
+
+	wg.Wait()
 
 	require.False(conn1.Conn.(*mockConn).closed)
 	require.False(conn2.Conn.(*mockConn).closed)
