@@ -10019,6 +10019,103 @@ from typestable`,
 			{uint32(1000)},
 		},
 	},
+
+	{
+		Query: `select distinct pk1 from two_pk order by pk1`,
+		Expected: []sql.Row{
+			{0},
+			{1},
+		},
+	},
+	{
+		Query: `select distinct pk2 from two_pk order by pk2`,
+		Expected: []sql.Row{
+			{0},
+			{1},
+		},
+	},
+	{
+		Query: `select distinct pk1 from two_pk order by pk2`,
+		Expected: []sql.Row{
+			{0},
+			{1},
+		},
+	},
+	{
+		Query: `select distinct pk2 from two_pk order by pk1`,
+		Expected: []sql.Row{
+			{0},
+			{1},
+		},
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk1`,
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+			{1, 0},
+			{1, 1},
+		},
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk2`,
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 0},
+			{0, 1},
+			{1, 1},
+		},
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk1, pk2`,
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+			{1, 0},
+			{1, 1},
+		},
+	},
+	{
+		Query: `select distinct pk1, pk2 from two_pk order by pk2, pk1`,
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 0},
+			{0, 1},
+			{1, 1},
+		},
+	},
+	{
+		Query: `select distinct pk2, pk1 from two_pk order by pk1, pk2`,
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 0},
+			{0, 1},
+			{1, 1},
+		},
+	},
+	{
+		Query: `select distinct pk2, pk1 from two_pk order by pk2, pk1`,
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 1},
+			{1, 0},
+			{1, 1},
+		},
+	},
+	{
+		Query: `select distinct pk1 + 1 from two_pk order by pk1 + 1`,
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
+	{
+		Query: `select distinct pk2 + 1 from two_pk order by pk2 + 1`,
+		Expected: []sql.Row{
+			{1},
+			{2},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

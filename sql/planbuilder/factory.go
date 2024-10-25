@@ -15,6 +15,8 @@
 package planbuilder
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -174,4 +176,38 @@ func (f *factory) buildTableAlias(name string, child sql.Node) (plan.TableIdNode
 			return plan.NewTableAlias(name, child), nil
 		}
 	}
+}
+
+// buildDistinct will wrap the child node in a distinct node depending on the Sort nodes and Projections there.
+// if the sort fields are a subset of the projection fields
+//
+//	sort(project(table)) -> sort(distinct(project(table)))
+//
+// else
+//
+//	sort(project(table)) -> distinct(sort(project(table)))
+func (f *factory) buildDistinct(child sql.Node) sql.Node {
+	if proj, isProj := child.(*plan.Project); isProj {
+		// TODO: if projection columns are just primary key, distinct is no-op
+		// TODO: distinct literals are just one row
+		if sort, isSort := proj.Child.(*plan.Sort); isSort {
+			projMap := make(map[string]struct{})
+			for _, p := range proj.Projections {
+				projMap[strings.ToLower(p.String())] = struct{}{}
+			}
+			hasDiff := false
+			for _, s := range sort.SortFields {
+				if _, ok := projMap[strings.ToLower(s.Column.String())]; !ok {
+					hasDiff = true
+					break
+				}
+			}
+			if !hasDiff {
+				proj.Child = sort.Child
+				sort.Child = plan.NewDistinct(proj)
+				return sort
+			}
+		}
+	}
+	return plan.NewDistinct(child)
 }

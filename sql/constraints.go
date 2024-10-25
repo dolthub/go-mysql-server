@@ -45,21 +45,36 @@ func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
 
 // ForeignKeyConstraint declares a constraint between the columns of two tables.
 type ForeignKeyConstraint struct {
-	Name           string
-	Database       string
-	Table          string
-	Columns        []string
+	// Name is the name of the foreign key constraint
+	Name string
+	// Database is the name of the database of the table with the constraint
+	Database string
+	// SchemaName is the name of the schema of the table, for databases that support schemas.
+	SchemaName string
+	// Table is the name of the table with the constraint
+	Table string
+	// Columns is the list of columns in the table that are part of the foreign key
+	Columns []string
+	// ParentDatabase is the name of the database of the parent table
 	ParentDatabase string
-	ParentTable    string
-	ParentColumns  []string
-	OnUpdate       ForeignKeyReferentialAction
-	OnDelete       ForeignKeyReferentialAction
-	IsResolved     bool
+	// ParentSchema is the name of the schema of the parent table, for databases that support schemas.
+	ParentSchema string
+	// ParentTable is the name of the parent table
+	ParentTable string
+	// ParentColumns is the list of columns in the parent table that are part of the foreign key
+	ParentColumns []string
+	// OnUpdate is the action to take when the constraint is violated when a row in the parent table is updated
+	OnUpdate ForeignKeyReferentialAction
+	// OnDelete is the action to take when the constraint is violated when a row in the parent table is deleted
+	OnDelete ForeignKeyReferentialAction
+	// IsResolved is true if the foreign key has been resolved, false otherwise
+	IsResolved bool
 }
 
 // IsSelfReferential returns whether this foreign key represents a self-referential foreign key.
 func (f *ForeignKeyConstraint) IsSelfReferential() bool {
 	return strings.EqualFold(f.Database, f.ParentDatabase) &&
+		strings.EqualFold(f.SchemaName, f.ParentSchema) &&
 		strings.EqualFold(f.Table, f.ParentTable)
 }
 
