@@ -22,7 +22,6 @@ func init() {
 		{applyTriggersId, applyTriggers},
 		{applyProceduresId, applyProcedures},
 		{applyUpdateAccumulatorsId, applyUpdateAccumulators},
-		{wrapWithRollbackId, wrapWithRollback},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 		{BacktickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},

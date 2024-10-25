@@ -33,6 +33,47 @@ type triggerRollbackIter struct {
 	savePointName string
 }
 
+func containsTrigger(node sql.Node) bool {
+	// Check if tree contains a TriggerExecutor
+	hasTrigger := false
+	transform.Inspect(node, func(n sql.Node) bool {
+		switch nn := n.(type) {
+		case *plan.TriggerExecutor:
+			hasTrigger = true
+			return false
+		case *plan.InsertInto:
+			// Before Triggers on Inserts are inside Source
+			if _, ok := nn.Source.(*plan.TriggerExecutor); ok {
+				hasTrigger = true
+				return false
+			}
+		}
+		return true
+	})
+	return hasTrigger
+}
+
+func AddTriggerRollbackIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
+	if !containsTrigger(node) {
+		return iter
+	}
+
+	transSess, isTransSess := ctx.Session.(sql.TransactionSession)
+	if !isTransSess {
+		return iter
+	}
+
+	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", TriggerSavePointPrefix)
+	if err := transSess.CreateSavepoint(ctx, ctx.GetTransaction(), TriggerSavePointPrefix); err != nil {
+		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
+	}
+
+	return &triggerRollbackIter{
+		child:         iter,
+		savePointName: TriggerSavePointPrefix,
+	}
+}
+
 func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	childRow, err := t.child.Next(ctx)
 
