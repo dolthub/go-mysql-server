@@ -41,6 +41,11 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		// Column references have not been assigned their final indexes yet, so do that for the ORDER BY expression now.
+		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
+		sortNode = offsetAssignIndexes(sortNode).(plan.Sortable)
+
 		sfExprs := normalizeExpressions(tableAliases, sortNode.GetSortFields().ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 

@@ -2012,6 +2012,11 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		}
 	}
 
+	var vectorFunction vector.DistanceType
+	if constraint == sql.IndexConstraint_Vector {
+		vectorFunction = vector.DistanceL2Squared{}
+	}
+
 	return &Index{
 		DB:                      t.dbName(),
 		DriverName:              "",
@@ -2022,7 +2027,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		Unique:                  constraint == sql.IndexConstraint_Unique,
 		Spatial:                 constraint == sql.IndexConstraint_Spatial,
 		Fulltext:                constraint == sql.IndexConstraint_Fulltext,
-		SupportedVectorFunction: nil,
+		SupportedVectorFunction: vectorFunction,
 		CommentStr:              comment,
 		PrefixLens:              prefixLengths,
 	}, nil
