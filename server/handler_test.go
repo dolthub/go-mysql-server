@@ -842,7 +842,7 @@ func TestHandlerKillQuery(t *testing.T) {
 		require.True(hasSleepQueryID)
 		return nil
 	})
-	require.NoError(err)g
+	require.NoError(err)
 
 	require.False(conn1.Conn.(*mockConn).closed)
 	require.False(conn2.Conn.(*mockConn).closed)
