@@ -372,15 +372,15 @@ func (h *Handler) doQuery(
 	bindings map[string]*querypb.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 	qFlags *sql.QueryFlags,
-) (string, error) {
-	sqlCtx, err := h.sm.NewContext(ctx, c, query)
+) (remainder string, err error) {
+	var sqlCtx *sql.Context
+	sqlCtx, err = h.sm.NewContext(ctx, c, query)
 	if err != nil {
 		return "", err
 	}
 
 	start := time.Now()
 
-	var remainder string
 	var prequery string
 	if parsed == nil {
 		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(sqlCtx.Session.ID(), query)
@@ -411,21 +411,24 @@ func (h *Handler) doQuery(
 	sqlCtx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(sqlCtx, query)
-	defer finish(err)
+	defer func() {
+		finish(err)
+	}()
 
 	sqlCtx.GetLogger().Tracef("beginning execution")
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
 	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
-	defer func() {
-		if err != nil && ctx != nil {
-			sqlCtx.ProcessList.EndQuery(sqlCtx)
-		}
-	}()
+	if err != nil {
+		return remainder, err
+	}
+	defer sqlCtx.ProcessList.EndQuery(sqlCtx)
 
+	var schema sql.Schema
+	var rowIter sql.RowIter
 	qFlags.Set(sql.QFlagDeferProjections)
-	schema, rowIter, qFlags, err := queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
+	schema, rowIter, qFlags, err = queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
 		sqlCtx.GetLogger().WithError(err).Warn("error running query")
 		if verboseErrorLogging {
