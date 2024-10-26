@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/race"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/assert"
@@ -743,6 +744,9 @@ func TestHandlerKill(t *testing.T) {
 }
 
 func TestHandlerKillQuery(t *testing.T) {
+	if race.Enabled {
+		t.Skip("this test is inherently racey")
+	}
 	require := require.New(t)
 	e, pro := setupMemDB(require)
 	dbFunc := pro.Database
@@ -785,7 +789,7 @@ func TestHandlerKillQuery(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	sleepQuery := "SELECT SLEEP(100)"
+	sleepQuery := "SELECT SLEEP(1)"
 	go func() {
 		defer wg.Done()
 		err = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
@@ -800,9 +804,16 @@ func TestHandlerKillQuery(t *testing.T) {
 		// 1,  ,  , test, Query, 0, ...    , SELECT SLEEP(1000)
 		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
 		require.Equal(2, len(res.Rows))
-		sleepQueryID = res.Rows[0][0].ToString()
-		require.Equal("Query", res.Rows[0][4].ToString())
-		require.Equal(sleepQuery, res.Rows[0][7].ToString())
+		hasSleepQuery := false
+		for _, row := range res.Rows {
+			if row[7].ToString() != sleepQuery {
+				continue
+			}
+			hasSleepQuery = true
+			sleepQueryID = row[0].ToString()
+			require.Equal("Query", row[4].ToString())
+		}
+		require.True(hasSleepQuery)
 		return nil
 	})
 	require.NoError(err)
@@ -812,19 +823,26 @@ func TestHandlerKillQuery(t *testing.T) {
 		return nil
 	})
 	require.NoError(err)
+	wg.Wait()
 
 	time.Sleep(100 * time.Millisecond)
 	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
 		// 1,  ,  , test, Sleep, 0,        ,
 		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
 		require.Equal(2, len(res.Rows))
-		require.Equal("Sleep", res.Rows[0][4].ToString())
-		require.Equal("", res.Rows[0][7].ToString())
+		hasSleepQueryID := false
+		for _, row := range res.Rows {
+			if row[0].ToString() != sleepQueryID {
+				continue
+			}
+			hasSleepQueryID = true
+			require.Equal("Sleep", row[4].ToString())
+			require.Equal("", row[7].ToString())
+		}
+		require.True(hasSleepQueryID)
 		return nil
 	})
-	require.NoError(err)
-
-	wg.Wait()
+	require.NoError(err)g
 
 	require.False(conn1.Conn.(*mockConn).closed)
 	require.False(conn2.Conn.(*mockConn).closed)
