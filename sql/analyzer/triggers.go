@@ -346,6 +346,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
+			qFlags.Set(sql.QFlagTrigger)
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -359,6 +360,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.Update:
+			qFlags.Set(sql.QFlagTrigger)
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -387,6 +389,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					"does not support triggers; retry with single table deletes")
 			}
 
+			qFlags.Set(sql.QFlagTrigger)
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -516,42 +519,4 @@ func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.Create
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
 	return strings.ToLower((string)(event)) == strings.ToLower(event2)
-}
-
-// wrapWithRollback wraps the entire tree iff it contains a trigger, allowing rollback when a trigger errors
-func wrapWithRollback(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	// Check if tree contains a TriggerExecutor
-	containsTrigger := false
-	transform.Inspect(n, func(n sql.Node) bool {
-		// After Triggers wrap nodes
-		if _, ok := n.(*plan.TriggerExecutor); ok {
-			containsTrigger = true
-			return false // done, don't bother to recurse
-		}
-
-		// Before Triggers on Inserts are inside Source
-		if n, ok := n.(*plan.InsertInto); ok {
-			if _, ok := n.Source.(*plan.TriggerExecutor); ok {
-				containsTrigger = true
-				return false
-			}
-		}
-
-		// Before Triggers on Delete and Update should be in children
-		return true
-	})
-
-	// No TriggerExecutor, so return same tree
-	if !containsTrigger {
-		return n, transform.SameTree, nil
-	}
-
-	// If we don't have a transaction session we can't do rollbacks
-	_, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return plan.NewNoopTriggerRollback(n), transform.NewTree, nil
-	}
-
-	// Wrap tree with new node
-	return plan.NewTriggerRollback(n), transform.NewTree, nil
 }
