@@ -454,7 +454,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
 // begin spooling results
-func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
 	err := ctx.Session.ValidateSession(ctx)
@@ -482,9 +482,9 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-	iter = finalizeIters(ctx, plan, nil, iter)
+	iter = finalizeIters(ctx, plan, qFlags, iter)
 
-	return plan.Schema(), iter, nil, nil
+	return plan.Schema(), iter, qFlags, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
