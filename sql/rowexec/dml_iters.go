@@ -516,7 +516,7 @@ type accumulatorIter struct {
 	updateRowHandler accumulatorRowHandler
 }
 
-func AddAccumulatorIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) (sql.RowIter, error) {
+func AddAccumulatorIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) (sql.RowIter, sql.Schema, error) {
 	clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
 
 	var rowHandler accumulatorRowHandler
@@ -560,27 +560,27 @@ func AddAccumulatorIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) (sql.
 				}
 			})
 			if schema == nil {
-				return nil, fmt.Errorf("error: No JoinNode found in query plan to go along with an UpdateTypeJoinUpdate")
+				return nil, nil, fmt.Errorf("error: No JoinNode found in query plan to go along with an UpdateTypeJoinUpdate")
 			}
 			// assign row handler to updateJoinIter
 			rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: plan.RecreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
-			for iter, done := iter, false; !done; {
-				switch i := iter.(type) {
+			for i, done := iter, false; !done; {
+				switch ii := i.(type) {
 				case *plan.TableEditorIter:
-					iter = i.InnerIter()
+					i = ii.InnerIter()
 				case *ProjectIter:
-					iter = i.childIter
+					i = ii.childIter
 				case *plan.CheckpointingTableEditorIter:
-					iter = i.InnerIter()
+					i = ii.InnerIter()
 				case *triggerIter:
-					iter = i.child
+					i = ii.child
 				case *updateIter:
-					iter = i.childIter
+					i = ii.childIter
 				case *updateJoinIter:
-					i.accumulator = rowHandler.(*updateJoinRowHandler)
+					ii.accumulator = rowHandler.(*updateJoinRowHandler)
 					done = true
 				default:
-					return nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
+					return nil, nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
 				}
 			}
 		} else {
@@ -590,13 +590,13 @@ func AddAccumulatorIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) (sql.
 			rowHandler = &updateRowHandler{schema: sch[:len(sch)/2], clientFoundRowsCapability: clientFoundRowsToggled}
 		}
 	default:
-		return iter, nil
+		return iter, nil, nil
 	}
 
 	return &accumulatorIter{
 		iter:             iter,
 		updateRowHandler: rowHandler,
-	}, nil
+	}, types.OkResultSchema, nil
 }
 
 func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {

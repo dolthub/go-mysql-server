@@ -177,27 +177,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `update pref_index_t4 set v1 = concat(v1, 'z') where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t4.v1:1 = concat(pref_index_t4.v1:1,z (longtext)))\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThanOrEqual\n" +
-			"             │   ├─ pref_index_t4.v1:1\n" +
-			"             │   └─ a (longtext)\n" +
-			"             └─ IndexedTableAccess(pref_index_t4)\n" +
-			"                 ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
-			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-3)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: pref_index_t4\n" +
-			"                     └─ columns: [i v1 v2]\n" +
-			"",
-	},
-	{
-		Query: `delete from pref_index_t4 where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET pref_index_t4.v1:1 = concat(pref_index_t4.v1:1,z (longtext)))\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThanOrEqual\n" +
 			"         │   ├─ pref_index_t4.v1:1\n" +
@@ -210,6 +191,23 @@ var IndexPlanTests = []QueryPlanTest{
 			"             └─ Table\n" +
 			"                 ├─ name: pref_index_t4\n" +
 			"                 └─ columns: [i v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `delete from pref_index_t4 where v1 >= 'a'`,
+		ExpectedPlan: "Delete\n" +
+			" └─ Filter\n" +
+			"     ├─ GreaterThanOrEqual\n" +
+			"     │   ├─ pref_index_t4.v1:1\n" +
+			"     │   └─ a (longtext)\n" +
+			"     └─ IndexedTableAccess(pref_index_t4)\n" +
+			"         ├─ index: [pref_index_t4.v1,pref_index_t4.v2]\n" +
+			"         ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-3)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pref_index_t4\n" +
+			"             └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -372,27 +370,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `update pref_index_t3 set v1 = concat(v1, 'z') where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t3.v1:0 = concat(pref_index_t3.v1:0,z (longtext)))\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThanOrEqual\n" +
-			"             │   ├─ pref_index_t3.v1:0\n" +
-			"             │   └─ a (longtext)\n" +
-			"             └─ IndexedTableAccess(pref_index_t3)\n" +
-			"                 ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
-			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: pref_index_t3\n" +
-			"                     └─ columns: [v1 v2]\n" +
-			"",
-	},
-	{
-		Query: `delete from pref_index_t3 where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET pref_index_t3.v1:0 = concat(pref_index_t3.v1:0,z (longtext)))\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThanOrEqual\n" +
 			"         │   ├─ pref_index_t3.v1:0\n" +
@@ -405,6 +384,23 @@ var IndexPlanTests = []QueryPlanTest{
 			"             └─ Table\n" +
 			"                 ├─ name: pref_index_t3\n" +
 			"                 └─ columns: [v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `delete from pref_index_t3 where v1 >= 'a'`,
+		ExpectedPlan: "Delete\n" +
+			" └─ Filter\n" +
+			"     ├─ GreaterThanOrEqual\n" +
+			"     │   ├─ pref_index_t3.v1:0\n" +
+			"     │   └─ a (longtext)\n" +
+			"     └─ IndexedTableAccess(pref_index_t3)\n" +
+			"         ├─ index: [pref_index_t3.v1,pref_index_t3.v2]\n" +
+			"         ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pref_index_t3\n" +
+			"             └─ columns: [v1 v2]\n" +
 			"",
 	},
 	{
@@ -567,27 +563,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `update pref_index_t2 set v1 = concat(v1, 'Z') where v1 >= 'A'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t2.v1:1 = concat(pref_index_t2.v1:1,Z (longtext)))\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThanOrEqual\n" +
-			"             │   ├─ pref_index_t2.v1:1\n" +
-			"             │   └─ A (longtext)\n" +
-			"             └─ IndexedTableAccess(pref_index_t2)\n" +
-			"                 ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
-			"                 ├─ static: [{[A, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-3)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: pref_index_t2\n" +
-			"                     └─ columns: [i v1 v2]\n" +
-			"",
-	},
-	{
-		Query: `delete from pref_index_t2 where v1 >= 'A'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET pref_index_t2.v1:1 = concat(pref_index_t2.v1:1,Z (longtext)))\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThanOrEqual\n" +
 			"         │   ├─ pref_index_t2.v1:1\n" +
@@ -600,6 +577,23 @@ var IndexPlanTests = []QueryPlanTest{
 			"             └─ Table\n" +
 			"                 ├─ name: pref_index_t2\n" +
 			"                 └─ columns: [i v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `delete from pref_index_t2 where v1 >= 'A'`,
+		ExpectedPlan: "Delete\n" +
+			" └─ Filter\n" +
+			"     ├─ GreaterThanOrEqual\n" +
+			"     │   ├─ pref_index_t2.v1:1\n" +
+			"     │   └─ A (longtext)\n" +
+			"     └─ IndexedTableAccess(pref_index_t2)\n" +
+			"         ├─ index: [pref_index_t2.v1,pref_index_t2.v2]\n" +
+			"         ├─ static: [{[A, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-3)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pref_index_t2\n" +
+			"             └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{
@@ -762,8 +756,25 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `delete from pref_index_t1 where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
+		ExpectedPlan: "Delete\n" +
+			" └─ Filter\n" +
+			"     ├─ GreaterThanOrEqual\n" +
+			"     │   ├─ pref_index_t1.v1:1\n" +
+			"     │   └─ a (longtext)\n" +
+			"     └─ IndexedTableAccess(pref_index_t1)\n" +
+			"         ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
+			"         ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
+			"         ├─ colSet: (1-3)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: pref_index_t1\n" +
+			"             └─ columns: [i v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `update pref_index_t1 set v1 = concat(v1, 'z') where v1 >= 'a'`,
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET pref_index_t1.v1:1 = concat(pref_index_t1.v1:1,z (longtext)))\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThanOrEqual\n" +
 			"         │   ├─ pref_index_t1.v1:1\n" +
@@ -776,25 +787,6 @@ var IndexPlanTests = []QueryPlanTest{
 			"             └─ Table\n" +
 			"                 ├─ name: pref_index_t1\n" +
 			"                 └─ columns: [i v1 v2]\n" +
-			"",
-	},
-	{
-		Query: `update pref_index_t1 set v1 = concat(v1, 'z') where v1 >= 'a'`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ UpdateSource(SET pref_index_t1.v1:1 = concat(pref_index_t1.v1:1,z (longtext)))\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThanOrEqual\n" +
-			"             │   ├─ pref_index_t1.v1:1\n" +
-			"             │   └─ a (longtext)\n" +
-			"             └─ IndexedTableAccess(pref_index_t1)\n" +
-			"                 ├─ index: [pref_index_t1.v1,pref_index_t1.v2]\n" +
-			"                 ├─ static: [{[a, ∞), [NULL, ∞)}]\n" +
-			"                 ├─ colSet: (1-3)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: pref_index_t1\n" +
-			"                     └─ columns: [i v1 v2]\n" +
 			"",
 	},
 	{

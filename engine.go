@@ -446,7 +446,8 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	iter, err = finalizeIters(ctx, analyzed, qFlags, iter)
+	var schema sql.Schema
+	iter, schema, err = finalizeIters(ctx, analyzed, qFlags, iter)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
@@ -455,7 +456,11 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-	return analyzed.Schema(), iter, qFlags, nil
+	if schema == nil {
+		schema = analyzed.Schema()
+	}
+
+	return schema, iter, qFlags, nil
 }
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
@@ -487,7 +492,8 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-	iter, err = finalizeIters(ctx, plan, nil, iter)
+	var schema sql.Schema
+	iter, schema, err = finalizeIters(ctx, plan, qFlags, iter)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
@@ -496,9 +502,11 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-	iter = finalizeIters(ctx, plan, qFlags, iter)
+	if schema == nil {
+		schema = plan.Schema()
+	}
 
-	return plan.Schema(), iter, qFlags, nil
+	return schema, iter, qFlags, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
@@ -844,7 +852,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 		return err
 	}
 
-	iter, err = finalizeIters(ctx, definitionNode, nil, iter)
+	iter, _, err = finalizeIters(ctx, definitionNode, nil, iter)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
@@ -886,15 +894,17 @@ func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 }
 
 // finalizeIters applies the final transformations on sql.RowIter before execution.
-func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
+func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, sql.Schema, error) {
 	var err error
-	iter, err = rowexec.AddAccumulatorIter(ctx, analyzed, iter)
+	var sch sql.Schema
+	// TODO: if this is does something we need to overwrite the schema with types.OkResultSchema
+	//iter, sch, err = rowexec.AddAccumulatorIter(ctx, analyzed, iter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	iter = rowexec.AddTriggerRollbackIter(ctx, qFlags, iter)
 	iter = rowexec.AddTransactionCommittingIter(qFlags, iter)
 	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
 	iter = rowexec.AddExpressionCloser(analyzed, iter)
-	return iter, nil
+	return iter, sch, nil
 }

@@ -197,12 +197,20 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name:        "test script",
-			SetUpScript: []string{},
-			Assertions:  []queries.ScriptTestAssertion{},
+			SetUpScript: []string{
+				"create table t (i int);",
+				"create procedure p() begin insert into t values (1); end;",
+			},
+			Assertions:  []queries.ScriptTestAssertion{
+				{
+					Query: "call p();",
+					Expected: []sql.Row{},
+				},
+			},
 		},
 	}
 
