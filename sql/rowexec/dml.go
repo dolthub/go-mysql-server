@@ -256,32 +256,6 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
-func (b *BaseBuilder) buildTriggerRollback(ctx *sql.Context, n *plan.TriggerRollback, row sql.Row) (sql.RowIter, error) {
-	childIter, err := b.buildNodeExec(ctx, n.Child, row)
-	if err != nil {
-		return nil, err
-	}
-
-	savePointCounter := b.triggerSavePointCounter + 1
-	savePointName := fmt.Sprintf("%s%v", TriggerSavePointPrefix, savePointCounter)
-	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", savePointName)
-
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return nil, fmt.Errorf("expected a sql.TransactionSession, but got %T", ctx.Session)
-	}
-
-	if err := ts.CreateSavepoint(ctx, ctx.GetTransaction(), savePointName); err != nil {
-		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
-	}
-	b.triggerSavePointCounter = savePointCounter
-
-	return &triggerRollbackIter{
-		child:         childIter,
-		savePointName: savePointName,
-	}, nil
-}
-
 func (b *BaseBuilder) buildAlterIndex(ctx *sql.Context, n *plan.AlterIndex, row sql.Row) (sql.RowIter, error) {
 	err := b.executeAlterIndex(ctx, n)
 	if err != nil {

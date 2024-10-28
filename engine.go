@@ -460,7 +460,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
 // begin spooling results
-func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.Node, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	// Give the integrator a chance to reject the session before proceeding
 	// TODO: this check doesn't belong here
 	err := ctx.Session.ValidateSession(ctx)
@@ -496,7 +496,9 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-	return plan.Schema(), iter, nil, nil
+	iter = finalizeIters(ctx, plan, qFlags, iter)
+
+	return plan.Schema(), iter, qFlags, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
@@ -884,8 +886,9 @@ func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 }
 
 // finalizeIters applies the final transformations on sql.RowIter before execution.
-func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
+func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
 	var err error
+	iter = rowexec.AddTriggerRollbackIter(ctx, qFlags, iter)
 	iter, err = rowexec.AddAccumulatorIter(ctx, analyzed, iter)
 	if err != nil {
 		return nil, err

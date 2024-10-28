@@ -31,8 +31,7 @@ type ExecBuilderFunc func(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter,
 // sql.ExecSourceRel are also built into the tree.
 type BaseBuilder struct {
 	// if override is provided, we try to build executor with this first
-	override                sql.NodeExecBuilder
-	triggerSavePointCounter int // tracks the number of save points that have been created by triggers
+	override sql.NodeExecBuilder
 }
 
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {

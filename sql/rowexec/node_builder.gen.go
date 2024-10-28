@@ -150,8 +150,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildHaving(ctx, n, row)
 	case *plan.Signal:
 		return b.buildSignal(ctx, n, row)
-	case *plan.TriggerRollback:
-		return b.buildTriggerRollback(ctx, n, row)
 	case *plan.ExternalProcedure:
 		return b.buildExternalProcedure(ctx, n, row)
 	case *plan.Into:
@@ -246,8 +244,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildCreateIndex(ctx, n, row)
 	case *plan.Procedure:
 		return b.buildProcedure(ctx, n, row)
-	case *plan.NoopTriggerRollback:
-		return b.buildNoopTriggerRollback(ctx, n, row)
 	case *plan.With:
 		return b.buildWith(ctx, n, row)
 	case *plan.Project:

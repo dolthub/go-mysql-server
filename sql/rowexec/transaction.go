@@ -156,11 +156,6 @@ func (b *BaseBuilder) buildCommit(ctx *sql.Context, n *plan.Commit, row sql.Row)
 	return sql.RowsToRowIter(), nil
 }
 
-func (b *BaseBuilder) buildNoopTriggerRollback(ctx *sql.Context, n *plan.NoopTriggerRollback, row sql.Row) (sql.RowIter, error) {
-	return b.buildNodeExec(ctx, n.Child, row)
-
-}
-
 func (b *BaseBuilder) buildKill(ctx *sql.Context, n *plan.Kill, row sql.Row) (sql.RowIter, error) {
 	return &lazyRowIter{
 		func(ctx *sql.Context) (sql.Row, error) {
