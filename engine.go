@@ -866,7 +866,7 @@ func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 
 // finalizeIters applies the final transformations on sql.RowIter before execution.
 func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
-	iter = rowexec.AddTriggerRollbackIter(ctx, analyzed, iter)
+	iter = rowexec.AddTriggerRollbackIter(ctx, qFlags, iter)
 	iter = rowexec.AddTransactionCommittingIter(qFlags, iter)
 	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
 	iter = rowexec.AddExpressionCloser(analyzed, iter)

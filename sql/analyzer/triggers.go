@@ -346,6 +346,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
+			qFlags.Set(sql.QFlagTrigger)
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -359,6 +360,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}), transform.NewTree, nil
 			}
 		case *plan.Update:
+			qFlags.Set(sql.QFlagTrigger)
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -387,6 +389,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					"does not support triggers; retry with single table deletes")
 			}
 
+			qFlags.Set(sql.QFlagTrigger)
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Child, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,

@@ -48,6 +48,7 @@ const (
 	QFlagDeferProjections
 	// QFlagUndeferrableExprs indicates that the query has expressions that cannot be deferred
 	QFlagUndeferrableExprs
+	QFlagTrigger
 )
 
 type QueryFlags struct {
@@ -69,6 +70,9 @@ func (qp *QueryFlags) Unset(flag int) {
 }
 
 func (qp *QueryFlags) IsSet(flag int) bool {
+	if qp == nil {
+		return false
+	}
 	return qp.Flags.Contains(flag)
 }
 

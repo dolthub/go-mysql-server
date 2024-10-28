@@ -1,4 +1,4 @@
-// Copyright 2023 Dolthub, Inc.
+// Copyright 2023-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,28 +33,8 @@ type triggerRollbackIter struct {
 	savePointName string
 }
 
-func containsTrigger(node sql.Node) bool {
-	// Check if tree contains a TriggerExecutor
-	hasTrigger := false
-	transform.Inspect(node, func(n sql.Node) bool {
-		switch nn := n.(type) {
-		case *plan.TriggerExecutor:
-			hasTrigger = true
-			return false
-		case *plan.InsertInto:
-			// Before Triggers on Inserts are inside Source
-			if _, ok := nn.Source.(*plan.TriggerExecutor); ok {
-				hasTrigger = true
-				return false
-			}
-		}
-		return true
-	})
-	return hasTrigger
-}
-
-func AddTriggerRollbackIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
-	if !containsTrigger(node) {
+func AddTriggerRollbackIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
+	if !qFlags.IsSet(sql.QFlagTrigger) {
 		return iter
 	}
 
