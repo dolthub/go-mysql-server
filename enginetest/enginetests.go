@@ -657,7 +657,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		_, rowIter, _, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
 		require.NoError(t, err)
 		rowCount = 0
-		isServerTest := IsServerEngine(e)
+
 		for {
 			row, err = rowIter.Next(ctx)
 			if err == io.EOF {
@@ -666,13 +666,14 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			rowCount++
 			require.NoError(t, err)
 
-			// TODO: needs fix to match MySQL, which its type is `LONG` = Int32
-			// currently, we convert any int result to SQL int64 type before sending it over the wire
 			var val int64
-			if isServerTest {
-				val = row[0].(int64)
-			} else {
-				val = int64(row[0].(int32))
+			switch v := row[0].(type) {
+			case int64:
+				val = v
+			case int32:
+				val = int64(v)
+			default:
+				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
 			team := row[1].(string)
@@ -701,13 +702,14 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			rowCount++
 			require.NoError(t, err)
 
-			// TODO: needs fix to match MySQL, which its type is `LONG` = Int32
-			// currently, we convert any int result to SQL int64 type before sending it over the wire
 			var val int64
-			if isServerTest {
-				val = row[0].(int64)
-			} else {
-				val = int64(row[0].(int32))
+			switch v := row[0].(type) {
+			case int64:
+				val = v
+			case int32:
+				val = int64(v)
+			default:
+				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
 			team := row[1].(string)
