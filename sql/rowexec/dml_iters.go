@@ -1,4 +1,4 @@
-// Copyright 2023 Dolthub, Inc.
+// Copyright 2023-2024 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,27 @@ const TriggerSavePointPrefix = "__go_mysql_server_trigger_savepoint__"
 type triggerRollbackIter struct {
 	child         sql.RowIter
 	savePointName string
+}
+
+func AddTriggerRollbackIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
+	if !qFlags.IsSet(sql.QFlagTrigger) {
+		return iter
+	}
+
+	transSess, isTransSess := ctx.Session.(sql.TransactionSession)
+	if !isTransSess {
+		return iter
+	}
+
+	ctx.GetLogger().Tracef("TriggerRollback creating savepoint: %s", TriggerSavePointPrefix)
+	if err := transSess.CreateSavepoint(ctx, ctx.GetTransaction(), TriggerSavePointPrefix); err != nil {
+		ctx.GetLogger().WithError(err).Errorf("CreateSavepoint failed")
+	}
+
+	return &triggerRollbackIter{
+		child:         iter,
+		savePointName: TriggerSavePointPrefix,
+	}
 }
 
 func (t *triggerRollbackIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {

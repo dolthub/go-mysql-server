@@ -68,7 +68,6 @@ const (
 	assignRoutinesId             // assignRoutines
 	modifyUpdateExprsForJoinId   // modifyUpdateExprsForJoin
 	applyUpdateAccumulatorsId    // applyUpdateAccumulators
-	wrapWithRollbackId           // wrapWithRollback
 	applyForeignKeysId           // applyForeignKeys
 
 	// validate
