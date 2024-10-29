@@ -219,7 +219,8 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 				returnSch = subIterSch
 			} else if !selectSeen {
 				returnNode = subIterNode
-				returnSch = subIterSch
+				returnSch = types.OkResultSchema
+				//returnSch = subIterSch
 			}
 
 			for {

@@ -898,7 +898,7 @@ func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, 
 	var err error
 	var sch sql.Schema
 	// TODO: if this is does something we need to overwrite the schema with types.OkResultSchema
-	//iter, sch, err = rowexec.AddAccumulatorIter(ctx, analyzed, iter)
+	iter, sch, err = rowexec.AddAccumulatorIter(ctx, analyzed, iter)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -202,7 +202,7 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "test script",
 			SetUpScript: []string{
-				"create table t (i int);",
+				"create table t (i int primary key);",
 				"create procedure p() begin insert into t values (1); end;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
@@ -210,6 +210,10 @@ func TestSingleScript(t *testing.T) {
 					Query:    "call p();",
 					Expected: []sql.Row{},
 				},
+				//{
+				//	Query:    "update t join (values row(1), row(2)) t2 (j) on t.i = t2.j set t.i = 10;",
+				//	Expected: []sql.Row{},
+				//},
 			},
 		},
 	}
