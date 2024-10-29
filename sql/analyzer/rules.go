@@ -46,7 +46,6 @@ var OnceBeforeDefault = []Rule{
 	{resolveCreateSelectId, resolveCreateSelect},
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveUnionsId, resolveUnions},
-	{resolveDescribeQueryId, resolveDescribeQuery}, //TODO
 	{validateCreateTriggerId, validateCreateTrigger},
 	{ValidateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
