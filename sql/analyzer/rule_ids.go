@@ -19,7 +19,6 @@ const (
 	resolveCreateSelectId                       // resolveCreateSelect
 	resolveSubqueriesId                         // resolveSubqueries
 	resolveUnionsId                             // resolveUnions
-	resolveDescribeQueryId                      // resolveDescribeQuery
 	ValidateColumnDefaultsId                    // validateColumnDefaults
 	validateCreateTriggerId                     // validateCreateTrigger
 	validateCreateProcedureId                   // validateCreateProcedure
