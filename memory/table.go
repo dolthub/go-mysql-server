@@ -1598,7 +1598,6 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 
 	if lookup.VectorOrderAndLimit.OrderBy != nil {
 		return &vectorPartitionIter{
-			Column:        lookup.Index.(*Index).Exprs[0],
 			OrderAndLimit: lookup.VectorOrderAndLimit,
 		}, nil
 	}
