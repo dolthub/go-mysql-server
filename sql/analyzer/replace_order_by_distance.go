@@ -60,13 +60,16 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			return n, transform.SameTree, nil
 		}
 		var column sql.Expression
+		var literal sql.Expression
 		_, leftIsLiteral := distance.LeftChild.(*expression.Literal)
 		if leftIsLiteral {
 			column = distance.RightChild
+			literal = distance.LeftChild
 		} else {
 			_, rightIsLiteral := distance.RightChild.(*expression.Literal)
 			if rightIsLiteral {
 				column = distance.LeftChild
+				literal = distance.RightChild
 			} else {
 				return n, transform.SameTree, nil
 			}
@@ -99,6 +102,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			VectorOrderAndLimit: sql.OrderAndLimit{
 				OrderBy: distance,
 				Limit:   limit,
+				Literal: literal,
 			},
 		}
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n, lookup)

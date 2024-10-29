@@ -894,6 +894,7 @@ func IncrementStatusVariable(ctx *Context, name string, val int) {
 type OrderAndLimit struct {
 	OrderBy       Expression
 	Limit         Expression
+	Literal       Expression
 	CalcFoundRows bool
 }
 
