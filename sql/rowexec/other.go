@@ -149,7 +149,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 	var returnRows []sql.Row
 	var returnNode sql.Node
 	var returnIter sql.RowIter
-	var returnSch  sql.Schema
+	var returnSch sql.Schema
 
 	selectSeen := false
 	for _, s := range n.Children() {
@@ -218,11 +218,11 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 				selectSeen = true
 				returnNode = subIterNode
 				returnIter = subIter
-				returnSch  = subIterSch
+				returnSch = subIterSch
 			} else if !selectSeen {
 				returnNode = subIterNode
 				returnIter = subIter
-				returnSch  = types.OkResultSchema
+				returnSch = types.OkResultSchema
 				//returnSch = subIterSch
 			}
 
