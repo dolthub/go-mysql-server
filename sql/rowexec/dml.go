@@ -20,8 +20,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -292,81 +290,6 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 
 func (b *BaseBuilder) buildInsertDestination(ctx *sql.Context, n *plan.InsertDestination, row sql.Row) (sql.RowIter, error) {
 	return b.buildNodeExec(ctx, n.Child, row)
-}
-
-func (b *BaseBuilder) buildRowUpdateAccumulator(ctx *sql.Context, n *plan.RowUpdateAccumulator, row sql.Row) (sql.RowIter, error) {
-	rowIter, err := b.buildNodeExec(ctx, n.Child(), row)
-	if err != nil {
-		return nil, err
-	}
-
-	clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
-
-	var rowHandler accumulatorRowHandler
-	switch n.RowUpdateType {
-	case plan.UpdateTypeInsert:
-		rowHandler = &insertRowHandler{}
-	case plan.UpdateTypeReplace:
-		rowHandler = &replaceRowHandler{}
-	case plan.UpdateTypeDuplicateKeyUpdate:
-		rowHandler = &onDuplicateUpdateHandler{schema: n.Child().Schema(), clientFoundRowsCapability: clientFoundRowsToggled}
-	case plan.UpdateTypeUpdate:
-		schema := n.Child().Schema()
-		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /
-		// old row comparison purposes
-		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2], clientFoundRowsCapability: clientFoundRowsToggled}
-	case plan.UpdateTypeDelete:
-		rowHandler = &deleteRowHandler{}
-	case plan.UpdateTypeJoinUpdate:
-		var schema sql.Schema
-		var updaterMap map[string]sql.RowUpdater
-		transform.Inspect(n.Child(), func(node sql.Node) bool {
-			switch node.(type) {
-			case *plan.JoinNode, *plan.Project:
-				schema = node.Schema()
-				return false
-			case *plan.UpdateJoin:
-				updaterMap = node.(*plan.UpdateJoin).Updaters
-				return true
-			}
-
-			return true
-		})
-
-		if schema == nil {
-			return nil, fmt.Errorf("error: No JoinNode found in query plan to go along with an UpdateTypeJoinUpdate")
-		}
-
-		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: plan.RecreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
-		var iter = rowIter
-		var done bool
-		for !done {
-			switch i := iter.(type) {
-			case *plan.TableEditorIter:
-				iter = i.InnerIter()
-			case *updateIter:
-				iter = i.childIter
-			case *updateJoinIter:
-				i.accumulator = rowHandler.(*updateJoinRowHandler)
-				done = true
-			case *ProjectIter:
-				iter = i.childIter
-			case *plan.CheckpointingTableEditorIter:
-				iter = i.InnerIter()
-			case *triggerIter:
-				iter = i.child
-			default:
-				return nil, fmt.Errorf("failed to apply rowHandler to updateJoin, unknown type: %T", iter)
-			}
-		}
-	default:
-		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", n.RowUpdateType))
-	}
-
-	return &accumulatorIter{
-		iter:             rowIter,
-		updateRowHandler: rowHandler,
-	}, nil
 }
 
 func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.Row) (sql.RowIter, error) {

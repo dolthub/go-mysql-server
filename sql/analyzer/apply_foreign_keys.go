@@ -190,22 +190,6 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			}
 			return newNode, transform.NewTree, nil
 		}
-	case *plan.RowUpdateAccumulator:
-		children := n.Children()
-		newChildren := make([]sql.Node, len(children))
-		treeIdentity := transform.SameTree
-		for i, child := range children {
-			newIdentity := transform.SameTree
-			newChildren[i], newIdentity, err = applyForeignKeysToNodes(ctx, a, child, cache)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			if newIdentity == transform.NewTree {
-				treeIdentity = transform.NewTree
-			}
-		}
-		nn, err := n.WithChildren(newChildren...)
-		return nn, treeIdentity, err
 	default:
 		return n, transform.SameTree, nil
 	}

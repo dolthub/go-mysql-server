@@ -21,7 +21,6 @@ func init() {
 		{resolveInsertRowsId, resolveInsertRows},
 		{applyTriggersId, applyTriggers},
 		{applyProceduresId, applyProcedures},
-		{applyUpdateAccumulatorsId, applyUpdateAccumulators},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 		{BacktickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},

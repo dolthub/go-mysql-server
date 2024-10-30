@@ -210,8 +210,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildDropView(ctx, n, row)
 	case *plan.GroupBy:
 		return b.buildGroupBy(ctx, n, row)
-	case *plan.RowUpdateAccumulator:
-		return b.buildRowUpdateAccumulator(ctx, n, row)
 	case *plan.Block:
 		return b.buildBlock(ctx, n, row)
 	case *plan.InsertDestination:
