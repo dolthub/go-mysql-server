@@ -545,7 +545,7 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 			return rowHandler
 		}
 		sch := i.schema
-		// special case for foreign keys, plan.ForeignKeyHandler.Schema() returns original schema
+		// special case for foreign keys,   plan.ForeignKeyHandler.Schema() returns original schema
 		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
 			sch = fkHandler.Sch
 		}
