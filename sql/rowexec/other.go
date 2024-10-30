@@ -148,7 +148,8 @@ func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
 	var returnRows []sql.Row
 	var returnNode sql.Node
-	var returnSch sql.Schema
+	var returnIter sql.RowIter
+	var returnSch  sql.Schema
 
 	selectSeen := false
 	for _, s := range n.Children() {
@@ -216,10 +217,12 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 			if isSelect = plan.NodeRepresentsSelect(subIterNode); isSelect {
 				selectSeen = true
 				returnNode = subIterNode
-				returnSch = subIterSch
+				returnIter = subIter
+				returnSch  = subIterSch
 			} else if !selectSeen {
 				returnNode = subIterNode
-				returnSch = types.OkResultSchema
+				returnIter = subIter
+				returnSch  = types.OkResultSchema
 				//returnSch = subIterSch
 			}
 
@@ -259,7 +262,8 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 	return &blockIter{
 		internalIter: sql.RowsToRowIter(returnRows...),
 		repNode:      returnNode,
-		sch:          returnSch,
+		repIter:      returnIter,
+		repSch:       returnSch,
 	}, nil
 }
 

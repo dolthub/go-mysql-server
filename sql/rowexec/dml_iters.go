@@ -516,17 +516,18 @@ type accumulatorIter struct {
 	updateRowHandler accumulatorRowHandler
 }
 
-
-func getRowHandler(ctx *sql.Context, clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRowHandler {
+func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRowHandler {
 	switch i := iter.(type) {
 	case *plan.TableEditorIter:
-		return getRowHandler(ctx, clientFoundRowsToggled, i.InnerIter())
+		return getRowHandler(clientFoundRowsToggled, i.InnerIter())
 	case *plan.CheckpointingTableEditorIter:
-		return getRowHandler(ctx, clientFoundRowsToggled, i.InnerIter())
+		return getRowHandler(clientFoundRowsToggled, i.InnerIter())
 	case *ProjectIter:
-		return getRowHandler(ctx, clientFoundRowsToggled, i.childIter)
+		return getRowHandler(clientFoundRowsToggled, i.childIter)
 	case *triggerIter:
-		return getRowHandler(ctx, clientFoundRowsToggled, i.child)
+		return getRowHandler(clientFoundRowsToggled, i.child)
+	case *blockIter:
+		return getRowHandler(clientFoundRowsToggled, i.repIter)
 	case *insertIter:
 		if i.replacer != nil {
 			return &replaceRowHandler{}
@@ -538,14 +539,25 @@ func getRowHandler(ctx *sql.Context, clientFoundRowsToggled bool, iter sql.RowIt
 	case *deleteIter:
 		return &deleteRowHandler{}
 	case *updateIter:
-		if updateJoin, ok := i.childIter.(*updateJoinIter); ok {
-			return &updateJoinRowHandler{
-				joinSchema: updateJoin.joinSchema,
-				tableMap: plan.RecreateTableSchemaFromJoinSchema(updateJoin.joinSchema),
-				updaterMap: updateJoin.updaters,
-			}
+		// it's possible that there's an updateJoinIter that's not the immediate child of updateIter
+		rowHandler := getRowHandler(clientFoundRowsToggled, i.childIter)
+		if rowHandler != nil {
+			return rowHandler
 		}
-		return &updateRowHandler{schema: i.schema[:len(i.schema)/2], clientFoundRowsCapability: clientFoundRowsToggled}
+		sch := i.schema
+		// special case for foreign keys, plan.ForeignKeyHandler.Schema() returns original schema
+		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
+			sch = fkHandler.Sch
+		}
+		return &updateRowHandler{schema: sch, clientFoundRowsCapability: clientFoundRowsToggled}
+	case *updateJoinIter:
+		rowHandler := &updateJoinRowHandler{
+			joinSchema: i.joinSchema,
+			tableMap: plan.RecreateTableSchemaFromJoinSchema(i.joinSchema),
+			updaterMap: i.updaters,
+		}
+		i.accumulator = rowHandler
+		return rowHandler
 	default:
 		return nil
 	}
@@ -561,13 +573,9 @@ func AddAccumulatorIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) (sql.
 		childIter, sch, err := AddAccumulatorIter(ctx, node, i.rowIter)
 		i.rowIter = childIter
 		return i, sch, err
-	case *blockIter:
-		childIter, sch, err := AddAccumulatorIter(ctx, node, i.internalIter)
-		i.internalIter = childIter
-		return i, sch, err
 	default:
-		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
-		rowHandler := getRowHandler(ctx, clientFoundRowsToggled, iter)
+		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
+		rowHandler := getRowHandler(clientFoundRowsToggled, iter)
 		if rowHandler == nil {
 			return iter, nil, nil
 		}
