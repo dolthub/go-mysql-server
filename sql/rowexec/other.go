@@ -160,7 +160,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 			if hErr != nil {
 				return nil, hErr
 			}
-			hIters[len(hRefs) - i - 1] = expression.NewHandlerIters(hRowIter, hRef.Cond, hRef.Action)
+			hIters[len(hRefs)-i-1] = expression.NewHandlerIters(hRowIter, hRef.Cond, hRef.Action)
 		}
 		subIterHandlers[ci] = hIters
 

@@ -16,7 +16,7 @@ package rowexec
 
 import (
 	"fmt"
-"io"
+	"io"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
