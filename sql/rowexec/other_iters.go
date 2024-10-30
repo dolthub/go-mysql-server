@@ -15,10 +15,12 @@
 package rowexec
 
 import (
-	"io"
+	"fmt"
+"io"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -115,19 +117,85 @@ func (itr *dropHistogramIter) Close(_ *sql.Context) error {
 type blockIter struct {
 	internalIter sql.RowIter
 	repNode      sql.Node
-	sch          sql.Schema
+	repSch       sql.Schema
+
+	repIterIdx int
+
+	subIters        []sql.RowIter
+	subIterHandlers [][]*expression.HandlerIters
 }
 
 var _ plan.BlockRowIter = (*blockIter)(nil)
 
 // Next implements the sql.RowIter interface.
 func (i *blockIter) Next(ctx *sql.Context) (sql.Row, error) {
+	// TODO: Stored Procedures are capable of returning multiple result sets. This is not implemented yet.
+	//   Instead, we just return the last select result set or just the last OkResult, and silently discard the rest.
+	//   On the first pass, we exhaust all subIters, and save the appropriate results to return.
+	if i.internalIter == nil {
+		// TODO: write helper methods maybe
+		var returnRows []sql.Row
+		for si, subIter := range i.subIters {
+			var err error
+			for row := sql.Row(nil); ; {
+				row, err = subIter.Next(ctx)
+				if err != nil {
+					break
+				}
+				if si == i.repIterIdx {
+					returnRows = append(returnRows, row)
+				}
+			}
+			if cErr := subIter.Close(ctx); cErr != nil {
+				return nil, cErr
+			}
+			if err == io.EOF {
+				continue
+			}
+
+			handlers := i.subIterHandlers[si]
+			for _, handler := range handlers {
+				if !handler.Cond.Matches(err) {
+					continue
+				}
+				for {
+					_, err = handler.Iter.Next(ctx)
+					if err != nil {
+						break
+					}
+				}
+				if cErr := handler.Iter.Close(ctx); cErr != nil {
+					return nil, cErr
+				}
+				// unhandled error
+				if err != io.EOF {
+					return nil, err
+				}
+				switch handler.Action {
+				case expression.DeclareHandlerAction_Continue:
+				case expression.DeclareHandlerAction_Exit:
+					return nil, exitBlockError
+				case expression.DeclareHandlerAction_Undo:
+					return nil, fmt.Errorf("DECLARE UNDO HANDLER is not supported")
+				default:
+					return nil, fmt.Errorf("unknown handler action: %v", handler.Action)
+				}
+				break
+			}
+		}
+		i.internalIter = sql.RowsToRowIter(returnRows...)
+	}
 	return i.internalIter.Next(ctx)
 }
 
 // Close implements the sql.RowIter interface.
 func (i *blockIter) Close(ctx *sql.Context) error {
-	return i.internalIter.Close(ctx)
+	for _, subIter := range i.subIters {
+		if err := subIter.Close(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RepresentingNode implements the sql.BlockRowIter interface.
@@ -137,7 +205,7 @@ func (i *blockIter) RepresentingNode() sql.Node {
 
 // Schema implements the sql.BlockRowIter interface.
 func (i *blockIter) Schema() sql.Schema {
-	return i.sch
+	return i.repSch
 }
 
 type prependRowIter struct {

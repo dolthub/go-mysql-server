@@ -470,3 +470,17 @@ func (c *HandlerCondition) Matches(err error) bool {
 		return c.Type == HandlerConditionSqlException
 	}
 }
+
+type HandlerIters struct {
+	Iter   sql.RowIter
+	Cond   HandlerCondition
+	Action DeclareHandlerAction
+}
+
+func NewHandlerIters(iter sql.RowIter, cond HandlerCondition, action DeclareHandlerAction) *HandlerIters {
+	return &HandlerIters{
+		Iter:   iter,
+		Cond:   cond,
+		Action: action,
+	}
+}

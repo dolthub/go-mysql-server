@@ -146,119 +146,63 @@ func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults
 }
 
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
-	var returnRows []sql.Row
 	var returnNode sql.Node
-	var returnSch sql.Schema
+	var repIterIdx = len(n.Children()) - 1
+	var subIters = make([]sql.RowIter, len(n.Children()))
+	var subIterHandlers = make([][]*expression.HandlerIters, len(n.Children()))
+	seenSelect := false
+	for ci, child := range n.Children() {
+		// build and reorganize handlers for subIter
+		hRefs := n.Pref.InnermostScope.Handlers
+		hIters := make([]*expression.HandlerIters, len(hRefs))
+		for i, hRef := range hRefs {
+			hRowIter, hErr := b.buildNodeExec(ctx, hRef.Stmt, nil)
+			if hErr != nil {
+				return nil, hErr
+			}
+			hIters[len(hRefs) - i - 1] = expression.NewHandlerIters(hRowIter, hRef.Cond, hRef.Action)
+		}
+		subIterHandlers[ci] = hIters
 
-	selectSeen := false
-	for _, s := range n.Children() {
-		// TODO: this should happen at iteration time, but this call is where the actual iteration happens
-		err := startTransaction(ctx)
+		// build subIter and save for later
+		subIter, err := b.buildNodeExec(ctx, child, row)
 		if err != nil {
 			return nil, err
 		}
+		subIters[ci] = subIter
 
-		handleError := func(err error) error {
-			scope := n.Pref.InnermostScope
-			for i := len(scope.Handlers) - 1; i >= 0; i-- {
-				if !scope.Handlers[i].Cond.Matches(err) {
-					continue
-				}
-
-				handlerRefVal := scope.Handlers[i]
-
-				handlerRowIter, err := b.buildNodeExec(ctx, handlerRefVal.Stmt, nil)
-				if err != nil {
-					return err
-				}
-				defer handlerRowIter.Close(ctx)
-
-				for {
-					_, err := handlerRowIter.Next(ctx)
-					if err == io.EOF {
-						break
-					} else if err != nil {
-						return err
-					}
-				}
-				switch scope.Handlers[i].Action {
-				case expression.DeclareHandlerAction_Exit:
-					return exitBlockError
-				case expression.DeclareHandlerAction_Continue:
-					return nil
-				case expression.DeclareHandlerAction_Undo:
-					return fmt.Errorf("DECLARE UNDO HANDLER is not supported")
-				}
-			}
-			return err
+		// the representing node is the last select node in the block
+		// if there is no select node, the representing node is the last node in the block
+		subIterNode := child
+		if blockSubIter, ok := subIter.(plan.BlockRowIter); ok {
+			subIterNode = blockSubIter.RepresentingNode()
 		}
-
-		err = func() error {
-			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
-			defer disposeFunc()
-
-			var isSelect bool
-			subIter, err := b.buildNodeExec(ctx, s, row)
-			if err != nil {
-				newErr := handleError(err)
-				if newErr != nil {
-					return newErr
-				}
-
-				return nil
-			}
-			subIterNode := s
-			subIterSch := s.Schema()
-			if blockSubIter, ok := subIter.(plan.BlockRowIter); ok {
-				subIterNode = blockSubIter.RepresentingNode()
-				subIterSch = blockSubIter.Schema()
-			}
-			if isSelect = plan.NodeRepresentsSelect(subIterNode); isSelect {
-				selectSeen = true
-				returnNode = subIterNode
-				returnSch = subIterSch
-			} else if !selectSeen {
-				returnNode = subIterNode
-				returnSch = subIterSch
-			}
-
-			for {
-				newRow, err := subIter.Next(ctx)
-				if err == io.EOF {
-					err := subIter.Close(ctx)
-					if err != nil {
-						return err
-					}
-					if isSelect || !selectSeen {
-						returnRows = rowCache.Get()
-					}
-					break
-				} else if err != nil {
-					newErr := handleError(err)
-					if newErr != nil {
-						return newErr
-					}
-				}
-
-				if isSelect || !selectSeen {
-					err = rowCache.Add(newRow)
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		}()
-		if err != nil {
-			return nil, err
+		if plan.NodeRepresentsSelect(subIterNode) {
+			repIterIdx = ci
+			seenSelect = true
+			returnNode = subIterNode
+			continue
+		}
+		if !seenSelect {
+			returnNode = subIterNode
 		}
 	}
 
+	if returnNode == nil {
+		return nil, fmt.Errorf("block does not contain any statements")
+	}
+
+	returnSch := returnNode.Schema()
 	n.SetSchema(returnSch)
 	return &blockIter{
-		internalIter: sql.RowsToRowIter(returnRows...),
+		internalIter: nil,
 		repNode:      returnNode,
-		sch:          returnSch,
+		repSch:       returnSch,
+
+		repIterIdx: repIterIdx,
+		subIters:   subIters,
+
+		subIterHandlers: subIterHandlers,
 	}, nil
 }
 
