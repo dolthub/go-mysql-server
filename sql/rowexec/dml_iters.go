@@ -516,7 +516,6 @@ type accumulatorIter struct {
 	updateRowHandler accumulatorRowHandler
 }
 
-
 func getRowHandler(ctx *sql.Context, clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRowHandler {
 	switch i := iter.(type) {
 	case *plan.TableEditorIter:
@@ -541,7 +540,7 @@ func getRowHandler(ctx *sql.Context, clientFoundRowsToggled bool, iter sql.RowIt
 		if updateJoin, ok := i.childIter.(*updateJoinIter); ok {
 			return &updateJoinRowHandler{
 				joinSchema: updateJoin.joinSchema,
-				tableMap: plan.RecreateTableSchemaFromJoinSchema(updateJoin.joinSchema),
+				tableMap:   plan.RecreateTableSchemaFromJoinSchema(updateJoin.joinSchema),
 				updaterMap: updateJoin.updaters,
 			}
 		}
