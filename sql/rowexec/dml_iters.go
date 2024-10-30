@@ -563,14 +563,14 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 	}
 }
 
-func AddAccumulatorIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) (sql.RowIter, sql.Schema, error) {
+func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema, error) {
 	switch i := iter.(type) {
 	case *callIter:
-		childIter, sch, err := AddAccumulatorIter(ctx, node, i.innerIter)
+		childIter, sch, err := AddAccumulatorIter(ctx, i.innerIter)
 		i.innerIter = childIter
 		return i, sch, err
 	case *beginEndIter:
-		childIter, sch, err := AddAccumulatorIter(ctx, node, i.rowIter)
+		childIter, sch, err := AddAccumulatorIter(ctx, i.rowIter)
 		i.rowIter = childIter
 		return i, sch, err
 	default:

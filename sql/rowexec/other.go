@@ -223,7 +223,6 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 				returnNode = subIterNode
 				returnIter = subIter
 				returnSch  = types.OkResultSchema
-				//returnSch = subIterSch
 			}
 
 			for {

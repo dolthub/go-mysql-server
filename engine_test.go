@@ -232,7 +232,7 @@ func TestTrackProcess(t *testing.T) {
 
 	iter, err := rowexec.DefaultBuilder.Build(ctx, result, nil)
 	require.NoError(err)
-	iter, err = finalizeIters(ctx, result, nil, iter)
+	iter, _, err = finalizeIters(ctx, result, nil, iter)
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
