@@ -233,7 +233,7 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 	var returnRows []sql.Row
 	var returnNode sql.Node
 	var returnIter sql.RowIter
-	var returnSch  sql.Schema
+	var returnSch sql.Schema
 	selectSeen := false
 
 	// It's technically valid to make an infinite loop, but we don't want to actually allow that

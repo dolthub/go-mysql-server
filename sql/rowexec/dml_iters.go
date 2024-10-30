@@ -553,7 +553,7 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 	case *updateJoinIter:
 		rowHandler := &updateJoinRowHandler{
 			joinSchema: i.joinSchema,
-			tableMap: plan.RecreateTableSchemaFromJoinSchema(i.joinSchema),
+			tableMap:   plan.RecreateTableSchemaFromJoinSchema(i.joinSchema),
 			updaterMap: i.updaters,
 		}
 		i.accumulator = rowHandler
