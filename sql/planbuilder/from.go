@@ -843,6 +843,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			create, ok := node.(*plan.CreateView)
 			if !ok {
 				err = fmt.Errorf("expected create view statement, found: %T", node)
+				b.handleErr(err)
 			}
 			switch n := create.Child.(type) {
 			case *plan.SubqueryAlias:
