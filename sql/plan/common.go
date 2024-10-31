@@ -123,7 +123,7 @@ func NodeRepresentsSelect(s sql.Node) bool {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
 			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update, *Into:
 			return false
-		case *ResolvedTable, *ProcedureResolvedTable:
+		case sql.Table:
 			isSelect = true
 			return false
 		default:
