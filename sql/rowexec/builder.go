@@ -15,7 +15,8 @@
 package rowexec
 
 import (
-	"runtime/trace"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+"runtime/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -41,4 +42,15 @@ func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIte
 
 func NewOverrideBuilder(override sql.NodeExecBuilder) sql.NodeExecBuilder {
 	return &BaseBuilder{override: override}
+}
+
+// FinalizeIters applies the final transformations on sql.RowIter before execution.
+func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, sql.Schema) {
+	var sch sql.Schema
+	iter, sch = AddAccumulatorIter(ctx, iter)
+	iter = AddTriggerRollbackIter(ctx, qFlags, iter)
+	iter = AddTransactionCommittingIter(qFlags, iter)
+	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
+	iter = AddExpressionCloser(analyzed, iter)
+	return iter, sch
 }

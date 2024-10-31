@@ -447,7 +447,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	}
 
 	var schema sql.Schema
-	iter, schema = finalizeIters(ctx, analyzed, qFlags, iter)
+	iter, schema = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
@@ -493,7 +493,7 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 	}
 
 	var schema sql.Schema
-	iter, schema = finalizeIters(ctx, plan, qFlags, iter)
+	iter, schema = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
@@ -852,7 +852,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 		return err
 	}
 
-	iter, _ = finalizeIters(ctx, definitionNode, nil, iter)
+	iter, _ = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
 
 	// Drain the iterate to execute the event body/definition
 	// NOTE: No row data is returned for an event; we just need to execute the statements
@@ -884,15 +884,4 @@ func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 	}
 
 	return createEventNode, nil
-}
-
-// finalizeIters applies the final transformations on sql.RowIter before execution.
-func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, sql.Schema) {
-	var sch sql.Schema
-	iter, sch = rowexec.AddAccumulatorIter(ctx, iter)
-	iter = rowexec.AddTriggerRollbackIter(ctx, qFlags, iter)
-	iter = rowexec.AddTransactionCommittingIter(qFlags, iter)
-	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
-	iter = rowexec.AddExpressionCloser(analyzed, iter)
-	return iter, sch
 }
