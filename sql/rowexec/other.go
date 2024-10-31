@@ -222,7 +222,13 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 			} else if !selectSeen {
 				returnNode = subIterNode
 				returnIter = subIter
-				returnSch = types.OkResultSchema
+				switch subIterNode.(type) {
+				case *plan.Set, *plan.Into, *plan.Call:
+					// These nodes return empty schema
+					returnSch = subIterSch
+				default:
+					returnSch = types.OkResultSchema
+				}
 			}
 
 			for {
