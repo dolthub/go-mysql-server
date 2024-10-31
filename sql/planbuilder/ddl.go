@@ -156,7 +156,7 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 				dbName = b.ctx.GetCurrentDatabase()
 			}
 			eventName := c.EventSpec.EventName.Name.String()
-			outScope.node = plan.NewDropEvent(b.resolveDb(dbName), eventName, c.IfExists)
+			outScope.node = plan.NewDropEvent(b.resolveDb(dbName), b.eventScheduler, eventName, c.IfExists)
 			return
 		}
 		if len(c.FromViews) != 0 {

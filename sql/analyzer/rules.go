@@ -34,7 +34,6 @@ func init() {
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{replaceCountStarId, replaceCountStar},
-	{applyEventSchedulerId, applyEventScheduler},
 	{validateOffsetAndLimitId, validateOffsetAndLimit},
 	{validateCreateTableId, validateCreateTable},
 	{validateAlterTableId, validateAlterTable},

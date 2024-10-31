@@ -122,7 +122,7 @@ type DropDB struct {
 	IfExists bool
 	// EventScheduler is used to notify EventSchedulerStatus of database deletion,
 	// so the events of this database in the scheduler will be removed.
-	EventScheduler sql.EventScheduler
+	Scheduler sql.EventScheduler
 }
 
 var _ sql.Node = (*DropDB)(nil)
@@ -160,7 +160,7 @@ func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 // WithEventScheduler is used to drop all events from EventSchedulerStatus for DROP DATABASE.
 func (d *DropDB) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
 	na := *d
-	na.EventScheduler = scheduler
+	na.Scheduler = scheduler
 	return &na
 }
 

@@ -71,6 +71,7 @@ type AlterEvent struct {
 // NewAlterEvent returns a *AlterEvent node.
 func NewAlterEvent(
 	db sql.Database,
+	es sql.EventScheduler,
 	name, definer string,
 	alterSchedule bool,
 	at, starts, ends *OnScheduleTimestamp,
@@ -89,6 +90,7 @@ func NewAlterEvent(
 ) *AlterEvent {
 	return &AlterEvent{
 		ddlNode:          ddlNode{db},
+		scheduler:        es,
 		EventName:        name,
 		Definer:          definer,
 		AlterOnSchedule:  alterSchedule,

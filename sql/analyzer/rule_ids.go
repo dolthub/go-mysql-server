@@ -26,7 +26,6 @@ const (
 	validateReadOnlyTransactionId               // validateReadOnlyTransaction
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePrivilegesId                        // validatePrivileges
-	applyEventSchedulerId                       // applyEventScheduler
 
 	// default
 	flattenTableAliasesId          // flattenTableAliases
