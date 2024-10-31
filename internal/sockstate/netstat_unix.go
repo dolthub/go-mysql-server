@@ -22,10 +22,10 @@ import (
 	"syscall"
 )
 
-func getConnFd(c *net.TCPConn) (fd uintptr, err error) {
+func getConnFd(c *net.TCPConn) (fd uintptr, finalize func() error, err error) {
 	f, err := c.File()
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	fd = f.Fd()
@@ -34,7 +34,5 @@ func getConnFd(c *net.TCPConn) (fd uintptr, err error) {
 	// blocking Close() in some cases.
 	syscall.SetNonblock(int(fd), true)
 
-	f.Close()
-
-	return fd, nil
+	return fd, f.Close, nil
 }
