@@ -13,9 +13,9 @@ func replaceIdxOrderByDistance(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	return replaceIdxOrderByDistanceHelper(ctx, scope, n, nil)
 }
 
-func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode plan.Sortable) (sql.Node, transform.TreeIdentity, error) {
+func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.TopN) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
-	case plan.Sortable:
+	case *plan.TopN:
 		sortNode = n // lowest parent sort node
 	case *plan.ResolvedTable:
 		if sortNode == nil {
@@ -44,7 +44,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 
 		// Column references have not been assigned their final indexes yet, so do that for the ORDER BY expression now.
 		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
-		sortNode = offsetAssignIndexes(sortNode).(plan.Sortable)
+		sortNode = offsetAssignIndexes(sortNode).(*plan.TopN)
 
 		sfExprs := normalizeExpressions(tableAliases, sortNode.GetSortFields().ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
@@ -91,10 +91,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			return n, transform.SameTree, nil
 		}
 
-		var limit sql.Expression
-		if topn, ok := sortNode.(*plan.TopN); ok {
-			limit = topn.Limit
-		}
+		limit := sortNode.Limit
 
 		lookup := sql.IndexLookup{
 			Index:  idx,
