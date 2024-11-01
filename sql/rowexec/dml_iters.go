@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
+
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 const TriggerSavePointPrefix = "__go_mysql_server_trigger_savepoint__"
@@ -512,6 +514,72 @@ type accumulatorIter struct {
 	iter             sql.RowIter
 	once             sync.Once
 	updateRowHandler accumulatorRowHandler
+}
+
+func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRowHandler {
+	switch i := iter.(type) {
+	case *plan.TableEditorIter:
+		return getRowHandler(clientFoundRowsToggled, i.InnerIter())
+	case *plan.CheckpointingTableEditorIter:
+		return getRowHandler(clientFoundRowsToggled, i.InnerIter())
+	case *ProjectIter:
+		return getRowHandler(clientFoundRowsToggled, i.childIter)
+	case *triggerIter:
+		return getRowHandler(clientFoundRowsToggled, i.child)
+	case *blockIter:
+		return getRowHandler(clientFoundRowsToggled, i.repIter)
+	case *updateIter:
+		// it's possible that there's an updateJoinIter that's not the immediate child of updateIter
+		rowHandler := getRowHandler(clientFoundRowsToggled, i.childIter)
+		if rowHandler != nil {
+			return rowHandler
+		}
+		sch := i.schema
+		// special case for foreign keys; plan.ForeignKeyHandler.Schema() returns original schema
+		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
+			sch = fkHandler.Sch
+		}
+		return &updateRowHandler{schema: sch, clientFoundRowsCapability: clientFoundRowsToggled}
+	case *updateJoinIter:
+		rowHandler := &updateJoinRowHandler{
+			joinSchema: i.joinSchema,
+			tableMap:   plan.RecreateTableSchemaFromJoinSchema(i.joinSchema),
+			updaterMap: i.updaters,
+		}
+		i.accumulator = rowHandler
+		return rowHandler
+	case *insertIter:
+		if i.replacer != nil {
+			return &replaceRowHandler{}
+		}
+		if i.updater != nil {
+			return &onDuplicateUpdateHandler{schema: i.schema, clientFoundRowsCapability: clientFoundRowsToggled}
+		}
+		return &insertRowHandler{}
+	case *deleteIter:
+		return &deleteRowHandler{}
+	default:
+		return nil
+	}
+}
+
+func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema) {
+	switch i := iter.(type) {
+	case sql.MutableRowIter:
+		childIter := i.GetChildIter()
+		childIter, sch := AddAccumulatorIter(ctx, childIter)
+		return i.WithChildIter(childIter), sch
+	default:
+		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
+		rowHandler := getRowHandler(clientFoundRowsToggled, iter)
+		if rowHandler == nil {
+			return iter, nil
+		}
+		return &accumulatorIter{
+			iter:             iter,
+			updateRowHandler: rowHandler,
+		}, types.OkResultSchema
+	}
 }
 
 func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {

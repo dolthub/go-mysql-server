@@ -74,10 +74,7 @@ func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilde
 	// TODO: Improve parsing for CREATE TABLE SELECT to allow for IGNORE/REPLACE and custom specs
 	ii := NewInsertInto(tc.db, NewResolvedTable(table, tc.db, nil), tc.Source, tc.options.replace, nil, nil, tc.options.ignore)
 
-	// Wrap the insert into a row update accumulator
-	roa := NewRowUpdateAccumulator(ii, UpdateTypeInsert)
-
-	return b.Build(ctx, roa, row)
+	return b.Build(ctx, ii, row)
 }
 
 // createTableSelectCanBeCopied determines whether the newly created table's data can just be copied from the Source table

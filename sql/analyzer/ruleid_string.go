@@ -64,27 +64,26 @@ func _() {
 	_ = x[applyProceduresId-53]
 	_ = x[assignRoutinesId-54]
 	_ = x[modifyUpdateExprsForJoinId-55]
-	_ = x[applyUpdateAccumulatorsId-56]
-	_ = x[applyForeignKeysId-57]
-	_ = x[validateResolvedId-58]
-	_ = x[validateOrderById-59]
-	_ = x[validateGroupById-60]
-	_ = x[validateSchemaSourceId-61]
-	_ = x[validateIndexCreationId-62]
-	_ = x[ValidateOperandsId-63]
-	_ = x[validateIntervalUsageId-64]
-	_ = x[validateSubqueryColumnsId-65]
-	_ = x[validateUnionSchemasMatchId-66]
-	_ = x[validateAggregationsId-67]
-	_ = x[validateDeleteFromId-68]
-	_ = x[cacheSubqueryAliasesInJoinsId-69]
-	_ = x[BacktickDefaulColumnValueNamesId-70]
-	_ = x[TrackProcessId-71]
+	_ = x[applyForeignKeysId-56]
+	_ = x[validateResolvedId-57]
+	_ = x[validateOrderById-58]
+	_ = x[validateGroupById-59]
+	_ = x[validateSchemaSourceId-60]
+	_ = x[validateIndexCreationId-61]
+	_ = x[ValidateOperandsId-62]
+	_ = x[validateIntervalUsageId-63]
+	_ = x[validateSubqueryColumnsId-64]
+	_ = x[validateUnionSchemasMatchId-65]
+	_ = x[validateAggregationsId-66]
+	_ = x[validateDeleteFromId-67]
+	_ = x[cacheSubqueryAliasesInJoinsId-68]
+	_ = x[BacktickDefaulColumnValueNamesId-69]
+	_ = x[TrackProcessId-70]
 }
 
-const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateStarExpressionsvalidateCreateTablevalidateAlterTablevalidateExprSemloadStoredProceduresvalidateDropTablesresolveDropConstraintvalidateDropConstraintresolveCreateSelectresolveSubqueriesresolveUnionsvalidateColumnDefaultsvalidateCreateTriggervalidateCreateProcedurevalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesapplyEventSchedulerflattenTableAliasespushdownSubqueryAliasFiltersvalidateCheckConstraintsreplaceCountStarreplaceCrossJoinsmoveJoinConditionsToFiltersimplifyFilterspushNotFiltershoistOutOfScopeFiltersunnestInSubqueriesunnestExistsSubqueriesfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateresolveAlterColumnstripTableNamesFromColumnDefaultsoptimizeJoinspushFiltersapplyIndexesFromOuterScopepruneTablesassignExecIndexesinlineSubqueryAliasRefseraseProjectionflattenDistinctreplaceAggreplaceIdxSortinsertTopNNodesreplaceIdxOrderByDistanceapplyHashInresolveInsertRowsapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyUpdateAccumulatorsapplyForeignKeysvalidateResolvedvalidateOrderByvalidateGroupByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateIntervalUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsvalidateDeleteFromcacheSubqueryAliasesInJoinsbacktickDefaultColumnValueNamestrackProcess"
+const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateStarExpressionsvalidateCreateTablevalidateAlterTablevalidateExprSemloadStoredProceduresvalidateDropTablesresolveDropConstraintvalidateDropConstraintresolveCreateSelectresolveSubqueriesresolveUnionsvalidateColumnDefaultsvalidateCreateTriggervalidateCreateProcedurevalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesapplyEventSchedulerflattenTableAliasespushdownSubqueryAliasFiltersvalidateCheckConstraintsreplaceCountStarreplaceCrossJoinsmoveJoinConditionsToFiltersimplifyFilterspushNotFiltershoistOutOfScopeFiltersunnestInSubqueriesunnestExistsSubqueriesfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateresolveAlterColumnstripTableNamesFromColumnDefaultsoptimizeJoinspushFiltersapplyIndexesFromOuterScopepruneTablesassignExecIndexesinlineSubqueryAliasRefseraseProjectionflattenDistinctreplaceAggreplaceIdxSortinsertTopNNodesreplaceIdxOrderByDistanceapplyHashInresolveInsertRowsapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyForeignKeysvalidateResolvedvalidateOrderByvalidateGroupByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateIntervalUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsvalidateDeleteFromcacheSubqueryAliasesInJoinsbacktickDefaultColumnValueNamestrackProcess"
 
-var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 316, 340, 367, 386, 404, 423, 442, 470, 494, 510, 527, 553, 568, 582, 604, 622, 644, 662, 676, 688, 703, 721, 754, 767, 778, 804, 815, 832, 855, 870, 885, 895, 909, 924, 949, 960, 977, 990, 1005, 1019, 1043, 1066, 1082, 1098, 1113, 1128, 1148, 1169, 1185, 1206, 1229, 1254, 1274, 1292, 1319, 1350, 1362}
+var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 316, 340, 367, 386, 404, 423, 442, 470, 494, 510, 527, 553, 568, 582, 604, 622, 644, 662, 676, 688, 703, 721, 754, 767, 778, 804, 815, 832, 855, 870, 885, 895, 909, 924, 949, 960, 977, 990, 1005, 1019, 1043, 1059, 1075, 1090, 1105, 1125, 1146, 1162, 1183, 1206, 1231, 1251, 1269, 1296, 1327, 1339}
 
 func (i RuleId) String() string {
 	if i < 0 || i >= RuleId(len(_RuleId_index)-1) {

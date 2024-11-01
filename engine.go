@@ -443,13 +443,24 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		if err2 != nil {
 			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
-
 		return nil, nil, nil, err
 	}
 
-	iter = finalizeIters(ctx, analyzed, qFlags, iter)
+	var schema sql.Schema
+	iter, schema = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+		}
+		return nil, nil, nil, err
+	}
 
-	return analyzed.Schema(), iter, qFlags, nil
+	if schema == nil {
+		schema = analyzed.Schema()
+	}
+
+	return schema, iter, qFlags, nil
 }
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
@@ -478,13 +489,24 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		if err2 != nil {
 			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
-
 		return nil, nil, nil, err
 	}
 
-	iter = finalizeIters(ctx, plan, qFlags, iter)
+	var schema sql.Schema
+	iter, schema = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+		}
+		return nil, nil, nil, err
+	}
 
-	return plan.Schema(), iter, qFlags, nil
+	if schema == nil {
+		schema = plan.Schema()
+	}
+
+	return schema, iter, qFlags, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
@@ -830,7 +852,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 		return err
 	}
 
-	iter = finalizeIters(ctx, definitionNode, nil, iter)
+	iter, _ = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
 
 	// Drain the iterate to execute the event body/definition
 	// NOTE: No row data is returned for an event; we just need to execute the statements
@@ -862,13 +884,4 @@ func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 	}
 
 	return createEventNode, nil
-}
-
-// finalizeIters applies the final transformations on sql.RowIter before execution.
-func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
-	iter = rowexec.AddTriggerRollbackIter(ctx, qFlags, iter)
-	iter = rowexec.AddTransactionCommittingIter(qFlags, iter)
-	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
-	iter = rowexec.AddExpressionCloser(analyzed, iter)
-	return iter
 }

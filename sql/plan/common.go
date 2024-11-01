@@ -100,6 +100,22 @@ func NodeRepresentsSelect(s sql.Node) bool {
 	if s == nil {
 		return false
 	}
+
+	// Special case for calling procedures that call other procedures.
+	switch node := s.(type) {
+	case *Call:
+		return NodeRepresentsSelect(node.Procedure)
+	case *Procedure:
+		return NodeRepresentsSelect(node.Body)
+	case *Block:
+		for _, stmt := range node.statements {
+			if NodeRepresentsSelect(stmt) {
+				return true
+			}
+		}
+		return false
+	}
+
 	isSelect := false
 	// All SELECT statements, including those that do not specify a table (using "dual"), have a TableNode.
 	transform.Inspect(s, func(node sql.Node) bool {
@@ -107,7 +123,7 @@ func NodeRepresentsSelect(s sql.Node) bool {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
 			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update, *Into:
 			return false
-		case *ResolvedTable, *ProcedureResolvedTable:
+		case sql.Table:
 			isSelect = true
 			return false
 		default:

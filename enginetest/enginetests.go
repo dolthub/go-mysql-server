@@ -1710,12 +1710,12 @@ func TestInsertScriptsPrepared(t *testing.T, harness Harness) {
 func TestGeneratedColumns(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.GeneratedColumnTests {
-		TestScriptPrepared(t, harness, script)
+		TestScript(t, harness, script)
 	}
 	for _, script := range queries.BrokenGeneratedColumnTests {
 		t.Run(script.Name, func(t *testing.T) {
 			t.Skip(script.Name)
-			TestScriptPrepared(t, harness, script)
+			TestScript(t, harness, script)
 		})
 	}
 }

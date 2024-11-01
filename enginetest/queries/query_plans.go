@@ -6695,39 +6695,38 @@ inner join pq on true
 	},
 	{
 		Query: `INSERT INTO mytable(i,s) SELECT t1.i, 'hello' FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Insert(i, s)\n" +
-			"     ├─ InsertDestination\n" +
-			"     │   └─ ProcessTable\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i s]\n" +
+		ExpectedPlan: "Insert(i, s)\n" +
+			" ├─ InsertDestination\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [i:0!null, s:1!null]\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [i:0!null, s:1!null]\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [t1.i:1!null, hello (longtext)]\n" +
-			"             └─ InnerJoin\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ t1.i:1!null\n" +
-			"                 │   └─ (t2.i:0!null + 1 (tinyint))\n" +
-			"                 ├─ TableAlias(t2)\n" +
-			"                 │   └─ IndexedTableAccess(mytable)\n" +
-			"                 │       ├─ index: [mytable.i]\n" +
-			"                 │       ├─ static: [{[1, 1]}]\n" +
-			"                 │       ├─ colSet: (5,6)\n" +
-			"                 │       ├─ tableId: 3\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: mytable\n" +
-			"                 │           └─ columns: [i]\n" +
-			"                 └─ TableAlias(t1)\n" +
-			"                     └─ IndexedTableAccess(mytable)\n" +
-			"                         ├─ index: [mytable.i]\n" +
-			"                         ├─ static: [{[2, 2]}]\n" +
-			"                         ├─ colSet: (3,4)\n" +
-			"                         ├─ tableId: 2\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: mytable\n" +
-			"                             └─ columns: [i]\n" +
+			"         ├─ columns: [t1.i:1!null, hello (longtext)]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ t1.i:1!null\n" +
+			"             │   └─ (t2.i:0!null + 1 (tinyint))\n" +
+			"             ├─ TableAlias(t2)\n" +
+			"             │   └─ IndexedTableAccess(mytable)\n" +
+			"             │       ├─ index: [mytable.i]\n" +
+			"             │       ├─ static: [{[1, 1]}]\n" +
+			"             │       ├─ colSet: (5,6)\n" +
+			"             │       ├─ tableId: 3\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: mytable\n" +
+			"             │           └─ columns: [i]\n" +
+			"             └─ TableAlias(t1)\n" +
+			"                 └─ IndexedTableAccess(mytable)\n" +
+			"                     ├─ index: [mytable.i]\n" +
+			"                     ├─ static: [{[2, 2]}]\n" +
+			"                     ├─ colSet: (3,4)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: mytable\n" +
+			"                         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -7954,58 +7953,57 @@ inner join pq on true
 	},
 	{
 		Query: `INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Insert(i, s)\n" +
-			"     ├─ InsertDestination\n" +
-			"     │   └─ ProcessTable\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: mytable\n" +
-			"     │           └─ columns: [i s]\n" +
+		ExpectedPlan: "Insert(i, s)\n" +
+			" ├─ InsertDestination\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: mytable\n" +
+			" │           └─ columns: [i s]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [i:0!null, s:1!null]\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [i:0!null, s:1!null]\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [(sub.i:0!null + 10 (tinyint)) as sub.i + 10, ot.s2:3!null]\n" +
-			"             └─ HashJoin\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ sub.i:0!null\n" +
-			"                 │   └─ ot.i2:4!null\n" +
-			"                 ├─ SubqueryAlias\n" +
-			"                 │   ├─ name: sub\n" +
-			"                 │   ├─ outerVisibility: false\n" +
-			"                 │   ├─ isLateral: false\n" +
-			"                 │   ├─ cacheable: true\n" +
-			"                 │   ├─ colSet: (9-11)\n" +
-			"                 │   ├─ tableId: 5\n" +
-			"                 │   └─ Project\n" +
-			"                 │       ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
-			"                 │       └─ MergeJoin\n" +
-			"                 │           ├─ cmp: Eq\n" +
-			"                 │           │   ├─ mytable.i:0!null\n" +
-			"                 │           │   └─ othertable.i2:2!null\n" +
-			"                 │           ├─ IndexedTableAccess(mytable)\n" +
-			"                 │           │   ├─ index: [mytable.i,mytable.s]\n" +
-			"                 │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │           │   ├─ colSet: (5,6)\n" +
-			"                 │           │   ├─ tableId: 3\n" +
-			"                 │           │   └─ Table\n" +
-			"                 │           │       ├─ name: mytable\n" +
-			"                 │           │       └─ columns: [i]\n" +
-			"                 │           └─ IndexedTableAccess(othertable)\n" +
-			"                 │               ├─ index: [othertable.i2]\n" +
-			"                 │               ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │               ├─ colSet: (7,8)\n" +
-			"                 │               ├─ tableId: 4\n" +
-			"                 │               └─ Table\n" +
-			"                 │                   ├─ name: othertable\n" +
-			"                 │                   └─ columns: [s2 i2]\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE(sub.i:0!null)\n" +
-			"                     ├─ right-key: TUPLE(ot.i2:1!null)\n" +
-			"                     └─ TableAlias(ot)\n" +
-			"                         └─ ProcessTable\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: othertable\n" +
-			"                                 └─ columns: [s2 i2]\n" +
+			"         ├─ columns: [(sub.i:0!null + 10 (tinyint)) as sub.i + 10, ot.s2:3!null]\n" +
+			"         └─ HashJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ sub.i:0!null\n" +
+			"             │   └─ ot.i2:4!null\n" +
+			"             ├─ SubqueryAlias\n" +
+			"             │   ├─ name: sub\n" +
+			"             │   ├─ outerVisibility: false\n" +
+			"             │   ├─ isLateral: false\n" +
+			"             │   ├─ cacheable: true\n" +
+			"             │   ├─ colSet: (9-11)\n" +
+			"             │   ├─ tableId: 5\n" +
+			"             │   └─ Project\n" +
+			"             │       ├─ columns: [mytable.i:0!null, othertable.i2:2!null, othertable.s2:1!null]\n" +
+			"             │       └─ MergeJoin\n" +
+			"             │           ├─ cmp: Eq\n" +
+			"             │           │   ├─ mytable.i:0!null\n" +
+			"             │           │   └─ othertable.i2:2!null\n" +
+			"             │           ├─ IndexedTableAccess(mytable)\n" +
+			"             │           │   ├─ index: [mytable.i,mytable.s]\n" +
+			"             │           │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │           │   ├─ colSet: (5,6)\n" +
+			"             │           │   ├─ tableId: 3\n" +
+			"             │           │   └─ Table\n" +
+			"             │           │       ├─ name: mytable\n" +
+			"             │           │       └─ columns: [i]\n" +
+			"             │           └─ IndexedTableAccess(othertable)\n" +
+			"             │               ├─ index: [othertable.i2]\n" +
+			"             │               ├─ static: [{[NULL, ∞)}]\n" +
+			"             │               ├─ colSet: (7,8)\n" +
+			"             │               ├─ tableId: 4\n" +
+			"             │               └─ Table\n" +
+			"             │                   ├─ name: othertable\n" +
+			"             │                   └─ columns: [s2 i2]\n" +
+			"             └─ HashLookup\n" +
+			"                 ├─ left-key: TUPLE(sub.i:0!null)\n" +
+			"                 ├─ right-key: TUPLE(ot.i2:1!null)\n" +
+			"                 └─ TableAlias(ot)\n" +
+			"                     └─ ProcessTable\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: othertable\n" +
+			"                             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -16930,8 +16928,34 @@ inner join pq on true
 	},
 	{
 		Query: `DELETE FROM two_pk WHERE c1 > 1`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
+		ExpectedPlan: "Delete\n" +
+			" └─ Filter\n" +
+			"     ├─ GreaterThan\n" +
+			"     │   ├─ two_pk.c1:2!null\n" +
+			"     │   └─ 1 (tinyint)\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+	},
+	{
+		Query: `DELETE FROM two_pk WHERE pk1 = 1 AND pk2 = 2`,
+		ExpectedPlan: "Delete\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[1, 1], [2, 2]}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+	},
+	{
+		Query: `UPDATE two_pk SET c1 = 1 WHERE c1 > 1`,
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET two_pk.c1:2!null = 1 (tinyint))\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ two_pk.c1:2!null\n" +
@@ -16943,9 +16967,9 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `DELETE FROM two_pk WHERE pk1 = 1 AND pk2 = 2`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Delete\n" +
+		Query: `UPDATE two_pk SET c1 = 1 WHERE pk1 = 1 AND pk2 = 2`,
+		ExpectedPlan: "Update\n" +
+			" └─ UpdateSource(SET two_pk.c1:2!null = 1 (tinyint))\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"         ├─ static: [{[1, 1], [2, 2]}]\n" +
@@ -16957,94 +16981,62 @@ inner join pq on true
 			"",
 	},
 	{
-		Query: `UPDATE two_pk SET c1 = 1 WHERE c1 > 1`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ UpdateSource(SET two_pk.c1:2!null = 1 (tinyint))\n" +
-			"         └─ Filter\n" +
-			"             ├─ GreaterThan\n" +
-			"             │   ├─ two_pk.c1:2!null\n" +
-			"             │   └─ 1 (tinyint)\n" +
-			"             └─ ProcessTable\n" +
+		Query: `UPDATE /*+ JOIN_ORDER(two_pk, one_pk) */ one_pk JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
+		ExpectedPlan: "Update\n" +
+			" └─ Update Join\n" +
+			"     └─ UpdateSource(SET two_pk.c1:8!null = (two_pk.c1:8!null + 1 (tinyint)))\n" +
+			"         └─ MergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
+			"             │   ├─ one_pk.pk:0!null\n" +
+			"             │   └─ two_pk.pk1:6!null\n" +
+			"             ├─ IndexedTableAccess(one_pk)\n" +
+			"             │   ├─ index: [one_pk.pk]\n" +
+			"             │   ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (1-6)\n" +
+			"             │   ├─ tableId: 1\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: one_pk\n" +
+			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 ├─ colSet: (7-13)\n" +
+			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: two_pk\n" +
 			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
-		Query: `UPDATE two_pk SET c1 = 1 WHERE pk1 = 1 AND pk2 = 2`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ UpdateSource(SET two_pk.c1:2!null = 1 (tinyint))\n" +
-			"         └─ IndexedTableAccess(two_pk)\n" +
-			"             ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"             ├─ static: [{[1, 1], [2, 2]}]\n" +
-			"             ├─ colSet: (1-7)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"",
-	},
-	{
-		Query: `UPDATE /*+ JOIN_ORDER(two_pk, one_pk) */ one_pk JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ Update Join\n" +
-			"         └─ UpdateSource(SET two_pk.c1:8!null = (two_pk.c1:8!null + 1 (tinyint)))\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ one_pk.pk:0!null\n" +
-			"                 │   └─ two_pk.pk1:6!null\n" +
-			"                 ├─ IndexedTableAccess(one_pk)\n" +
-			"                 │   ├─ index: [one_pk.pk]\n" +
-			"                 │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   ├─ colSet: (1-6)\n" +
-			"                 │   ├─ tableId: 1\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: one_pk\n" +
-			"                 │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"                 └─ IndexedTableAccess(two_pk)\n" +
-			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (7-13)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"",
-	},
-	{
 		Query: `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1, one_pk.c2 = one_pk.c2 + 1`,
-		ExpectedPlan: "RowUpdateAccumulator\n" +
-			" └─ Update\n" +
-			"     └─ Update Join\n" +
-			"         └─ UpdateSource(SET one_pk.c1:1 = (one_pk.c1:1 + 1 (tinyint)),SET one_pk.c2:2 = (one_pk.c2:2 + 1 (tinyint)))\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, t2.pk1:0!null, t2.pk2:1!null, t2.c1:2!null, t2.c2:3!null, t2.c3:4!null, t2.c4:5!null, t2.c5:6!null]\n" +
-			"                 └─ HashJoin\n" +
-			"                     ├─ Eq\n" +
-			"                     │   ├─ one_pk.pk:7!null\n" +
-			"                     │   └─ t2.pk1:0!null\n" +
-			"                     ├─ SubqueryAlias\n" +
-			"                     │   ├─ name: t2\n" +
-			"                     │   ├─ outerVisibility: false\n" +
-			"                     │   ├─ isLateral: false\n" +
-			"                     │   ├─ cacheable: true\n" +
-			"                     │   ├─ colSet: (14-20)\n" +
-			"                     │   ├─ tableId: 3\n" +
-			"                     │   └─ Table\n" +
-			"                     │       ├─ name: two_pk\n" +
-			"                     │       ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     │       ├─ colSet: (7-13)\n" +
-			"                     │       └─ tableId: 2\n" +
-			"                     └─ HashLookup\n" +
-			"                         ├─ left-key: TUPLE(t2.pk1:0!null)\n" +
-			"                         ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"                         └─ ProcessTable\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: one_pk\n" +
-			"                                 └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+		ExpectedPlan: "Update\n" +
+			" └─ Update Join\n" +
+			"     └─ UpdateSource(SET one_pk.c1:1 = (one_pk.c1:1 + 1 (tinyint)),SET one_pk.c2:2 = (one_pk.c2:2 + 1 (tinyint)))\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, t2.pk1:0!null, t2.pk2:1!null, t2.c1:2!null, t2.c2:3!null, t2.c3:4!null, t2.c4:5!null, t2.c5:6!null]\n" +
+			"             └─ HashJoin\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ one_pk.pk:7!null\n" +
+			"                 │   └─ t2.pk1:0!null\n" +
+			"                 ├─ SubqueryAlias\n" +
+			"                 │   ├─ name: t2\n" +
+			"                 │   ├─ outerVisibility: false\n" +
+			"                 │   ├─ isLateral: false\n" +
+			"                 │   ├─ cacheable: true\n" +
+			"                 │   ├─ colSet: (14-20)\n" +
+			"                 │   ├─ tableId: 3\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: two_pk\n" +
+			"                 │       ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 │       ├─ colSet: (7-13)\n" +
+			"                 │       └─ tableId: 2\n" +
+			"                 └─ HashLookup\n" +
+			"                     ├─ left-key: TUPLE(t2.pk1:0!null)\n" +
+			"                     ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
+			"                     └─ ProcessTable\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
