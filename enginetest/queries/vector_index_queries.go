@@ -53,7 +53,7 @@ var VectorIndexQueries = []ScriptTest{
 					{4, types.MustJSON(`[-2.0, 0.0]`)},
 					{1, types.MustJSON(`[3.0, 4.0]`)},
 				},
-				ExpectedIndexes: []string{""},
+				ExpectedIndexes: nil,
 			},
 			{
 				Query: "select * from vectors order by VEC_DISTANCE_L2_SQUARED('[-2.0,0.0]', v) limit 4",

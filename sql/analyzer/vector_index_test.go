@@ -38,10 +38,11 @@ func jsonExpression(t *testing.T, val interface{}) sql.Expression {
 }
 
 type vectorIndexTestCase struct {
-	name         string
-	inputPlan    sql.Node
-	expectedPlan string
-	expectedRows []sql.Row
+	name            string
+	usesVectorIndex bool
+	inputPlan       sql.Node
+	expectedPlan    string
+	expectedRows    []sql.Row
 }
 
 func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTable) []vectorIndexTestCase {
@@ -50,13 +51,9 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 			name: "without limit",
 			inputPlan: plan.NewSort(
 				sql.SortFields{
-					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetField(1, types.JSON, "v", false)), Order: sql.Ascending},
+					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, plan.NewResolvedTable(table, db, nil)),
-			expectedPlan: `
-IndexedTableAccess(test)
- ├─ index: [v]
- └─ order: VEC_DISTANCE_L2_SQUARED([0, 0], v)
-`,
+			usesVectorIndex: false,
 			expectedRows: []sql.Row{
 				sql.NewRow(int64(3), jsontests.ConvertToJson(t, "[1.0, 1.0]")),
 				sql.NewRow(int64(2), jsontests.ConvertToJson(t, "[2.0, 2.0]")),
@@ -67,12 +64,13 @@ IndexedTableAccess(test)
 			name: "with limit",
 			inputPlan: plan.NewTopN(
 				sql.SortFields{
-					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetField(1, types.JSON, "v", false)), Order: sql.Ascending},
+					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
+			usesVectorIndex: true,
 			expectedPlan: `
 IndexedTableAccess(test)
- ├─ index: [v]
- └─ order: VEC_DISTANCE_L2_SQUARED([0, 0], v) LIMIT 1 (bigint)
+ ├─ index: [test-table.v]
+ └─ order: VEC_DISTANCE_L2_SQUARED([0, 0], test-table.v) LIMIT 1 (bigint)
 `,
 			expectedRows: []sql.Row{
 				sql.NewRow(int64(3), jsontests.ConvertToJson(t, "[1.0, 1.0]")),
@@ -118,11 +116,14 @@ func TestVectorIndex(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			res, same, err := replaceIdxOrderByDistanceHelper(nil, nil, testCase.inputPlan, nil)
 			require.NoError(t, err)
-			require.False(t, bool(same))
-			require.Equal(t,
-				strings.TrimSpace(testCase.expectedPlan),
-				strings.TrimSpace(res.String()),
-				"expected:\n%s,\nfound:\n%s\n", testCase.expectedPlan, res.String())
+			require.Equal(t, testCase.usesVectorIndex, !bool(same))
+			res = offsetAssignIndexes(res)
+			if testCase.usesVectorIndex {
+				require.Equal(t,
+					strings.TrimSpace(testCase.expectedPlan),
+					strings.TrimSpace(res.String()),
+					"expected:\n%s,\nfound:\n%s\n", testCase.expectedPlan, res.String())
+			}
 
 			iter, err := rowexec.DefaultBuilder.Build(ctx, res, nil)
 			require.NoError(t, err)
@@ -167,7 +168,7 @@ func TestShowCreateTableWithVectorIndex(t *testing.T) {
 		"CREATE TABLE `test-table` (\n  `pk` int,\n"+
 			"  `v` json,\n"+
 			"  PRIMARY KEY (`pk`),\n"+
-			"  VECTOR KEY `test` (`v`),\n"+
+			"  VECTOR KEY `test` (`v`)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 	)
 
@@ -205,8 +206,7 @@ func (i vectorIndexTable) Comment() string {
 }
 
 func (i vectorIndexTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
-	//TODO implement me
-	panic("implement me")
+	return i.underlying.Partitions(context)
 }
 
 func (i vectorIndexTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
@@ -230,9 +230,9 @@ var vectorIndex = memory.Index{
 	DB:         database,
 	DriverName: "",
 	Tbl:        nil,
-	TableName:  "test",
+	TableName:  "test-table",
 	Exprs: []sql.Expression{
-		expression.NewGetField(1, types.JSON, "v", false),
+		expression.NewGetFieldWithTable(1, 1, types.JSON, "", "test-table", "v", false),
 	},
 	Name:                    "test",
 	Unique:                  false,
