@@ -565,6 +565,10 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 
 func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema) {
 	switch i := iter.(type) {
+	case sql.CustomRowIter:
+		childIter := i.GetChildIter()
+		childIter, sch := AddAccumulatorIter(ctx, childIter)
+		return i.SetChildIter(childIter), sch
 	case *callIter:
 		childIter, sch := AddAccumulatorIter(ctx, i.innerIter)
 		i.innerIter = childIter
