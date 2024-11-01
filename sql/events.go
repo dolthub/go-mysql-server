@@ -28,7 +28,6 @@ import (
 
 const EventDateSpaceTimeFormat = "2006-01-02 15:04:05"
 
-
 // EventSchedulerStatement represents a SQL statement that requires a EventScheduler
 // (e.g. CREATE / ALTER / DROP EVENT and DROP DATABASE).
 // TODO: consider deleting this interface
