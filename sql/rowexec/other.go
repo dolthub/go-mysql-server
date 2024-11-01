@@ -148,6 +148,7 @@ func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults
 func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (sql.RowIter, error) {
 	var returnRows []sql.Row
 	var returnNode sql.Node
+	var returnIter sql.RowIter
 	var returnSch sql.Schema
 
 	selectSeen := false
@@ -216,10 +217,18 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 			if isSelect = plan.NodeRepresentsSelect(subIterNode); isSelect {
 				selectSeen = true
 				returnNode = subIterNode
+				returnIter = subIter
 				returnSch = subIterSch
 			} else if !selectSeen {
 				returnNode = subIterNode
-				returnSch = subIterSch
+				returnIter = subIter
+				switch subIterNode.(type) {
+				case *plan.Set, *plan.Into, *plan.Call:
+					// These nodes return empty schema
+					returnSch = subIterSch
+				default:
+					returnSch = types.OkResultSchema
+				}
 			}
 
 			for {
@@ -258,7 +267,8 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 	return &blockIter{
 		internalIter: sql.RowsToRowIter(returnRows...),
 		repNode:      returnNode,
-		sch:          returnSch,
+		repIter:      returnIter,
+		repSch:       returnSch,
 	}, nil
 }
 

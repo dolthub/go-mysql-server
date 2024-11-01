@@ -115,7 +115,8 @@ func (itr *dropHistogramIter) Close(_ *sql.Context) error {
 type blockIter struct {
 	internalIter sql.RowIter
 	repNode      sql.Node
-	sch          sql.Schema
+	repIter      sql.RowIter
+	repSch       sql.Schema
 }
 
 var _ plan.BlockRowIter = (*blockIter)(nil)
@@ -137,7 +138,7 @@ func (i *blockIter) RepresentingNode() sql.Node {
 
 // Schema implements the sql.BlockRowIter interface.
 func (i *blockIter) Schema() sql.Schema {
-	return i.sch
+	return i.repSch
 }
 
 type prependRowIter struct {

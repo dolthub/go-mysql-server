@@ -232,6 +232,7 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 
 	var returnRows []sql.Row
 	var returnNode sql.Node
+	var returnIter sql.RowIter
 	var returnSch sql.Schema
 	selectSeen := false
 
@@ -285,10 +286,12 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 				selectSeen = true
 				includeResultSet = true
 				returnNode = subIterNode
+				returnIter = loopBodyIter
 				returnSch = subIterSch
 			} else if !selectSeen {
 				includeResultSet = true
 				returnNode = subIterNode
+				returnIter = loopBodyIter
 				returnSch = subIterSch
 			}
 		}
@@ -336,7 +339,8 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 	return &blockIter{
 		internalIter: sql.RowsToRowIter(returnRows...),
 		repNode:      returnNode,
-		sch:          returnSch,
+		repSch:       returnSch,
+		repIter:      returnIter,
 	}, nil
 }
 

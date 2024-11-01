@@ -65,7 +65,6 @@ const (
 	applyProceduresId            // applyProcedures
 	assignRoutinesId             // assignRoutines
 	modifyUpdateExprsForJoinId   // modifyUpdateExprsForJoin
-	applyUpdateAccumulatorsId    // applyUpdateAccumulators
 	applyForeignKeysId           // applyForeignKeys
 
 	// validate

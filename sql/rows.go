@@ -201,3 +201,11 @@ func (i *sliceRowIter) Close(*Context) error {
 	i.rows = nil
 	return nil
 }
+
+// MutableRowIter is an extension of RowIter for integrators that wrap RowIters.
+// It allows for analysis rules to inspect the underlying RowIters.
+type MutableRowIter interface {
+	RowIter
+	GetChildIter() RowIter
+	WithChildIter(childIter RowIter) RowIter
+}
