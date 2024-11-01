@@ -209,7 +209,7 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	node, _, err := binder.BindOnly(stmt, query, nil)
 
 	if err != nil {
@@ -517,7 +517,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
@@ -571,7 +571,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 	}
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	if preparedDataFound {
 		parsed = preparedAst
 		binder.SetBindings(bindings)
@@ -804,6 +804,10 @@ func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
 	return e.Analyzer
 }
 
+func (e *Engine) EngineEventScheduler() sql.EventScheduler {
+	return e.EventScheduler
+}
+
 // InitializeEventScheduler initializes the EventScheduler for the engine with the given sql.Context
 // getter function, |ctxGetterFunc, the EventScheduler |status|, and the |period| for the event scheduler
 // to check for events to execute. If |period| is less than 1, then it is ignored and the default period
@@ -814,8 +818,6 @@ func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, fu
 	if err != nil {
 		return err
 	}
-
-	e.Analyzer.EventScheduler = e.EventScheduler
 	return nil
 }
 

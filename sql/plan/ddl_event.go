@@ -32,7 +32,6 @@ import (
 var _ sql.Node = (*CreateEvent)(nil)
 var _ sql.Expressioner = (*CreateEvent)(nil)
 var _ sql.Databaser = (*CreateEvent)(nil)
-var _ sql.EventSchedulerStatement = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
@@ -48,13 +47,14 @@ type CreateEvent struct {
 	DefinitionString string
 	DefinitionNode   sql.Node
 	IfNotExists      bool
-	// eventScheduler is used to notify EventSchedulerStatus of the event creation
-	eventScheduler sql.EventScheduler
+	// scheduler is used to notify EventSchedulerStatus of the event creation
+	scheduler sql.EventScheduler
 }
 
 // NewCreateEvent returns a *CreateEvent node.
 func NewCreateEvent(
 	db sql.Database,
+	es sql.EventScheduler,
 	name, definer string,
 	at, starts, ends *OnScheduleTimestamp,
 	every *expression.Interval,
@@ -66,6 +66,7 @@ func NewCreateEvent(
 ) *CreateEvent {
 	return &CreateEvent{
 		ddlNode:          ddlNode{db},
+		scheduler:        es,
 		EventName:        name,
 		Definer:          definer,
 		At:               at,
@@ -252,15 +253,8 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) 
 		event:          eventDefinition,
 		eventDb:        eventDb,
 		ifNotExists:    c.IfNotExists,
-		eventScheduler: c.eventScheduler,
+		eventScheduler: c.scheduler,
 	}, nil
-}
-
-// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for CREATE EVENT.
-func (c *CreateEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
-	nc := *c
-	nc.eventScheduler = scheduler
-	return &nc
 }
 
 // GetEventDefinition returns an EventDefinition object with all of its fields populated from the details
@@ -581,20 +575,20 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 
 var _ sql.Node = (*DropEvent)(nil)
 var _ sql.Databaser = (*DropEvent)(nil)
-var _ sql.EventSchedulerStatement = (*DropEvent)(nil)
 
 type DropEvent struct {
 	ddlNode
 	EventName string
 	IfExists  bool
 	// eventScheduler is used to notify EventSchedulerStatus of the event deletion
-	eventScheduler sql.EventScheduler
+	scheduler sql.EventScheduler
 }
 
 // NewDropEvent creates a new *DropEvent node.
-func NewDropEvent(db sql.Database, eventName string, ifExists bool) *DropEvent {
+func NewDropEvent(db sql.Database, es sql.EventScheduler, eventName string, ifExists bool) *DropEvent {
 	return &DropEvent{
 		ddlNode:   ddlNode{db},
+		scheduler: es,
 		EventName: strings.ToLower(eventName),
 		IfExists:  ifExists,
 	}
@@ -630,8 +624,8 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	// make sure to notify the EventSchedulerStatus before dropping the event in the database
-	if d.eventScheduler != nil {
-		d.eventScheduler.RemoveEvent(eventDb.Name(), d.EventName)
+	if d.scheduler != nil {
+		d.scheduler.RemoveEvent(eventDb.Name(), d.EventName)
 	}
 
 	err := eventDb.DropEvent(ctx, d.EventName)
@@ -666,11 +660,4 @@ func (d *DropEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 	nde := *d
 	nde.Db = database
 	return &nde, nil
-}
-
-// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for DROP EVENT.
-func (d *DropEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
-	nd := *d
-	nd.eventScheduler = scheduler
-	return &nd
 }

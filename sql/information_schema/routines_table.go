@@ -138,6 +138,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	if privSet == nil {
 		privSet = mysql_db.NewPrivilegeSet()
 	}
+
 	for dbName, procedures := range p {
 		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue

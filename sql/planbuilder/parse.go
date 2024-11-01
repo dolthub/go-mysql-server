@@ -39,7 +39,7 @@ func Parse(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, *sql.Quer
 
 func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (sql.Node, *sql.QueryFlags, error) {
 	// TODO: need correct parser
-	b := New(ctx, cat, sql.NewMysqlParser())
+	b := New(ctx, cat, nil, nil)
 	b.SetParserOptions(options)
 	node, _, _, qFlags, err := b.Parse(query, nil, false)
 	return node, qFlags, err

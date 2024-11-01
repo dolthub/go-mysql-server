@@ -91,6 +91,9 @@ func InitEventScheduler(
 
 // Close closes the EventScheduler.
 func (es *EventScheduler) Close() {
+	if es == nil {
+		return
+	}
 	es.status = SchedulerOff
 	es.executor.shutdown()
 }
@@ -99,6 +102,9 @@ func (es *EventScheduler) Close() {
 // This function requires valid analyzer and sql context to evaluate all events in all databases
 // to load enabled events to the EventScheduler.
 func (es *EventScheduler) TurnOnEventScheduler(a *analyzer.Analyzer) error {
+	if es == nil {
+		return nil
+	}
 	if es.status == SchedulerDisabled {
 		return ErrEventSchedulerDisabled
 	} else if es.status == SchedulerOn {
@@ -120,6 +126,9 @@ func (es *EventScheduler) TurnOnEventScheduler(a *analyzer.Analyzer) error {
 
 // TurnOffEventScheduler is called when user sets --event-scheduler system variable to OFF or 0.
 func (es *EventScheduler) TurnOffEventScheduler() error {
+	if es == nil {
+		return nil
+	}
 	if es.status == SchedulerDisabled {
 		return ErrEventSchedulerDisabled
 	} else if es.status == SchedulerOff {
@@ -135,6 +144,9 @@ func (es *EventScheduler) TurnOffEventScheduler() error {
 // loadEventsAndStartEventExecutor evaluates all events in all databases and evaluates the enabled events
 // with valid schedule to load into the eventExecutor. Then, it starts the eventExecutor.
 func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *analyzer.Analyzer) error {
+	if es == nil {
+		return nil
+	}
 	es.executor.catalog = a.Catalog
 	es.executor.loadAllEvents(ctx)
 	go es.executor.start()
@@ -144,6 +156,9 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *a
 // AddEvent implements sql.EventScheduler interface.
 // This function is called when there is an event created at runtime.
 func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, details sql.EventDefinition) {
+	if es == nil {
+		return
+	}
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
@@ -153,6 +168,9 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 // UpdateEvent implements sql.EventScheduler interface.
 // This function is called when there is an event altered at runtime.
 func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, orgEventName string, details sql.EventDefinition) {
+	if es == nil {
+		return
+	}
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
@@ -163,6 +181,9 @@ func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, o
 // This function is called when there is an event dropped at runtime. This function
 // removes the given event if it exists in the enabled events list of the EventScheduler.
 func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
+	if es == nil {
+		return
+	}
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}
@@ -173,6 +194,9 @@ func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
 // This function is called when there is a database dropped at runtime. This function
 // removes all events of given database that exist in the enabled events list of the EventScheduler.
 func (es *EventScheduler) RemoveSchemaEvents(dbName string) {
+	if es == nil {
+		return
+	}
 	if es.status == SchedulerDisabled || es.status == SchedulerOff {
 		return
 	}

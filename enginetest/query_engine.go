@@ -28,6 +28,7 @@ type QueryEngine interface {
 	Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)
 	// TODO: get rid of this, should not be exposed to engine tests
 	EngineAnalyzer() *analyzer.Analyzer
+	EngineEventScheduler() sql.EventScheduler
 	// TODO: get rid of this, should not be exposed to engine tests
 	EnginePreparedDataCache() *sqle.PreparedDataCache
 	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)

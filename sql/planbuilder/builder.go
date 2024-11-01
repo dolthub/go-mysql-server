@@ -47,8 +47,11 @@ type Builder struct {
 	bindCtx         *BindvarContext
 	insertActive    bool
 	nesting         int
-	parser          sql.Parser
-	qFlags          *sql.QueryFlags
+	// EventScheduler is used to communicate with the event scheduler
+	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
+	scheduler sql.EventScheduler
+	parser    sql.Parser
+	qFlags    *sql.QueryFlags
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -103,14 +106,16 @@ type ProcContext struct {
 	DbName string
 }
 
-// New takes ctx, catalog and parser. If the parser is nil, then default parser is mysql parser.
-func New(ctx *sql.Context, cat sql.Catalog, p sql.Parser) *Builder {
-	sqlMode := sql.LoadSqlMode(ctx)
-
+// New takes ctx, catalog, event scheduler, and parser. If the parser is nil, then default parser is mysql parser.
+func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser) *Builder {
+	if p == nil {
+		p = sql.NewMysqlParser()
+	}
 	return &Builder{
 		ctx:        ctx,
 		cat:        cat,
-		parserOpts: sqlMode.ParserOptions(),
+		scheduler:  es,
+		parserOpts: sql.LoadSqlMode(ctx).ParserOptions(),
 		f:          &factory{},
 		parser:     p,
 		qFlags:     &sql.QueryFlags{},

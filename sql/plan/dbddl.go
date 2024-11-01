@@ -122,12 +122,11 @@ type DropDB struct {
 	IfExists bool
 	// EventScheduler is used to notify EventSchedulerStatus of database deletion,
 	// so the events of this database in the scheduler will be removed.
-	EventScheduler sql.EventScheduler
+	Scheduler sql.EventScheduler
 }
 
 var _ sql.Node = (*DropDB)(nil)
 var _ sql.CollationCoercible = (*DropDB)(nil)
-var _ sql.EventSchedulerStatement = (*DropDB)(nil)
 
 func (d *DropDB) Resolved() bool {
 	return true
@@ -155,13 +154,6 @@ func (d *DropDB) Children() []sql.Node {
 
 func (d *DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
-}
-
-// WithEventScheduler is used to drop all events from EventSchedulerStatus for DROP DATABASE.
-func (d *DropDB) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
-	na := *d
-	na.EventScheduler = scheduler
-	return &na
 }
 
 // CheckPrivileges implements the interface sql.Node.
