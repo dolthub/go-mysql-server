@@ -49,9 +49,9 @@ type Builder struct {
 	nesting         int
 	// EventScheduler is used to communicate with the event scheduler
 	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
-	scheduler  sql.EventScheduler
-	parser     sql.Parser
-	qFlags     *sql.QueryFlags
+	scheduler sql.EventScheduler
+	parser    sql.Parser
+	qFlags    *sql.QueryFlags
 }
 
 // BindvarContext holds bind variable replacement literals.
