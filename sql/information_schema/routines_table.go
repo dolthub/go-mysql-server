@@ -138,6 +138,8 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	if privSet == nil {
 		privSet = mysql_db.NewPrivilegeSet()
 	}
+
+	builder := planbuilder.New(ctx, c, nil, nil)
 	for dbName, procedures := range p {
 		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue
@@ -154,7 +156,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 			}
 
 			// todo shortcircuit routineDef->procedure.CreateProcedureString?
-			parsedProcedure, _, err := planbuilder.Parse(ctx, c, nil, procedure.CreateProcedureString)
+			parsedProcedure, _, _, _, err := builder.Parse(procedure.CreateProcedureString, nil, false)
 			if err != nil {
 				continue
 			}

@@ -33,13 +33,13 @@ const maxAnalysisIterations = 8
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
 // Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
-func Parse(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, query string) (sql.Node, *sql.QueryFlags, error) {
-	return ParseWithOptions(ctx, cat, es, query, sql.LoadSqlMode(ctx).ParserOptions())
+func Parse(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, *sql.QueryFlags, error) {
+	return ParseWithOptions(ctx, cat, query, sql.LoadSqlMode(ctx).ParserOptions())
 }
 
-func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, query string, options ast.ParserOptions) (sql.Node, *sql.QueryFlags, error) {
+func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (sql.Node, *sql.QueryFlags, error) {
 	// TODO: need correct parser
-	b := New(ctx, cat, sql.NewMysqlParser(), es)
+	b := New(ctx, cat, nil, nil)
 	b.SetParserOptions(options)
 	node, _, _, qFlags, err := b.Parse(query, nil, false)
 	return node, qFlags, err

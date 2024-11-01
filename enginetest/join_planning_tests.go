@@ -1777,7 +1777,7 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string
 }
 
 func analyzeQuery(ctx *sql.Context, e QueryEngine, query string) (sql.Node, error) {
-	parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, e.EngineEventScheduler(), query)
+	parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, query)
 	if err != nil {
 		return nil, err
 	}

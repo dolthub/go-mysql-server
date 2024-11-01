@@ -82,7 +82,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			if !hasGlobalShowViewPriv && !hasDbShowViewPriv && !privTblSet.Has(PrivilegeType_ShowView) {
 				continue
 			}
-			parsedView, _, err := planbuilder.ParseWithOptions(ctx, catalog, nil, view.CreateViewStatement, NewSqlModeFromString(view.SqlMode).ParserOptions())
+			parsedView, _, err := planbuilder.ParseWithOptions(ctx, catalog, view.CreateViewStatement, NewSqlModeFromString(view.SqlMode).ParserOptions())
 			if err != nil {
 				continue
 			}
