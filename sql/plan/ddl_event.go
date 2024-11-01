@@ -32,7 +32,6 @@ import (
 var _ sql.Node = (*CreateEvent)(nil)
 var _ sql.Expressioner = (*CreateEvent)(nil)
 var _ sql.Databaser = (*CreateEvent)(nil)
-var _ sql.EventSchedulerStatement = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
@@ -256,13 +255,6 @@ func (c *CreateEvent) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) 
 		ifNotExists:    c.IfNotExists,
 		eventScheduler: c.scheduler,
 	}, nil
-}
-
-// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for CREATE EVENT.
-func (c *CreateEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
-	nc := *c
-	nc.scheduler = scheduler
-	return &nc
 }
 
 // GetEventDefinition returns an EventDefinition object with all of its fields populated from the details
@@ -583,7 +575,6 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 
 var _ sql.Node = (*DropEvent)(nil)
 var _ sql.Databaser = (*DropEvent)(nil)
-var _ sql.EventSchedulerStatement = (*DropEvent)(nil)
 
 type DropEvent struct {
 	ddlNode
@@ -669,11 +660,4 @@ func (d *DropEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 	nde := *d
 	nde.Db = database
 	return &nde, nil
-}
-
-// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for DROP EVENT.
-func (d *DropEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
-	nd := *d
-	nd.scheduler = scheduler
-	return &nd
 }
