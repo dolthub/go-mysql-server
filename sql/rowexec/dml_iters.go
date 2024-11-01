@@ -565,18 +565,10 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 
 func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema) {
 	switch i := iter.(type) {
-	case sql.CustomRowIter:
+	case sql.MutableRowIter:
 		childIter := i.GetChildIter()
 		childIter, sch := AddAccumulatorIter(ctx, childIter)
-		return i.SetChildIter(childIter), sch
-	case *callIter:
-		childIter, sch := AddAccumulatorIter(ctx, i.innerIter)
-		i.innerIter = childIter
-		return i, sch
-	case *beginEndIter:
-		childIter, sch := AddAccumulatorIter(ctx, i.rowIter)
-		i.rowIter = childIter
-		return i, sch
+		return i.WithChildIter(childIter), sch
 	default:
 		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
 		rowHandler := getRowHandler(clientFoundRowsToggled, iter)

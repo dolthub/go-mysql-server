@@ -202,10 +202,10 @@ func (i *sliceRowIter) Close(*Context) error {
 	return nil
 }
 
-// CustomRowIter is an extension of RowIter for integrators that wrap RowIters.
+// MutableRowIter is an extension of RowIter for integrators that wrap RowIters.
 // It allows for analysis rules to inspect the underlying RowIters.
-type CustomRowIter interface {
+type MutableRowIter interface {
 	RowIter
 	GetChildIter() RowIter
-	SetChildIter(childIter RowIter) RowIter
+	WithChildIter(childIter RowIter) RowIter
 }
