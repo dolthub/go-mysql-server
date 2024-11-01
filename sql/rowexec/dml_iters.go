@@ -528,16 +528,6 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 		return getRowHandler(clientFoundRowsToggled, i.child)
 	case *blockIter:
 		return getRowHandler(clientFoundRowsToggled, i.repIter)
-	case *insertIter:
-		if i.replacer != nil {
-			return &replaceRowHandler{}
-		}
-		if i.updater != nil {
-			return &onDuplicateUpdateHandler{schema: i.schema, clientFoundRowsCapability: clientFoundRowsToggled}
-		}
-		return &insertRowHandler{}
-	case *deleteIter:
-		return &deleteRowHandler{}
 	case *updateIter:
 		// it's possible that there's an updateJoinIter that's not the immediate child of updateIter
 		rowHandler := getRowHandler(clientFoundRowsToggled, i.childIter)
@@ -545,7 +535,7 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 			return rowHandler
 		}
 		sch := i.schema
-		// special case for foreign keys,   plan.ForeignKeyHandler.Schema() returns original schema
+		// special case for foreign keys; plan.ForeignKeyHandler.Schema() returns original schema
 		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
 			sch = fkHandler.Sch
 		}
@@ -558,6 +548,16 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 		}
 		i.accumulator = rowHandler
 		return rowHandler
+	case *insertIter:
+		if i.replacer != nil {
+			return &replaceRowHandler{}
+		}
+		if i.updater != nil {
+			return &onDuplicateUpdateHandler{schema: i.schema, clientFoundRowsCapability: clientFoundRowsToggled}
+		}
+		return &insertRowHandler{}
+	case *deleteIter:
+		return &deleteRowHandler{}
 	default:
 		return nil
 	}
