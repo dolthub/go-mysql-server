@@ -637,6 +637,6 @@ func (c scopeColumn) String() string {
 	if c.table == "" {
 		return c.col
 	} else {
-		return c.table + "+" + c.col
+		return c.table + "." + c.col
 	}
 }
