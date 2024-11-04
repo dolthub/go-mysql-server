@@ -225,6 +225,9 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 }
 
 func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {

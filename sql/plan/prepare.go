@@ -75,11 +75,6 @@ func (p *PrepareQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *PrepareQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*PrepareQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -128,11 +123,6 @@ func (p *ExecuteQuery) Children() []sql.Node {
 
 // WithChildren implements the Node interface.
 func (p *ExecuteQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
-	panic("ExecuteQuery methods shouldn't be used")
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (p *ExecuteQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
@@ -187,11 +177,6 @@ func (p *DeallocateQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}
 	return p, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (p *DeallocateQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -113,11 +113,6 @@ func (c *ChangeReplicationSource) WithChildren(children ...sql.Node) (sql.Node, 
 	return &newNode, nil
 }
 
-func (c *ChangeReplicationSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ChangeReplicationSource) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -187,11 +182,6 @@ func (c *ChangeReplicationFilter) WithChildren(children ...sql.Node) (sql.Node, 
 	return &newNode, nil
 }
 
-func (c *ChangeReplicationFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ChangeReplicationFilter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -247,11 +237,6 @@ func (s *StartReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newNode, nil
 }
 
-func (s *StartReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*StartReplica) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -305,11 +290,6 @@ func (s *StopReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	newNode := *s
 	return &newNode, nil
-}
-
-func (s *StopReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewDynamicPrivilegedOperation(DynamicPrivilege_ReplicationSlaveAdmin))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -373,10 +353,6 @@ func (r *ResetReplica) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	newNode := *r
 	return &newNode, nil
-}
-
-func (r *ResetReplica) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Reload))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

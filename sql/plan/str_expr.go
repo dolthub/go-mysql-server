@@ -55,11 +55,6 @@ func (s *StrExpr) WithChildren(children ...sql.Node) (sql.Node, error) {
 	panic("implement me")
 }
 
-func (s *StrExpr) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s *StrExpr) IsReadOnly() bool {
 	//TODO implement me
 	panic("implement me")

@@ -25,6 +25,9 @@ import (
 )
 
 func (b *Builder) buildChangeReplicationSource(inScope *scope, n *ast.ChangeReplicationSource) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
 	for _, option := range n.Options {
@@ -64,6 +67,9 @@ func (b *Builder) buildReplicationOption(inScope *scope, option *ast.Replication
 }
 
 func (b *Builder) buildChangeReplicationFilter(inScope *scope, n *ast.ChangeReplicationFilter) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	convertedOptions := make([]binlogreplication.ReplicationOption, 0, len(n.Options))
 	for _, option := range n.Options {

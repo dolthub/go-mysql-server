@@ -53,11 +53,6 @@ func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewFilter(f.Expression, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (f *Filter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return f.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (f *Filter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, f.UnaryNode.Child)

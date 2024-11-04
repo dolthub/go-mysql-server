@@ -86,11 +86,6 @@ func (ic *IfConditional) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nic, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (ic *IfConditional) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return ic.Body.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (ic *IfConditional) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, ic.Body)
@@ -218,19 +213,6 @@ func (ieb *IfElseBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
 		ifConditionals[i] = ifConditional
 	}
 	return NewIfElse(ifConditionals, children[len(children)-1]), nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (ieb *IfElseBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	for _, ifBlock := range ieb.IfConditionals {
-		if !ifBlock.CheckPrivileges(ctx, opChecker) {
-			return false
-		}
-	}
-	if ieb.Else != nil {
-		return ieb.Else.CheckPrivileges(ctx, opChecker)
-	}
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

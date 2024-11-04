@@ -307,16 +307,6 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 }
 
-// CheckPrivileges implements the Node interface.
-func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	priv := sql.PrivilegeType_Create
-	if c.temporary {
-		priv = sql.PrivilegeType_CreateTempTable
-	}
-	subject := sql.PrivilegeCheckSubject{Database: CheckPrivilegeNameForDatabase(c.Db)}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, priv))
-}
-
 // IsReadOnly implements the Node interface.
 func (c *CreateTable) IsReadOnly() bool {
 	return false
@@ -570,21 +560,6 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nd := *d
 	nd.Tables = newChildren
 	return &nd, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	for _, tbl := range d.Tables {
-		subject := sql.PrivilegeCheckSubject{
-			Database: CheckPrivilegeNameForDatabase(GetDatabase(tbl)),
-			Table:    getTableName(tbl),
-		}
-
-		if !opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Drop)) {
-			return false
-		}
-	}
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

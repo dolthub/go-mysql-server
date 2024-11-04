@@ -101,19 +101,6 @@ func (t *LockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &LockTables{t.Catalog, locks}, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *LockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	operations := make([]sql.PrivilegedOperation, len(t.Locks))
-	for i, tableLock := range t.Locks {
-		subject := sql.PrivilegeCheckSubject{
-			Database: GetDatabaseName(tableLock.Table),
-			Table:    getTableName(tableLock.Table),
-		}
-		operations[i] = sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select, sql.PrivilegeType_LockTables)
-	}
-	return opChecker.UserHasPrivileges(ctx, operations...)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*LockTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -169,12 +156,6 @@ func (t *UnlockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return t, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (t *UnlockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: Can't quite figure out the privileges for this one, needs more testing
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

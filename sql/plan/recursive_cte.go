@@ -171,10 +171,6 @@ func (r *RecursiveCte) Children() []sql.Node {
 	return r.union.Children()
 }
 
-func (r *RecursiveCte) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return r.union.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*RecursiveCte) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -307,11 +303,6 @@ func (r *RecursiveTable) Children() []sql.Node {
 
 func (r *RecursiveTable) WithChildren(node ...sql.Node) (sql.Node, error) {
 	return r, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (r *RecursiveTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

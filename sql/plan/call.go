@@ -90,34 +90,6 @@ func (c *Call) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *Call) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// Procedure permissions checking is performed in the same way MySQL does it, with an exception where
-	// procedures which are marked as AdminOnly. These procedures are only accessible to users with explicit Execute
-	// permissions on the procedure in question.
-
-	adminOnly := false
-	if c.cat != nil {
-		paramCount := len(c.Params)
-		proc, err := c.cat.ExternalStoredProcedure(ctx, c.Name, paramCount)
-		// Not finding the procedure isn't great - but that's going to surface with a better error later in the
-		// query execution. For the permission check, we'll proceed as though the procedure exists, and is not AdminOnly.
-		if proc != nil && err == nil && proc.AdminOnly {
-			adminOnly = true
-		}
-	}
-
-	if !adminOnly {
-		subject := sql.PrivilegeCheckSubject{Database: c.Database().Name()}
-		if opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Execute)) {
-			return true
-		}
-	}
-
-	subject := sql.PrivilegeCheckSubject{Database: c.Database().Name(), Routine: c.Name, IsProcedure: true}
-	return opChecker.RoutineAdminCheck(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Execute))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Call) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return c.Procedure.CollationCoercibility(ctx)

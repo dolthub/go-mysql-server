@@ -27,6 +27,9 @@ import (
 )
 
 func (b *Builder) buildLoad(inScope *scope, d *ast.Load) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, d.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	dbName := strings.ToLower(d.Table.DbQualifier.String())
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()

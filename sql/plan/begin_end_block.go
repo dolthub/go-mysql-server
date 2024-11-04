@@ -81,11 +81,6 @@ func (b *BeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newBeginEndBlock, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (b *BeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return b.Block.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (b *BeginEndBlock) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return b.Block.CollationCoercibility(ctx)

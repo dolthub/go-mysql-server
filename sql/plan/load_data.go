@@ -96,11 +96,6 @@ func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nl, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (l *LoadData) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_File))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*LoadData) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

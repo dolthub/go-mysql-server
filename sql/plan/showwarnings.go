@@ -39,11 +39,6 @@ func (sw ShowWarnings) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sw, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sw ShowWarnings) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (ShowWarnings) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

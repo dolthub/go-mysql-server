@@ -47,11 +47,6 @@ func (d *Distinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewDistinct(children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *Distinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.Child.CheckPrivileges(ctx, opChecker)
-}
-
 func (d *Distinct) IsReadOnly() bool {
 	return d.Child.IsReadOnly()
 }
@@ -116,11 +111,6 @@ func (d *OrderedDistinct) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewOrderedDistinct(children[0]), nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (d *OrderedDistinct) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
 func (d *OrderedDistinct) IsReadOnly() bool {

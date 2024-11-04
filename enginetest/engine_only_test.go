@@ -866,10 +866,6 @@ func (s SimpleTableFunction) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
-func (s SimpleTableFunction) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (SimpleTableFunction) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

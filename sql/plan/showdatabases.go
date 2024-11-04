@@ -64,13 +64,6 @@ func (p *ShowDatabases) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *ShowDatabases) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: Having the "SHOW DATABASES" privilege should allow one to see all databases
-	// Currently, only shows databases that the user has access to
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowDatabases) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

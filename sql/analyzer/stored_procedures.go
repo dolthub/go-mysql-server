@@ -55,6 +55,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 				var procToRegister *plan.Procedure
 				var parsedProcedure sql.Node
 				b := planbuilder.New(ctx, a.Catalog, nil, nil)
+				b.DisableAuth()
 				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
 				if err != nil {
@@ -290,6 +291,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 			var parsedProcedure sql.Node
 			b := planbuilder.New(ctx, a.Catalog, nil, nil)
+			b.DisableAuth()
 			b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
 			if call.AsOf() != nil {
 				asOf, err := call.AsOf().Eval(ctx, nil)

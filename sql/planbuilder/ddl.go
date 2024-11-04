@@ -94,6 +94,9 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 		b.multiDDL = false
 	}()
 
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	statements := make([]sql.Node, 0, len(c.Statements))
 	for i := 0; i < len(c.Statements); i++ {
 		scopes := b.buildAlterTableClause(inScope, c.Statements[i])
@@ -114,6 +117,10 @@ func (b *Builder) buildAlterTable(inScope *scope, query string, c *ast.AlterTabl
 }
 
 func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
+
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
@@ -456,6 +463,9 @@ func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bo
 }
 
 func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, ddl.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScopes := make([]*scope, 0, 1)
 
 	// RENAME a to b, c to d ..
@@ -1607,6 +1617,9 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 }
 
 func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:

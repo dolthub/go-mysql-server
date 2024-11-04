@@ -124,12 +124,6 @@ func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &ss, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *ShowColumns) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowColumns) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

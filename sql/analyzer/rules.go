@@ -50,9 +50,8 @@ var OnceBeforeDefault = []Rule{
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validateDeleteFromId, validateDeleteFrom},
-	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
-	{simplifyFiltersId, simplifyFilters},       //TODO inline?
-	{pushNotFiltersId, pushNotFilters},         //TODO inline?
+	{simplifyFiltersId, simplifyFilters}, //TODO inline?
+	{pushNotFiltersId, pushNotFilters},   //TODO inline?
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 

@@ -87,26 +87,6 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	var operations []sql.PrivilegedOperation
-	for _, oldName := range r.OldNames {
-		subject := sql.PrivilegeCheckSubject{
-			Database: CheckPrivilegeNameForDatabase(r.Db),
-			Table:    oldName,
-		}
-		operations = append(operations, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter, sql.PrivilegeType_Drop))
-	}
-	for _, newName := range r.NewNames {
-		subject := sql.PrivilegeCheckSubject{
-			Database: CheckPrivilegeNameForDatabase(r.Db),
-			Table:    newName,
-		}
-		operations = append(operations, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Create, sql.PrivilegeType_Insert))
-	}
-	return opChecker.UserHasPrivileges(ctx, operations...)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*RenameTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -396,16 +376,6 @@ func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &a, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (a *AddColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(a.Db),
-		Table:    getTableName(a.Table),
-	}
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*AddColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -597,15 +567,6 @@ func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &d, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DropColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(d.Db),
-		Table:    getTableName(d.Table),
-	}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DropColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -755,17 +716,6 @@ func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &r, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (r *RenameColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(r.Db),
-		Table:    getTableName(r.Table),
-	}
-
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*RenameColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -860,16 +810,6 @@ func (m *ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nm := *m
 	nm.Table = children[0]
 	return &nm, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (m *ModifyColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(m.Db),
-		Table:    getTableName(m.Table),
-	}
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -1027,14 +967,4 @@ func (atc *AlterTableCollation) WithChildren(children ...sql.Node) (sql.Node, er
 	natc := *atc
 	natc.Table = children[0]
 	return &natc, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (atc *AlterTableCollation) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(atc.Db),
-		Table:    getTableName(atc.Table),
-	}
-
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }

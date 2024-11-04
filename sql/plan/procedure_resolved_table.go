@@ -95,11 +95,6 @@ func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, e
 	return nt, err
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *ProcedureResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return t.ResolvedTable.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t *ProcedureResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return t.ResolvedTable.CollationCoercibility(ctx)

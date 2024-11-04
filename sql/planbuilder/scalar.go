@@ -257,6 +257,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 		return ret
 	case ast.InjectedExpr:
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
 		resolvedChildren := make([]any, len(v.Children))
 		for i, child := range v.Children {
 			resolvedChildren[i] = b.buildScalar(inScope, child)

@@ -363,10 +363,6 @@ func (j *JoinNode) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &ret, nil
 }
 
-func (j *JoinNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*JoinNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	// Joins make use of coercibility, but they don't return anything themselves

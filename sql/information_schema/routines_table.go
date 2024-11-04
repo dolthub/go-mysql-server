@@ -155,6 +155,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 			}
 
 			// todo shortcircuit routineDef->procedure.CreateProcedureString?
+			// TODO: figure out how auth works in this case
 			parsedProcedure, _, err := planbuilder.Parse(ctx, c, procedure.CreateProcedureString)
 			if err != nil {
 				continue

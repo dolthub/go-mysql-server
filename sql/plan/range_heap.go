@@ -73,8 +73,4 @@ func (s *RangeHeap) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &s2, nil
 }
 
-func (s *RangeHeap) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return s.Child.CheckPrivileges(ctx, opChecker)
-}
-
 var _ sql.Node = (*RangeHeap)(nil)

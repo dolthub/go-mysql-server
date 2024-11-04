@@ -120,11 +120,6 @@ func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sq *SubqueryAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return sq.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (sq *SubqueryAlias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, sq.Child)

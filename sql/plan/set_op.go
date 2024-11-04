@@ -198,11 +198,6 @@ func (s *SetOp) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &ret, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *SetOp) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return s.left.CheckPrivileges(ctx, opChecker) && s.right.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*SetOp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	// Unions are able to return differing values, therefore they cannot be used to determine coercibility

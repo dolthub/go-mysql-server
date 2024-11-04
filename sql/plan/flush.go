@@ -65,12 +65,6 @@ func (f *FlushPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return f, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (f *FlushPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Reload))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*FlushPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

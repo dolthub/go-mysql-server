@@ -103,11 +103,6 @@ func (f *Fetch) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return f, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (f *Fetch) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Fetch) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

@@ -764,9 +764,6 @@ func (dummyNode) Schema() sql.Schema                                 { return ni
 func (dummyNode) Children() []sql.Node                               { return nil }
 func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return nil, nil }
 func (dummyNode) WithChildren(...sql.Node) (sql.Node, error)         { return nil, nil }
-func (dummyNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
 func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
 }

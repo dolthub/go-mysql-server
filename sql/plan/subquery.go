@@ -101,11 +101,6 @@ func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewStripRowNode(children[0], srn.NumCols), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (srn *StripRowNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return srn.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (srn *StripRowNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, srn.Child)
@@ -147,11 +142,6 @@ func (p *PrependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 	return NewPrependNode(children[0], p.Row), nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (p *PrependNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -315,10 +305,6 @@ func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
 	ret.Child = children[0]
 
 	return &ret, nil
-}
-
-func (m *Max1Row) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return m.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

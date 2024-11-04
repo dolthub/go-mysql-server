@@ -49,9 +49,11 @@ type Builder struct {
 	nesting         int
 	// EventScheduler is used to communicate with the event scheduler
 	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
-	scheduler sql.EventScheduler
-	parser    sql.Parser
-	qFlags    *sql.QueryFlags
+	scheduler      sql.EventScheduler
+	parser         sql.Parser
+	qFlags         *sql.QueryFlags
+	authEnabled    bool
+	authQueryState sql.AuthorizationQueryState
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -111,14 +113,20 @@ func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser)
 	if p == nil {
 		p = sql.NewMysqlParser()
 	}
+	var state sql.AuthorizationQueryState
+	if cat != nil {
+		state = cat.AuthorizationHandler().NewQueryState(ctx)
+	}
 	return &Builder{
-		ctx:        ctx,
-		cat:        cat,
-		scheduler:  es,
-		parserOpts: sql.LoadSqlMode(ctx).ParserOptions(),
-		f:          &factory{},
-		parser:     p,
-		qFlags:     &sql.QueryFlags{},
+		ctx:            ctx,
+		cat:            cat,
+		scheduler:      es,
+		parserOpts:     sql.LoadSqlMode(ctx).ParserOptions(),
+		f:              &factory{},
+		parser:         p,
+		qFlags:         &sql.QueryFlags{},
+		authEnabled:    true,
+		authQueryState: state,
 	}
 }
 
@@ -189,6 +197,7 @@ func (b *Builder) Reset() {
 	b.viewCtx = nil
 	b.nesting = 0
 	b.qFlags = &sql.QueryFlags{}
+	b.authQueryState = b.cat.AuthorizationHandler().NewQueryState(b.ctx)
 }
 
 type parseErr struct {
@@ -283,6 +292,9 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 	case *ast.ChangeReplicationFilter:
 		return b.buildChangeReplicationFilter(inScope, n)
 	case *ast.StartReplica:
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
 		outScope = inScope.push()
 		startRep := plan.NewStartReplica()
 		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
@@ -290,6 +302,9 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		}
 		outScope.node = startRep
 	case *ast.StopReplica:
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
 		outScope = inScope.push()
 		stopRep := plan.NewStopReplica()
 		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
@@ -297,6 +312,9 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		}
 		outScope.node = stopRep
 	case *ast.ResetReplica:
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
 		outScope = inScope.push()
 		resetRep := plan.NewResetReplica(n.All)
 		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
@@ -415,6 +433,9 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 
 // buildInjectedStatement returns the sql.Node encapsulated by the injected statement.
 func (b *Builder) buildInjectedStatement(inScope *scope, n ast.InjectedStatement) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	resolvedChildren := make([]any, len(n.Children))
 	for i, child := range n.Children {
 		resolvedChildren[i] = b.buildScalar(inScope, child)
@@ -461,4 +482,15 @@ func (b *Builder) BuildColumnDefaultValueWithTable(defExpr ast.Expr, tableExpr a
 		outscope = b.buildDataSource(outscope, tableExpr)
 	}
 	return b.convertDefaultExpression(outscope, defExpr, typ, nullable)
+}
+
+// DisableAuth disables all authorization checks.
+func (b *Builder) DisableAuth() {
+	b.authEnabled = false
+}
+
+// EnableAuth enables all authorization checks. Auth is enabled by default, so this only needs to be called when it was
+// previously disabled using DisableAuth.
+func (b *Builder) EnableAuth() {
+	b.authEnabled = true
 }

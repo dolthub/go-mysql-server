@@ -110,14 +110,6 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return ret, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *TableAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	if t.UnaryNode != nil {
-		return t.UnaryNode.Child.CheckPrivileges(ctx, opChecker)
-	}
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t *TableAlias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	if t.UnaryNode != nil {

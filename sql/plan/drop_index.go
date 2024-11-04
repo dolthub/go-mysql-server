@@ -80,16 +80,6 @@ func (d *DropIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nd, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DropIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: GetDatabaseName(d.Table),
-		Table:    getTableName(d.Table),
-	}
-
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Index))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DropIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

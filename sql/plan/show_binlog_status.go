@@ -78,10 +78,6 @@ func (s *ShowBinlogStatus) WithChildren(children ...sql.Node) (sql.Node, error) 
 	return &newNode, nil
 }
 
-func (s *ShowBinlogStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_ReplicationClient))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowBinlogStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

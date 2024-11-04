@@ -132,16 +132,6 @@ func (b *Block) WithParamReference(pRef *expression.ProcedureReference) sql.Node
 	return &nb
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (b *Block) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	for _, statement := range b.statements {
-		if !statement.CheckPrivileges(ctx, opChecker) {
-			return false
-		}
-	}
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (b *Block) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	// The last SELECT used in the block takes priority

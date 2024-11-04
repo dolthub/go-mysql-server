@@ -27,11 +27,6 @@ func (transactionNode) Children() []sql.Node {
 	return nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (transactionNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*transactionNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

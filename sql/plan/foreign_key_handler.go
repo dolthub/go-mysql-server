@@ -95,11 +95,6 @@ func (n *ForeignKeyHandler) WithChildren(children ...sql.Node) (sql.Node, error)
 	return &nn, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *ForeignKeyHandler) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return n.OriginalNode.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ForeignKeyHandler) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

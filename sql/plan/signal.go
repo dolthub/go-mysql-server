@@ -254,11 +254,6 @@ func (s Signal) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &s, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *Signal) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Signal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -342,11 +337,6 @@ func (s *SignalName) Children() []sql.Node {
 // WithChildren implements the sql.Node interface.
 func (s *SignalName) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (s *SignalName) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -39,6 +39,7 @@ type Grant struct {
 var _ sql.Node = (*Grant)(nil)
 var _ sql.Databaser = (*Grant)(nil)
 var _ sql.CollationCoercible = (*Grant)(nil)
+var _ sql.AuthorizationCheckerNode = (*Grant)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *Grant) Schema() sql.Schema {
@@ -89,8 +90,8 @@ func (n *Grant) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *Grant) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
 	if opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update)) {
@@ -548,6 +549,7 @@ type GrantRole struct {
 var _ sql.Node = (*GrantRole)(nil)
 var _ sql.Databaser = (*GrantRole)(nil)
 var _ sql.CollationCoercible = (*GrantRole)(nil)
+var _ sql.AuthorizationCheckerNode = (*GrantRole)(nil)
 
 // NewGrantRole returns a new GrantRole node.
 func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole {
@@ -612,8 +614,8 @@ func (n *GrantRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *GrantRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *GrantRole) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) {
 		return true
@@ -662,6 +664,7 @@ type GrantProxy struct {
 
 var _ sql.Node = (*GrantProxy)(nil)
 var _ sql.CollationCoercible = (*GrantProxy)(nil)
+var _ sql.AuthorizationCheckerNode = (*GrantProxy)(nil)
 
 // NewGrantProxy returns a new GrantProxy node.
 func NewGrantProxy(on UserName, to []UserName, withGrant bool) *GrantProxy {
@@ -708,8 +711,8 @@ func (n *GrantProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *GrantProxy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *GrantProxy) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: add this when proxy support is added
 	return true
 }
