@@ -76,6 +76,21 @@ var VectorIndexQueries = []ScriptTest{
 				},
 				ExpectedIndexes: []string{},
 			},
+			{
+				// Modify the index after creation.
+				Query: "insert into vectors values (5, '[1.0,0.0]')",
+			},
+			{
+				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
+				Expected: []sql.Row{
+					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{5, types.MustJSON(`[1.0, 0.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
 		},
 	},
 }
