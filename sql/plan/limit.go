@@ -76,11 +76,6 @@ func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nl, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (l *Limit) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return l.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (l *Limit) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, l.Child)

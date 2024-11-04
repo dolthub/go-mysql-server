@@ -74,11 +74,6 @@ func (d *DeclareCondition) WithChildren(children ...sql.Node) (sql.Node, error) 
 	return NillaryWithChildren(d, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DeclareCondition) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DeclareCondition) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

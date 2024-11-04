@@ -91,15 +91,6 @@ func (d *AlterDefaultSet) Children() []sql.Node {
 	return []sql.Node{d.Table}
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *AlterDefaultSet) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: d.Database().Name(),
-		Table:    getTableName(d.Table),
-	}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (d *AlterDefaultSet) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -216,18 +207,6 @@ func (d *AlterDefaultDrop) WithExpressions(exprs ...sql.Expression) (sql.Node, e
 	}
 	nd.targetSchema = sch
 	return &nd, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (d *AlterDefaultDrop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: d.Db.Name(),
-		Table:    getTableName(d.Table),
-		Column:   d.ColumnName,
-	}
-
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -1028,6 +1028,9 @@ func newMergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Express
 	if db == nil {
 		return nil
 	}
+	if tableRevision, ok := table.(*memory.TableRevision); ok {
+		table = tableRevision.Table
+	}
 	return &memory.Index{
 		DB:         db.Name(),
 		DriverName: memory.IndexDriverId,

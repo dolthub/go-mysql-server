@@ -91,12 +91,6 @@ func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *ShowTableStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// Some tables won't be visible in RowIter if the user doesn't have the correct privileges
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowTableStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

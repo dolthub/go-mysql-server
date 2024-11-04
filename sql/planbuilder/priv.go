@@ -173,6 +173,9 @@ func (b *Builder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.Authenti
 }
 
 func (b *Builder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	authUsers := make([]plan.AuthenticatedUser, len(n.Users))
 	for i, user := range n.Users {
@@ -301,6 +304,9 @@ func (b *Builder) buildCreateUser(inScope *scope, n *ast.CreateUser) (outScope *
 }
 
 func (b *Builder) buildRenameUser(inScope *scope, n *ast.RenameUser) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	oldNames := make([]plan.UserName, len(n.Accounts))
 	newNames := make([]plan.UserName, len(n.Accounts))
 	for i, account := range n.Accounts {
@@ -350,11 +356,18 @@ func (b *Builder) buildGrantPrivilege(inScope *scope, n *ast.GrantPrivilege) (ou
 		MySQLDb:         b.resolveDb("mysql"),
 		Catalog:         b.cat,
 	}
+	n.Auth.Extra = outScope.node
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 
 	return outScope
 }
 
 func (b *Builder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	var currentUser bool
 	var user *plan.UserName
 	if n.For != nil {
@@ -380,6 +393,9 @@ func (b *Builder) buildShowGrants(inScope *scope, n *ast.ShowGrants) (outScope *
 }
 
 func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, f.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	var writesToBinlog = true
 	switch strings.ToLower(f.Type) {
@@ -414,6 +430,9 @@ func (b *Builder) buildFlush(inScope *scope, f *ast.Flush) (outScope *scope) {
 }
 
 func (b *Builder) buildCreateRole(inScope *scope, n *ast.CreateRole) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	outScope.node = &plan.CreateRole{
 		IfNotExists: n.IfNotExists,
@@ -424,6 +443,9 @@ func (b *Builder) buildCreateRole(inScope *scope, n *ast.CreateRole) (outScope *
 }
 
 func (b *Builder) buildDropRole(inScope *scope, n *ast.DropRole) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	outScope.node = &plan.DropRole{
 		IfExists: n.IfExists,
@@ -434,6 +456,9 @@ func (b *Builder) buildDropRole(inScope *scope, n *ast.DropRole) (outScope *scop
 }
 
 func (b *Builder) buildDropUser(inScope *scope, n *ast.DropUser) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	outScope.node = &plan.DropUser{
 		IfExists: n.IfExists,
@@ -451,6 +476,10 @@ func (b *Builder) buildGrantRole(inScope *scope, n *ast.GrantRole) (outScope *sc
 		WithAdminOption: n.WithAdminOption,
 		MySQLDb:         b.resolveDb("mysql"),
 	}
+	n.Auth.Extra = outScope.node
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	return
 }
 
@@ -462,6 +491,10 @@ func (b *Builder) buildGrantProxy(inScope *scope, n *ast.GrantProxy) (outScope *
 		convertAccountName(n.To...),
 		n.WithGrantOption,
 	)
+	n.Auth.Extra = outScope.node
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	return
 }
 
@@ -482,12 +515,20 @@ func (b *Builder) buildRevokePrivilege(inScope *scope, n *ast.RevokePrivilege) (
 		Users:          users,
 		MySQLDb:        b.resolveDb("mysql"),
 	}
+	n.Auth.Extra = outScope.node
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	return
 }
 
 func (b *Builder) buildRevokeAllPrivileges(inScope *scope, n *ast.RevokeAllPrivileges) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = plan.NewRevokeAll(convertAccountName(n.From...))
+	n.Auth.Extra = outScope.node
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	return
 }
 
@@ -498,16 +539,26 @@ func (b *Builder) buildRevokeRole(inScope *scope, n *ast.RevokeRole) (outScope *
 		TargetUsers: convertAccountName(n.From...),
 		MySQLDb:     b.resolveDb("mysql"),
 	}
+	n.Auth.Extra = outScope.node
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	return
 }
 
 func (b *Builder) buildRevokeProxy(inScope *scope, n *ast.RevokeProxy) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
 	return
 }
 
 func (b *Builder) buildShowPrivileges(inScope *scope, n *ast.ShowPrivileges) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	outScope = inScope.push()
 	outScope.node = plan.NewShowPrivileges()
 	return

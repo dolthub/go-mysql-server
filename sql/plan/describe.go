@@ -55,11 +55,6 @@ func (d *Describe) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewDescribe(children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *Describe) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Describe) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -98,11 +93,6 @@ func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(node), 0)
 	}
 	return d, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

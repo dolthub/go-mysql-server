@@ -30,10 +30,6 @@ func getBatchesForNode(node sql.Node) ([]*Batch, bool) {
 							Apply: applyForeignKeys,
 						},
 						{
-							Id:    validatePrivilegesId,
-							Apply: validatePrivileges,
-						},
-						{
 							Id:    validateReadOnlyDatabaseId,
 							Apply: validateReadOnlyDatabase,
 						},
@@ -73,10 +69,6 @@ func getBatchesForNode(node sql.Node) ([]*Batch, bool) {
 						{
 							Id:    applyForeignKeysId,
 							Apply: applyForeignKeys,
-						},
-						{
-							Id:    validatePrivilegesId,
-							Apply: validatePrivileges,
 						},
 						{
 							Id:    optimizeJoinsId,
@@ -122,10 +114,6 @@ func getBatchesForNode(node sql.Node) ([]*Batch, bool) {
 						{
 							Id:    applyForeignKeysId,
 							Apply: applyForeignKeys,
-						},
-						{
-							Id:    validatePrivilegesId,
-							Apply: validatePrivileges,
 						},
 						{
 							Id:    optimizeJoinsId,

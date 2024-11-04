@@ -137,14 +137,6 @@ func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 	return tc, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: add a new branch when the INSERT optimization is added
-	subject := sql.PrivilegeCheckSubject{Database: tc.db.Name()}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Create)) &&
-		tc.Source.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*TableCopier) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

@@ -75,10 +75,6 @@ func (u *UpdateHistogram) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return u, nil
 }
 
-func (u *UpdateHistogram) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 func (u *UpdateHistogram) IsReadOnly() bool {
 	return false
 }
@@ -136,10 +132,6 @@ func (d *DropHistogram) Children() []sql.Node {
 
 func (d *DropHistogram) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return d, nil
-}
-
-func (d *DropHistogram) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
 }
 
 func (d *DropHistogram) IsReadOnly() bool {

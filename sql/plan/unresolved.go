@@ -110,17 +110,6 @@ func (t *UnresolvedTable) AsOf() sql.Expression {
 	return t.asOf
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *UnresolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: t.Database().Name(),
-		Table:    t.name,
-	}
-
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*UnresolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

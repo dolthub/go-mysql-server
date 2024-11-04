@@ -59,11 +59,6 @@ func (c *Concat) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewConcat(children[0], children[1]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *Concat) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return c.left.CheckPrivileges(ctx, opChecker) && c.right.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Concat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	// As this is similar to UNION, it isn't possible to determine what the resulting coercibility may be

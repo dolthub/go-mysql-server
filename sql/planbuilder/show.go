@@ -31,6 +31,9 @@ import (
 )
 
 func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, s.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	showType := strings.ToLower(s.Type)
 	switch showType {
 	case "processlist":

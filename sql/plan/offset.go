@@ -65,11 +65,6 @@ func (o *Offset) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewOffset(o.Offset, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (o *Offset) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return o.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (o *Offset) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, o.Child)

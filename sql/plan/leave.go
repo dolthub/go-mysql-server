@@ -64,11 +64,6 @@ func (l *Leave) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(l, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (l *Leave) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Leave) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

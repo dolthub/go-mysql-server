@@ -82,11 +82,6 @@ func (d *DeclareCursor) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nd, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DeclareCursor) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.Select.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DeclareCursor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

@@ -123,11 +123,6 @@ func (l *Loop) WithParamReference(pRef *expression.ProcedureReference) sql.Node 
 	return &nl
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (l *Loop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return l.Block.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (l *Loop) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return l.Block.CollationCoercibility(ctx)

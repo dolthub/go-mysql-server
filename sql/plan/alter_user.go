@@ -82,30 +82,6 @@ func (a *AlterUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return a, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (a *AlterUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// From the MySQL reference on ALTER USER:
-	// https://dev.mysql.com/doc/refman/8.0/en/alter-user.html
-	// ALTER USER generally requires either the global `CREATE USER` privilege, or the `UPDATE` privilege
-	// for the `mysql` system schema.
-	if opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(
-		sql.PrivilegeCheckSubject{Database: "mysql"}, sql.PrivilegeType_Update)) {
-		return true
-	} else if opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(
-		sql.PrivilegeCheckSubject{}, sql.PrivilegeType_CreateUser)) {
-		return true
-	}
-
-	// There are several exceptions to the general privilege requirements. Currently, the only relevant one is
-	// that any client who connects to the server using a non-anonymous account can change the password for that account.
-	authenticatedUser := ctx.Session.Client()
-	if a.User.Name == authenticatedUser.User {
-		return true
-	}
-
-	return false
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (a *AlterUser) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

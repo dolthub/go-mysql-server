@@ -100,11 +100,6 @@ func (s *Sort) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewSort(s.SortFields, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *Sort) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return s.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (s *Sort) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, s.Child)
@@ -203,11 +198,6 @@ func (n *TopN) WithChildren(children ...sql.Node) (sql.Node, error) {
 	topn := NewTopN(n.Fields, n.Limit, children[0])
 	topn.CalcFoundRows = n.CalcFoundRows
 	return topn, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (n *TopN) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return n.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

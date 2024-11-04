@@ -335,10 +335,6 @@ func (n *testNode) WithChildren(nodes ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
-func (n *testNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*testNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

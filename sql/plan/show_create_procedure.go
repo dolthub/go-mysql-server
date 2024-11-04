@@ -131,23 +131,6 @@ func (s *ShowCreateProcedure) WithChildren(children ...sql.Node) (sql.Node, erro
 	return NillaryWithChildren(s, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *ShowCreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// TODO: set definer
-	// TODO: dynamic privilege SHOW ROUTINE
-	// According to: https://dev.mysql.com/doc/refman/8.0/en/show-create-procedure.html
-	// Must have Global SELECT, SHOW_ROUTINE, CREATE_ROUTINE, ALTER_ROUTINE, or EXECUTE privileges.
-
-	dbSubject := sql.PrivilegeCheckSubject{
-		Database: s.db.Name(),
-	}
-
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Select)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(dbSubject, sql.PrivilegeType_CreateRoutine)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(dbSubject, sql.PrivilegeType_AlterRoutine)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(dbSubject, sql.PrivilegeType_Execute))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowCreateProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

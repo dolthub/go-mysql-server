@@ -34,6 +34,7 @@ type Catalog struct {
 	StatsProvider sql.StatsProvider
 
 	DbProvider       sql.DatabaseProvider
+	AuthHandler      sql.AuthorizationHandler
 	builtInFunctions function.Registry
 
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
@@ -64,7 +65,7 @@ type sessionLocks map[uint32]dbLocks
 
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) *Catalog {
-	return &Catalog{
+	c := &Catalog{
 		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
 		InfoSchema:       information_schema.NewInformationSchemaDatabase(),
 		DbProvider:       provider,
@@ -72,6 +73,8 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 		StatsProvider:    memory.NewStatsProv(),
 		locks:            make(sessionLocks),
 	}
+	c.AuthHandler = sql.GetAuthorizationHandlerFactory().CreateHandler(c)
+	return c
 }
 
 func (c *Catalog) HasBinlogReplicaController() bool {
@@ -109,7 +112,7 @@ func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
 	dbs = append(dbs, c.InfoSchema)
 
 	if c.MySQLDb.Enabled() {
-		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).AllDatabases(ctx)...)
+		dbs = append(dbs, mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider, c.AuthHandler).AllDatabases(ctx)...)
 	} else {
 		dbs = append(dbs, c.DbProvider.AllDatabases(ctx)...)
 	}
@@ -162,7 +165,7 @@ func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 	if db == "information_schema" {
 		return true
 	} else if c.MySQLDb.Enabled() {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).HasDatabase(ctx, db)
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider, c.AuthHandler).HasDatabase(ctx, db)
 	} else {
 		return c.DbProvider.HasDatabase(ctx, db)
 	}
@@ -173,7 +176,7 @@ func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
 	if strings.ToLower(db) == "information_schema" {
 		return c.InfoSchema, nil
 	} else if c.MySQLDb.Enabled() {
-		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider).Database(ctx, db)
+		return mysql_db.NewPrivilegedDatabaseProvider(c.MySQLDb, c.DbProvider, c.AuthHandler).Database(ctx, db)
 	} else {
 		return c.DbProvider.Database(ctx, db)
 	}
@@ -438,6 +441,10 @@ func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint
 		return 0, fmt.Errorf("%T is not a statistics table, no data length available", table)
 	}
 	return st.DataLength(ctx)
+}
+
+func (c *Catalog) AuthorizationHandler() sql.AuthorizationHandler {
+	return c.AuthHandler
 }
 
 func getStatisticsTable(table sql.Table, prevTable sql.Table) (sql.StatisticsTable, bool) {
