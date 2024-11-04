@@ -24,7 +24,7 @@ var VectorIndexQueries = []ScriptTest{
 		Name: "basic vector index",
 		SetUpScript: []string{
 			"create table vectors (id int primary key, v json);",
-			`insert into vectors values (1, '[3.0,4.0]'), (2, '[0.0,0.0]'), (3, '[1.0,-1.0]'), (4, '[-2.0,0.0]');`,
+			`insert into vectors values (1, '[4.0,3.0]'), (2, '[0.0,0.0]'), (3, '[-1.0,1.0]'), (4, '[0.0,-2.0]');`,
 			`create vector index v_idx on vectors(v);`,
 		},
 		Assertions: []ScriptTestAssertion{
@@ -38,9 +38,9 @@ var VectorIndexQueries = []ScriptTest{
 				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 4",
 				Expected: []sql.Row{
 					{2, types.MustJSON(`[0.0, 0.0]`)},
-					{3, types.MustJSON(`[1.0, -1.0]`)},
-					{4, types.MustJSON(`[-2.0, 0.0]`)},
-					{1, types.MustJSON(`[3.0, 4.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
 				},
 				ExpectedIndexes: []string{"v_idx"},
 			},
@@ -49,21 +49,32 @@ var VectorIndexQueries = []ScriptTest{
 				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
 				Expected: []sql.Row{
 					{2, types.MustJSON(`[0.0, 0.0]`)},
-					{3, types.MustJSON(`[1.0, -1.0]`)},
-					{4, types.MustJSON(`[-2.0, 0.0]`)},
-					{1, types.MustJSON(`[3.0, 4.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
 				},
 				ExpectedIndexes: nil,
 			},
 			{
-				Query: "select * from vectors order by VEC_DISTANCE_L2_SQUARED('[-2.0,0.0]', v) limit 4",
+				Query: "select * from vectors order by VEC_DISTANCE_L2_SQUARED('[0.0,-2.0]', v) limit 4",
 				Expected: []sql.Row{
-					{4, types.MustJSON(`[-2.0, 0.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
 					{2, types.MustJSON(`[0.0, 0.0]`)},
-					{3, types.MustJSON(`[1.0, -1.0]`)},
-					{1, types.MustJSON(`[3.0, 4.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
 				},
 				ExpectedIndexes: []string{"v_idx"},
+			},
+			{
+				// Ensure vector index is not used for range lookups.
+				Query: "select * from vectors order by v limit 4",
+				Expected: []sql.Row{
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
+					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+				},
+				ExpectedIndexes: []string{},
 			},
 		},
 	},
