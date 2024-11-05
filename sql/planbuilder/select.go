@@ -17,7 +17,6 @@ package planbuilder
 import (
 	"fmt"
 
-
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
