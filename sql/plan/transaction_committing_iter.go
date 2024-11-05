@@ -27,17 +27,3 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 	}
 	return sql.ConvertToBool(ctx, autoCommitSessionVar)
 }
-
-func ReadCommitted(ctx *sql.Context) bool {
-	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
-	if err != nil {
-		return false
-	}
-
-	valStr, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return valStr == "READ-COMMITTED"
-}
