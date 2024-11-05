@@ -17,6 +17,7 @@ package planbuilder
 import (
 	"fmt"
 
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -211,11 +212,10 @@ func (b *Builder) currentDb() sql.Database {
 		if err != nil {
 			b.handleErr(err)
 		}
-
-		if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
-			database = privilegedDatabase.Unwrap()
-		}
 		b.currentDatabase = database
+	}
+	if privilegedDatabase, ok := b.currentDatabase.(mysql_db.PrivilegedDatabase); ok {
+		b.currentDatabase = privilegedDatabase.Unwrap()
 	}
 	return b.currentDatabase
 }
