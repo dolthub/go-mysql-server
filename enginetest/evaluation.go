@@ -1106,11 +1106,11 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 	if sh, ok := harness.(SkippingHarness); ok {
 		if sh.SkipQueryTest(tt.WriteQuery) {
 			t.Logf("Skipping query %s", tt.WriteQuery)
-			return
+			t.Skip()
 		}
 		if sh.SkipQueryTest(tt.SelectQuery) {
 			t.Logf("Skipping query %s", tt.SelectQuery)
-			return
+			t.Skip()
 		}
 	}
 	ctx := NewContext(harness)
