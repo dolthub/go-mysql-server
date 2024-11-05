@@ -33,6 +33,7 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 }
 
 func ReadCommitted(ctx *sql.Context) bool {
+	return false // TODO: support read committed
 	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
 	if err != nil {
 		return false
