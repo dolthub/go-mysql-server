@@ -21,10 +21,6 @@ import (
 // IsSessionAutocommit returns true if the current session is using implicit transaction management
 // through autocommit.
 func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if ReadCommitted(ctx) {
-		return true, nil
-	}
-
 	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
 	if err != nil {
 		return false, err
@@ -33,7 +29,6 @@ func IsSessionAutocommit(ctx *sql.Context) (bool, error) {
 }
 
 func ReadCommitted(ctx *sql.Context) bool {
-	return false // TODO: support read committed
 	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
 	if err != nil {
 		return false

@@ -747,18 +747,19 @@ func (e *Engine) CloseSession(connID uint32) {
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context) error {
-	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
-	if beginNewTransaction {
-		ctx.GetLogger().Tracef("beginning new transaction")
-		ts, ok := ctx.Session.(sql.TransactionSession)
-		if ok {
-			tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
-			if err != nil {
-				return err
-			}
+	if ctx.GetTransaction() != nil {
+		return nil
+	}
 
-			ctx.SetTransaction(tx)
+	ctx.GetLogger().Tracef("beginning new transaction")
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if ok {
+		tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
+		if err != nil {
+			return err
 		}
+
+		ctx.SetTransaction(tx)
 	}
 
 	return nil
