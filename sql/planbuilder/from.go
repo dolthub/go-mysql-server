@@ -682,6 +682,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		asOfLit = asof
 	}
 
+
+	// TODO: even if it's a view here; it might not have been before?
 	if view := b.resolveView(name, database, asOfLit); view != nil {
 		// TODO: Schema name
 		return resolvedViewScope(outScope, view, db, name)
@@ -812,56 +814,74 @@ func resolvedViewScope(outScope *scope, view sql.Node, db string, name string) (
 	return outScope, true
 }
 
+func (b *Builder) resolveViewDef(name string, database sql.Database, viewDef sql.ViewDefinition, asOf interface{}) *sql.View {
+	oldOpts := b.parserOpts
+	defer func() {
+		b.parserOpts = oldOpts
+	}()
+	outerAsOf := b.ViewCtx().AsOf
+	outerDb := b.ViewCtx().DbName
+	b.ViewCtx().AsOf = asOf
+	b.ViewCtx().DbName = database.Name()
+	defer func() {
+		b.ViewCtx().AsOf = outerAsOf
+		b.ViewCtx().DbName = outerDb
+	}()
+	b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
+	stmt, _, _, err := b.parser.ParseWithOptions(b.ctx, viewDef.CreateViewStatement, ';', false, b.parserOpts)
+	if err != nil {
+		b.handleErr(err)
+	}
+	node, _, err := b.bindOnlyWithDatabase(database, stmt, viewDef.CreateViewStatement)
+	if err != nil {
+		// TODO: Need to account for non-existing functions or
+		//  users without appropriate privilege to the referenced table/column/function.
+		if sql.ErrTableNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
+			// TODO: ALTER VIEW should not return this error
+			err = sql.ErrInvalidRefInView.New(database.Name(), name)
+		}
+		b.handleErr(err)
+	}
+	create, ok := node.(*plan.CreateView)
+	if !ok {
+		err = fmt.Errorf("expected create view statement, found: %T", node)
+		b.handleErr(err)
+	}
+	switch n := create.Child.(type) {
+	case *plan.SubqueryAlias:
+		return n.AsView(viewDef.CreateViewStatement)
+	default:
+		view := plan.NewSubqueryAlias(name, create.Definition.TextDefinition, n).AsView(viewDef.CreateViewStatement)
+		b.qFlags.Set(sql.QFlagRelSubquery)
+		return view
+	}
+}
+
 func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {
 	var view *sql.View
 
-	if vdb, vok := database.(sql.ViewDatabase); vok {
+	if asOf != nil {
+		vdb, vok := database.(sql.VersionedViewDatabase)
+		if !vok {
+			b.handleErr(sql.ErrAsOfNotSupported.New(database.Name()))
+		}
+		viewDef, vdok, err := vdb.GetViewDefinitionAsOf(b.ctx, name, asOf)
+		if err != nil {
+			b.handleErr(err)
+		}
+		if vdok {
+			view = b.resolveViewDef(name, database, viewDef, asOf)
+		}
+	} else if vdb, vok := database.(sql.ViewDatabase); vok {
 		viewDef, vdok, err := vdb.GetViewDefinition(b.ctx, name)
 		if err != nil {
 			b.handleErr(err)
 		}
-		oldOpts := b.parserOpts
-		defer func() {
-			b.parserOpts = oldOpts
-		}()
 		if vdok {
-			outerAsOf := b.ViewCtx().AsOf
-			outerDb := b.ViewCtx().DbName
-			b.ViewCtx().AsOf = asOf
-			b.ViewCtx().DbName = database.Name()
-			defer func() {
-				b.ViewCtx().AsOf = outerAsOf
-				b.ViewCtx().DbName = outerDb
-			}()
-			b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
-			stmt, _, _, err := b.parser.ParseWithOptions(b.ctx, viewDef.CreateViewStatement, ';', false, b.parserOpts)
-			if err != nil {
-				b.handleErr(err)
-			}
-			node, _, err := b.bindOnlyWithDatabase(database, stmt, viewDef.CreateViewStatement)
-			if err != nil {
-				// TODO: Need to account for non-existing functions or
-				//  users without appropriate privilege to the referenced table/column/function.
-				if sql.ErrTableNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
-					// TODO: ALTER VIEW should not return this error
-					err = sql.ErrInvalidRefInView.New(database.Name(), name)
-				}
-				b.handleErr(err)
-			}
-			create, ok := node.(*plan.CreateView)
-			if !ok {
-				err = fmt.Errorf("expected create view statement, found: %T", node)
-				b.handleErr(err)
-			}
-			switch n := create.Child.(type) {
-			case *plan.SubqueryAlias:
-				view = n.AsView(viewDef.CreateViewStatement)
-			default:
-				view = plan.NewSubqueryAlias(name, create.Definition.TextDefinition, n).AsView(viewDef.CreateViewStatement)
-				b.qFlags.Set(sql.QFlagRelSubquery)
-			}
+			view = b.resolveViewDef(name, database, viewDef, asOf)
 		}
 	}
+
 	// If we didn't find the view from the database directly, use the in-session registry
 	if view == nil {
 		view, _ = b.ctx.GetViewRegistry().View(database.Name(), name)

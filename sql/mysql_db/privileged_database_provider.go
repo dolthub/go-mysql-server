@@ -150,6 +150,7 @@ var _ sql.ReadOnlyDatabase = PrivilegedDatabase{}
 var _ sql.TemporaryTableDatabase = PrivilegedDatabase{}
 var _ sql.CollatedDatabase = PrivilegedDatabase{}
 var _ sql.ViewDatabase = PrivilegedDatabase{}
+var _ sql.VersionedViewDatabase = PrivilegedDatabase{}
 var _ fulltext.Database = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
@@ -393,6 +394,14 @@ func (pdb PrivilegedDatabase) DropView(ctx *sql.Context, name string) error {
 		return db.DropView(ctx, name)
 	}
 	return sql.ErrViewsNotSupported.New(pdb.db.Name())
+}
+
+// GetViewDefinitionAsOf implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) GetViewDefinitionAsOf(ctx *sql.Context, viewName string, asOf interface{}) (sql.ViewDefinition, bool, error) {
+	if db, ok := pdb.db.(sql.VersionedViewDatabase); ok {
+		return db.GetViewDefinitionAsOf(ctx, viewName, asOf)
+	}
+	return sql.ViewDefinition{}, false, sql.ErrAsOfNotSupported.New(pdb.db.Name())
 }
 
 // GetViewDefinition implements sql.ViewDatabase

@@ -288,6 +288,14 @@ type EventDatabase interface {
 	NeedsToReloadEvents(ctx *Context, token interface{}) (bool, error)
 }
 
+// VersionedViewDatabase is a Database that can return views as they existed at different points in time.
+type VersionedViewDatabase interface {
+	ViewDatabase
+
+	// GetViewDefinitionAsOf retrieves the ViewDefinition with the name given at the asOf given.
+	GetViewDefinitionAsOf(ctx *Context, viewName string, asOf interface{}) (ViewDefinition, bool, error)
+}
+
 // ViewDatabase is implemented by databases that persist view definitions
 type ViewDatabase interface {
 	// CreateView persists the definition a view with the name and select statement given. If a view with that name
