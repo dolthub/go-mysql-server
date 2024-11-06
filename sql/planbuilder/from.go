@@ -862,7 +862,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 	if asOf != nil {
 		vdb, vok := database.(sql.VersionedViewDatabase)
 		if !vok {
-			b.handleErr(sql.ErrAsOfNotSupported.New(database.Name()))
+			return nil
 		}
 		viewDef, vdok, err := vdb.GetViewDefinitionAsOf(b.ctx, name, asOf)
 		if err != nil {

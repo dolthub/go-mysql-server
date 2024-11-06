@@ -589,12 +589,6 @@ func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	return views, nil
 }
 
-// GetViewDefinitionAsOf implements the interface sql.ViewDatabase.
-func (d *Database) GetViewDefinitionAsOf(ctx *sql.Context, viewName string, asOf interface{}) (sql.ViewDefinition, bool, error) {
-	viewDef, ok := d.views[strings.ToLower(viewName)]
-	return viewDef, ok, nil
-}
-
 // GetViewDefinition implements the interface sql.ViewDatabase.
 func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
 	viewDef, ok := d.views[strings.ToLower(viewName)]
