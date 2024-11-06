@@ -682,7 +682,6 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		asOfLit = asof
 	}
 
-	// TODO: even if it's a view here; it might not have been before?
 	if view := b.resolveView(name, database, asOfLit); view != nil {
 		// TODO: Schema name
 		return resolvedViewScope(outScope, view, db, name)

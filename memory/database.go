@@ -595,6 +595,13 @@ func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.Vie
 	return viewDef, ok, nil
 }
 
+// GetViewDefinitionAsOf implements the interface sql.ViewDatabase.
+func (d *Database) GetViewDefinitionAsOf(ctx *sql.Context, viewName string, asOf interface{}) (sql.ViewDefinition, bool, error) {
+	// TODO: gms in memory db doesn't actually support versioned views
+	viewDef, ok := d.views[strings.ToLower(viewName)]
+	return viewDef, ok, nil
+}
+
 type ReadOnlyDatabase struct {
 	*HistoryDatabase
 }

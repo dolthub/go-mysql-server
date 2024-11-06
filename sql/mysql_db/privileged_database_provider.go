@@ -401,7 +401,7 @@ func (pdb PrivilegedDatabase) GetViewDefinitionAsOf(ctx *sql.Context, viewName s
 	if db, ok := pdb.db.(sql.VersionedViewDatabase); ok {
 		return db.GetViewDefinitionAsOf(ctx, viewName, asOf)
 	}
-	return sql.ViewDefinition{}, false, nil
+	return sql.ViewDefinition{}, false, sql.ErrAsOfNotSupported.New(pdb.db.Name())
 }
 
 // GetViewDefinition implements sql.ViewDatabase
