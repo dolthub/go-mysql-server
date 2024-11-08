@@ -370,7 +370,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		// Copy over primary key schema ordinals
 		if pkTable, isPkTable := lTable.Table.(sql.PrimaryKeyTable); isPkTable {
 			for _, pkOrd := range pkTable.PrimaryKeySchema().PkOrdinals {
-				pkOrdinals = append(pkOrdinals, len(newSch) + pkOrd)
+				pkOrdinals = append(pkOrdinals, len(newSch)+pkOrd)
 			}
 		}
 
