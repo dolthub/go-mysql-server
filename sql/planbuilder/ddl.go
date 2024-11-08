@@ -452,11 +452,20 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		}
 	}
 
+	var hasSkippedCols bool
 	for _, col := range pkSch.Schema {
+		name := strings.ToLower(col.Name)
+		if _, ok := newSchMap[name]; ok {
+			// TODO: throw warning
+			hasSkippedCols = true
+			continue
+		}
 		newSch = append(newSch, col)
 	}
-	for _, pkOrd := range pkSch.PkOrdinals {
-		pkOrdinals = append(pkOrdinals, len(newSch)+pkOrd)
+	if !hasSkippedCols {
+		for _, pkOrd := range pkSch.PkOrdinals {
+			pkOrdinals = append(pkOrdinals, len(newSch)+pkOrd)
+		}
 	}
 
 	pkSchema := sql.NewPrimaryKeySchema(newSch, pkOrdinals...)
