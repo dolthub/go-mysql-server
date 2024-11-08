@@ -332,84 +332,108 @@ func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 }
 
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
-	outScope, ok := b.buildTablescan(inScope, ct.OptLike.LikeTable, nil)
-	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(ct.OptLike.LikeTable.Name.String()))
-	}
-
-	likeTable, ok := outScope.node.(*plan.ResolvedTable)
-	if !ok {
-		err := fmt.Errorf("expected resolved table: %s", ct.OptLike.LikeTable.Name.String())
-		b.handleErr(err)
-	}
-
+	database := b.resolveDbForTable(ct.Table)
 	newTableName := strings.ToLower(ct.Table.Name.String())
-	outScope.setTableAlias(newTableName)
 
-	var idxDefs sql.IndexDefs
-	if indexableTable, ok := likeTable.Table.(sql.IndexAddressableTable); ok {
-		indexes, err := indexableTable.GetIndexes(b.ctx)
-		if err != nil {
-			b.handleErr(err)
-		}
-		for _, index := range indexes {
-			if index.IsGenerated() {
-				continue
-			}
-			constraint := sql.IndexConstraint_None
-			if index.IsUnique() {
-				if index.ID() == "PRIMARY" {
-					constraint = sql.IndexConstraint_Primary
-				} else {
-					constraint = sql.IndexConstraint_Unique
-				}
-			}
-
-			columns := make([]sql.IndexColumn, len(index.Expressions()))
-			for i, col := range index.Expressions() {
-				//TODO: find a better way to get only the column name if the table is present
-				col = strings.TrimPrefix(col, indexableTable.Name()+".")
-				columns[i] = sql.IndexColumn{Name: col}
-			}
-			idxDefs = append(idxDefs, &sql.IndexDef{
-				Name:       index.ID(),
-				Storage:    sql.IndexUsing_Default,
-				Constraint: constraint,
-				Columns:    columns,
-				Comment:    index.Comment(),
-			})
-		}
-	}
-	origSch := likeTable.Schema()
-	newSch := make(sql.Schema, len(origSch))
-	for i, col := range origSch {
-		tempCol := *col
-		tempCol.Source = newTableName
-		newSch[i] = &tempCol
+	var pkSch sql.PrimaryKeySchema
+	var coll sql.CollationID
+	var comment string
+	outScope := inScope.push()
+	if ct.TableSpec != nil {
+		pkSch, coll, _ = b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(ct.Table.Name.String()), ct.TableSpec, false)
 	}
 
+	var ok bool
 	var pkOrdinals []int
-	if pkTable, ok := likeTable.Table.(sql.PrimaryKeyTable); ok {
-		pkOrdinals = pkTable.PrimaryKeySchema().PkOrdinals
-	}
-
+	newSch := pkSch.Schema
+	var idxDefs sql.IndexDefs
 	var checkDefs []*sql.CheckConstraint
-	if checksTable, ok := likeTable.Table.(sql.CheckTable); ok {
-		checks, err := checksTable.GetChecks(b.ctx)
-		if err != nil {
+	for _, likeTable := range ct.OptLike.LikeTables {
+		outScope, ok = b.buildTablescan(outScope, likeTable, nil)
+		if !ok {
+			b.handleErr(sql.ErrTableNotFound.New(likeTable.Name.String()))
+		}
+		lTable, isResTbl := outScope.node.(*plan.ResolvedTable)
+		if !isResTbl {
+			err := fmt.Errorf("expected resolved table: %s", likeTable.Name.String())
 			b.handleErr(err)
 		}
 
-		for _, check := range checks {
-			checkConstraint := b.buildCheckConstraint(outScope, &check)
+		if coll == sql.Collation_Unspecified {
+			coll = lTable.Collation()
+		}
+
+		if comment == "" {
+			comment = lTable.Comment()
+		}
+
+		// Copy over primary key schema ordinals
+		if pkTable, isPkTable := lTable.Table.(sql.PrimaryKeyTable); isPkTable {
+			for _, pkOrd := range pkTable.PrimaryKeySchema().PkOrdinals {
+				pkOrdinals = append(pkOrdinals, len(newSch) + pkOrd)
+			}
+		}
+
+		// Deep copy columns from schema
+		for _, col := range lTable.Schema() {
+			newCol := *col
+			newCol.Source = newTableName
+			newSch = append(newSch, &newCol)
+		}
+
+		// Load index definitions
+		if idxTbl, isIdxTbl := lTable.Table.(sql.IndexAddressableTable); isIdxTbl {
+			idxs, err := idxTbl.GetIndexes(b.ctx)
 			if err != nil {
 				b.handleErr(err)
 			}
+			for _, idx := range idxs {
+				if idx.IsGenerated() {
+					continue
+				}
+				constraint := sql.IndexConstraint_None
+				if idx.IsUnique() {
+					if idx.ID() == "PRIMARY" {
+						// TODO: deal with multiple primary key constraints?
+						constraint = sql.IndexConstraint_Primary
+					} else {
+						constraint = sql.IndexConstraint_Unique
+					}
+				}
 
-			// Prevent a name collision between old and new checks.
-			// New check will be assigned a name during building.
-			checkConstraint.Name = ""
-			checkDefs = append(checkDefs, checkConstraint)
+				columns := make([]sql.IndexColumn, len(idx.Expressions()))
+				for i, col := range idx.Expressions() {
+					//TODO: find a better way to get only the column name if the table is present
+					col = strings.TrimPrefix(col, idxTbl.Name()+".")
+					columns[i] = sql.IndexColumn{Name: col}
+				}
+				idxDefs = append(idxDefs, &sql.IndexDef{
+					Name:       idx.ID(),
+					Storage:    sql.IndexUsing_Default,
+					Constraint: constraint,
+					Columns:    columns,
+					Comment:    idx.Comment(),
+				})
+			}
+		}
+
+		// Load check constraints
+		if chkTable, isChkTable := lTable.Table.(sql.CheckTable); isChkTable {
+			checks, err := chkTable.GetChecks(b.ctx)
+			if err != nil {
+				b.handleErr(err)
+			}
+			for _, check := range checks {
+				checkConstraint := b.buildCheckConstraint(outScope, &check)
+				if err != nil {
+					b.handleErr(err)
+				}
+
+				// Prevent a name collision between old and new checks.
+				// New check name will be assigned a name during building.
+				checkConstraint.Name = ""
+				checkDefs = append(checkDefs, checkConstraint)
+			}
 		}
 	}
 
@@ -420,13 +444,13 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		Schema:    pkSchema,
 		IdxDefs:   idxDefs,
 		ChDefs:    checkDefs,
-		Collation: likeTable.Collation(),
-		Comment:   likeTable.Comment(),
+		Collation: coll,
+		Comment:   comment,
 	}
 
-	database := b.resolveDbForTable(ct.Table)
-
 	b.qFlags.Set(sql.QFlagSetDatabase)
+
+	outScope.setTableAlias(newTableName)
 	outScope.node = plan.NewCreateTable(database, newTableName, ct.IfNotExists, ct.Temporary, tableSpec)
 	return outScope
 }
