@@ -345,7 +345,8 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 
 	var ok bool
 	var pkOrdinals []int
-	newSch := pkSch.Schema
+	var newSch sql.Schema
+	newSchMap := make(map[string]struct{})
 	var idxDefs sql.IndexDefs
 	var checkDefs []*sql.CheckConstraint
 	for _, likeTable := range ct.OptLike.LikeTables {
@@ -367,18 +368,32 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 			comment = lTable.Comment()
 		}
 
+		schOff := len(newSch)
+		hasSkippedCols := false
+		for _, col := range lTable.Schema() {
+			newCol := *col
+			name := strings.ToLower(newCol.Name)
+			if _, ok := newSchMap[name]; ok {
+				// TODO: throw warning
+				hasSkippedCols = true
+				continue
+			}
+			newSchMap[name] = struct{}{}
+			newCol.Source = newTableName
+			newSch = append(newSch, &newCol)
+		}
+
+		// if a column was skipped due to duplicates, don't copy over PK ords, idxDefs, or checkDefs
+		// since they might be incorrect
+		if hasSkippedCols {
+			continue
+		}
+
 		// Copy over primary key schema ordinals
 		if pkTable, isPkTable := lTable.Table.(sql.PrimaryKeyTable); isPkTable {
 			for _, pkOrd := range pkTable.PrimaryKeySchema().PkOrdinals {
-				pkOrdinals = append(pkOrdinals, len(newSch)+pkOrd)
+				pkOrdinals = append(pkOrdinals, schOff+pkOrd)
 			}
-		}
-
-		// Deep copy columns from schema
-		for _, col := range lTable.Schema() {
-			newCol := *col
-			newCol.Source = newTableName
-			newSch = append(newSch, &newCol)
 		}
 
 		// Load index definitions
@@ -403,7 +418,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 
 				columns := make([]sql.IndexColumn, len(idx.Expressions()))
 				for i, col := range idx.Expressions() {
-					//TODO: find a better way to get only the column name if the table is present
+					// TODO: find a better way to get only the column name if the table is present
 					col = strings.TrimPrefix(col, idxTbl.Name()+".")
 					columns[i] = sql.IndexColumn{Name: col}
 				}
@@ -435,6 +450,13 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 				checkDefs = append(checkDefs, checkConstraint)
 			}
 		}
+	}
+
+	for _, col := range pkSch.Schema {
+		newSch = append(newSch, col)
+	}
+	for _, pkOrd := range pkSch.PkOrdinals {
+		pkOrdinals = append(pkOrdinals, len(newSch) + pkOrd)
 	}
 
 	pkSchema := sql.NewPrimaryKeySchema(newSch, pkOrdinals...)
