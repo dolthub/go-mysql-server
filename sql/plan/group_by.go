@@ -104,11 +104,6 @@ func (g *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewGroupBy(g.SelectedExprs, g.GroupByExprs, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (g *GroupBy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return g.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (g *GroupBy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, g.Child)

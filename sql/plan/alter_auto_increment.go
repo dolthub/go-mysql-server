@@ -59,15 +59,6 @@ func (p *AlterAutoIncrement) IsReadOnly() bool {
 	return false
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *AlterAutoIncrement) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: p.Database().Name(),
-		Table:    getTableName(p.Table),
-	}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (p *AlterAutoIncrement) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

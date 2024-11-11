@@ -58,11 +58,6 @@ func (sv *ShowVariables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sv, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sv *ShowVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowVariables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

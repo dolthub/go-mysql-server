@@ -92,13 +92,3 @@ func (n *CreateSpatialRefSys) WithChildren(children ...sql.Node) (sql.Node, erro
 	nn := *n
 	return &nn, nil
 }
-
-// CheckPrivileges implements the interface sql.Node
-func (n *CreateSpatialRefSys) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: "mysql",
-		Table:    "st_spatial_references_systems",
-	}
-
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Insert))
-}

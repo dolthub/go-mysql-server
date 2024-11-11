@@ -53,11 +53,6 @@ func (h *Having) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewHaving(h.Cond, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (h *Having) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return h.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (h *Having) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, h.Child)

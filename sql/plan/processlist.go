@@ -58,11 +58,6 @@ func (p *ShowProcessList) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *ShowProcessList) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Process))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowProcessList) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

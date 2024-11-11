@@ -69,17 +69,6 @@ func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) 
 	return NillaryWithChildren(p, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *CreateForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: p.FkDef.ParentDatabase,
-		Table:    p.FkDef.ParentTable,
-	}
-
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_References))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*CreateForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -368,16 +357,6 @@ func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(p, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *DropForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: p.database,
-		Table:    p.Table,
-	}
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DropForeignKey) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -448,15 +427,6 @@ func (p *RenameForeignKey) Database() string {
 // WithChildren implements the interface sql.Node.
 func (p *RenameForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(p, children...)
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (p *RenameForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: p.database,
-		Table:    p.Table,
-	}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -49,12 +49,6 @@ func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *ShowIndexes) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: figure out what privileges are required
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowIndexes) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

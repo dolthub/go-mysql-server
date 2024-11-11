@@ -231,7 +231,8 @@ func TestTrackProcess(t *testing.T) {
 	require.True(ok)
 
 	iter, err := rowexec.DefaultBuilder.Build(ctx, result, nil)
-	iter = finalizeIters(ctx, result, nil, iter)
+	require.NoError(err)
+	iter, _ = rowexec.FinalizeIters(ctx, result, nil, iter)
 	require.NoError(err)
 	_, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)

@@ -98,16 +98,6 @@ func (n *ShowGrants) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	if n.CurrentUser {
-		return true
-	}
-
-	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Select))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ShowGrants) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

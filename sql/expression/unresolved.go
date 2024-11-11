@@ -203,12 +203,6 @@ func (utf *UnresolvedTableFunction) WithChildren(node ...sql.Node) (sql.Node, er
 	panic("no expected children for unresolved table function")
 }
 
-// CheckPrivileges implements the Node interface
-func (utf UnresolvedTableFunction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	panic("attempting to check privileges on an unresolved table function")
-	return false
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (UnresolvedTableFunction) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

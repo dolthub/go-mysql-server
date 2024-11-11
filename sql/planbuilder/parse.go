@@ -39,7 +39,7 @@ func Parse(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, *sql.Quer
 
 func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (sql.Node, *sql.QueryFlags, error) {
 	// TODO: need correct parser
-	b := New(ctx, cat, sql.NewMysqlParser())
+	b := New(ctx, cat, nil, nil)
 	b.SetParserOptions(options)
 	node, _, _, qFlags, err := b.Parse(query, nil, false)
 	return node, qFlags, err
@@ -65,6 +65,11 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	span, ctx := b.ctx.Span("parse", otel.WithAttributes(attribute.String("query", query)))
 	defer span.End()
 
+	if b.authQueryState != nil {
+		if err = b.authQueryState.Error(); err != nil {
+			b.handleErr(err)
+		}
+	}
 	stmt, parsed, remainder, err := b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
 	if err != nil {
 		if goerrors.Is(err, ast.ErrEmpty) {
@@ -95,6 +100,11 @@ func (b *Builder) BindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFl
 			}
 		}
 	}()
+	if b.authQueryState != nil {
+		if err = b.authQueryState.Error(); err != nil {
+			b.handleErr(err)
+		}
+	}
 	if queryFlags != nil {
 		b.qFlags = queryFlags
 	}

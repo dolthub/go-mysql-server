@@ -93,11 +93,6 @@ func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewWindow(w.SelectExprs, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (w *Window) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return w.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (w *Window) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, w.Child)

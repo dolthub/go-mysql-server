@@ -442,7 +442,7 @@ func TestAnalyzer_Exp(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := enginetest.NewContext(harness)
-			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, sql.NewMysqlParser())
+			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, e.EngineEventScheduler(), nil)
 			parsed, _, _, _, err := b.Parse(tt.query, nil, false)
 			require.NoError(t, err)
 
@@ -864,10 +864,6 @@ func (s SimpleTableFunction) Children() []sql.Node {
 
 func (s SimpleTableFunction) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return s, nil
-}
-
-func (s SimpleTableFunction) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
-	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

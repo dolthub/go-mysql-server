@@ -15,7 +15,6 @@
 package planbuilder
 
 import (
-	"fmt"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -638,6 +637,6 @@ func (c scopeColumn) String() string {
 	if c.table == "" {
 		return c.col
 	} else {
-		return fmt.Sprintf("%s.%s", c.table, c.col)
+		return c.table + "." + c.col
 	}
 }

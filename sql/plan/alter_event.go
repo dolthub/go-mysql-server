@@ -31,7 +31,6 @@ import (
 var _ sql.Node = (*AlterEvent)(nil)
 var _ sql.Expressioner = (*AlterEvent)(nil)
 var _ sql.Databaser = (*AlterEvent)(nil)
-var _ sql.EventSchedulerStatement = (*AlterEvent)(nil)
 
 type AlterEvent struct {
 	ddlNode
@@ -71,6 +70,7 @@ type AlterEvent struct {
 // NewAlterEvent returns a *AlterEvent node.
 func NewAlterEvent(
 	db sql.Database,
+	es sql.EventScheduler,
 	name, definer string,
 	alterSchedule bool,
 	at, starts, ends *OnScheduleTimestamp,
@@ -89,6 +89,7 @@ func NewAlterEvent(
 ) *AlterEvent {
 	return &AlterEvent{
 		ddlNode:          ddlNode{db},
+		scheduler:        es,
 		EventName:        name,
 		Definer:          definer,
 		AlterOnSchedule:  alterSchedule,
@@ -212,18 +213,6 @@ func (a *AlterEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
 	na := *a
 	na.DefinitionNode = children[0]
 	return &na, nil
-}
-
-// CheckPrivileges implements the sql.Node interface.
-func (a *AlterEvent) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{Database: a.Db.Name()}
-	hasPriv := opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Event))
-
-	if a.AlterName && a.RenameToDb != "" {
-		subject = sql.PrivilegeCheckSubject{Database: a.RenameToDb}
-		hasPriv = hasPriv && opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Event))
-	}
-	return hasPriv
 }
 
 // Database implements the sql.Databaser interface.
@@ -401,13 +390,6 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	}
 
 	return &na, nil
-}
-
-// WithEventScheduler is used to notify EventSchedulerStatus to update the events list for ALTER EVENT.
-func (a *AlterEvent) WithEventScheduler(scheduler sql.EventScheduler) sql.Node {
-	na := *a
-	na.scheduler = scheduler
-	return &na
 }
 
 // alterEventIter is the row iterator for *CreateEvent.

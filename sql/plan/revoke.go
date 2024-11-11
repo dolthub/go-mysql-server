@@ -36,6 +36,7 @@ type Revoke struct {
 var _ sql.Node = (*Revoke)(nil)
 var _ sql.Databaser = (*Revoke)(nil)
 var _ sql.CollationCoercible = (*Revoke)(nil)
+var _ sql.AuthorizationCheckerNode = (*Revoke)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *Revoke) Schema() sql.Schema {
@@ -86,8 +87,8 @@ func (n *Revoke) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *Revoke) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
 	if opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update)) {
@@ -431,6 +432,7 @@ type RevokeAll struct {
 
 var _ sql.Node = (*RevokeAll)(nil)
 var _ sql.CollationCoercible = (*RevokeAll)(nil)
+var _ sql.AuthorizationCheckerNode = (*RevokeAll)(nil)
 
 // NewRevokeAll returns a new RevokeAll node.
 func NewRevokeAll(users []UserName) *RevokeAll {
@@ -475,8 +477,8 @@ func (n *RevokeAll) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *RevokeAll) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *RevokeAll) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	createUser := sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_CreateUser)
 	superUser := sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)
 
@@ -503,6 +505,7 @@ type RevokeRole struct {
 var _ sql.Node = (*RevokeRole)(nil)
 var _ sql.Databaser = (*RevokeRole)(nil)
 var _ sql.CollationCoercible = (*RevokeRole)(nil)
+var _ sql.AuthorizationCheckerNode = (*RevokeRole)(nil)
 
 // NewRevokeRole returns a new RevokeRole node.
 func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
@@ -566,8 +569,8 @@ func (n *RevokeRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *RevokeRole) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) {
 		return true
@@ -616,6 +619,7 @@ type RevokeProxy struct {
 
 var _ sql.Node = (*RevokeProxy)(nil)
 var _ sql.CollationCoercible = (*RevokeProxy)(nil)
+var _ sql.AuthorizationCheckerNode = (*RevokeProxy)(nil)
 
 // NewRevokeProxy returns a new RevokeProxy node.
 func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
@@ -661,8 +665,8 @@ func (n *RevokeProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *RevokeProxy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *RevokeProxy) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: add this when proxy support is added
 	return true
 }

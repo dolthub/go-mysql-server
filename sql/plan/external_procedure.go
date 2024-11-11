@@ -94,12 +94,6 @@ func (n *ExternalProcedure) WithExpressions(expressions ...sql.Expression) (sql.
 	return &nn, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *ExternalProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: when DEFINER is implemented for stored procedures then this should be added
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*ExternalProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

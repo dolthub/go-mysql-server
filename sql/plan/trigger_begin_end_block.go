@@ -43,11 +43,6 @@ func (b *TriggerBeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, err
 	return NewTriggerBeginEndBlock(NewBeginEndBlock(b.BeginEndBlock.Label, NewBlock(children))), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (b *TriggerBeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return b.Block.CheckPrivileges(ctx, opChecker)
-}
-
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (b *TriggerBeginEndBlock) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nb := *b

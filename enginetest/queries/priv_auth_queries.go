@@ -1780,10 +1780,10 @@ var UserPrivTests = []UserPrivilegeTest{
 				},
 			},
 			{
-				User:        "rand_user1",
-				Host:        "54.244.85.252",
-				Query:       "SELECT * FROM mydb.test;",
-				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+				User:           "rand_user1",
+				Host:           "54.244.85.252",
+				Query:          "SELECT * FROM mydb.test;",
+				ExpectedErrStr: "Access denied for user 'rand_user1' (errno 1045) (sqlstate 28000)",
 			},
 			{
 				User:  "rand_user2",
@@ -1804,10 +1804,10 @@ var UserPrivTests = []UserPrivilegeTest{
 				},
 			},
 			{
-				User:        "rand_user2",
-				Host:        "54.244.85.252",
-				Query:       "SELECT * FROM mydb.test2;",
-				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+				User:           "rand_user2",
+				Host:           "54.244.85.252",
+				Query:          "SELECT * FROM mydb.test2;",
+				ExpectedErrStr: "Access denied for user 'rand_user2' (errno 1045) (sqlstate 28000)",
 			},
 		},
 	},
@@ -2265,6 +2265,24 @@ FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'te
       UNION ALL
       (SELECT 1 as found FROM information_schema.events WHERE event_schema = 'testdb' LIMIT 1)) as all_found;`,
 				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	{
+		Name: "Test user creation with hashed password",
+		SetUpScript: []string{
+			"CREATE USER 'lol'@'%' IDENTIFIED WITH mysql_native_password AS '*91D9861DFC07DD967611B8C96953474EF270AD5E';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query: "SELECT User, plugin, authentication_string FROM mysql.user WHERE User = 'lol';",
+				Expected: []sql.Row{
+					{
+						"lol",                   // User
+						"mysql_native_password", // plugin
+						"*91D9861DFC07DD967611B8C96953474EF270AD5E", // authentication_string
+					},
+				},
 			},
 		},
 	},

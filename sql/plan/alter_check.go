@@ -101,16 +101,6 @@ func (c *CreateCheck) Children() []sql.Node {
 	return []sql.Node{c.Table}
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := c.Table.Database()
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(db),
-		Table:    getTableName(c.Table),
-	}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *CreateCheck) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -138,17 +128,6 @@ func (d *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
 	return NewAlterDropCheck(children[0].(*ResolvedTable), d.Name), nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (d *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := d.Table.Database()
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(db),
-		Table:    getTableName(d.Table),
-	}
-
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -214,16 +193,6 @@ func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nd := &d
 	nd.UnaryNode = UnaryNode{children[0]}
 	return nd, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (d *DropConstraint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	db := GetDatabase(d.Child)
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(db),
-		Table:    getTableName(d.Child),
-	}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Alter))
 }
 
 func (d *DropConstraint) IsReadOnly() bool { return false }

@@ -107,14 +107,6 @@ func (cv *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newCreate, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (cv *CreateView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{Database: cv.database.Name()}
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_CreateView)) &&
-		cv.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*CreateView) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

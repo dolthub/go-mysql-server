@@ -21,7 +21,6 @@ func init() {
 		{resolveInsertRowsId, resolveInsertRows},
 		{applyTriggersId, applyTriggers},
 		{applyProceduresId, applyProcedures},
-		{applyUpdateAccumulatorsId, applyUpdateAccumulators},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
 		{BacktickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
@@ -34,7 +33,6 @@ func init() {
 var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{replaceCountStarId, replaceCountStar},
-	{applyEventSchedulerId, applyEventScheduler},
 	{validateOffsetAndLimitId, validateOffsetAndLimit},
 	{validateCreateTableId, validateCreateTable},
 	{validateAlterTableId, validateAlterTable},
@@ -46,16 +44,14 @@ var OnceBeforeDefault = []Rule{
 	{resolveCreateSelectId, resolveCreateSelect},
 	{validateDropConstraintId, validateDropConstraint},
 	{resolveUnionsId, resolveUnions},
-	{resolveDescribeQueryId, resolveDescribeQuery}, //TODO
 	{validateCreateTriggerId, validateCreateTrigger},
 	{ValidateColumnDefaultsId, validateColumnDefaults},
 	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
 	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
 	{validateDatabaseSetId, validateDatabaseSet},
 	{validateDeleteFromId, validateDeleteFrom},
-	{validatePrivilegesId, validatePrivileges}, // Ensure that checking privileges happens after db, table  & table function resolution
-	{simplifyFiltersId, simplifyFilters},       //TODO inline?
-	{pushNotFiltersId, pushNotFilters},         //TODO inline?
+	{simplifyFiltersId, simplifyFilters}, //TODO inline?
+	{pushNotFiltersId, pushNotFilters},   //TODO inline?
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
 }
 

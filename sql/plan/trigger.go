@@ -88,17 +88,6 @@ func (t *TriggerExecutor) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewTriggerExecutor(children[0], children[1], t.TriggerEvent, t.TriggerTime, t.TriggerDefinition), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *TriggerExecutor) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// TODO: Figure out exactly how triggers work, not exactly clear whether trigger creator AND user needs the privileges
-	subject := sql.PrivilegeCheckSubject{
-		Database: GetDatabaseName(t.right),
-		Table:    getTableName(t.right),
-	}
-	return t.left.CheckPrivileges(ctx, opChecker) &&
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Trigger))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t *TriggerExecutor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, t.left)

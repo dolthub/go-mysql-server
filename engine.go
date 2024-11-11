@@ -209,7 +209,7 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	node, _, err := binder.BindOnly(stmt, query, nil)
 
 	if err != nil {
@@ -443,13 +443,24 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		if err2 != nil {
 			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
-
 		return nil, nil, nil, err
 	}
 
-	iter = finalizeIters(ctx, analyzed, qFlags, iter)
+	var schema sql.Schema
+	iter, schema = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+		}
+		return nil, nil, nil, err
+	}
 
-	return analyzed.Schema(), iter, qFlags, nil
+	if schema == nil {
+		schema = analyzed.Schema()
+	}
+
+	return schema, iter, qFlags, nil
 }
 
 // PrepQueryPlanForExecution prepares a query plan for execution and returns the result schema with a row iterator to
@@ -478,13 +489,24 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		if err2 != nil {
 			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
-
 		return nil, nil, nil, err
 	}
 
-	iter = finalizeIters(ctx, plan, qFlags, iter)
+	var schema sql.Schema
+	iter, schema = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+clearAutocommitErr.Error())
+		}
+		return nil, nil, nil, err
+	}
 
-	return plan.Schema(), iter, qFlags, nil
+	if schema == nil {
+		schema = plan.Schema()
+	}
+
+	return schema, iter, qFlags, nil
 }
 
 // BoundQueryPlan returns query plan for the given statement with the given bindings applied
@@ -495,7 +517,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
@@ -549,7 +571,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 	}
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	if preparedDataFound {
 		parsed = preparedAst
 		binder.SetBindings(bindings)
@@ -725,18 +747,19 @@ func (e *Engine) CloseSession(connID uint32) {
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context) error {
-	beginNewTransaction := ctx.GetTransaction() == nil || plan.ReadCommitted(ctx)
-	if beginNewTransaction {
-		ctx.GetLogger().Tracef("beginning new transaction")
-		ts, ok := ctx.Session.(sql.TransactionSession)
-		if ok {
-			tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
-			if err != nil {
-				return err
-			}
+	if ctx.GetTransaction() != nil {
+		return nil
+	}
 
-			ctx.SetTransaction(tx)
+	ctx.GetLogger().Tracef("beginning new transaction")
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if ok {
+		tx, err := ts.StartTransaction(ctx, sql.ReadWrite)
+		if err != nil {
+			return err
 		}
+
+		ctx.SetTransaction(tx)
 	}
 
 	return nil
@@ -782,6 +805,10 @@ func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
 	return e.Analyzer
 }
 
+func (e *Engine) EngineEventScheduler() sql.EventScheduler {
+	return e.EventScheduler
+}
+
 // InitializeEventScheduler initializes the EventScheduler for the engine with the given sql.Context
 // getter function, |ctxGetterFunc, the EventScheduler |status|, and the |period| for the event scheduler
 // to check for events to execute. If |period| is less than 1, then it is ignored and the default period
@@ -792,8 +819,6 @@ func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, fu
 	if err != nil {
 		return err
 	}
-
-	e.Analyzer.EventScheduler = e.EventScheduler
 	return nil
 }
 
@@ -830,7 +855,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 		return err
 	}
 
-	iter = finalizeIters(ctx, definitionNode, nil, iter)
+	iter, _ = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
 
 	// Drain the iterate to execute the event body/definition
 	// NOTE: No row data is returned for an event; we just need to execute the statements
@@ -862,13 +887,4 @@ func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 	}
 
 	return createEventNode, nil
-}
-
-// finalizeIters applies the final transformations on sql.RowIter before execution.
-func finalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
-	iter = rowexec.AddTriggerRollbackIter(ctx, qFlags, iter)
-	iter = rowexec.AddTransactionCommittingIter(qFlags, iter)
-	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
-	iter = rowexec.AddExpressionCloser(analyzed, iter)
-	return iter
 }

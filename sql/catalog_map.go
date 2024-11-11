@@ -148,3 +148,7 @@ func (t MapCatalog) DropDbStats(ctx *Context, db string, flush bool) error {
 	//TODO implement me
 	panic("implement me")
 }
+
+func (t MapCatalog) AuthorizationHandler() AuthorizationHandler {
+	return GetAuthorizationHandlerFactory().CreateHandler(t)
+}

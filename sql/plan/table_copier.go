@@ -74,10 +74,7 @@ func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilde
 	// TODO: Improve parsing for CREATE TABLE SELECT to allow for IGNORE/REPLACE and custom specs
 	ii := NewInsertInto(tc.db, NewResolvedTable(table, tc.db, nil), tc.Source, tc.options.replace, nil, nil, tc.options.ignore)
 
-	// Wrap the insert into a row update accumulator
-	roa := NewRowUpdateAccumulator(ii, UpdateTypeInsert)
-
-	return b.Build(ctx, roa, row)
+	return b.Build(ctx, ii, row)
 }
 
 // createTableSelectCanBeCopied determines whether the newly created table's data can just be copied from the Source table
@@ -138,14 +135,6 @@ func (tc *TableCopier) Children() []sql.Node {
 
 func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 	return tc, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: add a new branch when the INSERT optimization is added
-	subject := sql.PrivilegeCheckSubject{Database: tc.db.Name()}
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Create)) &&
-		tc.Source.CheckPrivileges(ctx, opChecker)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

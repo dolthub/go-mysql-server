@@ -77,7 +77,3 @@ func (t *TableCountLookup) Children() []sql.Node {
 func (t *TableCountLookup) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
-
-func (t *TableCountLookup) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
-	return true
-}

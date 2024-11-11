@@ -272,6 +272,9 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 	// build individual table, collect column definitions
 	switch t := (te).(type) {
 	case *ast.AliasedTableExpr:
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, t.Auth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
 		switch e := t.Expr.(type) {
 		case ast.TableName:
 			tableName := strings.ToLower(e.Name.String())
@@ -494,6 +497,11 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	if ctf, isCTF := newInstance.(sql.CatalogTableFunction); isCTF {
 		newInstance, err = ctf.WithCatalog(b.cat)
 		if err != nil {
+			b.handleErr(err)
+		}
+	}
+	if authCheckerNode, ok := newInstance.(sql.AuthorizationCheckerNode); ok {
+		if err = b.cat.AuthorizationHandler().HandleAuthNode(b.ctx, b.authQueryState, authCheckerNode); err != nil {
 			b.handleErr(err)
 		}
 	}
@@ -843,6 +851,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			create, ok := node.(*plan.CreateView)
 			if !ok {
 				err = fmt.Errorf("expected create view statement, found: %T", node)
+				b.handleErr(err)
 			}
 			switch n := create.Child.(type) {
 			case *plan.SubqueryAlias:

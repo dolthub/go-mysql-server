@@ -104,11 +104,6 @@ func (d *DeclareHandler) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nd, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DeclareHandler) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DeclareHandler) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

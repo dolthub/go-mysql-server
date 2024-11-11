@@ -49,11 +49,6 @@ func (sc *ShowCharset) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sc, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sc *ShowCharset) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 func (sc *ShowCharset) IsReadOnly() bool {
 	return true
 }

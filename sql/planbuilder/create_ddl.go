@@ -279,6 +279,7 @@ func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery st
 
 	outScope.node = plan.NewCreateEvent(
 		database,
+		b.scheduler,
 		eventSpec.EventName.Name.String(), definer,
 		at, starts, ends, everyInterval,
 		onCompletionPreserve,
@@ -419,7 +420,9 @@ func (b *Builder) buildAlterEvent(inScope *scope, subQuery string, fullQuery str
 
 	outScope = inScope.push()
 	alterEvent := plan.NewAlterEvent(
-		database, eventName, definer,
+		database,
+		b.scheduler,
+		eventName, definer,
 		alterSchedule, at, starts, ends, everyInterval,
 		alterOnComp, newOnCompPreserve,
 		alterEventName, newName,

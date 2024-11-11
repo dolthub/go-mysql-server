@@ -253,11 +253,6 @@ func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
-// CheckPrivileges implements the sql.Node interface
-func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*JSONTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

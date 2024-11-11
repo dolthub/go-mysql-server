@@ -1939,6 +1939,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
 				triggerSqlMode := NewSqlModeFromString(trigger.SqlMode)
+				// TODO: figure out how auth works in this case
 				parsedTrigger, _, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
 				if err != nil {
 					return nil, err

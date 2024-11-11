@@ -26,6 +26,9 @@ import (
 )
 
 func (b *Builder) buildUse(inScope *scope, n *ast.Use) (outScope *scope) {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
 	name := n.DBName.String()
 	ret := plan.NewUse(b.resolveDb(name))
 	ret.Catalog = b.cat

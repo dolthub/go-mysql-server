@@ -88,11 +88,6 @@ func (n *NamedWindows) WithChildren(nodes ...sql.Node) (sql.Node, error) {
 	return NewNamedWindows(n.WindowDefs, nodes[0]), nil
 }
 
-// CheckPrivileges implements sql.Node
-func (n *NamedWindows) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return n.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (n *NamedWindows) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, n.Child)

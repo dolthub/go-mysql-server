@@ -286,9 +286,6 @@ type Analyzer struct {
 	Coster memo.Coster
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
 	ExecBuilder sql.NodeExecBuilder
-	// EventScheduler is used to communiate with the event scheduler
-	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
-	EventScheduler sql.EventScheduler
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
@@ -463,9 +460,14 @@ func newInsertSourceSelector(sel RuleSelector) RuleSelector {
 
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
-func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *plan.Scope, qFlags *sql.QueryFlags) (sql.Node, error) {
-	n, _, err := a.analyzeWithSelector(ctx, n, scope, SelectAllBatches, DefaultRuleSelector, qFlags)
-	return n, err
+func (a *Analyzer) Analyze(ctx *sql.Context, node sql.Node, scope *plan.Scope, qFlags *sql.QueryFlags) (sql.Node, error) {
+	switch n := node.(type) {
+	case *plan.DescribeQuery:
+		child, _, err := a.analyzeWithSelector(ctx, n.Query(), scope, SelectAllBatches, DefaultRuleSelector, qFlags)
+		return n.WithQuery(child), err
+	}
+	node, _, err := a.analyzeWithSelector(ctx, node, scope, SelectAllBatches, DefaultRuleSelector, qFlags)
+	return node, err
 }
 
 func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *plan.Scope, until string, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {

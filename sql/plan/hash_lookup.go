@@ -104,11 +104,6 @@ func (n *HashLookup) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *HashLookup) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return n.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (n *HashLookup) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, n.Child)

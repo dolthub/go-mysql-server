@@ -134,11 +134,6 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewUpdateSource(children[0], u.Ignore, u.UpdateExprs), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (u *UpdateSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return u.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (u *UpdateSource) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, u.Child)

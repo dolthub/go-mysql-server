@@ -84,11 +84,6 @@ func (n *AnalyzeTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *AnalyzeTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*AnalyzeTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

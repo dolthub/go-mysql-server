@@ -110,17 +110,6 @@ func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nc, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *CreateTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: GetDatabaseName(c.Table),
-		Table:    getTableName(c.Table),
-	}
-
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Trigger))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*CreateTrigger) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

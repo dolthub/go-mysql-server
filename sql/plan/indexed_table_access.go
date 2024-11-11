@@ -247,10 +247,6 @@ func (i *IndexedTableAccess) Database() sql.Database {
 	return i.TableNode.Database()
 }
 
-func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return i.TableNode.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (i *IndexedTableAccess) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return i.TableNode.CollationCoercibility(ctx)

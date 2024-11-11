@@ -90,13 +90,6 @@ func (u *Use) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return u, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (u *Use) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// The given database will not be visible if the user does not have the appropriate privileges, so we can just
-	// return true here.
-	return true
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Use) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7

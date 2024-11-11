@@ -28,15 +28,6 @@ import (
 
 const EventDateSpaceTimeFormat = "2006-01-02 15:04:05"
 
-// EventSchedulerStatement represents a SQL statement that requires a EventScheduler
-// (e.g. CREATE / ALTER / DROP EVENT and DROP DATABASE).
-type EventSchedulerStatement interface {
-	Node
-	// WithEventScheduler returns a new instance of this EventSchedulerStatement,
-	// with the event scheduler notifier configured.
-	WithEventScheduler(controller EventScheduler) Node
-}
-
 // EventScheduler is an interface used for notifying the EventSchedulerStatus
 // for querying any events related statements. This allows plan Nodes to communicate
 // to the EventSchedulerStatus.

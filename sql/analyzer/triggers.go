@@ -193,7 +193,8 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
-		b := planbuilder.New(ctx, a.Catalog, sql.NewMysqlParser())
+		b := planbuilder.New(ctx, a.Catalog, nil, nil)
+		b.DisableAuth()
 		prevActive := b.TriggerCtx().Active
 		b.TriggerCtx().Active = true
 		defer func() {
@@ -423,13 +424,6 @@ func getUpdateJoinSource(n sql.Node) *plan.UpdateSource {
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
 func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryFlags) (sql.Node, error) {
-	// For trigger body analysis, we don't want any row update accumulators applied to insert / update / delete
-	// statements, we need the raw output from them.
-	var noRowUpdateAccumulators RuleSelector
-	noRowUpdateAccumulators = func(id RuleId) bool {
-		return DefaultRuleSelector(id) && id != applyUpdateAccumulatorsId
-	}
-
 	// For the reference to the row in the trigger table, we use the scope mechanism. This is a little strange because
 	// scopes for subqueries work with the child schemas of a scope node, but we don't have such a node here. Instead we
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
@@ -444,7 +438,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			plan.NewTableAlias("new", trigger.Table),
 		)
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
-		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	case sqlparser.UpdateStr:
 		var scopeNode *plan.Project
 		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
@@ -467,7 +461,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		}
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
-		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
@@ -475,7 +469,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		)
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
 		s := scope.NewScope(scopeNode)
-		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, noRowUpdateAccumulators, qFlags)
+		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	}
 
 	return triggerLogic, err

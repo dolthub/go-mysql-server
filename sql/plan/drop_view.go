@@ -83,15 +83,6 @@ func (dv *SingleDropView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return dv, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (dv *SingleDropView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	subject := sql.PrivilegeCheckSubject{
-		Database: dv.database.Name(),
-	}
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Drop))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*SingleDropView) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
@@ -171,16 +162,6 @@ func (dvs *DropView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	newDrop := dvs
 	newDrop.children = children
 	return newDrop, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (dvs *DropView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	for _, child := range dvs.children {
-		if !child.CheckPrivileges(ctx, opChecker) {
-			return false
-		}
-	}
-	return true
 }
 
 func (dvs *DropView) IsReadOnly() bool {

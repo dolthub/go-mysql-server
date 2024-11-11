@@ -71,11 +71,6 @@ func (u *UpdateJoin) IsReadOnly() bool {
 	return false
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (u *UpdateJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return u.Child.CheckPrivileges(ctx, opChecker)
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (u *UpdateJoin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, u.Child)

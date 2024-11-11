@@ -32,9 +32,10 @@ func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 }
 
 func GetConnInode(c *net.TCPConn) (uint64, error) {
-	_, err := getConnFd(c)
+	_, finalize, err := getConnFd(c)
 	if err != nil {
 		return 0, err
 	}
+	defer finalize()
 	return 0, ErrSocketCheckNotImplemented.New()
 }

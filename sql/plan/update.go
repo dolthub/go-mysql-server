@@ -181,19 +181,6 @@ func (u *Update) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &np, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: If column values are retrieved then the SELECT privilege is required
-	// For example: "UPDATE table SET x = y + 1 WHERE z > 0"
-	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
-	subject := sql.PrivilegeCheckSubject{
-		Database: CheckPrivilegeNameForDatabase(u.DB()),
-		Table:    getTableName(u.Child),
-	}
-	// TODO: this needs a real database, fix it
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update))
-}
-
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Update) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
