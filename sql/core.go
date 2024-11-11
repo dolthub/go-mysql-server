@@ -16,6 +16,7 @@ package sql
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	trace2 "runtime/trace"
 	"strconv"
@@ -313,27 +314,38 @@ func ConvertToVector(v interface{}) ([]float64, error) {
 	switch b := v.(type) {
 	case []float64:
 		return b, nil
+	case string:
+		var val interface{}
+		err := json.Unmarshal([]byte(b), &val)
+		if err != nil {
+			return nil, err
+		}
+		return convertJsonInterfaceToVector(val)
 	case JSONWrapper:
 		val, err := b.ToInterface()
 		if err != nil {
 			return nil, err
 		}
-		array, ok := val.([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("can't convert JSON to vector; expected array, got %v", val)
-		}
-		res := make([]float64, len(array))
-		for i, elem := range array {
-			floatElem, ok := elem.(float64)
-			if !ok {
-				return nil, fmt.Errorf("can't convert JSON to vector; expected array of floats, got %v", elem)
-			}
-			res[i] = floatElem
-		}
-		return res, nil
+		return convertJsonInterfaceToVector(val)
 	default:
 		return nil, fmt.Errorf("unable to cast %#v of type %T to vector", v, v)
 	}
+}
+
+func convertJsonInterfaceToVector(val interface{}) ([]float64, error) {
+	array, ok := val.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("can't convert JSON to vector; expected array, got %v", val)
+	}
+	res := make([]float64, len(array))
+	for i, elem := range array {
+		floatElem, ok := elem.(float64)
+		if !ok {
+			return nil, fmt.Errorf("can't convert JSON to vector; expected array of floats, got %v", elem)
+		}
+		res[i] = floatElem
+	}
+	return res, nil
 }
 
 // EvaluateCondition evaluates a condition, which is an expression whose value
@@ -878,6 +890,7 @@ func IncrementStatusVariable(ctx *Context, name string, val int) {
 type OrderAndLimit struct {
 	OrderBy       Expression
 	Limit         Expression
+	Literal       Expression
 	CalcFoundRows bool
 }
 

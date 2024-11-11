@@ -505,7 +505,7 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 			if !strings.EqualFold(col.Name, oldColName) {
 				continue
 			}
-			if types.IsJSON(newCol.Type) {
+			if types.IsJSON(newCol.Type) && !index.IsVector() {
 				return nil, sql.ErrJSONIndex.New(col.Name)
 			}
 			var prefixLen int64
@@ -883,7 +883,7 @@ func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.
 			return sql.ErrDuplicateColumn.New(schCol.Name)
 		}
 		seenCols[schCol.Name] = struct{}{}
-		if types.IsJSON(schCol.Type) {
+		if types.IsJSON(schCol.Type) && !idxDef.IsVector() {
 			return sql.ErrJSONIndex.New(schCol.Name)
 		}
 
