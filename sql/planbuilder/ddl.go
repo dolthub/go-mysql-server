@@ -331,6 +331,45 @@ func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 	return newSch
 }
 
+func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
+	idxTbl, isIdxTbl := table.(sql.IndexAddressableTable)
+	if !isIdxTbl {
+		return nil
+	}
+	var idxDefs sql.IndexDefs
+	idxs, err := idxTbl.GetIndexes(b.ctx)
+	if err != nil {
+		b.handleErr(err)
+	}
+	for _, idx := range idxs {
+		if idx.IsGenerated() {
+			continue
+		}
+		constraint := sql.IndexConstraint_None
+		if idx.IsUnique() {
+			if idx.ID() == "PRIMARY" {
+				constraint = sql.IndexConstraint_Primary
+			} else {
+				constraint = sql.IndexConstraint_Unique
+			}
+		}
+		columns := make([]sql.IndexColumn, len(idx.Expressions()))
+		for i, col := range idx.Expressions() {
+			// TODO: find a better way to get only the column name if the table is present
+			col = strings.TrimPrefix(col, idxTbl.Name()+".")
+			columns[i] = sql.IndexColumn{Name: col}
+		}
+		idxDefs = append(idxDefs, &sql.IndexDef{
+			Name:       idx.ID(),
+			Storage:    sql.IndexUsing_Default,
+			Constraint: constraint,
+			Columns:    columns,
+			Comment:    idx.Comment(),
+		})
+	}
+	return idxDefs
+}
+
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	database := b.resolveDbForTable(ct.Table)
 	newTableName := strings.ToLower(ct.Table.Name.String())
@@ -397,59 +436,16 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		}
 
 		// Load index definitions
-		if idxTbl, isIdxTbl := lTable.Table.(sql.IndexAddressableTable); isIdxTbl {
-			idxs, err := idxTbl.GetIndexes(b.ctx)
-			if err != nil {
-				b.handleErr(err)
-			}
-			for _, idx := range idxs {
-				if idx.IsGenerated() {
-					continue
-				}
-				constraint := sql.IndexConstraint_None
-				if idx.IsUnique() {
-					if idx.ID() == "PRIMARY" {
-						// TODO: deal with multiple primary key constraints?
-						constraint = sql.IndexConstraint_Primary
-					} else {
-						constraint = sql.IndexConstraint_Unique
-					}
-				}
-
-				columns := make([]sql.IndexColumn, len(idx.Expressions()))
-				for i, col := range idx.Expressions() {
-					// TODO: find a better way to get only the column name if the table is present
-					col = strings.TrimPrefix(col, idxTbl.Name()+".")
-					columns[i] = sql.IndexColumn{Name: col}
-				}
-				idxDefs = append(idxDefs, &sql.IndexDef{
-					Name:       idx.ID(),
-					Storage:    sql.IndexUsing_Default,
-					Constraint: constraint,
-					Columns:    columns,
-					Comment:    idx.Comment(),
-				})
-			}
-		}
+		idxDefs = append(idxDefs, b.getIndexDefs(lTable.Table)...)
 
 		// Load check constraints
-		if chkTable, isChkTable := lTable.Table.(sql.CheckTable); isChkTable {
-			checks, err := chkTable.GetChecks(b.ctx)
-			if err != nil {
-				b.handleErr(err)
-			}
-			for _, check := range checks {
-				checkConstraint := b.buildCheckConstraint(outScope, &check)
-				if err != nil {
-					b.handleErr(err)
-				}
-
-				// Prevent a name collision between old and new checks.
-				// New check name will be assigned a name during building.
-				checkConstraint.Name = ""
-				checkDefs = append(checkDefs, checkConstraint)
-			}
+		newCheckDefs := b.loadChecksFromTable(outScope, lTable.Table)
+		for _, check := range newCheckDefs {
+			// Prevent a name collision between old and new checks.
+			// New check name will be assigned a name during building.
+			check.Name = ""
 		}
+		checkDefs = append(checkDefs, newCheckDefs...)
 	}
 
 	var hasSkippedCols bool
