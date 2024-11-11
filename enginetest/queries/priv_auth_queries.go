@@ -2268,6 +2268,24 @@ FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'te
 			},
 		},
 	},
+	{
+		Name: "Test user creation with hashed password",
+		SetUpScript: []string{
+			"CREATE USER 'lol'@'%' IDENTIFIED WITH mysql_native_password AS '*91D9861DFC07DD967611B8C96953474EF270AD5E';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query: "SELECT User, plugin, authentication_string FROM mysql.user WHERE User = 'lol';",
+				Expected: []sql.Row{
+					{
+						"lol",                   // User
+						"mysql_native_password", // plugin
+						"*91D9861DFC07DD967611B8C96953474EF270AD5E", // authentication_string
+					},
+				},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
