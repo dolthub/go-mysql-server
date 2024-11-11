@@ -102,7 +102,7 @@ func GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string {
 
 // GenerateCreateTableIndexDefinition returns index definition string for 'CREATE TABLE' statement
 // for given index. This part comes after primary key definition if there is any.
-func GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText bool, isVector bool, indexID string, indexCols []string, comment string) string {
+func GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector bool, indexID string, indexCols []string, comment string) string {
 	unique := ""
 	if isUnique {
 		unique = "UNIQUE "
