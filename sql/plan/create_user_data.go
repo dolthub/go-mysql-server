@@ -126,10 +126,11 @@ func NewDefaultAuthentication(password string) Authentication {
 type AuthenticationOther struct {
 	password string
 	plugin   string
+	identity string
 }
 
-func NewOtherAuthentication(password, plugin string) Authentication {
-	return AuthenticationOther{password, plugin}
+func NewOtherAuthentication(password, plugin, identity string) Authentication {
+	return AuthenticationOther{password, plugin, identity}
 }
 
 func (a AuthenticationOther) Plugin() string {
@@ -137,5 +138,8 @@ func (a AuthenticationOther) Plugin() string {
 }
 
 func (a AuthenticationOther) Password() string {
+	if a.password == "" {
+		return a.identity
+	}
 	return string(a.password)
 }
