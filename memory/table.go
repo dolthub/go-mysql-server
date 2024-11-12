@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -1597,7 +1598,6 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 
 	if lookup.VectorOrderAndLimit.OrderBy != nil {
 		return &vectorPartitionIter{
-			Column:        lookup.Index.(*Index).Exprs[0],
 			OrderAndLimit: lookup.VectorOrderAndLimit,
 		}, nil
 	}
@@ -2011,6 +2011,11 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		}
 	}
 
+	var vectorFunction vector.DistanceType
+	if constraint == sql.IndexConstraint_Vector {
+		vectorFunction = vector.DistanceL2Squared{}
+	}
+
 	return &Index{
 		DB:                      t.dbName(),
 		DriverName:              "",
@@ -2021,7 +2026,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		Unique:                  constraint == sql.IndexConstraint_Unique,
 		Spatial:                 constraint == sql.IndexConstraint_Spatial,
 		Fulltext:                constraint == sql.IndexConstraint_Fulltext,
-		SupportedVectorFunction: nil,
+		SupportedVectorFunction: vectorFunction,
 		CommentStr:              comment,
 		PrefixLens:              prefixLengths,
 	}, nil
@@ -2121,7 +2126,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 	return nil
 }
 
-func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceType expression.DistanceType) error {
+func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceType vector.DistanceType) error {
 	if len(idx.Columns) > 1 {
 		return fmt.Errorf("vector indexes must have exactly one column")
 	}
