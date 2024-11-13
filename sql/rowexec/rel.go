@@ -17,6 +17,7 @@ package rowexec
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"io"
 	"os"
 	"path/filepath"
@@ -97,8 +98,17 @@ func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row)
 		} else {
 			// For the values node, the relevant values to evaluate are the tuple itself. We may need to project
 			// DEFAULT values onto them, which ProjectRow handles correctly (could require multiple passes)
+			inPlaceOk, dirAsc := monotonicExprs(et)
 			var err error
-			vals, err = ProjectRow(ctx, et, vals)
+			if inPlaceOk {
+				if dirAsc {
+					vals, err = ProjectRowInPlace(ctx, et, vals)
+				} else {
+					vals, err = ProjectRowInPlaceDesc(ctx, et, vals)
+				}
+			} else {
+				vals, err = ProjectRow(ctx, et, vals)
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -311,11 +321,38 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 		return nil, err
 	}
 
+	inPlaceOk, dirAsc := monotonicExprs(n.Projections)
+
 	return sql.NewSpanIter(span, &ProjectIter{
 		projs:     n.Projections,
 		canDefer:  n.CanDefer,
+		inPlace:   inPlaceOk,
+		asc:       dirAsc,
 		childIter: i,
 	}), nil
+}
+
+func monotonicExprs(exprs []sql.Expression) (bool, bool) {
+	ascOk := true
+	descOk := true
+	for i, e := range exprs {
+		if !ascOk && !ascOk {
+			return false, false
+		}
+		transform.InspectExpr(e, func(e sql.Expression) bool {
+			if gf, ok := e.(*expression.GetField); ok {
+				if gf.Index() < i {
+					// cant reference <i at position i
+					ascOk = false
+				} else if gf.Index() > i {
+					// same but reverse iter order
+					descOk = false
+				}
+			}
+			return false
+		})
+	}
+	return ascOk || descOk, ascOk
 }
 
 func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualColumnTable, tableIter sql.RowIter, row sql.Row) (sql.RowIter, error) {
@@ -323,9 +360,13 @@ func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualC
 		attribute.Int("projections", len(n.Projections)),
 	))
 
+	inPlaceOk, dirAsc := monotonicExprs(n.Projections)
+
 	return sql.NewSpanIter(span, &ProjectIter{
 		projs:     n.Projections,
 		childIter: tableIter,
+		inPlace:   inPlaceOk,
+		asc:       dirAsc,
 	}), nil
 }
 

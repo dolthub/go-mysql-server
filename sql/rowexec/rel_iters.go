@@ -128,12 +128,21 @@ type ProjectIter struct {
 	projs     []sql.Expression
 	canDefer  bool
 	childIter sql.RowIter
+	inPlace   bool
+	asc       bool
 }
 
 func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if i.inPlace {
+		if i.asc {
+			return ProjectRowInPlace(ctx, i.projs, childRow)
+		} else {
+			return ProjectRowInPlaceDesc(ctx, i.projs, childRow)
+		}
 	}
 	return ProjectRow(ctx, i.projs, childRow)
 }
@@ -188,6 +197,38 @@ func ProjectRow(
 		fields[index] = field
 	}
 	return fields, nil
+}
+
+// ProjectRowInPlace evaluates a set of projections
+// for a row with no back-references.
+func ProjectRowInPlace(
+	ctx *sql.Context,
+	projections []sql.Expression,
+	row sql.Row,
+) (sql.Row, error) {
+	for i, expr := range projections {
+		field, fErr := expr.Eval(ctx, row)
+		if fErr != nil {
+			return nil, fErr
+		}
+		row[i] = normalizeNegativeZeros(field)
+	}
+	return row, nil
+}
+
+func ProjectRowInPlaceDesc(
+	ctx *sql.Context,
+	projections []sql.Expression,
+	row sql.Row,
+) (sql.Row, error) {
+	for i := len(projections); i >= 0; i-- {
+		field, fErr := projections[i].Eval(ctx, row)
+		if fErr != nil {
+			return nil, fErr
+		}
+		row[i] = normalizeNegativeZeros(field)
+	}
+	return row, nil
 }
 
 func defaultValFromProjectExpr(e sql.Expression) (*sql.ColumnDefaultValue, bool) {

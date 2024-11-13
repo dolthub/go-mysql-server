@@ -353,7 +353,8 @@ func (b *ExecBuilder) buildProject(r *Project, children ...sql.Node) (sql.Node, 
 	for i := range r.Projections {
 		proj[i] = r.Projections[i]
 	}
-	return plan.NewProject(proj, children[0]), nil
+	ret := plan.NewProject(proj, children[0])
+	return ret, nil
 }
 
 func (b *ExecBuilder) buildFilter(r *Filter, children ...sql.Node) (sql.Node, error) {

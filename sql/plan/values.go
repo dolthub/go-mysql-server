@@ -23,9 +23,10 @@ import (
 
 // Values represents a set of tuples of expressions.
 type Values struct {
-	AliasName        string
-	ColumnNames      map[string]string
-	ExpressionTuples [][]sql.Expression
+	AliasName         string
+	ColumnNames       map[string]string
+	ExpressionTuples  [][]sql.Expression
+	InPlaceProjection bool
 }
 
 var _ sql.Node = (*Values)(nil)
