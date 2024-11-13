@@ -218,6 +218,8 @@ type TriggerDefinition struct {
 	// SqlMode holds the SQL_MODE that was in use when this trigger was originally defined. It contains information
 	// needed for how to parse the trigger's SQL, such as whether ANSI_QUOTES mode is enabled.
 	SqlMode string
+	// SchemaName is the name of the schema of the trigger, for databases that support schemas.
+	SchemaName string
 }
 
 // TemporaryTableDatabase is a database that can query the session (which manages the temporary table state) to
@@ -311,6 +313,8 @@ type ViewDefinition struct {
 	TextDefinition      string
 	CreateViewStatement string
 	SqlMode             string
+	// SchemaName is the name of the schema of the view, for databases that support schemas.
+	SchemaName string
 }
 
 // GetTableInsensitive implements a case-insensitive map lookup for tables keyed off of the table name.
