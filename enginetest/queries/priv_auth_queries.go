@@ -43,6 +43,7 @@ type UserPrivilegeTestAssertion struct {
 	Expected       []sql.Row
 	ExpectedErr    *errors.Kind
 	ExpectedErrStr string
+	Skip           bool
 }
 
 // QuickPrivilegeTest specifically tests privileges on a predefined user (tester@localhost) using predefined tables and
@@ -421,6 +422,12 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:        "tester",
 				Host:        "localhost",
+				Query:       "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte;/*1*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
 				Query:       "SELECT * FROM mydb.test2;/*1*/",
 				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
@@ -506,6 +513,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mydb.test;/*6*/",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Skip:     true, // CTEs are seen as different tables than underlying table(s).
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte;/*6*/",
 				Expected: []sql.Row{{1}},
 			},
 			{
