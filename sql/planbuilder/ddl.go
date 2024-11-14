@@ -169,7 +169,8 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 		if len(c.FromViews) != 0 {
 			plans := make([]sql.Node, len(c.FromViews))
 			for i, v := range c.FromViews {
-				plans[i] = plan.NewSingleDropView(b.currentDb(), v.Name.String())
+				db := b.resolveDbForTable(v)
+				plans[i] = plan.NewSingleDropView(db, v.Name.String())
 			}
 			outScope.node = plan.NewDropView(plans, c.IfExists)
 			return
