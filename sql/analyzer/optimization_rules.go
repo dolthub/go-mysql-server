@@ -338,7 +338,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				// All other expressions types can be evaluated once and turned into literals for the rest of query execution
 				val, err := e.Eval(ctx, nil)
 				if err != nil {
-					return e, transform.SameTree, nil
+					return e, transform.SameTree, err
 				}
 				return expression.NewLiteral(val, e.Type()), transform.NewTree, nil
 			}
