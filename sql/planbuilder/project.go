@@ -95,7 +95,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			startLen := len(outScope.cols)
 			for _, c := range inScope.cols {
 				// unqualified columns that are redirected should not be replaced
-				if col, ok := inScope.redirectCol[c.col]; tableName == "" && ok && col != c {
+				if col, ok := inScope.redirectCol[c.col]; tableName == "" && ok && !col.equals(c) {
 					continue
 				}
 				if strings.EqualFold(c.table, tableName) || tableName == "" {
