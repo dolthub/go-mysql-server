@@ -121,6 +121,22 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter nil enum",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y enum ('a', 'b'));",
+			"insert into xy values (0, NULL),(1, 'b')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table xy modify y enum('a','b','c')",
+			},
+			{
+				Query:       "alter table xy modify y enum('a')",
+				ExpectedErr: sql.ErrEnumTypeTruncated,
+			},
+		},
+	},
+	{
 		Name: "issue 7958, update join uppercase table name validation",
 		SetUpScript: []string{
 			`
@@ -7494,8 +7510,8 @@ where
 				},
 			},
 			{
-				Query:          "alter table t modify column e enum('abc');",
-				ExpectedErrStr: "value 2 is not valid for this Enum",
+				Query:       "alter table t modify column e enum('abc');",
+				ExpectedErr: sql.ErrEnumTypeTruncated,
 			},
 		},
 	},

@@ -180,7 +180,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	// We use two variables to manage the lookahead state management.
 	// |matchedleft| is a forward-looking indicator of whether the current left
 	// row has satisfied a join condition. It is reset to false when we
-	// increment left. |matchincleft| is true when the most recent call to
+	// increment left. |matchingleft| is true when the most recent call to
 	// |incmatch| incremented the left row. The two vars combined let us
 	// lookahead during msSelect to 1) identify proper nullified row matches,
 	// and 2) maintain forward-looking state for the next |i.fullrow|.

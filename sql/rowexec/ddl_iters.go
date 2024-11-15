@@ -565,7 +565,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		}
 
 		// remap old enum values to new enum values
-		if isOldEnum && isNewEnum {
+		if isOldEnum && isNewEnum && newRow[newColIdx] != nil {
 			oldIdx := int(newRow[newColIdx].(uint16))
 			oldStr, _ := oldEnum.At(oldIdx)
 			newIdx := newEnum.IndexOf(oldStr)

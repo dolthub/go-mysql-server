@@ -924,6 +924,8 @@ var (
 	ErrInvalidTypeForLimit = errors.NewKind("invalid limit. expected %T, found %T")
 
 	ErrColumnSpecifiedTwice = errors.NewKind("column '%v' specified twice")
+
+	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
