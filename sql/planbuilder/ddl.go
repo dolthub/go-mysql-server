@@ -80,6 +80,37 @@ func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
 	return database
 }
 
+func (b *Builder) maybeResolveDbForTable(table ast.TableName) (sql.Database, bool) {
+	dbName := table.DbQualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+	}
+
+	if dbName == "" {
+		b.handleErr(sql.ErrNoDatabaseSelected.New())
+	}
+
+	database, err := b.cat.Database(b.ctx, dbName)
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	schema := table.SchemaQualifier.String()
+	if schema != "" {
+		scd, ok := database.(sql.SchemaDatabase)
+		if !ok {
+			b.handleErr(fmt.Errorf("database %T does not support schemas", database))
+		}
+		database, ok, err = scd.GetSchema(b.ctx, schema)
+		if err != nil {
+			b.handleErr(err)
+		}
+		return database, ok
+	}
+
+	return database, true
+}
+
 // buildAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
 // the appropriate node type. Otherwise, a plan.Block is returned with children representing all the various clauses.
 // Our validation rules for what counts as a legal set of alter clauses differs from mysql's here. MySQL seems to apply
@@ -199,22 +230,22 @@ func (b *Builder) buildDropView(inScope *scope, c *ast.DDL) (outScope *scope) {
 			err := sql.ErrUnsupportedFeature.New("dropping views on multiple databases in the same statement")
 			b.handleErr(err)
 		}
+
 		viewName := strings.ToLower(v.Name.String())
-		if c.IfExists {
-			_, _, err := b.cat.Table(b.ctx, dbName, viewName)
-			if sql.ErrTableNotFound.Is(err) && b.ctx != nil && b.ctx.Session != nil {
+		db, ok := b.maybeResolveDbForTable(v)
+		if !ok {
+			if c.IfExists {
 				b.ctx.Session.Warn(&sql.Warning{
 					Level:   "Note",
 					Code:    mysql.ERBadTable,
 					Message: fmt.Sprintf("Unknown view '%s'", viewName),
 				})
 				continue
-			} else if err != nil {
-				b.handleErr(err)
+			} else {
+				b.handleErr(sql.ErrDatabaseSchemaNotFound.New(v.SchemaQualifier.String()))
 			}
 		}
 
-		db := b.resolveDbForTable(v)
 		dropViews = append(dropViews, plan.NewSingleDropView(db, v.Name.String()))
 	}
 
