@@ -167,13 +167,7 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 			return
 		}
 		if len(c.FromViews) != 0 {
-			plans := make([]sql.Node, len(c.FromViews))
-			for i, v := range c.FromViews {
-				db := b.resolveDbForTable(v)
-				plans[i] = plan.NewSingleDropView(db, v.Name.String())
-			}
-			outScope.node = plan.NewDropView(plans, c.IfExists)
-			return
+			return b.buildDropView(inScope, c)
 		}
 		return b.buildDropTable(inScope, c)
 	case ast.AlterStr:
@@ -190,6 +184,41 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(c)))
 	}
+	return
+}
+
+func (b *Builder) buildDropView(inScope *scope, c *ast.DDL) (outScope *scope) {
+	outScope = inScope.push()
+	var dropViews []sql.Node
+	dbName := c.FromViews[0].DbQualifier.String()
+	if dbName == "" {
+		dbName = b.currentDb().Name()
+	}
+	for _, v := range c.FromViews {
+		if v.DbQualifier.String() != "" && v.DbQualifier.String() != dbName {
+			err := sql.ErrUnsupportedFeature.New("dropping views on multiple databases in the same statement")
+			b.handleErr(err)
+		}
+		viewName := strings.ToLower(v.Name.String())
+		if c.IfExists {
+			_, _, err := b.cat.Table(b.ctx, dbName, viewName)
+			if sql.ErrTableNotFound.Is(err) && b.ctx != nil && b.ctx.Session != nil {
+				b.ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    mysql.ERBadTable,
+					Message: fmt.Sprintf("Unknown view '%s'", viewName),
+				})
+				continue
+			} else if err != nil {
+				b.handleErr(err)
+			}
+		}
+
+		db := b.resolveDbForTable(v)
+		dropViews = append(dropViews, plan.NewSingleDropView(db, v.Name.String()))
+	}
+
+	outScope.node = plan.NewDropView(dropViews, c.IfExists)
 	return
 }
 
