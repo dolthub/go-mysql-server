@@ -7510,8 +7510,8 @@ where
 				},
 			},
 			{
-				Query:          "alter table t modify column e enum('abc');",
-				ExpectedErrStr: "value 2 is not valid for this Enum",
+				Query:       "alter table t modify column e enum('abc');",
+				ExpectedErr: sql.ErrEnumTypeTruncated,
 			},
 		},
 	},
