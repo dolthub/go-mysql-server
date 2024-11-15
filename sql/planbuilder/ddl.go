@@ -48,36 +48,11 @@ func (b *Builder) resolveDb(name string) sql.Database {
 }
 
 func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
-	dbName := table.DbQualifier.String()
-	if dbName == "" {
-		dbName = b.ctx.GetCurrentDatabase()
+	db, ok := b.maybeResolveDbForTable(table)
+	if !ok {
+		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(table.SchemaQualifier.String()))
 	}
-
-	if dbName == "" {
-		b.handleErr(sql.ErrNoDatabaseSelected.New())
-	}
-
-	database, err := b.cat.Database(b.ctx, dbName)
-	if err != nil {
-		b.handleErr(err)
-	}
-
-	schema := table.SchemaQualifier.String()
-	if schema != "" {
-		scd, ok := database.(sql.SchemaDatabase)
-		if !ok {
-			b.handleErr(fmt.Errorf("database %T does not support schemas", database))
-		}
-		database, ok, err = scd.GetSchema(b.ctx, schema)
-		if err != nil {
-			b.handleErr(err)
-		}
-		if !ok {
-			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
-		}
-	}
-
-	return database
+	return db
 }
 
 func (b *Builder) maybeResolveDbForTable(table ast.TableName) (sql.Database, bool) {
