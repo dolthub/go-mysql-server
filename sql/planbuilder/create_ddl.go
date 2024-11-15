@@ -88,7 +88,10 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 	bodyScope := b.buildSubquery(triggerScope, c.TriggerSpec.Body, bodyStr, fullQuery)
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
 
-	db := b.resolveDbForTable(c.Table)
+	db, ok := b.resolveDbForTable(c.Table)
+	if !ok {
+		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
+	}
 
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
 		if prevTriggerCtxActive {
@@ -470,7 +473,10 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 		queryAlias = queryAlias.WithColumnNames(columnsToStrings(c.ViewSpec.Columns))
 	}
 
-	db := b.resolveDbForTable(c.ViewSpec.ViewName)
+	db, ok := b.resolveDbForTable(c.ViewSpec.ViewName)
+	if !ok {
+		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
+	}
 	createView := plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
 	outScope.node = b.modifySchemaTarget(queryScope, createView, createView.Definition.Schema())
 
