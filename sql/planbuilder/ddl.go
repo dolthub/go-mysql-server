@@ -47,7 +47,10 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	return database
 }
 
-func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
+// resolveDbForTable attempts to resolve the database and schema name qualifiers
+// for a table. If the database is not specified, the current database is used.
+// If the specified schema is not found, `ok` will be false.
+func (b *Builder) resolveDbForTable(table ast.TableName) (sql.Database, bool) {
 	dbName := table.DbQualifier.String()
 	if dbName == "" {
 		dbName = b.ctx.GetCurrentDatabase()
@@ -72,12 +75,11 @@ func (b *Builder) resolveDbForTable(table ast.TableName) sql.Database {
 		if err != nil {
 			b.handleErr(err)
 		}
-		if !ok {
-			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
-		}
+
+		return database, ok
 	}
 
-	return database
+	return database, true
 }
 
 // buildAlterTable converts AlterTable AST nodes. If there is a single clause in the statement, it is returned as
@@ -167,13 +169,7 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 			return
 		}
 		if len(c.FromViews) != 0 {
-			plans := make([]sql.Node, len(c.FromViews))
-			for i, v := range c.FromViews {
-				db := b.resolveDbForTable(v)
-				plans[i] = plan.NewSingleDropView(db, v.Name.String())
-			}
-			outScope.node = plan.NewDropView(plans, c.IfExists)
-			return
+			return b.buildDropView(inScope, c)
 		}
 		return b.buildDropTable(inScope, c)
 	case ast.AlterStr:
@@ -190,6 +186,41 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(c)))
 	}
+	return
+}
+
+func (b *Builder) buildDropView(inScope *scope, c *ast.DDL) (outScope *scope) {
+	outScope = inScope.push()
+	var dropViews []sql.Node
+	dbName := c.FromViews[0].DbQualifier.String()
+	if dbName == "" {
+		dbName = b.currentDb().Name()
+	}
+	for _, v := range c.FromViews {
+		if v.DbQualifier.String() != "" && v.DbQualifier.String() != dbName {
+			err := sql.ErrUnsupportedFeature.New("dropping views on multiple databases in the same statement")
+			b.handleErr(err)
+		}
+
+		viewName := strings.ToLower(v.Name.String())
+		db, ok := b.resolveDbForTable(v)
+		if !ok {
+			if c.IfExists {
+				b.ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    mysql.ERBadTable,
+					Message: fmt.Sprintf("Unknown view '%s'", viewName),
+				})
+				continue
+			} else {
+				b.handleErr(sql.ErrDatabaseSchemaNotFound.New(v.SchemaQualifier.String()))
+			}
+		}
+
+		dropViews = append(dropViews, plan.NewSingleDropView(db, v.Name.String()))
+	}
+
+	outScope.node = plan.NewDropView(dropViews, c.IfExists)
 	return
 }
 
@@ -252,7 +283,10 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 		return b.buildCreateTableLike(inScope, c)
 	}
 
-	database := b.resolveDbForTable(c.Table)
+	database, ok := b.resolveDbForTable(c.Table)
+	if !ok {
+		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
+	}
 
 	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE node.
 	// if the table spec != nil it will get parsed below.
@@ -372,7 +406,11 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 }
 
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
-	database := b.resolveDbForTable(ct.Table)
+	database, ok := b.resolveDbForTable(ct.Table)
+	if !ok {
+		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(ct.Table.SchemaQualifier.String()))
+	}
+
 	newTableName := strings.ToLower(ct.Table.Name.String())
 
 	var pkSch sql.PrimaryKeySchema
@@ -383,7 +421,6 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 		pkSch, coll, _ = b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(ct.Table.Name.String()), ct.TableSpec, false)
 	}
 
-	var ok bool
 	var pkOrdinals []int
 	var newSch sql.Schema
 	newSchMap := make(map[string]struct{})
