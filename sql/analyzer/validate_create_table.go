@@ -470,6 +470,15 @@ func validateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 		return nil, err
 	}
 
+	if e1, ok := newCol.Type.(sql.EnumType); ok {
+		oldCol := initialSch[initialSch.IndexOfColName(oldColName)]
+		if e2, ok := oldCol.Type.(sql.EnumType); ok {
+			if len(e1.Values()) < len(e2.Values()) {
+				return nil, sql.ErrEnumTypeTruncated.New()
+			}
+		}
+	}
+
 	// TODO: When a column is being modified, we should ideally check that any existing table check constraints
 	//       are still valid (e.g. if the column type changed) and throw an error if they are invalidated.
 	//       That would be consistent with MySQL behavior.

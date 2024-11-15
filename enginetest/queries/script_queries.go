@@ -130,9 +130,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "alter table xy modify y enum('a','b','c')",
 			},
-			//{
-			//	Query: "alter table xy modify y enum('a')",
-			//},
+			{
+				Query:       "alter table xy modify y enum('a')",
+				ExpectedErr: sql.ErrEnumTypeTruncated,
+			},
 		},
 	},
 	{
