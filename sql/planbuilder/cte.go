@@ -42,11 +42,6 @@ func (b *Builder) buildWith(inScope *scope, with *ast.With) (outScope *scope) {
 	outScope = inScope.push()
 
 	for _, cte := range with.Ctes {
-		cte, ok := cte.(*ast.CommonTableExpr)
-		if !ok {
-			b.handleErr(sql.ErrUnsupportedFeature.New(fmt.Sprintf("Unsupported type of common table expression %T", cte)))
-		}
-
 		ate := cte.AliasedTableExpr
 		sq, ok := ate.Expr.(*ast.Subquery)
 		if !ok {

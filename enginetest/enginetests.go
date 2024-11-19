@@ -1809,10 +1809,6 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 					}
 				}
 
-				if assertion.Skip {
-					t.Skipf("Skipping query %s", assertion.Query)
-				}
-
 				user := assertion.User
 				host := assertion.Host
 				if user == "" {
