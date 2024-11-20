@@ -15,12 +15,10 @@
 package mysql_db
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net"
 	"sort"
 	"strings"
 	"sync"
@@ -55,6 +53,8 @@ type PlaintextAuthPlugin interface {
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
+	*authServer
+
 	enabled atomic.Bool
 
 	user                *in_mem_table.IndexedSetTable[*User]
@@ -91,6 +91,8 @@ var _ mysql.AuthServer = (*MySQLDb)(nil)
 func CreateEmptyMySQLDb() *MySQLDb {
 	// original tables
 	mysqlDb := &MySQLDb{}
+
+	mysqlDb.authServer = newAuthServer(mysqlDb)
 
 	lock, rlock := &mysqlDb.lock, mysqlDb.lock.RLocker()
 
@@ -756,134 +758,6 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 	}, nil
 }
 
-// AuthMethod implements the interface mysql.AuthServer.
-func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
-	if !db.Enabled() {
-		return "mysql_native_password", nil
-	}
-	var host string
-	// TODO : need to check for network type instead of addr string if it's unix socket network,
-	//  macOS passes empty addr, but ubuntu returns "@" as addr for `localhost`
-	if addr == "@" || addr == "" {
-		host = "localhost"
-	} else {
-		splitHost, _, err := net.SplitHostPort(addr)
-		if err != nil {
-			if err.(*net.AddrError).Err == "missing port in address" {
-				host = addr
-			} else {
-				return "", err
-			}
-		} else {
-			host = splitHost
-		}
-	}
-
-	rd := db.Reader()
-	defer rd.Close()
-
-	u := db.GetUser(rd, user, host, false)
-	if u == nil {
-		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
-	}
-	if _, ok := db.plugins[u.Plugin]; ok {
-		return "mysql_clear_password", nil
-	}
-	return u.Plugin, nil
-}
-
-// Salt implements the interface mysql.AuthServer.
-func (db *MySQLDb) Salt() ([]byte, error) {
-	return mysql.NewSalt()
-}
-
-// ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
-func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
-	var host string
-	var err error
-	if addr.Network() == "unix" {
-		host = "localhost"
-	} else {
-		host, _, err = net.SplitHostPort(addr.String())
-		if err != nil {
-			if err.(*net.AddrError).Err == "missing port in address" {
-				host = addr.String()
-			} else {
-				return nil, err
-			}
-		}
-	}
-
-	rd := db.Reader()
-	defer rd.Close()
-
-	if !db.Enabled() {
-		return sql.MysqlConnectionUser{User: user, Host: host}, nil
-	}
-
-	userEntry := db.GetUser(rd, user, host, false)
-	if userEntry == nil || userEntry.Locked {
-		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
-	}
-	if len(userEntry.Password) > 0 {
-		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
-			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
-		}
-	} else if len(authResponse) > 0 { // password is nil or empty, therefore no password is set
-		// a password was given and the account has no password set, therefore access is denied
-		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
-	}
-
-	return sql.MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
-}
-
-// Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
-func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
-	var host string
-	var err error
-	if addr.Network() == "unix" {
-		host = "localhost"
-	} else {
-		host, _, err = net.SplitHostPort(addr.String())
-		if err != nil {
-			if err.(*net.AddrError).Err == "missing port in address" {
-				host = addr.String()
-			} else {
-				return nil, err
-			}
-		}
-	}
-
-	rd := db.Reader()
-	defer rd.Close()
-
-	connUser := sql.MysqlConnectionUser{User: user, Host: host}
-	if !db.Enabled() {
-		return connUser, nil
-	}
-	userEntry := db.GetUser(rd, user, host, false)
-
-	if userEntry.Plugin != "" {
-		authplugin, ok := db.plugins[userEntry.Plugin]
-		if !ok {
-			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'; auth plugin %s not registered with server", user, userEntry.Plugin)
-		}
-		pass, err := mysql.AuthServerReadPacketString(c)
-		if err != nil {
-			return nil, err
-		}
-		authed, err := authplugin.Authenticate(db, user, userEntry, pass)
-		if err != nil {
-			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v': %v", user, err)
-		}
-		if !authed {
-			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
-		}
-		return connUser, nil
-	}
-	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
-}
-
 // Persist passes along all changes to the integrator.
 //
 // This takes an Editor, instead of a Reader, since presumably we have just
@@ -982,42 +856,6 @@ func columnTemplate(name string, source string, isPk bool, template *sql.Column)
 	newCol.Source = source
 	newCol.PrimaryKey = isPk
 	return &newCol
-}
-
-// validateMysqlNativePassword was taken directly from vitess and validates the password hash for "mysql_native_password".
-func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword string) bool {
-	// SERVER: recv(authResponse)
-	// 		   hash_stage1=xor(authResponse, sha1(salt,hash))
-	// 		   candidate_hash2=sha1(hash_stage1)
-	// 		   check(candidate_hash2==hash)
-	if len(authResponse) == 0 || len(mysqlNativePassword) == 0 {
-		return false
-	}
-	if mysqlNativePassword[0] == '*' {
-		mysqlNativePassword = mysqlNativePassword[1:]
-	}
-
-	hash, err := hex.DecodeString(mysqlNativePassword)
-	if err != nil {
-		return false
-	}
-
-	// scramble = SHA1(salt+hash)
-	crypt := sha1.New()
-	crypt.Write(salt)
-	crypt.Write(hash)
-	scramble := crypt.Sum(nil)
-
-	// token = scramble XOR stage1Hash
-	for i := range scramble {
-		scramble[i] ^= authResponse[i]
-	}
-	stage1Hash := scramble
-	crypt.Reset()
-	crypt.Write(stage1Hash)
-	candidateHash2 := crypt.Sum(nil)
-
-	return bytes.Equal(candidateHash2, hash)
 }
 
 // mustDefault enforces that no error occurred when constructing the column default value.
