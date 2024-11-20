@@ -132,7 +132,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "alter table xy modify y enum('a')",
-				ExpectedErr: sql.ErrEnumTypeTruncated,
+				ExpectedErr: types.ErrConvertingToEnum,
 			},
 		},
 	},
@@ -7511,7 +7511,7 @@ where
 			},
 			{
 				Query:       "alter table t modify column e enum('abc');",
-				ExpectedErr: sql.ErrEnumTypeTruncated,
+				ExpectedErr: types.ErrConvertingToEnum,
 			},
 		},
 	},
