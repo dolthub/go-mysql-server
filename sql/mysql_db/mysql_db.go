@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net"
 	"sort"
 	"strings"
 	"sync"
@@ -756,6 +757,39 @@ func (db *MySQLDb) GetTableNames(ctx *sql.Context) ([]string, error) {
 		helpCategoryTableName,
 		helpRelationTableName,
 	}, nil
+}
+
+// ValidateHash was previously used as part of authentication, but is no longer used by the Vitess authentication
+// logic. This method is still used by the sql util class in Dolt to authenticate a user connecting to a local
+// Dolt sql-server by running a "dolt sql" command.
+// TODO: The dolt sql utils.go code should be refactored to use a different API, so that we can delete this method.
+func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
+	host, err := extractHostAddress(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	rd := db.Reader()
+	defer rd.Close()
+
+	if !db.Enabled() {
+		return sql.MysqlConnectionUser{User: user, Host: host}, nil
+	}
+
+	userEntry := db.GetUser(rd, user, host, false)
+	if userEntry == nil || userEntry.Locked {
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+	}
+	if len(userEntry.Password) > 0 {
+		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		}
+	} else if len(authResponse) > 0 { // password is nil or empty, therefore no password is set
+		// a password was given and the account has no password set, therefore access is denied
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+	}
+
+	return sql.MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
 }
 
 // Persist passes along all changes to the integrator.
