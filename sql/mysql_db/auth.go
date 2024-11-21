@@ -162,6 +162,9 @@ func (uv extendedAuthUserValidator) HandleUser(user string, remoteAddr net.Addr)
 		return true
 	}
 	userEntry := db.GetUser(rd, user, host, false)
+	if userEntry == nil {
+		return false
+	}
 
 	for pluginName, _ := range db.plugins {
 		if userEntry.Plugin == pluginName {
