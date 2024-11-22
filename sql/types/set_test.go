@@ -174,8 +174,8 @@ func TestSetConvert(t *testing.T) {
 		{[]string{"", "one", "two"}, sql.Collation_Default, "", "", false},
 		{[]string{"", "one", "two"}, sql.Collation_Default, ",one,two", ",one,two", false},
 		{[]string{"", "one", "two"}, sql.Collation_Default, "one,,two", ",one,two", false},
+		{[]string{"one", "two"}, sql.Collation_Default, ",one,two", "one,two", false},
 
-		{[]string{"one", "two"}, sql.Collation_Default, ",one,two", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, 4, nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, "three", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, "one,two,three", nil, true},

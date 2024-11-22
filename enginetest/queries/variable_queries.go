@@ -339,6 +339,16 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set sql_mode variable ignores empty strings",
+		SetUpScript: []string{
+			`SET sql_mode = ',,,,STRICT_TRANS_TABLES,,,,,NO_AUTO_VALUE_ON_ZERO,,,,NO_ENGINE_SUBSTITUTION,,,,,,'`,
+		},
+		Query: "SELECT @@sql_mode",
+		Expected: []sql.Row{
+			{"NO_AUTO_VALUE_ON_ZERO,NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"},
+		},
+	},
+	{
 		Name: "show variables renders enums after set",
 		SetUpScript: []string{
 			`set @@sql_mode='ONLY_FULL_GROUP_BY';`,

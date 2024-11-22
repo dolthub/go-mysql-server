@@ -368,6 +368,10 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 	var bitField uint64
 	vals := strings.Split(str, ",")
 	for _, val := range vals {
+		// empty string should hash to 0, so just skip
+		if val == "" {
+			continue
+		}
 		compareVal := val
 		if t.collation != sql.Collation_binary {
 			compareVal = strings.TrimRight(compareVal, " ")
