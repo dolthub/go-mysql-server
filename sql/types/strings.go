@@ -415,9 +415,26 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 		}
 	}
 
-	// TODO: add exceptions for certain collations?
-	if !IsBinaryType(t) && !utf8.Valid([]byte(val)) {
-		return "", ErrIncorrectStringValue.New([]byte(val))
+	// TODO: Completely unsure how this should actually be handled.
+	// We need to handle the conversion to the correct character set, but we only need to do it once. At this point, we
+	// don't know if we've done a conversion from an introducer (https://dev.mysql.com/doc/refman/8.4/en/charset-introducer.html).
+	// Additionally, it's unknown if there are valid UTF8 strings that aren't valid for a conversion.
+	// It seems like MySQL handles some of this using repertoires, but it seems like a massive refactoring to really get
+	// it implemented (https://dev.mysql.com/doc/refman/8.4/en/charset-repertoire.html).
+	// On top of that, we internally only work with UTF8MB4 strings, so we'll make a hard assumption that all UTF8
+	// strings are valid for all character sets, and that all invalid UTF8 strings have not yet been converted.
+	// This isn't correct, but it's a better approximation than the old logic.
+	bytesVal := encodings.StringToBytes(val)
+	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
+		charset := t.CharacterSet()
+		if charset == sql.CharacterSet_utf8mb4 {
+			return "", ErrIncorrectStringValue.New(bytesVal)
+		} else {
+			var ok bool
+			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {
+				return "", ErrIncorrectStringValue.New(bytesVal)
+			}
+		}
 	}
 
 	return val, nil
