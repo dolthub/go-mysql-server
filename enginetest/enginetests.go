@@ -4305,22 +4305,41 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 		{
 			Name: "inserts should trigger string conversion errors",
 			SetUpScript: []string{
-				"create table test (v varchar(10))",
+				"CREATE TABLE test (v1 VARCHAR(10));",
+				"CREATE TABLE test2 (v1 VARCHAR(10) CHARACTER SET latin1);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into test values (?)",
+					Query: "INSERT INTO test VALUES (?);",
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
 					},
 					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
 				},
 				{
-					Query: "insert into test values (?)",
+					Query: "INSERT INTO test VALUES (?);",
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable(string([]byte{0x99, 0x98, 0x97})),
 					},
 					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+				},
+				{
+					Query: "INSERT INTO test2 VALUES (?);",
+					Bindings: map[string]sqlparser.Expr{
+						"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "INSERT INTO test2 VALUES (?);",
+					Bindings: map[string]sqlparser.Expr{
+						"v1": mustBuildBindVariable(string([]byte{0x99, 0x98, 0x97})),
+					},
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
 				},
 			},
 		},
