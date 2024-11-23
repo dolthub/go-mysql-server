@@ -7135,15 +7135,15 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t(c) values (X'9876543210');",
-				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
 			},
 			{
 				Query:          "insert into t(v) values (X'9876543210');",
-				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
 			},
 			{
 				Query:          "insert into t(txt) values (X'9876543210');",
-				ExpectedErrStr: "incorrect string value: '[152 118 84 50 16]'",
+				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
 			},
 			{
 				Query: "insert into t(b) values (X'9876543210');",

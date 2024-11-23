@@ -48,7 +48,7 @@ var (
 	ErrLengthTooLarge       = errors.NewKind("length is %v but max allowed is %v")
 	ErrLengthBeyondLimit    = errors.NewKind("string '%v' is too large for column '%v'")
 	ErrBinaryCollation      = errors.NewKind("binary types must have the binary collation: %v")
-	ErrIncorrectStringValue = errors.NewKind("incorrect string value: '%v'")
+	ErrBadCharsetString     = errors.NewKind("invalid string for charset %s: '%v'")
 
 	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, TinyTextBlobMax)
 	Text       = MustCreateStringWithDefaults(sqltypes.Text, TextBlobMax)
@@ -428,11 +428,11 @@ func ConvertToString(v interface{}, t sql.StringType) (string, error) {
 	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
 		charset := t.CharacterSet()
 		if charset == sql.CharacterSet_utf8mb4 {
-			return "", ErrIncorrectStringValue.New(bytesVal)
+			return "", ErrBadCharsetString.New(charset.String(), bytesVal)
 		} else {
 			var ok bool
 			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {
-				return "", ErrIncorrectStringValue.New(bytesVal)
+				return "", ErrBadCharsetString.New(charset.String(), bytesVal)
 			}
 		}
 	}
