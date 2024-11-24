@@ -613,10 +613,6 @@ func (c scopeColumn) unwrapGetFieldAliasId() columnId {
 }
 
 func (c scopeColumn) withOriginal(col string) scopeColumn {
-	if !strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) {
-		// info schema columns always presented as uppercase
-		c.originalCol = col
-	}
 	return c
 }
 
