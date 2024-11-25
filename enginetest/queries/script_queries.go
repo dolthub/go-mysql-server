@@ -7531,6 +7531,71 @@ where
 			},
 		},
 	},
+	{
+		Name: "multi enum return types",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then e end) as e from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "ghi"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Skip:  true,
+				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 'something' end) as e from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "something"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Skip:  true,
+				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 123 end) as e from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "123"},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/8598
+		Name: "enum cast to int and string",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "select i, cast(e as signed) from t;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select i, cast(e as char) from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "ghi"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
