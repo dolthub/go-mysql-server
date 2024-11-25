@@ -52,6 +52,10 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 	if right == types.Null {
 		return left
 	}
+
+	// Our current implementation of StringType.Convert(enum), does not match MySQL's behavior.
+	// So, we make sure to return Enums in this particular case.
+	// More details: https://github.com/dolthub/dolt/issues/8598
 	if types.IsEnum(left) && types.IsEnum(right) {
 		return right
 	}

@@ -7547,6 +7547,7 @@ where
 				},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/8598
 				Skip:  true,
 				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 'something' end) as e from t;",
 				Expected: []sql.Row{
@@ -7556,6 +7557,7 @@ where
 				},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/8598
 				Skip:  true,
 				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 123 end) as e from t;",
 				Expected: []sql.Row{
@@ -7567,6 +7569,7 @@ where
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/8598
 		Name: "enum cast to int and string",
 		SetUpScript: []string{
 			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
