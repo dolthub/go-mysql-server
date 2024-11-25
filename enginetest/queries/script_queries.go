@@ -7531,6 +7531,23 @@ where
 			},
 		},
 	},
+	{
+		Name: "multi enum return types",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then e end) as e from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "ghi"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

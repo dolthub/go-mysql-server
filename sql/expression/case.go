@@ -52,6 +52,12 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 	if right == types.Null {
 		return left
 	}
+	if types.IsEnum(left) && types.IsEnum(right) {
+		return right
+	}
+	if types.IsSet(left) && types.IsSet(right) {
+		return right
+	}
 	if types.IsTextOnly(left) && types.IsTextOnly(right) {
 		return types.LongText
 	}
