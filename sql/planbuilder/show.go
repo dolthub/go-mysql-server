@@ -102,6 +102,15 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 			showRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = showRep
+	case "slave status":
+		// The deprecated "show slave status" command returns the same information as "show replica status",
+		// but uses a schema with different column names so we create the node differently here.
+		outScope = inScope.push()
+		showRep := plan.NewShowSlaveStatus()
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
+			showRep.ReplicaController = binCat.GetBinlogReplicaController()
+		}
+		outScope.node = showRep
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		b.handleErr(sql.ErrUnsupportedFeature.New(unsupportedShow))
