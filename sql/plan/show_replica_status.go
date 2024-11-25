@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -26,14 +28,26 @@ import (
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
 	ReplicaController binlogreplication.BinlogReplicaController
+	// useDeprecatedColumnNames is used to determine if the column names returned should be the old
+	// and deprecated master/slave column names, or the new source/replica column names.
+	useDeprecatedColumnNames bool
 }
 
 var _ sql.Node = (*ShowReplicaStatus)(nil)
 var _ sql.CollationCoercible = (*ShowReplicaStatus)(nil)
 var _ BinlogReplicaControllerCommand = (*ShowReplicaStatus)(nil)
 
+// NewShowReplicaStatus creates a new ShowReplicaStatus node.
 func NewShowReplicaStatus() *ShowReplicaStatus {
 	return &ShowReplicaStatus{}
+}
+
+// NewShowSlaveStatus creates a new ShowReplicaStatus node configured to use the old, deprecated
+// column names (i.e. master/slave) instead of the new, renamed columns (i.e. source/replica).
+func NewShowSlaveStatus() *ShowReplicaStatus {
+	return &ShowReplicaStatus{
+		useDeprecatedColumnNames: true,
+	}
 }
 
 // WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
@@ -48,11 +62,15 @@ func (s *ShowReplicaStatus) Resolved() bool {
 }
 
 func (s *ShowReplicaStatus) String() string {
-	return "SHOW REPLICA STATUS"
+	if s.useDeprecatedColumnNames {
+		return "SHOW SLAVE STATUS"
+	} else {
+		return "SHOW REPLICA STATUS"
+	}
 }
 
 func (s *ShowReplicaStatus) Schema() sql.Schema {
-	return sql.Schema{
+	sch := sql.Schema{
 		{Name: "Replica_IO_State", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_Host", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false},
 		{Name: "Source_User", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
@@ -109,6 +127,15 @@ func (s *ShowReplicaStatus) Schema() sql.Schema {
 		{Name: "Auto_Position", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Replicate_Rewrite_DB", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 	}
+
+	if s.useDeprecatedColumnNames {
+		for i := range sch {
+			sch[i].Name = strings.ReplaceAll(sch[i].Name, "Source", "Master")
+			sch[i].Name = strings.ReplaceAll(sch[i].Name, "Replica", "Slave")
+		}
+	}
+
+	return sch
 }
 
 func (s *ShowReplicaStatus) Children() []sql.Node {
