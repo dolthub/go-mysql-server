@@ -329,6 +329,16 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set system variable to no_auto_create_user, which has been deprecated",
+		SetUpScript: []string{
+			`set sql_mode = NO_AUTO_CREATE_USER`,
+		},
+		Query: "SELECT @@sql_mode",
+		Expected: []sql.Row{
+			{"NO_AUTO_CREATE_USER"},
+		},
+	},
+	{
 		Name: "set sql_mode variable from mysqldump",
 		SetUpScript: []string{
 			`SET sql_mode = 'STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,TRADITIONAL,NO_ENGINE_SUBSTITUTION'`,
