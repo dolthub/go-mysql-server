@@ -91,7 +91,7 @@ type MutableStatistic interface {
 	WithLowerBound(Row) Statistic
 }
 
-// NewSchemaQualifierFromString creates a new StatQualifier from a string.
+// NewQualifierFromString creates a new StatQualifier from a string.
 func NewQualifierFromString(q string) (StatQualifier, error) {
 	parts := strings.Split(q, ".")
 	if len(parts) < 3 {
