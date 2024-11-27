@@ -26,7 +26,7 @@ import (
 // Substring is a function to return a part of a string.
 // This function behaves as the homonym MySQL function.
 // Since Go strings are UTF8, this function does not return a direct sub
-// string str[start:start+length], instead returns the substring of rune
+// string str.GetValue(start:start+length), instead returns the substring of rune
 // s. That is, "á"[0:1] does not return a partial unicode glyph, but "á"
 // itself.
 type Substring struct {

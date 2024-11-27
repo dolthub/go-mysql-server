@@ -47,25 +47,25 @@ func TestArrayInsert(t *testing.T) {
 		// find one, it reports an error about the path expression. If the object lookup does find an array, then it
 		// inserts the value at the index. If the index is out of range, it inserts at the appropriate end of the array
 		// (similar to other jsonInput mutating functions). Finally, if the object lookup finds a non-array, it's a no-op.
-		{f1, sql.Row{jsonInput, "$.b[0]", 4.1}, `{"a": 1, "b": [4.1, 2, 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{jsonInput, "$.a", 2}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 3 of $.a")},
-		{f1, sql.Row{jsonInput, "$.e", "new"}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 3 of $.e")},
-		{f1, sql.Row{jsonInput, "$.c.d", "test"}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 5 of $.c.d")},
-		{f2, sql.Row{jsonInput, "$.b[0]", 4.1, "$.c.d", "test"}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 5 of $.c.d")},
-		{f1, sql.Row{jsonInput, "$.b[5]", 4.1}, `{"a": 1, "b": [2, 3, 4.1], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{jsonInput, "$.b.c", 4}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 4 of $.b.c")},
-		{f1, sql.Row{jsonInput, "$.a[0]", 4.1}, jsonInput, nil},
-		{f1, sql.Row{jsonInput, "$[0]", 4.1}, jsonInput, nil},
-		{f1, sql.Row{jsonInput, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 2 of $.[0]")},
-		{f1, sql.Row{jsonInput, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")},
-		{f1, sql.Row{jsonInput, "$.c.*", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.*")},
-		{f1, sql.Row{jsonInput, "$.c.**", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.**")},
-		{f1, sql.Row{1, "$", "test"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_array_insert")},
-		{f1, sql.Row{`}`, "$", "test"}, nil, sql.ErrInvalidJSONText.New(1, "json_array_insert", `}`)},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.b[0]", 4.1}, `{"a": 1, "b": [4.1, 2, 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.a", 2}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 3 of $.a")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.e", "new"}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 3 of $.e")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.c.d", "test"}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 5 of $.c.d")},
+		{f2, sql.UntypedSqlRow{jsonInput, "$.b[0]", 4.1, "$.c.d", "test"}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 5 of $.c.d")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.b[5]", 4.1}, `{"a": 1, "b": [2, 3, 4.1], "c": {"d": "foo"}}`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.b.c", 4}, nil, fmt.Errorf("A path expression is not a path to a cell in an array at character 4 of $.b.c")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.a[0]", 4.1}, jsonInput, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$[0]", 4.1}, jsonInput, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 2 of $.[0]")},
+		{f1, sql.UntypedSqlRow{jsonInput, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.c.*", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.*")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.c.**", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.**")},
+		{f1, sql.UntypedSqlRow{1, "$", "test"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_array_insert")},
+		{f1, sql.UntypedSqlRow{`}`, "$", "test"}, nil, sql.ErrInvalidJSONText.New(1, "json_array_insert", `}`)},
 
-		{f1, sql.Row{jsonInput, "$", 10.1}, nil, fmt.Errorf("Path expression is not a path to a cell in an array: $")},
-		{f1, sql.Row{nil, "$", 42.7}, nil, nil},
-		{f1, sql.Row{jsonInput, nil, 10}, nil, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$", 10.1}, nil, fmt.Errorf("Path expression is not a path to a cell in an array: $")},
+		{f1, sql.UntypedSqlRow{nil, "$", 42.7}, nil, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, nil, 10}, nil, nil},
 
 		// mysql> select JSON_ARRAY_INSERT(JSON_ARRAY(1,2,3), "$[1]", 51, "$[1]", 52, "$[1]", 53);
 		//+--------------------------------------------------------------------------+
@@ -74,7 +74,7 @@ func TestArrayInsert(t *testing.T) {
 		//| [1, 53, 52, 51, 2, 3]                                                    |
 		//+--------------------------------------------------------------------------+
 		{buildGetFieldExpressions(t, json.NewJSONArrayInsert, 7),
-			sql.Row{`[1.0,2.0,3.0]`,
+			sql.UntypedSqlRow{`[1.0,2.0,3.0]`,
 				"$[1]", 51.0, // [1, 2, 3] -> [1, 51, 2, 3]
 				"$[1]", 52.0, // [1, 51, 2, 3] -> [1, 52, 51, 2, 3]
 				"$[1]", 53.0, // [1, 52, 51, 2, 3] -> [1, 53, 52, 51, 2, 3]
@@ -84,7 +84,7 @@ func TestArrayInsert(t *testing.T) {
 
 	for _, tstC := range testCases {
 		var paths []string
-		for _, path := range tstC.row[1:] {
+		for _, path := range tstC.row.Values()[1:] {
 			if _, ok := path.(string); ok {
 				paths = append(paths, path.(string))
 			}

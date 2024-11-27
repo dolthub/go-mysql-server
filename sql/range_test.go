@@ -185,7 +185,7 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
 			require.NoError(t, err)
 			for _, row := range values2 {
-				referenceBool, err := test.reference.Eval(ctx, row)
+				referenceBool, err := test.reference.Eval(ctx, sql.UntypedSqlRow(row))
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
@@ -300,7 +300,7 @@ func TestRangeOverlapThreeColumns(t *testing.T) {
 			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
 			require.NoError(t, err)
 			for _, row := range values3 {
-				referenceBool, err := test.reference.Eval(ctx, row)
+				referenceBool, err := test.reference.Eval(ctx, sql.UntypedSqlRow(row))
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
@@ -389,7 +389,7 @@ func TestRangeOverlapNulls(t *testing.T) {
 			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
 			require.NoError(t, err)
 			for _, row := range valuesNull {
-				referenceBool, err := test.reference.Eval(ctx, row)
+				referenceBool, err := test.reference.Eval(ctx, sql.UntypedSqlRow(row))
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))

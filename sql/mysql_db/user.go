@@ -44,26 +44,28 @@ type User struct {
 }
 
 func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {
-	row := make(sql.Row, len(userTblSchema))
+	row := sql.NewSqlRowWithLen(len(userTblSchema))
 	var err error
 	for i, col := range userTblSchema {
-		row[i], err = col.Default.Eval(ctx, nil)
+		var v interface{}
+		v, err = col.Default.Eval(ctx, nil)
+		row.SetValue(i, v)
 		if err != nil {
 			panic(err) // Should never happen, schema is static
 		}
 	}
 	//TODO: once the remaining fields are added, fill those in as well
-	row[userTblColIndex_User] = u.User
-	row[userTblColIndex_Host] = u.Host
-	row[userTblColIndex_plugin] = u.Plugin
-	row[userTblColIndex_authentication_string] = u.Password
-	row[userTblColIndex_password_last_changed] = u.PasswordLastChanged
-	row[userTblColIndex_identity] = u.Identity
+	row.SetValue(userTblColIndex_User, u.User)
+	row.SetValue(userTblColIndex_Host, u.Host)
+	row.SetValue(userTblColIndex_plugin, u.Plugin)
+	row.SetValue(userTblColIndex_authentication_string, u.Password)
+	row.SetValue(userTblColIndex_password_last_changed, u.PasswordLastChanged)
+	row.SetValue(userTblColIndex_identity, u.Identity)
 	if u.Locked {
-		row[userTblColIndex_account_locked] = uint16(2)
+		row.SetValue(userTblColIndex_account_locked, uint16(2))
 	}
 	if u.Attributes != nil {
-		row[userTblColIndex_User_attributes] = *u.Attributes
+		row.SetValue(userTblColIndex_User_attributes, *u.Attributes)
 	}
 	u.privSetToRow(ctx, row)
 	return row, nil
@@ -76,22 +78,22 @@ func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
 	//TODO: once the remaining fields are added, fill those in as well
 	var attributes *string
 	passwordLastChanged := time.Now().UTC()
-	if val, ok := row[userTblColIndex_User_attributes].(string); ok {
+	if val, ok := row.GetValue(userTblColIndex_User_attributes).(string); ok {
 		attributes = &val
 	}
-	if val, ok := row[userTblColIndex_password_last_changed].(time.Time); ok {
+	if val, ok := row.GetValue(userTblColIndex_password_last_changed).(time.Time); ok {
 		passwordLastChanged = val
 	}
 	return &User{
-		User:                row[userTblColIndex_User].(string),
-		Host:                row[userTblColIndex_Host].(string),
+		User:                row.GetValue(userTblColIndex_User).(string),
+		Host:                row.GetValue(userTblColIndex_Host).(string),
 		PrivilegeSet:        UserRowToPrivSet(ctx, row),
-		Plugin:              row[userTblColIndex_plugin].(string),
-		Password:            row[userTblColIndex_authentication_string].(string),
+		Plugin:              row.GetValue(userTblColIndex_plugin).(string),
+		Password:            row.GetValue(userTblColIndex_authentication_string).(string),
 		PasswordLastChanged: passwordLastChanged,
-		Locked:              row[userTblColIndex_account_locked].(uint16) == 2,
+		Locked:              row.GetValue(userTblColIndex_account_locked).(uint16) == 2,
 		Attributes:          attributes,
-		Identity:            row[userTblColIndex_identity].(string),
+		Identity:            row.GetValue(userTblColIndex_identity).(string),
 		IsRole:              false,
 	}, nil
 }
@@ -168,7 +170,7 @@ func (u User) UserHostToString(quote string) string {
 
 func UserRowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 	privSet := NewPrivilegeSet()
-	for i, val := range row {
+	for i, val := range row.Values() {
 		switch i {
 		case userTblColIndex_Select_priv:
 			if val.(uint16) == 2 {
@@ -305,67 +307,67 @@ func (u *User) privSetToRow(ctx *sql.Context, row sql.Row) {
 	for _, priv := range u.PrivilegeSet.ToSlice() {
 		switch priv {
 		case sql.PrivilegeType_Select:
-			row[userTblColIndex_Select_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Select_priv, uint16(2))
 		case sql.PrivilegeType_Insert:
-			row[userTblColIndex_Insert_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Insert_priv, uint16(2))
 		case sql.PrivilegeType_Update:
-			row[userTblColIndex_Update_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Update_priv, uint16(2))
 		case sql.PrivilegeType_Delete:
-			row[userTblColIndex_Delete_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Delete_priv, uint16(2))
 		case sql.PrivilegeType_Create:
-			row[userTblColIndex_Create_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Create_priv, uint16(2))
 		case sql.PrivilegeType_Drop:
-			row[userTblColIndex_Drop_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Drop_priv, uint16(2))
 		case sql.PrivilegeType_Reload:
-			row[userTblColIndex_Reload_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Reload_priv, uint16(2))
 		case sql.PrivilegeType_Shutdown:
-			row[userTblColIndex_Shutdown_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Shutdown_priv, uint16(2))
 		case sql.PrivilegeType_Process:
-			row[userTblColIndex_Process_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Process_priv, uint16(2))
 		case sql.PrivilegeType_File:
-			row[userTblColIndex_File_priv] = uint16(2)
+			row.SetValue(userTblColIndex_File_priv, uint16(2))
 		case sql.PrivilegeType_GrantOption:
-			row[userTblColIndex_Grant_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Grant_priv, uint16(2))
 		case sql.PrivilegeType_References:
-			row[userTblColIndex_References_priv] = uint16(2)
+			row.SetValue(userTblColIndex_References_priv, uint16(2))
 		case sql.PrivilegeType_Index:
-			row[userTblColIndex_Index_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Index_priv, uint16(2))
 		case sql.PrivilegeType_Alter:
-			row[userTblColIndex_Alter_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Alter_priv, uint16(2))
 		case sql.PrivilegeType_ShowDB:
-			row[userTblColIndex_Show_db_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Show_db_priv, uint16(2))
 		case sql.PrivilegeType_Super:
-			row[userTblColIndex_Super_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Super_priv, uint16(2))
 		case sql.PrivilegeType_CreateTempTable:
-			row[userTblColIndex_Create_tmp_table_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Create_tmp_table_priv, uint16(2))
 		case sql.PrivilegeType_LockTables:
-			row[userTblColIndex_Lock_tables_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Lock_tables_priv, uint16(2))
 		case sql.PrivilegeType_Execute:
-			row[userTblColIndex_Execute_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Execute_priv, uint16(2))
 		case sql.PrivilegeType_ReplicationSlave:
-			row[userTblColIndex_Repl_slave_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Repl_slave_priv, uint16(2))
 		case sql.PrivilegeType_ReplicationClient:
-			row[userTblColIndex_Repl_client_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Repl_client_priv, uint16(2))
 		case sql.PrivilegeType_CreateView:
-			row[userTblColIndex_Create_view_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Create_view_priv, uint16(2))
 		case sql.PrivilegeType_ShowView:
-			row[userTblColIndex_Show_view_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Show_view_priv, uint16(2))
 		case sql.PrivilegeType_CreateRoutine:
-			row[userTblColIndex_Create_routine_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Create_routine_priv, uint16(2))
 		case sql.PrivilegeType_AlterRoutine:
-			row[userTblColIndex_Alter_routine_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Alter_routine_priv, uint16(2))
 		case sql.PrivilegeType_CreateUser:
-			row[userTblColIndex_Create_user_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Create_user_priv, uint16(2))
 		case sql.PrivilegeType_Event:
-			row[userTblColIndex_Event_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Event_priv, uint16(2))
 		case sql.PrivilegeType_Trigger:
-			row[userTblColIndex_Trigger_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Trigger_priv, uint16(2))
 		case sql.PrivilegeType_CreateTablespace:
-			row[userTblColIndex_Create_tablespace_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Create_tablespace_priv, uint16(2))
 		case sql.PrivilegeType_CreateRole:
-			row[userTblColIndex_Create_role_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Create_role_priv, uint16(2))
 		case sql.PrivilegeType_DropRole:
-			row[userTblColIndex_Drop_role_priv] = uint16(2)
+			row.SetValue(userTblColIndex_Drop_role_priv, uint16(2))
 		}
 	}
 }

@@ -87,7 +87,7 @@ func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr erro
 		}
 	}
 
-	row := make(sql.Row, len(exprs))
+	row := sql.NewSqlRowWithLen(len(exprs))
 	var secondPass []int
 	for i, expr := range exprs {
 		if expr != nil {
@@ -96,20 +96,24 @@ func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr erro
 				secondPass = append(secondPass, i)
 				continue
 			}
-			row[i], err = expr.Eval(ctx, row)
+			var v interface{}
+			v, err = expr.Eval(ctx, row)
+			row.SetValue(i, v)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 	for _, idx := range secondPass {
-		row[idx], err = exprs[idx].Eval(ctx, row)
+		var v interface{}
+		v, err = exprs[idx].Eval(ctx, row)
+		row.SetValue(idx, v)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return sql.NewRow(row...), nil
+	return row, nil
 }
 
 func (l *loadDataIter) Close(ctx *sql.Context) error {
@@ -169,9 +173,9 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 		}
 	}
 
-	fieldRow := make(sql.Row, len(fields))
+	fieldRow := sql.NewSqlRowWithLen(len(fields))
 	for i, field := range fields {
-		fieldRow[i] = field
+		fieldRow.SetValue(i, field)
 	}
 
 	exprs := make([]sql.Expression, len(l.destSch))
@@ -565,14 +569,14 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		}
 
 		// remap old enum values to new enum values
-		if isOldEnum && isNewEnum && newRow[newColIdx] != nil {
-			oldIdx := int(newRow[newColIdx].(uint16))
+		if isOldEnum && isNewEnum && newRow.GetValue(newColIdx) != nil {
+			oldIdx := int(newRow.GetValue(newColIdx).(uint16))
 			oldStr, _ := oldEnum.At(oldIdx)
 			newIdx := newEnum.IndexOf(oldStr)
 			if newIdx == -1 {
 				return false, fmt.Errorf("data truncated for column %s", newCol.Name)
 			}
-			newRow[newColIdx] = uint16(newIdx)
+			newRow.SetValue(newColIdx, uint16(newIdx))
 		}
 
 		err = i.validateNullability(ctx, newSch, newRow)
@@ -704,7 +708,7 @@ func modifyColumnInSchema(schema sql.Schema, name string, column *sql.Column, or
 // TODO: this shares logic with insert
 func (i *modifyColumnIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
 	for count, col := range dstSchema {
-		if !col.Nullable && row[count] == nil {
+		if !col.Nullable && row.GetValue(count) == nil {
 			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 		}
 	}
@@ -909,17 +913,17 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 		return nil, err
 	}
 
-	for i := range newRow {
-		converted, inRange, err := sch[i].Type.Convert(newRow[i])
+	for i := 0; i < newRow.Len(); i++ {
+		converted, inRange, err := sch[i].Type.Convert(newRow.GetValue(i))
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(sch[i].Name, err)
 			}
 			return nil, err
 		} else if !inRange {
-			return nil, sql.ErrValueOutOfRange.New(newRow[i], sch[i].Type)
+			return nil, sql.ErrValueOutOfRange.New(newRow.GetValue(i), sch[i].Type)
 		}
-		newRow[i] = converted
+		newRow.SetValue(i, converted)
 	}
 
 	return newRow, nil
@@ -1101,7 +1105,7 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 
 		// check for null values in the primary key insert
 		for _, i := range newSchema.PkOrdinals {
-			if r[i] == nil {
+			if r.GetValue(i) == nil {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(newSchema.Schema[i].Name)
 			}
 		}
@@ -1338,7 +1342,7 @@ func (i *addColumnIter) UpdateRowsWithDefaults(ctx *sql.Context, table sql.Table
 // present and in the order as represented by the schema.
 func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd *sql.ColumnDefaultValue) (sql.Row, error) {
 	newRow := row.Copy()
-	if len(tblSch) != len(row) {
+	if len(tblSch) != row.Len() {
 		return nil, fmt.Errorf("any row given to ApplyDefaults must be of the same length as the table it represents")
 	}
 
@@ -1347,23 +1351,21 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 	}
 
 	columnDefaultExpr := cd
+	var val interface{}
+	var err error
 	if columnDefaultExpr == nil && !tblSch[col].Nullable {
-		val := tblSch[col].Type.Zero()
-		var err error
-		newRow[col], _, err = tblSch[col].Type.Convert(val)
-		if err != nil {
-			return nil, err
-		}
+		val = tblSch[col].Type.Zero()
 	} else {
-		val, err := columnDefaultExpr.Eval(ctx, newRow)
-		if err != nil {
-			return nil, err
-		}
-		newRow[col], _, err = tblSch[col].Type.Convert(val)
+		val, err = columnDefaultExpr.Eval(ctx, newRow)
 		if err != nil {
 			return nil, err
 		}
 	}
+	v, _, err := tblSch[col].Type.Convert(val)
+	if err != nil {
+		return nil, err
+	}
+	newRow.SetValue(col, v)
 
 	return newRow, nil
 }
@@ -1438,7 +1440,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 			if err != nil {
 				return false, err
 			}
-			newRow[autoIncColIdx] = v
+			newRow.SetValue(autoIncColIdx, v)
 			val, err = autoTbl.GetNextAutoIncrementValue(ctx, val)
 			if err != nil {
 				return false, err
@@ -1589,7 +1591,7 @@ func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.Row{types.NewOkResult(0)}, nil
+	return sql.NewSqlRow(types.NewOkResult(0)), nil
 }
 
 // Close implements the sql.RowIter interface.
@@ -1624,7 +1626,7 @@ func (c *createTriggerIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return sql.Row{types.NewOkResult(0)}, nil
+	return sql.NewSqlRow(types.NewOkResult(0)), nil
 }
 
 func (c *createTriggerIter) Close(*sql.Context) error {

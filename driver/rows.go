@@ -64,17 +64,17 @@ again:
 	if err != nil {
 		return err
 	}
-	if len(row) == 0 {
+	if row.Len() == 0 {
 		return nil
 	}
 
-	if _, ok := row[0].(types.OkResult); ok {
+	if _, ok := row.GetValue(0).(types.OkResult); ok {
 		// skip OK results
 		goto again
 	}
 
-	for i := range row {
-		dest[i] = r.convert(i, row[i])
+	for i := range row.Values() {
+		dest[i] = r.convert(i, row.GetValue(i))
 	}
 	return nil
 }

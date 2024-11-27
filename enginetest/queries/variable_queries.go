@@ -32,7 +32,7 @@ var VariableQueries = []ScriptTest{
 		Name:        "use string name for foreign_key checks",
 		SetUpScript: []string{},
 		Query:       "set @@foreign_key_checks = off;",
-		Expected:    []sql.Row{{}},
+		Expected:    []sql.UntypedSqlRow{{}},
 	},
 	{
 		Name: "set system variables",
@@ -40,14 +40,14 @@ var VariableQueries = []ScriptTest{
 			"set @@auto_increment_increment = 100, sql_select_limit = 1",
 		},
 		Query: "SELECT @@auto_increment_increment, @@sql_select_limit",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{100, 1},
 		},
 	},
 	{
 		Name:  "select join_complexity_limit",
 		Query: "SELECT @@join_complexity_limit",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(12)},
 		},
 	},
@@ -57,7 +57,7 @@ var VariableQueries = []ScriptTest{
 			"set @@join_complexity_limit = 2",
 		},
 		Query: "SELECT @@join_complexity_limit",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(2)},
 		},
 	},
@@ -66,7 +66,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select @@max_allowed_packet;",
-				Expected: []sql.Row{{1073741824}},
+				Expected: []sql.UntypedSqlRow{{1073741824}},
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "@@max_allowed_packet",
@@ -76,7 +76,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "select @@session.max_allowed_packet;",
-				Expected: []sql.Row{{1073741824}},
+				Expected: []sql.UntypedSqlRow{{1073741824}},
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "@@session.max_allowed_packet",
@@ -86,7 +86,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "select @@global.max_allowed_packet;",
-				Expected: []sql.Row{{1073741824}},
+				Expected: []sql.UntypedSqlRow{{1073741824}},
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "@@global.max_allowed_packet",
@@ -96,7 +96,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "select @@GLoBAL.max_allowed_packet;",
-				Expected: []sql.Row{{1073741824}},
+				Expected: []sql.UntypedSqlRow{{1073741824}},
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "@@GLoBAL.max_allowed_packet",
@@ -111,19 +111,19 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select @@server_id;",
-				Expected: []sql.Row{{uint32(1)}},
+				Expected: []sql.UntypedSqlRow{{uint32(1)}},
 			},
 			{
 				Query:    "set @@server_id=123;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "set @@GLOBAL.server_id=123;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "set @@GLOBAL.server_id=0;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 		},
 	},
@@ -137,7 +137,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select @myvar, @@autocommit, @myvar2, @myvar3",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 0, 0},
 				},
 			},
@@ -149,7 +149,7 @@ var VariableQueries = []ScriptTest{
 			"set @@auto_increment_INCREMENT = 100, sql_select_LIMIT = 1",
 		},
 		Query: "SELECT @@auto_increment_increment, @@sql_select_limit",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{100, 1},
 		},
 	},
@@ -160,7 +160,7 @@ var VariableQueries = []ScriptTest{
 			"set @@auto_increment_increment = default, sql_select_limit = default",
 		},
 		Query: "SELECT @@auto_increment_increment, @@sql_select_limit",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, math.MaxInt32},
 		},
 	},
@@ -170,7 +170,7 @@ var VariableQueries = []ScriptTest{
 			"set @@autocommit = ON, sql_mode = \"\"",
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, ""},
 		},
 	},
@@ -180,7 +180,7 @@ var VariableQueries = []ScriptTest{
 			"set @@autocommit = ON, session sql_mode = \"\"",
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, ""},
 		},
 	},
@@ -190,7 +190,7 @@ var VariableQueries = []ScriptTest{
 			"set SESSION sql_mode = 'ANSI'",
 		},
 		Query: "SELECT @@session.sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"ANSI"},
 		},
 	},
@@ -200,7 +200,7 @@ var VariableQueries = []ScriptTest{
 			`set @@autocommit = "true", default_table_encryption = "false"`,
 		},
 		Query: "SELECT @@autocommit, @@session.default_table_encryption",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0},
 		},
 	},
@@ -210,7 +210,7 @@ var VariableQueries = []ScriptTest{
 			`set @@autocommit = true, default_table_encryption = false`,
 		},
 		Query: "SELECT @@autocommit, @@session.default_table_encryption",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0},
 		},
 	},
@@ -221,7 +221,7 @@ var VariableQueries = []ScriptTest{
 			`set lc_messages = concat(@@lc_messages, '456'), @@auto_increment_increment = @@auto_increment_increment + 3`,
 		},
 		Query: "SELECT @@lc_messages, @@auto_increment_increment",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"123456", 4},
 		},
 	},
@@ -232,7 +232,7 @@ var VariableQueries = []ScriptTest{
 			`set @@sql_select_limit = @@auto_increment_increment`,
 		},
 		Query: "SELECT @@sql_select_limit",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{123},
 		},
 	},
@@ -242,7 +242,7 @@ var VariableQueries = []ScriptTest{
 			`set names utf8mb4`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"utf8mb4", "utf8mb4", "utf8mb4"},
 		},
 	},
@@ -253,7 +253,7 @@ var VariableQueries = []ScriptTest{
 			`set NAMES "utf8mb3"`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"utf8mb3", "utf8mb3", "utf8mb3"},
 		},
 	},
@@ -263,7 +263,7 @@ var VariableQueries = []ScriptTest{
 			`set character set utf8`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"utf8", "utf8mb4", "utf8"},
 		},
 	},
@@ -273,7 +273,7 @@ var VariableQueries = []ScriptTest{
 			`set charset utf8`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"utf8", "utf8mb4", "utf8"},
 		},
 	},
@@ -283,7 +283,7 @@ var VariableQueries = []ScriptTest{
 			`set charset 'utf8'`,
 		},
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"utf8", "utf8mb4", "utf8"},
 		},
 	},
@@ -294,7 +294,7 @@ var VariableQueries = []ScriptTest{
 			`SET sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')), time_zone='+00:00', NAMES utf8mb3 COLLATE utf8mb3_bin;`,
 		},
 		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"NO_ENGINE_SUBSTITUTION,PIPES_AS_CONCAT,ANSI", "+00:00", "utf8mb3", "utf8mb3", "utf8mb3"},
 		},
 	},
@@ -304,7 +304,7 @@ var VariableQueries = []ScriptTest{
 			`SET sql_mode=ALLOW_INVALID_DATES, time_zone='+00:00', CHARSET 'utf8'`,
 		},
 		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"ALLOW_INVALID_DATES", "+00:00", "utf8", "utf8mb4", "utf8"},
 		},
 	},
@@ -314,7 +314,7 @@ var VariableQueries = []ScriptTest{
 			`set @@sql_mode = ALLOW_INVALID_DATES`,
 		},
 		Query: "SELECT @@sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"ALLOW_INVALID_DATES"},
 		},
 	},
@@ -324,7 +324,7 @@ var VariableQueries = []ScriptTest{
 			`set sql_mode = ALLOW_INVALID_DATES`,
 		},
 		Query: "SELECT @@sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"ALLOW_INVALID_DATES"},
 		},
 	},
@@ -334,7 +334,7 @@ var VariableQueries = []ScriptTest{
 			`set sql_mode = NO_AUTO_CREATE_USER`,
 		},
 		Query: "SELECT @@sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"NO_AUTO_CREATE_USER"},
 		},
 	},
@@ -344,7 +344,7 @@ var VariableQueries = []ScriptTest{
 			`SET sql_mode = 'STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,TRADITIONAL,NO_ENGINE_SUBSTITUTION'`,
 		},
 		Query: "SELECT @@sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
 		},
 	},
@@ -354,7 +354,7 @@ var VariableQueries = []ScriptTest{
 			`SET sql_mode = ',,,,STRICT_TRANS_TABLES,,,,,NO_AUTO_VALUE_ON_ZERO,,,,NO_ENGINE_SUBSTITUTION,,,,,,'`,
 		},
 		Query: "SELECT @@sql_mode",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"NO_AUTO_VALUE_ON_ZERO,NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"},
 		},
 	},
@@ -366,7 +366,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SHOW VARIABLES LIKE '%sql_mode%'`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"sql_mode", "ONLY_FULL_GROUP_BY"},
 				},
 			},
@@ -378,13 +378,13 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select @@innodb_autoinc_lock_mode;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: `select @@global.innodb_autoinc_lock_mode;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -406,7 +406,7 @@ var VariableQueries = []ScriptTest{
 			`set @myvar = "hello"`,
 		},
 		Query: "SELECT @myvar",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"hello"},
 		},
 	},
@@ -416,7 +416,7 @@ var VariableQueries = []ScriptTest{
 			`set @myvar = 123`,
 		},
 		Query: "SELECT @myvar",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{123},
 		},
 	},
@@ -426,7 +426,7 @@ var VariableQueries = []ScriptTest{
 			`set @myvar = 123.4`,
 		},
 		Query: "SELECT @myvar",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"123.4"},
 		},
 	},
@@ -436,7 +436,7 @@ var VariableQueries = []ScriptTest{
 			`set @myvar = 123.4, @@auto_increment_increment = 1234`,
 		},
 		Query: "SELECT @myvar, @@auto_increment_increment",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"123.4", 1234},
 		},
 	},
@@ -447,7 +447,7 @@ var VariableQueries = []ScriptTest{
 			`set auto_increment_increment = @myvar`,
 		},
 		Query: "SELECT @myvar, @@auto_increment_increment",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1234, 1234},
 		},
 	},
@@ -457,7 +457,7 @@ var VariableQueries = []ScriptTest{
 			`set @@LOCAL.cte_max_recursion_depth = 1234`,
 		},
 		Query: "SELECT @@SESSION.cte_max_recursion_depth",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1234},
 		},
 	},
@@ -468,7 +468,7 @@ var VariableQueries = []ScriptTest{
 			`set cte_max_recursion_depth = 77`,
 		},
 		Query: "SELECT @cte_max_recursion_depth, @@cte_max_recursion_depth",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{55, 77},
 		},
 	},
@@ -477,19 +477,19 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @doesNotExist;",
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				Query:    "SELECT @doesNotExist is NULL;",
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 			{
 				Query:    "SELECT @doesNotExist='';",
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				Query:    "SELECT @doesNotExist < 123;",
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 		},
 	},
@@ -502,19 +502,19 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @stringVar='abc'",
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 			{
 				Query:    "SELECT @stringVar='abcd';",
-				Expected: []sql.Row{{false}},
+				Expected: []sql.UntypedSqlRow{{false}},
 			},
 			{
 				Query:    "SELECT @stringVar=123;",
-				Expected: []sql.Row{{false}},
+				Expected: []sql.UntypedSqlRow{{false}},
 			},
 			{
 				Query:    "SELECT @stringVar is null;",
-				Expected: []sql.Row{{false}},
+				Expected: []sql.UntypedSqlRow{{false}},
 			},
 		},
 	},
@@ -523,55 +523,55 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "set transaction isolation level serializable, read only",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
-				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+				Expected: []sql.UntypedSqlRow{{"SERIALIZABLE", 1}},
 			},
 			{
 				Query:    "set transaction read write, isolation level read uncommitted",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
-				Expected: []sql.Row{{"READ-UNCOMMITTED", 0}},
+				Expected: []sql.UntypedSqlRow{{"READ-UNCOMMITTED", 0}},
 			},
 			{
 				Query:    "set transaction isolation level read committed",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "select @@transaction_isolation",
-				Expected: []sql.Row{{"READ-COMMITTED"}},
+				Expected: []sql.UntypedSqlRow{{"READ-COMMITTED"}},
 			},
 			{
 				Query:    "set transaction isolation level repeatable read",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "select @@transaction_isolation",
-				Expected: []sql.Row{{"REPEATABLE-READ"}},
+				Expected: []sql.UntypedSqlRow{{"REPEATABLE-READ"}},
 			},
 			{
 				Query:    "set session transaction isolation level serializable, read only",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
-				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+				Expected: []sql.UntypedSqlRow{{"SERIALIZABLE", 1}},
 			},
 			{
 				Query:    "set global transaction read write, isolation level read uncommitted",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
-				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+				Expected: []sql.UntypedSqlRow{{"SERIALIZABLE", 1}},
 			},
 			{
 				Query:    "select @@global.transaction_isolation, @@global.transaction_read_only",
-				Expected: []sql.Row{{"READ-UNCOMMITTED", 0}},
+				Expected: []sql.UntypedSqlRow{{"READ-UNCOMMITTED", 0}},
 			},
 		},
 	},
@@ -584,7 +584,7 @@ var VariableQueries = []ScriptTest{
 	//		`set @v1 = 1234`,
 	//	},
 	//	Query: "SELECT @v1, `@v1` from test",
-	//	Expected: []sql.Row{
+	//	Expected: []sql.UntypedSqlRow{
 	//		{1234, 123},
 	//	},
 	//},

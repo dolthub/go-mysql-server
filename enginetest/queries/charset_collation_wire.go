@@ -29,7 +29,7 @@ type CharsetCollationWireTest struct {
 // CharsetCollationWireTestQuery is a query within a CharsetCollationWireTest.
 type CharsetCollationWireTestQuery struct {
 	Query    string
-	Expected []sql.Row
+	Expected []sql.UntypedSqlRow
 	Error    bool
 	// ExpectedCollations is an optional field, and when populated the test framework will assert that
 	// the MySQL field metadata has these expected collation IDs.
@@ -44,11 +44,11 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf16_unicode_ci, v2 VARCHAR(255) COLLATE UTF16_UNICODE_CI);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE test2 (v1 VARCHAR(255) CHARACTER SET utf16, v2 VARCHAR(255) CHARACTER SET UTF16);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -61,19 +61,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "INSERT INTO test VALUES ('hey');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (_utf16'\x00h\x00i');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (_utf8mb4'\x68\x65\x6c\x6c\x6f');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test ORDER BY 1;",
-				Expected: []sql.Row{{"\x00h\x00e\x00l\x00l\x00o"}, {"\x00h\x00e\x00y"}, {"\x00h\x00i"}},
+				Expected: []sql.UntypedSqlRow{{"\x00h\x00e\x00l\x00l\x00o"}, {"\x00h\x00e\x00y"}, {"\x00h\x00i"}},
 			},
 		},
 	},
@@ -87,19 +87,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "INSERT INTO test1 VALUES ('HEY2'), ('hey1');",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO test2 VALUES ('HEY2'), ('hey1');",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "SELECT * FROM test1 ORDER BY 1;",
-				Expected: []sql.Row{{"HEY2"}, {"hey1"}},
+				Expected: []sql.UntypedSqlRow{{"HEY2"}, {"hey1"}},
 			},
 			{
 				Query:    "SELECT * FROM test2 ORDER BY 1;",
-				Expected: []sql.Row{{"\x00h\x00e\x00y\x001"}, {"\x00H\x00E\x00Y\x002"}},
+				Expected: []sql.UntypedSqlRow{{"\x00h\x00e\x00y\x001"}, {"\x00H\x00E\x00Y\x002"}},
 			},
 		},
 	},
@@ -115,25 +115,25 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT v1, pk FROM test1 ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c", "1"}, {"\x00A\x00B\x00C", "2"}, {"\x00a\x00B\x00c", "3"}, {"\x00A\x00b\x00C", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c", "1"}, {"\x00A\x00B\x00C", "2"}, {"\x00a\x00B\x00c", "3"}, {"\x00A\x00b\x00C", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "1"}, {"ABC", "2"}, {"aBc", "3"}, {"AbC", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ABC", "2"}, {"AbC", "4"}, {"aBc", "3"}, {"abc", "1"},
 				},
 			},
@@ -151,71 +151,71 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "SELECT v1, pk FROM test1 WHERE v1 > 'AbC' ORDER BY v1, pk;",
-				Expected: []sql.Row(nil),
+				Expected: []sql.UntypedSqlRow(nil),
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 >= 'AbC' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c", "1"}, {"\x00A\x00B\x00C", "2"}, {"\x00a\x00B\x00c", "3"}, {"\x00A\x00b\x00C", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c", "1"}, {"\x00A\x00B\x00C", "2"}, {"\x00a\x00B\x00c", "3"}, {"\x00A\x00b\x00C", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 = 'ABC' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c", "1"}, {"\x00A\x00B\x00C", "2"}, {"\x00a\x00B\x00c", "3"}, {"\x00A\x00b\x00C", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 BETWEEN 'ABC' AND 'AbC' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c", "1"}, {"\x00A\x00B\x00C", "2"}, {"\x00a\x00B\x00c", "3"}, {"\x00A\x00b\x00C", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 IN ('abc') ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c", "1"}, {"\x00A\x00B\x00C", "2"}, {"\x00a\x00B\x00c", "3"}, {"\x00A\x00b\x00C", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 > 'AbC' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"aBc", "3"}, {"abc", "1"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 >= 'AbC' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"AbC", "4"}, {"aBc", "3"}, {"abc", "1"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ABC", "2"}, {"AbC", "4"}, {"aBc", "3"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 = 'ABC' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ABC", "2"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 BETWEEN 'ABC' AND 'AbC' ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ABC", "2"}, {"AbC", "4"},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 IN ('abc') ORDER BY v1, pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "1"},
 				},
 			},
@@ -231,7 +231,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "SELECT * FROM test ORDER BY v1 COLLATE utf8mb4_bin ASC;",
-				Expected: []sql.Row{{"1", "a"}, {"2", "b"}},
+				Expected: []sql.UntypedSqlRow{{"1", "a"}, {"2", "b"}},
 			},
 			{
 				Query: "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
@@ -239,7 +239,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SELECT 'a' COLLATE utf8mb3_bin;",
-				Expected: []sql.Row{{"a"}},
+				Expected: []sql.UntypedSqlRow{{"a"}},
 			},
 			{
 				Query: "SELECT 'a' COLLATE utf8mb4_bin;",
@@ -288,15 +288,15 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
-				Expected: []sql.Row{{"1"}},
+				Expected: []sql.UntypedSqlRow{{"1"}},
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT HEX(UNHEX('c0a80000')) = 'c0a80000'",
-				Expected: []sql.Row{{"0"}},
+				Expected: []sql.UntypedSqlRow{{"0"}},
 			},
 		},
 	},
@@ -310,7 +310,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'ABC');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -320,25 +320,25 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00d\x00e\x00f' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "SELECT * FROM test1 ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1", "\x00a\x00b\x00c"}, {"2", "\x00d\x00e\x00f"},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2", "def"},
 				},
 			},
@@ -354,7 +354,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "INSERT INTO test1 VALUES (1, 'A');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -364,25 +364,25 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query: "INSERT INTO test1 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "INSERT INTO test2 VALUES (2, _utf16'\x00b\x00,\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "SELECT * FROM test1 ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1", "\x00a"}, {"2", "\x00b\x00,\x00c"},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2", "b,c"},
 				},
 			},
@@ -398,34 +398,34 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:              "SELECT * FROM test;",
-				Expected:           []sql.Row{{"\x00h\x00e\x00y"}},
+				Expected:           []sql.UntypedSqlRow{{"\x00h\x00e\x00y"}},
 				ExpectedCollations: []sql.CollationID{sql.Collation_binary},
 			},
 			{
 				Query:    "SET character_set_results = 'utf8mb4';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test;",
-				Expected:           []sql.Row{{"hey"}},
+				Expected:           []sql.UntypedSqlRow{{"hey"}},
 				ExpectedCollations: []sql.CollationID{sql.Collation_utf8mb4_0900_ai_ci},
 			},
 			{
 				Query:    "SET character_set_results = 'utf32';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test;",
-				Expected:           []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
+				Expected:           []sql.UntypedSqlRow{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
 				ExpectedCollations: []sql.CollationID{sql.Collation_utf32_general_ci},
 			},
 			{
 				Query:    "SET character_set_results = NULL;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test;",
-				Expected:           []sql.Row{{"\x00h\x00e\x00y"}},
+				Expected:           []sql.UntypedSqlRow{{"\x00h\x00e\x00y"}},
 				ExpectedCollations: []sql.CollationID{sql.Collation_utf16_general_ci},
 			},
 		},
@@ -440,59 +440,59 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2"},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'A%';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'A%';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2"},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE '%C';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE '%C';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2"},
 				},
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2"},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2"},
 				},
 			},
@@ -506,77 +506,77 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT 'abc' LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' COLLATE utf8mb4_0900_ai_ci LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' COLLATE utf8mb4_0900_bin LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC' COLLATE utf8mb4_0900_bin;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "SELECT _utf8mb4'abc' LIKE 'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "SELECT 'abc' LIKE _utf8mb4'ABC';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
@@ -589,7 +589,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			/*{
 				// collation with the lowest coercibility is used
 				Query: "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, 'a')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
@@ -606,7 +606,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			{
 				// same coercibility, one unicode and one not unicode
 				Query: "SELECT STRCMP(_utf8mb4'A' COLLATE utf8mb4_0900_ai_ci, _latin1'b' COLLATE latin1_general_cs)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"-1"},
 				},
 			},
@@ -617,19 +617,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT LENGTH(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"6"},
 				},
 			},
 			{
 				Query: "SELECT LENGTH(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"3"},
 				},
 			},
 			{
 				Query: "SELECT LENGTH(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"6"},
 				},
 			},
@@ -640,19 +640,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT CHAR_LENGTH(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"3"},
 				},
 			},
 			{
 				Query: "SELECT CHAR_LENGTH(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"3"},
 				},
 			},
 			{
 				Query: "SELECT CHAR_LENGTH(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"6"},
 				},
 			},
@@ -666,19 +666,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT UPPER(_utf16'\x00a\x00B\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00A\x00B\x00C"},
 				},
 			},
 			{
 				Query: "SELECT UPPER(_utf8mb4'aBc' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ABC"},
 				},
 			},
 			{
 				Query: "SELECT UPPER(_utf8mb4'\x00a\x00B\x00c' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00A\x00B\x00C"},
 				},
 			},
@@ -692,19 +692,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT LOWER(_utf16'\x00A\x00b\x00C' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT LOWER(_utf8mb4'AbC' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "SELECT LOWER(_utf8mb4'\x00A\x00b\x00C' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
@@ -715,43 +715,43 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT RPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, 'z');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abczzz"},
 				},
 			},
 			{
 				Query: "SELECT RPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abczzz"},
 				},
 			},
 			{
 				Query: "SELECT RPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abczzz"},
 				},
 			},
 			{
 				Query: "SELECT RPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abczzz"},
 				},
 			},
 			{
 				Query: "SELECT RPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abczzz"},
 				},
 			},
 			{
 				Query: "SELECT RPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT RPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 9, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00czzz"},
 				},
 			},
@@ -762,43 +762,43 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT LPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, 'z');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"zzzabc"},
 				},
 			},
 			{
 				Query: "SELECT LPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"zzzabc"},
 				},
 			},
 			{
 				Query: "SELECT LPAD(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"zzzabc"},
 				},
 			},
 			{
 				Query: "SELECT LPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf8mb4'z' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"zzzabc"},
 				},
 			},
 			{
 				Query: "SELECT LPAD(_utf8mb4'abc' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"zzzabc"},
 				},
 			},
 			{
 				Query: "SELECT LPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 6, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT LPAD(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin, 9, _utf16'\x00z' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"zzz\x00a\x00b\x00c"},
 				},
 			},
@@ -809,19 +809,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT HEX(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"006100620063"},
 				},
 			},
 			{
 				Query: "SELECT HEX(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"616263"},
 				},
 			},
 			{
 				Query: "SELECT HEX(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"006100620063"},
 				},
 			},
@@ -832,13 +832,13 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT UNHEX(_utf16'\x006\x001\x006\x002\x006\x003' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "SELECT UNHEX(_utf8mb4'616263' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
@@ -852,19 +852,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT SUBSTRING(_utf16'\x00a\x00b\x00c\x00d' COLLATE utf16_unicode_ci, 2, 2);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT SUBSTRING(_utf8mb4'abcd' COLLATE utf8mb4_0900_bin, 2, 2);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"bc"},
 				},
 			},
 			{
 				Query: "SELECT SUBSTRING(_utf8mb4'\x00a\x00b\x00c\x00d' COLLATE utf8mb4_0900_bin, 2, 2);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a\x00"},
 				},
 			},
@@ -875,19 +875,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT TO_BASE64(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"AGEAYgBj"},
 				},
 			},
 			{
 				Query: "SELECT TO_BASE64(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"YWJj"},
 				},
 			},
 			{
 				Query: "SELECT TO_BASE64(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"AGEAYgBj"},
 				},
 			},
@@ -898,13 +898,13 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT FROM_BASE64(_utf16'\x00Y\x00W\x00J\x00j' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "SELECT FROM_BASE64(_utf8mb4'YWJj' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
@@ -918,19 +918,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT TRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT TRIM(_utf8mb4' abc ' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "SELECT TRIM(_utf8mb4'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00 \x00a\x00b\x00c\x00"},
 				},
 			},
@@ -944,19 +944,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT RTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00 \x00a\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT RTRIM(_utf8mb4' abc ' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{" abc"},
 				},
 			},
 			{
 				Query: "SELECT RTRIM(_utf8mb4'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00 \x00a\x00b\x00c\x00"},
 				},
 			},
@@ -970,19 +970,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT LTRIM(_utf16'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c\x00 "},
 				},
 			},
 			{
 				Query: "SELECT LTRIM(_utf8mb4' abc ' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc "},
 				},
 			},
 			{
 				Query: "SELECT LTRIM(_utf8mb4'\x00 \x00a\x00b\x00c\x00 ' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00 \x00a\x00b\x00c\x00 "},
 				},
 			},
@@ -993,19 +993,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT BINARY(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT BINARY(_utf8mb4'abc' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "SELECT BINARY(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
@@ -1016,19 +1016,19 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query: "SELECT CAST(_utf16'\x00a\x00b\x00c' COLLATE utf16_unicode_ci AS BINARY);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
 			{
 				Query: "SELECT CAST(_utf8mb4'abc' COLLATE utf8mb4_0900_bin AS BINARY);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "SELECT CAST(_utf8mb4'\x00a\x00b\x00c' COLLATE utf8mb4_0900_bin AS BINARY);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"\x00a\x00b\x00c"},
 				},
 			},
@@ -1047,17 +1047,17 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb4", "utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1069,17 +1069,17 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb3", "utf8mb3_general_ci"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1092,31 +1092,31 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db_a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1", "latin1_general_ci"},
 				},
 			},
 			{
 				Query:    "USE test_db_b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1", "latin1_general_cs"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db_a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "DROP DATABASE test_db_b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1128,11 +1128,11 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb3", "utf8mb3_bin"},
 				},
 			},
@@ -1142,7 +1142,7 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "DROP DATABASE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1158,7 +1158,7 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "DROP DATABASE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1170,27 +1170,27 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb4", "utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query:    "ALTER DATABASE test_db CHARACTER SET utf8mb3;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb3", "utf8mb3_general_ci"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1203,55 +1203,55 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db_a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1", "latin1_general_ci"},
 				},
 			},
 			{
 				Query:    "USE test_db_b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1", "latin1_general_cs"},
 				},
 			},
 			{
 				Query:    "ALTER DATABASE test_db_a COLLATE utf8mb3_bin;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "ALTER DATABASE test_db_b COLLATE utf8mb3_general_ci;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{ // Still on test_db_b
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb3", "utf8mb3_general_ci"},
 				},
 			},
 			{
 				Query:    "USE test_db_a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb3", "utf8mb3_bin"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db_a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "DROP DATABASE test_db_b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1263,27 +1263,27 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb3", "utf8mb3_bin"},
 				},
 			},
 			{
 				Query:    "ALTER DATABASE test_db CHARACTER SET ascii COLLATE ascii_bin;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT @@character_set_database, @@collation_database;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ascii", "ascii_bin"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1296,63 +1296,63 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "CREATE TABLE test_a (pk VARCHAR(20) PRIMARY KEY);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{ // LIKE should inherit the table's collation, NOT the database's collation
 				Query: "CREATE TABLE test_b LIKE other;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{ // AS SELECT should inherit the database's collation, but the column retains the original collation
 				Query: "CREATE TABLE test_c AS SELECT * FROM other;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_a;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test_a", "CREATE TABLE `test_a` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_b;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test_b", "CREATE TABLE `test_b` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) COLLATE utf8mb3_unicode_ci NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
 				},
 			},
 			{
 				Query:    "ALTER DATABASE test_db COLLATE utf8mb3_general_ci;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "CREATE TABLE test_d (pk VARCHAR(20) PRIMARY KEY);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_d;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test_d", "CREATE TABLE `test_d` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1365,37 +1365,37 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 		Queries: []CharsetCollationWireTestQuery{
 			{
 				Query:    "USE test_db_a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'test_db_a';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1", "latin1_general_ci"},
 				},
 			},
 			{
 				Query: "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'test_db_b';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1", "latin1_general_cs"},
 				},
 			},
 			{
 				Query:    "ALTER DATABASE test_db_a COLLATE utf8mb3_general_ci;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SELECT DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'test_db_a';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb3", "utf8mb3_general_ci"},
 				},
 			},
 			{
 				Query:    "DROP DATABASE test_db_a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "DROP DATABASE test_db_b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1407,7 +1407,7 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 0 AS isView FROM INFORMATION_SCHEMA.TABLES AS T WHERE T.TABLE_CATALOG = 'def' AND
                                                       UPPER(T.TABLE_TYPE) = 'BASE TABLE' ORDER BY T.TABLE_NAME;`,
-				Expected: []sql.Row(nil),
+				Expected: []sql.UntypedSqlRow(nil),
 			},
 		},
 	},

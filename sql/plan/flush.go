@@ -50,7 +50,7 @@ func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, err
 	if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{types.NewOkResult(0)}), nil
 }
 
 // String implements the interface sql.Node.

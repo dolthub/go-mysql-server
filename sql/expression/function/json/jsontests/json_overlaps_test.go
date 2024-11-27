@@ -33,204 +33,204 @@ func TestJSONOverlaps(t *testing.T) {
 	f2 := buildGetFieldExpressions(t, json.NewJSONOverlaps, 2)
 	testCases := []struct {
 		f   sql.Expression
-		row sql.Row
+		row sql.UntypedSqlRow
 		exp interface{}
 		err error
 	}{
 		// errors
 		{
 			f:   f2,
-			row: sql.Row{``},
+			row: sql.UntypedSqlRow{``},
 			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", ``),
 		},
 		{
 			f:   f2,
-			row: sql.Row{``, ``},
+			row: sql.UntypedSqlRow{``, ``},
 			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", ``),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`asdf`, `badjson`},
+			row: sql.UntypedSqlRow{`asdf`, `badjson`},
 			err: sql.ErrInvalidJSONText.New(1, "json_overlaps", `asdf`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{}`, `badjson`},
+			row: sql.UntypedSqlRow{`{}`, `badjson`},
 			err: sql.ErrInvalidJSONText.New(2, "json_overlaps", `badjson`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{1, `{}`},
+			row: sql.UntypedSqlRow{1, `{}`},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_overlaps"),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{}`, 1},
+			row: sql.UntypedSqlRow{`{}`, 1},
 			err: sql.ErrInvalidJSONArgument.New(2, "json_overlaps"),
 		},
 
 		// nulls
 		{
 			f:   f2,
-			row: sql.Row{nil, nil},
+			row: sql.UntypedSqlRow{nil, nil},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{nil, `true`},
+			row: sql.UntypedSqlRow{nil, `true`},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{nil, `1`},
+			row: sql.UntypedSqlRow{nil, `1`},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{nil, `"abc"`},
+			row: sql.UntypedSqlRow{nil, `"abc"`},
 			exp: nil,
 		},
 
 		// scalar match
 		{
 			f:   f2,
-			row: sql.Row{`null`, `null`},
+			row: sql.UntypedSqlRow{`null`, `null`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`false`, `false`},
+			row: sql.UntypedSqlRow{`false`, `false`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`1`, `1`},
+			row: sql.UntypedSqlRow{`1`, `1`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`"abc"`, `"abc"`},
+			row: sql.UntypedSqlRow{`"abc"`, `"abc"`},
 			exp: true,
 		},
 
 		// scalar mismatch
 		{
 			f:   f2,
-			row: sql.Row{`null`, `15`},
+			row: sql.UntypedSqlRow{`null`, `15`},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`false`, `true`},
+			row: sql.UntypedSqlRow{`false`, `true`},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`1`, `2`},
+			row: sql.UntypedSqlRow{`1`, `2`},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`"abc"`, `"def"`},
+			row: sql.UntypedSqlRow{`"abc"`, `"def"`},
 			exp: false,
 		},
 
 		// objects
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": null, "d": 4}`, `{"c": 4, "a": 100, "d": 1, "b": null}`},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": null, "d": 4}`, `{"c": 4, "a": 100, "d": 1, "b": null}`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a":1,"b":10,"d":10}`, `{"c":1,"e":10,"f":1,"d":10}`},
+			row: sql.UntypedSqlRow{`{"a":1,"b":10,"d":10}`, `{"c":1,"e":10,"f":1,"d":10}`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a":1,"b":10,"d":10}`, `{"a":5,"e":10,"f":1,"d":20}`},
+			row: sql.UntypedSqlRow{`{"a":1,"b":10,"d":10}`, `{"a":5,"e":10,"f":1,"d":20}`},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a":1, "b": {"a": 1, "b": 2, "c": 3}, "c": 3}`, `{"b": {"c": 3, "b": 2, "a": 1}}`},
+			row: sql.UntypedSqlRow{`{"a":1, "b": {"a": 1, "b": 2, "c": 3}, "c": 3}`, `{"b": {"c": 3, "b": 2, "a": 1}}`},
 			exp: true,
 		},
 
 		// arrays
 		{
 			f:   f2,
-			row: sql.Row{`[1, 2, 3, null, null, null]`, `null`},
+			row: sql.UntypedSqlRow{`[1, 2, 3, null, null, null]`, `null`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[true, true, false, false]`, `false`},
+			row: sql.UntypedSqlRow{`[true, true, false, false]`, `false`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[1,3,5,7]`, `7`},
+			row: sql.UntypedSqlRow{`[1,3,5,7]`, `7`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`["abc", "def", "ghi", "jkl"]`, `"ghi"`},
+			row: sql.UntypedSqlRow{`["abc", "def", "ghi", "jkl"]`, `"ghi"`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{"[1,3,5,7]", "[2,5,7]"},
+			row: sql.UntypedSqlRow{"[1,3,5,7]", "[2,5,7]"},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{"[1,3,5,7]", "[2,6,7]"},
+			row: sql.UntypedSqlRow{"[1,3,5,7]", "[2,6,7]"},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{"[1,3,5,7]", "[2,6,8]"},
+			row: sql.UntypedSqlRow{"[1,3,5,7]", "[2,6,8]"},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[4,5,6,7]`, `6`},
+			row: sql.UntypedSqlRow{`[4,5,6,7]`, `6`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[4,5,"6",7]`, `6`},
+			row: sql.UntypedSqlRow{`[4,5,"6",7]`, `6`},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[4,5,6,7]`, `"6"`},
+			row: sql.UntypedSqlRow{`[4,5,6,7]`, `"6"`},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[{"a": 1}]`, `{"a": 1}`},
+			row: sql.UntypedSqlRow{`[{"a": 1}]`, `{"a": 1}`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[{"a": [{"b": 1, "c": 2, "d": "test"}]}]`, `{"a": 1}`},
+			row: sql.UntypedSqlRow{`[{"a": [{"b": 1, "c": 2, "d": "test"}]}]`, `{"a": 1}`},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[{}, [], {"a": "1"}, {"a": [{"b": 1, "c": 2, "d": "test"}]}]`, `{"a": [{"b": 1, "c": 2, "d": "test"}]}`},
+			row: sql.UntypedSqlRow{`[{}, [], {"a": "1"}, {"a": [{"b": 1, "c": 2, "d": "test"}]}]`, `{"a": [{"b": 1, "c": 2, "d": "test"}]}`},
 			exp: true,
 		},
 		{
 			f:   f2,
-			row: sql.Row{"[[1,2],[3,4],5]", "[1,[2,3],[4,5]]"},
+			row: sql.UntypedSqlRow{"[[1,2],[3,4],5]", "[1,[2,3],[4,5]]"},
 			exp: false,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[[1, 2]]`, `[[2, 1]]`},
+			row: sql.UntypedSqlRow{`[[1, 2]]`, `[[2, 1]]`},
 			exp: false,
 		},
 	}

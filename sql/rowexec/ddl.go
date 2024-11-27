@@ -362,7 +362,7 @@ func (b *BaseBuilder) buildDeclareCondition(ctx *sql.Context, n *plan.DeclareCon
 
 func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.Row) (sql.RowIter, error) {
 	exists := n.Catalog.HasDatabase(ctx, n.DbName)
-	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{sql.UntypedSqlRow{types.OkResult{RowsAffected: 1}}}
 
 	if exists {
 		if n.IfNotExists && ctx != nil && ctx.Session != nil {
@@ -417,7 +417,7 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 		return nil, err
 	}
 
-	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{sql.UntypedSqlRow{types.OkResult{RowsAffected: 1}}}
 
 	if exists {
 		if n.IfNotExists && ctx != nil && ctx.Session != nil {
@@ -517,7 +517,7 @@ func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.
 	previousUserEntry, ok := editor.GetUser(userPk)
 	if !ok {
 		if a.IfExists {
-			return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+			return sql.RowsToRowIter(sql.UntypedSqlRow{types.NewOkResult(0)}), nil
 		}
 		return nil, sql.ErrUserAlterFailure.New(user.UserName.String("'"))
 	}
@@ -543,7 +543,7 @@ func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{types.NewOkResult(0)}), nil
 }
 
 func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, _ sql.Row) (sql.RowIter, error) {
@@ -750,7 +750,7 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", n.DbName),
 			})
 
-			rows := []sql.Row{{types.OkResult{RowsAffected: 0}}}
+			rows := []sql.Row{sql.UntypedSqlRow{types.OkResult{RowsAffected: 0}}}
 
 			return sql.RowsToRowIter(rows...), nil
 		} else {
@@ -773,7 +773,7 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 		ctx.SetCurrentDatabase("")
 	}
 
-	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{sql.UntypedSqlRow{types.OkResult{RowsAffected: 1}}}
 
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -895,8 +895,8 @@ func (b *BaseBuilder) buildAlterDB(ctx *sql.Context, n *plan.AlterDB, row sql.Ro
 		return nil, err
 	}
 
-	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
-	return sql.RowsToRowIter(rows...), nil
+	rows := sql.NewSqlRow(types.OkResult{RowsAffected: 1})
+	return sql.RowsToRowIter(rows), nil
 }
 
 func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, row sql.Row) (sql.RowIter, error) {

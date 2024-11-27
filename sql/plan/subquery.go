@@ -356,8 +356,8 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 
 	returnsTuple := len(s.Query.Schema()) > 1
 
-	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
-	col := len(row)
+	// Reduce the result row to the size of the expected schema. This means chopping off the first row.Len() columns.
+	col := row.Len()
 	var result []interface{}
 	for {
 		row, err := iter.Next(ctx)
@@ -370,9 +370,9 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		}
 
 		if returnsTuple {
-			result = append(result, append([]interface{}{}, row[col:]...))
+			result = append(result, append([]interface{}{}, row.Subslice(col, row.Len()).Values()...))
 		} else {
-			result = append(result, row[col])
+			result = append(result, row.GetValue(col))
 		}
 	}
 

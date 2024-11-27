@@ -41,12 +41,12 @@ func TestUnion(t *testing.T) {
 	child := memory.NewTable(db, "test", childSchema, nil)
 	empty := memory.NewTable(db, "empty", childSchema, nil)
 
-	rows := []sql.Row{
-		sql.NewRow("john", "john@doe.com"),
-		sql.NewRow("jane", "jane@doe.com"),
-		sql.NewRow("john", "johnx@doe.com"),
-		sql.NewRow("martha", "marthax@doe.com"),
-		sql.NewRow("martha", "martha@doe.com"),
+	rows := []sql.UntypedSqlRow{
+		{"john", "john@doe.com"},
+		{"jane", "jane@doe.com"},
+		{"john", "johnx@doe.com"},
+		{"martha", "marthax@doe.com"},
+		{"martha", "martha@doe.com"},
 	}
 
 	for _, r := range rows {
@@ -94,8 +94,8 @@ func TestUnion(t *testing.T) {
 				break
 			}
 			require.NoError(err)
-			result, ok := row[0].(string)
-			require.True(ok, "first row column should be string, but is %T", row[0])
+			result, ok := row.GetValue(0).(string)
+			require.True(ok, "first row column should be string, but is %T", row.GetValue(0))
 			results = append(results, result)
 		}
 

@@ -61,7 +61,7 @@ func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	row := i.topRows[i.idx]
 	i.idx++
-	return row[:len(row)-1], nil
+	return row.Subslice(0, row.Len()-1), nil
 }
 
 func (i *topRowsIter) Close(ctx *sql.Context) error {
@@ -93,7 +93,7 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 		}
 		i.numFoundRows++
 
-		row = append(row, i.numFoundRows)
+		row = row.Append(sql.UntypedSqlRow{i.numFoundRows})
 
 		heap.Push(topRowsHeap, row)
 		if int64(topRowsHeap.Len()) > i.limit {
@@ -231,14 +231,14 @@ func (c *JsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error
 			innerObj = c.data[c.pos]
 		}
 
-		var row sql.Row
+		row := sql.NewUntypedRow()
 		for i, col := range c.Cols {
 			innerPass := len(col.Cols) != 0 && i != c.currSib
 			rowPart, err := col.Next(innerObj, pass || innerPass, c.pos+1)
 			if err != nil {
 				return nil, err
 			}
-			row = append(row, rowPart...)
+			row = row.Append(rowPart)
 		}
 
 		if pass {
@@ -261,21 +261,21 @@ func (c *JsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error
 
 	// this should only apply to nested columns, maybe...
 	if pass {
-		return sql.Row{nil}, nil
+		return sql.NewUntypedRow(nil), nil
 	}
 
 	// FOR ORDINAL is a special case
 	if c.Opts != nil && c.Opts.ForOrd {
-		return sql.Row{ord}, nil
+		return sql.NewUntypedRow(ord), nil
 	}
 
 	// TODO: cache this?
 	val, err := jsonpath.JsonPathLookup(obj, c.Path)
 	if c.Opts.Exists {
 		if err != nil {
-			return sql.Row{0}, nil
+			return sql.NewUntypedRow(0), nil
 		} else {
-			return sql.Row{1}, nil
+			return sql.NewUntypedRow(1), nil
 		}
 	}
 
@@ -300,7 +300,7 @@ func (c *JsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error
 
 	// Base columns are always finished
 	c.finished = true
-	return sql.Row{val}, nil
+	return sql.NewUntypedRow(val), nil
 }
 
 type JsonTableRowIter struct {
@@ -341,14 +341,14 @@ func (j *JsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	obj := j.Data[j.pos]
 
-	var row sql.Row
+	row := sql.NewUntypedRow()
 	for i, col := range j.Cols {
 		pass := len(col.Cols) != 0 && i != j.currSib
 		rowPart, err := col.Next(obj, pass, j.pos+1)
 		if err != nil {
 			return nil, err
 		}
-		row = append(row, rowPart...)
+		row = row.Append(rowPart)
 	}
 
 	if j.NextSibling() {

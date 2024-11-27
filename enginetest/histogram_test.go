@@ -327,8 +327,8 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 
 	sch := table.Schema()
 
-	keyVals := make([]sql.Row, len(rows))
-	for i, row := range rows {
+	keyVals := make([]sql.UntypedSqlRow, len(rows))
+	for i, row := range sql.RowsToUntyped(rows) {
 		for _, ord := range fields {
 			keyVals[i] = append(keyVals[i], row[ord])
 		}
@@ -374,7 +374,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 			currentBucket.BoundVal = row
 			currentBucket.BoundCnt = uint64(currentCnt)
 			heap.Push(mcvs, stats.NewHeapRow(row, currentCnt))
-			currentBucket.McvVals = mcvs.Array()
+			currentBucket.McvVals = sql.RowsToUntyped(mcvs.Array())
 			currentBucket.McvsCnt = mcvs.Counts()
 			histogram = append(histogram, currentBucket)
 			currentBucket = &stats.Bucket{DistinctCnt: 1}
@@ -384,7 +384,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 	}
 	currentBucket.BoundVal = keyVals[len(keyVals)-1]
 	currentBucket.BoundCnt = uint64(currentCnt)
-	currentBucket.McvVals = mcvs.Array()
+	currentBucket.McvVals = sql.RowsToUntyped(mcvs.Array())
 	currentBucket.McvsCnt = mcvs.Counts()
 	histogram = append(histogram, currentBucket)
 	return histogram, nil
@@ -443,7 +443,7 @@ func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []
 func uniformDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int) error {
 	tab := rt.UnderlyingTable().(*memory.Table)
 	for i := 0; i < cnt; i++ {
-		row := sql.Row{int64(i), int64(i), int64(i)}
+		row := sql.UntypedSqlRow{int64(i), int64(i), int64(i)}
 		err := tab.Insert(ctx, row)
 		if err != nil {
 			return err
@@ -457,7 +457,7 @@ func increasingHalfDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt in
 	tab := rt.UnderlyingTable().(*memory.Table)
 	for i := 0; i < 2*cnt; i++ {
 		for j := 0; j < (j/2)+1; j++ {
-			row := sql.Row{int64(i), int64(j), int64(j)}
+			row := sql.UntypedSqlRow{int64(i), int64(j), int64(j)}
 			err := tab.Insert(ctx, row)
 			if err != nil {
 				return err
@@ -477,8 +477,8 @@ func expDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, lambda f
 		if errors.Is(err, io.EOF) {
 			break
 		}
-		row := sql.Row{int64(val[0].(int))}
-		for _, v := range val[1:] {
+		row := sql.UntypedSqlRow{int64(val.GetValue(0).(int))}
+		for _, v := range val.Subslice(1, val.Len()).Values() {
 			row = append(row, int64(v.(float64)))
 		}
 		err = tab.Insert(ctx, row)
@@ -499,8 +499,8 @@ func normalDistForTable(ctx *sql.Context, rt *plan.ResolvedTable, cnt int, mean,
 		if errors.Is(err, io.EOF) {
 			break
 		}
-		row := sql.Row{int64(i)}
-		for _, v := range val[1:] {
+		row := sql.UntypedSqlRow{int64(i)}
+		for _, v := range val.Subslice(1, val.Len()).Values() {
 			row = append(row, int64(v.(float64)))
 		}
 		err = tab.Insert(ctx, row)

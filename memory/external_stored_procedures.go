@@ -145,13 +145,13 @@ func inout_set_unitialized(_ *sql.Context, a *int, b *uint, c *string, d *int) (
 }
 
 func overloaded_mult1(_ *sql.Context, a int8) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{int64(a)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{int64(a)}), nil
 }
 func overloaded_mult2(_ *sql.Context, a int16, b int32) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{int64(a) * int64(b)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{int64(a) * int64(b)}), nil
 }
 func overloaded_mult3(_ *sql.Context, a int8, b int32, c int64) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{int64(a) * int64(b) * c}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{int64(a) * int64(b) * c}), nil
 }
 
 func overloaded_type_test1(
@@ -159,7 +159,7 @@ func overloaded_type_test1(
 	aa int8, ab int16, ac int, ad int32, ae int64, af float32, ag float64,
 	ba *int8, bb *int16, bc *int, bd *int32, be *int64, bf *float32, bg *float64,
 ) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{
+	return sql.RowsToRowIter(sql.UntypedSqlRow{
 		int64(aa) + int64(ab) + int64(ac) + int64(ad) + int64(ae) + int64(af) + int64(ag) +
 			int64(*ba) + int64(*bb) + int64(*bc) + int64(*bd) + int64(*be) + int64(*bf) + int64(*bg),
 	}), nil
@@ -169,7 +169,7 @@ func overloaded_type_test2(
 	aa bool, ab string, ac []byte, ad time.Time, ae decimal.Decimal,
 	ba *bool, bb *string, bc *[]byte, bd *time.Time, be *decimal.Decimal,
 ) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{
+	return sql.RowsToRowIter(sql.UntypedSqlRow{
 		fmt.Sprintf(`aa:%v,ba:%v,ab:"%s",bb:"%s",ac:%v,bc:%v,ad:%s,bd:%s,ae:%s,be:%s`,
 			aa, *ba, ab, *bb, ac, *bc, ad.Format("2006-01-02"), (*bd).Format("2006-01-02"), ae.String(), (*be).String()),
 	}), nil
@@ -180,7 +180,7 @@ func type_test3(
 	aa uint8, ab uint16, ac uint, ad uint32, ae uint64, af float32, ag float64,
 	ba *uint8, bb *uint16, bc *uint, bd *uint32, be *uint64, bf *float32, bg *float64,
 ) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{
+	return sql.RowsToRowIter(sql.UntypedSqlRow{
 		uint64(aa) + uint64(ab) + uint64(ac) + uint64(ad) + uint64(ae) + uint64(af) + uint64(ag) +
 			uint64(*ba) + uint64(*bb) + uint64(*bc) + uint64(*bd) + uint64(*be) + uint64(*bf) + uint64(*bg),
 	}), nil
@@ -207,7 +207,7 @@ func variadic_add(_ *sql.Context, vals ...int) (sql.RowIter, error) {
 	for _, val := range vals {
 		sum += int64(val)
 	}
-	return sql.RowsToRowIter(sql.Row{sum}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{sum}), nil
 }
 
 func variadic_byte_slice(_ *sql.Context, vals ...[]byte) (sql.RowIter, error) {
@@ -215,13 +215,13 @@ func variadic_byte_slice(_ *sql.Context, vals ...[]byte) (sql.RowIter, error) {
 	for _, val := range vals {
 		sb.Write(val)
 	}
-	return sql.RowsToRowIter(sql.Row{sb.String()}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{sb.String()}), nil
 }
 
 func variadic_overload1(_ *sql.Context, a string, b string) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{fmt.Sprintf("%s-%s", a, b)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{fmt.Sprintf("%s-%s", a, b)}), nil
 }
 
 func variadic_overload2(_ *sql.Context, a string, b string, vals ...uint8) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{fmt.Sprintf("%s,%s,%v", a, b, vals)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{fmt.Sprintf("%s,%s,%v", a, b, vals)}), nil
 }

@@ -551,6 +551,6 @@ func TypesEqual(a, b sql.Type) bool {
 		}
 		return false
 	default:
-		return a.Equals(b)
+		return a == b
 	}
 }

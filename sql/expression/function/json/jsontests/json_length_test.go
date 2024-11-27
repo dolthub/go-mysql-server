@@ -35,94 +35,94 @@ func TestJsonLength(t *testing.T) {
 
 	testCases := []struct {
 		f   sql.Expression
-		row sql.Row
+		row sql.UntypedSqlRow
 		exp interface{}
 		err error
 	}{
 		{
 			f:   f1,
-			row: sql.Row{`null`},
+			row: sql.UntypedSqlRow{`null`},
 			exp: nil,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`1`},
+			row: sql.UntypedSqlRow{`1`},
 			exp: 1,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1]`},
+			row: sql.UntypedSqlRow{`[1]`},
 			exp: 1,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`"fjsadflkd"`},
+			row: sql.UntypedSqlRow{`"fjsadflkd"`},
 			exp: 1,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1, false]`},
+			row: sql.UntypedSqlRow{`[1, false]`},
 			exp: 2,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1, {"a": 1}]`},
+			row: sql.UntypedSqlRow{`[1, {"a": 1}]`},
 			exp: 2,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{"a": 1}`},
+			row: sql.UntypedSqlRow{`{"a": 1}`},
 			exp: 1,
 		},
 
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, false]}`, nil},
+			row: sql.UntypedSqlRow{`{"a": [1, false]}`, nil},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, false]}`, 123},
+			row: sql.UntypedSqlRow{`{"a": [1, false]}`, 123},
 			err: fmt.Errorf("Invalid JSON path expression. Path must start with '$', but received: '123'"),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, false]}`, "$.a"},
+			row: sql.UntypedSqlRow{`{"a": [1, false]}`, "$.a"},
 			exp: 2,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, {"a": 1}]}`, "$.a"},
+			row: sql.UntypedSqlRow{`{"a": [1, {"a": 1}]}`, "$.a"},
 			exp: 2,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b"},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b"},
 			exp: 2,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b[0]"},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.b[0]"},
 			exp: 1,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.c.d"},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.c.d"},
 			exp: 1,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{1, "$.d"},
+			row: sql.UntypedSqlRow{1, "$.d"},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_length"),
 		},
 		{
 			f:   f2,
-			row: sql.Row{"asdf", "$.d"},
+			row: sql.UntypedSqlRow{"asdf", "$.d"},
 			err: sql.ErrInvalidJSONText.New(1, "json_length", "asdf"),
 		},
 	}

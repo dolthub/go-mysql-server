@@ -33,15 +33,15 @@ type RoleEdge struct {
 }
 
 func RoleEdgeToRow(ctx *sql.Context, r *RoleEdge) (sql.Row, error) {
-	row := make(sql.Row, len(roleEdgesTblSchema))
-	row[roleEdgesTblColIndex_FROM_HOST] = r.FromHost
-	row[roleEdgesTblColIndex_FROM_USER] = r.FromUser
-	row[roleEdgesTblColIndex_TO_HOST] = r.ToHost
-	row[roleEdgesTblColIndex_TO_USER] = r.ToUser
+	row := sql.NewSqlRowWithLen(len(roleEdgesTblSchema))
+	row.SetValue(roleEdgesTblColIndex_FROM_HOST, r.FromHost)
+	row.SetValue(roleEdgesTblColIndex_FROM_USER, r.FromUser)
+	row.SetValue(roleEdgesTblColIndex_TO_HOST, r.ToHost)
+	row.SetValue(roleEdgesTblColIndex_TO_USER, r.ToUser)
 	if r.WithAdminOption {
-		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(2)
+		row.SetValue(roleEdgesTblColIndex_WITH_ADMIN_OPTION, uint16(2))
 	} else {
-		row[roleEdgesTblColIndex_WITH_ADMIN_OPTION] = uint16(1)
+		row.SetValue(roleEdgesTblColIndex_WITH_ADMIN_OPTION, uint16(1))
 	}
 	return row, nil
 }
@@ -51,11 +51,11 @@ func RoleEdgeFromRow(ctx *sql.Context, row sql.Row) (*RoleEdge, error) {
 		return nil, err
 	}
 	return &RoleEdge{
-		FromHost:        row[roleEdgesTblColIndex_FROM_HOST].(string),
-		FromUser:        row[roleEdgesTblColIndex_FROM_USER].(string),
-		ToHost:          row[roleEdgesTblColIndex_TO_HOST].(string),
-		ToUser:          row[roleEdgesTblColIndex_TO_USER].(string),
-		WithAdminOption: row[roleEdgesTblColIndex_WITH_ADMIN_OPTION].(uint16) == 2,
+		FromHost:        row.GetValue(roleEdgesTblColIndex_FROM_HOST).(string),
+		FromUser:        row.GetValue(roleEdgesTblColIndex_FROM_USER).(string),
+		ToHost:          row.GetValue(roleEdgesTblColIndex_TO_HOST).(string),
+		ToUser:          row.GetValue(roleEdgesTblColIndex_TO_USER).(string),
+		WithAdminOption: row.GetValue(roleEdgesTblColIndex_WITH_ADMIN_OPTION).(uint16) == 2,
 	}, nil
 }
 

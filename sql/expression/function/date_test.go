@@ -49,7 +49,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = time.Date(2018, 5, 3, 0, 0, 0, 0, time.UTC)
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -58,7 +58,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = time.Date(2018, 5, 3, 12, 34, 56, 0, time.UTC)
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -67,7 +67,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = time.Date(2018, 5, 3, 12, 34, 56, 123456000, time.UTC)
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -77,7 +77,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = "2018-05-03"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -86,7 +86,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
-	result, err = f.Eval(ctx, sql.Row{"2018-05-02"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"2018-05-02"})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -95,7 +95,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-03"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -104,7 +104,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-03 12:34:56"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -113,7 +113,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-03 12:34:56.123000"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -122,7 +122,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-03 12:34:56.123456"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -131,7 +131,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "SECOND"))
 	require.NoError(err)
 	expected = "2018-05-02 00:00:01"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -140,7 +140,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(10), types.Int64), "MICROSECOND"))
 	require.NoError(err)
 	expected = "2018-05-02 00:00:00.000010"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -149,7 +149,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "MICROSECOND"))
 	require.NoError(err)
 	expected = "2018-05-02 00:00:00.000001"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -157,7 +157,7 @@ func TestAddDate(t *testing.T) {
 	f2, err := NewAddDate(
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewGetField(0, types.Int64, "foo", true))
-	result, err = f2.Eval(ctx, sql.Row{nil})
+	result, err = f2.Eval(ctx, sql.UntypedSqlRow{nil})
 	require.NoError(err)
 	require.Nil(result)
 
@@ -167,17 +167,17 @@ func TestAddDate(t *testing.T) {
 
 	// If the date param is NULL, then NULL is returned
 	require.NoError(err)
-	result, err = f.Eval(ctx, sql.Row{nil})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{nil})
 	require.NoError(err)
 	require.Nil(result)
 
 	// If a time is passed (and no date) then NULL is returned
-	result, err = f.Eval(ctx, sql.Row{"12:00:56"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"12:00:56"})
 	require.NoError(err)
 	require.Nil(result)
 
 	// If an invalid date is passed, then NULL is returned
-	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"asdasdasd"})
 	require.NoError(err)
 	require.Nil(result)
 
@@ -188,7 +188,7 @@ func TestAddDate(t *testing.T) {
 		expression.NewLiteral(int64(1_000_000), types.Int64))
 	require.NoError(err)
 	expected = "4756-03-29"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -218,19 +218,19 @@ func TestDateAdd(t *testing.T) {
 	require.NoError(err)
 
 	expected := "2018-05-03"
-	result, err := f.Eval(ctx, sql.Row{"2018-05-02"})
+	result, err := f.Eval(ctx, sql.UntypedSqlRow{"2018-05-02"})
 	require.NoError(err)
 	require.Equal(expected, result)
 
-	result, err = f.Eval(ctx, sql.Row{"12:34:56"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"12:34:56"})
 	require.NoError(err)
 	require.Nil(result)
 
-	result, err = f.Eval(ctx, sql.Row{nil})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{nil})
 	require.NoError(err)
 	require.Nil(result)
 
-	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"asdasdasd"})
 	require.NoError(err)
 	require.Nil(result)
 }
@@ -258,7 +258,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = time.Date(2018, 5, 1, 0, 0, 0, 0, time.UTC)
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -267,7 +267,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = time.Date(2018, 5, 1, 12, 34, 56, 0, time.UTC)
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -276,7 +276,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = time.Date(2018, 5, 1, 12, 34, 56, 123456000, time.UTC)
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -286,7 +286,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
 	expected = "2018-05-01"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -295,7 +295,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
-	result, err = f.Eval(ctx, sql.Row{"2018-05-02"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"2018-05-02"})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -304,7 +304,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-01"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -313,7 +313,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-01 12:34:56"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -322,7 +322,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-01 12:34:56.123000"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -331,7 +331,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
 	expected = "2018-05-01 12:34:56.123456"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -340,7 +340,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "SECOND"))
 	require.NoError(err)
 	expected = "2018-05-01 23:59:59"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -349,7 +349,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(10), types.Int64), "MICROSECOND"))
 	require.NoError(err)
 	expected = "2018-05-01 23:59:59.999990"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -358,7 +358,7 @@ func TestSubDate(t *testing.T) {
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "MICROSECOND"))
 	require.NoError(err)
 	expected = "2018-05-01 23:59:59.999999"
-	result, err = f.Eval(ctx, sql.Row{})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(expected, result)
 
@@ -366,7 +366,7 @@ func TestSubDate(t *testing.T) {
 	f2, err := NewSubDate(
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewGetField(0, types.Int64, "foo", true))
-	result, err = f2.Eval(ctx, sql.Row{nil})
+	result, err = f2.Eval(ctx, sql.UntypedSqlRow{nil})
 	require.NoError(err)
 	require.Nil(result)
 
@@ -375,17 +375,17 @@ func TestSubDate(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64))
 
 	// If the date param is NULL, then NULL is returned
-	result, err = f.Eval(ctx, sql.Row{nil})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{nil})
 	require.NoError(err)
 	require.Nil(result)
 
 	// If a time is passed (and no date) then NULL is returned
-	result, err = f.Eval(ctx, sql.Row{"12:00:56"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"12:00:56"})
 	require.NoError(err)
 	require.Nil(result)
 
 	// If an invalid date is passed, then NULL is returned
-	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"asdasdasd"})
 	require.NoError(err)
 	require.Nil(result)
 }
@@ -414,19 +414,19 @@ func TestDateSub(t *testing.T) {
 	require.NoError(err)
 
 	expected := "2018-05-01"
-	result, err := f.Eval(ctx, sql.Row{"2018-05-02"})
+	result, err := f.Eval(ctx, sql.UntypedSqlRow{"2018-05-02"})
 	require.NoError(err)
 	require.Equal(expected, result)
 
-	result, err = f.Eval(ctx, sql.Row{"12:34:56"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"12:34:56"})
 	require.NoError(err)
 	require.Nil(result)
 
-	result, err = f.Eval(ctx, sql.Row{nil})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{nil})
 	require.NoError(err)
 	require.Nil(result)
 
-	result, err = f.Eval(ctx, sql.Row{"asdasdasd"})
+	result, err = f.Eval(ctx, sql.UntypedSqlRow{"asdasdasd"})
 	require.NoError(err)
 	require.Nil(result)
 }

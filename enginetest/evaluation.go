@@ -302,7 +302,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
 // TODO: this should take en engine
-func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
+func TestQuery(t *testing.T, harness Harness, q string, expected []sql.UntypedSqlRow, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -318,7 +318,7 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
+func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected []sql.UntypedSqlRow, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -351,7 +351,7 @@ func TestQueryWithContext(
 	e QueryEngine,
 	harness Harness,
 	q string,
-	expected []sql.Row,
+	expected []sql.UntypedSqlRow,
 	expectedCols []*sql.Column,
 	bindings map[string]sqlparser.Expr,
 	qFlags *sql.QueryFlags,
@@ -370,7 +370,7 @@ func TestQueryWithContext(
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		CheckResults(t, harness, expected, expectedCols, sch, rows, q, e)
+		CheckResults(t, harness, expected, expectedCols, sch, sql.RowsToUntyped(rows), q, e)
 	}
 
 	require.Equal(
@@ -392,7 +392,7 @@ func GetFilterIndex(n sql.Node) sql.IndexLookup {
 	return lookup
 }
 
-func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
+func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harness Harness, q string, expected []sql.UntypedSqlRow, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -413,7 +413,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		CheckResults(t, harness, expected, expectedCols, sch, rows, q, e)
+		CheckResults(t, harness, expected, expectedCols, sch, sql.RowsToUntyped(rows), q, e)
 	}
 
 	require.Equal(
@@ -436,7 +436,7 @@ func CheckIndexedAccess(n sql.Node) bool {
 }
 
 // TestPreparedQuery runs a prepared query on the engine given and asserts that results are as expected.
-func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column) {
+func TestPreparedQuery(t *testing.T, harness Harness, q string, expected []sql.UntypedSqlRow, expectedCols []*sql.Column) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -462,7 +462,7 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 	})
 }
 
-func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, h Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindVars map[string]sqlparser.Expr, checkIndexedAccess bool) {
+func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine, h Harness, q string, expected []sql.UntypedSqlRow, expectedCols []*sql.Column, bindVars map[string]sqlparser.Expr, checkIndexedAccess bool) {
 	require := require.New(t)
 	rows, sch, err := runQueryPreparedWithCtx(t, ctx, e, q, bindVars, false)
 	if err != nil {
@@ -472,7 +472,7 @@ func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine,
 
 	if expected != nil {
 		// TODO fix expected cols for prepared?
-		CheckResults(t, h, expected, expectedCols, sch, rows, q, e)
+		CheckResults(t, h, expected, expectedCols, sch, sql.RowsToUntyped(rows), q, e)
 	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
@@ -483,10 +483,10 @@ func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine,
 func CheckResults(
 	t *testing.T,
 	h Harness,
-	expected []sql.Row,
+	expected []sql.UntypedSqlRow,
 	expectedCols []*sql.Column,
 	sch sql.Schema,
-	rows []sql.Row,
+	rows []sql.UntypedSqlRow,
 	q string,
 	e QueryEngine,
 ) {
@@ -650,10 +650,10 @@ func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 // don't implement ResultEvaluationHarness. All numerical values are widened to their widest type before comparison.
 func checkResults(
 	t *testing.T,
-	expected []sql.Row,
+	expected []sql.UntypedSqlRow,
 	expectedCols []*sql.Column,
 	sch sql.Schema,
-	rows []sql.Row,
+	rows []sql.UntypedSqlRow,
 	q string,
 	e QueryEngine,
 ) {
@@ -669,7 +669,7 @@ func checkResults(
 	setZeroTime := strings.HasPrefix(upperQuery, "SHOW ") && !strings.Contains(upperQuery, "EVENTS")
 
 	for _, widenedRow := range widenedRows {
-		for i, val := range widenedRow {
+		for i, val := range widenedRow.Values() {
 			switch v := val.(type) {
 			case time.Time:
 				if setZeroTime {
@@ -778,8 +778,8 @@ func simplifyResultSchema(s sql.Schema) []resultSchemaCol {
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
 // widest value in actual and expected results.
-func WidenRows(sch sql.Schema, rows []sql.Row) []sql.Row {
-	widened := make([]sql.Row, len(rows))
+func WidenRows(sch sql.Schema, rows []sql.UntypedSqlRow) []sql.UntypedSqlRow {
+	widened := make([]sql.UntypedSqlRow, len(rows))
 	for i, row := range rows {
 		widened[i] = WidenRow(sch, row)
 	}
@@ -787,8 +787,8 @@ func WidenRows(sch sql.Schema, rows []sql.Row) []sql.Row {
 }
 
 // WidenRow returns a row with all values widened to their widest type
-func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
-	widened := make(sql.Row, len(row))
+func WidenRow(sch sql.Schema, row sql.UntypedSqlRow) sql.UntypedSqlRow {
+	widened := make(sql.UntypedSqlRow, len(row))
 	for i, v := range row {
 
 		var vw interface{}
@@ -1000,7 +1000,7 @@ func AssertWarningAndTestQuery(
 	ctx *sql.Context,
 	harness Harness,
 	query string,
-	expected []sql.Row,
+	expected []sql.UntypedSqlRow,
 	expectedCols []*sql.Column,
 	expectedCode int,
 	expectedWarningsCount int,
@@ -1040,7 +1040,7 @@ func AssertWarningAndTestQuery(
 	}
 
 	if !skipResultsCheck {
-		CheckResults(t, harness, expected, expectedCols, sch, rows, query, e)
+		CheckResults(t, harness, expected, expectedCols, sch, sql.RowsToUntyped(rows), query, e)
 	}
 	validateEngine(t, ctx, harness, e)
 }
@@ -1106,11 +1106,11 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 	if sh, ok := harness.(SkippingHarness); ok {
 		if sh.SkipQueryTest(tt.WriteQuery) {
 			t.Logf("Skipping query %s", tt.WriteQuery)
-			t.Skip()
+			return
 		}
 		if sh.SkipQueryTest(tt.SelectQuery) {
 			t.Logf("Skipping query %s", tt.SelectQuery)
-			t.Skip()
+			return
 		}
 	}
 	ctx := NewContext(harness)

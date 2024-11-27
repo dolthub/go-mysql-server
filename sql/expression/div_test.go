@@ -398,6 +398,45 @@ func BenchmarkDivInt(b *testing.B) {
 	}
 }
 
+var result_ string
+
+func BenchmarkSprintf(b *testing.B) {
+	var res string
+	for i := 0; i < b.N; i++ {
+		res = fmt.Sprintf("%s.%s", "a", "b")
+		if len(res) > 0 {
+			print()
+		}
+	}
+	result_ = res
+}
+
+func BenchmarkAddString(b *testing.B) {
+	var res string
+
+	i := 0
+	getS := func() string {
+		i++
+		if i%7 == 0 {
+			return "a"
+		} else if i%3 == 0 {
+			return "b"
+		} else if i%2 == 0 {
+			return "c"
+		} else {
+			return "d"
+		}
+	}
+
+	for i := 0; i < b.N; i++ {
+		res = getS() + "." + getS()
+		if len(res) > 0 {
+			print()
+		}
+	}
+	result_ = res
+}
+
 // Results:
 // BenchmarkDivFloat-16             1521937               787.7 ns/op
 func BenchmarkDivFloat(b *testing.B) {

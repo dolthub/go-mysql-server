@@ -121,11 +121,11 @@ func TestMin_Distinct(t *testing.T) {
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{2}))
-	require.NoError(t, b.Update(ctx, sql.Row{3}))
-	require.NoError(t, b.Update(ctx, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{2}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{3}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{3}))
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
@@ -136,12 +136,12 @@ func TestMin_Distinct(t *testing.T) {
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{2}))
-	require.NoError(t, b.Update(ctx, sql.Row{nil}))
-	require.NoError(t, b.Update(ctx, sql.Row{nil}))
-	require.NoError(t, b.Update(ctx, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{2}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{nil}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{nil}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{3}))
 
 	v, err = b.Eval(ctx)
 	assert.NoError(err)

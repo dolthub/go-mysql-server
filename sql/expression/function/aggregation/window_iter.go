@@ -77,14 +77,14 @@ func (i *WindowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	row := make(sql.Row, i.size())
+	row := sql.NewSqlRowWithLen(i.size())
 	for j, pIter := range i.partitionIters {
 		res, err := pIter.Next(ctx)
 		if err != nil {
 			return nil, err
 		}
 		for k, idx := range i.outputOrdinals[j] {
-			row[idx] = res[k]
+			row.SetValue(idx, res.GetValue(k))
 		}
 	}
 	return row, nil
@@ -107,7 +107,7 @@ func (i *WindowIter) size() int {
 // TODO: share the child buffer and sort/partition inbetween WindowPartitionIters
 func (i *WindowIter) initializeIters(ctx *sql.Context) error {
 	buf := make(sql.WindowBuffer, 0)
-	var row sql.Row
+	row := sql.NewUntypedRow()
 	var err error
 	for {
 		// drain child iter into reusable buffer

@@ -41,7 +41,7 @@ func (b *BaseBuilder) buildShowCharset(ctx *sql.Context, n *plan.ShowCharset, ro
 	iter := sql.NewCharacterSetsIterator()
 	for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
 		if charset.Encoder != nil && charset.BinaryCollation.Sorter() != nil && charset.DefaultCollation.Sorter() != nil {
-			rows = append(rows, sql.Row{
+			rows = append(rows, sql.UntypedSqlRow{
 				charset.Name,
 				charset.Description,
 				charset.DefaultCollation.String(),
@@ -203,9 +203,9 @@ func (b *BaseBuilder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row 
 
 	var rows []sql.Row
 	for _, tableName := range tableNames {
-		row := sql.Row{tableName}
+		var row sql.Row = sql.UntypedSqlRow{tableName}
 		if n.Full {
-			row = append(row, "BASE TABLE")
+			row = row.Append(sql.NewUntypedRow("BASE TABLE"))
 		}
 		rows = append(rows, row)
 	}
@@ -218,24 +218,24 @@ func (b *BaseBuilder) buildShowTables(ctx *sql.Context, n *plan.ShowTables, row 
 			return nil, err
 		}
 		for _, view := range views {
-			row := sql.Row{view.Name}
+			var row sql.Row = sql.UntypedSqlRow{view.Name}
 			if n.Full {
-				row = append(row, "VIEW")
+				row = row.Append(sql.NewUntypedRow("VIEW"))
 			}
 			rows = append(rows, row)
 		}
 	}
 
 	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(db.Name()) {
-		row := sql.Row{view.Name()}
+		var row sql.Row = sql.UntypedSqlRow{view.Name()}
 		if n.Full {
-			row = append(row, "VIEW")
+			row = row.Append(sql.NewUntypedRow("VIEW"))
 		}
 		rows = append(rows, row)
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
-		return rows[i][0].(string) < rows[j][0].(string)
+		return rows[i].GetValue(0).(string) < rows[j].GetValue(0).(string)
 	})
 
 	return sql.RowsToRowIter(rows...), nil
@@ -262,7 +262,7 @@ func (b *BaseBuilder) buildShowCreateProcedure(ctx *sql.Context, n *plan.ShowCre
 	if n.ExternalStoredProcedure != nil {
 		// If an external stored procedure has been plugged in by the analyzer, use that
 		fakeCreateProcedureStmt := n.ExternalStoredProcedure.FakeCreateProcedureStmt()
-		return sql.RowsToRowIter(sql.Row{
+		return sql.RowsToRowIter(sql.UntypedSqlRow{
 			n.ExternalStoredProcedure.Name, // Procedure
 			"",                             // sql_mode
 			fakeCreateProcedureStmt,        // Create Procedure
@@ -282,7 +282,7 @@ func (b *BaseBuilder) buildShowCreateProcedure(ctx *sql.Context, n *plan.ShowCre
 		}
 		for _, procedure := range procedures {
 			if strings.ToLower(procedure.Name) == n.ProcedureName {
-				return sql.RowsToRowIter(sql.Row{
+				return sql.RowsToRowIter(sql.UntypedSqlRow{
 					procedure.Name,            // Procedure
 					"",                        // sql_mode
 					procedure.CreateStatement, // Create Procedure
@@ -328,72 +328,72 @@ func (b *BaseBuilder) buildShowCreateDatabase(ctx *sql.Context, n *plan.ShowCrea
 
 func (b *BaseBuilder) buildShowPrivileges(ctx *sql.Context, n *plan.ShowPrivileges, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(
-		sql.Row{"Alter", "Tables", "To alter the table"},
-		sql.Row{"Alter routine", "Functions,Procedures", "To alter or drop stored functions/procedures"},
-		sql.Row{"Create", "Databases,Tables,Indexes", "To create new databases and tables"},
-		sql.Row{"Create routine", "Databases", "To use CREATE FUNCTION/PROCEDURE"},
-		sql.Row{"Create role", "Server Admin", "To create new roles"},
-		sql.Row{"Create temporary tables", "Databases", "To use CREATE TEMPORARY TABLE"},
-		sql.Row{"Create view", "Tables", "To create new views"},
-		sql.Row{"Create user", "Server Admin", "To create new users"},
-		sql.Row{"Delete", "Tables", "To delete existing rows"},
-		sql.Row{"Drop", "Databases,Tables", "To drop databases, tables, and views"},
-		sql.Row{"Drop role", "Server Admin", "To drop roles"},
-		sql.Row{"Event", "Server Admin", "To create, alter, drop and execute events"},
-		sql.Row{"Execute", "Functions,Procedures", "To execute stored routines"},
-		sql.Row{"File", "File access on server", "To read and write files on the server"},
-		sql.Row{"Grant option", "Databases,Tables,Functions,Procedures", "To give to other users those privileges you possess"},
-		sql.Row{"Index", "Tables", "To create or drop indexes"},
-		sql.Row{"Insert", "Tables", "To insert data into tables"},
-		sql.Row{"Lock tables", "Databases", "To use LOCK TABLES (together with SELECT privilege)"},
-		sql.Row{"Process", "Server Admin", "To view the plain text of currently executing queries"},
-		sql.Row{"Proxy", "Server Admin", "To make proxy user possible"},
-		sql.Row{"References", "Databases,Tables", "To have references on tables"},
-		sql.Row{"Reload", "Server Admin", "To reload or refresh tables, logs and privileges"},
-		sql.Row{"Replication client", "Server Admin", "To ask where the slave or master servers are"},
-		sql.Row{"Replication slave", "Server Admin", "To read binary log events from the master"},
-		sql.Row{"Select", "Tables", "To retrieve rows from table"},
-		sql.Row{"Show databases", "Server Admin", "To see all databases with SHOW DATABASES"},
-		sql.Row{"Show view", "Tables", "To see views with SHOW CREATE VIEW"},
-		sql.Row{"Shutdown", "Server Admin", "To shut down the server"},
-		sql.Row{"Super", "Server Admin", "To use KILL thread, SET GLOBAL, CHANGE MASTER, etc."},
-		sql.Row{"Trigger", "Tables", "To use triggers"},
-		sql.Row{"Create tablespace", "Server Admin", "To create/alter/drop tablespaces"},
-		sql.Row{"Update", "Tables", "To update existing rows"},
-		sql.Row{"Usage", "Server Admin", "No privileges - allow connect only"},
-		sql.Row{"ENCRYPTION_KEY_ADMIN", "Server Admin", ""},
-		sql.Row{"INNODB_REDO_LOG_ARCHIVE", "Server Admin", ""},
-		sql.Row{"REPLICATION_APPLIER", "Server Admin", ""},
-		sql.Row{"INNODB_REDO_LOG_ENABLE", "Server Admin", ""},
-		sql.Row{"SET_USER_ID", "Server Admin", ""},
-		sql.Row{"SERVICE_CONNECTION_ADMIN", "Server Admin", ""},
-		sql.Row{"GROUP_REPLICATION_ADMIN", "Server Admin", ""},
-		sql.Row{"AUDIT_ABORT_EXEMPT", "Server Admin", ""},
-		sql.Row{"GROUP_REPLICATION_STREAM", "Server Admin", ""},
-		sql.Row{"CLONE_ADMIN", "Server Admin", ""},
-		sql.Row{"SYSTEM_USER", "Server Admin", ""},
-		sql.Row{"AUTHENTICATION_POLICY_ADMIN", "Server Admin", ""},
-		sql.Row{"SHOW_ROUTINE", "Server Admin", ""},
-		sql.Row{"BACKUP_ADMIN", "Server Admin", ""},
-		sql.Row{"CONNECTION_ADMIN", "Server Admin", ""},
-		sql.Row{"PERSIST_RO_VARIABLES_ADMIN", "Server Admin", ""},
-		sql.Row{"RESOURCE_GROUP_ADMIN", "Server Admin", ""},
-		sql.Row{"SESSION_VARIABLES_ADMIN", "Server Admin", ""},
-		sql.Row{"SYSTEM_VARIABLES_ADMIN", "Server Admin", ""},
-		sql.Row{"APPLICATION_PASSWORD_ADMIN", "Server Admin", ""},
-		sql.Row{"FLUSH_OPTIMIZER_COSTS", "Server Admin", ""},
-		sql.Row{"AUDIT_ADMIN", "Server Admin", ""},
-		sql.Row{"BINLOG_ADMIN", "Server Admin", ""},
-		sql.Row{"BINLOG_ENCRYPTION_ADMIN", "Server Admin", ""},
-		sql.Row{"FLUSH_STATUS", "Server Admin", ""},
-		sql.Row{"FLUSH_TABLES", "Server Admin", ""},
-		sql.Row{"FLUSH_USER_RESOURCES", "Server Admin", ""},
-		sql.Row{"XA_RECOVER_ADMIN", "Server Admin", ""},
-		sql.Row{"PASSWORDLESS_USER_ADMIN", "Server Admin", ""},
-		sql.Row{"TABLE_ENCRYPTION_ADMIN", "Server Admin", ""},
-		sql.Row{"ROLE_ADMIN", "Server Admin", ""},
-		sql.Row{"REPLICATION_SLAVE_ADMIN", "Server Admin", ""},
-		sql.Row{"RESOURCE_GROUP_USER", "Server Admin", ""},
+		sql.UntypedSqlRow{"Alter", "Tables", "To alter the table"},
+		sql.UntypedSqlRow{"Alter routine", "Functions,Procedures", "To alter or drop stored functions/procedures"},
+		sql.UntypedSqlRow{"Create", "Databases,Tables,Indexes", "To create new databases and tables"},
+		sql.UntypedSqlRow{"Create routine", "Databases", "To use CREATE FUNCTION/PROCEDURE"},
+		sql.UntypedSqlRow{"Create role", "Server Admin", "To create new roles"},
+		sql.UntypedSqlRow{"Create temporary tables", "Databases", "To use CREATE TEMPORARY TABLE"},
+		sql.UntypedSqlRow{"Create view", "Tables", "To create new views"},
+		sql.UntypedSqlRow{"Create user", "Server Admin", "To create new users"},
+		sql.UntypedSqlRow{"Delete", "Tables", "To delete existing rows"},
+		sql.UntypedSqlRow{"Drop", "Databases,Tables", "To drop databases, tables, and views"},
+		sql.UntypedSqlRow{"Drop role", "Server Admin", "To drop roles"},
+		sql.UntypedSqlRow{"Event", "Server Admin", "To create, alter, drop and execute events"},
+		sql.UntypedSqlRow{"Execute", "Functions,Procedures", "To execute stored routines"},
+		sql.UntypedSqlRow{"File", "File access on server", "To read and write files on the server"},
+		sql.UntypedSqlRow{"Grant option", "Databases,Tables,Functions,Procedures", "To give to other users those privileges you possess"},
+		sql.UntypedSqlRow{"Index", "Tables", "To create or drop indexes"},
+		sql.UntypedSqlRow{"Insert", "Tables", "To insert data into tables"},
+		sql.UntypedSqlRow{"Lock tables", "Databases", "To use LOCK TABLES (together with SELECT privilege)"},
+		sql.UntypedSqlRow{"Process", "Server Admin", "To view the plain text of currently executing queries"},
+		sql.UntypedSqlRow{"Proxy", "Server Admin", "To make proxy user possible"},
+		sql.UntypedSqlRow{"References", "Databases,Tables", "To have references on tables"},
+		sql.UntypedSqlRow{"Reload", "Server Admin", "To reload or refresh tables, logs and privileges"},
+		sql.UntypedSqlRow{"Replication client", "Server Admin", "To ask where the slave or master servers are"},
+		sql.UntypedSqlRow{"Replication slave", "Server Admin", "To read binary log events from the master"},
+		sql.UntypedSqlRow{"Select", "Tables", "To retrieve rows from table"},
+		sql.UntypedSqlRow{"Show databases", "Server Admin", "To see all databases with SHOW DATABASES"},
+		sql.UntypedSqlRow{"Show view", "Tables", "To see views with SHOW CREATE VIEW"},
+		sql.UntypedSqlRow{"Shutdown", "Server Admin", "To shut down the server"},
+		sql.UntypedSqlRow{"Super", "Server Admin", "To use KILL thread, SET GLOBAL, CHANGE MASTER, etc."},
+		sql.UntypedSqlRow{"Trigger", "Tables", "To use triggers"},
+		sql.UntypedSqlRow{"Create tablespace", "Server Admin", "To create/alter/drop tablespaces"},
+		sql.UntypedSqlRow{"Update", "Tables", "To update existing rows"},
+		sql.UntypedSqlRow{"Usage", "Server Admin", "No privileges - allow connect only"},
+		sql.UntypedSqlRow{"ENCRYPTION_KEY_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"INNODB_REDO_LOG_ARCHIVE", "Server Admin", ""},
+		sql.UntypedSqlRow{"REPLICATION_APPLIER", "Server Admin", ""},
+		sql.UntypedSqlRow{"INNODB_REDO_LOG_ENABLE", "Server Admin", ""},
+		sql.UntypedSqlRow{"SET_USER_ID", "Server Admin", ""},
+		sql.UntypedSqlRow{"SERVICE_CONNECTION_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"GROUP_REPLICATION_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"AUDIT_ABORT_EXEMPT", "Server Admin", ""},
+		sql.UntypedSqlRow{"GROUP_REPLICATION_STREAM", "Server Admin", ""},
+		sql.UntypedSqlRow{"CLONE_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"SYSTEM_USER", "Server Admin", ""},
+		sql.UntypedSqlRow{"AUTHENTICATION_POLICY_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"SHOW_ROUTINE", "Server Admin", ""},
+		sql.UntypedSqlRow{"BACKUP_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"CONNECTION_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"PERSIST_RO_VARIABLES_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"RESOURCE_GROUP_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"SESSION_VARIABLES_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"SYSTEM_VARIABLES_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"APPLICATION_PASSWORD_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"FLUSH_OPTIMIZER_COSTS", "Server Admin", ""},
+		sql.UntypedSqlRow{"AUDIT_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"BINLOG_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"BINLOG_ENCRYPTION_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"FLUSH_STATUS", "Server Admin", ""},
+		sql.UntypedSqlRow{"FLUSH_TABLES", "Server Admin", ""},
+		sql.UntypedSqlRow{"FLUSH_USER_RESOURCES", "Server Admin", ""},
+		sql.UntypedSqlRow{"XA_RECOVER_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"PASSWORDLESS_USER_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"TABLE_ENCRYPTION_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"ROLE_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"REPLICATION_SLAVE_ADMIN", "Server Admin", ""},
+		sql.UntypedSqlRow{"RESOURCE_GROUP_USER", "Server Admin", ""},
 	), nil
 }
 
@@ -420,7 +420,7 @@ func (b *BaseBuilder) buildShowCreateTrigger(ctx *sql.Context, n *plan.ShowCreat
 			if err != nil {
 				return nil, err
 			}
-			return sql.RowsToRowIter(sql.Row{
+			return sql.RowsToRowIter(sql.UntypedSqlRow{
 				trigger.Name,            // Trigger
 				"",                      // sql_mode
 				trigger.CreateStatement, // SQL Original Statement
@@ -440,7 +440,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 	schema := n.TargetSchema()
 	var rows = make([]sql.Row, len(schema))
 	for i, col := range schema {
-		var row sql.Row
+		row := sql.NewUntypedRow()
 		var collation interface{}
 		if types.IsTextOnly(col.Type) {
 			collation = sql.Collation_Default.String()
@@ -486,7 +486,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		}
 
 		if n.Full {
-			row = sql.Row{
+			row = sql.UntypedSqlRow{
 				col.Name,
 				col.Type.String(),
 				collation,
@@ -498,7 +498,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 				col.Comment,
 			}
 		} else {
-			row = sql.Row{
+			row = sql.UntypedSqlRow{
 				col.Name,
 				col.Type.String(),
 				null,
@@ -526,7 +526,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 
 	for k, v := range sysVars {
 		if n.Filter != nil {
-			res, err := n.Filter.Eval(ctx, sql.Row{strings.ToLower(k)})
+			res, err := n.Filter.Eval(ctx, sql.UntypedSqlRow{strings.ToLower(k)})
 			if err != nil {
 				return nil, err
 			}
@@ -543,7 +543,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
-		return rows[i][0].(string) < rows[j][0].(string)
+		return rows[i].GetValue(0).(string) < rows[j].GetValue(0).(string)
 	})
 
 	return sql.RowsToRowIter(rows...), nil
@@ -567,7 +567,7 @@ func (b *BaseBuilder) buildShowTriggers(ctx *sql.Context, n *plan.ShowTriggers, 
 		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, sql.Row{
+		rows = append(rows, sql.UntypedSqlRow{
 			trigger.TriggerName, // Trigger
 			triggerEvent,        // Event
 			tableName,           // Table
@@ -592,14 +592,14 @@ func (b *BaseBuilder) buildShowDatabases(ctx *sql.Context, n *plan.ShowDatabases
 	dbs := n.Catalog.AllDatabases(ctx)
 	var rows = make([]sql.Row, 0, len(dbs))
 	for _, db := range dbs {
-		rows = append(rows, sql.Row{db.Name()})
+		rows = append(rows, sql.UntypedSqlRow{db.Name()})
 	}
 	if _, err := n.Catalog.Database(ctx, "mysql"); err == nil {
-		rows = append(rows, sql.Row{"mysql"})
+		rows = append(rows, sql.UntypedSqlRow{"mysql"})
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
-		return strings.Compare(rows[i][0].(string), rows[j][0].(string)) < 0
+		return strings.Compare(rows[i].GetValue(0).(string), rows[j].GetValue(0).(string)) < 0
 	})
 
 	return sql.RowsToRowIter(rows...), nil
@@ -630,24 +630,24 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 	var rows []sql.Row
 	userStr := user.UserHostToString("`")
 	privStr := generatePrivStrings("*", "*", userStr, user.PrivilegeSet.ToSlice())
-	rows = append(rows, sql.Row{privStr})
+	rows = append(rows, sql.UntypedSqlRow{privStr})
 
 	for _, db := range user.PrivilegeSet.GetDatabases() {
 		dbStr := fmt.Sprintf("`%s`", db.Name())
 		if privStr = generatePrivStrings(dbStr, "*", userStr, db.ToSlice()); len(privStr) != 0 {
-			rows = append(rows, sql.Row{privStr})
+			rows = append(rows, sql.UntypedSqlRow{privStr})
 		}
 
 		for _, tbl := range db.GetTables() {
 			tblStr := fmt.Sprintf("`%s`", tbl.Name())
 			privStr = generatePrivStrings(dbStr, tblStr, userStr, tbl.ToSlice())
-			rows = append(rows, sql.Row{privStr})
+			rows = append(rows, sql.UntypedSqlRow{privStr})
 		}
 
 		for _, routine := range db.GetRoutines() {
 			quotedRoutine := fmt.Sprintf("`%s`", routine.RoutineName())
 			privStr = generateRoutinePrivStrings(dbStr, quotedRoutine, routine.RoutineType(), userStr, routine.ToSlice())
-			rows = append(rows, sql.Row{privStr})
+			rows = append(rows, sql.UntypedSqlRow{privStr})
 		}
 
 		// TODO: display column privileges
@@ -666,7 +666,7 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 		sb.WriteString(roleEdge.FromString("`"))
 	}
 	if sb.Len() > 0 {
-		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})
+		rows = append(rows, sql.UntypedSqlRow{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})
 	}
 
 	sb.Reset()
@@ -677,7 +677,7 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 		sb.WriteString(dynamicPrivWithWgo)
 	}
 	if sb.Len() > 0 {
-		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s WITH GRANT OPTION", sb.String(), user.UserHostToString("`"))})
+		rows = append(rows, sql.UntypedSqlRow{fmt.Sprintf("GRANT %s ON *.* TO %s WITH GRANT OPTION", sb.String(), user.UserHostToString("`"))})
 	}
 	sb.Reset()
 	for i, dynamicPrivWithoutWgo := range user.PrivilegeSet.ToSliceDynamic(false) {
@@ -687,7 +687,7 @@ func (b *BaseBuilder) buildShowGrants(ctx *sql.Context, n *plan.ShowGrants, row 
 		sb.WriteString(dynamicPrivWithoutWgo)
 	}
 	if sb.Len() > 0 {
-		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s", sb.String(), user.UserHostToString("`"))})
+		rows = append(rows, sql.UntypedSqlRow{fmt.Sprintf("GRANT %s ON *.* TO %s", sb.String(), user.UserHostToString("`"))})
 	}
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -734,7 +734,7 @@ func (b *BaseBuilder) buildShowBinlogs(ctx *sql.Context, n *plan.ShowBinlogs, _ 
 		if logFile.Encrypted {
 			encrypted = "Yes"
 		}
-		rows[i] = sql.Row{
+		rows[i] = sql.UntypedSqlRow{
 			logFile.Name, // Log_name
 			logFile.Size, // File_size
 			encrypted,    // Encrypted
@@ -758,7 +758,7 @@ func (b *BaseBuilder) buildShowBinlogStatus(ctx *sql.Context, n *plan.ShowBinlog
 	}
 
 	for _, status := range statusResults {
-		row = sql.Row{
+		row = sql.UntypedSqlRow{
 			status.File,          // File
 			status.Position,      // Position
 			status.DoDbs,         // Binlog_Do_DB
@@ -789,7 +789,7 @@ func (b *BaseBuilder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowRepli
 	lastIoErrorTimestamp := formatReplicaStatusTimestamp(status.LastIoErrorTimestamp)
 	lastSqlErrorTimestamp := formatReplicaStatusTimestamp(status.LastSqlErrorTimestamp)
 
-	row = sql.Row{
+	row = sql.UntypedSqlRow{
 		"",                       // Replica_IO_State
 		status.SourceHost,        // Source_Host
 		status.SourceUser,        // Source_User
@@ -869,7 +869,7 @@ func (b *BaseBuilder) buildShowCreateEvent(ctx *sql.Context, n *plan.ShowCreateE
 	n.Event = *newEvent
 
 	// TODO: fill time_zone with appropriate values
-	return sql.RowsToRowIter(sql.Row{
+	return sql.RowsToRowIter(sql.UntypedSqlRow{
 		n.Event.Name,                   // Event
 		n.Event.SqlMode,                // sql_mode
 		"SYSTEM",                       // time_zone

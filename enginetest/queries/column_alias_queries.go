@@ -43,7 +43,7 @@ var ColumnAliasQueries = []ScriptTest{
 						Type: types.Int64,
 					},
 				},
-				Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+				Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 			},
 			{
 				Query: `SELECT i AS cOl, s as COL FROM mytable`,
@@ -57,7 +57,7 @@ var ColumnAliasQueries = []ScriptTest{
 						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 					},
 				},
-				Expected: []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
+				Expected: []sql.UntypedSqlRow{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 			},
 			{
 				// Projection expressions may NOT reference aliases defined in projection expressions
@@ -78,13 +78,13 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// OrderBy clause may reference expression aliases at current scope
 				Query:    "select 1 as a order by a desc;",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				// If there is ambiguity between one table column and one alias, the alias gets precedence in the order
 				// by clause. (This is different from subqueries in projection expressions.)
 				Query:    "select v as u from uv order by u;",
-				Expected: []sql.Row{{0}, {1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{0}, {1}, {2}, {3}},
 			},
 			{
 				// If there is ambiguity between multiple aliases in an order by clause, it is an error
@@ -95,12 +95,12 @@ var ColumnAliasQueries = []ScriptTest{
 				// If there is ambiguity between one selected table column and one alias, the table column gets
 				// precedence in the group by clause.
 				Query:    "select w, min(z) as w, max(z) as w from wz group by w;",
-				Expected: []sql.Row{{0, 0, 0}, {1, 0, 2}},
+				Expected: []sql.UntypedSqlRow{{0, 0, 0}, {1, 0, 2}},
 			},
 			{
 				// GroupBy may use a column that is selected multiple times.
 				Query:    "select w, w from wz group by w;",
-				Expected: []sql.Row{{0, 0}, {1, 1}},
+				Expected: []sql.UntypedSqlRow{{0, 0}, {1, 1}},
 			},
 			{
 				// GroupBy may use expression aliases in grouping expressions
@@ -115,7 +115,7 @@ var ColumnAliasQueries = []ScriptTest{
 						Type: types.Float64,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"first row", float64(1)},
 					{"second row", float64(2)},
 					{"third row", float64(3)},
@@ -124,12 +124,12 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// Having clause may reference expression aliases current scope
 				Query:    "select t1.u as a from uv as t1 having a > 0 order by a;",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				// Having clause may reference expression aliases from current scope
 				Query:    "select t1.u as a from uv as t1 having a = t1.u order by a;",
-				Expected: []sql.Row{{0}, {1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{0}, {1}, {2}, {3}},
 			},
 			{
 				// Expression aliases work when implicitly referenced by ordinal position
@@ -144,7 +144,7 @@ var ColumnAliasQueries = []ScriptTest{
 						Type: types.Float64,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"first row", float64(1)},
 					{"second row", float64(2)},
 					{"third row", float64(3)},
@@ -163,7 +163,7 @@ var ColumnAliasQueries = []ScriptTest{
 						Type: types.Float64,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"first row", float64(1)},
 					{"second row", float64(2)},
 					{"third row", float64(3)},
@@ -171,7 +171,7 @@ var ColumnAliasQueries = []ScriptTest{
 			},
 			{
 				Query:    "select t1.i as a from mytable as t1 having a = t1.i;",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 		},
 	},
@@ -186,12 +186,12 @@ var ColumnAliasQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `select "foo" as dummy, (select dummy)`,
-				Expected: []sql.Row{{"foo", "foo"}},
+				Expected: []sql.UntypedSqlRow{{"foo", "foo"}},
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/4344
 				Query:    "select x as v, (select u from uv where v = y) as u from xy;",
-				Expected: []sql.Row{{0, 3}, {1, 2}, {2, 1}, {3, 0}},
+				Expected: []sql.UntypedSqlRow{{0, 3}, {1, 2}, {2, 1}, {3, 0}},
 			},
 			{
 				// GMS currently returns {0, 0, 0} The second alias seems to get overwritten.
@@ -200,31 +200,31 @@ var ColumnAliasQueries = []ScriptTest{
 
 				// When multiple aliases are defined with the same name, a subquery prefers the first definition
 				Query:    "select 0 as a, 1 as a, (SELECT x from xy where x = a);",
-				Expected: []sql.Row{{0, 1, 0}},
+				Expected: []sql.UntypedSqlRow{{0, 1, 0}},
 			},
 			{
 				Query:    "SELECT 1 as a, (select a) as a;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:    "SELECT 1 as a, (select a) as b;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:    "SELECT 1 as a, (select a) as b from dual;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:    "SELECT 1 as a, (select a) as b from xy;",
-				Expected: []sql.Row{{1, 1}, {1, 1}, {1, 1}, {1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {1, 1}, {1, 1}, {1, 1}},
 			},
 			{
 				Query:    "select x, (select 1) as y from xy;",
-				Expected: []sql.Row{{0, 1}, {1, 1}, {2, 1}, {3, 1}},
+				Expected: []sql.UntypedSqlRow{{0, 1}, {1, 1}, {2, 1}, {3, 1}},
 			},
 			{
 				Query:    "SELECT 1 as a, (select a) from xy;",
-				Expected: []sql.Row{{1, 1}, {1, 1}, {1, 1}, {1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {1, 1}, {1, 1}, {1, 1}},
 			},
 		},
 	},
@@ -239,7 +239,7 @@ var ColumnAliasQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select x, (select 1) as y, (select (select y as q)) as z from (select * from xy) as xy;",
-				Expected: []sql.Row{{0, 1, 0}, {1, 1, 1}, {2, 1, 2}, {3, 1, 3}},
+				Expected: []sql.UntypedSqlRow{{0, 1, 0}, {1, 1, 1}, {2, 1, 2}, {3, 1, 3}},
 			},
 		},
 	},
@@ -250,14 +250,14 @@ var ColumnAliasQueries = []ScriptTest{
 				// The second query in the union subquery returns "x" instead of mytable.i
 				// https://github.com/dolthub/dolt/issues/4256
 				Query: `SELECT *, (select i union select i) as a from mytable;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "first row", 1},
 					{2, "second row", 2},
 					{3, "third row", 3}},
 			},
 			{
 				Query:    `SELECT 1 as a, (select a union select a) as b;`,
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				// GMS executes this query, but it is not valid because of the forward ref of alias b.
@@ -271,12 +271,12 @@ var ColumnAliasQueries = []ScriptTest{
 				// this query.
 				Query: "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
 				// column names:  a, mod1, one, two
-				Expected: []sql.Row{{1, 2, 1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2, 1, 2}},
 			},
 			{
 				// GMS returns `ambiguous column or alias name "b"` on both cases of `group by b` and `group by 1` inside subquery, but MySQL executes.
 				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 		},
 	},

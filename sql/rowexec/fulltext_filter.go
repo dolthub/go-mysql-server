@@ -233,8 +233,8 @@ func (f *fulltextFilterTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 
 			// Get the key so that we may get rows from the parent table
-			ranges := make(sql.MySQLRange, len(docRow)-2)
-			for i, val := range docRow[1 : len(docRow)-1] {
+			ranges := make(sql.MySQLRange, docRow.Len()-2)
+			for i, val := range docRow.Subslice(1, docRow.Len()-1).Values() {
 				ranges[i] = sql.ClosedRangeColumnExpr(val, val, f.matchAgainst.DocCountTable.Schema()[i+1].Type)
 			}
 			lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{ranges}, Index: f.parentIndex}

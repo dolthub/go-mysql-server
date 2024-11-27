@@ -160,7 +160,7 @@ func ProjectRow(
 	projections []sql.Expression,
 	row sql.Row,
 ) (sql.Row, error) {
-	var fields = make(sql.Row, len(projections))
+	var fields = sql.NewSqlRowWithLen(len(projections))
 	var secondPass []int
 	for i, expr := range projections {
 		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
@@ -177,7 +177,7 @@ func ProjectRow(
 			return nil, fErr
 		}
 		field = normalizeNegativeZeros(field)
-		fields[i] = field
+		fields.SetValue(i, field)
 	}
 	for _, index := range secondPass {
 		field, err := projections[index].Eval(ctx, fields)
@@ -185,7 +185,7 @@ func ProjectRow(
 			return nil, err
 		}
 		field = normalizeNegativeZeros(field)
-		fields[index] = field
+		fields.SetValue(index, field)
 	}
 	return fields, nil
 }
@@ -429,7 +429,7 @@ func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	var row sql.Row
+	row := sql.NewUntypedRow()
 	for {
 		var err error
 		row, err = r.iter.Next(ctx)

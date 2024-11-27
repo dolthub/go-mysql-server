@@ -24,6 +24,9 @@ import (
 )
 
 func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
+	if row == nil {
+		row = sql.UntypedSqlRow{}
+	}
 	var iter sql.RowIter
 	var err error
 	if b.override != nil {

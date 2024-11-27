@@ -31,7 +31,7 @@ import (
 
 type QueryTest struct {
 	Query            string
-	Expected         []sql.Row
+	Expected         []sql.UntypedSqlRow
 	ExpectedColumns  sql.Schema // only Name and Type matter here, because that's what we send on the wire
 	Bindings         map[string]sqlparser.Expr
 	SkipPrepared     bool
@@ -65,7 +65,7 @@ var QueryPlanTODOs = []QueryPlanTest{
 var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SHOW CREATE TABLE point_table`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"point_table",
 			"CREATE TABLE `point_table` (\n" +
 				"  `i` bigint NOT NULL,\n" +
@@ -76,7 +76,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE line_table`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"line_table",
 			"CREATE TABLE `line_table` (\n" +
 				"  `i` bigint NOT NULL,\n" +
@@ -87,7 +87,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE polygon_table`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"polygon_table",
 			"CREATE TABLE `polygon_table` (\n" +
 				"  `i` bigint NOT NULL,\n" +
@@ -98,7 +98,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE mpoint_table`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"mpoint_table",
 			"CREATE TABLE `mpoint_table` (\n" +
 				"  `i` bigint NOT NULL,\n" +
@@ -109,7 +109,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE mline_table`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"mline_table",
 			"CREATE TABLE `mline_table` (\n" +
 				"  `i` bigint NOT NULL,\n" +
@@ -120,7 +120,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE mpoly_table`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"mpoly_table",
 			"CREATE TABLE `mpoly_table` (\n" +
 				"  `i` bigint NOT NULL,\n" +
@@ -131,7 +131,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE geometry_table`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"geometry_table",
 			"CREATE TABLE `geometry_table` (\n" +
 				"  `i` bigint NOT NULL,\n" +
@@ -142,143 +142,143 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT HEX(ST_ASWKB(p)) from point_table`,
-		Expected: []sql.Row{{"0101000000000000000000F03F0000000000000040"}},
+		Expected: []sql.UntypedSqlRow{{"0101000000000000000000F03F0000000000000040"}},
 	},
 	{
 		Query: `SELECT HEX(ST_ASWKB(l)) from line_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
 			{"010200000003000000000000000000F03F00000000000000400000000000000840000000000000104000000000000014400000000000001840"},
 		},
 	},
 	{
 		Query: `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
 			{"01030000000200000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F0000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
 		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
-		Expected: []sql.Row{{types.Point{X: 123.45, Y: 6.78}}},
+		Expected: []sql.UntypedSqlRow{{types.Point{X: 123.45, Y: 6.78}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
-		Expected: []sql.Row{{types.LineString{Points: []types.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
+		Expected: []sql.UntypedSqlRow{{types.LineString{Points: []types.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
-		Expected: []sql.Row{{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
+		Expected: []sql.UntypedSqlRow{{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_ASWKT(p) from point_table`,
-		Expected: []sql.Row{{"POINT(1 2)"}},
+		Expected: []sql.UntypedSqlRow{{"POINT(1 2)"}},
 	},
 	{
 		Query: `SELECT ST_ASWKT(l) from line_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"LINESTRING(1 2,3 4)"},
 			{"LINESTRING(1 2,3 4,5 6)"},
 		},
 	},
 	{
 		Query: `SELECT ST_ASWKT(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
 			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
 		},
 	},
 	{
 		Query: `SELECT ST_ASTEXT(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
 			{"POLYGON((0 0,0 1,1 1,0 0),(0 0,0 1,1 1,0 0))"},
 		},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)))`,
-		Expected: []sql.Row{{types.Point{X: 1, Y: 2}}},
+		Expected: []sql.UntypedSqlRow{{types.Point{X: 1, Y: 2}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
-		Expected: []sql.Row{{types.LineString{Points: []types.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
+		Expected: []sql.UntypedSqlRow{{types.LineString{Points: []types.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
-		Expected: []sql.Row{{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
+		Expected: []sql.UntypedSqlRow{{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_X(POINT(1,2))`,
-		Expected: []sql.Row{{1.0}},
+		Expected: []sql.UntypedSqlRow{{1.0}},
 	},
 	{
 		Query:    `SELECT ST_Y(POINT(1,2))`,
-		Expected: []sql.Row{{2.0}},
+		Expected: []sql.UntypedSqlRow{{2.0}},
 	},
 	{
 		Query:    `SELECT ST_X(POINT(123.45,6.789))`,
-		Expected: []sql.Row{{123.45}},
+		Expected: []sql.UntypedSqlRow{{123.45}},
 	},
 	{
 		Query:    `SELECT ST_Y(POINT(123.45,6.789))`,
-		Expected: []sql.Row{{6.789}},
+		Expected: []sql.UntypedSqlRow{{6.789}},
 	},
 	{
 		Query:    `SELECT ST_X(POINT(1,2),99.9)`,
-		Expected: []sql.Row{{types.Point{X: 99.9, Y: 2}}},
+		Expected: []sql.UntypedSqlRow{{types.Point{X: 99.9, Y: 2}}},
 	},
 	{
 		Query:    `SELECT ST_Y(POINT(1,2),99.9)`,
-		Expected: []sql.Row{{types.Point{X: 1, Y: 99.9}}},
+		Expected: []sql.UntypedSqlRow{{types.Point{X: 1, Y: 99.9}}},
 	},
 	{
 		Query:    `SELECT ST_X(p) from point_table`,
-		Expected: []sql.Row{{1.0}},
+		Expected: []sql.UntypedSqlRow{{1.0}},
 	},
 	{
 		Query:    `SELECT ST_X(p) from point_table`,
-		Expected: []sql.Row{{1.0}},
+		Expected: []sql.UntypedSqlRow{{1.0}},
 	},
 	{
 		Query:    `SELECT ST_Y(p) from point_table`,
-		Expected: []sql.Row{{2.0}},
+		Expected: []sql.UntypedSqlRow{{2.0}},
 	},
 	{
 		Query:    `SELECT ST_SRID(p) from point_table`,
-		Expected: []sql.Row{{uint32(0)}},
+		Expected: []sql.UntypedSqlRow{{uint32(0)}},
 	},
 	{
 		Query:    `SELECT ST_SRID(l) from line_table`,
-		Expected: []sql.Row{{uint32(0)}, {uint32(0)}},
+		Expected: []sql.UntypedSqlRow{{uint32(0)}, {uint32(0)}},
 	},
 	{
 		Query: `SELECT ST_SRID(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint32(0)},
 			{uint32(0)},
 		},
 	},
 	{
 		Query:    `SELECT ST_SRID(p, 4326) from point_table`,
-		Expected: []sql.Row{{types.Point{SRID: 4326, X: 1, Y: 2}}},
+		Expected: []sql.UntypedSqlRow{{types.Point{SRID: 4326, X: 1, Y: 2}}},
 	},
 	{
 		Query: `SELECT ST_SRID(l, 4326) from line_table ORDER BY l`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
 			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(s) from stringtogeojson_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Point{SRID: 4326, X: 1, Y: 2}},
 			{types.Point{SRID: 4326, X: 123.45, Y: 56.789}},
 			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
@@ -297,41 +297,41 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from point_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(l) from line_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
 			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
 			{types.JSONDocument{Val: map[string]interface{}{"type": "Polygon", "coordinates": [][][2]float64{{{0, 0}, {0, 1}, {1, 1}, {0, 0}}, {{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(p) from mpoint_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
 			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiPoint", "coordinates": [][2]float64{{1, 2}, {3, 4}, {5, 6}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(l) from mline_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}}}}}},
 			{types.JSONDocument{Val: map[string]interface{}{"type": "MultiLineString", "coordinates": [][][2]float64{{{1, 2}, {3, 4}, {5, 6}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASGEOJSON(ST_GEOMFROMGEOJSON(s)) from stringtogeojson_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{1, 2}}}},
 			{types.JSONDocument{Val: map[string]interface{}{"type": "Point", "coordinates": [2]float64{123.45, 56.789}}}},
 			{types.JSONDocument{Val: map[string]interface{}{"type": "LineString", "coordinates": [][2]float64{{1, 2}, {3, 4}}}}},
@@ -347,41 +347,41 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from point_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Point{SRID: 4326, X: 1, Y: 2}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(l)) from line_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
 			{types.LineString{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 			{types.Polygon{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}, {SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from mpoint_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MultiPoint{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
 			{types.MultiPoint{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(l)) from mline_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MultiLineString{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}}}},
 			{types.MultiLineString{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from mpoly_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MultiPolygon{SRID: 4326, Polygons: []types.Polygon{{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 0, Y: 0}}}}}}}},
 			{types.MultiPolygon{SRID: 4326, Polygons: []types.Polygon{
 				{SRID: 4326, Lines: []types.LineString{{SRID: 4326, Points: []types.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 0, Y: 0}}}}},
@@ -390,80 +390,80 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(g)) from geom_coll_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{types.GeomColl{SRID: 4326, Geoms: []types.GeometryValue{}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(p) from point_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(l) from line_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{1},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 			{2},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(p) from mpoint_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{0},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(l) from mline_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{1},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(p) from mpoly_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 			{2},
 		},
 	},
 	{
 		Query: `SELECT ST_DIMENSION(g) from geom_coll_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from point_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Point{X: 2, Y: 1}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(l) from line_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.LineString{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
 			{types.LineString{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_ASWKT(g) from geometry_table ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"POINT(1 2)"},
 			{"POINT(2 1)"},
 			{"LINESTRING(1 2,3 4)"},
@@ -482,21 +482,21 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from mpoint_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MultiPoint{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
 			{types.MultiPoint{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(l) from mline_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}}}},
 			{types.MultiLineString{Lines: []types.LineString{{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from mpoly_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MultiPolygon{Polygons: []types.Polygon{{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 3}, {X: 0, Y: 0}}}}}}}},
 			{types.MultiPolygon{Polygons: []types.Polygon{
 				{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 2, Y: 1}, {X: 4, Y: 3}, {X: 0, Y: 0}}}}},
@@ -506,7 +506,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT HEX(ST_ASWKB(g)) from geometry_table ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"0101000000000000000000F03F0000000000000040"},
 			{"01010000000000000000000040000000000000F03F"},
 			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
@@ -525,7 +525,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_SRID(g) from geometry_table order by i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(0)},
 			{uint64(4326)},
 			{uint64(0)},
@@ -544,7 +544,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Point{X: 1, Y: 2}},
 			{types.Point{X: 1, Y: 2}},
 			{types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
@@ -563,7 +563,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_DIMENSION(g) from geometry_table order by i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{0},
 			{1},
@@ -582,7 +582,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.Point{X: 2, Y: 1}},
 			{types.Point{SRID: 4326, X: 2, Y: 1}},
 			{types.LineString{Points: []types.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
@@ -601,58 +601,58 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_AREA(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.5},
 			{0.0},
 		},
 	},
 	{
 		Query: `SELECT ST_PERIMETER(p) from polygon_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3.414213562373095},
 			{6.82842712474619},
 		},
 	},
 	{
 		Query: `SELECT ST_LENGTH(l) from line_table`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2.8284271247461903},
 			{5.656854249492381},
 		},
 	},
 	{
 		Query: `SELECT ST_ASWKT(g) from geometry_table where g = point(1,2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"POINT(1 2)"},
 		},
 	},
 	{
 		Query: `SELECT ST_ASWKT(g) from geometry_table where g = st_srid(point(1,2),4326)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"POINT(2 1)"},
 		},
 	},
 	{
 		Query: `SELECT ST_ASWKT(g) from geometry_table where g = unhex(hex(point(1,2)))`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"POINT(1 2)"},
 		},
 	},
 	{
 		Query: `SELECT unhex(hex(point(1,2))) < unhex(hex(point(3,4)))`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: `SELECT ST_ASWKT(g) from geometry_table where g = st_geomfromtext('MultiPolygon(((0 0,1 2,3 4,0 0)))')`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"MULTIPOLYGON(((0 0,1 2,3 4,0 0)))"},
 		},
 	},
 	{
 		Query: `SELECT ST_ASWKT(g) from geometry_table ORDER BY g`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"POINT(1 2)"},
 			{"LINESTRING(1 2,3 4)"},
 			{"POLYGON((0 0,0 1,1 1,0 0))"},
@@ -671,7 +671,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT ST_DISTANCE(st_srid(g, 0), point(0,0)) from geometry_table ORDER BY g`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{math.Sqrt(5)},
 			{math.Sqrt(5)},
 			{0.0},
@@ -690,7 +690,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT st_startpoint(g) from geometry_table ORDER BY g`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 			{types.Point{X: 1, Y: 2}},
 			{nil},
@@ -709,7 +709,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT st_endpoint(g) from geometry_table ORDER BY g`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 			{types.Point{X: 3, Y: 4}},
 			{nil},
@@ -728,7 +728,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT st_isclosed(g) from geometry_table ORDER BY g`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 			{false},
 			{nil},
@@ -747,7 +747,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT st_intersects(st_srid(g, 0), point(1,2)) from geometry_table ORDER BY g`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 			{true},
 			{false},
@@ -769,13 +769,13 @@ var SpatialQueryTests = []QueryTest{
 var QueryTests = []QueryTest{
 	{
 		Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1, 2},
 		},
 	},
 	{
 		Query: "select count(i) from mytable",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
@@ -783,84 +783,84 @@ var QueryTests = []QueryTest{
 		// Assert that SYSDATE() returns different times on each call in a query (unlike NOW())
 		// Using the maximum precision for fractional seconds, lets us see a difference.
 		Query:    "select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);",
-		Expected: []sql.Row{{true, 0, true}},
+		Expected: []sql.UntypedSqlRow{{true, 0, true}},
 	},
 	{
 		Query:    "select 1 as x from xy having AVG(x) > 0",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select 1 as x, AVG(x) from xy group by (y) having AVG(x) > 0",
-		Expected: []sql.Row{{1, float64(1)}, {1, float64(2)}, {1, float64(3)}},
+		Expected: []sql.UntypedSqlRow{{1, float64(1)}, {1, float64(2)}, {1, float64(3)}},
 	},
 	{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
-		Expected: []sql.Row{{0}, {1}, {3}},
+		Expected: []sql.UntypedSqlRow{{0}, {1}, {3}},
 	},
 	//{
 	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
-	//	Expected: []sql.Row{{1}, {2}, {3}},
+	//	Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	//},
 	{
 		Query:    "SELECT * FROM mytable t0 INNER JOIN mytable t1 ON (t1.i IN (((true)%(''))));",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select x from xy where y in (select xy.x from xy join (select t2.y from xy t2 where exists (select t3.y from xy t3 where t3.y = xy.x)) t1) order by 1;",
-		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{0}, {1}, {2}, {3}},
 	},
 	{
 		Query:    "select x from xy where y in (select x from xy where x in (select y from xy)) order by 1;",
-		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{0}, {1}, {2}, {3}},
 	},
 	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL >= 1)) IS NULL);",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 WHERE (1 IN (NULL NOT BETWEEN -1 AND 1)) IS NULL;",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 WHERE ((1 IN (NULL * 1)) IS NULL);",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT count(*) from mytable WHERE ((i IN (NULL >= 1)) IS NULL);",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "SELECT count(*) from mytable WHERE (i IN (NULL NOT BETWEEN -1 AND 1)) IS NULL;",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "SELECT count(*) from mytable WHERE ((i IN (NULL * 1)) IS NULL);",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "SELECT count(*) from mytable WHERE (i IN (-''));",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "SELECT 1 % true",
-		Expected: []sql.Row{{"0"}},
+		Expected: []sql.UntypedSqlRow{{"0"}},
 	},
 	{
 		Query:    "SELECT * from mytable where (0.000 and true)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT * from mytable where (-0.000 and true)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 WHERE power(88.0447354000000000000000333333333,100) % 1;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		SkipServerEngine: true,
 		Query:            "show full processlist",
-		Expected:         []sql.Row{},
+		Expected:         []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "select * from (select i, i2 from niltable) a(x,y) union select * from (select 1, NULL) b(x,y) union select * from (select i, i2 from niltable) c(x,y)",
@@ -874,7 +874,7 @@ var QueryTests = []QueryTest{
 				Type: types.Int64,
 			},
 		},
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, nil},
 			{2, 2},
 			{3, nil},
@@ -895,7 +895,7 @@ var QueryTests = []QueryTest{
 				Type: types.Int64,
 			},
 		},
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 			{1, nil},
 		},
@@ -912,7 +912,7 @@ var QueryTests = []QueryTest{
 				Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -920,7 +920,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT s as i, i as i from mytable order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", 1},
 			{"second row", 2},
 			{"third row", 3},
@@ -928,91 +928,91 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
+		Expected: []sql.UntypedSqlRow{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
 	},
 	{
 		Query:    "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		Expected: []sql.Row{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
+		Expected: []sql.UntypedSqlRow{{float64(1), 1}, {float64(2), 2}, {float64(3), 3}},
 	},
 	{
 		Query:    "select count(1)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select count(100)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select sum(1)",
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.UntypedSqlRow{{float64(1)}},
 	},
 	{
 		Query:    "select sum(100)",
-		Expected: []sql.Row{{float64(100)}},
+		Expected: []sql.UntypedSqlRow{{float64(100)}},
 	},
 	{
 		Query:    "select count(*) from mytable",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    `select count(*) as cnt from mytable`,
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "select count(*) from keyless",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    "select count(*) from xy",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    "select count(*) from xy alias",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    "select count(1) from mytable",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "select count(1) from xy",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    "select count(1) from xy, uv",
-		Expected: []sql.Row{{16}},
+		Expected: []sql.UntypedSqlRow{{16}},
 	},
 	{
 		Query:    "select count('abc') from xy, uv",
-		Expected: []sql.Row{{16}},
+		Expected: []sql.UntypedSqlRow{{16}},
 	},
 	{
 		Query:    "select sum('abc') from mytable",
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.UntypedSqlRow{{float64(0)}},
 	},
 	{
 		Query:    "select sum(10) from mytable",
-		Expected: []sql.Row{{float64(30)}},
+		Expected: []sql.UntypedSqlRow{{float64(30)}},
 	},
 	{
 		Query:    "select sum(1) from emptytable",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "select * from (select count(*) from xy) dt",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    "select (select count(*) from xy), (select count(*) from uv)",
-		Expected: []sql.Row{{4, 4}},
+		Expected: []sql.UntypedSqlRow{{4, 4}},
 	},
 	{
 		Query:    "select (select count(*) from xy), (select count(*) from uv), count(*) from ab",
-		Expected: []sql.Row{{4, 4, 4}},
+		Expected: []sql.UntypedSqlRow{{4, 4, 4}},
 	},
 	{
 		Query:    "select i from mytable alias where i = 1 and s = 'first row'",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query: `
@@ -1023,7 +1023,7 @@ select u
 from (select * from uv) sq2
 limit 1
 offset 1;`,
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query: `
@@ -1033,69 +1033,69 @@ Select * from (
   Union
   Select x from xy where x in (select * from cte)
  ) dt;`,
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5642
 		Query:    "SELECT count(*) FROM mytable WHERE i = 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "SELECT count(*) FROM mytable WHERE i <> 3720481604718463778705849469618542795;",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795 AND i > 0;",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "SELECT count(*) FROM mytable WHERE i < 3720481604718463778705849469618542795 OR i > 0;",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/4874
 		Query:    "select * from information_schema.columns where column_key in ('invalid_enum_value') and table_name = 'does_not_exist';",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select 0 in ('hi', 'bye'), 1 in ('hi', 'bye');",
-		Expected: []sql.Row{{true, false}},
+		Expected: []sql.UntypedSqlRow{{true, false}},
 	},
 	{
 		Query:    "select count(*) from typestable where e1 in ('hi', 'bye');",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "select count(*) from typestable where e1 in ('', 'bye');",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select count(*) from typestable where s1 in ('hi', 'bye');",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "select count(*) from typestable where s1 in ('', 'bye');",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select count(*) from mytable where s in ('', 'first row');",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select count(*) from mytable where s in (1, 'first row');",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select count(*) from mytable where s in (NULL, 'first row');",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select count(*) from niltable where i2 in (NULL, 1);",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query: "SELECT * FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -1113,7 +1113,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT mytable.* FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -1131,7 +1131,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT `mytable`.* FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -1149,7 +1149,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT `i`, `s` FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -1167,7 +1167,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT * FROM mytable ORDER BY i DESC;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3), "third row"},
 			{int64(2), "second row"},
 			{int64(1), "first row"},
@@ -1175,7 +1175,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT * FROM mytable GROUP BY i,s;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -1183,43 +1183,43 @@ Select * from (
 	},
 	{
 		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, nil, 123, "abc", "abcdef"},
 		},
 	},
 	{
 		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, nil, 123, "abc", "abcdef"},
 		},
 	},
 	{
 		Query: "SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM emptytable) uv WHERE pk = u;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 123},
 		},
 	},
 	{
 		Query: "SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false) uv WHERE pk = u;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 123},
 		},
 	},
 	{
 		Query: "SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM emptytable);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "SELECT pk FROM one_pk WHERE (pk, 123) IN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "SELECT pk FROM one_pk WHERE (pk, 123) NOT IN (SELECT count(*) AS u, 123 AS v FROM emptytable);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -1227,7 +1227,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk FROM one_pk WHERE (pk, 123) NOT IN (SELECT count(*) AS u, 123 AS v FROM mytable WHERE false);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -1235,7 +1235,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i FROM mytable WHERE EXISTS (SELECT * FROM (SELECT count(*) as u, 123 as v FROM emptytable) uv);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -1243,34 +1243,34 @@ Select * from (
 	},
 	{
 		Query: "SELECT count(*), (SELECT i FROM mytable WHERE i = 1 group by i);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) FROM one_pk GROUP BY 1 ORDER BY 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), float64(14)},
 			{int64(1), float64(54)},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), float64(14)},
 			{int64(1), float64(54)},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + sum(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), float64(28)},
 			{int64(1), float64(108)},
 		},
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(c3) + min(c3) as sum_and_min FROM one_pk GROUP BY 1 ORDER BY 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), float64(16)},
 			{int64(1), float64(76)},
 		},
@@ -1287,7 +1287,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk DIV 2, SUM(`c3`) +    min( c3 ) FROM one_pk GROUP BY 1 ORDER BY 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), float64(16)},
 			{int64(1), float64(76)},
 		},
@@ -1304,30 +1304,30 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk1, SUM(c1) FROM two_pk GROUP BY pk1 ORDER BY pk1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 10.0},
 			{1, 50.0},
 		},
 	},
 	{
 		Query:    "select max(pk),c1+1 from one_pk group by c1 order by 1",
-		Expected: []sql.Row{{0, 1}, {1, 11}, {2, 21}, {3, 31}},
+		Expected: []sql.UntypedSqlRow{{0, 1}, {1, 11}, {2, 21}, {3, 31}},
 	},
 	{
 		Query:    "SELECT pk1, SUM(c1) FROM two_pk WHERE pk1 = 0",
-		Expected: []sql.Row{{0, 10.0}},
+		Expected: []sql.UntypedSqlRow{{0, 10.0}},
 	},
 	{
 		Query:    "SELECT i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i AS x FROM mytable ORDER BY i DESC",
-		Expected: []sql.Row{{3}, {2}, {1}},
+		Expected: []sql.UntypedSqlRow{{3}, {2}, {1}},
 	},
 	{
 		Query: "SELECT i AS s, mt.s FROM mytable mt ORDER BY i DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row"},
 			{2, "second row"},
 			{1, "first row"},
@@ -1345,7 +1345,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i AS s, s FROM mytable mt ORDER BY i DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row"},
 			{2, "second row"},
 			{1, "first row"},
@@ -1353,7 +1353,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT floor(i), s FROM mytable mt ORDER BY floor(i) DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row"},
 			{2, "second row"},
 			{1, "first row"},
@@ -1361,7 +1361,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT floor(i), avg(char_length(s)) FROM mytable mt group by 1 ORDER BY floor(i) DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 9.0},
 			{2, 10.0},
 			{1, 9.0},
@@ -1369,29 +1369,29 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i AS x FROM mytable ORDER BY x DESC",
-		Expected: []sql.Row{{3}, {2}, {1}},
+		Expected: []sql.UntypedSqlRow{{3}, {2}, {1}},
 	},
 	{
 		Query:    "SELECT i FROM mytable AS mt;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query: "SELECT s,i FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT mytable.s,i FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT t.s,i FROM mytable AS t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -1399,7 +1399,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT s,i FROM mytable order by i DESC;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"third row", int64(3)},
 			{"second row", int64(2)},
 			{"first row", int64(1)},
@@ -1407,14 +1407,14 @@ Select * from (
 	},
 	{
 		Query: "SELECT s,i FROM mytable as a order by i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 asc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 1},
 			{1, 0},
@@ -1423,7 +1423,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 asc, pk2 desc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1},
 			{0, 0},
 			{1, 1},
@@ -1432,7 +1432,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk order by pk1 desc, pk2 desc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 			{1, 0},
 			{0, 1},
@@ -1441,7 +1441,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1, pk2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 1},
 			{1, 0},
@@ -1450,7 +1450,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk1, pk2 FROM two_pk group by pk1, pk2 order by pk1 desc, pk2 desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 			{1, 0},
 			{0, 1},
@@ -1459,7 +1459,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT s,i FROM (select i,s FROM mytable) mt;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -1467,7 +1467,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -1475,7 +1475,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row"},
 			{2, "second row"},
 			{1, "first row"},
@@ -1483,7 +1483,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT a,b FROM (select i,s FROM mytable order by i desc) mt (a,b);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row"},
 			{2, "second row"},
 			{1, "first row"},
@@ -1501,7 +1501,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT a FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 			{2},
 			{1},
@@ -1509,7 +1509,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "ab"},
 			{2, "4"},
 		},
@@ -1526,7 +1526,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "ab"},
 			{2, "4"},
 		},
@@ -1543,49 +1543,49 @@ Select * from (
 	},
 	{
 		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 		},
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row(2), row(2)) a (val);`,
-		Expected: []sql.Row{{"1.00"}, {"2.00"}},
+		Expected: []sql.UntypedSqlRow{{"1.00"}, {"2.00"}},
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(1.00), row(1.000), row(2), row(2)) a (val);`,
-		Expected: []sql.Row{{"1.000"}, {"2.000"}},
+		Expected: []sql.UntypedSqlRow{{"1.000"}, {"2.000"}},
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(1.000), row(21.00), row(2), row(2)) a (val);`,
-		Expected: []sql.Row{{"1.000"}, {"21.000"}, {"2.000"}},
+		Expected: []sql.UntypedSqlRow{{"1.000"}, {"21.000"}, {"2.000"}},
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(1), row(1.00), row('2'), row(2)) a (val);`,
-		Expected: []sql.Row{{"1"}, {"1.00"}, {"2"}},
+		Expected: []sql.UntypedSqlRow{{"1"}, {"1.00"}, {"2"}},
 	},
 	{
 		Query:    `SELECT DISTINCT val FROM (values row(null), row(1.00), row('2'), row(2)) a (val);`,
-		Expected: []sql.Row{{nil}, {"1.00"}, {"2"}},
+		Expected: []sql.UntypedSqlRow{{nil}, {"1.00"}, {"2"}},
 	},
 	{
 		Query:    `SELECT column_0 FROM (values row(1+1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
-		Expected: []sql.Row{{"1.0"}, {"2.5"}},
+		Expected: []sql.UntypedSqlRow{{"1.0"}, {"2.5"}},
 	},
 	{
 		// The SortFields does not match between prepared and non-prepared nodes.
 		SkipPrepared: true,
 		Query:        `SELECT column_0 FROM (values row('1.5',2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
-		Expected:     []sql.Row{{"1"}, {"1.5"}},
+		Expected:     []sql.UntypedSqlRow{{"1"}, {"1.5"}},
 	},
 	{
 		Query:    `SELECT column_0 FROM (values row(1.5,2+2), row(floor(1.5),concat("a","b"))) a order by 1;`,
-		Expected: []sql.Row{{"1.0"}, {"1.5"}},
+		Expected: []sql.UntypedSqlRow{{"1.0"}, {"1.5"}},
 	},
 	{
 		Query: `SELECT FORMAT(val, 2) FROM
 			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"4,328,904.00"},
 			{"432,053.49"},
 			{"593,288,775.21"},
@@ -1596,7 +1596,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT FORMAT(i, 3) FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1.000"},
 			{"2.000"},
 			{"3.000"},
@@ -1605,7 +1605,7 @@ Select * from (
 	{
 		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM
 			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"4.328.904,00"},
 			{"432.053,49"},
 			{"593.288.775,21"},
@@ -1616,7 +1616,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT FORMAT(i, 3, 'da_DK') FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1,000"},
 			{"2,000"},
 			{"3,000"},
@@ -1624,14 +1624,14 @@ Select * from (
 	},
 	{
 		Query: "SELECT DATEDIFF(date_col, '2019-12-28') FROM datetime_table where date_col = date('2019-12-31T12:00:00');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
 	{
 		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM
 			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31T12:00:00')) a (val)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{-758},
 			{5},
 			{703},
@@ -1640,14 +1640,14 @@ Select * from (
 	},
 	{
 		Query: "SELECT TIMESTAMPDIFF(SECOND,'2007-12-31 23:59:58', '2007-12-31 00:00:00');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{-86398},
 		},
 	},
 	{
 		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM
 			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1090140},
 			{-7200},
 			{44},
@@ -1656,7 +1656,7 @@ Select * from (
 	},
 	{
 		Query: "values row(1, 3), row(2, 2), row(3, 1);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1},
@@ -1674,7 +1674,7 @@ Select * from (
 	},
 	{
 		Query: "values (1, 3), (2, 2), (3, 1);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1},
@@ -1692,7 +1692,7 @@ Select * from (
 	},
 	{
 		Query: "values (1, 3), (2, 2), (3, 1) order by 1 asc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1},
@@ -1710,7 +1710,7 @@ Select * from (
 	},
 	{
 		Query: "values (1, 3), (2, 2), (3, 1) order by 1 desc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1},
 			{2, 2},
 			{1, 3},
@@ -1728,7 +1728,7 @@ Select * from (
 	},
 	{
 		Query: "values (1, 3), (2, 2), (3, 1) order by 2 asc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1},
 			{2, 2},
 			{1, 3},
@@ -1746,7 +1746,7 @@ Select * from (
 	},
 	{
 		Query: "values (1, 3), (2, 2), (3, 1) order by 2 desc;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1},
@@ -1764,7 +1764,7 @@ Select * from (
 	},
 	{
 		Query: "values (1, 3), (2, 2), (3, 1) limit 2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 		},
@@ -1781,7 +1781,7 @@ Select * from (
 	},
 	{
 		Query: "values (1, 3), (2, 2), (3, 1) order by 2 limit 2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1},
 			{2, 2},
 		},
@@ -1799,19 +1799,19 @@ Select * from (
 
 	{
 		Query:    "SELECT TIMEDIFF(null, '2017-11-30 22:59:59');",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT DATEDIFF('2019/12/28', null);",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT TIMESTAMPDIFF(SECOND, null, '2007-12-31 00:00:00');",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
 		},
 	},
@@ -1824,7 +1824,7 @@ Select * from (
 	                   row('{ "a": 5, "d": 6 }','[true, true]'),
 	                   row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
 	              test (val1, val2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
 			{types.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
 			{types.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
@@ -1834,31 +1834,31 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_ARRAY()`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`[]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', "do")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(1, 'say, "hi"', JSON_OBJECT("abc", 22))`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(JSON_OBJECT("a", JSON_ARRAY(1,2)), JSON_OBJECT("b", 22))`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(pk, c1, c2, c3) FROM jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
 			{types.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
 			{types.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
@@ -1867,7 +1867,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_ARRAY(JSON_OBJECT("id", pk, "name", c1), c2, c3) FROM jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
 			{types.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
 			{types.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
@@ -1876,7 +1876,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_KEYS(c3) FROM jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`["a"]`)},
 			{types.MustJSON(`["b"]`)},
 			{types.MustJSON(`["c"]`)},
@@ -1885,7 +1885,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_OVERLAPS(c3, '{"a": 2, "d": 2}') FROM jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 			{false},
 			{false},
@@ -1894,7 +1894,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"a": [2, 1]}`)},
 			{types.MustJSON(`{"a": 1, "b": 2}`)},
 			{types.MustJSON(`{"a": 1, "c": 2}`)},
@@ -1903,7 +1903,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_MERGE_PRESERVE(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"a": [2, 1]}`)},
 			{types.MustJSON(`{"a": 1, "b": 2}`)},
 			{types.MustJSON(`{"a": 1, "c": 2}`)},
@@ -1912,7 +1912,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_MERGE_PATCH(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"a": 1}`)},
 			{types.MustJSON(`{"a": 1, "b": 2}`)},
 			{types.MustJSON(`{"a": 1, "c": 2}`)},
@@ -1921,19 +1921,19 @@ Select * from (
 	},
 	{
 		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
 		},
 	},
 	{
 		Query: `SELECT CONCAT(JSON_ARRAY(JSON_OBJECT('aa', 123, 'z', 456), JSON_OBJECT('BB', 321, 'Y', 654)), "")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{`[{"z": 456, "aa": 123}, {"Y": 654, "BB": 321}]`},
 		},
 	},
 	{
 		Query: `select json_pretty(c3) from jsontable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{
 				`{
   "a": 2
@@ -1958,7 +1958,7 @@ Select * from (
 	},
 	{
 		Query: `select json_pretty(json_object("id", 1, "name", "test"));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{
 				`{
   "id": 1,
@@ -1971,7 +1971,7 @@ Select * from (
 		Query: `SELECT column_0, sum(column_1) FROM
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 4.0},
 			{2, 7.0},
 			{3, 9.0},
@@ -1981,7 +1981,7 @@ Select * from (
 		Query: `SELECT B, sum(C) FROM
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a (b,c)
 			group by 1 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 4.0},
 			{2, 7.0},
 			{3, 9.0},
@@ -1989,14 +1989,14 @@ Select * from (
 	},
 	{
 		Query: `SELECT i, sum(i) FROM mytable group by 1 having avg(i) > 1 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 2.0},
 			{3, 3.0},
 		},
 	},
 	{
 		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "third"},
 			{2, "second row", 2, "second"},
 			{3, "third row", 3, "first"},
@@ -2004,7 +2004,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "third"},
 			{2, "second row", 2, "second"},
 			{3, "third row", 3, "first"},
@@ -2012,7 +2012,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "third"},
 			{2, "second row", 2, "second"},
 			{3, "third row", 3, "first"},
@@ -2020,7 +2020,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row", "second", 2, 2, "second row"},
 		},
 	},
@@ -2028,7 +2028,7 @@ Select * from (
 		Query: `SELECT a.column_0, b.column_1 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "ab"},
 			{2, "4"},
 		},
@@ -2037,7 +2037,7 @@ Select * from (
 		Query: `SELECT a.column_0, mt.s from (values row(1,"1"), row(2,"2"), row(4,"4")) a
 			left join mytable mt on column_0 = mt.i
 			order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{4, nil},
@@ -2047,7 +2047,7 @@ Select * from (
 		Query: `SELECT * FROM (select * from mytable) a
 			join (select * from mytable) b on a.i = b.i
 			order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "first row"},
 			{2, "second row", 2, "second row"},
 			{3, "third row", 3, "third row"},
@@ -2055,19 +2055,19 @@ Select * from (
 	},
 	{
 		Query:    "select * from mytable t1 join mytable t2 on t2.i = t1.i where t2.i > 10",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select * from mytable t1 join mytable T2 on t2.i = t1.i where T2.i > 10",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "select * from one_pk where c1 in (select opk1.c1 from one_pk opk1 left join one_pk opk2 on opk1.c2 = opk2.c2)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 1, 2, 3, 4},
 			{1, 10, 11, 12, 13, 14},
 			{2, 20, 21, 22, 23, 24},
@@ -2083,7 +2083,7 @@ Select * from (
 	     	)
 			)) as greater_count
 			from mytable mt order by 1`,
-		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
+		Expected: []sql.UntypedSqlRow{{1, 2}, {2, 1}, {3, 0}},
 	},
 	{
 		Query: `select mt.i,
@@ -2094,11 +2094,11 @@ Select * from (
 	     	)
 			)) as eq_count
 			from mytable mt order by 1`,
-		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
+		Expected: []sql.UntypedSqlRow{{1, 1}, {2, 1}, {3, 1}},
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -2106,7 +2106,7 @@ Select * from (
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT a.s,b.i FROM mt a join mt b on a.i = b.i order by 2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -2115,7 +2115,7 @@ Select * from (
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i, s from mt1)
 			SELECT mt1.i, concat(mt2.s, '!') FROM mt1 join mt2 on mt1.i = mt2.i + 1 order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 			{3, "second row!"},
 		},
@@ -2123,14 +2123,14 @@ Select * from (
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable order by i limit 2), mt2 as (select i, s from mt1)
 			SELECT mt1.i, concat(mt2.s, '!') FROM mt1 join mt2 on mt1.i = mt2.i + 1 order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 		},
 	},
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1 as i, concat(s, '!') as s from mt1)
 			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 			{3, "second row!"},
 		},
@@ -2138,7 +2138,7 @@ Select * from (
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1 as i, concat(s, '!') as s from mytable)
 			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 			{3, "second row!"},
 		},
@@ -2146,7 +2146,7 @@ Select * from (
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable), mt2 (i,s) as (select i+1, concat(s, '!') from mytable)
 			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 			{3, "second row!"},
 		},
@@ -2154,14 +2154,14 @@ Select * from (
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select concat(s, '!') as s, i+1 as i from mytable)
 			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 			{3, "second row!"},
 		},
 	},
 	{
 		Query: "WITH mt (s,i) as (select i,s FROM mytable) SELECT s,i FROM mt;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -2169,7 +2169,7 @@ Select * from (
 	},
 	{
 		Query: "WITH mt (s,i) as (select i+1, concat(s,'!') FROM mytable) SELECT s,i FROM mt order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 			{3, "second row!"},
 			{4, "third row!"},
@@ -2177,7 +2177,7 @@ Select * from (
 	},
 	{
 		Query: "WITH mt (s,i) as (select i+1 as x, concat(s,'!') as y FROM mytable) SELECT s,i FROM mt order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 			{3, "second row!"},
 			{4, "third row!"},
@@ -2185,20 +2185,20 @@ Select * from (
 	},
 	{
 		Query: "WITH mt (s,i) as (select i+1, concat(s,'!') FROM mytable order by 1 limit 1) SELECT s,i FROM mt order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "first row!"},
 		},
 	},
 	{
 		Query: "WITH mt (s,i) as (select char_length(s), sum(i) FROM mytable group by 1) SELECT s,i FROM mt order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{9, 4.0},
 			{10, 2.0},
 		},
 	},
 	{
 		Query: "WITH mt (s,i) as (select i, row_number() over (order by i desc) FROM mytable) SELECT s,i FROM mt order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1},
@@ -2208,7 +2208,7 @@ Select * from (
 		// In this case, the parser and analyzer collaborate to place the filter below the WINDOW function,
 		// and the window sees the filtered rows.
 		Query: "SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE s2 <> 'second' ORDER BY i2 ASC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 1, "third"},
 			{1, 3, "first"},
 		},
@@ -2216,7 +2216,7 @@ Select * from (
 	{
 		// In this case, the analyzer should not push the filter below the window function.
 		Query: "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable ORDER BY i2 ASC) a WHERE s2 <> 'second'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1, "third"},
 			{1, 3, "first"},
 		},
@@ -2224,7 +2224,7 @@ Select * from (
 	{
 		// Same as above, but with an available index access on i2
 		Query: "SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE i2 < 2 OR i2 > 2 ORDER BY i2 ASC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 1, "third"},
 			{1, 3, "first"},
 		},
@@ -2232,14 +2232,14 @@ Select * from (
 	{
 		// Same as above, but with an available index access on i2
 		Query: "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable ORDER BY i2 ASC) a WHERE i2 < 2 OR i2 > 2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1, "third"},
 			{1, 3, "first"},
 		},
 	},
 	{
 		Query: "select i+0.0/(lag(i) over (order by s)) from mytable order by 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 			{"2.00000"},
 			{"3.00000"},
@@ -2247,7 +2247,7 @@ Select * from (
 	},
 	{
 		Query: "select f64/f32, f32/(lag(i) over (order by f64)) from floattable order by 1,2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1.0, nil},
 			{1.0, -1.0},
 			{1.0, .5},
@@ -2259,7 +2259,7 @@ Select * from (
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row"},
 			{3, "third row"},
 		},
@@ -2273,7 +2273,7 @@ Select * from (
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
 			ON i2 = i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"third", 1, 1},
 			{"second", 2, 2},
 			{"first", 3, 3},
@@ -2283,7 +2283,7 @@ Select * from (
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where i = mtouter.i+1) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "third row"},
 			{3, nil},
 		},
@@ -2293,32 +2293,32 @@ Select * from (
 			SELECT mtouter.i,
 				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1)
 			FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "third row"},
 			{3, nil},
 		},
 	},
 	{
 		Query: `WITH common_table AS (SELECT cec.id, cec.strength FROM (SELECT 1 as id, 12 as strength) cec) SELECT strength FROM common_table cte`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{12},
 		},
 	},
 	{
 		Query: `WITH common_table AS (SELECT cec.id id, cec.strength FROM (SELECT 1 as id, 12 as strength) cec) SELECT strength FROM common_table cte`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{12},
 		},
 	},
 	{
 		Query: `WITH common_table AS (SELECT cec.id AS id, cec.strength FROM (SELECT 1 as id, 12 as strength) cec) SELECT strength FROM common_table cte`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{12},
 		},
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION SELECT s, i FROM mt;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -2326,7 +2326,7 @@ Select * from (
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION SELECT s, i FROM mt UNION SELECT s, i FROM mt;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -2334,7 +2334,7 @@ Select * from (
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -2345,13 +2345,13 @@ Select * from (
 	},
 	{
 		Query: "with a as (select * from mytable where i = 2), b as (select * from a), c as (select * from b) select * from c",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(2), "second row"},
 		},
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt UNION ALL SELECT s, i FROM mt;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -2365,7 +2365,7 @@ Select * from (
 	},
 	{
 		Query: "WITH mytable as (select * FROM mytable) SELECT s,i FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)},
@@ -2373,25 +2373,25 @@ Select * from (
 	},
 	{
 		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3), "third row"},
 		},
 	},
 	{
 		Query: "WITH mytable as (select * FROM mytable where i > 2) SELECT * FROM mytable union SELECT * from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3), "third row"},
 		},
 	},
 	{
 		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(55)},
 		},
 	},
 	{
 		Query: "with recursive a as (select 1 union all select 2) select * from a union select 10 from dual;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{10},
@@ -2399,7 +2399,7 @@ Select * from (
 	},
 	{
 		Query: "with recursive a as (select 1 union all select 2) select 10 from dual union select * from a;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{10},
 			{1},
 			{2},
@@ -2407,46 +2407,46 @@ Select * from (
 	},
 	{
 		Query: "with recursive a as (select 1 union all select 2) select * from a union select * from a;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 		},
 	},
 	{
 		Query: "with recursive a as (select 1) select * from a union select * from a;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query:    "with cte(x) as (select 0) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "with cte(x) as (with cte(x) as (select 0) select x from cte) select x from cte where cte.x in (with cte(x) as (select 42) select x from cte);",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "with a as (select 1), b as (select * from a) select * from b;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "with a as (select 1) select * from (with b as (select * from a) select * from b) as c;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "with a as (select 1) select 3, 2, (select * from a);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 2, 1},
 		},
 	},
 	{
 		Query: "WITH a AS ( WITH b AS ( WITH recursive c AS ( SELECT 1 UNION SELECT 2 ) SELECT * from c UNION SELECT 3 ) SELECT * from b UNION SELECT 4) SELECT * from a UNION SELECT 10;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -2456,7 +2456,7 @@ Select * from (
 	},
 	{
 		Query: "WITH a AS ( WITH b AS ( SELECT 1 UNION SELECT 2 ), c AS ( SELECT 3 UNION SELECT 4 ) SELECT * from b UNION SELECT * from c), x AS ( WITH y AS ( SELECT 5 UNION SELECT 6 ), z AS ( SELECT 7 UNION SELECT 8 ) SELECT * from y UNION SELECT * from z) SELECT * from a UNION SELECT * from x;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -2469,13 +2469,13 @@ Select * from (
 	},
 	{
 		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select count(*) from t as t1 join t as t2 on t1.n = t2.n;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(10)},
 		},
 	},
 	{
 		Query: "with recursive t (n) as (select (1) from dual union all select (2) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(3)},
 		},
 	},
@@ -2491,7 +2491,7 @@ Select * from (
 			SELECT sub_part, sum(quantity) as total_quantity
 			FROM included_parts
 			GROUP BY sub_part`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"crust", float64(1)},
 			{"filling", float64(2)},
 			{"flour", float64(20)},
@@ -2513,7 +2513,7 @@ Select * from (
 			SELECT sub_part, sum(quantity) as total_quantity
 			FROM included_parts
 			GROUP BY sub_part`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"crust", float64(1)},
 			{"filling", float64(2)},
 			{"flour", float64(20)},
@@ -2535,7 +2535,7 @@ Select * from (
 			SELECT sub_part, sum(quantity) as total_quantity
 			FROM included_parts
 			GROUP BY sub_part`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"crust", float64(1)},
 			{"filling", float64(2)},
 			{"flour", float64(20)},
@@ -2547,25 +2547,25 @@ Select * from (
 	},
 	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select ('2.00') from dual) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(3)},
 		},
 	},
 	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"3.00"},
 		},
 	},
 	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select (2.00/3.0) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1.666667"},
 		},
 	},
 	{
 		Query: "with recursive t (n) as (select sum(1) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(55)},
 		},
 	},
@@ -2578,7 +2578,7 @@ Select * from (
 			)
 			SELECT * FROM bus_dst
 			ORDER BY dst`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Boston"},
 			{"New York"},
 			{"Raleigh"},
@@ -2594,7 +2594,7 @@ Select * from (
 			)
 			SELECT * FROM bus_dst
 			ORDER BY dst`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Boston"},
 			{"New York"},
 			{"Raleigh"},
@@ -2603,37 +2603,37 @@ Select * from (
 	},
 	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 		},
 	},
 	{
 		Query: "SELECT (select s from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where i = 1) as sub;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row"},
 		},
 	},
 	{
 		Query: "SELECT (select s from mytable mt where sub.i = mt.i) as subi FROM (select s,i,'hello' FROM mytable where i = 1) as sub;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row"},
 		},
 	},
 	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select 'hello',i,s FROM mytable where s = 'first row') as sub;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 		},
 	},
 	{
 		Query: "SELECT (select s from mytable mt where sub.i = mt.i) as subi FROM (select 'hello',i,s FROM mytable where i = 1) as sub;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row"},
 		},
 	},
 	{
 		Query: "SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row"},
 			{"second row"},
 			{"third row"},
@@ -2641,19 +2641,19 @@ Select * from (
 	},
 	{
 		Query: "SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second')",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"second row"},
 		},
 	},
 	{
 		Query: "SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable WHERE CONCAT(othertable.s2, ' row') = mytable.s)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"second row"},
 		},
 	},
 	{
 		Query: "SELECT mytable.i, selfjoined.s FROM mytable LEFT JOIN (SELECT * FROM mytable) selfjoined ON mytable.i = selfjoined.i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -2661,49 +2661,49 @@ Select * from (
 	},
 	{
 		Query: "SELECT s,i FROM MyTable ORDER BY 2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT S,I FROM MyTable ORDER BY 2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT mt.s,mt.i FROM MyTable MT ORDER BY 2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT mT.S,Mt.I FROM MyTable MT ORDER BY 2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT mt.* FROM MyTable MT ORDER BY mT.I;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"}},
 	},
 	{
 		Query: "SELECT MyTABLE.s,myTable.i FROM MyTable ORDER BY 2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: `SELECT "Hello!", CONcat(s, "!") FROM MyTable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Hello!", "first row!"},
 			{"Hello!", "second row!"},
 			{"Hello!", "third row!"},
@@ -2721,7 +2721,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT "1" + '1'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(2)},
 		},
 		ExpectedColumns: sql.Schema{
@@ -2733,578 +2733,578 @@ Select * from (
 	},
 	{
 		Query: "SELECT myTable.* FROM MYTABLE ORDER BY myTable.i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"}},
 	},
 	{
 		Query: "SELECT MyTABLE.S,myTable.I FROM MyTable ORDER BY mytable.i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT MyTABLE.S as S, myTable.I as I FROM MyTable ORDER BY mytable.i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
 			{"third row", int64(3)}},
 	},
 	{
 		Query: "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = 2 ORDER BY foo, i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 2},
 			{2, 1, 2},
 			{3, 1, 2}},
 	},
 	{
 		Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = 2) AS a ORDER BY foo, i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 1, 2}},
 	},
 	{
 		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = 1 ORDER BY foo, i;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT timestamp FROM reservedWordsTable;",
-		Expected: []sql.Row{{"1"}},
+		Expected: []sql.UntypedSqlRow{{"1"}},
 	},
 	{
 		Query:    "SELECT RW.TIMESTAMP FROM reservedWordsTable rw;",
-		Expected: []sql.Row{{"1"}},
+		Expected: []sql.UntypedSqlRow{{"1"}},
 	},
 	{
 		Query:    "SELECT `AND`, RW.`Or`, `SEleCT` FROM reservedWordsTable rw;",
-		Expected: []sql.Row{{"1.1", "aaa", "create"}},
+		Expected: []sql.UntypedSqlRow{{"1.1", "aaa", "create"}},
 	},
 	{
 		Query:    "SELECT reservedWordsTable.AND, reservedWordsTABLE.Or, reservedwordstable.SEleCT FROM reservedWordsTable;",
-		Expected: []sql.Row{{"1.1", "aaa", "create"}},
+		Expected: []sql.UntypedSqlRow{{"1.1", "aaa", "create"}},
 	},
 	{
 		Query:    "SELECT i + 1 FROM mytable;",
-		Expected: []sql.Row{{int64(2)}, {int64(3)}, {int64(4)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}, {int64(3)}, {int64(4)}},
 	},
 	{
 		Query:    `select (1 / 3) * (1 / 3);`,
-		Expected: []sql.Row{{"0.11111111"}},
+		Expected: []sql.UntypedSqlRow{{"0.11111111"}},
 	},
 	{
 		Query:    "SELECT i div 2 FROM mytable order by 1;",
-		Expected: []sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(0)}, {int64(1)}, {int64(1)}},
 	},
 	{
 		Query:    "SELECT i DIV 2 FROM mytable order by 1;",
-		Expected: []sql.Row{{int64(0)}, {int64(1)}, {int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(0)}, {int64(1)}, {int64(1)}},
 	},
 	{
 		Query:    "SELECT -i FROM mytable;",
-		Expected: []sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+		Expected: []sql.UntypedSqlRow{{int64(-1)}, {int64(-2)}, {int64(-3)}},
 	},
 	{
 		Query:    "SELECT +i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT + - i FROM mytable;",
-		Expected: []sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+		Expected: []sql.UntypedSqlRow{{int64(-1)}, {int64(-2)}, {int64(-3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE -i = -2;",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE -i <=> -2;",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 2;",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 2 = i;",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 2 <=> i;",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i > 2;",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 2 < i;",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i < 2;",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 2 > i;",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i <> 2;",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT NULL IN (SELECT i FROM emptytable)",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT NULL NOT IN (SELECT i FROM emptytable)",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT NULL IN (SELECT i FROM mytable)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT NULL NOT IN (SELECT i FROM mytable)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT NULL IN (SELECT i2 FROM niltable)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT NULL NOT IN (SELECT i2 FROM niltable)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 2 IN (SELECT i2 FROM niltable)",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT 2 NOT IN (SELECT i2 FROM niltable)",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT 100 IN (SELECT i2 FROM niltable)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 100 NOT IN (SELECT i2 FROM niltable)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 1 IN (2,3,4,null)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 1 IN (2,3,4,null,1)",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT 1 IN (1,2,3)",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT 1 IN (2,3,4)",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT * FROM stringandtable WHERE v IN (NULL)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT * FROM stringandtable WHERE v IS NULL",
-		Expected: []sql.Row{{int64(5), int64(5), nil}},
+		Expected: []sql.UntypedSqlRow{{int64(5), int64(5), nil}},
 	},
 	{
 		Query:    "SELECT * FROM stringandtable WHERE v IN ('')",
-		Expected: []sql.Row{{int64(2), int64(2), ""}},
+		Expected: []sql.UntypedSqlRow{{int64(2), int64(2), ""}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE 1 IN (SELECT '1' FROM DUAL)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE '1' IN (SELECT '1' FROM DUAL)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT NULL IN (2,3,4)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT NULL IN (2,3,4,null)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT 'a' IN ('b','c',null,'d')`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT 'a' IN ('a','b','c','d')`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT 'a' IN ('b','c','d')`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT 1 NOT IN (2,3,4,null)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 1 NOT IN (2,3,4,null,1)",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT 1 NOT IN (1,2,3)",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT 1 NOT IN (2,3,4)",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT NULL NOT IN (2,3,4)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT NULL NOT IN (2,3,4,null)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 'HOMER' IN (1.0)",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "select 1 / 3 * 3 in (0.999999999);",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT 99 NOT IN ( 98 + 97 / 99 );",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT 1 NOT IN ( 97 / 99 );",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT 1 NOT IN (1 / 9 * 5);`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT 1 / 9 * 5 NOT IN (1);`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT 1 / 9 * 5 IN (1 / 9 * 5);`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "select 0 in (1/100000);",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
-		Expected: []sql.Row{{3, "third row"}, {2, "second row"}},
+		Expected: []sql.UntypedSqlRow{{3, "third row"}, {2, "second row"}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (1+2)`,
-		Expected: []sql.Row{{3, "third row"}},
+		Expected: []sql.UntypedSqlRow{{3, "third row"}},
 	},
 	{
 		Query:    "SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')",
-		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}, {2, "second row"}},
 	},
 	{
 		Query:    "SELECT * from mytable where cast(i as CHAR) IN ('a', 'b')",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT * from mytable where cast(i as CHAR) IN ('1', '2')",
-		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}, {2, "second row"}},
 	},
 	{
 		Query:    "SELECT * from mytable where (i > 2) IN (true)",
-		Expected: []sql.Row{{3, "third row"}},
+		Expected: []sql.UntypedSqlRow{{3, "third row"}},
 	},
 	{
 		Query:    "SELECT * from mytable where (i + 6) IN (7, 8)",
-		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}, {2, "second row"}},
 	},
 	{
 		Query:    "SELECT * from mytable where (i + 40) IN (7, 8)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT * from mytable where (i = 1 | false) IN (true)",
-		Expected: []sql.Row{{1, "first row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}},
 	},
 	{
 		Query:    "SELECT * from mytable where (i = 1 & false) IN (true)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (2*i)`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (i)`,
-		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1)`,
-		Expected: []sql.Row{{1, "first row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i NOT in (1, 1)`,
-		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
+		Expected: []sql.UntypedSqlRow{{2, "second row"}, {3, "third row"}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE i in (i, i)`,
-		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
 		Query:    `SELECT * FROM (select * from mytable) sq WHERE sq.i in (1, 1)`,
-		Expected: []sql.Row{{1, "first row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}},
 	},
 	{
 		Query:    `SELECT * FROM (select a.i from mytable a cross join mytable b) sq WHERE sq.i in (1, 1)`,
-		Expected: []sql.Row{{1}, {1}, {1}},
+		Expected: []sql.UntypedSqlRow{{1}, {1}, {1}},
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s = 'first row'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 		},
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) or s in ('first row', 'first row', 'first row');`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 		},
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE (i in (1, 1, 1, 1, 1) and s = 'first row') or s in ('first row', 'first row', 'first row');`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 		},
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i in (1, 1, 1, 1, 1) and s in ('first row', 'first row', 'first row');`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 		},
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s != 'first row';`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row"},
 			{3, "third row"},
 		},
 	},
 	{
 		Query: `SELECT * FROM mytable WHERE i NOT in (1, 1, 1, 1, 1) and s NOT in ('first row', 'first row', 'first row');`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row"},
 			{3, "third row"},
 		},
 	},
 	{
 		Query:    "SELECT * from mytable WHERE 4 IN (i + 2)",
-		Expected: []sql.Row{{2, "second row"}},
+		Expected: []sql.UntypedSqlRow{{2, "second row"}},
 	},
 	{
 		Query:    "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
-		Expected: []sql.Row{{1, "first row"}},
+		Expected: []sql.UntypedSqlRow{{1, "first row"}},
 	},
 	{
 		Query:    "SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')",
-		Expected: []sql.Row{{2, "second row"}},
+		Expected: []sql.UntypedSqlRow{{2, "second row"}},
 	},
 	{
 		Query:    "SELECT * from mytable where true IN (i > 2)",
-		Expected: []sql.Row{{3, "third row"}},
+		Expected: []sql.UntypedSqlRow{{3, "third row"}},
 	},
 	{
 		Query:    "SELECT (1,2) in ((0,1), (1,0), (1,2))",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT (1,'i') in ((0,'a'), (1,'b'), (1,'i'))",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE 1 in (1)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((1, 2))",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((3, 4), (5, 6), (1, 2))",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((3, 4), (5, 6))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT * FROM one_pk where pk in (1) and c1 = 10",
-		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
+		Expected: []sql.UntypedSqlRow{{1, 10, 11, 12, 13, 14}},
 	},
 	{
 		Query:    "SELECT * FROM one_pk where pk in (1)",
-		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
+		Expected: []sql.UntypedSqlRow{{1, 10, 11, 12, 13, 14}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6))",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6), (1, 2))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((1, 2))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (true)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) > (0, 1)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) >= (0, 1)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <= (0, 1)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) < (0, 1)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) != (0, 1)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <=> (0, 1)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, null) <=> (1, null)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in ((1, 2))",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual) in ((1, 2), (2, 3), (3, 4))",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) = (select 3, 4 from dual where false)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual where false) = ((1, 2))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual where false) in ((1, 2))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 3, 4 from dual where false)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE null = (select 4 from dual where false)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE null <=> (select 4 from dual where false)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (null, null) <=> (select 1, 4 from dual where false)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (null, null) <=> (select null, null from dual)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in (select 1, 2 from dual)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual where false) in (select 1, 2 from dual)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual where false) in (select 1, 2 from dual where false)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in (select 1, 2 from dual where false)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (select 5, 6 from dual) in ((1, 2), (2, 3), (3, 4))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual union select 1, 2 from dual)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT (((1,2),3)) = (((1,2),3)) from dual",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT (((1,3),2)) = (((1,2),3)) from dual",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,2),4)) from dual",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,3),2)) from dual",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT (1, 2) in (select 1, 2 from dual) from dual",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT (1, 2) in (select 2, 3 from dual) from dual",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    "SELECT (select 1, 2 from dual) in ((1, 2)) from dual",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT (select 2, 3 from dual) in ((1, 2)) from dual",
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "'a' NOT IN ('b','c',null,'d')",
@@ -3314,19 +3314,19 @@ Select * from (
 	},
 	{
 		Query:    `SELECT 'a' NOT IN ('a','b','c','d')`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT 'a' NOT IN ('b','c','d')`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i IN (1, 3)",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 OR i = 3",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT * FROM mytable WHERE i = 1 AND i = 2",
@@ -3334,83 +3334,83 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i >= 2 ORDER BY 1",
-		Expected: []sql.Row{{int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 2 <= i ORDER BY 1",
-		Expected: []sql.Row{{int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i <= 2 ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 2 >= i ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i > 2",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i+1 > 3",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i < 2",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i >= 2 OR i = 1 ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT f32 FROM floattable WHERE f64 = 2.0;",
-		Expected: []sql.Row{{float32(2.0)}},
+		Expected: []sql.UntypedSqlRow{{float32(2.0)}},
 	},
 	{
 		Query:    "SELECT f32 FROM floattable WHERE f64 < 2.0;",
-		Expected: []sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
+		Expected: []sql.UntypedSqlRow{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}},
 	},
 	{
 		Query:    "SELECT f32 FROM floattable WHERE f64 > 2.0;",
-		Expected: []sql.Row{{float32(2.5)}},
+		Expected: []sql.UntypedSqlRow{{float32(2.5)}},
 	},
 	{
 		Query:    "SELECT f32 FROM floattable WHERE f64 <> 2.0;",
-		Expected: []sql.Row{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
+		Expected: []sql.UntypedSqlRow{{float32(-1.0)}, {float32(-1.5)}, {float32(1.0)}, {float32(1.5)}, {float32(2.5)}},
 	},
 	{
 		Query:    "SELECT f64 FROM floattable WHERE f32 = 2.0;",
-		Expected: []sql.Row{{float64(2.0)}},
+		Expected: []sql.UntypedSqlRow{{float64(2.0)}},
 	},
 	{
 		Query:    "SELECT f64 FROM floattable WHERE f32 = -1.5;",
-		Expected: []sql.Row{{float64(-1.5)}},
+		Expected: []sql.UntypedSqlRow{{float64(-1.5)}},
 	},
 	{
 		Query:    "SELECT f64 FROM floattable WHERE -f32 = -2.0;",
-		Expected: []sql.Row{{float64(2.0)}},
+		Expected: []sql.UntypedSqlRow{{float64(2.0)}},
 	},
 	{
 		Query:    "SELECT f64 FROM floattable WHERE f32 < 2.0;",
-		Expected: []sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
+		Expected: []sql.UntypedSqlRow{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}},
 	},
 	{
 		Query:    "SELECT f64 FROM floattable WHERE f32 > 2.0;",
-		Expected: []sql.Row{{float64(2.5)}},
+		Expected: []sql.UntypedSqlRow{{float64(2.5)}},
 	},
 	{
 		Query:    "SELECT f64 FROM floattable WHERE f32 <> 2.0;",
-		Expected: []sql.Row{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
+		Expected: []sql.UntypedSqlRow{{float64(-1.0)}, {float64(-1.5)}, {float64(1.0)}, {float64(1.5)}, {float64(2.5)}},
 	},
 	{
 		Query:    "SELECT f32 FROM floattable ORDER BY f64;",
-		Expected: []sql.Row{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
+		Expected: []sql.UntypedSqlRow{{float32(-1.5)}, {float32(-1.0)}, {float32(1.0)}, {float32(1.5)}, {float32(2.0)}, {float32(2.5)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable ORDER BY i DESC;",
-		Expected: []sql.Row{{int64(3)}, {int64(2)}, {int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}, {int64(2)}, {int64(1)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE 'hello';",
@@ -3418,11 +3418,11 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE NOT 'hello';",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC;",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT * FROM mytable WHERE i = 2 AND s = 'third row'",
@@ -3430,107 +3430,107 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and i = 2",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE I = 1 and i = 2",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and i = '1'",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and i = '2'",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and s = 'first row' and i = 2",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE s = 'first row' and s = 'second row'",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i = 1 and i between 2 and 2",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i between 1 and 1 and i between 2 and 2",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 1;",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 0;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq WHERE i = 3;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1) sq2 WHERE i = 3;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC LIMIT 1) sq WHERE i = 3;",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC  LIMIT 1) sq1) sq2 WHERE i = 3;",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq LIMIT 1;",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable WHERE i > 1) sq1) sq2 LIMIT 1;",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable) sq1 WHERE i > 1) sq2 LIMIT 1;",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT i FROM (SELECT i FROM mytable LIMIT 1) sq1 WHERE i > 1) sq2 LIMIT 10;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM (SELECT * FROM (SELECT i as i, s as s FROM mytable) f) s)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "SELECT * FROM (SELECT a.pk, b.i FROM one_pk a JOIN mytable b ORDER BY a.pk ASC, b.i ASC LIMIT 1) sq WHERE i != 0",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1},
 		},
 	},
 	{
 		Query: "SELECT * FROM (SELECT a.pk, b.i FROM one_pk a JOIN mytable b ORDER BY a.pk DESC, b.i DESC LIMIT 1) sq WHERE i != 0",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 3},
 		},
 	},
 	{
 		Query:    "SELECT * FROM (SELECT pk FROM one_pk WHERE pk < 2 LIMIT 1) a JOIN (SELECT i FROM mytable WHERE i > 1 LIMIT 1) b WHERE pk >= 2;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT 1 AS i FROM DUAL UNION SELECT 2 AS i FROM DUAL) some_is WHERE i NOT IN (SELECT i FROM (SELECT 1 as i FROM DUAL) different_is);",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 3,1;",
@@ -3538,1114 +3538,1114 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 2,100;",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE b IS NULL",
-		Expected: []sql.Row{{int64(1)}, {int64(4)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(4)}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE b <=> NULL",
-		Expected: []sql.Row{{int64(1)}, {int64(4)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(4)}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE NULL <=> b",
-		Expected: []sql.Row{{int64(1)}, {int64(4)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(4)}},
 	},
 	{
 		Query: "SELECT i FROM niltable WHERE b IS NOT NULL",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(2)}, {int64(3)},
 			{int64(5)}, {int64(6)},
 		},
 	},
 	{
 		Query: "SELECT i FROM niltable WHERE b",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(2)},
 			{int64(5)},
 		},
 	},
 	{
 		Query: "SELECT i FROM niltable WHERE NOT b",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3)},
 			{int64(6)},
 		},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE b IS TRUE",
-		Expected: []sql.Row{{int64(2)}, {int64(5)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}, {int64(5)}},
 	},
 	{
 		Query: "SELECT i FROM niltable WHERE b IS NOT TRUE",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1)}, {int64(3)},
 			{int64(4)}, {int64(6)},
 		},
 	},
 	{
 		Query:    "SELECT f FROM niltable WHERE b IS FALSE",
-		Expected: []sql.Row{{nil}, {6.0}},
+		Expected: []sql.UntypedSqlRow{{nil}, {6.0}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE f < 5",
-		Expected: []sql.Row{{int64(4)}},
+		Expected: []sql.UntypedSqlRow{{int64(4)}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE f > 5",
-		Expected: []sql.Row{{int64(6)}},
+		Expected: []sql.UntypedSqlRow{{int64(6)}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE b IS NOT FALSE",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(4)}, {int64(5)}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE i2 IS NULL ORDER BY 1",
-		Expected: []sql.Row{{int64(1)}, {int64(3)}, {int64(5)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(3)}, {int64(5)}},
 	},
 	{
 		Query:    "SELECT i FROM niltable WHERE i2 IS NOT NULL ORDER BY 1",
-		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}, {int64(4)}, {int64(6)}},
 	},
 	{
 		Query:    "SELECT * FROM niltable WHERE i2 = NULL",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i2 FROM niltable WHERE i2 <=> NULL",
-		Expected: []sql.Row{{nil}, {nil}, {nil}},
+		Expected: []sql.UntypedSqlRow{{nil}, {nil}, {nil}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col = '2019-12-31T00:00:00'",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col = '2019-12-31T00:00:01'",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select i from datetime_table where date_col = '2019-12-31'",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col = '2019/12/31'",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col > '2019-12-31' order by 1",
-		Expected: []sql.Row{{2}, {3}},
+		Expected: []sql.UntypedSqlRow{{2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col >= '2019-12-31' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col > '2019/12/31' order by 1",
-		Expected: []sql.Row{{2}, {3}},
+		Expected: []sql.UntypedSqlRow{{2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where date_col > '2019-12-31T00:00:01' order by 1",
-		Expected: []sql.Row{{2}, {3}},
+		Expected: []sql.UntypedSqlRow{{2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col = date('2020-01-01T12:00:00')",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col = '2020-01-01T12:00:00'",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col = datetime('2020-01-01T12:00:00')",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col = '2020-01-01T12:00:01'",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col > '2020-01-01T12:00:00' order by 1",
-		Expected: []sql.Row{{2}, {3}},
+		Expected: []sql.UntypedSqlRow{{2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col > '2020-01-01' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col >= '2020-01-01' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col >= '2020-01-01 00:00' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col >= '2020-01-01 00:00:00' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col > '2020/01/01' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col > datetime('2020-01-01T12:00:00') order by 1",
-		Expected: []sql.Row{{2}, {3}},
+		Expected: []sql.UntypedSqlRow{{2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col = date('2020-01-02T12:00:00')",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:00'",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col = datetime('2020-01-02T12:00:00')",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col = timestamp('2020-01-02T12:00:00')",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		// The timestamp function actually converts to a datetime type, so check that we can convert values
 		// outside of the timestamp range, but inside the datetime range.
 		// https://github.com/dolthub/dolt/issues/8236
 		Query:    "SELECT timestamp('1001-01-01 00:00:00');",
-		Expected: []sql.Row{{time.Date(1001, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(1001, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:01'",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col > '2020-01-02T12:00:00' order by 1",
-		Expected: []sql.Row{{2}, {3}},
+		Expected: []sql.UntypedSqlRow{{2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col > '2020-01-02' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col >= '2020-01-02' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col > '2020/01/02' order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select i from datetime_table where timestamp_col > datetime('2020-01-02T12:00:00') order by 1",
-		Expected: []sql.Row{{2}, {3}},
+		Expected: []sql.UntypedSqlRow{{2}, {3}},
 	},
 	{
 		Query:    "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.timestamp_col = dt2.timestamp_col order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day)) order by 1",
-		Expected: []sql.Row{{1}, {2}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}},
 	},
 	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT COUNT(*) FROM mytable LIMIT 1;",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT COUNT(*) AS c FROM mytable;",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT substring(s, 2, 3) FROM mytable",
-		Expected: []sql.Row{{"irs"}, {"eco"}, {"hir"}},
+		Expected: []sql.UntypedSqlRow{{"irs"}, {"eco"}, {"hir"}},
 	},
 	{
 		Query:    `SELECT substring("foo", 2, 2)`,
-		Expected: []sql.Row{{"oo"}},
+		Expected: []sql.UntypedSqlRow{{"oo"}},
 	},
 	{
 		Query: `SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', 2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"a.b"},
 		},
 	},
 	{
 		Query: `SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', -2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"e.f"},
 		},
 	},
 	{
 		Query: `SELECT SUBSTRING_INDEX(SUBSTRING_INDEX('source{d}', '{d}', 1), 'r', -1)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"ce"},
 		},
 	},
 	{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon';`,
-		Expected: []sql.Row{{"secon"}},
+		Expected: []sql.UntypedSqlRow{{"secon"}},
 	},
 	{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY ss HAVING ss = 'secon';`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"secon"},
 		},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
+		Expected: []sql.UntypedSqlRow{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
 		Query:    `SELECT TRIM("row" from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
+		Expected: []sql.UntypedSqlRow{{"first "}, {"second "}, {"third "}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from "first row") AS s FROM mytable`,
-		Expected: []sql.Row{{""}, {"first row"}, {"first row"}},
+		Expected: []sql.UntypedSqlRow{{""}, {"first row"}, {"first row"}},
 	},
 	{
 		Query:    `SELECT TRIM(mytable.s from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{{""}, {""}, {""}},
+		Expected: []sql.UntypedSqlRow{{""}, {""}, {""}},
 	},
 	{
 		Query:    `SELECT TRIM("   foo   ")`,
-		Expected: []sql.Row{{"foo"}},
+		Expected: []sql.UntypedSqlRow{{"foo"}},
 	},
 	{
 		Query:    `SELECT TRIM(" " FROM "   foo   ")`,
-		Expected: []sql.Row{{"foo"}},
+		Expected: []sql.UntypedSqlRow{{"foo"}},
 	},
 	{
 		Query:    `SELECT TRIM(LEADING " " FROM "   foo   ")`,
-		Expected: []sql.Row{{"foo   "}},
+		Expected: []sql.UntypedSqlRow{{"foo   "}},
 	},
 	{
 		Query:    `SELECT TRIM(TRAILING " " FROM "   foo   ")`,
-		Expected: []sql.Row{{"   foo"}},
+		Expected: []sql.UntypedSqlRow{{"   foo"}},
 	},
 	{
 		Query:    `SELECT TRIM(BOTH " " FROM "   foo   ")`,
-		Expected: []sql.Row{{"foo"}},
+		Expected: []sql.UntypedSqlRow{{"foo"}},
 	},
 	{
 		Query:    `SELECT TRIM("" FROM " foo")`,
-		Expected: []sql.Row{{" foo"}},
+		Expected: []sql.UntypedSqlRow{{" foo"}},
 	},
 	{
 		Query:    `SELECT TRIM("bar" FROM "barfoobar")`,
-		Expected: []sql.Row{{"foo"}},
+		Expected: []sql.UntypedSqlRow{{"foo"}},
 	},
 	{
 		Query:    `SELECT TRIM(TRAILING "bar" FROM "barfoobar")`,
-		Expected: []sql.Row{{"barfoo"}},
+		Expected: []sql.UntypedSqlRow{{"barfoo"}},
 	},
 	{
 		Query:    `SELECT TRIM(TRAILING "foo" FROM "foo")`,
-		Expected: []sql.Row{{""}},
+		Expected: []sql.UntypedSqlRow{{""}},
 	},
 	{
 		Query:    `SELECT TRIM(LEADING "ooo" FROM TRIM("oooo"))`,
-		Expected: []sql.Row{{"o"}},
+		Expected: []sql.UntypedSqlRow{{"o"}},
 	},
 	{
 		Query:    `SELECT TRIM(BOTH "foo" FROM TRIM("barfoobar"))`,
-		Expected: []sql.Row{{"barfoobar"}},
+		Expected: []sql.UntypedSqlRow{{"barfoobar"}},
 	},
 	{
 		Query:    `SELECT TRIM(LEADING "bar" FROM TRIM("foobar"))`,
-		Expected: []sql.Row{{"foobar"}},
+		Expected: []sql.UntypedSqlRow{{"foobar"}},
 	},
 	{
 		Query:    `SELECT TRIM(TRAILING "oo" FROM TRIM("oof"))`,
-		Expected: []sql.Row{{"oof"}},
+		Expected: []sql.UntypedSqlRow{{"oof"}},
 	},
 	{
 		Query:    `SELECT TRIM(LEADING "test" FROM TRIM("  test  "))`,
-		Expected: []sql.Row{{""}},
+		Expected: []sql.UntypedSqlRow{{""}},
 	},
 	{
 		Query:    `SELECT TRIM(LEADING CONCAT("a", "b") FROM TRIM("ababab"))`,
-		Expected: []sql.Row{{""}},
+		Expected: []sql.UntypedSqlRow{{""}},
 	},
 	{
 		Query:    `SELECT TRIM(TRAILING CONCAT("a", "b") FROM CONCAT("test","ab"))`,
-		Expected: []sql.Row{{"test"}},
+		Expected: []sql.UntypedSqlRow{{"test"}},
 	},
 	{
 		Query:    `SELECT TRIM(LEADING 1 FROM "11111112")`,
-		Expected: []sql.Row{{"2"}},
+		Expected: []sql.UntypedSqlRow{{"2"}},
 	},
 	{
 		Query:    `SELECT TRIM(LEADING 1 FROM 11111112)`,
-		Expected: []sql.Row{{"2"}},
+		Expected: []sql.UntypedSqlRow{{"2"}},
 	},
 
 	{
 		Query:    `SELECT INET_ATON("10.0.5.10")`,
-		Expected: []sql.Row{{uint64(167773450)}},
+		Expected: []sql.UntypedSqlRow{{uint64(167773450)}},
 	},
 	{
 		Query:    `SELECT INET_NTOA(167773450)`,
-		Expected: []sql.Row{{"10.0.5.10"}},
+		Expected: []sql.UntypedSqlRow{{"10.0.5.10"}},
 	},
 	{
 		Query:    `SELECT INET_ATON("10.0.5.11")`,
-		Expected: []sql.Row{{uint64(167773451)}},
+		Expected: []sql.UntypedSqlRow{{uint64(167773451)}},
 	},
 	{
 		Query:    `SELECT INET_NTOA(167773451)`,
-		Expected: []sql.Row{{"10.0.5.11"}},
+		Expected: []sql.UntypedSqlRow{{"10.0.5.11"}},
 	},
 	{
 		Query:    `SELECT INET_NTOA(INET_ATON("12.34.56.78"))`,
-		Expected: []sql.Row{{"12.34.56.78"}},
+		Expected: []sql.UntypedSqlRow{{"12.34.56.78"}},
 	},
 	{
 		Query:    `SELECT INET_ATON(INET_NTOA("12345678"))`,
-		Expected: []sql.Row{{uint64(12345678)}},
+		Expected: []sql.UntypedSqlRow{{uint64(12345678)}},
 	},
 	{
 		Query:    `SELECT INET_ATON("notanipaddress")`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT INET_NTOA("spaghetti")`,
-		Expected: []sql.Row{{"0.0.0.0"}},
+		Expected: []sql.UntypedSqlRow{{"0.0.0.0"}},
 	},
 	{
 		Query:    `SELECT HEX(INET6_ATON("10.0.5.9"))`,
-		Expected: []sql.Row{{"0A000509"}},
+		Expected: []sql.UntypedSqlRow{{"0A000509"}},
 	},
 	{
 		Query:    `SELECT HEX(INET6_ATON("::10.0.5.9"))`,
-		Expected: []sql.Row{{"0000000000000000000000000A000509"}},
+		Expected: []sql.UntypedSqlRow{{"0000000000000000000000000A000509"}},
 	},
 	{
 		Query:    `SELECT HEX(INET6_ATON("1.2.3.4"))`,
-		Expected: []sql.Row{{"01020304"}},
+		Expected: []sql.UntypedSqlRow{{"01020304"}},
 	},
 	{
 		Query:    `SELECT HEX(INET6_ATON("fdfe::5455:caff:fefa:9098"))`,
-		Expected: []sql.Row{{"FDFE0000000000005455CAFFFEFA9098"}},
+		Expected: []sql.UntypedSqlRow{{"FDFE0000000000005455CAFFFEFA9098"}},
 	},
 	{
 		Query:    `SELECT HEX(INET6_ATON("1111:2222:3333:4444:5555:6666:7777:8888"))`,
-		Expected: []sql.Row{{"11112222333344445555666677778888"}},
+		Expected: []sql.UntypedSqlRow{{"11112222333344445555666677778888"}},
 	},
 	{
 		Query:    `SELECT INET6_ATON("notanipaddress")`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT INET6_NTOA(UNHEX("1234ffff5678ffff1234ffff5678ffff"))`,
-		Expected: []sql.Row{{"1234:ffff:5678:ffff:1234:ffff:5678:ffff"}},
+		Expected: []sql.UntypedSqlRow{{"1234:ffff:5678:ffff:1234:ffff:5678:ffff"}},
 	},
 	{
 		Query:    `SELECT INET6_NTOA(UNHEX("ffffffff"))`,
-		Expected: []sql.Row{{"255.255.255.255"}},
+		Expected: []sql.UntypedSqlRow{{"255.255.255.255"}},
 	},
 	{
 		Query:    `SELECT INET6_NTOA(UNHEX("000000000000000000000000ffffffff"))`,
-		Expected: []sql.Row{{"::255.255.255.255"}},
+		Expected: []sql.UntypedSqlRow{{"::255.255.255.255"}},
 	},
 	{
 		Query:    `SELECT INET6_NTOA(UNHEX("00000000000000000000ffffffffffff"))`,
-		Expected: []sql.Row{{"::ffff:255.255.255.255"}},
+		Expected: []sql.UntypedSqlRow{{"::ffff:255.255.255.255"}},
 	},
 	{
 		Query:    `SELECT INET6_NTOA(UNHEX("0000000000000000000000000000ffff"))`,
-		Expected: []sql.Row{{"::ffff"}},
+		Expected: []sql.UntypedSqlRow{{"::ffff"}},
 	},
 	{
 		Query:    `SELECT INET6_NTOA(UNHEX("00000000000000000000000000000000"))`,
-		Expected: []sql.Row{{"::"}},
+		Expected: []sql.UntypedSqlRow{{"::"}},
 	},
 	{
 		Query:    `SELECT INET6_NTOA("notanipaddress")`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT IS_IPV4("10.0.1.10")`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT IS_IPV4("::10.0.1.10")`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV4("notanipaddress")`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV6("10.0.1.10")`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV6("::10.0.1.10")`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT IS_IPV6("notanipaddress")`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("::10.0.1.10"))`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("::ffff:10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("notanipaddress"))`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("::10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("::ffff:10.0.1.10"))`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("notanipaddress"))`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
+		Expected: []sql.UntypedSqlRow{{int32(2007)}, {int32(2007)}, {int32(2007)}},
 	},
 	{
 		Query:    "SELECT MONTH('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(12)}, {int32(12)}, {int32(12)}},
+		Expected: []sql.UntypedSqlRow{{int32(12)}, {int32(12)}, {int32(12)}},
 	},
 	{
 		Query:    "SELECT DAY('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(11)}, {int32(11)}, {int32(11)}},
+		Expected: []sql.UntypedSqlRow{{int32(11)}, {int32(11)}, {int32(11)}},
 	},
 	{
 		Query:    "SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
+		Expected: []sql.UntypedSqlRow{{int32(20)}, {int32(20)}, {int32(20)}},
 	},
 	{
 		Query:    "SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
+		Expected: []sql.UntypedSqlRow{{int32(21)}, {int32(21)}, {int32(21)}},
 	},
 	{
 		Query:    "SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+		Expected: []sql.UntypedSqlRow{{int32(22)}, {int32(22)}, {int32(22)}},
 	},
 	{
 		Query:    "SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Expected: []sql.UntypedSqlRow{{int32(345)}, {int32(345)}, {int32(345)}},
 	},
 	{
 		Query:    "SELECT SECOND('2007-12-11T20:21:22Z') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
+		Expected: []sql.UntypedSqlRow{{int32(22)}, {int32(22)}, {int32(22)}},
 	},
 	{
 		Query:    "SELECT DAYOFYEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Expected: []sql.UntypedSqlRow{{int32(345)}, {int32(345)}, {int32(345)}},
 	},
 	{
 		Query:    "SELECT DAYOFYEAR('20071211') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
+		Expected: []sql.UntypedSqlRow{{int32(345)}, {int32(345)}, {int32(345)}},
 	},
 	{
 		Query:    "SELECT YEARWEEK('0000-01-01')",
-		Expected: []sql.Row{{int32(1)}},
+		Expected: []sql.UntypedSqlRow{{int32(1)}},
 	},
 	{
 		Query:    "SELECT YEARWEEK('9999-12-31')",
-		Expected: []sql.Row{{int32(999952)}},
+		Expected: []sql.UntypedSqlRow{{int32(999952)}},
 	},
 	{
 		Query:    "SELECT YEARWEEK('2008-02-20', 1)",
-		Expected: []sql.Row{{int32(200808)}},
+		Expected: []sql.UntypedSqlRow{{int32(200808)}},
 	},
 	{
 		Query:    "SELECT YEARWEEK('1987-01-01')",
-		Expected: []sql.Row{{int32(198652)}},
+		Expected: []sql.UntypedSqlRow{{int32(198652)}},
 	},
 	{
 		Query:    "SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
-		Expected: []sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
+		Expected: []sql.UntypedSqlRow{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
 	},
 	{
 		Query:    `select 'a'+4;`,
-		Expected: []sql.Row{{4.0}},
+		Expected: []sql.UntypedSqlRow{{4.0}},
 	},
 	{
 		Query:    `select '20a'+4;`,
-		Expected: []sql.Row{{24.0}},
+		Expected: []sql.UntypedSqlRow{{24.0}},
 	},
 	{
 		Query:    `select '10.a'+4;`,
-		Expected: []sql.Row{{14.0}},
+		Expected: []sql.UntypedSqlRow{{14.0}},
 	},
 	{
 		Query:    `select '.20a'+4;`,
-		Expected: []sql.Row{{4.2}},
+		Expected: []sql.UntypedSqlRow{{4.2}},
 	},
 	{
 		Query:    `select 4+'a';`,
-		Expected: []sql.Row{{4.0}},
+		Expected: []sql.UntypedSqlRow{{4.0}},
 	},
 	{
 		Query:    `select 'a'+'a';`,
-		Expected: []sql.Row{{0.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') + STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
-		Expected: []sql.Row{{40261002186034}},
+		Expected: []sql.UntypedSqlRow{{40261002186034}},
 	},
 	{
 		Query:    `select 'a'-4;`,
-		Expected: []sql.Row{{-4.0}},
+		Expected: []sql.UntypedSqlRow{{-4.0}},
 	},
 	{
 		Query:    `select 4-'a';`,
-		Expected: []sql.Row{{4.0}},
+		Expected: []sql.UntypedSqlRow{{4.0}},
 	},
 	{
 		Query:    `select 4-'2a';`,
-		Expected: []sql.Row{{2.0}},
+		Expected: []sql.UntypedSqlRow{{2.0}},
 	},
 	{
 		Query:    `select 'a'-'a';`,
-		Expected: []sql.Row{{0.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}},
 	},
 	{
 		Query:    `select 'a'*4;`,
-		Expected: []sql.Row{{0.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}},
 	},
 	{
 		Query:    `select 4*'a';`,
-		Expected: []sql.Row{{0.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}},
 	},
 	{
 		Query:    `select 'a'*'a';`,
-		Expected: []sql.Row{{0.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}},
 	},
 	{
 		Query:    "select 1 * '2.50a';",
-		Expected: []sql.Row{{2.5}},
+		Expected: []sql.UntypedSqlRow{{2.5}},
 	},
 	{
 		Query:    "select 1 * '2.a50a';",
-		Expected: []sql.Row{{2.0}},
+		Expected: []sql.UntypedSqlRow{{2.0}},
 	},
 	{
 		Query:    `select 'a'/4;`,
-		Expected: []sql.Row{{0.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}},
 	},
 	{
 		Query:    `select 4/'a';`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `select 'a'/'a';`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "select 1 / '2.50a';",
-		Expected: []sql.Row{{0.4}},
+		Expected: []sql.UntypedSqlRow{{0.4}},
 	},
 	{
 		Query:    "select 1 / '2.a50a';",
-		Expected: []sql.Row{{0.5}},
+		Expected: []sql.UntypedSqlRow{{0.5}},
 	},
 	{
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') / 1;`,
-		Expected: []sql.Row{{"20130501093017.0000"}},
+		Expected: []sql.UntypedSqlRow{{"20130501093017.0000"}},
 	},
 	{
 		Query:    "select 'a'&'a';",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'&4;",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 4&'a';",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select date('2022-11-19 11:53:45') & date('2022-11-11 11:53:45');",
-		Expected: []sql.Row{{uint64(20221111)}},
+		Expected: []sql.UntypedSqlRow{{uint64(20221111)}},
 	},
 	{
 		Query:    "select '2022-11-19 11:53:45' & '2023-11-11 11:53:45';",
-		Expected: []sql.Row{{uint64(2022)}},
+		Expected: []sql.UntypedSqlRow{{uint64(2022)}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') & STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
-		Expected: []sql.Row{{uint64(20130501093017)}},
+		Expected: []sql.UntypedSqlRow{{uint64(20130501093017)}},
 	},
 	{
 		Query:    "select 'a'|'a';",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'|4;",
-		Expected: []sql.Row{{uint64(4)}},
+		Expected: []sql.UntypedSqlRow{{uint64(4)}},
 	},
 	{
 		Query:    "select 'a'|-1;",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
+		Expected: []sql.UntypedSqlRow{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 4|'a';",
-		Expected: []sql.Row{{uint64(4)}},
+		Expected: []sql.UntypedSqlRow{{uint64(4)}},
 	},
 	{
 		Query:    "select 'a'^'a';",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'^4;",
-		Expected: []sql.Row{{uint64(4)}},
+		Expected: []sql.UntypedSqlRow{{uint64(4)}},
 	},
 	{
 		Query:    "select 'a'^-1;",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
+		Expected: []sql.UntypedSqlRow{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 4^'a';",
-		Expected: []sql.Row{{uint64(4)}},
+		Expected: []sql.UntypedSqlRow{{uint64(4)}},
 	},
 	{
 		Query:    "select now() ^ now();",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'>>'a';",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'>>4;",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 4>>'a';",
-		Expected: []sql.Row{{uint64(4)}},
+		Expected: []sql.UntypedSqlRow{{uint64(4)}},
 	},
 	{
 		Query:    "select -1>>'a';",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
+		Expected: []sql.UntypedSqlRow{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select 'a'<<'a';",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select 'a'<<4;",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select '2a'<<4;",
-		Expected: []sql.Row{{uint64(32)}},
+		Expected: []sql.UntypedSqlRow{{uint64(32)}},
 	},
 	{
 		Query:    "select 4<<'a';",
-		Expected: []sql.Row{{uint64(4)}},
+		Expected: []sql.UntypedSqlRow{{uint64(4)}},
 	},
 	{
 		Query:    "select -1<<'a';",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
+		Expected: []sql.UntypedSqlRow{{uint64(18446744073709551615)}},
 	},
 	{
 		Query:    "select -1.00 div 2;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "select 'a' div 'a';",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "select 'a' div 4;",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "select 4 div 'a';",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "select 1.2 div 0.2;",
-		Expected: []sql.Row{{6}},
+		Expected: []sql.UntypedSqlRow{{6}},
 	},
 	{
 		Query:    "select 1.2 div 0.4;",
-		Expected: []sql.Row{{3}},
+		Expected: []sql.UntypedSqlRow{{3}},
 	},
 	{
 		Query:    "select 1.2 div '1' ;",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select 1.2 div 'a1' ;",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "select '12a' div '3' ;",
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    "select 'a' mod 'a';",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "select 'a' mod 4;",
-		Expected: []sql.Row{{float64(0)}},
+		Expected: []sql.UntypedSqlRow{{float64(0)}},
 	},
 	{
 		Query:    "select 4 mod 'a';",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
-		Expected: []sql.Row{{"10487"}},
+		Expected: []sql.UntypedSqlRow{{"10487"}},
 	},
 	{
 		Query:    "select 0.0015 / 0.0026;",
-		Expected: []sql.Row{{"0.57692308"}},
+		Expected: []sql.UntypedSqlRow{{"0.57692308"}},
 	},
 	{
 		Query:    "select (14620 / 9432456);",
-		Expected: []sql.Row{{"0.0015"}},
+		Expected: []sql.UntypedSqlRow{{"0.0015"}},
 	},
 	{
 		Query:    "select (24250 / 9432456);",
-		Expected: []sql.Row{{"0.0026"}},
+		Expected: []sql.UntypedSqlRow{{"0.0026"}},
 	},
 	{
 		Query:    "select 5.2/3.1/1.7/1/1/1/1/1;",
-		Expected: []sql.Row{{"0.98671726755218216294117647000"}},
+		Expected: []sql.UntypedSqlRow{{"0.98671726755218216294117647000"}},
 	},
 	{
 		Query:    "select 5.2/3.1/1.9/1/1/1/1/1;",
-		Expected: []sql.Row{{"0.88285229202037351421052631500"}},
+		Expected: []sql.UntypedSqlRow{{"0.88285229202037351421052631500"}},
 	},
 	{
 		Query:    "select 1.677419354838709677/1.9;",
-		Expected: []sql.Row{{"0.8828522920203735142105"}},
+		Expected: []sql.UntypedSqlRow{{"0.8828522920203735142105"}},
 	},
 	{
 		Query:    "select 1.9/1.677419354838709677;",
-		Expected: []sql.Row{{"1.13269"}},
+		Expected: []sql.UntypedSqlRow{{"1.13269"}},
 	},
 	{
 		Query:    "select 1.677419354838709677/1.9/1/1/1/1/1;",
-		Expected: []sql.Row{{"0.882852292020373514210526315000"}},
+		Expected: []sql.UntypedSqlRow{{"0.882852292020373514210526315000"}},
 	},
 	{
 		Query:    "select (14620 / 9432456) / (24250 / 9432456);",
-		Expected: []sql.Row{{"0.60288653"}},
+		Expected: []sql.UntypedSqlRow{{"0.60288653"}},
 	},
 	{
 		Query:    "select (14620.0 / 9432456) / (24250 / 9432456);",
-		Expected: []sql.Row{{"0.602886527"}},
+		Expected: []sql.UntypedSqlRow{{"0.602886527"}},
 	},
 	{
 		Query:    "select (14620 / 9432456),  (24250 / 9432456), (14620 / 9432456) / (24250 / 9432456);",
-		Expected: []sql.Row{{"0.0015", "0.0026", "0.60288653"}},
+		Expected: []sql.UntypedSqlRow{{"0.0015", "0.0026", "0.60288653"}},
 	},
 	{
 		Query:    "select 1000.0 / 20.00;",
-		Expected: []sql.Row{{"50.00000"}},
+		Expected: []sql.UntypedSqlRow{{"50.00000"}},
 	},
 	{
 		Query:    "select 2000.0 * (24.0 * 6.0 * 6.25 * 10.0) / 250000000.0;",
-		Expected: []sql.Row{{"0.0720000000"}},
+		Expected: []sql.UntypedSqlRow{{"0.0720000000"}},
 	},
 	{
 		Query:    "select 2000.0 / 250000000.0 * (24.0 * 6.0 * 6.25 * 10.0);",
-		Expected: []sql.Row{{"0.0720000000"}},
+		Expected: []sql.UntypedSqlRow{{"0.0720000000"}},
 	},
 	{
 		Query:    `select 100 / 35600.00 * 35600.00;`,
-		Expected: []sql.Row{{"99.999973"}},
+		Expected: []sql.UntypedSqlRow{{"99.999973"}},
 	},
 	{
 		Query:    `select 64 / 77 * 77;`,
-		Expected: []sql.Row{{"64.0000"}},
+		Expected: []sql.UntypedSqlRow{{"64.0000"}},
 	},
 	{
 		Query:    `select (1 / 3) * (1 / 3);`,
-		Expected: []sql.Row{{"0.11111111"}},
+		Expected: []sql.UntypedSqlRow{{"0.11111111"}},
 	},
 	{
 		Query:    "select 1/2/3/4/5/6;",
-		Expected: []sql.Row{{"0.00138888888888888888"}},
+		Expected: []sql.UntypedSqlRow{{"0.00138888888888888888"}},
 	},
 	{
 		Query:    "select 24/3/2*1/2/3;",
-		Expected: []sql.Row{{"0.6666666666666667"}},
+		Expected: []sql.UntypedSqlRow{{"0.6666666666666667"}},
 	},
 	{
 		Query:    "select 1/2/3%4/5/6;",
-		Expected: []sql.Row{{"0.0055555555555556"}},
+		Expected: []sql.UntypedSqlRow{{"0.0055555555555556"}},
 	},
 
 	// check that internal precision is preserved in comparisons
 	{
 		// 0 scale + 0 scale = 9 scale
 		Query:    "select 1 / 3 = 0.333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 0 scale + 1 scale = 9 scale
 		Query:    "select 1 / 3.0 = 0.333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 0 scale + 6 scale = 18 scale
 		Query:    "select 1 / 3.000000 = 0.333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 0 scale + 15 scale = 27 scale
 		Query:    "select 1 / 3.000000000000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 0 scale + 24 scale = 36 scale
 		Query:    "select 1 / 3.000000000000000000000000 = 0.333333333333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	{
 		// 1 scale + 0 scale = 9 scale
 		Query:    "select 1.0 / 3 = 0.333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 1 scale + 1 scale = 18 scale
 		Query:    "select 1.0 / 3.0 = 0.333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 1 scale + 10 scale = 27 scale
 		Query:    "select 1.0 / 3.0000000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 1 scale + 19 scale = 36 scale
 		Query:    "select 1.0 / 3.0000000000000000000 = 0.333333333333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	{
 		// 6 scale + 8 scale = 18 scale
 		Query:    "select 1.000000 / 3.00000000 = 0.333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 6 scale + 9 scale = 27 scale
 		Query:    "select 1.000000 / 3.000000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 6 scale + 17 scale = 27 scale
 		Query:    "select 1.000000 / 3.00000000000000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 6 scale + 18 scale = 36 scale
 		Query:    "select 1.000000 / 3.000000000000000000 = 0.333333333333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	{
 		// 7 scale + 7 scale = 18 scale
 		Query:    "select 1.0000000 / 3.0000000 = 0.333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 7 scale + 8 scale = 27 scale
 		Query:    "select 1.0000000 / 3.00000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 7 scale + 16 scale = 27 scale
 		Query:    "select 1.0000000 / 3.0000000000000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 7 scale + 15 scale = 36 scale
 		Query:    "select 1.0000000 / 3.00000000000000000 = 0.333333333333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	{
 		// 8 scale + 6 scale = 18 scale
 		Query:    "select 1.00000000 / 3.000000 = 0.333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 8 scale + 7 scale = 27 scale
 		Query:    "select 1.00000000 / 3.0000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 8 scale + 15 scale = 27 scale
 		Query:    "select 1.00000000 / 3.000000000000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 8 scale + 14 scale = 36 scale
 		Query:    "select 1.00000000 / 3.0000000000000000 = 0.333333333333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	{
 		// 9 scale + 5 scale = 18 scale
 		Query:    "select 1.000000000 / 3.00000 = 0.333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 9 scale + 6 scale = 27 scale
 		Query:    "select 1.000000000 / 3.000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 9 scale + 14 scale = 27 scale
 		Query:    "select 1.000000000 / 3.00000000000000 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 9 scale + 13 scale = 36 scale
 		Query:    "select 1.000000000 / 3.000000000000000 = 0.333333333333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	{
 		// 10 scale + 1 scale = 27 scale
 		Query:    "select 1.0000000000 / 3.0 = 0.333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// 10 scale + 10 scale = 36 scale
 		Query:    "select 1.0000000000 / 3.0000000000 = 0.333333333333333333333333333333333333;",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	// check that decimal internal precision is preserved in casts
 	{
 		// 0 scale + 0 scale = 9 scale
 		Query:    "select cast(1 / 3 as decimal(65,30));",
-		Expected: []sql.Row{{"0.333333333000000000000000000000"}},
+		Expected: []sql.UntypedSqlRow{{"0.333333333000000000000000000000"}},
 	},
 	{
 		// 0 scale + 1 scale = 9 scale
 		Query:    "select cast(1 / 3.0 as decimal(65,30));",
-		Expected: []sql.Row{{"0.333333333000000000000000000000"}},
+		Expected: []sql.UntypedSqlRow{{"0.333333333000000000000000000000"}},
 	},
 	{
 		// 0 scale + 6 scale = 18 scale
 		Query:    "select cast(1 / 3.000000 as decimal(65,30));",
-		Expected: []sql.Row{{"0.333333333333333333000000000000"}},
+		Expected: []sql.UntypedSqlRow{{"0.333333333333333333000000000000"}},
 	},
 	{
 		// 0 scale + 15 scale = 27 scale
 		Query:    "select cast(1 / 3.000000000000000 as decimal(65,30));",
-		Expected: []sql.Row{{"0.333333333333333333333333333000"}},
+		Expected: []sql.UntypedSqlRow{{"0.333333333333333333333333333000"}},
 	},
 	{
 		// 0 scale + 24 scale = 36 scale
 		Query:    "select cast(1 / 3.000000000000000000000000 as decimal(65,30));",
-		Expected: []sql.Row{{"0.333333333333333333333333333333"}},
+		Expected: []sql.UntypedSqlRow{{"0.333333333333333333333333333333"}},
 	},
 
 	{
 		Query:    "select 0.05 % 0.024;",
-		Expected: []sql.Row{{"0.002"}},
+		Expected: []sql.UntypedSqlRow{{"0.002"}},
 	},
 	{
 		Query:    "select 0.0500 % 0.05;",
-		Expected: []sql.Row{{"0.0000"}},
+		Expected: []sql.UntypedSqlRow{{"0.0000"}},
 	},
 	{
 		Query:    "select 0.05 % 4;",
-		Expected: []sql.Row{{"0.05"}},
+		Expected: []sql.UntypedSqlRow{{"0.05"}},
 	},
 	{
 		Query:    "select 2.6 & -1.3;",
-		Expected: []sql.Row{{uint64(3)}},
+		Expected: []sql.UntypedSqlRow{{uint64(3)}},
 	},
 	{
 		Query:    "select -1.5 & -3.3;",
-		Expected: []sql.Row{{uint64(18446744073709551612)}},
+		Expected: []sql.UntypedSqlRow{{uint64(18446744073709551612)}},
 	},
 	{
 		Query:    "select -1.7 & 0.5;",
-		Expected: []sql.Row{{uint64(0)}},
+		Expected: []sql.UntypedSqlRow{{uint64(0)}},
 	},
 	{
 		Query:    "select -1.7 & 1.5;",
-		Expected: []sql.Row{{uint64(2)}},
+		Expected: []sql.UntypedSqlRow{{uint64(2)}},
 	},
 	{
 		Query:    "SELECT '127' | '128', '128' << 2;",
-		Expected: []sql.Row{{uint64(255), uint64(512)}},
+		Expected: []sql.UntypedSqlRow{{uint64(255), uint64(512)}},
 	},
 	{
 		Query:    "SELECT X'7F' | X'80', X'80' << 2;",
-		Expected: []sql.Row{{uint64(255), uint64(512)}},
+		Expected: []sql.UntypedSqlRow{{uint64(255), uint64(512)}},
 	},
 	{
 		Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
-		Expected: []sql.Row{{uint64(65), uint64(65)}},
+		Expected: []sql.UntypedSqlRow{{uint64(65), uint64(65)}},
 	},
 	{
 		Query:    "SELECT 0x12345;",
-		Expected: []sql.Row{{[]uint8{0x1, 0x23, 0x45}}},
+		Expected: []sql.UntypedSqlRow{{[]uint8{0x1, 0x23, 0x45}}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i BETWEEN 1 AND 2",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i NOT BETWEEN 1 AND 2",
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    "SELECT 2 BETWEEN NULL AND 2",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT NOT 2 BETWEEN NULL AND 2",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query: "SELECT DISTINCT CAST(i AS DECIMAL) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 			{"2"},
 			{"3"},
@@ -4653,28 +4653,28 @@ Select * from (
 	},
 	{
 		Query: "SELECT SUM( DISTINCT CAST(i AS DECIMAL)) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"6"},
 		},
 	},
 	{
 		Query: "SELECT DISTINCT * FROM (values row(7,31,27), row(79,17,38), row(78,59,26)) a (col0, col1, col2) WHERE ( + col1 + + col2 ) NOT BETWEEN NULL AND col1",
-		Expected: []sql.Row{{7, 31, 27},
+		Expected: []sql.UntypedSqlRow{{7, 31, 27},
 			{79, 17, 38},
 			{78, 59, 26}},
 	},
 	{
 		Query: "SELECT + tab0.col2 * - tab0.col1 FROM (values row(89,91,82), row(35,97,1), row(24,86,33)) tab0 (col0, col1, col2) " +
 			"WHERE NOT ( + col2 * + col2 * col1 ) BETWEEN col1 * tab0.col0 AND NULL",
-		Expected: []sql.Row{{-97}},
+		Expected: []sql.UntypedSqlRow{{-97}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE ti > '2019-12-31'",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da = '2019-12-31'",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE ti < '2019-12-31'",
@@ -4686,7 +4686,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE ti > date_add('2019-12-30', INTERVAL 1 day)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da > date_add('2019-12-30', INTERVAL 1 DAY)",
@@ -4694,7 +4694,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da >= date_add('2019-12-30', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE ti < date_add('2019-12-30', INTERVAL 1 DAY)",
@@ -4706,15 +4706,15 @@ Select * from (
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da < adddate('2020-01-01', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da < adddate('2020-01-01', 1)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE ti > date_sub('2020-01-01', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da > date_sub('2020-01-01', INTERVAL 1 DAY)",
@@ -4722,7 +4722,7 @@ Select * from (
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da >= date_sub('2020-01-01', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE ti < date_sub('2020-01-01', INTERVAL 1 DAY)",
@@ -4734,51 +4734,51 @@ Select * from (
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da >= subdate('2020-01-01', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT id FROM typestable WHERE da >= subdate('2020-01-01', 1)",
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    "SELECT adddate(da, i32) from typestable;",
-		Expected: []sql.Row{{time.Date(2020, time.January, 4, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2020, time.January, 4, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT adddate(da, concat(u32)) from typestable;",
-		Expected: []sql.Row{{time.Date(2020, time.January, 8, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2020, time.January, 8, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT adddate(da, f32/10) from typestable;",
-		Expected: []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT subdate(da, i32) from typestable;",
-		Expected: []sql.Row{{time.Date(2019, time.December, 27, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.December, 27, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT subdate(da, concat(u32)) from typestable;",
-		Expected: []sql.Row{{time.Date(2019, time.December, 23, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.December, 23, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT subdate(da, f32/10) from typestable;",
-		Expected: []sql.Row{{time.Date(2019, time.December, 30, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.December, 30, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first", int64(3)},
 		},
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable WHERE s2 = 'first') othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first", int64(3)},
 		},
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable WHERE i2 = 3) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first", int64(3)},
 		},
 	},
@@ -4788,7 +4788,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "1"},
 			{int64(2), ""},
 			{int64(3), "true"},
@@ -4798,7 +4798,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE i AND i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "1"},
 			{int64(2), ""},
 			{int64(3), "true"},
@@ -4808,7 +4808,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE i OR i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "1"},
 			{int64(2), ""},
 			{int64(3), "true"},
@@ -4818,19 +4818,19 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE NOT i",
-		Expected: []sql.Row{{int64(0), "0"}},
+		Expected: []sql.UntypedSqlRow{{int64(0), "0"}},
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE NOT i AND NOT i",
-		Expected: []sql.Row{{int64(0), "0"}},
+		Expected: []sql.UntypedSqlRow{{int64(0), "0"}},
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE NOT i OR NOT i",
-		Expected: []sql.Row{{int64(0), "0"}},
+		Expected: []sql.UntypedSqlRow{{int64(0), "0"}},
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE i OR NOT i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), "0"},
 			{int64(1), "1"},
 			{int64(2), ""},
@@ -4841,15 +4841,15 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE i XOR i",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE NOT i XOR NOT i",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE i XOR NOT i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), "0"},
 			{int64(1), "1"},
 			{int64(2), ""},
@@ -4860,7 +4860,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE i XOR i XOR i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "1"},
 			{int64(2), ""},
 			{int64(3), "true"},
@@ -4870,19 +4870,19 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE v",
-		Expected: []sql.Row{{int64(1), "1"}, {nil, "2"}},
+		Expected: []sql.UntypedSqlRow{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE v AND v",
-		Expected: []sql.Row{{int64(1), "1"}, {nil, "2"}},
+		Expected: []sql.UntypedSqlRow{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE v OR v",
-		Expected: []sql.Row{{int64(1), "1"}, {nil, "2"}},
+		Expected: []sql.UntypedSqlRow{{int64(1), "1"}, {nil, "2"}},
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE NOT v",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), "0"},
 			{int64(2), ""},
 			{int64(3), "true"},
@@ -4891,7 +4891,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE NOT v AND NOT v",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), "0"},
 			{int64(2), ""},
 			{int64(3), "true"},
@@ -4900,7 +4900,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE NOT v OR NOT v",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), "0"},
 			{int64(2), ""},
 			{int64(3), "true"},
@@ -4909,7 +4909,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE v OR NOT v",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), "0"},
 			{int64(1), "1"},
 			{int64(2), ""},
@@ -4920,15 +4920,15 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE v XOR v",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT i,v from stringandtable WHERE NOT v XOR NOT v",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "SELECT i,v from stringandtable WHERE v XOR NOT v",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(0), "0"},
 			{int64(1), "1"},
 			{int64(2), ""},
@@ -4940,7 +4940,7 @@ Select * from (
 	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1},
@@ -4950,7 +4950,7 @@ Select * from (
 		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2
 				where mytable.i = 3 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 		},
 	},
@@ -4960,7 +4960,7 @@ Select * from (
 					   sum(v1) over (partition by v2 order by pk),
 					   percent_rank() over(partition by v2 order by pk)
 				from one_pk_three_idx order by pk`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 8, float64(0), float64(0)},
 			{1, 7, float64(0), float64(1) / float64(3)},
 			{2, 6, float64(0), float64(0)},
@@ -4977,7 +4977,7 @@ Select * from (
 	                  dense_rank() over(partition by v2 order by pk),
 	                  rank() over(partition by v2 order by pk)
 				from one_pk_three_idx order by pk`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, float64(0), uint64(1), uint64(1)},
 			{1, float64(1) / float64(3), uint64(2), uint64(2)},
 			{2, float64(0), uint64(1), uint64(1)},
@@ -4997,7 +4997,7 @@ Select * from (
 					   max(pk) over(partition by v1 order by pk desc),
 					   avg(v2) over (partition by v1 order by pk)
 				from one_pk_three_idx order by pk`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 7, 1, 1, 3, float64(0)},
 			{1, 7, 2, 2, 3, float64(0)},
 			{2, 7, 3, 3, 3, float64(1) / float64(3)},
@@ -5010,33 +5010,33 @@ Select * from (
 	},
 	{
 		Query: `SELECT s2, i2 FROM othertable WHERE s2 >= "first" AND i2 >= 2 ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first", int64(3)},
 			{"second", int64(2)},
 		},
 	},
 	{
 		Query: `SELECT s2, i2 FROM othertable WHERE "first" <= s2 AND 2 <= i2 ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first", int64(3)},
 			{"second", int64(2)},
 		},
 	},
 	{
 		Query: `SELECT s2, i2 FROM othertable WHERE s2 <= "second" AND i2 <= 2 ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"second", int64(2)},
 		},
 	},
 	{
 		Query: `SELECT s2, i2 FROM othertable WHERE "second" >= s2 AND 2 >= i2 ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"second", int64(2)},
 		},
 	},
 	{
 		Query: "SELECT substring(s2, 1), substring(s2, 2), substring(s2, 3) FROM othertable ORDER BY i2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"third", "hird", "ird"},
 			{"second", "econd", "cond"},
 			{"first", "irst", "rst"},
@@ -5044,13 +5044,13 @@ Select * from (
 	},
 	{
 		Query: `SELECT substring("first", 1), substring("second", 2), substring("third", 3)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first", "econd", "ird"},
 		},
 	},
 	{
 		Query: "SELECT substring(s2, -1), substring(s2, -2), substring(s2, -3) FROM othertable ORDER BY i2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"d", "rd", "ird"},
 			{"d", "nd", "ond"},
 			{"t", "st", "rst"},
@@ -5058,7 +5058,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT substring("first", -1), substring("second", -2), substring("third", -3)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"t", "nd", "ird"},
 		},
 	},
@@ -5068,7 +5068,7 @@ Select * from (
 			FROM mytable tbl
 		) t
 		GROUP BY fi`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
 			{int64(1), "third row"},
@@ -5081,7 +5081,7 @@ Select * from (
 		) t
 		GROUP BY fi
 		ORDER BY COUNT(*) ASC, fi`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1)},
 			{"second row", int64(1)},
 			{"third row", int64(1)},
@@ -5094,7 +5094,7 @@ Select * from (
 		) t
 		GROUP BY fi
 		ORDER BY COUNT(*) ASC, fi`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
 			{int64(1), "third row"},
@@ -5106,7 +5106,7 @@ Select * from (
 			FROM mytable tbl
 		) t
 		GROUP BY 2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
 			{int64(1), "third row"},
@@ -5114,7 +5114,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY fi`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
 			{int64(1), "third row"},
@@ -5122,7 +5122,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT COUNT(*) AS cnt, s AS fi FROM mytable GROUP BY 2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(1), "second row"},
 			{int64(1), "third row"},
@@ -5130,7 +5130,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT CAST(-3 AS UNSIGNED) FROM mytable",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
@@ -5138,39 +5138,39 @@ Select * from (
 	},
 	{
 		Query:    "SELECT CAST(-3 AS DOUBLE) FROM dual",
-		Expected: []sql.Row{{-3.0}},
+		Expected: []sql.UntypedSqlRow{{-3.0}},
 	},
 	{
 		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
-		Expected: []sql.Row{{float32(-3.9876)}},
+		Expected: []sql.UntypedSqlRow{{float32(-3.9876)}},
 	},
 	{
 		Query:    "SELECT CAST(10.56789 as CHAR(3));",
-		Expected: []sql.Row{{"10."}},
+		Expected: []sql.UntypedSqlRow{{"10."}},
 	},
 	{
 		Query:    "SELECT CAST(10.56789 as CHAR(30));",
-		Expected: []sql.Row{{"10.56789"}},
+		Expected: []sql.UntypedSqlRow{{"10.56789"}},
 	},
 	{
 		Query:    "SELECT CAST('abcdef' as BINARY(10));",
-		Expected: []sql.Row{{[]byte("abcdef\x00\x00\x00\x00")}},
+		Expected: []sql.UntypedSqlRow{{[]byte("abcdef\x00\x00\x00\x00")}},
 	},
 	{
 		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,
-		Expected: []sql.Row{{"10.12"}},
+		Expected: []sql.UntypedSqlRow{{"10.12"}},
 	},
 	{
 		Query:    `SELECT CONVERT(1234567893.1234567893, DECIMAL(20,10))`,
-		Expected: []sql.Row{{"1234567893.1234567893"}},
+		Expected: []sql.UntypedSqlRow{{"1234567893.1234567893"}},
 	},
 	{
 		Query:    `SELECT CONVERT(10, DECIMAL(4,2))`,
-		Expected: []sql.Row{{"10.00"}},
+		Expected: []sql.UntypedSqlRow{{"10.00"}},
 	},
 	{
 		Query: "SELECT CONVERT(-3, UNSIGNED) FROM mytable",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
 			{uint64(18446744073709551613)},
@@ -5178,21 +5178,21 @@ Select * from (
 	},
 	{
 		Query:    "select 0 in (1 / 1000), 0 in (1 / 1000, 0), 0.001 in (1 / 1000, 0), 0.0001 in (1 / 1000, 0);",
-		Expected: []sql.Row{{false, true, true, false}},
+		Expected: []sql.UntypedSqlRow{{false, true, true, false}},
 	},
 	{
 		Query:    "select 0 in (0.01 * 0.30), 1 in (1.0 * 1)",
-		Expected: []sql.Row{{false, true}},
+		Expected: []sql.UntypedSqlRow{{false, true}},
 	},
 	{
 		Query: "SELECT MAX(CAST(NULL AS DECIMAL)) * 82",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: "SELECT '3' > 2 FROM tabletest",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 			{true},
 			{true},
@@ -5200,7 +5200,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT s > 2 FROM tabletest",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 			{false},
 			{false},
@@ -5212,7 +5212,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT * FROM tabletest WHERE s = 0",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -5220,40 +5220,40 @@ Select * from (
 	},
 	{
 		Query: "SELECT * FROM tabletest WHERE s = 'first row'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 		},
 	},
 	{
 		Query: "SELECT s FROM mytable WHERE i IN (1, 2, 5)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row"},
 			{"second row"},
 		},
 	},
 	{
 		Query: "SELECT s FROM mytable WHERE i NOT IN (1, 2, 5)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"third row"},
 		},
 	},
 	{
 		Query: "SELECT 1 + 2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3)},
 		},
 	},
 	{
 		Query:    `SELECT i AS foo FROM mytable HAVING foo NOT IN (1, 2, 5)`,
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    `SELECT SUM(i) FROM mytable`,
-		Expected: []sql.Row{{float64(6)}},
+		Expected: []sql.UntypedSqlRow{{float64(6)}},
 	},
 	{
 		Query: `SELECT i AS foo FROM mytable ORDER BY i DESC`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3)},
 			{int64(2)},
 			{int64(1)},
@@ -5261,7 +5261,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY i DESC`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
 			{int64(1), int64(1)},
@@ -5269,7 +5269,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY 2 DESC`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
 			{int64(1), int64(1)},
@@ -5277,7 +5277,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY i ORDER BY foo DESC`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
 			{int64(1), int64(1)},
@@ -5285,7 +5285,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT COUNT(*) c, i AS foo FROM mytable GROUP BY 2 ORDER BY foo DESC`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
 			{int64(1), int64(1)},
@@ -5293,7 +5293,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT COUNT(*) c, i AS i FROM mytable GROUP BY 2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), int64(3)},
 			{int64(1), int64(2)},
 			{int64(1), int64(1)},
@@ -5301,7 +5301,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT i AS i FROM mytable GROUP BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3)},
 			{int64(2)},
 			{int64(1)},
@@ -5309,25 +5309,25 @@ Select * from (
 	},
 	{
 		Query: `SELECT CONCAT("a", "b", "c")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{string("abc")},
 		},
 	},
 	{
 		Query: `SELECT COALESCE(NULL, NULL, NULL, 'example', NULL, 1234567890)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{string("example")},
 		},
 	},
 	{
 		Query: `SELECT COALESCE(NULL, NULL, NULL, COALESCE(NULL, 1234567890))`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int32(1234567890)},
 		},
 	},
 	{
 		Query:    "SELECT COALESCE (NULL, NULL)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 		ExpectedColumns: []*sql.Column{
 			{
 				Name: "COALESCE (NULL, NULL)",
@@ -5337,7 +5337,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT concat(s, i) FROM mytable",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{string("first row1")},
 			{string("second row2")},
 			{string("third row3")},
@@ -5345,137 +5345,137 @@ Select * from (
 	},
 	{
 		Query: "SELECT version()",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{string("8.0.11")},
 		},
 	},
 	{
 		Query: `SELECT RAND(100)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(0.8165026937796166)},
 		},
 	},
 	{
 		Query:    `SELECT RAND(i) from mytable order by i`,
-		Expected: []sql.Row{{0.6046602879796196}, {0.16729663442585624}, {0.7199826688373036}},
+		Expected: []sql.UntypedSqlRow{{0.6046602879796196}, {0.16729663442585624}, {0.7199826688373036}},
 	},
 	{
 		Query: `SELECT RAND(100) = RAND(100)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: `SELECT RAND() = RAND()`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "SELECT MOD(i, 2) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 		},
 	},
 	{
 		Query: "SELECT SIN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.8414709848078965},
 		},
 	},
 	{
 		Query: "SELECT COS(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.5403023058681398},
 		},
 	},
 	{
 		Query: "SELECT TAN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1.557407724654902},
 		},
 	},
 	{
 		Query: "SELECT ASIN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1.5707963267948966},
 		},
 	},
 	{
 		Query: "SELECT ACOS(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.0},
 		},
 	},
 	{
 		Query: "SELECT ATAN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.7853981633974483},
 		},
 	},
 	{
 		Query: "SELECT COT(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.6420926159343308},
 		},
 	},
 	{
 		Query: "SELECT DEGREES(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{57.29577951308232},
 		},
 	},
 	{
 		Query: "SELECT RADIANS(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.017453292519943295},
 		},
 	},
 	{
 		Query: "SELECT CRC32(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(0x83dcefb7)},
 		},
 	},
 	{
 		Query: "SELECT SIGN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "SELECT ASCII(s) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(0x66)},
 		},
 	},
 	{
 		Query: "SELECT HEX(s) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"666972737420726F77"},
 		},
 	},
 	{
 		Query: "SELECT UNHEX(s) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: "SELECT BIN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 		},
 	},
 	{
 		Query: "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{64},
 		},
 	},
 	{
 		Query: "select date_format(datetime_col, '%D') from datetime_table order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1st"},
 			{"4th"},
 			{"7th"},
@@ -5483,7 +5483,7 @@ Select * from (
 	},
 	{
 		Query: "select time_format(time_col, '%h%p') from datetime_table order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"03AM"},
 			{"03PM"},
 			{"04AM"},
@@ -5491,7 +5491,7 @@ Select * from (
 	},
 	{
 		Query: "select from_unixtime(i) from mytable order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{time.Unix(1, 0)},
 			{time.Unix(2, 0)},
 			{time.Unix(3, 0)},
@@ -5505,7 +5505,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT SUM(i) + 1, i FROM mytable GROUP BY i ORDER BY i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(2), int64(1)},
 			{float64(3), int64(2)},
 			{float64(4), int64(3)},
@@ -5513,7 +5513,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY sum ASC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(1), int64(1)},
 			{float64(2), int64(2)},
 			{float64(3), int64(3)},
@@ -5521,7 +5521,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY sum(i) DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3), float64(3)},
 			{int64(2), float64(2)},
 			{int64(1), float64(1)},
@@ -5529,7 +5529,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i, SUM(i) as b FROM mytable GROUP BY i ORDER BY b DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3), float64(3)},
 			{int64(2), float64(2)},
 			{int64(1), float64(1)},
@@ -5537,7 +5537,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i, SUM(i) as `sum(i)` FROM mytable GROUP BY i ORDER BY sum(i) DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3), float64(3)},
 			{int64(2), float64(2)},
 			{int64(1), float64(1)},
@@ -5545,35 +5545,35 @@ Select * from (
 	},
 	{
 		Query:    "SELECT i FROM mytable UNION SELECT i+10 FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(11)}, {int64(12)}, {int64(13)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}, {int64(11)}, {int64(12)}, {int64(13)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable UNION DISTINCT SELECT i+10 FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(11)}, {int64(12)}, {int64(13)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}, {int64(11)}, {int64(12)}, {int64(13)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable UNION ALL SELECT i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}, {int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable UNION SELECT i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable UNION DISTINCT SELECT i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable UNION ALL SELECT i FROM mytable UNION DISTINCT SELECT i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable UNION SELECT i FROM mytable UNION ALL SELECT i FROM mytable;",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}, {int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query: "SELECT i FROM mytable UNION SELECT s FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 			{"2"},
 			{"3"},
@@ -5585,13 +5585,13 @@ Select * from (
 	{
 		SkipPrepared: true,
 		Query:        "",
-		Expected:     []sql.Row{},
+		Expected:     []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "/*!40101 SET NAMES " +
 			sql.Collation_Default.CharacterSet().String() +
 			" */",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{},
 		},
 	},
@@ -5599,29 +5599,29 @@ Select * from (
 		Query: "SET collation_connection = '" +
 			sql.Collation_Default.String() +
 			"';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{},
 		},
 	},
 	{
 		Query:    `SHOW DATABASES`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
+		Expected: []sql.UntypedSqlRow{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query:    `SHOW DATABASES LIKE 'information_schema'`,
-		Expected: []sql.Row{{"information_schema"}},
+		Expected: []sql.UntypedSqlRow{{"information_schema"}},
 	},
 	{
 		Query:    "SHOW DATABASES where `Database` =  'information_schema'",
-		Expected: []sql.Row{{"information_schema"}},
+		Expected: []sql.UntypedSqlRow{{"information_schema"}},
 	},
 	{
 		Query:    `SHOW SCHEMAS`,
-		Expected: []sql.Row{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
+		Expected: []sql.UntypedSqlRow{{"mydb"}, {"foo"}, {"information_schema"}, {"mysql"}},
 	},
 	{
 		Query: `SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"information_schema", "utf8mb4", "utf8mb4_0900_bin"},
 			{"mydb", "utf8mb4", "utf8mb4_0900_bin"},
 			{"foo", "utf8mb4", "utf8mb4_0900_bin"},
@@ -5629,30 +5629,30 @@ Select * from (
 	},
 	{
 		Query: `SELECT s FROM mytable WHERE s LIKE '%d row'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"second row"},
 			{"third row"},
 		},
 	},
 	{
 		Query:    `SELECT s FROM mytable WHERE s LIKE '%D ROW'`,
-		Expected: []sql.Row{}, // default collation of `utf8mb4_0900_bin` is case-sensitive
+		Expected: []sql.UntypedSqlRow{}, // default collation of `utf8mb4_0900_bin` is case-sensitive
 	},
 	{
 		Query: `SELECT SUBSTRING(s, -3, 3) AS s FROM mytable WHERE s LIKE '%d row' GROUP BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"row"},
 		},
 	},
 	{
 		Query: `SELECT s FROM mytable WHERE s NOT LIKE '%d row'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row"},
 		},
 	},
 	{
 		Query: `SELECT * FROM foo.othertable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"a", int32(4)},
 			{"b", int32(2)},
 			{"c", int32(0)},
@@ -5660,37 +5660,37 @@ Select * from (
 	},
 	{
 		Query: `SELECT AVG(23.222000)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"23.2220000000"},
 		},
 	},
 	{
 		Query: `SELECT AVG("23.222000")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{23.222},
 		},
 	},
 	{
 		Query: `SELECT DATABASE()`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mydb"},
 		},
 	},
 	{
 		Query: `SELECT USER()`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"root@localhost"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER()`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"root@localhost"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"root@localhost"},
 		},
 		ExpectedColumns: sql.Schema{
@@ -5702,7 +5702,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CURRENT_user`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"root@localhost"},
 		},
 		ExpectedColumns: sql.Schema{
@@ -5717,20 +5717,20 @@ Select * from (
 	},
 	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"gtid_mode", "OFF"},
 		},
 	},
 	{
 		// SHOW VARIABLES is case-insensitive
 		Query: `SHOW VARIABLES LIKE 'gtID_mO%'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"gtid_mode", "OFF"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES LIKE 'gtid%'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"gtid_executed", ""},
 			{"gtid_executed_compression_period", int64(0)},
 			{"gtid_mode", "OFF"},
@@ -5741,33 +5741,33 @@ Select * from (
 	},
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"autocommit", 1}, {"version", "8.0.11"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name > 'version' and variable_name like '%_%'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE "1" and variable_name = 'autocommit'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"autocommit", 1},
 		},
 	},
 	{
 		Query:    `SHOW VARIABLES WHERE "0" and variable_name = 'autocommit'`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SHOW VARIABLES WHERE "abc" and variable_name = 'autocommit'`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"block_encryption_mode", "aes-128-ecb"},
 			{"gtid_mode", "OFF"},
 			{"innodb_autoinc_lock_mode", int64(2)},
@@ -5781,93 +5781,93 @@ Select * from (
 	// show variables like ... is case-insensitive
 	{
 		Query: "SHOW VARIABLES LIKE 'VERSION'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"version", "8.0.11"},
 		},
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
-		Expected: []sql.Row{{types.MustJSON(`"foo"`)}},
+		Expected: []sql.UntypedSqlRow{{types.MustJSON(`"foo"`)}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
-		Expected: []sql.Row{{"foo"}},
+		Expected: []sql.UntypedSqlRow{{"foo"}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE('[1, 2, 3]')`,
-		Expected: []sql.Row{{"[1, 2, 3]"}},
+		Expected: []sql.UntypedSqlRow{{"[1, 2, 3]"}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE('"\\t\\u0032"')`,
-		Expected: []sql.Row{{"\t2"}},
+		Expected: []sql.UntypedSqlRow{{"\t2"}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE('"\t\\u0032"')`,
-		Expected: []sql.Row{{"\t2"}},
+		Expected: []sql.UntypedSqlRow{{"\t2"}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 
 	{
 		Query:    `SELECT JSON_QUOTE('"foo"')`,
-		Expected: []sql.Row{{`"\"foo\""`}},
+		Expected: []sql.UntypedSqlRow{{`"\"foo\""`}},
 	},
 	{
 		Query:    `SELECT JSON_QUOTE('[1, 2, 3]')`,
-		Expected: []sql.Row{{`"[1, 2, 3]"`}},
+		Expected: []sql.UntypedSqlRow{{`"[1, 2, 3]"`}},
 	},
 	{
 		Query:    `SELECT JSON_QUOTE('"\t\u0032"')`,
-		Expected: []sql.Row{{`"\"\tu0032\""`}},
+		Expected: []sql.UntypedSqlRow{{`"\"\tu0032\""`}},
 	},
 	{
 		Query:    `SELECT JSON_QUOTE('"\t\\u0032"')`,
-		Expected: []sql.Row{{`"\"\t\\u0032\""`}},
+		Expected: []sql.UntypedSqlRow{{`"\"\t\\u0032\""`}},
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = '"hello"'`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":null}', '$.xid'))`,
-		Expected: []sql.Row{{"null"}},
+		Expected: []sql.UntypedSqlRow{{"null"}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
-		Expected: []sql.Row{{float64(233)}},
+		Expected: []sql.UntypedSqlRow{{float64(233)}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		Expected: []sql.Row{{float64(-1)}},
+		Expected: []sql.UntypedSqlRow{{float64(-1)}},
 	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		Expected: []sql.Row{{float64(-1)}},
+		Expected: []sql.UntypedSqlRow{{float64(-1)}},
 	},
 	{
 		Query:    `SELECT CONNECTION_ID()`,
-		Expected: []sql.Row{{uint32(1)}},
+		Expected: []sql.UntypedSqlRow{{uint32(1)}},
 	},
 	{
 		Query: `SHOW CREATE DATABASE mydb`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"mydb",
 			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */",
 		}},
 	},
 	{
 		Query: `SHOW CREATE TABLE two_pk`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"two_pk",
 			"CREATE TABLE `two_pk` (\n" +
 				"  `pk1` tinyint NOT NULL,\n" +
@@ -5883,7 +5883,7 @@ Select * from (
 	},
 	{
 		Query: `SHOW CREATE TABLE myview`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
 			"utf8mb4",
@@ -5892,7 +5892,7 @@ Select * from (
 	},
 	{
 		Query: `SHOW CREATE VIEW myview`,
-		Expected: []sql.Row{{
+		Expected: []sql.UntypedSqlRow{{
 			"myview",
 			"CREATE VIEW `myview` AS SELECT * FROM mytable",
 			"utf8mb4",
@@ -5901,14 +5901,14 @@ Select * from (
 	},
 	{
 		Query: `describe myview`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", "NO", "", nil, ""},
 			{"s", "varchar(20)", "NO", "", nil, ""},
 		},
 	},
 	{
 		Query:    `SELECT -1`,
-		Expected: []sql.Row{{int8(-1)}},
+		Expected: []sql.UntypedSqlRow{{int8(-1)}},
 	},
 	{
 		Query:    `SHOW WARNINGS LIMIT 0`,
@@ -5916,154 +5916,154 @@ Select * from (
 	},
 	{
 		Query: `SELECT NULL`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT nullif('abc', NULL)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"abc"},
 		},
 	},
 	{
 		Query: `SELECT nullif(NULL, NULL)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT nullif(NULL, 123)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT nullif(123, 123)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT nullif(123, 321)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int8(123)},
 		},
 	},
 	{
 		Query: `SELECT ifnull(123, NULL)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int8(123)},
 		},
 	},
 	{
 		Query: `SELECT ifnull(NULL, NULL)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `SELECT ifnull(NULL, 123)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int8(123)},
 		},
 	},
 	{
 		Query: `SELECT ifnull(123, 123)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int8(123)},
 		},
 	},
 	{
 		Query: `SELECT ifnull(123, 321)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int8(123)},
 		},
 	},
 	{
 		Query: `SELECT if(123 = 123, "a", "b")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"a"},
 		},
 	},
 	{
 		Query:    `SELECT if(123 = 123, NULL, "b")`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 		ExpectedColumns: []*sql.Column{
 			{Name: "if(123 = 123, NULL, \"b\")", Type: types.LongText},
 		},
 	},
 	{
 		Query:    `SELECT if(123 = 123, NULL, NULL = 1)`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 		ExpectedColumns: []*sql.Column{
 			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Int64}, // TODO: this should be getting coerced to bool
 		},
 	},
 	{
 		Query:    `SELECT if(123 = 123, NULL, NULL)`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 		ExpectedColumns: []*sql.Column{
 			{Name: "if(123 = 123, NULL, NULL)", Type: types.Null},
 		},
 	},
 	{
 		Query: `SELECT if(123 > 123, "a", "b")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"b"},
 		},
 	},
 	{
 		Query: `SELECT if(1, 123, 456)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{123},
 		},
 	},
 	{
 		Query: `SELECT if(0, 123, 456)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{456},
 		},
 	},
 	{
 		Query: `SELECT if(0, "abc", 456)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{456},
 		},
 	},
 	{
 		Query: `SELECT if(1, "abc", 456)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"abc"},
 		},
 	},
 	{
 		Query: `SELECT 1 as foo, if((select foo), "a", "b")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "a"},
 		},
 	},
 	{
 		Query: `SELECT 0 as foo, if((select foo), "a", "b")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, "b"},
 		},
 	},
 	{
 		Query: `SELECT if(NULL, "a", "b")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"b"},
 		},
 	},
 	{
 		Query: `SELECT if("a", "a", "b")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"b"},
 		},
 	},
 	{
 		Query: `SELECT i, if(s = "first row", "first", "not first") from mytable order by i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first"},
 			{2, "not first"},
 			{3, "not first"},
@@ -6095,79 +6095,79 @@ Select * from (
 	},
 	{
 		Query: `SELECT 2/4`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"0.5000"},
 		},
 	},
 	{
 		Query: `SELECT 15728640/1024/1024`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"15.00000000"},
 		},
 	},
 	{
 		Query: `SELECT 15728640/1024/1030`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"14.91262136"},
 		},
 	},
 	{
 		Query: `SELECT 2/4/5/5`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"0.020000000000"},
 		},
 	},
 	{
 		Query: `SELECT 4/3/1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1.33333333"},
 		},
 	},
 	{
 		Query: `select 5/4/3/(2/1+3/1)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"0.083333333333"},
 		},
 	},
 	{
 		Query: `select (2/1+3/1)/5/4/3`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"0.0833333333333333"},
 		},
 	},
 	{
 		Query: `select cast(X'20' as decimal)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"32"},
 		},
 	},
 	{
 		Query: `SELECT FLOOR(15728640/1024/1030)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"14"},
 		},
 	},
 	{
 		Query: `SELECT ROUND(15728640/1024/1030)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"15"},
 		},
 	},
 	{
 		Query: `SELECT ROUND(15.00, 1)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"15.0"},
 		},
 	},
 	{
 		Query: `SELECT round(15, 1)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int8(15)},
 		},
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"one"},
 			{"two"},
 			{"other"},
@@ -6175,7 +6175,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 'two' END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"less than two"},
 			{"two"},
 			{"more than two"},
@@ -6183,7 +6183,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CASE WHEN i > 2 THEN i WHEN i < 2 THEN i ELSE 'two' END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 			{"two"},
 			{"3"},
@@ -6191,7 +6191,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CASE WHEN i > 2 THEN 'more than two' WHEN i < 2 THEN 'less than two' ELSE 2 END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"less than two"},
 			{"2"},
 			{"more than two"},
@@ -6199,7 +6199,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"one"},
 			{"two"},
 			{nil},
@@ -6207,7 +6207,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) WHEN 2 THEN JSON_OBJECT("b", 2) END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"a": 1}`)},
 			{types.MustJSON(`{"b": 2}`)},
 			{nil},
@@ -6215,7 +6215,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"a": 1}`)},
 			{types.MustJSON(`{"b": 2}`)},
 			{types.MustJSON(`{"b": 2}`)},
@@ -6223,7 +6223,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"a": 1}`)},
 			{types.MustJSON(`{"b": 2}`)},
 			{types.MustJSON(`{"b": 2}`)},
@@ -6232,7 +6232,7 @@ Select * from (
 	{
 		// NOTE: utf8_general_ci is collation of utf8mb3, which was deprecated and now removed in MySQL
 		Query: "SHOW COLLATION WHERE `Collation` IN ('binary', 'utf8_general_ci', 'utf8mb4_0900_ai_ci')",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{
 				sql.Collation_binary.String(),
 				"binary",
@@ -6268,7 +6268,7 @@ Select * from (
 	},
 	{
 		Query: `SHOW COLLATION LIKE 'bin%'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{
 				sql.Collation_binary.String(),
 				"binary",
@@ -6286,7 +6286,7 @@ Select * from (
 	},
 	{
 		Query: "SHOW COLLATION WHERE `Default` = 'Yes' AND `Collation` LIKE 'utf8mb4%'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
@@ -6304,118 +6304,118 @@ Select * from (
 	},
 	{
 		Query:    "SELECT substring(s, 1, 1) FROM mytable ORDER BY substring(s, 1, 1)",
-		Expected: []sql.Row{{"f"}, {"s"}, {"t"}},
+		Expected: []sql.UntypedSqlRow{{"f"}, {"s"}, {"t"}},
 	},
 	{
 		Query:    "SELECT substring(s, 1, 1), count(*) FROM mytable GROUP BY substring(s, 1, 1)",
-		Expected: []sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
+		Expected: []sql.UntypedSqlRow{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
 	},
 	{
 		Query:    "SELECT substring(s, 1, 1) as x, count(*) FROM mytable GROUP BY X",
-		Expected: []sql.Row{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
+		Expected: []sql.UntypedSqlRow{{"f", int64(1)}, {"s", int64(1)}, {"t", int64(1)}},
 	},
 	{
 		Query:    "SELECT left(s, 1) as l FROM mytable ORDER BY l",
-		Expected: []sql.Row{{"f"}, {"s"}, {"t"}},
+		Expected: []sql.UntypedSqlRow{{"f"}, {"s"}, {"t"}},
 	},
 	{
 		Query:    "SELECT left(s, 2) as l FROM mytable ORDER BY l",
-		Expected: []sql.Row{{"fi"}, {"se"}, {"th"}},
+		Expected: []sql.UntypedSqlRow{{"fi"}, {"se"}, {"th"}},
 	},
 	{
 		Query:    "SELECT left(s, 0) as l FROM mytable ORDER BY l",
-		Expected: []sql.Row{{""}, {""}, {""}},
+		Expected: []sql.UntypedSqlRow{{""}, {""}, {""}},
 	},
 	{
 		Query:    "SELECT left(s, NULL) as l FROM mytable ORDER BY l",
-		Expected: []sql.Row{{nil}, {nil}, {nil}},
+		Expected: []sql.UntypedSqlRow{{nil}, {nil}, {nil}},
 	},
 	{
 		Query:    "SELECT left(s, 100) as l FROM mytable ORDER BY l",
-		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
+		Expected: []sql.UntypedSqlRow{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
 		Query:    "SELECT instr(s, 'row') as l FROM mytable ORDER BY i",
-		Expected: []sql.Row{{int64(7)}, {int64(8)}, {int64(7)}},
+		Expected: []sql.UntypedSqlRow{{int64(7)}, {int64(8)}, {int64(7)}},
 	},
 	{
 		Query:    "SELECT instr(s, 'first') as l FROM mytable ORDER BY i",
-		Expected: []sql.Row{{int64(1)}, {int64(0)}, {int64(0)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(0)}, {int64(0)}},
 	},
 	{
 		Query:    "SELECT instr(s, 'o') as l FROM mytable ORDER BY i",
-		Expected: []sql.Row{{int64(8)}, {int64(4)}, {int64(8)}},
+		Expected: []sql.UntypedSqlRow{{int64(8)}, {int64(4)}, {int64(8)}},
 	},
 	{
 		Query:    "SELECT instr(s, NULL) as l FROM mytable ORDER BY l",
-		Expected: []sql.Row{{nil}, {nil}, {nil}},
+		Expected: []sql.UntypedSqlRow{{nil}, {nil}, {nil}},
 	},
 	{
 		Query:    "SELECT SLEEP(0.5)",
-		Expected: []sql.Row{{int(0)}},
+		Expected: []sql.UntypedSqlRow{{int(0)}},
 	},
 	{
 		Query:    "SELECT TO_BASE64('foo')",
-		Expected: []sql.Row{{string("Zm9v")}},
+		Expected: []sql.UntypedSqlRow{{string("Zm9v")}},
 	},
 	{
 		Query:    "SELECT FROM_BASE64('YmFy')",
-		Expected: []sql.Row{{[]byte("bar")}},
+		Expected: []sql.UntypedSqlRow{{[]byte("bar")}},
 	},
 	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
-		Expected: []sql.Row{{"2018-05-03"}},
+		Expected: []sql.UntypedSqlRow{{"2018-05-03"}},
 	},
 	{
 		Query:    "SELECT DATE_ADD(DATE('2018-05-02'), INTERVAL 1 day)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{types.Timespan(44054000000)}},
+		Expected: []sql.UntypedSqlRow{{types.Timespan(44054000000)}},
 	},
 	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{"2018-05-01"}},
+		Expected: []sql.UntypedSqlRow{{"2018-05-01"}},
 	},
 	{
 		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{types.Timespan(43934000000)}},
+		Expected: []sql.UntypedSqlRow{{types.Timespan(43934000000)}},
 	},
 	{
 		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
-		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT '2018-05-02' - INTERVAL 1 DAY",
-		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT i AS i FROM mytable ORDER BY i`,
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    `SELECT i AS i FROM mytable GROUP BY i, s ORDER BY 1`,
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    `SELECT i AS x FROM mytable GROUP BY i, s ORDER BY x`,
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query: `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1}},
 	},
 	{
 		Query: `SELECT i as i, row_number() over (order by i DESC) FROM mytable ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3},
 			{2, 2},
 			{3, 1}},
@@ -6434,7 +6434,7 @@ Select * from (
 		) AS q
 		ORDER BY foo DESC, i ASC
 		`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), int64(1)},
 			{int64(2), int64(1)},
 			{int64(3), int64(1)},
@@ -6442,23 +6442,23 @@ Select * from (
 	},
 	{
 		Query:    "SELECT n, COUNT(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
-		Expected: []sql.Row{{int64(1), int64(3)}, {int64(2), int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1), int64(3)}, {int64(2), int64(3)}},
 	},
 	{
 		Query:    "SELECT n, COUNT(n) as cnt FROM bigtable GROUP BY n HAVING cnt > 2",
-		Expected: []sql.Row{{int64(1), int64(3)}, {int64(2), int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1), int64(3)}, {int64(2), int64(3)}},
 	},
 	{
 		Query:    "SELECT n, MAX(n) FROM bigtable GROUP BY n HAVING COUNT(n) > 2",
-		Expected: []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(2), int64(2)}},
 	},
 	{
 		Query:    "SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1 HAVING s = \"secon\"",
-		Expected: []sql.Row{{"secon"}},
+		Expected: []sql.UntypedSqlRow{{"secon"}},
 	},
 	{
 		Query: "SELECT s, i FROM mytable GROUP BY i ORDER BY SUBSTRING(s, 1, 1) DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{string("third row"), int64(3)},
 			{string("second row"), int64(2)},
 			{string("first row"), int64(1)},
@@ -6466,7 +6466,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT s, i FROM mytable GROUP BY i HAVING count(*) > 0 ORDER BY SUBSTRING(s, 1, 1) DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{string("third row"), int64(3)},
 			{string("second row"), int64(2)},
 			{string("first row"), int64(1)},
@@ -6474,120 +6474,120 @@ Select * from (
 	},
 	{
 		Query:    "SELECT CONVERT('9999-12-31 23:59:59', DATETIME)",
-		Expected: []sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT DATETIME('9999-12-31 23:59:59')",
-		Expected: []sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT TIMESTAMP('2020-12-31 23:59:59')",
-		Expected: []sql.Row{{time.Date(2020, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2020, time.December, 31, 23, 59, 59, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT '9999-12-31 23:59:59' + INTERVAL 1 DAY",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT EXTRACT(DAY FROM '9999-12-31 23:59:59')",
-		Expected: []sql.Row{{31}},
+		Expected: []sql.UntypedSqlRow{{31}},
 	},
 	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00'`,
-		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
-		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
-		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT t.date_col as date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
-		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY date_col`,
-		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT t.date_col as date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY date_col`,
-		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT i AS foo FROM mytable ORDER BY mytable.i`,
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
-		Expected: []sql.Row{{types.MustJSON(`1`)}},
+		Expected: []sql.UntypedSqlRow{{types.MustJSON(`1`)}},
 	},
 	// TODO(andy)
 	//{
 	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
-	//	Expected: []sql.Row{{int32(3)}},
+	//	Expected: []sql.UntypedSqlRow{{int32(3)}},
 	//},
 	//{
 	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
-	//	Expected: []sql.Row{{int32(3)}},
+	//	Expected: []sql.UntypedSqlRow{{int32(3)}},
 	//},
 	{
 		Query:    `SELECT GREATEST(@@back_log,@@auto_increment_offset)`,
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(4)}},
+		Expected: []sql.UntypedSqlRow{{float64(4)}},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(9)}},
+		Expected: []sql.UntypedSqlRow{{float64(9)}},
 	},
 	{
 		Query:    `SELECT GREATEST("aaa", "bbb", "ccc")`,
-		Expected: []sql.Row{{"ccc"}},
+		Expected: []sql.UntypedSqlRow{{"ccc"}},
 	},
 	{
 		Query:    `SELECT GREATEST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+		Expected: []sql.UntypedSqlRow{{float64(1)}, {float64(2)}, {float64(3)}},
 	},
 	{
 		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
-		Expected: []sql.Row{{int64(4)}},
+		Expected: []sql.UntypedSqlRow{{int64(4)}},
 	},
 	{
 		Query:    "select abs(-i) from mytable order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select ceil(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{"2"}, {"3"}, {"4"}},
+		Expected: []sql.UntypedSqlRow{{"2"}, {"3"}, {"4"}},
 	},
 	{
 		Query:    "select floor(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{"1"}, {"2"}, {"3"}},
+		Expected: []sql.UntypedSqlRow{{"1"}, {"2"}, {"3"}},
 	},
 	{
 		Query:    "select round(i + 0.55, 1) from mytable order by 1",
-		Expected: []sql.Row{{"1.6"}, {"2.6"}, {"3.6"}},
+		Expected: []sql.UntypedSqlRow{{"1.6"}, {"2.6"}, {"3.6"}},
 	},
 	{
 		Query:    "select date_format(da, '%s') from typestable order by 1",
-		Expected: []sql.Row{{"00"}},
+		Expected: []sql.UntypedSqlRow{{"00"}},
 	},
 	{
 		Query: "select md5(i) from mytable order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"c4ca4238a0b923820dcc509a6f75849b"},
 			{"c81e728d9d4c2f636f067f89cc14862c"},
 			{"eccbc87e4b5ce2fe28308fd9f2a7baf3"},
@@ -6595,7 +6595,7 @@ Select * from (
 	},
 	{
 		Query: "select sha1(i) from mytable order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"356a192b7913b04c54574d18c28d46e6395428ab"},
 			{"77de68daecd823babbb58edb1c8e14d7106e83bb"},
 			{"da4b9237bacccdf19c0760cab7aec4a8359010b0"},
@@ -6603,7 +6603,7 @@ Select * from (
 	},
 	{
 		Query: "select sha2(i, 256) from mytable order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce"},
 			{"6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"},
 			{"d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35"},
@@ -6611,47 +6611,47 @@ Select * from (
 	},
 	{
 		Query:    "select length(s) from mytable order by i",
-		Expected: []sql.Row{{9}, {10}, {9}},
+		Expected: []sql.UntypedSqlRow{{9}, {10}, {9}},
 	},
 	{
 		Query:    "select octet_length(s) from mytable order by i",
-		Expected: []sql.Row{{9}, {10}, {9}},
+		Expected: []sql.UntypedSqlRow{{9}, {10}, {9}},
 	},
 	{
 		Query:    "select char_length(s) from mytable order by i",
-		Expected: []sql.Row{{9}, {10}, {9}},
+		Expected: []sql.UntypedSqlRow{{9}, {10}, {9}},
 	},
 	{
 		Query:    `select locate("o", s) from mytable order by i`,
-		Expected: []sql.Row{{8}, {4}, {8}},
+		Expected: []sql.UntypedSqlRow{{8}, {4}, {8}},
 	},
 	{
 		Query:    `select locate("o", s, 5) from mytable order by i`,
-		Expected: []sql.Row{{8}, {9}, {8}},
+		Expected: []sql.UntypedSqlRow{{8}, {9}, {8}},
 	},
 	{
 		Query:    `select locate(upper("roW"), upper(s), power(10, 0)) from mytable order by i`,
-		Expected: []sql.Row{{7}, {8}, {7}},
+		Expected: []sql.UntypedSqlRow{{7}, {8}, {7}},
 	},
 	{
 		Query:    "select log2(i) from mytable order by i",
-		Expected: []sql.Row{{0.0}, {1.0}, {1.5849625007211563}},
+		Expected: []sql.UntypedSqlRow{{0.0}, {1.0}, {1.5849625007211563}},
 	},
 	{
 		Query:    "select ln(i) from mytable order by i",
-		Expected: []sql.Row{{0.0}, {0.6931471805599453}, {1.0986122886681096}},
+		Expected: []sql.UntypedSqlRow{{0.0}, {0.6931471805599453}, {1.0986122886681096}},
 	},
 	{
 		Query:    "select log10(i) from mytable order by i",
-		Expected: []sql.Row{{0.0}, {0.3010299956639812}, {0.4771212547196624}},
+		Expected: []sql.UntypedSqlRow{{0.0}, {0.3010299956639812}, {0.4771212547196624}},
 	},
 	{
 		Query:    "select log(3, i) from mytable order by i",
-		Expected: []sql.Row{{0.0}, {0.6309297535714575}, {1.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}, {0.6309297535714575}, {1.0}},
 	},
 	{
 		Query: "select lower(s) from mytable order by i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row"},
 			{"second row"},
 			{"third row"},
@@ -6659,7 +6659,7 @@ Select * from (
 	},
 	{
 		Query: "select upper(s) from mytable order by i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"FIRST ROW"},
 			{"SECOND ROW"},
 			{"THIRD ROW"},
@@ -6667,87 +6667,87 @@ Select * from (
 	},
 	{
 		Query:    "select reverse(s) from mytable order by i",
-		Expected: []sql.Row{{"wor tsrif"}, {"wor dnoces"}, {"wor driht"}},
+		Expected: []sql.UntypedSqlRow{{"wor tsrif"}, {"wor dnoces"}, {"wor driht"}},
 	},
 	{
 		Query:    "select repeat(s, 2) from mytable order by i",
-		Expected: []sql.Row{{"first rowfirst row"}, {"second rowsecond row"}, {"third rowthird row"}},
+		Expected: []sql.UntypedSqlRow{{"first rowfirst row"}, {"second rowsecond row"}, {"third rowthird row"}},
 	},
 	{
 		Query:    "select replace(s, 'row', '') from mytable order by i",
-		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
+		Expected: []sql.UntypedSqlRow{{"first "}, {"second "}, {"third "}},
 	},
 	{
 		Query:    "select rpad(s, 13, ' ') from mytable order by i",
-		Expected: []sql.Row{{"first row    "}, {"second row   "}, {"third row    "}},
+		Expected: []sql.UntypedSqlRow{{"first row    "}, {"second row   "}, {"third row    "}},
 	},
 	{
 		Query:    "select lpad(s, 13, ' ') from mytable order by i",
-		Expected: []sql.Row{{"    first row"}, {"   second row"}, {"    third row"}},
+		Expected: []sql.UntypedSqlRow{{"    first row"}, {"   second row"}, {"    third row"}},
 	},
 	{
 		Query:    "select sqrt(i) from mytable order by i",
-		Expected: []sql.Row{{1.0}, {1.4142135623730951}, {1.7320508075688772}},
+		Expected: []sql.UntypedSqlRow{{1.0}, {1.4142135623730951}, {1.7320508075688772}},
 	},
 	{
 		Query:    "select pow(2, i) from mytable order by i",
-		Expected: []sql.Row{{2.0}, {4.0}, {8.0}},
+		Expected: []sql.UntypedSqlRow{{2.0}, {4.0}, {8.0}},
 	},
 	{
 		Query:    "select ltrim(concat(' ', concat(s, ' '))) from mytable order by i",
-		Expected: []sql.Row{{"first row "}, {"second row "}, {"third row "}},
+		Expected: []sql.UntypedSqlRow{{"first row "}, {"second row "}, {"third row "}},
 	},
 	{
 		Query:    "select rtrim(concat(' ', concat(s, ' '))) from mytable order by i",
-		Expected: []sql.Row{{" first row"}, {" second row"}, {" third row"}},
+		Expected: []sql.UntypedSqlRow{{" first row"}, {" second row"}, {" third row"}},
 	},
 	{
 		Query:    "select trim(concat(' ', concat(s, ' '))) from mytable order by i",
-		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
+		Expected: []sql.UntypedSqlRow{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
 		Query:    `SELECT GREATEST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
-		Expected: []sql.Row{{time.Date(1980, 6, 22, 14, 32, 56, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(1980, 6, 22, 14, 32, 56, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, 3, 4)`,
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.UntypedSqlRow{{float64(1)}},
 	},
 	{
 		Query:    `SELECT LEAST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.UntypedSqlRow{{float64(1)}},
 	},
 	{
 		Query:    `SELECT LEAST("aaa", "bbb", "ccc")`,
-		Expected: []sql.Row{{"aaa"}},
+		Expected: []sql.UntypedSqlRow{{"aaa"}},
 	},
 	{
 		Query:    `SELECT LEAST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+		Expected: []sql.UntypedSqlRow{{float64(1)}, {float64(2)}, {float64(3)}},
 	},
 	{
 		Query:    `SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
-		Expected: []sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
+		Expected: []sql.UntypedSqlRow{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT LEAST(@@back_log,@@auto_increment_offset)`,
-		Expected: []sql.Row{{-1}},
+		Expected: []sql.UntypedSqlRow{{-1}},
 	},
 	{
 		Query:    `SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
-		Expected: []sql.Row{{int32(2), int32(4)}},
+		Expected: []sql.UntypedSqlRow{{int32(2), int32(4)}},
 	},
 	{
 		Query:    "SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
-		Expected: []sql.Row{{int64(1), int64(1)}, {int64(2), int64(1)}, {int64(3), int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(2), int64(1)}, {int64(3), int64(1)}},
 	},
 	{
 		Query: "SELECT i FROM mytable WHERE NOT s ORDER BY 1 DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3)},
 			{int64(2)},
 			{int64(1)},
@@ -6755,7 +6755,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT i FROM mytable WHERE NOT(NOT i) ORDER BY 1 DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3)},
 			{int64(2)},
 			{int64(1)},
@@ -6763,40 +6763,40 @@ Select * from (
 	},
 	{
 		Query:    `SELECT NOW() - NOW()`,
-		Expected: []sql.Row{{int64(0)}},
+		Expected: []sql.UntypedSqlRow{{int64(0)}},
 	},
 	{
 		Query:    `SELECT NOW() / NOW()`,
-		Expected: []sql.Row{{"1.0000"}},
+		Expected: []sql.UntypedSqlRow{{"1.0000"}},
 	},
 	{
 		Query:    `SELECT NOW() div NOW()`,
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		// TODO: Neither MySQL or MariaDB have a function called DATETIME; remove this function.
 		Query:    `SELECT DATETIME(NOW()) - NOW()`,
-		Expected: []sql.Row{{int64(0)}},
+		Expected: []sql.UntypedSqlRow{{int64(0)}},
 	},
 	{
 		Query:    `SELECT TIMESTAMP(NOW()) - NOW()`,
-		Expected: []sql.Row{{int64(0)}},
+		Expected: []sql.UntypedSqlRow{{int64(0)}},
 	},
 	{
 		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    `SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
-		Expected: []sql.Row{{"6789"}},
+		Expected: []sql.UntypedSqlRow{{"6789"}},
 	},
 	{
 		Query:    `SELECT CASE i WHEN 1 THEN i ELSE NULL END FROM mytable`,
-		Expected: []sql.Row{{int64(1)}, {nil}, {nil}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {nil}, {nil}},
 	},
 	{
 		Query:    `SELECT (NULL+1)`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT * FROM mytable WHERE NULL AND i = 3`,
@@ -6804,19 +6804,19 @@ Select * from (
 	},
 	{
 		Query:    `SELECT 1 FROM mytable GROUP BY i HAVING i > 1`,
-		Expected: []sql.Row{{int8(1)}, {int8(1)}},
+		Expected: []sql.UntypedSqlRow{{int8(1)}, {int8(1)}},
 	},
 	{
 		Query:    `SELECT avg(i) FROM mytable GROUP BY i HAVING avg(i) > 1`,
-		Expected: []sql.Row{{float64(2)}, {float64(3)}},
+		Expected: []sql.UntypedSqlRow{{float64(2)}, {float64(3)}},
 	},
 	{
 		Query:    "SELECT avg(i) as `avg(i)` FROM mytable GROUP BY i HAVING avg(i) > 1",
-		Expected: []sql.Row{{float64(2)}, {float64(3)}},
+		Expected: []sql.UntypedSqlRow{{float64(2)}, {float64(3)}},
 	},
 	{
 		Query:    "SELECT avg(i) as `AVG(i)` FROM mytable GROUP BY i HAVING AVG(i) > 1",
-		Expected: []sql.Row{{float64(2)}, {float64(3)}},
+		Expected: []sql.UntypedSqlRow{{float64(2)}, {float64(3)}},
 	},
 	{
 		Query: `SELECT s AS s, COUNT(*) AS count,  AVG(i) AS ` + "`AVG(i)`" + `
@@ -6827,7 +6827,7 @@ Select * from (
 		HAVING ((AVG(i) > 0))
 		ORDER BY count DESC, s ASC
 		LIMIT 10000`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"first row", int64(1), float64(1)},
 			{"second row", int64(1), float64(2)},
 			{"third row", int64(1), float64(3)},
@@ -6835,39 +6835,39 @@ Select * from (
 	},
 	{
 		Query:    `SELECT FIRST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    `SELECT LAST(i) FROM (SELECT i FROM mytable ORDER BY i) t`,
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    `SELECT COUNT(DISTINCT t.i) FROM tabletest t, mytable t2`,
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    `SELECT COUNT(DISTINCT t.i, t.s) FROM tabletest t, mytable t2`,
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    `SELECT COUNT(DISTINCT gender) FROM people`,
-		Expected: []sql.Row{{int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(3)}},
 	},
 	{
 		Query:    `SELECT COUNT(DISTINCT height_inches, gender) FROM people`,
-		Expected: []sql.Row{{int64(5)}},
+		Expected: []sql.UntypedSqlRow{{int64(5)}},
 	},
 	{
 		Query:    `SELECT COUNT(DISTINCT height_inches, gender) FROM people where gender = 0`,
-		Expected: []sql.Row{{int64(2)}},
+		Expected: []sql.UntypedSqlRow{{int64(2)}},
 	},
 	{
 		Query:    `SELECT COUNT(DISTINCT height_inches - 100 < 0, gender < 0) FROM people`,
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    `SELECT CASE WHEN NULL THEN "yes" ELSE "no" END AS test`,
-		Expected: []sql.Row{{"no"}},
+		Expected: []sql.UntypedSqlRow{{"no"}},
 	},
 	{
 		Query: `SELECT
@@ -6888,15 +6888,15 @@ Select * from (
 			AND table_name = 'mytable'
 		HAVING table_type IN ('TABLE', 'VIEW')
 		ORDER BY table_type, table_schema, table_name`,
-		Expected: []sql.Row{{"mydb", "mytable", "TABLE"}},
+		Expected: []sql.UntypedSqlRow{{"mydb", "mytable", "TABLE"}},
 	},
 	{
 		Query:    `SELECT i FROM mytable WHERE i = (SELECT 1)`,
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query: `SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable) ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1)},
 			{int64(2)},
 			{int64(3)},
@@ -6904,20 +6904,20 @@ Select * from (
 	},
 	{
 		Query: `SELECT i FROM mytable WHERE i IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2) ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1)},
 			{int64(2)},
 		},
 	},
 	{
 		Query: `SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(3)},
 		},
 	},
 	{
 		Query: `SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 			{3},
 		},
@@ -6927,7 +6927,7 @@ Select * from (
 						 WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
@@ -6936,7 +6936,7 @@ Select * from (
 						 WHERE (SELECT i FROM mytable where i = mt.i and i > 1) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i and i < 3) IS NOT NULL
 						 ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 		},
 	},
@@ -6945,13 +6945,13 @@ Select * from (
 						 WHERE (SELECT i FROM mytable where i = mt.i) IS NOT NULL
 						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1}, {2}, {3},
 		},
 	},
 	{
 		Query: `SELECT pk,pk2, (SELECT pk from one_pk where pk = 1 limit 1) FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 1},
 			{1, 1, 1},
 		},
@@ -6960,7 +6960,7 @@ Select * from (
 		Query: `SELECT i FROM mytable
 						 WHERE (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
 						 ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1}, {2}, {3},
 		},
 	},
@@ -6968,7 +6968,7 @@ Select * from (
 		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT i2 FROM othertable ot where ot.i2 = mt.i) IS NOT NULL
 						 ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1}, {2}, {3},
 		},
 	},
@@ -6976,13 +6976,13 @@ Select * from (
 		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) = 2
 						 ORDER BY i`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `SELECT i FROM mytable mt
 						 WHERE (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) = 1
 						 ORDER BY i`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -6990,19 +6990,19 @@ Select * from (
 	},
 	{
 		Query:    `SELECT sum(i) as isum, s FROM mytable GROUP BY i ORDER BY isum ASC LIMIT 0, 200`,
-		Expected: []sql.Row{{1.0, "first row"}, {2.0, "second row"}, {3.0, "third row"}},
+		Expected: []sql.UntypedSqlRow{{1.0, "first row"}, {2.0, "second row"}, {3.0, "third row"}},
 	},
 	{
 		Query:    `SELECT (SELECT i FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		Query:    `SELECT (SELECT s FROM mytable ORDER BY i ASC LIMIT 1) AS x`,
-		Expected: []sql.Row{{"first row"}},
+		Expected: []sql.UntypedSqlRow{{"first row"}},
 	},
 	{
 		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY 2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "00"},
 			{2, "11"},
 			{3, "22"},
@@ -7010,7 +7010,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT c3 FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 2},
 			{2, 12},
@@ -7019,7 +7019,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT c5 FROM one_pk WHERE c5 < opk.c5 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 4},
 			{2, 14},
@@ -7028,7 +7028,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT pk FROM one_pk WHERE c1 < opk.c1 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 0},
 			{2, 1},
@@ -7037,7 +7037,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 2},
 			{2, 12},
@@ -7049,7 +7049,7 @@ Select * from (
 					(SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1),
 					(SELECT c5 + 1 FROM one_pk WHERE c5 < opk.c5 ORDER BY 1 DESC LIMIT 1)
 					FROM one_pk opk ORDER BY 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, nil},
 			{1, 2, 5},
 			{2, 12, 15},
@@ -7061,7 +7061,7 @@ Select * from (
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk),
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk)
 					FROM one_pk opk ORDER BY 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, 1},
 			{1, 0, 2},
 			{2, 1, 3},
@@ -7075,7 +7075,7 @@ Select * from (
 					FROM one_pk opk
 					WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) IS NOT NULL
 					ORDER BY max;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, 1},
 			{1, 0, 2},
 			{2, 1, 3},
@@ -7088,7 +7088,7 @@ Select * from (
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
 					ORDER BY min;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 2, nil},
 			{0, nil, 1},
 			{1, 0, 2},
@@ -7102,7 +7102,7 @@ Select * from (
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
 					ORDER BY min;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, 1},
 			{1, 0, 2},
 			{2, 1, 3},
@@ -7115,7 +7115,7 @@ Select * from (
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0
 					ORDER BY max;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, 1},
 			{1, 0, 2},
 			{2, 1, 3},
@@ -7128,7 +7128,7 @@ Select * from (
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL
 					ORDER BY min;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 2, nil},
 			{1, 0, 2},
 			{2, 1, 3},
@@ -7139,7 +7139,7 @@ Select * from (
 					(SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max,
 					(SELECT min(pk) FROM one_pk WHERE pk > opk.pk) AS min
 					FROM one_pk opk ORDER BY min;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 2, nil},
 			{0, nil, 1},
 			{1, 0, 2},
@@ -7148,7 +7148,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY x ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 0},
 			{2, 1},
@@ -7162,7 +7162,7 @@ Select * from (
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk)
 					ORDER BY min;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 2, nil},
 			{0, nil, 1},
 			{1, 0, 2},
@@ -7173,7 +7173,7 @@ Select * from (
 		Query: `SELECT pk FROM one_pk
 					WHERE (SELECT max(pk1) FROM two_pk WHERE pk1 >= pk) IS NOT NULL
 					ORDER BY 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{1},
 		},
@@ -7182,7 +7182,7 @@ Select * from (
 		Query: `SELECT pk FROM one_pk opk
 					WHERE (SELECT count(*) FROM two_pk where pk1 * 10 <= opk.c1) > 2
 					ORDER BY 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -7195,7 +7195,7 @@ Select * from (
 					FROM one_pk opk
 					WHERE (SELECT max(pk) FROM one_pk WHERE pk >= opk.pk) > 0
 					ORDER BY min;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 2, nil},
 			{0, nil, 1},
 			{1, 0, 2},
@@ -7204,7 +7204,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk * 10 <= opk.c1) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 1},
 			{2, 2},
@@ -7213,7 +7213,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 1},
 			{2, 2},
@@ -7222,7 +7222,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 0},
 			{2, 1},
@@ -7231,7 +7231,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) FROM one_pk opk ORDER BY 2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 0},
 			{2, 1},
@@ -7240,7 +7240,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 0},
 			{2, 1},
@@ -7250,7 +7250,7 @@ Select * from (
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0},
 			{2, 1},
 			{3, 2},
@@ -7259,7 +7259,7 @@ Select * from (
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS max
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) IS NOT NULL ORDER BY max`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0},
 			{2, 1},
 			{3, 2},
@@ -7268,7 +7268,7 @@ Select * from (
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0 ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 1},
 			{3, 2},
 		},
@@ -7277,7 +7277,7 @@ Select * from (
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY x ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 1},
 			{3, 2},
 		},
@@ -7286,7 +7286,7 @@ Select * from (
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 1},
 			{3, 2},
 		},
@@ -7294,7 +7294,7 @@ Select * from (
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk > opk.pk) > 0 ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 0},
 			{2, 1},
@@ -7303,12 +7303,12 @@ Select * from (
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT min(pk) FROM one_pk WHERE pk < opk.pk) > 0 ORDER BY x`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) > 0 ORDER BY x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, 0},
 			{2, 1},
@@ -7319,7 +7319,7 @@ Select * from (
 					(SELECT max(pk1) FROM two_pk WHERE pk1 < pk) AS max,
 					(SELECT min(pk2) FROM two_pk WHERE pk2 > pk) AS min
 					FROM one_pk ORDER BY min, pk;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0, nil},
 			{2, 1, nil},
 			{3, 1, nil},
@@ -7331,7 +7331,7 @@ Select * from (
 						(SELECT max(pk1) FROM two_pk tpk WHERE pk1 IN (SELECT pk1 FROM two_pk WHERE pk1 = tpk.pk2)) AS one,
 						(SELECT min(pk2) FROM two_pk tpk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE pk2 = tpk.pk1)) AS zero
 						FROM one_pk ORDER BY pk;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1, 0},
 			{1, 1, 0},
 			{2, 1, 0},
@@ -7343,7 +7343,7 @@ Select * from (
 						(SELECT sum(pk1+pk2) FROM two_pk WHERE pk1+pk2 IN (SELECT pk1+pk2 FROM two_pk WHERE pk1+pk2 = pk)) AS sum,
 						(SELECT min(pk2) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE pk2 = pk)) AS equal
 						FROM one_pk ORDER BY pk;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0.0, 0},
 			{1, 2.0, 1},
 			{2, 2.0, nil},
@@ -7355,7 +7355,7 @@ Select * from (
 						(SELECT sum(c1) FROM two_pk WHERE c1 + 3 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
 						(SELECT sum(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 + 1 < opk.c2)) AS sum2
 					FROM one_pk opk ORDER BY pk`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 60.0, nil},
 			{1, 50.0, 20.0},
 			{2, 30.0, 60.0},
@@ -7364,7 +7364,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT min(pk) FROM one_pk WHERE pk > opk.pk) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1},
 			{1, 2},
 			{2, 3},
@@ -7373,7 +7373,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE one_pk.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 3},
 			{1, 3},
 			{2, 3},
@@ -7382,7 +7382,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 1},
 			{2, 2},
@@ -7391,7 +7391,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk as a, (SELECT max(pk) FROM one_pk WHERE pk <= a) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 1},
 			{2, 2},
@@ -7400,7 +7400,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= opk.pk) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 1},
 			{2, 2},
@@ -7409,7 +7409,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk <= pk) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 3},
 			{1, 3},
 			{2, 3},
@@ -7418,7 +7418,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= pk) FROM one_pk opk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 3},
 			{1, 3},
 			{2, 3},
@@ -7427,7 +7427,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk b WHERE b.pk <= one_pk.pk) FROM one_pk ORDER BY 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 1},
 			{2, 2},
@@ -7436,7 +7436,7 @@ Select * from (
 	},
 	{
 		Query: `SELECT DISTINCT n FROM bigtable ORDER BY t`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1)},
 			{int64(9)},
 			{int64(7)},
@@ -7450,7 +7450,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk, two_pk ORDER BY 1,2,3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 0},
 			{0, 0, 1},
 			{0, 1, 0},
@@ -7471,7 +7471,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 AND pk2=1 ORDER BY 1,2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 31},
 			{10, 31},
 			{20, 31},
@@ -7480,13 +7480,13 @@ Select * from (
 	},
 	{
 		Query: "SELECT t1.i, t2.i FROM mytable t1, mytable t2 WHERE t2.i=1 AND t1.s = t2.s ORDER BY 1,2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 		},
 	},
 	{
 		Query: "SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE t2.pk1=1 AND t2.pk2=1 ORDER BY 1,2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 31},
 			{10, 31},
 			{20, 31},
@@ -7495,7 +7495,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE pk1=1 OR pk2=1 ORDER BY 1,2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 11},
 			{0, 21},
 			{0, 31},
@@ -7512,14 +7512,14 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk,pk2 FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 			{1, 1},
 		},
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE pk=0 AND pk1=0 OR pk2=1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 0},
 			{0, 0, 1},
 			{0, 1, 1},
@@ -7533,7 +7533,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 0},
 			{1, 0, 1},
 			{2, 1, 0},
@@ -7542,7 +7542,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{4, 0, 0},
 			{4, 0, 1},
 			{14, 1, 0},
@@ -7551,7 +7551,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT opk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{4, 0, 0},
 			{4, 0, 1},
 			{14, 1, 0},
@@ -7560,7 +7560,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT GREATEST(CAST(i AS CHAR), CAST(b AS CHAR)) FROM niltable order by i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 			{"2"},
 			{"3"},
@@ -7571,90 +7571,90 @@ Select * from (
 	},
 	{
 		Query: "SELECT CASE WHEN COUNT( * ) THEN 10 * CAST(-19 AS SIGNED ) + CAST(82 AS DECIMAL) END;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"-108"},
 		},
 	},
 	{
 		Query: "SELECT CASE WHEN COUNT( * ) THEN 10.0 * CAST(2012 AS UNSIGNED) + CAST(82 AS CHAR) END;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{20202.0},
 		},
 	},
 	{
 		Query: "SELECT CASE WHEN COUNT( * ) THEN 10.0 * CAST(1234 AS DATE) + CAST(82 AS CHAR) END;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
-		Expected: []sql.Row{{"7.0"}},
+		Expected: []sql.UntypedSqlRow{{"7.0"}},
 	},
 	{
 		Query:    "SELECT (CASE WHEN i THEN i ELSE 0 END) as cases_i from mytable",
-		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
 		Query:    `SELECT ALL - - 20 * - CASE + AVG ( ALL + + 89 ) WHEN - 66 THEN NULL WHEN - 15 THEN 38 * COUNT( * ) * MIN( DISTINCT - + 88 ) - MIN( ALL + 0 ) - - COUNT( * ) + - 0 + - 14 * + ( 98 ) * + 70 * 14 * + 57 * 48 - 53 + + 7 END * + 78 + - 11 * + 29 + + + 46 + + 10 + + ( - 83 ) * - - 74 / - 8 + 18`,
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query: "select cast(X'9876543210' as char(10))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: "select cast(X'9876543210' as binary)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{[]uint8{0x98, 0x76, 0x54, 0x32, 0x10}},
 		},
 	},
 
 	{
 		Query:    "SELECT 1/0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 0/0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 1.0/0.0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 0.0/0.0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 1 div 0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 1.0 div 0.0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 0 div 0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT 0.0 div 0.0 FROM dual",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT NULL <=> NULL FROM dual",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT POW(2,3) FROM dual",
-		Expected: []sql.Row{{float64(8)}},
+		Expected: []sql.UntypedSqlRow{{float64(8)}},
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(a, c, b, d) */ a.c1, b.c2, c.c3, d.c4 FROM one_pk a JOIN one_pk b ON a.pk = b.pk JOIN one_pk c ON c.pk = b.pk JOIN (select * from one_pk) d ON d.pk = c.pk`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1, 2, 3},
 			{10, 11, 12, 13},
 			{20, 21, 22, 23},
@@ -7663,29 +7663,29 @@ Select * from (
 	},
 	{
 		Query: "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
-		Expected: []sql.Row{
-			sql.NewRow(time.Date(1990, time.Month(2), 21, 0, 0, 0, 0, time.UTC), "jane", "doe", "", int64(68), int64(1)),
-			sql.NewRow(time.Date(2010, time.Month(3), 15, 0, 0, 0, 0, time.UTC), "jane", "doe", "", int64(69), int64(1)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{time.Date(1990, time.Month(2), 21, 0, 0, 0, 0, time.UTC), "jane", "doe", "", int64(68), int64(1)},
+			sql.UntypedSqlRow{time.Date(2010, time.Month(3), 15, 0, 0, 0, 0, time.UTC), "jane", "doe", "", int64(69), int64(1)},
 		},
 	},
 	{
 		Query: "SELECT count(*) FROM people WHERE last_name='doe' and first_name='jane' order by dob",
-		Expected: []sql.Row{
-			sql.NewRow(2),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{2},
 		},
 	},
 	{
 		Query: "SELECT VALUES(i) FROM mytable",
-		Expected: []sql.Row{
-			sql.NewRow(nil),
-			sql.NewRow(nil),
-			sql.NewRow(nil),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{nil},
+			sql.UntypedSqlRow{nil},
+			sql.UntypedSqlRow{nil},
 		},
 	},
 	{
 		Query: `select i, row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3, 1},
 			{2, 2, 3},
 			{3, 1, 2},
@@ -7693,13 +7693,13 @@ Select * from (
 	},
 	{
 		Query: `select i, row_number() over (order by i desc) from mytable where i = 2 order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 1},
 		},
 	},
 	{
 		Query: `SELECT i, (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) from mytable mt order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 			{2, 1},
 			{3, 1},
@@ -7708,7 +7708,7 @@ Select * from (
 	{
 		Query: `select row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by i;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1},
 			{2, 3},
 			{1, 2},
@@ -7717,7 +7717,7 @@ Select * from (
 	{
 		Query: `select *, row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by i;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 3, 1},
 			{2, "second row", 2, 3},
 			{3, "third row", 1, 2},
@@ -7729,7 +7729,7 @@ Select * from (
 				from mytable mt join othertable ot
 				on mt.i = ot.i2
 				order by mt.i;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1},
 			{2, 3},
 			{1, 2},
@@ -7738,7 +7738,7 @@ Select * from (
 	{
 		Query: `select i, row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by 1 desc;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 1, 2},
 			{2, 2, 3},
 			{1, 3, 1},
@@ -7747,7 +7747,7 @@ Select * from (
 	{
 		Query: `select i, row_number() over (order by i desc) as i_num,
 				row_number() over (order by length(s),i) as s_num from mytable order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 3, 1},
 			{2, 2, 3},
 			{3, 1, 2},
@@ -7758,7 +7758,7 @@ Select * from (
 			row_number() over (order by length(s),i) as s_asc,
 			row_number() over (order by length(s) desc,i desc) as s_desc
 			from mytable order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 6, 1, 3},
 			{2, 5, 3, 1},
 			{3, 4, 2, 2},
@@ -7768,7 +7768,7 @@ Select * from (
 		Query: `select i, row_number() over (order by i desc) + 3,
 			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0
 			from mytable order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 6, "1.00000"},
 			{2, 5, "3.00000"},
 			{3, 4, "2.00000"},
@@ -7776,7 +7776,7 @@ Select * from (
 	},
 	{
 		Query: "select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 2},
 			{0, 1, 1},
 			{1, 0, 2},
@@ -7787,7 +7787,7 @@ Select * from (
 		Query: `select pk1, pk2,
 			row_number() over (partition by pk1 order by c1 desc)
 			from two_pk order by 1,2;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 2},
 			{0, 1, 1},
 			{1, 0, 2},
@@ -7799,7 +7799,7 @@ Select * from (
 			row_number() over (partition by pk1 order by c1 desc),
 			row_number() over (partition by pk2 order by 10 - c1)
 			from two_pk order by 1,2;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 2, 2},
 			{0, 1, 1, 2},
 			{1, 0, 2, 1},
@@ -7812,7 +7812,7 @@ Select * from (
 			row_number() over (partition by pk2 order by 10 - c1),
 			max(c4) over ()
 			from two_pk order by 1,2;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 2, 2, 33},
 			{0, 1, 1, 2, 33},
 			{1, 0, 2, 1, 33},
@@ -7821,7 +7821,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk, row_number() over (partition by v2 order by pk ), max(v3) over (partition by v2 order by pk) FROM one_pk_three_idx ORDER BY pk",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1, 3},
 			{1, 2, 3},
 			{2, 1, 0},
@@ -7834,7 +7834,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk, count(*) over (order by v2) FROM one_pk_three_idx ORDER BY pk",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 4},
 			{1, 4},
 			{2, 5},
@@ -7847,7 +7847,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk, count(*) over (partition by v2) FROM one_pk_three_idx ORDER BY pk",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 4},
 			{1, 4},
 			{2, 1},
@@ -7860,7 +7860,7 @@ Select * from (
 	},
 	{
 		Query: "SELECT pk, row_number() over (order by v2, pk), max(pk) over () from one_pk_three_idx ORDER BY pk",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1, 7},
 			{1, 2, 7},
 			{2, 5, 7},
@@ -7875,7 +7875,7 @@ Select * from (
 		Query: `select i,
 			row_number() over (partition by case when i > 2 then "under two" else "over two" end order by i desc) as s_asc
 			from mytable order by 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 2},
 			{2, 1},
 			{3, 1},
@@ -7883,74 +7883,74 @@ Select * from (
 	},
 	{
 		Query: "SELECT BINARY 'hi'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{[]byte("hi")},
 		},
 	},
 	{
 		Query: "SELECT BINARY 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{[]byte("1")},
 		},
 	},
 	{
 		Query: "SELECT BINARY 1 = 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "SELECT BINARY 'hello' = 'hello'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "SELECT BINARY NULL",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query:    "SELECT JSON_CONTAINS(NULL, 1)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT JSON_CONTAINS('1', NULL)",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT JSON_CONTAINS('1', '1')",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    "SELECT JSON_CONTAINS('1', NULL, '$.a')",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.a')`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.b')`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.a')`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.c')`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/7656
 		Query:    "select json_contains(cast('[1, 2]' as json), cast(cast(1 as signed) as json));",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query: "select one_pk.pk, one_pk.c1 from one_pk join two_pk on one_pk.c1 = two_pk.c1 order by two_pk.c1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 10},
 			{2, 20},
@@ -7959,39 +7959,39 @@ Select * from (
 	},
 	{
 		Query: `SELECT JSON_OBJECT(1000000, 10);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"1000000": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(DATE('1981-02-16'), 10);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"1981-02-16": 10}`)},
 		},
 	},
 	{
 		SkipServerEngine: true, // the over the wire result need the double quotes to be escaped
 		Query:            `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"{\"foo\": \"bar\"}": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(true, 10);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"1": 10}`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_OBJECT(10.1, 10);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"10.1": 10}`)},
 		},
 	},
 
 	{
 		Query: `SELECT JSON_OBJECT("i",i,"s",s) as js FROM mytable;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{"i": 1, "s": "first row"}`)},
 			{types.MustJSON(`{"i": 2, "s": "second row"}`)},
 			{types.MustJSON(`{"i": 3, "s": "third row"}`)},
@@ -8005,31 +8005,31 @@ Select * from (
 	},
 	{
 		Query: `SELECT CONVERT_TZ("2004-01-01 4:00:00", "+00:00", "+04:00")`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{time.Date(2004, 1, 1, 8, 0, 0, 0, time.UTC)},
 		},
 	},
 	{
 		Query: `SELECT CONVERT_TZ(datetime_col, "+00:00", "+04:00") FROM datetime_table WHERE i = 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{time.Date(2020, 1, 1, 16, 0, 0, 0, time.UTC)},
 		},
 	},
 	{
 		Query: `SELECT 1 from dual WHERE EXISTS (SELECT 1 from dual);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: `SELECT 1 from dual WHERE EXISTS (SELECT NULL from dual);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: `SELECT i FROM mytable WHERE EXISTS (SELECT 1 from mytable) AND i IS NOT NULL;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -8037,86 +8037,86 @@ Select * from (
 	},
 	{
 		Query:    `SELECT * FROM two_pk WHERE EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT * FROM one_pk WHERE pk > 4)`,
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    `SELECT 2 + 2 WHERE EXISTS (SELECT * FROM one_pk WHERE pk < 4)`,
-		Expected: []sql.Row{{4}},
+		Expected: []sql.UntypedSqlRow{{4}},
 	},
 	{
 		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
-		Expected: []sql.Row{{0}, {1}},
+		Expected: []sql.UntypedSqlRow{{0}, {1}},
 	},
 	{
 		Query:    `select pk from one_pk where exists (SELECT pk1 FROM two_pk);`,
-		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{0}, {1}, {2}, {3}},
 	},
 	{
 		Query:    `SELECT EXISTS (SELECT NULL from dual);`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT NOT EXISTS (SELECT NULL FROM dual)`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `select exists (SELECT pk1 FROM two_pk);`,
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	},
 	{
 		Query:    `SELECT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `START TRANSACTION READ ONLY`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `START TRANSACTION READ WRITE`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	// show status like ... is case-insensitive
 	{
 		Query: `SHOW STATUS LIKE 'aborted\_clients'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW STATUS LIKE 'Aborted_clients'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Aborted_clients'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Aborted_clients", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Bytes_sent'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Bytes_sent'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Bytes_sent", uint64(0)},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL STATUS LIKE 'Com\_stmt\_%'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Com_stmt_close", uint64(0)},
 			{"Com_stmt_execute", uint64(0)},
 			{"Com_stmt_fetch", uint64(0)},
@@ -8128,7 +8128,7 @@ Select * from (
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Com\_stmt\_%'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Com_stmt_close", uint64(0)},
 			{"Com_stmt_execute", uint64(0)},
 			{"Com_stmt_fetch", uint64(0)},
@@ -8140,17 +8140,17 @@ Select * from (
 	},
 	{
 		Query: `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Ssl_cipher", ""},
 		},
 	},
 	{
 		Query:    `SHOW SESSION STATUS WHERE Value < 0`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 0},
 			{2, 0, 1},
 			{0, 2, 2},
@@ -8158,19 +8158,19 @@ Select * from (
 	},
 	{
 		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 2},
 		},
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y = 0`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 0, 1},
 		},
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 0, 1},
 			{0, 2, 2},
 			{1, 1, 0},
@@ -8178,183 +8178,183 @@ Select * from (
 	},
 	{
 		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 0},
 		},
 	},
 	{
 		Query:    `select c1 from jsontable where c1 LIKE (('%' OR 'dsads') OR '%')`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `select c1 from jsontable where c1 LIKE ('%' OR NULL)`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `select (('%' OR 'dsads') OR '%')`,
-		Expected: []sql.Row{{false}},
+		Expected: []sql.UntypedSqlRow{{false}},
 	},
 	{
 		Query:    `show function status`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `show function status like 'foo'`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `show function status where Db='mydb'`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `select uuid() = uuid()`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query:    `select instr(REPLACE(CONVERT(UUID() USING utf8mb4), '-', ''), '-')`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    `select * from mytable where 1 = 0 order by i asc`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `select * from mytable where i not in (1)`,
-		Expected: []sql.Row{{2, "second row"}, {3, "third row"}},
+		Expected: []sql.UntypedSqlRow{{2, "second row"}, {3, "third row"}},
 	},
 	{
 		Query:    "(SELECT '1', 'first row' FROM dual) UNION (SELECT '6', 'sixth row' FROM dual) LIMIT 1",
-		Expected: []sql.Row{{"1", "first row"}},
+		Expected: []sql.UntypedSqlRow{{"1", "first row"}},
 	},
 	{
 		Query:    "select GET_LOCK('10', 10)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "Select IS_FREE_LOCK('10')",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "Select IS_USED_LOCK('10')",
-		Expected: []sql.Row{{uint64(1)}},
+		Expected: []sql.UntypedSqlRow{{uint64(1)}},
 	},
 	{
 		Query:    "Select RELEASE_LOCK('10')",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "Select RELEASE_ALL_LOCKS()",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "SELECT CONV('a',16,2)",
-		Expected: []sql.Row{{"1010"}},
+		Expected: []sql.UntypedSqlRow{{"1010"}},
 	},
 	{
 		Query:    "SELECT CONV('6E',18,8)",
-		Expected: []sql.Row{{"172"}},
+		Expected: []sql.UntypedSqlRow{{"172"}},
 	},
 	{
 		Query:    "SELECT CONV(-18,10,-18)",
-		Expected: []sql.Row{{"-10"}},
+		Expected: []sql.UntypedSqlRow{{"-10"}},
 	},
 	{
 		Query:    "SELECT CONV(10+'10'+'10'+X'0a', 10, 10)",
-		Expected: []sql.Row{{"40"}},
+		Expected: []sql.UntypedSqlRow{{"40"}},
 	},
 	{
 		Query:    "SELECT CONV(HEX(SUBSTRING('127.0', 1, 3)), 16, 10)",
-		Expected: []sql.Row{{"3224119"}},
+		Expected: []sql.UntypedSqlRow{{"3224119"}},
 	},
 	{
 		Query:    "SELECT CONV(i, 10, 2) FROM mytable",
-		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
+		Expected: []sql.UntypedSqlRow{{"1"}, {"10"}, {"11"}},
 	},
 	{
 		Query:    `SELECT t1.pk from one_pk join (one_pk t1 join one_pk t2 on t1.pk = t2.pk) on t1.pk = one_pk.pk and one_pk.pk = 1 join (one_pk t3 join one_pk t4 on t3.c1 is not null) on t3.pk = one_pk.pk and one_pk.c1 = 10`,
-		Expected: []sql.Row{{1}, {1}, {1}, {1}},
+		Expected: []sql.UntypedSqlRow{{1}, {1}, {1}, {1}},
 	},
 	{
 		Query:    "select i from mytable where i in (select (select i from mytable order by i limit 1) as i)",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "with recursive a as (select 1 union select 2) select * from a union select * from a limit 1;",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "with recursive a(x) as (select 1 union select 2) select * from a having x > 1 union select * from a having x > 1;",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		Query:    "with recursive a(x) as (select 1 union select 2) select * from a where x > 1 union select * from a where x > 1;",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a group by x;",
-		Expected: []sql.Row{{1}, {2}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}},
 	},
 	{
 		Query:    "with recursive a(x) as (select 1 union select 2) select * from a union select * from a order by x desc;",
-		Expected: []sql.Row{{2}, {1}},
+		Expected: []sql.UntypedSqlRow{{2}, {1}},
 	},
 	{
 		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 5) SELECT count(i) FROM n;`,
-		Expected: []sql.Row{{5}},
+		Expected: []sql.UntypedSqlRow{{5}},
 	},
 	{
 		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n GROUP BY i HAVING i+1 <= 10) SELECT count(i) FROM n;`,
-		Expected: []sql.Row{{10}},
+		Expected: []sql.UntypedSqlRow{{10}},
 	},
 	{
 		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 GROUP BY i HAVING i+1 <= 10 ORDER BY 1 LIMIT 5) SELECT count(i) FROM n;`,
-		Expected: []sql.Row{{5}},
+		Expected: []sql.UntypedSqlRow{{5}},
 	},
 	{
 		Query:    `WITH recursive n(i) as (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i+1 <= 10 LIMIT 1) SELECT count(i) FROM n;`,
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "with recursive a as (select 1 union select 2) select * from (select 1 where 1 in (select * from a)) as `temp`",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "select 1 union select * from (select 2 union select 3) a union select 4;",
-		Expected: []sql.Row{{1}, {2}, {3}, {4}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 	},
 	{
 		Query:    "select 1 union select * from (select 2 union select 3) a union select 4;",
-		Expected: []sql.Row{{1}, {2}, {3}, {4}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 	},
 	{
 		Query:    "With recursive a(x) as (select 1 union select 4 union select * from (select 2 union select 3) b union select x+1 from a where x < 10) select count(*) from a;",
-		Expected: []sql.Row{{10}},
+		Expected: []sql.UntypedSqlRow{{10}},
 	},
 	{
 		Query:    "with a(j) as (select 1), b(i) as (select 2) select j from a union (select i from b order by 1 desc) union select j from a;",
-		Expected: []sql.Row{{1}, {2}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}},
 	},
 	{
 		Query:    "with a(j) as (select 1), b(i) as (select 2) (select t1.j as k from a t1 join a t2 on t1.j = t2.j union select i from b order by k desc limit 1) union select j from a;",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		Query:    "with a(j) as (select 1 union select 2 union select 3), b(i) as (select 2 union select 3) (select t1.j as k from a t1 join a t2 on t1.j = t2.j union select i from b order by k desc limit 2) union select j from a;",
-		Expected: []sql.Row{{3}, {2}},
+		Expected: []sql.UntypedSqlRow{{3}, {2}},
 	},
 	{
 		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by j desc limit 1) union select j from a;",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 limit 1) union select j from a;",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query:    "with a(j) as (select 1), b(i) as (select 1) (select j from a union all select i from b) union select j from a;",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		Query: `
@@ -8376,48 +8376,48 @@ With c as (
     On b.I = e.i
   ) d   
 ) select * from c;`,
-		Expected: []sql.Row{{"second row"}},
+		Expected: []sql.UntypedSqlRow{{"second row"}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/4478
 		Query:    "SELECT STRCMP('b', 'a');",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/4478
 		Query:    "SELECT STRCMP((SELECT CONCAT('a', 'b')), (SELECT SUBSTRING('cab', 2, 3)));",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5068 - verify that decimal parses as decimal
 		Query:    "SELECT 809826404100301269648758758005707100;",
-		Expected: []sql.Row{{"809826404100301269648758758005707100"}},
+		Expected: []sql.UntypedSqlRow{{"809826404100301269648758758005707100"}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5068 - verify that decimal parses as decimal
 		Query:    "SELECT 809826404100301269648758758005707100.12345;",
-		Expected: []sql.Row{{"809826404100301269648758758005707100.12345"}},
+		Expected: []sql.UntypedSqlRow{{"809826404100301269648758758005707100.12345"}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5068 - verify that uint64 still parses as uint64
 		Query:    "SELECT 4294967295;",
-		Expected: []sql.Row{{uint64(4294967295)}},
+		Expected: []sql.UntypedSqlRow{{uint64(4294967295)}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5068 - verify that int64 still parses as int64
 		Query:    "SELECT 4294967296;",
-		Expected: []sql.Row{{int64(4294967296)}},
+		Expected: []sql.UntypedSqlRow{{int64(4294967296)}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5522
 		Query:    "select * from mytable where exists (select * from othertable where 1 = 0)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	// tests to verify this issue is fixed: https://github.com/dolthub/dolt/issues/5522
 	{
 		// original query from issue
 		Query:    "select count(*) from ab where exists (select * from xy where 1 = 0);",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		// false filter and a table
@@ -8438,7 +8438,7 @@ where a1.u = 1 AND false;`,
 		Query: `/*h1*/select a1.u
 from (select * from uv where false) a1
 where a1.u = 1;`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		// multiple false filter EXISTS clauses
@@ -8458,7 +8458,7 @@ exists (select * from xy where
 	from (select * from xy where x = 1 and x in
 	   (select * from (select 1 where false) a1)
 	) a2;`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		// relation is a query
@@ -8490,7 +8490,7 @@ with recursive my_cte as
 )
 select * from my_cte
 where exists (select * from ab where 1 = 0);`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		// relation is a table function
@@ -8501,7 +8501,7 @@ JSON_TABLE(
 	'$[*]' COLUMNS(x float path '$.a', y float path '$.b')
 ) as t1
 where exists (select * from ab where 1 = 0);`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		// false having
@@ -8528,7 +8528,7 @@ where not exists (
     select 1 where false
   )
 )`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{1, 0},
 			{2, 1},
@@ -8544,7 +8544,7 @@ where not exists (
   SELECT next_f, f+next_f FROM my_cte WHERE f < 1000
 )
 SELECT * FROM my_cte;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 			{1, 2},
 			{2, 3},
@@ -8577,13 +8577,13 @@ SELECT * FROM my_cte;`,
 	// Regression test for https://github.com/dolthub/dolt/issues/5656
 	{
 		Query: "select count((select * from (select pk from one_pk limit 1) as sq)) from one_pk;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{4},
 		},
 	},
 	{
 		Query: "select find_in_set('second row', s) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{1},
 			{0},
@@ -8591,7 +8591,7 @@ SELECT * FROM my_cte;`,
 	},
 	{
 		Query: "select find_in_set(s, 'first row,second row,third row') from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -8599,7 +8599,7 @@ SELECT * FROM my_cte;`,
 	},
 	{
 		Query: "select i from mytable where find_in_set(s, 'first row,second row,third row') = 2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 		},
 	},
@@ -8630,7 +8630,7 @@ SELECT * FROM my_cte;`,
 	)
     ORDER BY c0;
 `,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{4},
 		},
 	},
@@ -8662,13 +8662,13 @@ SELECT * FROM my_cte;`,
 	)
     ORDER BY c0;
 `,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{4},
 		},
 	},
 	{
 		Query:    `SELECT SUM(0) * -1`,
-		Expected: []sql.Row{{0.0}},
+		Expected: []sql.UntypedSqlRow{{0.0}},
 	},
 
 	{
@@ -8685,7 +8685,7 @@ ladder (depth, foo) AS (
  FROM ladder JOIN rt WHERE ladder.foo = rt.foo
 )
 SELECT * FROM ladder;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, nil},
 			{1, nil},
 			{1, nil},
@@ -8697,7 +8697,7 @@ SELECT * FROM ladder;`,
 	{
 		// natural join filter columns do not hide duplicated columns
 		Query: "select t2.* from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -8706,7 +8706,7 @@ SELECT * FROM ladder;`,
 	{
 		// natural join join filter columns aliased
 		Query: "select t1.*, t2.*, i from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "first row", 1},
 			{2, "second row", 2, "second row", 2},
 			{3, "third row", 3, "third row", 3},
@@ -8715,18 +8715,18 @@ SELECT * FROM ladder;`,
 	{
 		// mysql overwrites outer CTEs on seeing inner CTE definition
 		Query:    "with a(j) as (select 1) ( with c(k) as (select 3) select k from c union select 6) union select k from c;",
-		Expected: []sql.Row{{3}, {6}},
+		Expected: []sql.UntypedSqlRow{{3}, {6}},
 	},
 	{
 		Query:    "SELECT pk1, SUM(c1) FROM two_pk",
-		Expected: []sql.Row{{0, 60.0}},
+		Expected: []sql.UntypedSqlRow{{0, 60.0}},
 	},
 	{
 		Query: `SELECT pk,
 						(SELECT sum(c1) FROM two_pk WHERE c1 IN (SELECT c4 FROM two_pk WHERE c3 > opk.c5)) AS sum,
 						(SELECT avg(c1) FROM two_pk WHERE pk2 IN (SELECT pk2 FROM two_pk WHERE c1 < opk.c2)) AS avg
 					FROM one_pk opk ORDER BY pk`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil, 10.0},
 			{1, nil, 15.0},
 			{2, nil, 15.0},
@@ -8737,40 +8737,40 @@ SELECT * FROM ladder;`,
 		Query: `SELECT column_0, sum(column_1) FROM
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a
 			group by 1 having avg(column_1) > 2 order by 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 7.0},
 			{3, 9.0},
 		},
 	},
 	{
 		Query: `WITH t AS (SELECT 1) SELECT * FROM t UNION (WITH t AS (SELECT 2) SELECT * FROM t)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 		},
 	},
 	{
 		Query: "SELECT json_array() FROM dual;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`[]`)},
 		},
 	},
 	{
 		Query: "SELECT json_object() FROM dual;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{types.MustJSON(`{}`)},
 		},
 	},
 	{
 		Query: `SELECT json_depth('{"a": 1, "b": {"aa": 1, "bb": {"aaa": 1, "bbb": {"aaaa": 1}}}}') FROM dual;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{5},
 		},
 	},
 
 	{
 		Query: "SELECT i, I, s, S FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, "first row", "first row"},
 			{2, 2, "second row", "second row"},
 			{3, 3, "third row", "third row"},
@@ -8796,7 +8796,7 @@ SELECT * FROM ladder;`,
 	},
 	{
 		Query: "SELECT `i`, `I`, `s`, `S` FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, "first row", "first row"},
 			{2, 2, "second row", "second row"},
 			{3, 3, "third row", "third row"},
@@ -8822,7 +8822,7 @@ SELECT * FROM ladder;`,
 	},
 	{
 		Query: "SELECT `mytable`.`i`, `mytable`.`I`, `mytable`.`s`, `mytable`.`S` FROM mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, "first row", "first row"},
 			{2, 2, "second row", "second row"},
 			{3, 3, "third row", "third row"},
@@ -8849,29 +8849,29 @@ SELECT * FROM ladder;`,
 	// https://github.com/dolthub/go-mysql-server/issues/600
 	{
 		Query:    `SELECT json_unquote(json_extract('{"hi":"there"}', '$.nope'))`,
-		Expected: []sql.Row{{nil}}, // currently returns string "null"
+		Expected: []sql.UntypedSqlRow{{nil}}, // currently returns string "null"
 	},
 	{
 		Query: "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "SELECT c AS i_do_not_conflict, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY i_do_not_conflict;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 1},
 		},
 	},
 	{
 		Query: "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 1},
 		},
 	},
@@ -8883,7 +8883,7 @@ SELECT * FROM
 UNION ALL
 (SELECT * FROM mytable)
 ORDER BY 1;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{1, "first row"},
 			{2, "second row"},
@@ -8895,28 +8895,28 @@ ORDER BY 1;`,
 
 	{
 		Query: "select x from xy where x > 0 and x <= 2 order by x",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 		},
 	},
 	{
 		Query: "select * from xy where y < 1 or y > 2 order by y",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0},
 			{3, 3},
 		},
 	},
 	{
 		Query: "select * from xy where y < 1 or y > 2 order by y desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 3},
 			{1, 0},
 		},
 	},
 	{
 		Query: "select * from xy where x in (3, 0, 1) order by x",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{1, 0},
 			{3, 3},
@@ -8924,7 +8924,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy where x in (3, 0, 1) order by x desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 3},
 			{1, 0},
 			{0, 2},
@@ -8932,7 +8932,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy where y in (3, 0, 1) order by y",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0},
 			{2, 1},
 			{3, 3},
@@ -8940,7 +8940,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy where y in (3, 0, 1) order by y desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, 3},
 			{2, 1},
 			{1, 0},
@@ -8948,7 +8948,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy_hasnull_idx order by y",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, nil},
 			{1, 0},
 			{2, 1},
@@ -8957,7 +8957,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy_hasnull_idx order by y desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{2, 1},
 			{1, 0},
@@ -8966,14 +8966,14 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 order by y desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{1, 0},
 		},
 	},
 	{
 		Query: "select * from xy_hasnull_idx where y < 1 or y > 1 or y is null order by y desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{1, 0},
 			{3, nil},
@@ -8981,7 +8981,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy_hasnull_idx where y in (0, 2) or y is null order by y",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, nil},
 			{1, 0},
 			{0, 2},
@@ -8989,7 +8989,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select x as xx, y as yy from xy_hasnull_idx order by yy desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{2, 1},
 			{1, 0},
@@ -8998,7 +8998,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select x as xx, y as yy from xy_hasnull_idx order by YY desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{2, 1},
 			{1, 0},
@@ -9007,7 +9007,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select * from xy_hasnull_idx order by Y desc",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{2, 1},
 			{1, 0},
@@ -9017,85 +9017,85 @@ ORDER BY 1;`,
 
 	{
 		Query: "select max(x) from xy",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
 	{
 		Query: "select min(x) from xy",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "select max(y) from xy",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
 	{
 		Query: "select max(x)+100 from xy",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{103},
 		},
 	},
 	{
 		Query: "select max(x) as xx from xy",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
 	{
 		Query: "select 1, 2.0, '3', max(x) from xy",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "2.0", "3", 3},
 		},
 	},
 	{
 		Query: "select min(x) from xy where x > 0",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "select max(x) from xy where x < 3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 		},
 	},
 	{
 		Query: "select min(x) from xy where y > 0",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "select max(x) from xy where y < 3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 		},
 	},
 	{
 		Query: "select * from (select max(x) from xy) sq",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
 	{
 		Query: "with cte(i) as (select max(x) from xy) select i + 100 from cte",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{103},
 		},
 	},
 	{
 		Query: "with cte(i) as (select x from xy) select max(i) from cte",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
 	{
 		Query: "select max(x) from xy group by y",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{1},
 			{2},
@@ -9104,7 +9104,7 @@ ORDER BY 1;`,
 	},
 	{
 		Query: "select max(x) from xy join uv where x = u",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
@@ -9124,7 +9124,7 @@ select * from mytable,
 ) sqa 
 where i = a
 order by i;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1},
 			{2, "second row", 2},
 			{3, "third row", 3},
@@ -9151,7 +9151,7 @@ select * from mytable,
 ) sqa2
 where i = a
 order by i;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1},
 			{2, "second row", 2},
 		},
@@ -9169,7 +9169,7 @@ where exists (
         where uv.v = ab2.a and uv.v = ab.a
     )
 );`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 2},
 		},
 	},
@@ -9187,45 +9187,45 @@ where exists (
     )
 )
 order by x, y;`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `select 1 where cos(2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: `select 1 where sin(2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query:    `select 1 where sin(0)`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `select acos(-2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `select asin(-2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: `select 1 % acos(-2)`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: "select dayname(123), dayname('abc')",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil},
 		},
 	},
@@ -9252,7 +9252,7 @@ select
    dayname(e1),
    dayname(s1)
 from typestable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{
 				nil,
 				nil,
@@ -9279,13 +9279,13 @@ from typestable`,
 	{
 		// TODO: This goes past MySQL's range
 		Query: "select dayname('0000-00-00')",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"Saturday"},
 		},
 	},
 	{
 		Query: "select * from mytable order by dayname(i)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -9293,64 +9293,64 @@ from typestable`,
 	},
 	{
 		Query: "select sqrt(-1) + 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: "select sqrt(-1) + 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query:    "flush binary logs",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "flush engine logs",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	// TODO: this is the largest scale decimal we support, but it's not the largest MySQL supports
 	{
 		Query: "select round(5e29, -30)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1e30},
 		},
 	},
 	{
 		Query: "select 1 where (round('')) union all select 1 where (not (round(''))) union all select 1 where ((round('')) is null);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "select 1 in (null, 0.8)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query: "select -1 in (null, sin(5))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 	{
 		Query:    "select 1 where (1 in (null, 0.8))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select -1 where (1 in (null, sin(5)))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select * from mytable where (i in (null, 0.8, 1.5, 2.999))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "select * from mytable where (i BETWEEN (CASE 1 WHEN 2 THEN 1.0 ELSE (1||2) END) AND i)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -9358,7 +9358,7 @@ from typestable`,
 	},
 	{
 		Query: "select * from mytable where (i BETWEEN ('' BETWEEN '' AND ('' OR '#')) AND i)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -9366,13 +9366,13 @@ from typestable`,
 	},
 	{
 		Query: "select * from (select 'k' as k) sq join bigtable on t = k join xy where x between n and n;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"k", "k", 1, 1, 0},
 		},
 	},
 	{
 		Query: "select * from xy inner join uv on (xy.x in (false in ('asdf')));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 0, 0, 1},
 			{1, 0, 1, 1},
 			{1, 0, 2, 2},
@@ -9381,7 +9381,7 @@ from typestable`,
 	},
 	{
 		Query: "select * from mytable where i > '-0.5';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -9389,25 +9389,25 @@ from typestable`,
 	},
 	{
 		Query: "select case when 1 then 59 + 81 / 1 end;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"140.0000"},
 		},
 	},
 	{
 		Query: "select case 1 when 2 then null else (6 * 2) / 1 end;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"12.0000"},
 		},
 	},
 	{
 		Query: "select case 1 when 1 then (6 * 2) / 1 when 2 then null else null end;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"12.0000"},
 		},
 	},
 	{
 		Query: "select * from one_pk_two_idx where v1 < 4 and v2 < 2 or v2 > 3 order by v1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0, 0},
 			{1, 1, 1},
 			{4, 4, 4},
@@ -9418,7 +9418,7 @@ from typestable`,
 	},
 	{
 		Query: "select length(space(i)) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -9426,7 +9426,7 @@ from typestable`,
 	},
 	{
 		Query: "select concat(space(i), 'a') from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{" a"},
 			{"  a"},
 			{"   a"},
@@ -9434,7 +9434,7 @@ from typestable`,
 	},
 	{
 		Query: "select space(i * 2) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"  "},
 			{"    "},
 			{"      "},
@@ -9442,7 +9442,7 @@ from typestable`,
 	},
 	{
 		Query: "select i + pi() from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{4.141592653589793},
 			{5.141592653589793},
 			{6.141592653589793},
@@ -9450,7 +9450,7 @@ from typestable`,
 	},
 	{
 		Query: "select i * pi() from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3.141592653589793},
 			{6.283185307179586},
 			{9.42477796076938},
@@ -9458,7 +9458,7 @@ from typestable`,
 	},
 	{
 		Query: "select i / pi() from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.3183098861837907},
 			{0.6366197723675814},
 			{0.954929658551372},
@@ -9466,7 +9466,7 @@ from typestable`,
 	},
 	{
 		Query: "select exp(i) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{math.Exp(1)},
 			{math.Exp(2)},
 			{math.Exp(3)},
@@ -9474,7 +9474,7 @@ from typestable`,
 	},
 	{
 		Query: "select bit_count(i), bit_count(-20 * i) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 61},
 			{1, 60},
 			{2, 59},
@@ -9482,13 +9482,13 @@ from typestable`,
 	},
 	{
 		Query: "select bit_count(binary 123456878901234567890);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{73},
 		},
 	},
 	{
 		Query: "select atan(i), atan2(i, i + 2) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{math.Atan2(1, 1), math.Atan2(1, 3)},
 			{math.Atan2(2, 1), math.Atan2(2, 4)},
 			{math.Atan2(3, 1), math.Atan2(3, 5)},
@@ -9496,7 +9496,7 @@ from typestable`,
 	},
 	{
 		Query: "select elt(i, 'a', 'b') from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"a"},
 			{"b"},
 			{nil},
@@ -9504,7 +9504,7 @@ from typestable`,
 	},
 	{
 		Query: "select field(i, '1', '2', '3') from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -9512,7 +9512,7 @@ from typestable`,
 	},
 	{
 		Query: "select ord(s), ord(concat('asdf', s)) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{102, 97},
 			{115, 97},
 			{116, 97},
@@ -9520,7 +9520,7 @@ from typestable`,
 	},
 	{
 		Query: "select char(i, i + 10, pi()) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{[]byte{0x01, 0x0B, 0x03}},
 			{[]byte{0x02, 0x0C, 0x03}},
 			{[]byte{0x03, 0x0D, 0x03}},
@@ -9528,288 +9528,288 @@ from typestable`,
 	},
 	{
 		Query: "select char(97, 98, 99 using utf8mb4);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"abc"},
 		},
 	},
 	{
 		Query: "select count(distinct cast(i as decimal)) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3},
 		},
 	},
 	{
 		Query: "select count(distinct null);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "select 1/2.0 + 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1.5000"},
 		},
 	},
 	{
 		Query:    "select 1 where if('', 1, char(''));",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "select 1 where if('', char(''), 1);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "select 1 where if(char(''), 0, 1);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "select 1 where if(char('123'), 0, 1);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "select 1 where 0 = if('', 1, char(''));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 		},
 	},
 	{
 		Query: "select if('', 1, char(''));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{[]byte{0}},
 		},
 	},
 	{
 		Query: "select if(char(''), 'true', 'false');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"false"},
 		},
 	},
 	{
 		Query: "select if(char('0'), 'true', 'false');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"false"},
 		},
 	},
 	{
 		Query: "select if(char('1'), 'true', 'false');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"false"},
 		},
 	},
 	{
 		Query: "select if(cast(1 as binary), 'true', 'false');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"true"},
 		},
 	},
 	{
 		Query: "select if(cast(0 as binary), 'true', 'false');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"false"},
 		},
 	},
 	{
 		Query: "select cast(true as json) = true;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "select cast(false as json) = false;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "select cast(true as json) = 'true';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(false as json) = 'false';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(cast(true as json) as char) = 'true';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "select cast(cast(false as json) as char) = 'false';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "select cast(true as json) = 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(true as json) = 0;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(false as json) = 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(false as json) = 0;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(cast(true as json) as signed) = 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "select cast(cast(true as json) as signed) = 0;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(cast(false as json) as signed) = 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast(cast(false as json) as signed) = 0;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 
 	{
 		Query: "select cast('true' as json) = 'true';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: "select cast('true' as json) = true;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "select cast('false' as json) = false;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{true},
 		},
 	},
 	{
 		Query: "select cast('false' as json) = 'false';",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{false},
 		},
 	},
 	{
 		Query: `SELECT json_type('{"a": [10, true, "abc"]}');`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"OBJECT"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a'));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"ARRAY"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[0]'));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"INTEGER"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[1]'));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"BOOLEAN"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": [10, true, "abc"]}', '$.a[2]'));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"STRING"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": 123.456}', '$.a'));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"DOUBLE"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": null}', '$.a'));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"NULL"},
 		},
 	},
 	{
 		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as datetime) as json));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"DATETIME"},
 		},
 	},
 	{
 		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as date) as json));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"DATE"},
 		},
 	},
 	{
 		Query: "select json_type(cast(cast(1 as unsigned) as json));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"UNSIGNED INTEGER"},
 		},
 	},
 	{
 		Query: "select json_type('4294967295');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"INTEGER"},
 		},
 	},
 	{
 		Query: "select json_type('4294967296');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"UNSIGNED INTEGER"},
 		},
 	},
 	{
 		Query: "SELECT json_type(cast(1.0 as json));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"DECIMAL"},
 		},
 	},
 	{
 		Query: "select json_type(cast(cast(2001 as year) as json));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"UNSIGNED INTEGER"},
 		},
 	},
 	{
 		Query: "select length(random_bytes(i)) from mytable;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 			{3},
@@ -9818,239 +9818,239 @@ from typestable`,
 
 	{
 		Query: "select to_days('2024-04-15');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{739356},
 		},
 	},
 	{
 		Query: "select from_days(739356);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{time.Date(2024, 4, 15, 0, 0, 0, 0, time.UTC)},
 		},
 	},
 	{
 		Query: "select last_day('2000-02-21');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{time.Date(2000, 2, 29, 0, 0, 0, 0, time.UTC)},
 		},
 	},
 	{
 		Query: "select last_day('1999-11-05');",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{time.Date(1999, 11, 30, 0, 0, 0, 0, time.UTC)},
 		},
 	},
 
 	{
 		Query: "select cast(' \t 123 \t ' as signed);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{123},
 		},
 	},
 	{
 		Query: "select cast('\n123\n' as signed);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "select cast('\\0123\\0' as signed);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "select cast(' \t \n\\0123 \t ' as signed);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 		},
 	},
 	{
 		Query: "select cast(' \t 123 \t ' as unsigned);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(123)},
 		},
 	},
 	{
 		Query: "select cast('\n123\n' as unsigned);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(0)},
 		},
 	},
 	{
 		Query: "select cast('\\0123\\0' as unsigned);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(0)},
 		},
 	},
 	{
 		Query: "select cast(' \t \n\\0123 \t ' as unsigned);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint64(0)},
 		},
 	},
 	{
 		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as decimal(10,3));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"123.456"},
 		},
 	},
 	{
 		Query: "select cast('\\0123\\0' as decimal(10,3));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"0.000"},
 		},
 	},
 	{
 		Query: "select cast(' \t \n\\0123 \t ' as decimal(10,3));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"0.000"},
 		},
 	},
 	{
 		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as double);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{123.456},
 		},
 	},
 	{
 		Query: "select cast('\\0123\\0' as double);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.0},
 		},
 	},
 	{
 		Query: "select cast(' \t \n\\0123 \t ' as double);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0.0},
 		},
 	},
 	{
 		Query: "select cast(' \t \n \r 123.456 \r \t \n ' as float);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float32(123.456)},
 		},
 	},
 	{
 		Query: "select cast('\\0123\\0' as float);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float32(0)},
 		},
 	},
 	{
 		Query: "select cast(' \t \n\\0123 \t ' as float);",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float32(0)},
 		},
 	},
 
 	{
 		Query: "select 'abc' like NULL",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil},
 		},
 	},
 
 	{
 		Query: "select icu_version()",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"73.1"},
 		},
 	},
 
 	{
 		Query: "select get_format(date, 'usa')",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"%m.%d.%Y"},
 		},
 	},
 	{
 		Query: "select date_format('2003-10-03', get_format(date, 'eur'))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"03.10.2003"},
 		},
 	},
 
 	{
 		Query: "select charset(null)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"binary"},
 		},
 	},
 	{
 		Query: "select charset(123)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"binary"},
 		},
 	},
 	{
 		Query: "select charset('abc')",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"utf8mb4"},
 		},
 	},
 	{
 		Query: "select charset(convert('abc' using latin1))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"latin1"},
 		},
 	},
 	{
 		Query: "select uncompress(compress('thisisastring'))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{[]byte{0x74, 0x68, 0x69, 0x73, 0x69, 0x73, 0x61, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67}},
 		},
 	},
 	{
 		Query: "select length(compress(repeat('a', 1000)))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{24}, // 21 in MySQL because of library implementation differences
 		},
 	},
 	{
 		Query: "select length(uncompress(compress(repeat('a', 1000))))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1000},
 		},
 	},
 	{
 		Query: "select uncompressed_length(compress(repeat('a', 1000)))",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{uint32(1000)},
 		},
 	},
 
 	{
 		Query: `select distinct pk1 from two_pk order by pk1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{1},
 		},
 	},
 	{
 		Query: `select distinct pk2 from two_pk order by pk2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{1},
 		},
 	},
 	{
 		Query: `select distinct pk1 from two_pk order by pk2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{1},
 		},
 	},
 	{
 		Query: `select distinct pk2 from two_pk order by pk1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0},
 			{1},
 		},
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 1},
 			{1, 0},
@@ -10059,7 +10059,7 @@ from typestable`,
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 0},
 			{0, 1},
@@ -10068,7 +10068,7 @@ from typestable`,
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk1, pk2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 1},
 			{1, 0},
@@ -10077,7 +10077,7 @@ from typestable`,
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk2, pk1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 0},
 			{0, 1},
@@ -10086,7 +10086,7 @@ from typestable`,
 	},
 	{
 		Query: `select distinct pk2, pk1 from two_pk order by pk1, pk2`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 0},
 			{0, 1},
@@ -10095,7 +10095,7 @@ from typestable`,
 	},
 	{
 		Query: `select distinct pk2, pk1 from two_pk order by pk2, pk1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 1},
 			{1, 0},
@@ -10104,14 +10104,14 @@ from typestable`,
 	},
 	{
 		Query: `select distinct pk1 + 1 from two_pk order by pk1 + 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 		},
 	},
 	{
 		Query: `select distinct pk2 + 1 from two_pk order by pk2 + 1`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{2},
 		},
@@ -10121,7 +10121,7 @@ from typestable`,
 var KeylessQueries = []QueryTest{
 	{
 		Query: "SELECT * FROM keyless ORDER BY c0",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{1, 1},
 			{1, 1},
@@ -10130,7 +10130,7 @@ var KeylessQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT * FROM keyless ORDER BY c1 DESC",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 2},
 			{1, 1},
 			{1, 1},
@@ -10139,7 +10139,7 @@ var KeylessQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT * FROM keyless JOIN myTable where c0 = i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 1, "first row"},
 			{1, 1, 1, "first row"},
 			{2, 2, 2, "second row"},
@@ -10147,7 +10147,7 @@ var KeylessQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT * FROM myTable JOIN keyless WHERE i = c0 ORDER BY i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, 1},
 			{1, "first row", 1, 1},
 			{2, "second row", 2, 2},
@@ -10155,28 +10155,28 @@ var KeylessQueries = []QueryTest{
 	},
 	{
 		Query: "DESCRIBE keyless",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"c0", "bigint", "YES", "", nil, ""},
 			{"c1", "bigint", "YES", "", nil, ""},
 		},
 	},
 	{
 		Query: "SHOW COLUMNS FROM keyless",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"c0", "bigint", "YES", "", nil, ""},
 			{"c1", "bigint", "YES", "", nil, ""},
 		},
 	},
 	{
 		Query: "SHOW FULL COLUMNS FROM keyless",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"c0", "bigint", nil, "YES", "", nil, "", "", ""},
 			{"c1", "bigint", nil, "YES", "", nil, "", "", ""},
 		},
 	},
 	{
 		Query: "SHOW CREATE TABLE keyless",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
@@ -10187,40 +10187,40 @@ var BrokenQueries = []QueryTest{
 	// union and aggregation typing are tricky
 	{
 		Query: "with recursive t (n) as (select sum('1') from dual union all select (2.00) from dual) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{float64(3)},
 		},
 	},
 	{
 		Query: "with recursive t (n) as (select sum(1.0) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"55.0"},
 		},
 	},
 	{
 		// mysql is case-sensitive with CTE name
 		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select j from MYTABLE",
-		Expected: []sql.Row{{2}},
+		Expected: []sql.UntypedSqlRow{{2}},
 	},
 	{
 		// mysql is case-sensitive with CTE name
 		Query:    "with recursive MYTABLE(j) as (select 2 union select MYTABLE.j from MYTABLE join mytable on MYTABLE.j = mytable.i) select i from mytable;",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		// edge case where mysql moves an orderby between scopes
 		Query:    "with a(j) as (select 1), b(i) as (select 2) (select j from a union select i from b order by 1 desc) union select j from a;",
-		Expected: []sql.Row{{2}, {1}},
+		Expected: []sql.UntypedSqlRow{{2}, {1}},
 	},
 	{
 		// mysql converts boolean to int8
 		Query:    "with a(j) as (select 1 union select 2 union select 3), b(i) as (select 2 union select 3) select (3,4) in (select a.j, b.i+1 from a, b where a.j = b.i) as k group by k having k = 1;",
-		Expected: []sql.Row{{1}},
+		Expected: []sql.UntypedSqlRow{{1}},
 	},
 	{
 		// mysql converts boolean to int8 and deduplicates with other 1
 		Query:    "With recursive a(x) as (select 1 union select 2 union select x in (select t1.i from mytable t1) from a) select x from a;",
-		Expected: []sql.Row{{1}, {2}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}},
 	},
 	// this doesn't parse in MySQL (can't use an alias in a where clause), panics in engine
 	// AVG gives the wrong result for the first row
@@ -10234,15 +10234,15 @@ var BrokenQueries = []QueryTest{
 	// implemented yet.
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	// TODO: support nested recursive CTEs
 	{
@@ -10263,7 +10263,7 @@ var BrokenQueries = []QueryTest{
 				JOIN parts AS p
 				ON p.part = p.part
 			) SELECT t1.sub_part, sum(t1.quantity) as total_quantity FROM t1 GROUP BY t1.sub_part;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"crust", float64(1)},
 			{"filling", float64(2)},
 			{"flour", float64(20)},
@@ -10276,22 +10276,22 @@ var BrokenQueries = []QueryTest{
 	{
 		// TODO truncate date outputs
 		Query:    "select i, date_col from datetime_table",
-		Expected: []sql.Row{{1, "2019-12-31"}},
+		Expected: []sql.UntypedSqlRow{{1, "2019-12-31"}},
 	},
 	// Currently, not matching MySQL's result format. This []uint8 gets converted to '\n' instead.
 	{
 		Query:    "SELECT X'0a'",
-		Expected: []sql.Row{{"0x0A"}},
+		Expected: []sql.UntypedSqlRow{{"0x0A"}},
 	},
 	// Parsers for u, U, v, V, w, W, x and X are not supported yet.
 	{
 		Query:    "SELECT STR_TO_DATE('2013 32 Tuesday', '%X %V %W')", // Tuesday of 32th week
-		Expected: []sql.Row{{"2013-08-13"}},
+		Expected: []sql.UntypedSqlRow{{"2013-08-13"}},
 	},
 	{
 		// TODO:  need to properly handle datetime precision
 		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s %f') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
-		Expected: []sql.Row{{int64(1)}},
+		Expected: []sql.UntypedSqlRow{{int64(1)}},
 	},
 	{
 		// This panics
@@ -10310,7 +10310,7 @@ WITH RECURSIVE cte(i, j) AS (
 )
 SELECT *
 FROM mytable;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -10319,51 +10319,51 @@ FROM mytable;`,
 	{
 		// TODO: we do not return correct result in some cases. The method used: `GetIsUpdatableFromCreateView(cv *CreateView)`
 		Query:    "select TABLE_NAME, IS_UPDATABLE from information_schema.views where table_schema = 'mydb'",
-		Expected: []sql.Row{{"myview1", "YES"}, {"myview2", "YES"}, {"myview3", "NO"}, {"myview4", "NO"}, {"myview5", "YES"}},
+		Expected: []sql.UntypedSqlRow{{"myview1", "YES"}, {"myview2", "YES"}, {"myview3", "NO"}, {"myview4", "NO"}, {"myview5", "YES"}},
 	},
 	// time to json cast is broken
 	{
 		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as time) as json));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"TIME"},
 		},
 	},
 	// binary to json cast is broken
 	{
 		Query: "SELECT json_type(cast(cast('123abc' as binary) as json));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"BLOB"},
 		},
 	},
 	// 1e2 -> 100, so we can't tell the difference between float and integer in this case
 	{
 		Query: `SELECT json_type(json_extract('{"a": 1e2}', '$.a'));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"DOUBLE"},
 		},
 	},
 	// MySQL seems to store initial type information in JSON, we don't
 	{
 		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as double)), "$.a"));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"DOUBLE"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as unsigned)), "$.a"));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"UNSIGNED INTEGER"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as signed)), "$.a"));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"INTEGER"},
 		},
 	},
 	{
 		Query: `SELECT json_type(json_extract(json_object("a", cast(10 as decimal)), "$.a"));`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"DECIMAL"},
 		},
 	},
@@ -10372,7 +10372,7 @@ FROM mytable;`,
 var VersionedQueries = []QueryTest{
 	{
 		Query: "SELECT *  FROM myhistorytable AS OF '2019-01-01' AS foo ORDER BY i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row, 1"},
 			{int64(2), "second row, 1"},
 			{int64(3), "third row, 1"},
@@ -10380,7 +10380,7 @@ var VersionedQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT *  FROM myhistorytable AS OF '2019-01-02' foo ORDER BY i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row, 2"},
 			{int64(2), "second row, 2"},
 			{int64(3), "third row, 2"},
@@ -10389,7 +10389,7 @@ var VersionedQueries = []QueryTest{
 	// Testing support of function evaluation in AS OF
 	{
 		Query: "SELECT *  FROM myhistorytable AS OF GREATEST('2019-01-02','2019-01-01','') foo ORDER BY i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row, 2"},
 			{int64(2), "second row, 2"},
 			{int64(3), "third row, 2"},
@@ -10397,7 +10397,7 @@ var VersionedQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT *  FROM myhistorytable ORDER BY i",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{int64(1), "first row, 3", "1"},
 			{int64(2), "second row, 3", "2"},
 			{int64(3), "third row, 3", "3"},
@@ -10405,19 +10405,19 @@ var VersionedQueries = []QueryTest{
 	},
 	{
 		Query: "SHOW TABLES AS OF '2019-01-02' LIKE 'myhistorytable'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"myhistorytable"},
 		},
 	},
 	{
 		Query: "SHOW TABLES FROM mydb AS OF '2019-01-02' LIKE 'myhistorytable'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"myhistorytable"},
 		},
 	},
 	{
 		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-02'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` text NOT NULL,\n" +
@@ -10427,7 +10427,7 @@ var VersionedQueries = []QueryTest{
 	},
 	{
 		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-03'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` text NOT NULL,\n" +
@@ -10447,7 +10447,7 @@ var VersionedScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT *  FROM myhistorytable AS OF @rev1 AS foo ORDER BY i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 1"},
 					{int64(2), "second row, 1"},
 					{int64(3), "third row, 1"},
@@ -10455,7 +10455,7 @@ var VersionedScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT *  FROM myhistorytable AS OF @rev2 AS foo ORDER BY i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 2"},
 					{int64(2), "second row, 2"},
 					{int64(3), "third row, 2"},
@@ -10463,20 +10463,20 @@ var VersionedScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW TABLES AS OF @rev1 LIKE 'myhistorytable'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"myhistorytable"},
 				},
 			},
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", "NO", "PRI", nil, ""},
 					{"s", "text", "NO", "", nil, ""},
 				},
 			},
 			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", "NO", "PRI", nil, ""},
 					{"s", "text", "NO", "", nil, ""},
 					{"c", "text", "NO", "", nil, ""},
@@ -10489,71 +10489,71 @@ var VersionedScripts = []ScriptTest{
 var DateParseQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('Jan 3, 2000', '%b %e, %Y')",
-		Expected: []sql.Row{{"2000-01-03"}},
+		Expected: []sql.UntypedSqlRow{{"2000-01-03"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01,5,2013', '%d,%m,%Y')",
-		Expected: []sql.Row{{"2013-05-01"}},
+		Expected: []sql.UntypedSqlRow{{"2013-05-01"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 1, 2013','%M %d,%Y')",
-		Expected: []sql.Row{{"2013-05-01"}},
+		Expected: []sql.UntypedSqlRow{{"2013-05-01"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('a09:30:17','a%h:%i:%s')",
-		Expected: []sql.Row{{"09:30:17"}},
+		Expected: []sql.UntypedSqlRow{{"09:30:17"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('a09:30:17','%h:%i:%s')",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('09:30:17a','%h:%i:%s')",
-		Expected: []sql.Row{{"09:30:17"}},
+		Expected: []sql.UntypedSqlRow{{"09:30:17"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('09:30:17 pm','%h:%i:%s %p')",
-		Expected: []sql.Row{{"21:30:17"}},
+		Expected: []sql.UntypedSqlRow{{"21:30:17"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('9','%m')",
-		Expected: []sql.Row{{"0000-09-00"}},
+		Expected: []sql.UntypedSqlRow{{"0000-09-00"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('9','%s')",
-		Expected: []sql.Row{{"00:00:09"}},
+		Expected: []sql.UntypedSqlRow{{"00:00:09"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 314', '%m/%e/%y %f')",
-		Expected: []sql.Row{{"1999-01-02 00:00:00.314000"}},
+		Expected: []sql.UntypedSqlRow{{"1999-01-02 00:00:00.314000"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 0', '%m/%e/%y %f')",
-		Expected: []sql.Row{{"1999-01-02 00:00:00.000000"}},
+		Expected: []sql.UntypedSqlRow{{"1999-01-02 00:00:00.000000"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('01/02/99 05:14:12 PM', '%m/%e/%y %r')",
-		Expected: []sql.Row{{"1999-01-02 17:14:12"}},
+		Expected: []sql.UntypedSqlRow{{"1999-01-02 17:14:12"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 2000', '%b %e, %H:%i:%s %Y')",
-		Expected: []sql.Row{{"2000-05-03 10:23:00"}},
+		Expected: []sql.UntypedSqlRow{{"2000-05-03 10:23:00"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %h:%i:%s %p %Y')",
-		Expected: []sql.Row{{"2000-05-03 22:23:00"}},
+		Expected: []sql.UntypedSqlRow{{"2000-05-03 22:23:00"}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')", // cannot use 24 hour time (%H) with AM/PM (%p)
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('abc','abc')",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 }
 
@@ -11256,9 +11256,9 @@ var BrokenErrorQueries = []QueryErrorTest{
 // validate the results.
 type WriteQueryTest struct {
 	WriteQuery          string
-	ExpectedWriteResult []sql.Row
+	ExpectedWriteResult []sql.UntypedSqlRow
 	SelectQuery         string
-	ExpectedSelect      []sql.Row
+	ExpectedSelect      []sql.UntypedSqlRow
 	Bindings            map[string]sqlparser.Expr
 	Skip                bool
 	SkipServerEngine    bool
@@ -11275,93 +11275,93 @@ type GenericErrorQueryTest struct {
 var ViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row"),
-			sql.NewRow(int64(2), "second row"),
-			sql.NewRow(int64(3), "third row"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row"},
+			sql.UntypedSqlRow{int64(2), "second row"},
+			sql.UntypedSqlRow{int64(3), "third row"},
 		},
 	},
 	{
 		Query: "SELECT myview.* FROM myview ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row"),
-			sql.NewRow(int64(2), "second row"),
-			sql.NewRow(int64(3), "third row"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row"},
+			sql.UntypedSqlRow{int64(2), "second row"},
+			sql.UntypedSqlRow{int64(3), "third row"},
 		},
 	},
 	{
 		Query: "SELECT i FROM myview ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
-			sql.NewRow(int64(2)),
-			sql.NewRow(int64(3)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
+			sql.UntypedSqlRow{int64(2)},
+			sql.UntypedSqlRow{int64(3)},
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview AS t ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row"),
-			sql.NewRow(int64(2), "second row"),
-			sql.NewRow(int64(3), "third row"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row"},
+			sql.UntypedSqlRow{int64(2), "second row"},
+			sql.UntypedSqlRow{int64(3), "third row"},
 		},
 	},
 	{
 		Query: "SELECT t.i FROM myview AS t ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
-			sql.NewRow(int64(2)),
-			sql.NewRow(int64(3)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
+			sql.UntypedSqlRow{int64(2)},
+			sql.UntypedSqlRow{int64(3)},
 		},
 	},
 	{
 		Query: "SELECT * FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row"},
 		},
 	},
 	{
 		Query: "SELECT i FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
 		},
 	},
 	{
 		Query: "SELECT myview2.i FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
 		},
 	},
 	{
 		Query: "SELECT myview2.* FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row"},
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview2 as t",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row"},
 		},
 	},
 	{
 		Query: "SELECT t.i FROM myview2 as t",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
 		},
 	},
 	// info schema support
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb' order by table_name",
-		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{"def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+			sql.UntypedSqlRow{"def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
 		},
 	},
 	{
 		Query: "select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
-		Expected: []sql.Row{
-			sql.NewRow("myview"),
-			sql.NewRow("myview2"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{"myview"},
+			sql.UntypedSqlRow{"myview2"},
 		},
 	},
 }
@@ -11369,85 +11369,85 @@ var ViewTests = []QueryTest{
 var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview1 ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
-			sql.NewRow(int64(2), "second row, 3", "2"),
-			sql.NewRow(int64(3), "third row, 3", "3"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row, 3", "1"},
+			sql.UntypedSqlRow{int64(2), "second row, 3", "2"},
+			sql.UntypedSqlRow{int64(3), "third row, 3", "3"},
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
-			sql.NewRow(int64(2), "second row, 3", "2"),
-			sql.NewRow(int64(3), "third row, 3", "3"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row, 3", "1"},
+			sql.UntypedSqlRow{int64(2), "second row, 3", "2"},
+			sql.UntypedSqlRow{int64(3), "third row, 3", "3"},
 		},
 	},
 	{
 		Query: "SELECT t.i FROM myview1 AS t ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
-			sql.NewRow(int64(2)),
-			sql.NewRow(int64(3)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
+			sql.UntypedSqlRow{int64(2)},
+			sql.UntypedSqlRow{int64(3)},
 		},
 	},
 	{
 		Query: "SELECT * FROM myview1 AS OF '2019-01-01' ORDER BY i",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
-			sql.NewRow(int64(2), "second row, 1"),
-			sql.NewRow(int64(3), "third row, 1"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row, 1"},
+			sql.UntypedSqlRow{int64(2), "second row, 1"},
+			sql.UntypedSqlRow{int64(3), "third row, 1"},
 		},
 	},
 
 	// Nested views
 	{
 		Query: "SELECT * FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row, 3", "1"},
 		},
 	},
 	{
 		Query: "SELECT i FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
 		},
 	},
 	{
 		Query: "SELECT myview2.i FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
 		},
 	},
 	{
 		Query: "SELECT myview2.* FROM myview2",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row, 3", "1"},
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview2 as t",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 3", "1"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row, 3", "1"},
 		},
 	},
 	{
 		Query: "SELECT t.i FROM myview2 as t",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1)),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1)},
 		},
 	},
 	{
 		Query: "SELECT * FROM myview2 AS OF '2019-01-01'",
-		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 1"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{int64(1), "first row, 1"},
 		},
 	},
 
 	// Views with unions
 	{
 		Query: "SELECT * FROM myview3 AS OF '2019-01-01'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 			{"2"},
 			{"3"},
@@ -11458,7 +11458,7 @@ var VersionedViewTests = []QueryTest{
 	},
 	{
 		Query: "SELECT * FROM myview3 AS OF '2019-01-02'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 			{"2"},
 			{"3"},
@@ -11469,7 +11469,7 @@ var VersionedViewTests = []QueryTest{
 	},
 	{
 		Query: "SELECT * FROM myview3 AS OF '2019-01-03'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"1"},
 			{"2"},
 			{"3"},
@@ -11482,19 +11482,19 @@ var VersionedViewTests = []QueryTest{
 	// Views with subqueries
 	{
 		Query: "SELECT * FROM myview4 AS OF '2019-01-01'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row, 1"},
 		},
 	},
 	{
 		Query: "SELECT * FROM myview4 AS OF '2019-01-02'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row, 2"},
 		},
 	},
 	{
 		Query: "SELECT * FROM myview4 AS OF '2019-01-03'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row, 3", "3"},
 		},
 	},
@@ -11502,19 +11502,19 @@ var VersionedViewTests = []QueryTest{
 	// Views with subquery aliases
 	{
 		Query: "SELECT * FROM myview5 AS OF '2019-01-01'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row, 1"},
 		},
 	},
 	{
 		Query: "SELECT * FROM myview5 AS OF '2019-01-02'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row, 2"},
 		},
 	},
 	{
 		Query: "SELECT * FROM myview5 AS OF '2019-01-03'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row, 3", "3"},
 		},
 	},
@@ -11523,22 +11523,22 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "select TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, VIEW_DEFINITION, CHECK_OPTION, DEFINER, SECURITY_TYPE, " +
 			"CHARACTER_SET_CLIENT, COLLATION_CONNECTION from information_schema.views where table_schema = 'mydb'",
-		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
-			sql.NewRow("def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{"def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+			sql.UntypedSqlRow{"def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+			sql.UntypedSqlRow{"def", "mydb", "myview3", "SELECT i from myview1 union select s from myhistorytable", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+			sql.UntypedSqlRow{"def", "mydb", "myview4", "SELECT * FROM myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed) from myhistorytable)", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
+			sql.UntypedSqlRow{"def", "mydb", "myview5", "SELECT * FROM (select * from myhistorytable where i in (select distinct cast(RIGHT(s, 1) as signed))) as sq", "NONE", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
 		},
 	},
 	{
 		Query: "select table_name from information_schema.tables where table_schema = 'mydb' and table_type = 'VIEW' order by 1",
-		Expected: []sql.Row{
-			sql.NewRow("myview1"),
-			sql.NewRow("myview2"),
-			sql.NewRow("myview3"),
-			sql.NewRow("myview4"),
-			sql.NewRow("myview5"),
+		Expected: []sql.UntypedSqlRow{
+			sql.UntypedSqlRow{"myview1"},
+			sql.UntypedSqlRow{"myview2"},
+			sql.UntypedSqlRow{"myview3"},
+			sql.UntypedSqlRow{"myview4"},
+			sql.UntypedSqlRow{"myview5"},
 		},
 	},
 }
@@ -11546,40 +11546,40 @@ var VersionedViewTests = []QueryTest{
 var ShowTableStatusQueries = []QueryTest{
 	{
 		Query: `SHOW TABLE STATUS FROM mydb`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS LIKE '%table'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS WHERE Name = 'mytable'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},

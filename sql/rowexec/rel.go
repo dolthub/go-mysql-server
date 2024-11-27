@@ -82,17 +82,19 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row) (sql.RowIter, error) {
 	rows := make([]sql.Row, len(n.ExpressionTuples))
 	for i, et := range n.ExpressionTuples {
-		vals := make(sql.Row, len(et))
+		var vals sql.Row = sql.NewSqlRowWithLen(len(et))
 
 		// A non-zero row means that we're executing in a trigger context, so we evaluate against the row provided
 		// TODO: this probably won't work with triggers that define explicit DEFAULT values
-		if len(row) > 0 {
+		if row != nil && row.Len() > 0 {
+			var v interface{}
 			for j, e := range et {
 				var err error
-				vals[j], err = e.Eval(ctx, row)
+				v, err = e.Eval(ctx, row)
 				if err != nil {
 					return nil, err
 				}
+				vals.SetValue(j, v)
 			}
 		} else {
 			// For the values node, the relevant values to evaluate are the tuple itself. We may need to project
@@ -104,7 +106,7 @@ func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row)
 			}
 		}
 
-		rows[i] = sql.NewRow(vals...)
+		rows[i] = vals.Copy()
 	}
 
 	return sql.RowsToRowIter(rows...), nil
@@ -375,13 +377,13 @@ func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.
 		}
 	}
 
-	var resultRow sql.Row
+	var resultRow sql.Row = sql.UntypedSqlRow{}
 	if len(updateExprs) > 0 {
 		newRow, err := applyUpdateExpressions(ctx, updateExprs, row)
 		if err != nil {
 			return nil, err
 		}
-		copy(resultRow, row)
+		resultRow = row.Copy()
 		resultRow = row.Append(newRow)
 	}
 
@@ -603,7 +605,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		sch := n.Child.Schema()
 		for _, r := range rows {
 			file.WriteString(n.LinesStartingBy)
-			for i, val := range r {
+			for i, val := range r.Values() {
 				if i != 0 {
 					file.WriteString(n.FieldsTerminatedBy)
 				}
@@ -630,7 +632,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 			}
 			file.WriteString(n.LinesTerminatedBy)
 		}
-		return sql.RowsToRowIter(sql.Row{}), nil
+		return sql.RowsToRowIter(sql.UntypedSqlRow{}), nil
 	}
 
 	rowNum := len(rows)
@@ -648,23 +650,23 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		}
 		defer file.Close()
 		if rowNum == 1 {
-			for _, val := range rows[0] {
+			for _, val := range rows[0].Values() {
 				file.WriteString(fmt.Sprintf("%v", val))
 			}
 		}
-		return sql.RowsToRowIter(sql.Row{}), nil
+		return sql.RowsToRowIter(sql.UntypedSqlRow{}), nil
 	}
 
 	if rowNum == 0 {
 		// a warning with error code 1329 occurs (No data), and make no change to variables
-		return sql.RowsToRowIter(sql.Row{}), nil
+		return sql.RowsToRowIter(sql.UntypedSqlRow{}), nil
 	}
-	if len(rows[0]) != len(n.IntoVars) {
+	if rows[0].Len() != len(n.IntoVars) {
 		return nil, sql.ErrColumnNumberDoesNotMatch.New()
 	}
 
-	var rowValues = make([]interface{}, len(rows[0]))
-	copy(rowValues, rows[0])
+	var rowValues = make([]interface{}, rows[0].Len())
+	copy(rowValues, rows[0].Values())
 
 	for j, v := range n.IntoVars {
 		switch variable := v.(type) {
@@ -684,7 +686,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		}
 	}
 
-	return sql.RowsToRowIter(sql.Row{}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{}), nil
 }
 
 func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalProcedure, row sql.Row) (sql.RowIter, error) {
@@ -925,5 +927,5 @@ func (b *BaseBuilder) buildResolvedTable(ctx *sql.Context, n *plan.ResolvedTable
 }
 
 func (b *BaseBuilder) buildTableCount(_ *sql.Context, n *plan.TableCountLookup, _ sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(sql.Row{int64(n.Count())}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{int64(n.Count())}), nil
 }

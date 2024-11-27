@@ -33,11 +33,11 @@ func getOKResult(ctx *sql.Context, rows sql.RowIter) (types.OkResult, bool, erro
 			return okr, found, err
 		}
 
-		if len(row) != 1 {
+		if row.Len() != 1 {
 			continue
 		}
 
-		okr, found = row[0].(types.OkResult)
+		okr, found = row.GetValue(0).(types.OkResult)
 	}
 
 	err := rows.Close(ctx)

@@ -80,16 +80,16 @@ func newTableTest(source string) sql.Table {
 		[]byte("partition3"),
 	}
 
-	rows := []sql.Row{
-		sql.NewRow(int32(1), int64(9), "one, nine"),
-		sql.NewRow(int32(2), int64(8), "two, eight"),
-		sql.NewRow(int32(3), int64(7), "three, seven"),
-		sql.NewRow(int32(4), int64(6), "four, six"),
-		sql.NewRow(int32(5), int64(5), "five, five"),
-		sql.NewRow(int32(6), int64(4), "six, four"),
-		sql.NewRow(int32(7), int64(3), "seven, three"),
-		sql.NewRow(int32(8), int64(2), "eight, two"),
-		sql.NewRow(int32(9), int64(1), "nine, one"),
+	rows := []sql.UntypedSqlRow{
+		{int32(1), int64(9), "one, nine"},
+		{int32(2), int64(8), "two, eight"},
+		{int32(3), int64(7), "three, seven"},
+		{int32(4), int64(6), "four, six"},
+		{int32(5), int64(5), "five, five"},
+		{int32(6), int64(4), "six, four"},
+		{int32(7), int64(3), "seven, three"},
+		{int32(8), int64(2), "eight, two"},
+		{int32(9), int64(1), "nine, one"},
 	}
 
 	partitions := map[string][]sql.Row{
@@ -105,7 +105,7 @@ type dummyTable struct {
 	schema     sql.Schema
 	keys       [][]byte
 	partitions map[string][]sql.Row
-	rows       []sql.Row
+	rows       []sql.UntypedSqlRow
 }
 
 var _ sql.Table = (*dummyTable)(nil)

@@ -54,34 +54,34 @@ func JsonContainsPathTestCases(t *testing.T, prepare prepareJsonValue) []testCas
 	require.NoError(t, err)
 
 	return []testCase{
-		{f: onePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `oNe`, `$.a`}, expected: true},
-		{f: onePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `one`, `$.e`}, expected: false},
-		{f: onePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `all`, `$.e`}, expected: false},
-		{f: onePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `All`, `$.c.d`}, expected: true},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `oNe`, `$.a`}, expected: true},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `one`, `$.e`}, expected: false},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `all`, `$.e`}, expected: false},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `All`, `$.c.d`}, expected: true},
 
-		{f: onePath, row: sql.Row{prepare(t, `[]`), `one`, `$[1]`}, expected: false},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `[]`), `one`, `$[1]`}, expected: false},
 
-		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `one`, `$.a`, `$.e`}, expected: true},
-		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `ALL`, `$.a`, `$.e`}, expected: false},
+		{f: twoPath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `one`, `$.a`, `$.e`}, expected: true},
+		{f: twoPath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": 4}}`), `ALL`, `$.a`, `$.e`}, expected: false},
 
-		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `all`, `$.a`, `$.c.d.e`}, expected: true},
-		{f: threePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `all`, `$.a`, `$.c.d.e`, `$.x`}, expected: false},
-		{f: threePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `one`, `$.a`, `$.c.d.e`, `$.x`}, expected: true},
+		{f: twoPath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `all`, `$.a`, `$.c.d.e`}, expected: true},
+		{f: threePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `all`, `$.a`, `$.c.d.e`, `$.x`}, expected: false},
+		{f: threePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `one`, `$.a`, `$.c.d.e`, `$.x`}, expected: true},
 
 		// NULL inputs. Any NULL should result in NULL output.
-		{f: onePath, row: sql.Row{nil, `one`, `$.a`}, expected: nil},
-		{f: onePath, row: sql.Row{prepare(t, `{"a": 1}`), nil, `$.a`}, expected: nil},
-		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1}`), `one`, `$.a`, nil}, expected: true}, // Match MySQL behavior, not docs.
-		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1}`), `one`, nil, `$.a`}, expected: nil},
-		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1}`), "all", `$.x`, nil}, expected: false}, // Match MySQL behavior, not docs.
-		{f: twoPath, row: sql.Row{prepare(t, `{"a": 1}`), `all`, `$.a`, nil}, expected: nil},
+		{f: onePath, row: sql.UntypedSqlRow{nil, `one`, `$.a`}, expected: nil},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1}`), nil, `$.a`}, expected: nil},
+		{f: twoPath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1}`), `one`, `$.a`, nil}, expected: true}, // Match MySQL behavior, not docs.
+		{f: twoPath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1}`), `one`, nil, `$.a`}, expected: nil},
+		{f: twoPath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1}`), "all", `$.x`, nil}, expected: false}, // Match MySQL behavior, not docs.
+		{f: twoPath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1}`), `all`, `$.a`, nil}, expected: nil},
 
 		// JSON NULL documents do NOT result in NULL output.
-		{f: onePath, row: sql.Row{prepare(t, `null`), `all`, `$.a`}, expected: false},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `null`), `all`, `$.a`}, expected: false},
 
 		// Error cases
-		{f: onePath, row: sql.Row{prepare(t, `{"a": 1}`), `None`, `$.a`}, err: errors.New("The oneOrAll argument to json_contains_path may take these values: 'one' or 'all'")},
-		{f: onePath, row: sql.Row{`{"a": 1`, `One`, `$.a`}, err: sql.ErrInvalidJSONText.New(1, "json_contains_path", `{"a": 1`)},
-		{f: threePath, row: sql.Row{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `one`, 42, `$.c.d.e`, `$.x`}, err: errors.New(`Invalid JSON path expression. Path must start with '$', but received: '42'`)},
+		{f: onePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1}`), `None`, `$.a`}, err: errors.New("The oneOrAll argument to json_contains_path may take these values: 'one' or 'all'")},
+		{f: onePath, row: sql.UntypedSqlRow{`{"a": 1`, `One`, `$.a`}, err: sql.ErrInvalidJSONText.New(1, "json_contains_path", `{"a": 1`)},
+		{f: threePath, row: sql.UntypedSqlRow{prepare(t, `{"a": 1, "b": 2, "c": {"d": {"e" : 42}}}`), `one`, 42, `$.c.d.e`, `$.x`}, err: errors.New(`Invalid JSON path expression. Path must start with '$', but received: '42'`)},
 	}
 }

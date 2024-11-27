@@ -146,7 +146,7 @@ func (i *SequenceTableFnRowIter) Next(_ *sql.Context) (sql.Row, error) {
 	if i.i >= i.n {
 		return nil, io.EOF
 	}
-	ret := sql.Row{i.i}
+	ret := sql.UntypedSqlRow{i.i}
 	i.i++
 	return ret, nil
 }

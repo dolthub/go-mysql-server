@@ -46,7 +46,7 @@ func (itr *analyzeTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		msgText = err.Error()
 	}
 	itr.idx++
-	return sql.Row{t.Name(), "analyze", msgType, msgText}, nil
+	return sql.UntypedSqlRow{t.Name(), "analyze", msgType, msgText}, nil
 }
 
 func (itr *analyzeTableIter) Close(ctx *sql.Context) error {
@@ -73,9 +73,9 @@ func (itr *updateHistogramIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}()
 	err := itr.prov.SetStats(ctx, itr.stats)
 	if err != nil {
-		return sql.Row{itr.table, "histogram", "error", err.Error()}, nil
+		return sql.UntypedSqlRow{itr.table, "histogram", "error", err.Error()}, nil
 	}
-	return sql.Row{itr.table, "histogram", "status", "OK"}, nil
+	return sql.UntypedSqlRow{itr.table, "histogram", "status", "OK"}, nil
 }
 
 func (itr *updateHistogramIter) Close(_ *sql.Context) error {
@@ -103,9 +103,9 @@ func (itr *dropHistogramIter) Next(ctx *sql.Context) (sql.Row, error) {
 	qual := sql.NewStatQualifier(itr.db, itr.schema, itr.table, "")
 	err := itr.prov.DropStats(ctx, qual, itr.columns)
 	if err != nil {
-		return sql.Row{itr.table, "histogram", "error", err.Error()}, nil
+		return sql.UntypedSqlRow{itr.table, "histogram", "error", err.Error()}, nil
 	}
-	return sql.Row{itr.table, "histogram", "status", "OK"}, nil
+	return sql.UntypedSqlRow{itr.table, "histogram", "status", "OK"}, nil
 }
 
 func (itr *dropHistogramIter) Close(_ *sql.Context) error {
@@ -376,7 +376,7 @@ func (sri *stripRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r[sri.numCols:], nil
+	return r.Subslice(sri.numCols, r.Len()), nil
 }
 
 func (sri *stripRowIter) Close(ctx *sql.Context) error {

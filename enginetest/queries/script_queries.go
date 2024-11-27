@@ -39,7 +39,7 @@ type ScriptTest struct {
 	// For tests that make a single assertion, Query can be set for the single assertion
 	Query string
 	// For tests that make a single assertion, Expected can be set for the single assertion
-	Expected []sql.Row
+	Expected []sql.UntypedSqlRow
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
 	// For tests that make a single assertion, ExpectedIndexes can be set for the string representation of indexes that we expect to appear in the query plan
@@ -52,7 +52,7 @@ type ScriptTest struct {
 
 type ScriptTestAssertion struct {
 	Query       string
-	Expected    []sql.Row
+	Expected    []sql.UntypedSqlRow
 	ExpectedErr *errors.Kind
 	// ExpectedErrStr should be set for tests that expect a specific error string this is not linked to a custom error.
 	// In most cases, errors should be linked to a custom error, however there are exceptions where this is not possible,
@@ -158,7 +158,7 @@ CREATE TABLE sourceTable_test (
         targetTable_test.value = sourceTable_test.value
     WHERE sourceTable_test.id = targetTable_test.source_id;
 `,
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 0,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -175,7 +175,7 @@ CREATE TABLE sourceTable_test (
     SET
         TARGETTABLE_test.value = SourceTable_test.value;
 `,
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 0,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -197,15 +197,15 @@ CREATE TABLE sourceTable_test (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select (select count(*) from information_schema.statistics) > 0",
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 			{
 				Query:    "select a.y from xy a join xy b on a.y = b.y limit 1",
-				Expected: []sql.Row{{"x"}},
+				Expected: []sql.UntypedSqlRow{{"x"}},
 			},
 			{
 				Query:    "select y from xy where y = 'x' limit 1",
-				Expected: []sql.Row{{"x"}},
+				Expected: []sql.UntypedSqlRow{{"x"}},
 			},
 		},
 	},
@@ -223,19 +223,19 @@ CREATE TABLE sourceTable_test (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO table1 (name, parentId) VALUES ('tbl1 row 1', NULL);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "INSERT INTO table1 (name, parentId) VALUES ('tbl1 row 2', 1);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "INSERT INTO table1 (name, parentId) VALUES ('tbl1 row 3', NULL);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
 			},
 			{
 				Query: "select * from table1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "tbl1 row 1", nil},
 					{2, "tbl1 row 2", 1},
 					{3, "tbl1 row 3", nil},
@@ -258,51 +258,51 @@ CREATE TABLE sourceTable_test (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from pk where x = '3'",
-				Expected: []sql.Row{{"3"}},
+				Expected: []sql.UntypedSqlRow{{"3"}},
 			},
 			{
 				Query:    "delete from pk where x = '3' ",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from pk",
-				Expected: []sql.Row{{"30"}, {"3#"}},
+				Expected: []sql.UntypedSqlRow{{"30"}, {"3#"}},
 			},
 			{
 				Query:    "select * from uniq where x = '3'",
-				Expected: []sql.Row{{1, "3"}},
+				Expected: []sql.UntypedSqlRow{{1, "3"}},
 			},
 			{
 				Query:    "delete from uniq where x = '3' ",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from uniq",
-				Expected: []sql.Row{{2, "30"}, {3, "3#"}},
+				Expected: []sql.UntypedSqlRow{{2, "30"}, {3, "3#"}},
 			},
 			{
 				Query:    "select * from noncov where x = '3'",
-				Expected: []sql.Row{{1, "3", 1}},
+				Expected: []sql.UntypedSqlRow{{1, "3", 1}},
 			},
 			{
 				Query:    "delete from noncov where x = '3' ",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from noncov",
-				Expected: []sql.Row{{2, "30", 2}, {3, "3#", 3}},
+				Expected: []sql.UntypedSqlRow{{2, "30", 2}, {3, "3#", 3}},
 			},
 			{
 				Query:    "select * from keyless where x = '3'",
-				Expected: []sql.Row{{1, "3"}},
+				Expected: []sql.UntypedSqlRow{{1, "3"}},
 			},
 			{
 				Query:    "delete from keyless where x = '3' ",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from keyless",
-				Expected: []sql.Row{{2, "30"}, {3, "3#"}},
+				Expected: []sql.UntypedSqlRow{{2, "30"}, {3, "3#"}},
 			},
 		},
 	},
@@ -315,7 +315,7 @@ CREATE TABLE sourceTable_test (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM mytable order by pk",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				Query:       "INSERT INTO mytable VALUES (1)",
@@ -344,7 +344,7 @@ CREATE TABLE sourceTable_test (
     JOIN (VALUES ROW(1, 10), ROW(2,20)) joined (id, value)
     ON joined.id = entity_test.id
 SET entity_test.value = joined.value;`,
-				Expected: []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 2}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{Info: plan.UpdateInfo{Matched: 2}}}},
 			},
 		},
 	},
@@ -358,19 +358,19 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, 999, 30}},
+				Expected: []sql.UntypedSqlRow{{1, 999, 30}},
 			},
 			{
 				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, 999, 30}},
+				Expected: []sql.UntypedSqlRow{{1, 999, 30}},
 			},
 		},
 	},
@@ -384,19 +384,19 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, 2, 999}},
+				Expected: []sql.UntypedSqlRow{{1, 2, 999}},
 			},
 			{
 				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, 2, 999}},
+				Expected: []sql.UntypedSqlRow{{1, 2, 999}},
 			},
 		},
 	},
@@ -410,25 +410,25 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30 where t.i = 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, 2, 999}},
+				Expected: []sql.UntypedSqlRow{{1, 2, 999}},
 			},
 			{
 				// TODO: should throw can't update error
 				Skip:     true,
 				Query:    "update t join (select i, j, k from t) as tt set t.k = 30 where t.i = 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1 offset 1;",
-				Expected: []sql.Row{{newUpdateResult(0, 0)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(0, 0)}},
 			},
 		},
 	},
@@ -458,27 +458,27 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE test_users JOIN (SELECT 1 FROM test_users) AS tu SET test_users.favorite_number = 42;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from test_users;",
-				Expected: []sql.Row{{1, "john", "doe", 0, 42}},
+				Expected: []sql.UntypedSqlRow{{1, "john", "doe", 0, 42}},
 			},
 			{
 				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.favorite_number = 420;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from test_users;",
-				Expected: []sql.Row{{1, "john", "doe", 0, 420}},
+				Expected: []sql.UntypedSqlRow{{1, "john", "doe", 0, 420}},
 			},
 			{
 				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.deleted = 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from test_users;",
-				Expected: []sql.Row{{1, "john", "", 1, 420}},
+				Expected: []sql.UntypedSqlRow{{1, "john", "", 1, 420}},
 			},
 		},
 	},
@@ -498,11 +498,11 @@ CREATE TABLE table2 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 		},
 	},
@@ -521,12 +521,12 @@ create table t (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:           "select * from t where to_ = 'L1' and from_ = 'L2'",
-				Expected:        []sql.Row{},
+				Expected:        []sql.UntypedSqlRow{},
 				ExpectedIndexes: []string{"to_"},
 			},
 			{
 				Query:           "select * from t where BIN_TO_UUID(id) = '0' and  to_ = 'L1' and from_ = 'L2'",
-				Expected:        []sql.Row{},
+				Expected:        []sql.UntypedSqlRow{},
 				ExpectedIndexes: []string{"to_"},
 			},
 		},
@@ -553,7 +553,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select count(*) from tab3 WHERE (80 < col0 AND (((col0 BETWEEN 87 AND 9 OR (((col0 IS NULL)))))) AND (71.70 <= col1 OR 94 <= col0 AND ((66 > col0) OR (85 = col0 AND ((42.15 >= col1))) OR 30 = col0)));",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 		},
 	},
@@ -568,7 +568,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from a",
-				Expected: []sql.Row{{0, .00005}, {1, .00005}},
+				Expected: []sql.UntypedSqlRow{{0, .00005}, {1, .00005}},
 			},
 		},
 	},
@@ -600,7 +600,7 @@ CREATE TABLE tab3 (
 						Type: types.Int64,
 					},
 				},
-				Expected: []sql.Row{{1, 2}, {3, 4}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {3, 4}},
 			},
 			{
 				Query: "select i, k from `left` union select i, k from `right`",
@@ -614,7 +614,7 @@ CREATE TABLE tab3 (
 						Type: types.LongText,
 					},
 				},
-				Expected: []sql.Row{{1, "a"}, {3, "b"}},
+				Expected: []sql.UntypedSqlRow{{1, "a"}, {3, "b"}},
 			},
 			{
 				Query: "select i, j, k from `left` union select i, j, k from `right`",
@@ -632,7 +632,7 @@ CREATE TABLE tab3 (
 						Type: types.LongText,
 					},
 				},
-				Expected: []sql.Row{{1, 2, "a"}, {3, 4, "b"}},
+				Expected: []sql.UntypedSqlRow{{1, 2, "a"}, {3, 4, "b"}},
 			},
 			{
 				Query:       "select i, k from `left` union select i, j, k from `right`",
@@ -646,7 +646,7 @@ CREATE TABLE tab3 (
 						Type: types.Int32,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -660,7 +660,7 @@ CREATE TABLE tab3 (
 						Type: types.Int32,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -674,7 +674,7 @@ CREATE TABLE tab3 (
 						Type: types.Int32,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -688,7 +688,7 @@ CREATE TABLE tab3 (
 						Type: types.Int32,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -702,7 +702,7 @@ CREATE TABLE tab3 (
 						Type: types.Int32,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -716,7 +716,7 @@ CREATE TABLE tab3 (
 						Type: types.Int32,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -731,7 +731,7 @@ CREATE TABLE tab3 (
 						Type: types.Int32,
 					},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -789,27 +789,27 @@ CREATE TABLE tab3 (
 			// Intersect tests
 			{
 				Query: "table a intersect table b order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{3, 4},
 				},
 			},
 			{
 				Query: "table a intersect table c order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3, 4},
 				},
 			},
 			{
 				Query: "table c intersect distinct table c order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 3},
 					{3, 4},
 				},
 			},
 			{
 				Query: "table c intersect all table c order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 3},
 					{1, 3},
 					{3, 4},
@@ -817,26 +817,26 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "table a intersect table b intersect table c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3, 4},
 				},
 			},
 			{
 				Query: "(table b order by m limit 1 offset 1) intersect (table c order by m limit 1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 3},
 				},
 			},
 			{
 				Query: "table x intersect table y order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{3},
 				},
 			},
 			{
 				Query: "table x intersect table y order by 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{3},
 				},
@@ -845,7 +845,7 @@ CREATE TABLE tab3 (
 				// Resulting type is string for some reason
 				Skip:  true,
 				Query: "table t1 intersect table t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{3},
 				},
@@ -854,65 +854,65 @@ CREATE TABLE tab3 (
 			// Except tests
 			{
 				Query: "table a except table b order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 3},
 				},
 			},
 			{
 				Query: "table a except table c order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{2, 3},
 				},
 			},
 			{
 				Query: "table b except table c order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 				},
 			},
 			{
 				Query: "table c except distinct table a order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 3},
 				},
 			},
 			{
 				Query: "table c except all table a order by m, n;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 3},
 					{1, 3},
 				},
 			},
 			{
 				Query: "(table a order by m limit 1 offset 1) except (table c order by m limit 1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 3},
 				},
 			},
 			{
 				Query: "table a except table b except table c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 3},
 				},
 			},
 			{
 				Query: "table x except table y order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query:    "table l except table r;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "table l except distinct table r;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "table l except all table r;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{1},
 				},
@@ -921,20 +921,20 @@ CREATE TABLE tab3 (
 			// Multiple set operation tests
 			{
 				Query: "table a except table b intersect table c order by m;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{2, 3},
 				},
 			},
 			{
 				Query: "table a intersect table b except table c order by m;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 				},
 			},
 			{
 				Query: "table a union table a intersect table b except table c order by m;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{2, 3},
 				},
@@ -943,20 +943,20 @@ CREATE TABLE tab3 (
 			// CTE tests
 			{
 				Query: "with cte as (table a union table a intersect table b except table c order by m) select * from cte",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{2, 3},
 				},
 			},
 			{
 				Query: "with recursive cte(x) as (select 1) select * from cte",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "with recursive cte (x,y) as (select 1, 1 intersect select 1, 1 union select x + 1, y + 2 from cte where x < 5) select * from cte;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{2, 3},
 					{3, 5},
@@ -978,7 +978,7 @@ CREATE TABLE tab3 (
 					"        FROM ladder JOIN rt WHERE ladder.foo = rt.foo\n" +
 					"    )\n" +
 					"SELECT * FROM ladder;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 					{1, nil},
 					{1, nil},
@@ -1027,7 +1027,7 @@ CREATE TABLE tab3 (
 						Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 					},
 				},
-				Expected: []sql.Row{{"a", "b", "c", "d", "e"}},
+				Expected: []sql.UntypedSqlRow{{"a", "b", "c", "d", "e"}},
 			},
 		},
 	},
@@ -1053,11 +1053,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `alter table t modify column c1 int unsigned`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"c1", "int unsigned", "YES", "", nil, ""},
 					{"c2", "varchar(200)", "YES", "", nil, ""},
 					{"c3", "enum('one','two')", "YES", "", nil, ""},
@@ -1065,26 +1065,26 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `alter table t drop column c1;`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"c2", "varchar(200)", "YES", "", nil, ""},
 					{"c3", "enum('one','two')", "YES", "", nil, ""},
 				},
 			},
 			{
 				Query:    "alter table t add column new3 int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `insert into t values ('two', 'two', -2);`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"c2", "varchar(200)", "YES", "", nil, ""},
 					{"c3", "enum('one','two')", "YES", "", nil, ""},
 					{"new3", "int", "YES", "", nil, ""},
@@ -1092,7 +1092,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
+				Expected: []sql.UntypedSqlRow{{"one", nil, nil}, {"two", "two", -2}},
 			},
 		},
 	},
@@ -1105,27 +1105,27 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from xy order by y asc limit 1",
-				Expected: []sql.Row{{1, 0}},
+				Expected: []sql.UntypedSqlRow{{1, 0}},
 			},
 			{
 				Query:    "select * from xy order by y asc limit 1 offset 1",
-				Expected: []sql.Row{{2, 0}},
+				Expected: []sql.UntypedSqlRow{{2, 0}},
 			},
 			{
 				Query:    "select * from xy order by y asc limit 1 offset 2",
-				Expected: []sql.Row{{3, 0}},
+				Expected: []sql.UntypedSqlRow{{3, 0}},
 			},
 			{
 				Query:    "select * from xy order by y asc limit 1 offset 3",
-				Expected: []sql.Row{{4, 0}},
+				Expected: []sql.UntypedSqlRow{{4, 0}},
 			},
 			{
 				Query:    "(select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)",
-				Expected: []sql.Row{{2, 0}, {3, 0}},
+				Expected: []sql.UntypedSqlRow{{2, 0}, {3, 0}},
 			},
 			{
 				Query:    "with recursive cte as ((select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)) select * from cte",
-				Expected: []sql.Row{{2, 0}, {3, 0}},
+				Expected: []sql.UntypedSqlRow{{2, 0}, {3, 0}},
 			},
 		},
 	},
@@ -1138,11 +1138,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "SELECT * FROM enumtest1;",
-				Expected: []sql.Row{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
+				Expected: []sql.UntypedSqlRow{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
 			},
 			{
 				// enum values must match EXACTLY for case-sensitive collations
@@ -1151,36 +1151,36 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
-				Expected: []sql.Row{{
+				Expected: []sql.UntypedSqlRow{{
 					"enumtest1",
 					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
 				Query: "SHOW CREATE TABLE enumtest2;",
-				Expected: []sql.Row{{
+				Expected: []sql.UntypedSqlRow{{
 					"enumtest2",
 					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "DESCRIBE enumtest1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"e", "enum('abc','XYZ')", "YES", "", nil, ""}},
 			},
 			{
 				Query: "DESCRIBE enumtest2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"e", "enum('x','X','y','Y')", "YES", "", nil, ""}},
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
+				Expected: []sql.UntypedSqlRow{{"enum", "enum('abc','XYZ')"}},
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('x','X','y','Y')"}},
+				Expected: []sql.UntypedSqlRow{{"enum", "enum('x','X','y','Y')"}},
 			},
 		},
 	},
@@ -1192,31 +1192,31 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
-				Expected: []sql.Row{{
+				Expected: []sql.UntypedSqlRow{{
 					"enumtest1",
 					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "DESCRIBE enumtest1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", nil, ""}},
 			},
 			{
 				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
+				Expected: []sql.UntypedSqlRow{{"enum", "enum('abc','XYZ')"}},
 			},
 			{
 				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			},
 		},
 	},
@@ -1233,7 +1233,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {4, 4}, {5, 5}},
 			},
 			{
 				Query:          "UPDATE test SET pk = pk + 1 ORDER BY pk;",
@@ -1241,7 +1241,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {4, 4}, {5, 5}},
 			},
 		},
 	},
@@ -1260,11 +1260,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {4, 4}, {5, 5}},
 			},
 			{
 				Query:    "SELECT * FROM test2;",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 			{
 				Query:       "REPLACE INTO test VALUES (1,7), (4,8), (5,9);",
@@ -1272,11 +1272,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {4, 4}, {5, 5}},
 			},
 			{
 				Query:    "SELECT * FROM test2;",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 		},
 	},
@@ -1288,7 +1288,7 @@ CREATE TABLE tab3 (
 			"delete from a where x in (1, 3)",
 		},
 		Query: "select x from a order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{5},
 		},
 	},
@@ -1301,7 +1301,7 @@ CREATE TABLE tab3 (
 			"INSERT INTO t1 VALUES(NULL,'NULL')",
 		},
 		Query: "SELECT count(DISTINCT x) FROM t1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 		},
 	},
@@ -1340,7 +1340,7 @@ CREATE TABLE tab3 (
 			"INSERT INTO tab4 SELECT * FROM tab0",
 		},
 		Query: "SELECT pk FROM tab2 WHERE 78 < col0 AND 19 < col3",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{7},
 		},
 	},
@@ -1357,7 +1357,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select ya from a join b on ya - 1= xb join c on xc = zb - 2",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 		},
 	},
@@ -1374,7 +1374,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select za from a join b on ya - 1 = xb join c on xa = xc",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 		},
 	},
@@ -1391,7 +1391,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select xa from a join b on xa = yb - 1 join c on yb - 1 = xc",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1410,7 +1410,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select xa from a join b on ya - 1 = xb join c on xb = xc join d on xc = xd",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1429,7 +1429,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select xa from a join b on ya = yb join c on yb = yc join d on yc - 1 = xd",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1448,7 +1448,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select xa from a left join b on ya = yb left join c on yb = yc left join d on yc - 1 = xd",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1467,7 +1467,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select xa from a join b on ya - 1 = xb join c on yc = za - 1 join d on yc - 1 = xd",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1486,7 +1486,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select xa from a join b on xa = xb join c on ya - 1 = xc join d on za - 2 = xd",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1506,7 +1506,7 @@ CREATE TABLE tab3 (
 	// 		{
 	// 			// gives an error in mysql, a needs an alias
 	// 			Query: "select xa from d join a on yd = xa join c on yd = xc join a on xa = yd",
-	// 			Expected: []sql.Row{{1}},
+	// 			Expected: []sql.UntypedSqlRow{{1}},
 	// 		},
 	// 	},
 	// },
@@ -1525,7 +1525,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select xa from d join a on yd - 1 = xa join c on zd - 2 = xc join b on xb = zd - 2",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1550,7 +1550,7 @@ CREATE TABLE tab3 (
 									join c on xc = za - 2
 									join d on xd = yb - 1
 									join e on xe = zb - 2 and ye = yc`,
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1563,27 +1563,27 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT IS_UUID(UUID())`,
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 			{
 				Query:    `SELECT IS_UUID(@uuid)`,
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid))`,
-				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+				Expected: []sql.UntypedSqlRow{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid, 1), 1)`,
-				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+				Expected: []sql.UntypedSqlRow{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
 			},
 			{
 				Query:    `SELECT UUID_TO_BIN(NULL)`,
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				Query:    `SELECT HEX(UUID_TO_BIN(@uuid))`,
-				Expected: []sql.Row{{"6CCD780CBABA102695645B8C656024DB"}},
+				Expected: []sql.UntypedSqlRow{{"6CCD780CBABA102695645B8C656024DB"}},
 			},
 			{
 				Query:       `SELECT UUID_TO_BIN(123)`,
@@ -1595,15 +1595,15 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(X'00112233445566778899aabbccddeeff')`,
-				Expected: []sql.Row{{"00112233-4455-6677-8899-aabbccddeeff"}},
+				Expected: []sql.UntypedSqlRow{{"00112233-4455-6677-8899-aabbccddeeff"}},
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID('0011223344556677')`,
-				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+				Expected: []sql.UntypedSqlRow{{"30303131-3232-3333-3434-353536363737"}},
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(@binuuid)`,
-				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+				Expected: []sql.UntypedSqlRow{{"30303131-3232-3333-3434-353536363737"}},
 			},
 		},
 	},
@@ -1626,24 +1626,24 @@ CREATE TABLE tab3 (
 				// SELECT INTO has an empty result schema
 				// https://github.com/dolthub/dolt/issues/6105
 				Query:           `SELECT 1 INTO @abc`,
-				Expected:        []sql.Row{{}},
+				Expected:        []sql.UntypedSqlRow{{}},
 				ExpectedColumns: nil,
 			},
 			{
 				Query:    `SELECT @abc`,
-				Expected: []sql.Row{{int8(1)}},
+				Expected: []sql.UntypedSqlRow{{int8(1)}},
 			},
 			{
 				Query:    `SELECT @z, @x, @y`,
-				Expected: []sql.Row{{88, 22, 44}},
+				Expected: []sql.UntypedSqlRow{{88, 22, 44}},
 			},
 			{
 				Query:    `SELECT @myVar, @mustSingleVar`,
-				Expected: []sql.Row{{3, "b"}},
+				Expected: []sql.UntypedSqlRow{{3, "b"}},
 			},
 			{
 				Query:    `SELECT @myId, @myText, @myUnion`,
-				Expected: []sql.Row{{2, "m", nil}},
+				Expected: []sql.UntypedSqlRow{{2, "m", nil}},
 			},
 			{
 				Query:       `SELECT id FROM tab1 ORDER BY id DESC INTO @myvar`,
@@ -1681,11 +1681,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT pk from test.x",
-				Expected: []sql.Row{{1}, {300}},
+				Expected: []sql.UntypedSqlRow{{1}, {300}},
 			},
 			{
 				Query:    "SELECT * from a",
-				Expected: []sql.Row{{1, 2, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 2, 3}},
 			},
 		},
 	},
@@ -1730,260 +1730,260 @@ CREATE TABLE tab3 (
 			// The initial value of last_insert_uuid() is an empty string
 			{
 				Query:    "select last_insert_uuid()",
-				Expected: []sql.Row{{""}},
+				Expected: []sql.UntypedSqlRow{{""}},
 			},
 
 			// invalid table – UUID default is not a primary key, so last_insert_uuid() doesn't get udpated
 			{
 				Query:    "insert into invalid values (1, DEFAULT);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select last_insert_uuid()",
-				Expected: []sql.Row{{""}},
+				Expected: []sql.UntypedSqlRow{{""}},
 			},
 			{
 				Query:    "insert into invalid values (2, UUID());",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select last_insert_uuid()",
-				Expected: []sql.Row{{""}},
+				Expected: []sql.UntypedSqlRow{{""}},
 			},
 
 			// varchar(36) test cases...
 			{
 				Query:    "insert into varchar36 values (DEFAULT, 1);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=1);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into varchar36 values (UUID(), 2), (UUID(), 3);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into varchar36 values ('notta-uuid', 4);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 
 			// char(36) test cases...
 			{
 				Query:    "insert into char36 values (DEFAULT, 1);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=1);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into char36 values (UUID(), 2), (UUID(), 3);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into char36 values ('notta-uuid', 4);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into char36 (i) values (5);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from char36 where i=5);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 
 			// varbinary(16) test cases...
 			{
 				Query:    "insert into varbinary16 values (DEFAULT, 1);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=1);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into varbinary16 values (UUID_to_bin(UUID()), 2), (UUID_to_bin(UUID()), 3);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into varbinary16 values ('notta-uuid', 4);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from varbinary16 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 
 			// binary(16) test cases...
 			{
 				Query:    "insert into binary16 values (DEFAULT, 1);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=1);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into binary16 values (UUID_to_bin(UUID()), 2), (UUID_to_bin(UUID()), 3);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into binary16 values ('notta-uuid', 4);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into binary16 (i) values (5);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk) from binary16 where i=5);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 
 			// binary(16) with UUID_to_bin swap test cases...
 			{
 				Query:    "insert into binary16swap values (DEFAULT, 1);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=1);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into binary16swap values (UUID_to_bin(UUID(), true), 2), (UUID_to_bin(UUID(), true), 3);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				// last_insert_uuid() reports the first UUID() generated in the last insert statement
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into binary16swap values ('notta-uuid', 4);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				// The previous insert didn't generate a UUID, so last_insert_uuid() doesn't get updated
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=2);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				Query:    "insert into binary16swap (i) values (5);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select bin_to_uuid(pk, true) from binary16swap where i=5);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 
 			// INSERT INTO ... SELECT ... Tests
 			{
 				// If we populate the UUID column (pk) with its implicit default, then it updates last_insert_uuid()
 				Query:    "insert into varchar36 (i) select 42 from dual;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 			{
 				// If all values come from another table, the auto_uuid value shouldn't be generated, so last_insert_uuid() doesn't change
 				Query:    "insert into varchar36 (pk, i) (select 'one', 101 from dual union all select 'two', 202);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select pk from varchar36 where i=42);",
-				Expected: []sql.Row{{true, true}},
+				Expected: []sql.UntypedSqlRow{{true, true}},
 			},
 
 			// Prepared statements
 			{
 				// Test with an insert statement that implicit uses the UUID column default
 				Query:    `prepare stmt1 from "insert into prepared (c1) values ('odd'), ('even')";`,
-				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{Info: plan.PrepareInfo{}}}},
 			},
 			{
 				Query:                         "execute stmt1;",
-				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
-				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+				Expected:                      []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.UntypedSqlRow{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=1), last_insert_id();",
-				Expected: []sql.Row{{true, true, uint64(1)}},
+				Expected: []sql.UntypedSqlRow{{true, true, uint64(1)}},
 			},
 			{
 				// Executing the prepared statement a second time should refresh last_insert_uuid()
 				Query:                         "execute stmt1;",
-				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
-				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+				Expected:                      []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.UntypedSqlRow{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=3), last_insert_id();",
-				Expected: []sql.Row{{true, true, uint64(3)}},
+				Expected: []sql.UntypedSqlRow{{true, true, uint64(3)}},
 			},
 
 			{
 				// Test with an insert statement that explicitly uses the UUID column default
 				Query:    `prepare stmt2 from "insert into prepared (uuid, c1) values (DEFAULT, 'more'), (DEFAULT, 'less')";`,
-				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{Info: plan.PrepareInfo{}}}},
 			},
 			{
 				Query:                         "execute stmt2;",
-				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
-				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+				Expected:                      []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 5}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.UntypedSqlRow{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=5), last_insert_id();",
-				Expected: []sql.Row{{true, true, uint64(5)}},
+				Expected: []sql.UntypedSqlRow{{true, true, uint64(5)}},
 			},
 			{
 				// Executing the prepared statement a second time should refresh last_insert_uuid()
 				Query:                         "execute stmt2;",
-				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 7}}},
-				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.Row{}
+				Expected:                      []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 7}}},
+				SkipResultCheckOnServerEngine: true, // Server engine returns []sql.UntypedSqlRow{}
 			},
 			{
 				Query:    "select is_uuid(last_insert_uuid()), last_insert_uuid() = (select uuid from prepared where ai=7), last_insert_id();",
-				Expected: []sql.Row{{true, true, uint64(7)}},
+				Expected: []sql.UntypedSqlRow{{true, true, uint64(7)}},
 			},
 		},
 	},
@@ -1996,45 +1996,45 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(0)}},
+				Expected: []sql.UntypedSqlRow{{uint64(0)}},
 			},
 			{
 				Query:    "insert into a (x,y) values (1,1)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(0)}},
+				Expected: []sql.UntypedSqlRow{{uint64(0)}},
 			},
 			{
 				Query:    "insert into a (y) values (1)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(2)}},
+				Expected: []sql.UntypedSqlRow{{uint64(2)}},
 			},
 			{
 				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
 			},
 			{
 				// last_insert_id() should return the insert id of the *first* value inserted in the last statement
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(3)}},
+				Expected: []sql.UntypedSqlRow{{uint64(3)}},
 			},
 			{
 				Query:    "insert into b (x) values (1), (2)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
 			},
 			{
 				// The above query doesn't have an auto increment column, so last_insert_id is unchanged
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(3)}},
+				Expected: []sql.UntypedSqlRow{{uint64(3)}},
 			},
 			{
 				Query: "insert into a (x, y) values (-100, 10)",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     3,
 				}}},
@@ -2042,11 +2042,11 @@ CREATE TABLE tab3 (
 			{
 				// last_insert_id() should not update for manually inserted values
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(3)}},
+				Expected: []sql.UntypedSqlRow{{uint64(3)}},
 			},
 			{
 				Query: "insert into a (x, y) values (100, 10)",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     3,
 				}}},
@@ -2054,7 +2054,7 @@ CREATE TABLE tab3 (
 			{
 				// last_insert_id() should not update for manually inserted values
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(3)}},
+				Expected: []sql.UntypedSqlRow{{uint64(3)}},
 			},
 		},
 	},
@@ -2066,31 +2066,31 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into a (y) values (1)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(1)}},
+				Expected: []sql.UntypedSqlRow{{uint64(1)}},
 			},
 			{
 				Query:    "insert into a (x, y) values (1, 1) on duplicate key update y = 2, x=last_insert_id(x)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
 				Query:    "select * from a order by x",
-				Expected: []sql.Row{{1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(1)}},
+				Expected: []sql.UntypedSqlRow{{uint64(1)}},
 			},
 			{
 				Query:    "insert into a (y) values (100)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
-				Expected: []sql.Row{{uint64(2)}},
+				Expected: []sql.UntypedSqlRow{{uint64(2)}},
 			},
 		},
 	},
@@ -2102,34 +2102,34 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into t(pk) values (default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(1)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 				},
 			},
 
 			{
 				Query:    "insert into t(pk) values (default), (default), (default), (default), (default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 5, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 5, InsertID: 2}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(2)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 0},
 					{3, 0},
@@ -2141,17 +2141,17 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t(pk) values (10), (default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 11}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 11}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(11)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 0},
 					{3, 0},
@@ -2165,17 +2165,17 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t(pk) values (20), (default), (default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 21}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 3, InsertID: 21}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(21)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 0},
 					{3, 0},
@@ -2192,17 +2192,17 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t(i) values (100);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 23}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 23}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(23)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 0},
 					{3, 0},
@@ -2220,17 +2220,17 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t(i, pk) values (200, default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 24}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 24}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(24)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 0},
 					{3, 0},
@@ -2249,17 +2249,17 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t(pk) values (null);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 25}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 25}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(25)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 0},
 					{3, 0},
@@ -2279,17 +2279,17 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t values ();",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 26}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 26}}},
 			},
 			{
 				Query: "select last_insert_id()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(26)},
 				},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 0},
 					{3, 0},
@@ -2318,31 +2318,31 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 			{
 				Query:    "replace into b values (1)",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{-1}},
+				Expected: []sql.UntypedSqlRow{{-1}},
 			},
 			{
 				Query:    "select count(*) from b",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{-1}},
+				Expected: []sql.UntypedSqlRow{{-1}},
 			},
 			{
 				Query: "update b set x = x + 10 where x <> 2",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 3,
 					Info: plan.UpdateInfo{
 						Matched: 3,
@@ -2352,35 +2352,35 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{-1}},
+				Expected: []sql.UntypedSqlRow{{-1}},
 			},
 			{
 				Query:    "delete from b where x <> 2",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{-1}},
+				Expected: []sql.UntypedSqlRow{{-1}},
 			},
 			{
 				Query:    "alter table b add column y int null",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				Query:    "select row_count()",
-				Expected: []sql.Row{{-1}},
+				Expected: []sql.UntypedSqlRow{{-1}},
 			},
 		},
 	},
@@ -2395,27 +2395,27 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT + 13 AS col0 FROM tab0 GROUP BY tab0.col0",
-				Expected: []sql.Row{{13}, {13}, {13}},
+				Expected: []sql.UntypedSqlRow{{13}, {13}, {13}},
 			},
 			{
 				Query:    "SELECT 82 col1 FROM tab0 AS cor0 GROUP BY cor0.col1",
-				Expected: []sql.Row{{82}, {82}},
+				Expected: []sql.UntypedSqlRow{{82}, {82}},
 			},
 			{
 				Query:    "SELECT - cor0.col2 * - col2 AS col1 FROM tab0 AS cor0 GROUP BY col2, cor0.col1",
-				Expected: []sql.Row{{1444}, {6241}, {576}},
+				Expected: []sql.UntypedSqlRow{{1444}, {6241}, {576}},
 			},
 			{
 				Query:    "SELECT ALL + 40 col1 FROM tab0 AS cor0 GROUP BY cor0.col1",
-				Expected: []sql.Row{{40}, {40}},
+				Expected: []sql.UntypedSqlRow{{40}, {40}},
 			},
 			{
 				Query:    "SELECT DISTINCT - cor0.col1 col1 FROM tab0 AS cor0 GROUP BY cor0.col1, cor0.col2",
-				Expected: []sql.Row{{-81}, {0}},
+				Expected: []sql.UntypedSqlRow{{-81}, {0}},
 			},
 			{
 				Query:    "SELECT DISTINCT ( cor0.col0 ) - col0 AS col2 FROM tab0 AS cor0 GROUP BY cor0.col2, cor0.col0, cor0.col0",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 		},
 	},
@@ -2428,95 +2428,95 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from b where x < 2",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "select * from b",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "select * from b order by x  limit 3",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "select * from b order by x limit 100",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "select sql_calc_found_rows * from b order by x limit 3",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 			{
 				Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "insert into b values (10), (11), (12), (13)",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 			{
 				Query:    "update b set x = x where x < 40",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 8}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 8}}}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{8}},
+				Expected: []sql.UntypedSqlRow{{8}},
 			},
 			{
 				Query:    "update b set x = x where x > 10",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 3}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 3}}}},
 			},
 			{
 				Query:    "select found_rows()",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 		},
 	},
@@ -2529,7 +2529,7 @@ CREATE TABLE tab3 (
 			"insert into ai (c0) select * from other order by other.pk;",
 		},
 		Query: "select * from ai;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1},
 			{2, 2},
 			{3, 3},
@@ -2551,7 +2551,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select pk, l.c0, l.c1 from l join r on l.c0 = r.c0 or l.c1 = r.c1 order by 1, 2, 3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0, 1},
 					{2, 1, 0},
 					{3, 0, 2},
@@ -2570,7 +2570,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select pk, l.c0, l.c1 from l join r on l.c0 = r.c0 or l.c1 = r.c1 or l.pk = r.third order by 1, 2, 3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0, 1},
 					{2, 1, 0},
 					{3, 0, 2},
@@ -2590,7 +2590,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select pk, l.c0, l.c1 from l join r on l.c0 = r.c0 or l.c1 < 4 and l.c1 = r.c1 or l.c1 >= 4 and l.c1 = r.c1 order by 1, 2, 3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0, 1},
 					{2, 1, 0},
 					{3, 0, 2},
@@ -2625,51 +2625,51 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT group_concat(pk ORDER BY pk) FROM x;`,
-				Expected: []sql.Row{{"1,2,3,4"}},
+				Expected: []sql.UntypedSqlRow{{"1,2,3,4"}},
 			},
 			{
 				Query:    `SELECT group_concat(DISTINCT pk ORDER BY pk) FROM x;`,
-				Expected: []sql.Row{{"1,2,3,4"}},
+				Expected: []sql.UntypedSqlRow{{"1,2,3,4"}},
 			},
 			{
 				Query:    `SELECT group_concat(DISTINCT pk ORDER BY pk SEPARATOR '-') FROM x;`,
-				Expected: []sql.Row{{"1-2-3-4"}},
+				Expected: []sql.UntypedSqlRow{{"1-2-3-4"}},
 			},
 			{
 				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t group by o_id order by o_id asc",
-				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
+				Expected: []sql.UntypedSqlRow{{"color,fabric"}, {"color,shape"}},
 			},
 			{
 				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
-				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
+				Expected: []sql.UntypedSqlRow{{"fabric;color"}, {"shape;color"}},
 			},
 			{
 				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute`) FROM t",
-				Expected: []sql.Row{{"color,fabric,shape"}},
+				Expected: []sql.UntypedSqlRow{{"color,fabric,shape"}},
 			},
 			{
 				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t",
-				Expected: []sql.Row{{"color,color,fabric,shape"}},
+				Expected: []sql.UntypedSqlRow{{"color,color,fabric,shape"}},
 			},
 			{
 				Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
-				Expected: []sql.Row{{"2,2,2,2,2"}},
+				Expected: []sql.UntypedSqlRow{{"2,2,2,2,2"}},
 			},
 			{
 				Query:    `SELECT group_concat(DISTINCT (SELECT 2)) FROM x;`,
-				Expected: []sql.Row{{"2"}},
+				Expected: []sql.UntypedSqlRow{{"2"}},
 			},
 			{
 				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` ASC) FROM t",
-				Expected: []sql.Row{{"color,fabric,shape"}},
+				Expected: []sql.UntypedSqlRow{{"color,fabric,shape"}},
 			},
 			{
 				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` DESC) FROM t",
-				Expected: []sql.Row{{"shape,fabric,color"}},
+				Expected: []sql.UntypedSqlRow{{"shape,fabric,color"}},
 			},
 			{
 				Query:    `SELECT group_concat(pk) FROM nulls`,
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
@@ -2681,19 +2681,19 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2 order by attribute",
-				Expected: []sql.Row{{"color,fabric"}},
+				Expected: []sql.UntypedSqlRow{{"color,fabric"}},
 			},
 			{
 				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
-				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
+				Expected: []sql.UntypedSqlRow{{"fabric;color"}, {"shape;color"}},
 			},
 			{
 				Query:    "SELECT group_concat(o_id order by o_id) FROM t WHERE `attribute`='color' order by o_id",
-				Expected: []sql.Row{{"2,3"}},
+				Expected: []sql.UntypedSqlRow{{"2,3"}},
 			},
 			{
 				Query:    "SELECT group_concat(attribute separator '') FROM t WHERE o_id=2 ORDER BY attribute",
-				Expected: []sql.Row{{"colorfabric"}},
+				Expected: []sql.UntypedSqlRow{{"colorfabric"}},
 			},
 		},
 	},
@@ -2706,7 +2706,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT pk, v1, CONVERT(CONVERT(v1 USING latin1) USING utf8mb4) AS round_trip FROM test WHERE v1 <> CONVERT(CONVERT(v1 USING latin1) USING utf8mb4);",
-				Expected: []sql.Row{{int64(1), "63273াম", "63273??"}, {int64(3), "8জ্রিয277", "8?????277"}},
+				Expected: []sql.UntypedSqlRow{{int64(1), "63273াম", "63273??"}, {int64(3), "8জ্রিয277", "8?????277"}},
 			},
 		},
 	},
@@ -2718,23 +2718,23 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 88}},
+				Expected: []sql.UntypedSqlRow{{1, 88}},
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT (CONVERT('42', SIGNED));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test (pk) VALUES (2);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 88}, {2, 42}},
+				Expected: []sql.UntypedSqlRow{{1, 88}, {2, 42}},
 			},
 			{
 				Query:       "ALTER TABLE test ALTER v2 SET DEFAULT 1;",
@@ -2742,7 +2742,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 DROP DEFAULT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (3);",
@@ -2754,11 +2754,11 @@ CREATE TABLE tab3 (
 			},
 			{ // Just confirms that the last INSERT didn't do anything
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, 88}, {2, 42}},
+				Expected: []sql.UntypedSqlRow{{1, 88}, {2, 42}},
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 DROP DEFAULT",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (2);",
@@ -2766,7 +2766,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 5000",
@@ -2774,7 +2774,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "DESCRIBE test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, ""},
 					{"v1", "bigint", "NO", "", "200", ""},
 				},
@@ -2801,75 +2801,75 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT - SUM( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
-				Expected: []sql.Row{{float64(-71)}},
+				Expected: []sql.UntypedSqlRow{{float64(-71)}},
 			},
 			{
 				Query:    "SELECT - SUM ( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
-				Expected: []sql.Row{{float64(-71)}},
+				Expected: []sql.UntypedSqlRow{{float64(-71)}},
 			},
 			{
 				Query:    "SELECT + MAX( DISTINCT ( - col0 ) ) FROM tab1 AS cor0",
-				Expected: []sql.Row{{-51}},
+				Expected: []sql.UntypedSqlRow{{-51}},
 			},
 			{
 				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
-				Expected: []sql.Row{{float64(-1455)}},
+				Expected: []sql.UntypedSqlRow{{float64(-1455)}},
 			},
 			{
 				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
-				Expected: []sql.Row{{14}, {5}, {47}},
+				Expected: []sql.UntypedSqlRow{{14}, {5}, {47}},
 			},
 			{
 				Query:    "SELECT SUM (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
-				Expected: []sql.Row{{float64(14)}, {float64(5)}, {float64(47)}},
+				Expected: []sql.UntypedSqlRow{{float64(14)}, {float64(5)}, {float64(47)}},
 			},
 			{
 				Query:    "SELECT pk, SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk ORDER BY pk",
-				Expected: []sql.Row{{int64(1), float64(3), int64(2)}, {int64(2), float64(2), int64(2)}},
+				Expected: []sql.UntypedSqlRow{{int64(1), float64(3), int64(2)}, {int64(2), float64(2), int64(2)}},
 			},
 			{
 				Query:    "SELECT pk, MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk ORDER BY pk",
-				Expected: []sql.Row{{int64(1), int64(1), int64(2)}, {int64(2), int64(2), int64(2)}},
+				Expected: []sql.UntypedSqlRow{{int64(1), int64(1), int64(2)}, {int64(2), int64(2), int64(2)}},
 			},
 			{
 				Query:    "SELECT SUM(DISTINCT pk * v1) from mytable",
-				Expected: []sql.Row{{float64(7)}},
+				Expected: []sql.UntypedSqlRow{{float64(7)}},
 			},
 			{
 				Query:    "SELECT SUM(DISTINCT POWER(v1, 2)) FROM mytable",
-				Expected: []sql.Row{{float64(5)}},
+				Expected: []sql.UntypedSqlRow{{float64(5)}},
 			},
 			{
 				Query:    "SELECT + + 97 FROM tab1 GROUP BY tab1.col1",
-				Expected: []sql.Row{{97}, {97}, {97}},
+				Expected: []sql.UntypedSqlRow{{97}, {97}, {97}},
 			},
 			{
 				Query:    "SELECT rand(10) FROM tab1 GROUP BY tab1.col1",
-				Expected: []sql.Row{{0.5660920659323543}, {0.5660920659323543}, {0.5660920659323543}},
+				Expected: []sql.UntypedSqlRow{{0.5660920659323543}, {0.5660920659323543}, {0.5660920659323543}},
 			},
 			{
 				Query:    "SELECT ALL - cor0.col0 * + cor0.col0 AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				Expected: []sql.Row{{-2601}, {-7225}, {-8281}},
+				Expected: []sql.UntypedSqlRow{{-2601}, {-7225}, {-8281}},
 			},
 			{
 				Query:    "SELECT cor0.col0 * cor0.col0 + cor0.col0 AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0 order by 1",
-				Expected: []sql.Row{{2652}, {7310}, {8372}},
+				Expected: []sql.UntypedSqlRow{{2652}, {7310}, {8372}},
 			},
 			{
 				Query:    "SELECT - floor(cor0.col0) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				Expected: []sql.Row{{-2601}, {-7225}, {-8281}},
+				Expected: []sql.UntypedSqlRow{{-2601}, {-7225}, {-8281}},
 			},
 			{
 				Query:    "SELECT col0 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				Expected: []sql.Row{{51}, {85}, {91}},
+				Expected: []sql.UntypedSqlRow{{51}, {85}, {91}},
 			},
 			{
 				Query:    "SELECT - cor0.col0 FROM tab1 AS cor0 GROUP BY cor0.col0",
-				Expected: []sql.Row{{-51}, {-85}, {-91}},
+				Expected: []sql.UntypedSqlRow{{-51}, {-85}, {-91}},
 			},
 			{
 				Query:    "SELECT col0 BETWEEN 2 and 4 from tab1 group by col0",
-				Expected: []sql.Row{{false}, {false}, {false}},
+				Expected: []sql.UntypedSqlRow{{false}, {false}, {false}},
 			},
 			{
 				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
@@ -2923,7 +2923,7 @@ CREATE TABLE tab3 (
                              dcim_rackgroup.level 
                            FROM dcim_rackgroup
 							order by 2 limit 1`,
-				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", nil, "", uint64(1), uint64(2), uint64(1), uint64(0)}},
+				Expected: []sql.UntypedSqlRow{{1, "5c107f979f434bf7a7820622f18a5211", types.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", nil, "", uint64(1), uint64(2), uint64(1), uint64(0)}},
 			},
 		},
 	},
@@ -2941,23 +2941,23 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT * FROM t2`,
-				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
+				Expected: []sql.UntypedSqlRow{{1, "1"}, {2, "2"}, {3, "3"}},
 			},
 			{
 				Query:    `SELECT * FROM t3`,
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query:    `SELECT * FROM t4`,
-				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
+				Expected: []sql.UntypedSqlRow{{1, "1"}, {2, "2"}, {3, "3"}},
 			},
 			{
 				Query:    `SELECT * FROM t5`,
-				Expected: []sql.Row{{1, "1"}},
+				Expected: []sql.UntypedSqlRow{{1, "1"}},
 			},
 			{
 				Query: `CREATE TABLE test SELECT * FROM t1`,
-				Expected: []sql.Row{sql.Row{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 3,
 					InsertID:     0,
 					Info:         nil,
@@ -2982,7 +2982,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1577966400), 1.0},
 					{int64(1578225600), 2.0},
 					{int64(1578398400), 3.0}},
@@ -3000,7 +3000,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT unix_timestamp(timestamp_col), unix_timestamp(datetime_col) from datetime_table",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"86400.000000", "57600.000000"},
 				},
 			},
@@ -3029,7 +3029,7 @@ CREATE TABLE tab3 (
 				//       https://bugs.mysql.com/bug.php?id=109020
 				Query: `SELECT UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time", avg(value) AS "value"
 				FROM test GROUP BY 1 ORDER BY UNIX_TIMESTAMP(test.time) DIV 60 * 60`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1625133600), 4.0},
 					{int64(1625220000), 3.0},
 					{int64(1625306400), 2.0},
@@ -3049,23 +3049,23 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+				Expected: []sql.UntypedSqlRow{{1, "b", "b"}, {2, "a", "a"}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+				Expected: []sql.UntypedSqlRow{{1, "c", "b"}, {2, "a", "a"}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+				Expected: []sql.UntypedSqlRow{{1, "c", "a,b"}, {2, "a", "a"}},
 			},
 		},
 	},
@@ -3080,7 +3080,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * from store WHERE EXISTS (SELECT price from items where price > 10 and store.item_id = items.item_id)",
-				Expected: []sql.Row{{0, 2}, {0, 3}, {1, 2}, {1, 4}},
+				Expected: []sql.UntypedSqlRow{{0, 2}, {0, 3}, {1, 2}, {1, 4}},
 			},
 		},
 	},
@@ -3097,7 +3097,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `update test2 inner join (select * from test3 order by val) as t3 on test2.pk = t3.k SET test2.val=t3.val`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{
 					Matched:  1,
 					Updated:  1,
 					Warnings: 0,
@@ -3105,13 +3105,13 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "SELECT val FROM test2 where pk = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
 					Matched:  8,
 					Updated:  6,
 					Warnings: 0,
@@ -3119,7 +3119,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "SELECT * FROM test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{10},
 					{20},
@@ -3128,7 +3128,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "SELECT * FROM test2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0},
 					{4, 2},
 					{8, 2},
@@ -3137,7 +3137,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `update test2 inner join (select * from test3 order by val) as t3 on false SET test2.val=t3.val`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{
 					Matched:  0,
 					Updated:  0,
 					Warnings: 0,
@@ -3154,19 +3154,19 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 4;",
-				Expected: []sql.Row{{1, 2, 3, 4}},
+				Expected: []sql.UntypedSqlRow{{1, 2, 3, 4}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
-				Expected: []sql.Row{{5, 6, 7, 8}},
+				Expected: []sql.UntypedSqlRow{{5, 6, 7, 8}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
-				Expected: []sql.Row{{4, 5, 6, 7}, {5, 6, 7, 8}},
+				Expected: []sql.UntypedSqlRow{{4, 5, 6, 7}, {5, 6, 7, 8}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
-				Expected: []sql.Row{{4, 5, 6, 7}},
+				Expected: []sql.UntypedSqlRow{{4, 5, 6, 7}},
 			},
 		},
 	},
@@ -3179,19 +3179,19 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
-				Expected: []sql.Row{{1, 2, 3, 4}},
+				Expected: []sql.UntypedSqlRow{{1, 2, 3, 4}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
-				Expected: []sql.Row{{2, 3, 4, 5}},
+				Expected: []sql.UntypedSqlRow{{2, 3, 4, 5}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
-				Expected: []sql.Row{{3, 4, 5, 6}},
+				Expected: []sql.UntypedSqlRow{{3, 4, 5, 6}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
-				Expected: []sql.Row{{4, 5, 6, 7}},
+				Expected: []sql.UntypedSqlRow{{4, 5, 6, 7}},
 			},
 		},
 	},
@@ -3205,11 +3205,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE FROM `GzaKtwgIya` WHERE `K7t5WY` = '58567047399981325523662211357420045483361289734772861386428.89028';",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM GzaKtwgIya",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -3223,39 +3223,39 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (11981.5923291839784651);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('11981.5923291839784651', DECIMAL)",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (119815923291839784651.11981592329183978465111981592329183978465144);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('119815923291839784651.1198159232918398', DECIMAL)",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (1.1981592329183978465111981592329183978465111981592329183978465144);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183978', DECIMAL)",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "INSERT INTO test VALUES (1.1981592329183978545111981592329183978465111981592329183978465144);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM test WHERE number = CONVERT('1.1981592329183979', DECIMAL)",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:       "INSERT INTO small_test VALUES (12.1);",
@@ -3274,7 +3274,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT stats.* FROM player_season_stat_totals stats LEFT JOIN team_seasons ON team_seasons.team_id = stats.team_id AND team_seasons.season_id = stats.season_id;",
-				Expected: []sql.Row{{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}},
 			},
 		},
 	},
@@ -3293,7 +3293,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` varchar(10) NOT NULL DEFAULT 'abc',\n" +
@@ -3305,7 +3305,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "show create table t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t2", "CREATE TABLE `t2` (\n" +
 						"  `c` int NOT NULL,\n" +
 						"  `d` varchar(10),\n" +
@@ -3317,7 +3317,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "show create table t3",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t3", "CREATE TABLE `t3` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` varchar(100) NOT NULL,\n" +
@@ -3328,7 +3328,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "show create table t4",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t4", "CREATE TABLE `t4` (\n" +
 						"  `a` int DEFAULT (floor(1)),\n" +
 						"  `b` int DEFAULT (coalesce(`a`,10))\n" +
@@ -3346,7 +3346,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int NOT NULL,\n" +
 						"  PRIMARY KEY (`i`),\n" +
@@ -3369,7 +3369,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into t values (1, 10) on duplicate key update b = 10",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 		},
 	},
@@ -3382,17 +3382,17 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT count(*) FROM a where x = 0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query:    "delete from a where x = 0",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM a where x = 0",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -3407,19 +3407,19 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "delete from a where y = 2",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "delete from a where y = 2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select * from a where y = 2",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from a where y = 5",
-				Expected: []sql.Row{{4, 5, 6}},
+				Expected: []sql.UntypedSqlRow{{4, 5, 6}},
 			},
 		},
 	},
@@ -3434,15 +3434,15 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT v1, v2, v3, hex(v4) FROM hex_nums1;",
-				Expected: []sql.Row{{2127583643, uint64(8528283758723641735), float64(271938758947012), "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+				Expected: []sql.UntypedSqlRow{{2127583643, uint64(8528283758723641735), float64(271938758947012), "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
 			},
 			{
 				Query:    "SELECT hex(v1), hex(v2), hex(v3), hex(v4) FROM hex_nums1;",
-				Expected: []sql.Row{{"7ED0599B", "765A8CE4CE74B187", "F753AD20B0C4", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+				Expected: []sql.UntypedSqlRow{{"7ED0599B", "765A8CE4CE74B187", "F753AD20B0C4", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
 			},
 			{
 				Query:    "SELECT hex(v1), hex(v2) FROM hex_nums2;",
-				Expected: []sql.Row{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+				Expected: []sql.UntypedSqlRow{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
 			},
 		},
 	},
@@ -3454,11 +3454,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "NO", "PRI", nil, ""},
@@ -3470,7 +3470,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "NO", "PRI", nil, ""},
@@ -3490,18 +3490,18 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"v1", "int", "YES", "", nil, ""}, // should not be dropped
 				},
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), ADD INDEX myidx (v2)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "YES", "MUL", nil, ""},
@@ -3513,7 +3513,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "YES", "MUL", nil, ""},
@@ -3525,7 +3525,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "YES", "MUL", nil, ""},
@@ -3537,7 +3537,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "YES", "MUL", nil, ""},
@@ -3545,11 +3545,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "YES", "MUL", nil, ""},
@@ -3558,15 +3558,15 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v5 int), RENAME INDEX myidx2 TO myidx3",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t DROP INDEX myidx, ADD INDEX v5idx (v5)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "YES", "", nil, ""},
@@ -3584,7 +3584,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table test add column j int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -3596,11 +3596,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table test alter column j set default ('[]');",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test", "CREATE TABLE `test` (\n  `i` int DEFAULT '999',\n  `j` json DEFAULT ('[]')\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -3614,30 +3614,30 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, ""},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
 			{
 				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test (v2) values (11)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 100}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 100}}},
 			},
 			{
 				Query:    "SELECT * from test where pk = 100",
-				Expected: []sql.Row{{100, 11}},
+				Expected: []sql.UntypedSqlRow{{100, 11}},
 			},
 			{
 				Query:       "ALTER TABLE test DROP COLUMN v2, ADD COLUMN v3 int NOT NULL after v2",
@@ -3645,7 +3645,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
@@ -3656,7 +3656,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
@@ -3667,18 +3667,18 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
 			{
 				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v2, add column (v5 int NOT NULL)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v3", "int", "NO", "", nil, ""},
 					{"v4", "int", "YES", "", nil, ""},
@@ -3687,11 +3687,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, "auto_increment"},
 					{"v3", "int", "NO", "", nil, ""},
 					{"mycol", "int", "NO", "", nil, ""},
@@ -3717,7 +3717,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int NOT NULL,\n" +
 						"  UNIQUE KEY `i` (`i`)\n" +
@@ -3726,34 +3726,34 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "describe t1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 				},
 			},
 			{
 				Query: "show columns from t1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 				},
 			},
 			{
 				Skip:  true, // supposed to be the first index defined, not in order of columns
 				Query: "describe t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "UNI", nil, ""},
 					{"j", "int", "NO", "PRI", nil, ""},
 				},
 			},
 			{
 				Query: "describe t3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "MUL", nil, ""},
 					{"j", "int", "YES", "", nil, ""},
 				},
 			},
 			{
 				Query: "describe t4;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "UNI", nil, ""},
 					{"j", "int", "NO", "PRI", nil, ""},
 				},
@@ -3763,21 +3763,21 @@ CREATE TABLE tab3 (
 				// https://github.com/dolthub/dolt/issues/2289
 				Skip:  true,
 				Query: "describe t5;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"j", "int", "NO", "PRI", nil, ""},
 				},
 			},
 			{
 				Query: "describe t6;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"j", "int", "NO", "MUL", nil, ""},
 				},
 			},
 			{
 				Query: "describe t7;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"i", "int", "YES", "UNI", nil, ""},
 					{"j", "int", "NO", "MUL", nil, ""},
@@ -3786,7 +3786,7 @@ CREATE TABLE tab3 (
 			{
 				Skip:  true, // for some reason MUL takes priority over UNI for i
 				Query: "describe t8;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"i", "int", "YES", "MUL", nil, ""},
 					{"j", "int", "YES", "UNI", nil, ""},
@@ -3804,7 +3804,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
 					{"uk2", "int", "YES", "", nil, ""},
@@ -3821,7 +3821,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
 					{"mk2", "int", "YES", "", nil, ""},
@@ -3841,7 +3841,7 @@ CREATE TABLE tab3 (
 			"insert into c values (0,1,0), (1,1,0), (2,2,1), (3,2,1)",
 		},
 		Query: "select a.* from a join b on a.x = b.x join c where c.x = a.x and b.x = 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1},
 			{1},
 			{1},
@@ -3896,7 +3896,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"val", "int", "YES", "", "((`pk` * 2))", "DEFAULT_GENERATED"},
 				},
@@ -3911,23 +3911,23 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER TABLE test CHANGE v1 v2 VARCHAR(255) CHARACTER SET utf8mb4 BINARY NOT NULL;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `pk` bigint NOT NULL,\n  `v2` varchar(255) COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "CREATE TABLE test2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4 BINARY);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE test2;",
-				Expected: []sql.Row{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_bin,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -3942,15 +3942,15 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT val FROM decimal_table;",
-				Expected: []sql.Row{{"-2.5633000000000384"}, {"2.5633000000000370"}, {"0.0000000000000004"}},
+				Expected: []sql.UntypedSqlRow{{"-2.5633000000000384"}, {"2.5633000000000370"}, {"0.0000000000000004"}},
 			},
 			{
 				Query:    "SELECT sum(val) FROM decimal_table;",
-				Expected: []sql.Row{{"-0.0000000000000010"}},
+				Expected: []sql.UntypedSqlRow{{"-0.0000000000000010"}},
 			},
 			{
 				Query:    "SELECT avg(val) FROM decimal_table;",
-				Expected: []sql.Row{{"-0.00000000000000033333"}},
+				Expected: []sql.UntypedSqlRow{{"-0.00000000000000033333"}},
 			},
 		},
 	},
@@ -3965,15 +3965,15 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
-				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+				Expected: []sql.UntypedSqlRow{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
 			},
 			{
 				Query:    "SELECT sum(id), sum(val1), sum(val2) FROM float_table ORDER BY id;",
-				Expected: []sql.Row{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
+				Expected: []sql.UntypedSqlRow{{float64(6), -9.322676295501879e-16, 10.000000238418579}},
 			},
 			{
 				Query:    "SELECT avg(id), avg(val1), avg(val2) FROM float_table ORDER BY id;",
-				Expected: []sql.Row{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
+				Expected: []sql.UntypedSqlRow{{float64(2), -3.107558765167293e-16, 3.333333412806193}},
 			},
 		},
 	},
@@ -3986,7 +3986,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select if(val1 < val2, 'YES', 'NO') from t order by id;",
-				Expected: []sql.Row{{"NO"}, {"YES"}},
+				Expected: []sql.UntypedSqlRow{{"NO"}, {"YES"}},
 			},
 		},
 	},
@@ -3999,11 +3999,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * from `dual`;",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 			{
 				Query:    "SELECT 3 from dual;",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query:       "SELECT * from dual;",
@@ -4021,31 +4021,31 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select val from numbers;",
-				Expected: []sql.Row{{1}, {2}, {3}, {2}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {2}, {4}},
 			},
 			{
 				Query:    "select val as a from numbers having a = val;",
-				Expected: []sql.Row{{1}, {2}, {3}, {2}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {2}, {4}},
 			},
 			{
 				Query:    "select val as a from numbers group by val having a = val;",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				Query:    "select val as a from numbers as t1 group by t1.val having a = t1.val;",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				Query:    "select t1.val as a from numbers as t1 group by 1 having a = t1.val;",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				Query:    "select t1.val as a from numbers as t1 having a = t1.val;",
-				Expected: []sql.Row{{1}, {2}, {3}, {2}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {2}, {4}},
 			},
 			{
 				Query:    "select count(*) from numbers having count(*) = 5;",
-				Expected: []sql.Row{{5}},
+				Expected: []sql.UntypedSqlRow{{5}},
 			},
 			{
 				// MySQL returns `Unknown column 'val' in 'having clause'` error for this query,
@@ -4056,7 +4056,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "select count(*) from numbers group by val having count(*) < val;",
-				Expected: []sql.Row{{1}, {1}},
+				Expected: []sql.UntypedSqlRow{{1}, {1}},
 			},
 		},
 	},
@@ -4069,39 +4069,39 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select i from t group by i having count(1) = 1 order by i asc",
-				Expected: []sql.Row{{2}, {4}},
+				Expected: []sql.UntypedSqlRow{{2}, {4}},
 			},
 			{
 				Query:    "select i from t group by i having count(1) != 1 order by i asc",
-				Expected: []sql.Row{{1}, {3}, {5}},
+				Expected: []sql.UntypedSqlRow{{1}, {3}, {5}},
 			},
 			{
 				Query:    "select * from t where i in (select i from t group by i having count(1) = 1) order by i, t asc;",
-				Expected: []sql.Row{{2, "b"}, {4, "d"}},
+				Expected: []sql.UntypedSqlRow{{2, "b"}, {4, "d"}},
 			},
 			{
 				Query:    "select * from t where i in (select i from t group by i having count(1) != 1) order by i, t asc;",
-				Expected: []sql.Row{{1, "a"}, {1, "a2"}, {3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+				Expected: []sql.UntypedSqlRow{{1, "a"}, {1, "a2"}, {3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
 			},
 			{
 				Query:    "select * from t where i in (select i from t where i = 2 group by i having count(1) = 1) order by i, t asc;",
-				Expected: []sql.Row{{2, "b"}},
+				Expected: []sql.UntypedSqlRow{{2, "b"}},
 			},
 			{
 				Query:    "select * from t where i in (select i from t where i = 3 group by i having count(1) != 1) order by i, t asc;",
-				Expected: []sql.Row{{3, "c"}, {3, "c2"}},
+				Expected: []sql.UntypedSqlRow{{3, "c"}, {3, "c2"}},
 			},
 			{
 				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1) order by i, t asc;",
-				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+				Expected: []sql.UntypedSqlRow{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
 			},
 			{
 				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1 order by i desc) order by i, t asc;",
-				Expected: []sql.Row{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
+				Expected: []sql.UntypedSqlRow{{3, "c"}, {3, "c2"}, {5, "e"}, {5, "e2"}},
 			},
 			{
 				Query:    "select * from t where i in (select i from t where i > 2 group by i having count(1) != 1) order by i desc, t asc;",
-				Expected: []sql.Row{{5, "e"}, {5, "e2"}, {3, "c"}, {3, "c2"}},
+				Expected: []sql.UntypedSqlRow{{5, "e"}, {5, "e2"}, {3, "c"}, {3, "c2"}},
 			},
 		},
 	},
@@ -4140,35 +4140,35 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select f/2 from floats;",
-				Expected: []sql.Row{{0.550000011920929}, {0.6000000238418579}, {0.6499999761581421}},
+				Expected: []sql.UntypedSqlRow{{0.550000011920929}, {0.6000000238418579}, {0.6499999761581421}},
 			},
 			{
 				Query:    "select 2/f from floats;",
-				Expected: []sql.Row{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
+				Expected: []sql.UntypedSqlRow{{1.8181817787737895}, {1.6666666004392863}, {1.5384615948919735}},
 			},
 			{
 				Query:    "select d/2 from decimals;",
-				Expected: []sql.Row{{"0.50000"}, {"1.00000"}, {"1.25000"}},
+				Expected: []sql.UntypedSqlRow{{"0.50000"}, {"1.00000"}, {"1.25000"}},
 			},
 			{
 				Query:    "select 2/d from decimals;",
-				Expected: []sql.Row{{"2.0000"}, {"1.0000"}, {"0.8000"}},
+				Expected: []sql.UntypedSqlRow{{"2.0000"}, {"1.0000"}, {"0.8000"}},
 			},
 			{
 				Query: "select f/d from floats, decimals;",
-				Expected: []sql.Row{{1.2999999523162842}, {1.2000000476837158}, {1.100000023841858},
+				Expected: []sql.UntypedSqlRow{{1.2999999523162842}, {1.2000000476837158}, {1.100000023841858},
 					{0.6499999761581421}, {0.6000000238418579}, {0.550000011920929},
 					{0.5199999809265137}, {0.48000001907348633}, {0.4400000095367432}},
 			},
 			{
 				Query: "select d/f from floats, decimals;",
-				Expected: []sql.Row{{0.7692307974459868}, {0.8333333002196431}, {0.9090908893868948},
+				Expected: []sql.UntypedSqlRow{{0.7692307974459868}, {0.8333333002196431}, {0.9090908893868948},
 					{1.5384615948919735}, {1.6666666004392863}, {1.8181817787737895},
 					{1.9230769936149668}, {2.083333250549108}, {2.272727223467237}},
 			},
 			{
 				Query:    `select f/'a' from floats;`,
-				Expected: []sql.Row{{nil}, {nil}, {nil}},
+				Expected: []sql.UntypedSqlRow{{nil}, {nil}, {nil}},
 			},
 		},
 	},
@@ -4181,15 +4181,15 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select c1 % 2, c2 % 2, c3 % 2 from a;",
-				Expected: []sql.Row{{"1", 1.111, "1.111"}, {"0", 0.11100000000000021, "0.111"}},
+				Expected: []sql.UntypedSqlRow{{"1", 1.111, "1.111"}, {"0", 0.11100000000000021, "0.111"}},
 			},
 			{
 				Query:    "select c1 % 0.5, c2 % 0.5, c3 % 0.5 from a;",
-				Expected: []sql.Row{{"0.0", 0.11099999999999999, "0.111"}, {"0.0", 0.11100000000000021, "0.111"}},
+				Expected: []sql.UntypedSqlRow{{"0.0", 0.11099999999999999, "0.111"}, {"0.0", 0.11100000000000021, "0.111"}},
 			},
 			{
 				Query:    "select 20 % c1, 20 % c2, 20 % c3 from a;",
-				Expected: []sql.Row{{"0", 0.002000000000000224, "0.002"}, {"0", 1.0009999999999981, "1.001"}},
+				Expected: []sql.UntypedSqlRow{{"0", 0.002000000000000224, "0.002"}, {"0", 1.0009999999999981, "1.001"}},
 			},
 		},
 	},
@@ -4202,7 +4202,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select a & 2.4, a | 2.4, a ^ 2.4 from num_types;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(0), uint64(3), uint64(3)},
 					{uint64(2), uint64(2), uint64(0)},
 					{uint64(2), uint64(3), uint64(1)},
@@ -4211,7 +4211,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select b & 2.4, b | 2.4, b ^ 2.4 from num_types;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(0), uint64(3), uint64(3)},
 					{uint64(0), uint64(3), uint64(3)},
 					{uint64(2), uint64(2), uint64(0)},
@@ -4220,7 +4220,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select c & 2.4, c | 2.4, c ^ 2.4 from num_types;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(0), uint64(3), uint64(3)},
 					{uint64(2), uint64(2), uint64(0)},
 					{uint64(0), uint64(6), uint64(6)},
@@ -4238,56 +4238,56 @@ CREATE TABLE tab3 (
 			// 1901 - 2155 are interpreted as 1901 - 2155
 			{
 				Query:    "INSERT INTO t VALUES (1, '1901'), (2, 1901);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (3, '2000'), (4, 2000);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (5, '2155'), (6, 2155);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			// 1 - 69 are interpreted as 2001 - 2069
 			{
 				Query:    "INSERT INTO t VALUES (7, '1'), (8, 1);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (9, '35'), (10, 35);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (11, '69'), (12, 69);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			// 70 - 99 are interpreted as 1970 - 1999
 			{
 				Query:    "INSERT INTO t VALUES (13, '70'), (14, 70);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (15, '85'), (16, 85);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (17, '99'), (18, 99);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			// '0', and '00' are interpreted as 2000
 			{
 				Query:    "INSERT INTO t VALUES (19, '0'), (20, '00');",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			// 0 is interpreted as 0000
 			{
 				Query:    "INSERT INTO t VALUES (21, 0)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			// Assert that returned values are correct.
 			{
 				Query: "SELECT * from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, int16(1901)},
 					{2, int16(1901)},
 					{3, int16(2000)},
@@ -4345,12 +4345,12 @@ CREATE TABLE tab3 (
 						'val11', 'val12', 'val13', 'val14', 'val15', 'val16', 'val17'
 					);
 				`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				SkipResultCheckOnServerEngine: true, // the datetime returned is not non-zero
 				Query:                         "SELECT * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						1,
 						0,
@@ -4383,7 +4383,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into t values (5.2443381514267e+18);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -4410,7 +4410,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select uv.u from uv join xy on binary xy.x = binary uv.u;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 					{2},
@@ -4427,11 +4427,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select (case e when 'a' then 42 end) from enums",
-				Expected: []sql.Row{{42}},
+				Expected: []sql.UntypedSqlRow{{42}},
 			},
 			{
 				Query:    "select (case 'a' when e then 42 end) from enums",
-				Expected: []sql.Row{{42}},
+				Expected: []sql.UntypedSqlRow{{42}},
 			},
 		},
 	},
@@ -4443,11 +4443,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO setenumtest VALUES (1, 1, 1), (2, 1, 1), (3, 3, 1), (4, 1, 3);",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 			},
 			{
 				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					Info: plan.UpdateInfo{
 						Matched:  1,
@@ -4458,7 +4458,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "SELECT * FROM setenumtest ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a", "a"},
 					{2, "b", "b"},
 					{3, "c", "a"},
@@ -4467,15 +4467,15 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "DELETE FROM setenumtest WHERE v1 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "DELETE FROM setenumtest WHERE v2 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "SELECT * FROM setenumtest ORDER BY pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a", "a"},
 					{2, "b", "b"},
 				},
@@ -4491,15 +4491,15 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(4)}, {float64(6)}, {float64(9)}, {float64(15)}},
+				Expected: []sql.UntypedSqlRow{{float64(1)}, {float64(3)}, {float64(4)}, {float64(6)}, {float64(9)}, {float64(15)}},
 			},
 			{
 				Query:    "SELECT SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(1)}, {float64(3)}, {float64(6)}, {float64(10)}, {float64(15)}, {float64(21)}},
+				Expected: []sql.UntypedSqlRow{{float64(1)}, {float64(3)}, {float64(6)}, {float64(10)}, {float64(15)}, {float64(21)}},
 			},
 			{
 				Query: "SELECT SUM(b) OVER (PARTITION BY a ORDER BY b), SUM(b) OVER (ORDER BY b) FROM t ORDER BY 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{float64(1), float64(1)},
 					{float64(3), float64(3)},
 					{float64(4), float64(10)},
@@ -4519,15 +4519,15 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT SUM(b) OVER (PARTITION BY a) FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(6)}, {float64(6)}, {float64(6)}, {float64(15)}, {float64(15)}, {float64(15)}},
+				Expected: []sql.UntypedSqlRow{{float64(6)}, {float64(6)}, {float64(6)}, {float64(15)}, {float64(15)}, {float64(15)}},
 			},
 			{
 				Query:    "SELECT SUM(b) OVER () FROM t ORDER BY 1;",
-				Expected: []sql.Row{{float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}},
+				Expected: []sql.UntypedSqlRow{{float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}, {float64(21)}},
 			},
 			{
 				Query: "SELECT SUM(b) OVER (PARTITION BY a), SUM(b) OVER () FROM t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{float64(6), float64(21)},
 					{float64(6), float64(21)},
 					{float64(6), float64(21)},
@@ -4546,7 +4546,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @testValue;",
-				Expected: []sql.Row{{"809826404100301269648758758005707100"}},
+				Expected: []sql.UntypedSqlRow{{"809826404100301269648758758005707100"}},
 			},
 		},
 	},
@@ -4559,11 +4559,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select d div 314990 from t order by d;",
-				Expected: []sql.Row{{0}, {0}, {70}},
+				Expected: []sql.UntypedSqlRow{{0}, {0}, {70}},
 			},
 			{
 				Query:    "select d / 314990 from t order by d;",
-				Expected: []sql.Row{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
+				Expected: []sql.UntypedSqlRow{{"-0.01584177275469"}, {"0.00000634940792"}, {"70.91202260389219"}},
 			},
 		},
 	},
@@ -4609,7 +4609,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select i, find_in_set('a', s) from set_tbl;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0},
 					{1, 1},
 					{2, 0},
@@ -4622,7 +4622,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select i, find_in_set('A', s) from collate_tbl;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0},
 					{1, 1},
 					{2, 0},
@@ -4635,7 +4635,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select i, find_in_set('a', s) from enum_tbl;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 1},
 					{1, 0},
 					{2, 0},
@@ -4651,13 +4651,13 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='c';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"coalesce(NULL,1)", "int"},
 				},
 			},
@@ -4671,7 +4671,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO a VALUES (1, 1)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "INSERT INTO a VALUES (1, 1)",
@@ -4688,23 +4688,23 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"t1"}, {"v1"}},
+				Expected: []sql.UntypedSqlRow{{"t1"}, {"v1"}},
 			},
 			{
 				Query:    "rename table v1 to view1",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"t1"}, {"view1"}},
+				Expected: []sql.UntypedSqlRow{{"t1"}, {"view1"}},
 			},
 			{
 				Query:    "rename table view1 to newViewName, t1 to newTableName",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"newTableName"}, {"newViewName"}},
+				Expected: []sql.UntypedSqlRow{{"newTableName"}, {"newViewName"}},
 			},
 		},
 	},
@@ -4717,7 +4717,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"t1"}, {"v1"}},
+				Expected: []sql.UntypedSqlRow{{"t1"}, {"v1"}},
 			},
 			{
 				Query:       "alter table v1 rename to view1",
@@ -4725,7 +4725,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"t1"}, {"v1"}},
+				Expected: []sql.UntypedSqlRow{{"t1"}, {"v1"}},
 			},
 		},
 	},
@@ -4739,12 +4739,12 @@ CREATE TABLE tab3 (
 				// To match MySQL's behavior, this comes from the operating system's timezone setting
 				// TODO: the "global" shouldn't be necessary here, but GMS goes to session without it
 				Query:    `select @@global.system_time_zone;`,
-				Expected: []sql.Row{{gmstime.SystemTimezoneOffset()}},
+				Expected: []sql.UntypedSqlRow{{gmstime.SystemTimezoneOffset()}},
 			},
 			{
 				// The default time_zone setting for MySQL is SYSTEM, which means timezone comes from @@system_time_zone
 				Query:    `select @@time_zone;`,
-				Expected: []sql.Row{{"SYSTEM"}},
+				Expected: []sql.UntypedSqlRow{{"SYSTEM"}},
 			},
 		},
 	},
@@ -4754,42 +4754,42 @@ CREATE TABLE tab3 (
 			{
 				// Smoke test that NOW() and UTC_TIMESTAMP() return non-null values with the SYSTEM time zone
 				Query:    `select @@time_zone, NOW() IS NOT NULL, UTC_TIMESTAMP() IS NOT NULL;`,
-				Expected: []sql.Row{{"SYSTEM", true, true}},
+				Expected: []sql.UntypedSqlRow{{"SYSTEM", true, true}},
 			},
 			{
 				// CURTIME() returns the same time as NOW() with the SYSTEM timezone
 				// TODO: TIME(NOW()) would be simpler test logic, but doesn't work correctly here.
 				Query:    `select @@time_zone, NOW() LIKE CONCAT('%', CURTIME(), '%');`,
-				Expected: []sql.Row{{"SYSTEM", true}},
+				Expected: []sql.UntypedSqlRow{{"SYSTEM", true}},
 			},
 			{
 				// Set the timezone set to UTC as an offset
 				Query:    `set @@time_zone='+00:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// When the session's time zone is set to UTC, NOW() and UTC_TIMESTAMP() should return the same value
 				Query:    `select @@time_zone, NOW(6) = UTC_TIMESTAMP();`,
-				Expected: []sql.Row{{"+00:00", true}},
+				Expected: []sql.UntypedSqlRow{{"+00:00", true}},
 			},
 			{
 				// CURTIME() returns the same time as NOW() with UTC's timezone offset
 				Query:    `select @@time_zone, NOW() LIKE CONCAT('%', CURTIME(), '%');`,
-				Expected: []sql.Row{{"+00:00", true}},
+				Expected: []sql.UntypedSqlRow{{"+00:00", true}},
 			},
 			{
 				Query:    `set @@time_zone='+02:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// When the session's time zone is set to +2:00, NOW() should report two hours ahead of UTC_TIMESTAMP()
 				Query:    `select @@time_zone, TIMESTAMPDIFF(MINUTE, NOW(6), UTC_TIMESTAMP());`,
-				Expected: []sql.Row{{"+02:00", -120}},
+				Expected: []sql.UntypedSqlRow{{"+02:00", -120}},
 			},
 			{
 				// CURTIME() returns the same time as NOW() with a +2:00 timezone offset
 				Query:    `select @@time_zone, NOW() LIKE CONCAT('%', CURTIME(), '%');`,
-				Expected: []sql.Row{{"+02:00", true}},
+				Expected: []sql.UntypedSqlRow{{"+02:00", true}},
 			},
 		},
 	},
@@ -4805,13 +4805,13 @@ CREATE TABLE tab3 (
 				// When reading back the datetime and timestamp values in the same time zone we entered them,
 				// we should get the exact same results back.
 				Query: `select * from timezonetest;`,
-				Expected: []sql.Row{{1,
+				Expected: []sql.UntypedSqlRow{{1,
 					time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
 					time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC)}},
 			},
 			{
 				Query:    `set @@time_zone='-08:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
@@ -4819,24 +4819,24 @@ CREATE TABLE tab3 (
 				// After changing the session's time zone, we should get back a different result for the timestamp
 				// column, but the same result for the datetime column.
 				Query: `select * from timezonetest;`,
-				Expected: []sql.Row{{1,
+				Expected: []sql.UntypedSqlRow{{1,
 					time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
 					time.Date(2020, time.February, 14, 4, 0, 0, 0, time.UTC)}},
 			},
 			{
 				Query:    `set @@time_zone='+5:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// Test with explicit timezone in datetime literal
 				Query:    `insert into timezonetest values(3, '2020-02-16 12:00:00 +0800 CST', '2020-02-16 12:00:00 +0800 CST');`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
 				Skip:  true,
 				Query: `select * from timezonetest;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
 						time.Date(2020, time.February, 14, 17, 0, 0, 0, time.UTC)},
 					{3, time.Date(2020, time.February, 16, 9, 0, 0, 0, time.UTC),
@@ -4844,13 +4844,13 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='+0:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
 				Skip:  true,
 				Query: `select * from timezonetest;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC),
 						time.Date(2020, time.February, 14, 12, 0, 0, 0, time.UTC)},
 					{3, time.Date(2020, time.February, 16, 9, 0, 0, 0, time.UTC),
@@ -4872,7 +4872,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT pk FROM tab2 WHERE ((((((col0 IN (SELECT col3 FROM tab2 WHERE ((col1 = 672.71)) AND col4 IN (SELECT col1 FROM tab2 WHERE ((col4 > 169.88 OR col0 > 939 AND ((col3 > 578))))) AND col0 >= 377) AND col4 >= 817.87 AND (col4 > 597.59)) OR col4 >= 434.59 AND ((col4 < 158.43)))))) AND col0 < 303) OR ((col0 > 549)) AND (col4 BETWEEN 816.92 AND 983.96) OR (col3 BETWEEN 421 AND 96);",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -4885,11 +4885,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t set i = 0 where false",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 0}}}},
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -4906,11 +4906,11 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "create index idx_one on TABLE_ONE (vAL1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table TABLE_one;",
-				Expected: []sql.Row{{"table_One",
+				Expected: []sql.UntypedSqlRow{{"table_One",
 					"CREATE TABLE `table_One` (\n" +
 						"  `Id` int NOT NULL,\n" +
 						"  `Val1` int,\n" +
@@ -4920,18 +4920,18 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "show index from TABLE_one;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"table_One", 0, "PRIMARY", 1, "Id", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 					{"table_One", 1, "idx_one", 1, "Val1", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 				},
 			},
 			{
 				Query:    "create index idx_one on TABLEtwo (VAL2, VAL3);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table TABLETWO;",
-				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+				Expected: []sql.UntypedSqlRow{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
 					"  `iD` int NOT NULL,\n" +
 					"  `VAL2` int,\n" +
 					"  `vAL3` int,\n" +
@@ -4941,7 +4941,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "show index from tABLEtwo;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"TableTwo", 0, "PRIMARY", 1, "iD", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 					{"TableTwo", 1, "idx_one", 1, "VAL2", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 					{"TableTwo", 1, "idx_one", 2, "vAL3", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
@@ -4949,15 +4949,15 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "drop index IDX_ONE on TABLE_one;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "drop index IDX_ONE on TABLEtwo;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table TABLE_one;",
-				Expected: []sql.Row{{"table_One",
+				Expected: []sql.UntypedSqlRow{{"table_One",
 					"CREATE TABLE `table_One` (\n" +
 						"  `Id` int NOT NULL,\n" +
 						"  `Val1` int,\n" +
@@ -4966,7 +4966,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "show create table TABLETWO;",
-				Expected: []sql.Row{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
+				Expected: []sql.UntypedSqlRow{{"TableTwo", "CREATE TABLE `TableTwo` (\n" +
 					"  `iD` int NOT NULL,\n" +
 					"  `VAL2` int,\n" +
 					"  `vAL3` int,\n" +
@@ -5000,31 +5000,31 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET time_zone = '+07:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{1695600177}},
+				Expected: []sql.UntypedSqlRow{{1695600177}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP(CONVERT_TZ('2023-09-25 07:02:57', '+00:00', @@session.time_zone));",
-				Expected: []sql.Row{{"1695625377.000000"}},
+				Expected: []sql.UntypedSqlRow{{"1695625377.000000"}},
 			},
 			{
 				Query:    "SET time_zone = '+00:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{1695625377}},
+				Expected: []sql.UntypedSqlRow{{1695625377}},
 			},
 			{
 				Query:    "SET time_zone = '-06:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
-				Expected: []sql.Row{{1695646977}},
+				Expected: []sql.UntypedSqlRow{{1695646977}},
 			},
 		},
 	},
@@ -5053,15 +5053,15 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "RENAME TABLE d TO a;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT * FROM b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "ALTER TABLE a RENAME COLUMN col1 TO newcol;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// TODO: View definition should have 'SELECT *' be expanded to each column of the referenced table
@@ -5094,93 +5094,93 @@ CREATE TABLE tab3 (
 			{
 				// surprisingly, this works
 				Query: "select db1.t1.i from db1.t1 where db1.``.i > 0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select db1.t1.i from db1.t1 where db1.t1.i > 0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select db1.t1.i from db1.t1 order by db1.t1.i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select db1.t1.i from db1.t1 group by db1.t1.i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select db1.t1.i from db1.t1 having db1.t1.i > 0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select (select db1.t1.i from db1.t1 order by db1.t1.i)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select i from (select db1.t1.i from db1.t1 order by db1.t1.i) as t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "with cte as (select db1.t1.i from db1.t1 order by db1.t1.i) select * from cte",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select i, j from db1.t1 inner join db2.t2 on 20 * i = j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 20},
 				},
 			},
 			{
 				Query: "select db1.t1.i, db2.t2.j from db1.t1 inner join db2.t2 on 20 * db1.t1.i = db2.t2.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 20},
 				},
 			},
 			{
 				Query: "select i, j from db1.t1 join db2.t2 order by i, j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 20},
 				},
 			},
 			{
 				Query: "select i, j from db1.t1 join db2.t2 group by i order by j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 20},
 				},
 			},
 			{
 				Query: "select db1.t1.i, db2.t2.j from db1.t1 join db2.t2 group by db1.t1.i order by db2.t2.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 20},
 				},
 			},
 			{
 				Skip:  true, // incorrectly throws Not unique table/alias: t1
 				Query: "select db1.t1.i, db2.t1.i from db1.t1 join db2.t1 order by db1.t1, db2.t1.i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10},
 				},
 			},
 			{
 				// Aliasing solves it
 				Query: "select a.i, b.i from db1.t1 a join db2.t1 b order by a.i, b.i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10},
 				},
 			},
@@ -5195,7 +5195,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t order by `100`",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 1},
 					{1, 2},
 				},
@@ -5206,7 +5206,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select i as `200`, `100` from t order by `200`",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{2, 1},
 				},
@@ -5221,7 +5221,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t order by -999",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{2, 1},
 				},
@@ -5260,7 +5260,7 @@ CREATE TABLE tab3 (
                       t2
                     on
                       t1.id = t2.id and t1.a = t2.b;`,
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -5286,7 +5286,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT pk FROM tab2 WHERE col4 IS NULL OR col0 > 560 AND (col3 < 848) OR (col3 > 883) OR (((col4 >= 539.78 AND col3 <= 953))) OR ((col3 IN (258)) OR (col3 IN (583,234,372)) AND col4 >= 488.43)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{63},
 				},
 			},
@@ -5302,7 +5302,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t where (((v1>25 and v2 between 23 and 54) or (v1<>40 and v3>90)) or (v1<>7 and v4<=78));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 26, 24, 91, 0},
 				},
 			},
@@ -5318,7 +5318,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select pk, col0 from t where (col0 in (73,69)) or col0 in (4,12,3,17,70,20) or (col0 in (39) or (col1 < 69.67));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 22},
 				},
 			},
@@ -5335,52 +5335,52 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update t set i = default where i = 100;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
 			{
 				Query: "select * from t order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10, "a"},
 					{200, "b"},
 				},
 			},
 			{
 				Query: "update t set j = default where i = 200;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
 			{
 				Query: "select * from t order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10, "a"},
 					{200, "abcdef"},
 				},
 			},
 			{
 				Query: "update t set i = default, j = default;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
 				},
 			},
 			{
 				Query: "select * from t order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10, "abcdef"},
 					{10, "abcdef"},
 				},
 			},
 			{
 				Query: "update t2 set i = default",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}},
 				},
 			},
 			{
 				Query: "select * from t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 					{nil},
 					{nil},
@@ -5397,74 +5397,74 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t0 where i > 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > 0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > 0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query:    "select * from t0 where i > 1.0 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t0 where i > 1.1 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			{
 				Query: "select * from t0 where i > -0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > -0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > -0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > -0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > -1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > -1.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5473,71 +5473,71 @@ CREATE TABLE tab3 (
 
 			{
 				Query: "select * from t0 where i >= 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= 0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= 0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= 1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query:    "select * from t0 where i >= 1.1 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			{
 				Query: "select * from t0 where i >= -0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= -0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= -0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= -0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i >= -1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5545,7 +5545,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i >= -1.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5554,41 +5554,41 @@ CREATE TABLE tab3 (
 
 			{
 				Query: "select * from t0 where i < 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query: "select * from t0 where i < 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i < 0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i < 0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i < 1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i < 1.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5597,68 +5597,68 @@ CREATE TABLE tab3 (
 
 			{
 				Query: "select * from t0 where i < -0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query: "select * from t0 where i < -0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query: "select * from t0 where i < -0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query: "select * from t0 where i < -0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query:    "select * from t0 where i < -1.0 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t0 where i < -1.1 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			{
 				Query: "select * from t0 where i <= 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= 0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= 0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= 1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5666,7 +5666,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i <= 1.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5675,94 +5675,94 @@ CREATE TABLE tab3 (
 
 			{
 				Query: "select * from t0 where i <= -0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= -0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= -0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= -0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= -1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 			{
 				Query:    "select * from t0 where i <= -1.1 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			{
 				Query: "select * from t0 where i = 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query:    "select * from t0 where i = 0.1 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t0 where i = 0.5 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t0 where i = 0.9 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			{
 				Query: "select * from t0 where i = -0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query:    "select * from t0 where i = -0.1 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t0 where i = -0.5 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t0 where i = -0.9 order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "select * from t0 where i = -1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 				},
 			},
 
 			{
 				Query: "select * from t0 where i != 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i != 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5770,7 +5770,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i != 0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5778,7 +5778,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i != 0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5787,14 +5787,14 @@ CREATE TABLE tab3 (
 
 			{
 				Query: "select * from t0 where i != -0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i != -0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5802,7 +5802,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i != -0.5 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5810,7 +5810,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i != -0.9 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5818,7 +5818,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i != -1.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
@@ -5826,13 +5826,13 @@ CREATE TABLE tab3 (
 
 			{
 				Query: "select * from t0 where i <= 0.0 and i >= 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= 0.1 or i >= 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5840,13 +5840,13 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select * from t0 where i > 0.1 and i >= 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i > 0.1 or i >= 0.1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -5862,14 +5862,14 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t0 where i >= 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 				},
 			},
 			{
 				Query: "select * from t0 where i <= 0.0 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 				},
@@ -5877,7 +5877,7 @@ CREATE TABLE tab3 (
 			{
 				// cot(-939932070) = -1.1919623754564008
 				Query: "SELECT * from t0 where (cot(-939932070) < i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1},
 					{0},
 					{1},
@@ -5894,28 +5894,28 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from t where (d in (null, 1));",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t where (f in (null, 1));",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				// select count to avoid floating point comparison
 				Query: "select count(*) from t where (d in (null, 0.8));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				// This actually matches MySQL behavior
 				Query:    "select * from t where (f in (null, 0.8));",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				// select count to avoid floating point comparison
 				Query: "select count(*) from t where (f in (null, cast(0.8 as float)));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -5933,25 +5933,25 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t where (b in (-''));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select * from t where (b in (false/'1'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select * from t_idx where (b in (-''));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select * from t_idx where (b in (false/'1'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
@@ -5969,25 +5969,25 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t where (v in (-''));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "select * from t where (v in (false/'1'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "select * from t_idx where (v in (-''));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
 			{
 				Query: "select * from t_idx where (v in (false/'1'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 				},
 			},
@@ -6006,7 +6006,7 @@ CREATE TABLE tab3 (
 			{
 				Skip:  true,
 				Query: "select * from t where (v in (0.0, 123));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 					{"0.0"},
 					{"123"},
@@ -6016,7 +6016,7 @@ CREATE TABLE tab3 (
 			{
 				Skip:  true,
 				Query: "select * from t_idx where (v in (0.0, 123));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"0"},
 					{"0.0"},
 					{"123"},
@@ -6036,13 +6036,13 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select a.i from (select 'test' as name) sq join a on sq.name = a.name join b on b.i between a.start and a.end;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from (select 'test' as name, 1 as x, 2 as y, 3 as z) sq join a on sq.name = a.name join b on b.i between a.start and a.end;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test", 1, 2, 3, 1, 603000, 605001, "test", 605000},
 				},
 			},
@@ -6059,7 +6059,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update child set i = 1 where i = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
 				},
 			},
@@ -6076,14 +6076,14 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON true;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{1, 1},
 				},
 			},
 			{
 				Query: "SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE 1 UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (NOT 1) UNION ALL SELECT t0.c0, t1.c1 FROM t0 LEFT  JOIN t1 ON ('a' NOT BETWEEN false AND false) WHERE (1 IS NULL);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 				},
 			},
@@ -6103,7 +6103,7 @@ CREATE TABLE tab3 (
 					{Name: "dEF", Type: types.Int32},
 				},
 				Query: "select * from t ",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 				},
 			},
@@ -6113,7 +6113,7 @@ CREATE TABLE tab3 (
 					{Name: "dEF", Type: types.Int32},
 				},
 				Query: "select * from (select * from t) sqa",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 				},
 			},
@@ -6131,19 +6131,19 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t1, t0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1", 1},
 				},
 			},
 			{
 				Query: "SELECT (t1.c1 = t0.c0) FROM t1, t0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{true},
 				},
 			},
 			{
 				Query: "SELECT * FROM t1, t0 WHERE t1.c1 = t0.c0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1", 1},
 				},
 			},
@@ -6161,19 +6161,19 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t1, t0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1", 1},
 				},
 			},
 			{
 				Query: "SELECT (t1.c1 = t0.c0) FROM t1, t0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{true},
 				},
 			},
 			{
 				Query: "SELECT * FROM t1, t0 WHERE t1.c1 = t0.c0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1", 1},
 				},
 			},
@@ -6218,7 +6218,7 @@ CREATE TABLE tab3 (
 									jc.archived = jc.id, jc.archived_at = now()
 						where jp.id > 0 and jp.name != "never"
 						limit 100`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
 			},
 			// do without limit to use `plan.Sort` instead of `plan.TopN`
 			{
@@ -6227,7 +6227,7 @@ CREATE TABLE tab3 (
 								set jp.archived = 0, jp.archived_at = null, 
 									jc.archived = 0, jc.archived_at = null
 						where jp.id > 0 and jp.name != "never"`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 8, Info: plan.UpdateInfo{Matched: 8, Updated: 8}}}},
 			},
 		},
 	},
@@ -6240,13 +6240,13 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select count(distinct i, j) from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: "select count(distinct cast(i as decimal), cast(j as decimal)) from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -6266,21 +6266,21 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, "a"},
 					{1, "1"},
 				},
 			},
 			{
 				Query: "INSERT INTO t0(c0) VALUES ('2abc');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Skip:  true,
 				Query: "SELECT /*+ LOOKUP_JOIN(t0,t1) JOIN_ORDER(t0,t1) */ * FROM t1 INNER  JOIN t0 ON ((t0.c0)=(t1.c0));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, "a"},
 					{1, "1"},
 					{2, "2abc"},
@@ -6299,7 +6299,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT - col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING NOT + + col2 <= - col0;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-87},
 					{-79},
 					{-58},
@@ -6307,7 +6307,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `SELECT -col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING NOT col2 <= - col0;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-87},
 					{-79},
 					{-58},
@@ -6315,7 +6315,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `SELECT -col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING col2 > -col0;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-87},
 					{-79},
 					{-58},
@@ -6323,7 +6323,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `SELECT 500 * col2 AS col0 FROM tab2 GROUP BY col0, col2 HAVING col2 > -col0;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{43500},
 					{39500},
 					{29000},
@@ -6332,7 +6332,7 @@ CREATE TABLE tab3 (
 
 			{
 				Query: `select col2-100 as col0 from tab2 group by col0 having col0 > 0;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-13},
 					{-21},
 					{-42},
@@ -6340,11 +6340,11 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `select col2-100 as col0 from tab2 group by 1 having col0 > 0;`,
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: `select col0, count(col0) as c from tab2 group by col0 having c > 0;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{15, 1},
 					{91, 1},
 					{92, 1},
@@ -6352,7 +6352,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `SELECT col0 as a FROM tab2 GROUP BY a HAVING col0 = a;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{15},
 					{91},
 					{92},
@@ -6360,7 +6360,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `SELECT col0 as a FROM tab2 GROUP BY col0 HAVING col0 = a;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{15},
 					{91},
 					{92},
@@ -6368,7 +6368,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `SELECT col0 as a FROM tab2 GROUP BY col0, a HAVING col0 = a;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{15},
 					{91},
 					{92},
@@ -6376,7 +6376,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `SELECT col0 as a FROM tab2 HAVING col0 = a;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{15},
 					{91},
 					{92},
@@ -6384,7 +6384,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `select col0, (select col1 having col0 > 0) as asdf from tab2 where col0 < 1000;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{15, 61},
 					{91, 59},
 					{92, 41},
@@ -6392,7 +6392,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: `select col0, sum(col1 * col2) as val from tab2 group by col0 having sum(col1 * col2) > 0;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{15, 5307.0},
 					{91, 4661.0},
 					{92, 2378.0},
@@ -6425,23 +6425,23 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT col2 IN ( 98 + col0 / 99 ) from tab0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{false},
 				},
 			},
 			{
 				Query: "SELECT col2 IN ( 98 + 97 / 99 ) from tab0;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{false},
 				},
 			},
 			{
 				Query:    "SELECT * FROM tab0 WHERE col2 IN ( 98 + 97 / 99 );",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT ALL * FROM tab0 AS cor0 WHERE col2 IN ( 39 + + 89, col0 + + col1 + + ( - ( - col0 ) ) / col2, + ( col0 ) + - 99, + col1, + col2 * - + col2 * - 12 + col1 + - 66 );",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -6460,7 +6460,7 @@ WHERE
     b1 in (213, 55,  992, 922, 619, 972, 654, 130,  88, 141, 679, 761) OR
     (a1=145 AND b1=818);
 `,
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -6538,7 +6538,7 @@ where
      b6 = a8
 ;
 `,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 				},
 			},
@@ -6553,7 +6553,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int DEFAULT (convert(NOW(), signed))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -6561,7 +6561,7 @@ where
 			},
 			{
 				Query: "show create table t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t2", "CREATE TABLE `t2` (\n" +
 						"  `i` int DEFAULT (convert(NOW(6), signed))\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -6580,37 +6580,37 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select cast(b as char) from t where b < cast('def' as binary(3));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "select cast(b as char) from t where b = cast('def' as binary(3));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 				},
 			},
 			{
 				Query: "select cast(b as char) from t where b > cast('def' as binary(3));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: "select cast(b as char(3)) from tt where b < cast('def' as binary(10));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "select cast(b as char(3)) from tt where b = cast('def' as binary(10));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 				},
 			},
 			{
 				Query: "select cast(b as char(3)) from tt where b > cast('def' as binary(10));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
@@ -6625,32 +6625,32 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from vt where v = 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 				},
 			},
 			{
 				Query: "select * from vt where v < 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "select * from vt where v > 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: "select * from vt where v <= 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
 			},
 			{
 				Query: "select * from vt where v >= 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 					{"ghi"},
 				},
@@ -6658,31 +6658,31 @@ where
 
 			{
 				Query:    "select * from vt where v = 'defdef';",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "select * from vt where v < 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
 			},
 			{
 				Query: "select * from vt where v > 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: "select * from vt where v <= 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
 			},
 			{
 				Query: "select * from vt where v >= 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
@@ -6691,26 +6691,26 @@ where
 			{
 				Skip:  true,
 				Query: `select * from vt where v = 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 				},
 			},
 			{
 				Skip:  true,
 				Query: `select * from vt where v < 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: `select * from vt where v > 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: `select * from vt where v <= 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
@@ -6718,7 +6718,7 @@ where
 			{
 				Skip:  true,
 				Query: `select * from vt where v >= 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 					{"ghi"},
 				},
@@ -6726,32 +6726,32 @@ where
 
 			{
 				Query: "select * from vt where v = cast('def' as char(6));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 				},
 			},
 			{
 				Query: "select * from vt where v < cast('def' as char(6));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "select * from vt where v > cast('def' as char(6));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: "select * from vt where v <= cast('def' as char(6));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
 			},
 			{
 				Query: "select * from vt where v >= cast('def' as char(6));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 					{"ghi"},
 				},
@@ -6767,32 +6767,32 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select cast(v as char(3)) from vt where v = 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 				},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v < 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v > 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v <= 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v >= 'def';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 					{"ghi"},
 				},
@@ -6800,31 +6800,31 @@ where
 
 			{
 				Query:    "select cast(v as char(3)) from vt where v = 'defdef';",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v < 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v > 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v <= 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
 			},
 			{
 				Query: "select cast(v as char(3)) from vt where v >= 'defdef';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
@@ -6833,26 +6833,26 @@ where
 			{
 				Skip:  true,
 				Query: `select cast(v as char(3)) from vt where v = 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 				},
 			},
 			{
 				Skip:  true,
 				Query: `select cast(v as char(3)) from vt where v < 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: `select cast(v as char(3)) from vt where v > 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi"},
 				},
 			},
 			{
 				Query: `select cast(v as char(3)) from vt where v <= 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"def"},
 				},
@@ -6860,7 +6860,7 @@ where
 			{
 				Skip:  true,
 				Query: `select cast(v as char(3)) from vt where v >= 'def\0\0';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 					{"ghi"},
 				},
@@ -6880,13 +6880,13 @@ where
 			},
 			{
 				Query: "insert into t1 (b, a) values ('1234567890', '12345')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "select a, b from t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"12345", "1234567890"},
 				},
 			},
@@ -6897,13 +6897,13 @@ where
 			},
 			{
 				Query: "insert into t2 (b, a) values ('1234567890', '12345')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "select a, b from t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"12345", "1234567890"},
 				},
 			},
@@ -6919,7 +6919,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select i, json_search(j, 'all', 'abc') from t order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, types.MustJSON(`"$.a"`)},
 					{1, types.MustJSON(`"$.b"`)},
 					{2, types.MustJSON(`"$.c"`)},
@@ -6930,7 +6930,7 @@ where
 			},
 			{
 				Query: "select i, json_search(j, 'all', 'def') from t order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, nil},
 					{1, nil},
 					{2, nil},
@@ -6941,7 +6941,7 @@ where
 			},
 			{
 				Query: "select i, json_search(j, 'all', 'abc', '', '$.a', '$.b') from t order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, types.MustJSON(`"$.a"`)},
 					{1, types.MustJSON(`"$.b"`)},
 					{2, nil},
@@ -6963,25 +6963,25 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create database def_db",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def_db", "CREATE DATABASE `def_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */"},
 				},
 			},
 			{
 				Query: "show create database latin1_db",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
 				},
 			},
 			{
 				Query: "show create database bin_db",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"bin_db", "CREATE DATABASE `bin_db` /*!40100 DEFAULT CHARACTER SET binary COLLATE binary */"},
 				},
 			},
 			{
 				Query: "show create database mb3_db",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mb3_db", "CREATE DATABASE `mb3_db` /*!40100 DEFAULT CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci */"},
 				},
 			},
@@ -6996,20 +6996,20 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select @@global.character_set_server, @@global.collation_server;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"utf8mb4", "utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query: "select @@session.character_set_server, @@session.collation_server;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1", "latin1_swedish_ci"},
 				},
 			},
 			{
 				// Interestingly, session actually takes priority over global
 				Query: "show create database latin1_db",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"latin1_db", "CREATE DATABASE `latin1_db` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */"},
 				},
 			},
@@ -7032,7 +7032,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int,\n" +
 						"  KEY `i` (`i`),\n" +
@@ -7045,7 +7045,7 @@ where
 				// MySQL preserves the other that indexes are created
 				// We store them in a map, so we have to sort to have some consistency
 				Query: "show create table tt",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"tt", "CREATE TABLE `tt` (\n" +
 						"  `i` int,\n" +
 						"  KEY `i` (`i`),\n" +
@@ -7068,7 +7068,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from (t1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -7076,7 +7076,7 @@ where
 			},
 			{
 				Query: "select * from (((((t1)))))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -7084,7 +7084,7 @@ where
 			},
 			{
 				Query: "select * from (((((t1 as t11)))))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -7092,35 +7092,35 @@ where
 			},
 			{
 				Query: "select * from (t1) join t2 where t1.i = t2.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{3, 3},
 				},
 			},
 			{
 				Query: "select * from t1 join (t2) where t1.i = t2.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{3, 3},
 				},
 			},
 			{
 				Query: "select * from (t1) join (t2) where t1.i = t2.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{3, 3},
 				},
 			},
 			{
 				Query: "select * from ((((t1)))) join ((((t2)))) where t1.i = t2.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{3, 3},
 				},
 			},
 			{
 				Query: "select * from (t1 as t11) join (t2 as t22) where t11.i = t22.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{3, 3},
 				},
@@ -7147,13 +7147,13 @@ where
 			},
 			{
 				Query: "insert into t(b) values (X'9876543210');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "insert into t(bi) values (X'9876543210');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
@@ -7177,7 +7177,7 @@ where
 				// TODO: server engine is not respecting timezone
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select i, unix_timestamp(v) from t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, "946730096.000000"},
 					{1, "946730096.100000"},
 					{2, "946730096.120000"},
@@ -7201,7 +7201,7 @@ where
 				ExpectedColumns: sql.Schema{
 					{Name: "123", Type: types.Int8, Nullable: false},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{123},
 				},
 			},
@@ -7210,7 +7210,7 @@ where
 				ExpectedColumns: sql.Schema{
 					{Name: "abc", Type: types.Int8, Nullable: false},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{123},
 				},
 			},
@@ -7219,7 +7219,7 @@ where
 				ExpectedColumns: sql.Schema{
 					{Name: "abc", Type: types.Text, Nullable: false},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
@@ -7228,7 +7228,7 @@ where
 				ExpectedColumns: sql.Schema{
 					{Name: "2000-01-02", Type: types.Int8, Nullable: false},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{123},
 				},
 			},
@@ -7237,7 +7237,7 @@ where
 				ExpectedColumns: sql.Schema{
 					{Name: "abc", Type: types.Text, Nullable: false},
 				},
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2001-02-03"},
 				},
 			},
@@ -7281,19 +7281,19 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t where (t1, t2) in (('ABC', 'DEF'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ABC", "DEF"},
 				},
 			},
 			{
 				Query: "select * from t where (t1, t2) in (('ABC', 'def'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ABC", "DEF"},
 				},
 			},
 			{
 				Query:    "select * from t where (t1, t2) in (('abc', 'DEF'));",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -7306,7 +7306,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t where i = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{1},
 					{1},
@@ -7323,19 +7323,19 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select validate_password_strength('')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select validate_password_strength('123')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select validate_password_strength('1234')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{50},
 				},
 			},
@@ -7345,7 +7345,7 @@ where
 			},
 			{
 				Query: "select validate_password_strength('ABCabc123!@!#')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{25},
 				},
 			},
@@ -7368,7 +7368,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select validate_password_strength('ABCabc!@#')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{100},
 				},
 			},
@@ -7378,7 +7378,7 @@ where
 			},
 			{
 				Query: "select validate_password_strength('ABCabc!!!!123456789012345678901234567890')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{50},
 				},
 			},
@@ -7401,13 +7401,13 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select validate_password_strength('abcabc!@#123')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{100},
 				},
 			},
 			{
 				Query: "select validate_password_strength('ABCABC!@#123')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{100},
 				},
 			},
@@ -7417,7 +7417,7 @@ where
 			},
 			{
 				Query: "select validate_password_strength('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456!?!?!?')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{50},
 				},
 			},
@@ -7440,7 +7440,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select validate_password_strength('abcABC123')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{100},
 				},
 			},
@@ -7450,7 +7450,7 @@ where
 			},
 			{
 				Query: "select validate_password_strength('abcABC123!@#$%^&*()                            ')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{50},
 				},
 			},
@@ -7475,7 +7475,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a", float64(1)},
 					{2, "b", float64(2)},
 					{3, "c", float64(3)},
@@ -7483,13 +7483,13 @@ where
 			},
 			{
 				Query: "alter table t modify column e enum('c', 'a', 'b');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a", float64(2)},
 					{2, "b", float64(3)},
 					{3, "c", float64(1)},
@@ -7497,13 +7497,13 @@ where
 			},
 			{
 				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a", float64(2)},
 					{2, "b", float64(3)},
 					{3, "c", float64(4)},
@@ -7523,7 +7523,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"port1", "bigint", "NO", "", nil, ""},
 					{"port2", "bigint", "NO", "", nil, ""},
 					{"port3", "bigint", "NO", "", nil, ""},
@@ -7540,7 +7540,7 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then e end) as e from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "abc"},
 					{2, "def"},
 					{3, "ghi"},
@@ -7550,7 +7550,7 @@ where
 				// https://github.com/dolthub/dolt/issues/8598
 				Skip:  true,
 				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 'something' end) as e from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "abc"},
 					{2, "def"},
 					{3, "something"},
@@ -7560,7 +7560,7 @@ where
 				// https://github.com/dolthub/dolt/issues/8598
 				Skip:  true,
 				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 123 end) as e from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "abc"},
 					{2, "def"},
 					{3, "123"},
@@ -7579,7 +7579,7 @@ where
 			{
 				Skip:  true,
 				Query: "select i, cast(e as signed) from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{2, 2},
 					{3, 3},
@@ -7588,7 +7588,7 @@ where
 			{
 				Skip:  true,
 				Query: "select i, cast(e as char) from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "abc"},
 					{2, "def"},
 					{3, "ghi"},
@@ -7608,15 +7608,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select st_aswkt(p) from test",
-				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
+				Expected: []sql.UntypedSqlRow{{"POINT(123.456 7.89)"}},
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` point DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"p", "point", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
 				},
@@ -7632,15 +7632,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select st_aswkt(l) from test",
-				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
+				Expected: []sql.UntypedSqlRow{{"LINESTRING(1 2,3 4)"}},
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `l` linestring DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"l", "linestring", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
 				},
@@ -7656,15 +7656,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select st_aswkt(p) from test",
-				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
+				Expected: []sql.UntypedSqlRow{{"POLYGON((0 0,1 1,2 2,0 0))"}},
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `p` polygon DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"p", "polygon", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"},
 				},
@@ -7680,15 +7680,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select st_aswkt(g) from test",
-				Expected: []sql.Row{{"POINT(123.456 7.89)"}},
+				Expected: []sql.UntypedSqlRow{{"POINT(123.456 7.89)"}},
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (point(123.456,7.89)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"g", "geometry", "YES", "", "(point(123.456,7.89))", "DEFAULT_GENERATED"},
 				},
@@ -7704,15 +7704,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select st_aswkt(g) from test",
-				Expected: []sql.Row{{"LINESTRING(1 2,3 4)"}},
+				Expected: []sql.UntypedSqlRow{{"LINESTRING(1 2,3 4)"}},
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (linestring(point(1,2),point(3,4))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"g", "geometry", "YES", "", "(linestring(point(1,2),point(3,4)))", "DEFAULT_GENERATED"},
 				},
@@ -7728,15 +7728,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select st_aswkt(g) from test",
-				Expected: []sql.Row{{"POLYGON((0 0,1 1,2 2,0 0))"}},
+				Expected: []sql.UntypedSqlRow{{"POLYGON((0 0,1 1,2 2,0 0))"}},
 			},
 			{
 				Query:    "show create table test",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `i` int NOT NULL,\n  `g` geometry DEFAULT (polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0)))),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "PRI", nil, ""},
 					{"g", "geometry", "YES", "", "(polygon(linestring(point(0,0),point(1,1),point(2,2),point(0,0))))", "DEFAULT_GENERATED"}},
 			},
@@ -7751,7 +7751,7 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from null_default",
-				Expected: []sql.Row{{0, nil, nil, nil, nil}},
+				Expected: []sql.UntypedSqlRow{{0, nil, nil, nil, nil}},
 			},
 		},
 	},
@@ -7763,15 +7763,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table tab0",
-				Expected: []sql.Row{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry /*!80003 SRID 4326 */ DEFAULT (point(1,1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"tab0", "CREATE TABLE `tab0` (\n  `i` int NOT NULL,\n  `g` geometry /*!80003 SRID 4326 */ DEFAULT (point(1,1)),\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "INSERT INTO tab0 VALUES (1, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)), 4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(g) FROM tab0",
-				Expected: []sql.Row{{1, "POINT(1 2)"}},
+				Expected: []sql.UntypedSqlRow{{1, "POINT(1 2)"}},
 			},
 			{
 				Query:       "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(2,4))))",
@@ -7779,11 +7779,11 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO tab0 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(g) FROM tab0",
-				Expected: []sql.Row{{1, "POINT(1 2)"}, {2, "LINESTRING(1 6,4 3)"}},
+				Expected: []sql.UntypedSqlRow{{1, "POINT(1 2)"}, {2, "LINESTRING(1 6,4 3)"}},
 			},
 		},
 	},
@@ -7795,15 +7795,15 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table tab1",
-				Expected: []sql.Row{{"tab1", "CREATE TABLE `tab1` (\n  `i` int NOT NULL,\n  `l` linestring /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"tab1", "CREATE TABLE `tab1` (\n  `i` int NOT NULL,\n  `l` linestring /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "INSERT INTO tab1 VALUES (1, LINESTRING(POINT(0, 0),POINT(2, 2)))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(l) FROM tab1",
-				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
+				Expected: []sql.UntypedSqlRow{{1, "LINESTRING(0 0,2 2)"}},
 			},
 			{
 				Query:       "INSERT INTO tab1 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1, 6),POINT(4, 3))), 4326))",
@@ -7811,7 +7811,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select i, ST_ASWKT(l) FROM tab1",
-				Expected: []sql.Row{{1, "LINESTRING(0 0,2 2)"}},
+				Expected: []sql.UntypedSqlRow{{1, "LINESTRING(0 0,2 2)"}},
 			},
 		},
 	},
@@ -7823,19 +7823,19 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE tab2 ADD COLUMN p POINT NOT NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table tab2",
-				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "INSERT INTO tab2 VALUES (1, POINT(2, 2))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(p) FROM tab2",
-				Expected: []sql.Row{{1, "POINT(2 2)"}},
+				Expected: []sql.UntypedSqlRow{{1, "POINT(2 2)"}},
 			},
 			{
 				Query:       "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
@@ -7843,19 +7843,19 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select i, ST_ASWKT(p) FROM tab2",
-				Expected: []sql.Row{{1, "POINT(2 2)"}},
+				Expected: []sql.UntypedSqlRow{{1, "POINT(2 2)"}},
 			},
 			{
 				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(p) FROM tab2",
-				Expected: []sql.Row{{1, "POINT(2 2)"}, {2, "POINT(1 6)"}},
+				Expected: []sql.UntypedSqlRow{{1, "POINT(2 2)"}, {2, "POINT(1 6)"}},
 			},
 			{
 				Query:       "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
@@ -7863,15 +7863,15 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "delete from tab2 where i = 1",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table tab2",
-				Expected: []sql.Row{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL /*!80003 SRID 4326 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"tab2", "CREATE TABLE `tab2` (\n  `i` int NOT NULL,\n  `p` point NOT NULL /*!80003 SRID 4326 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -7883,19 +7883,19 @@ var SpatialScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show create table tab3",
-				Expected: []sql.Row{{"tab3", "CREATE TABLE `tab3` (\n  `i` int NOT NULL,\n  `y` polygon NOT NULL,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"tab3", "CREATE TABLE `tab3` (\n  `i` int NOT NULL,\n  `y` polygon NOT NULL,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "INSERT INTO tab3 VALUES (1, polygon(linestring(point(0,0),point(8,0),point(12,9),point(0,9),point(0,0))))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(y) FROM tab3",
-				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+				Expected: []sql.UntypedSqlRow{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
 			},
 			{
 				Query:    "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 4326",
@@ -7903,15 +7903,15 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "select i, ST_ASWKT(y) FROM tab3",
-				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+				Expected: []sql.UntypedSqlRow{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
 			},
 			{
 				Query:    "ALTER TABLE tab3 MODIFY COLUMN y GEOMETRY NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(y) FROM tab3",
-				Expected: []sql.Row{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
+				Expected: []sql.UntypedSqlRow{{1, "POLYGON((0 0,8 0,12 9,0 9,0 0))"}},
 			},
 		},
 	},
@@ -7929,17 +7929,17 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE table3 (i int primary key, p point srid 3857);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table table2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"table2", "CREATE TABLE `table2` (\n  `i` int NOT NULL,\n  `g` geometry /*!80003 SRID 3857 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
-				Expected: []sql.Row{{1, "POINT(5 1)"}},
+				Expected: []sql.UntypedSqlRow{{1, "POINT(5 1)"}},
 			},
 			{
 				Query:       "INSERT INTO table1 VALUES (2, POINT(2, 5))",
@@ -7947,7 +7947,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT i, ST_ASWKT(p) FROM table1;",
-				Expected: []sql.Row{{1, "POINT(5 1)"}},
+				Expected: []sql.UntypedSqlRow{{1, "POINT(5 1)"}},
 			},
 			{
 				Query:       "ALTER TABLE table1 CHANGE COLUMN p p linestring srid 4326",
@@ -7959,15 +7959,15 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 4326",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table table1",
-				Expected: []sql.Row{{"table1", "CREATE TABLE `table1` (\n  `i` int NOT NULL,\n  `p` geometry /*!80003 SRID 4326 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"table1", "CREATE TABLE `table1` (\n  `i` int NOT NULL,\n  `p` geometry /*!80003 SRID 4326 */,\n  PRIMARY KEY (`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "INSERT INTO table1 VALUES (2, ST_SRID(LINESTRING(POINT(0, 0),POINT(2, 2)),4326))",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "ALTER TABLE table1 CHANGE COLUMN p p point srid 4326",
@@ -8044,7 +8044,7 @@ var SpatialIndexScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table geom",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"geom",
 						"CREATE TABLE `geom` (\n" +
@@ -8079,19 +8079,19 @@ var SpatialIndexScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "alter table geom_tbl add spatial index (g)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table geom_tbl",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"geom_tbl", "CREATE TABLE `geom_tbl` (\n  `g` geometry NOT NULL /*!80003 SRID 0 */,\n  SPATIAL KEY `g` (`g`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query: "select count(*) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((0 0,0 10,10 10,10 0,0 0))'))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -8106,19 +8106,19 @@ var SpatialIndexScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "alter table geom_tbl add spatial index (g)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table geom_tbl",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"geom_tbl", "CREATE TABLE `geom_tbl` (\n  `i` int NOT NULL,\n  `j` int NOT NULL,\n  `g` geometry NOT NULL /*!80003 SRID 0 */,\n  PRIMARY KEY (`i`,`j`),\n  SPATIAL KEY `g` (`g`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
 				Query: "select count(*) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((0 0,0 10,10 10,10 0,0 0))'))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -8153,21 +8153,21 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "prepare cnt from 'select count(*) from a';",
-				Expected: []sql.Row{{types.OkResult{Info: plan.PrepareInfo{}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{Info: plan.PrepareInfo{}}}},
 			},
 			{
 				Query:    "execute cnt",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query: "insert into a values (3), (4)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query:    "execute cnt",
-				Expected: []sql.Row{{5}},
+				Expected: []sql.UntypedSqlRow{{5}},
 			},
 		},
 	},
@@ -8199,19 +8199,19 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query: "prepare s from 'select 1'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
 				Query: "execute s",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "deallocate prepare s",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{}},
 				},
 			},
@@ -8231,7 +8231,7 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "prepare s from 'select ?'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
@@ -8241,7 +8241,7 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query: "execute s using @abc",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 				},
 			},
@@ -8251,25 +8251,25 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query: "execute s using @a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "execute s using @b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{100},
 				},
 			},
 			{
 				Query: "execute s using @c",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "deallocate prepare s",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{}},
 				},
 			},
@@ -8296,13 +8296,13 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "execute s using @d;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"2001-02-03"},
 				},
 			},
 			{
 				Query: "execute s using @dt;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 				},
 			},
@@ -8310,27 +8310,27 @@ var PreparedScriptTests = []ScriptTest{
 				// types.Timespan not supported as bindvar
 				Skip:  true,
 				Query: "execute s using @t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"12:34:56"},
 				},
 			},
 			{
 				Query: "execute s using @ts;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
 				},
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "execute sd using @d;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "execute sdt using @dt;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -8339,21 +8339,21 @@ var PreparedScriptTests = []ScriptTest{
 				Skip:                          true,
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "execute st using @t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "execute sts using @ts;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				// TODO: should also select t when we fix that
 				Query: "select d, dt, ts from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{time.Date(2001, time.February, 3, 0, 0, 0, 0, time.UTC), nil, nil},
 					{nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC), nil},
 					{nil, nil, time.Date(2001, time.February, 3, 12, 34, 56, 0, time.UTC)},
@@ -8373,7 +8373,7 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				Skip:  true,
 				Query: "execute s using @d;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123.45"},
 				},
 			},
@@ -8381,14 +8381,14 @@ var PreparedScriptTests = []ScriptTest{
 				Skip:                          true,
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "execute sd using @d;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123.45"},
 				},
 			},
 			{
 				Skip:  true,
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123.45"},
 				},
 			},
@@ -8404,7 +8404,7 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "prepare s from 'insert into t values (?,?)'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
@@ -8415,19 +8415,19 @@ var PreparedScriptTests = []ScriptTest{
 			{
 				SkipResultCheckOnServerEngine: true, // execute depends on prepare stmt for whether to use 'query' or 'exec' from go sql driver.
 				Query:                         "execute s using @a, @b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "select * from t order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{123, "abc"},
 				},
 			},
 			{
 				Query: "deallocate prepare s",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{}},
 				},
 			},
@@ -8465,13 +8465,13 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query: "prepare stmt from @a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
 				Query: "execute stmt",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 					{2},
@@ -8479,37 +8479,37 @@ var PreparedScriptTests = []ScriptTest{
 			},
 			{
 				Query: "prepare stmt from @b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
 				Query: "execute stmt",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: "prepare stmt from @c",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
 				Query: "execute stmt using @num",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "prepare stmt from @d",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
 				Query: "execute stmt",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{123},
 				},
 			},
@@ -8529,13 +8529,13 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "prepare s from 'SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = ?)) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN (?, ?)))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{Info: plan.PrepareInfo{}}},
 				},
 			},
 			{
 				Query:    "execute s using @u3, @u2, @u4",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -8549,7 +8549,7 @@ var PreparedScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable DROP COLUMN col2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -8627,7 +8627,7 @@ var PreparedScriptTests = []ScriptTest{
 							"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
 							"")),
 				},
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     1,
 				}}},
@@ -8658,7 +8658,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO a VALUES (1, 1)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "INSERT INTO a VALUES (1, 1)",
@@ -8674,11 +8674,11 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "NO", "PRI", nil, ""},
@@ -8690,7 +8690,7 @@ var BrokenScriptTests = []ScriptTest{
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "", nil, ""},
 					{"v1", "int", "YES", "", nil, ""},
 					{"v2", "int", "NO", "PRI", nil, ""},
@@ -8700,11 +8700,11 @@ var BrokenScriptTests = []ScriptTest{
 				// This last modification ends up with a UNIQUE constraint on pk
 				// This is caused by Table.dropColumnFromSchema, not dropping the pkOrdinal, but this causes other problems specific to GMS
 				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v2`, ADD COLUMN v7 int NOT NULL",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "DESCRIBE t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "", nil, ""},
 					{"v4", "int", "NO", "", nil, ""},
 					{"v5", "int", "NO", "", nil, ""},
@@ -8723,7 +8723,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT `t1`.`id`, `t1`.`name` FROM `person` AS `t1` WHERE (`t1`.`name` REGEXP 'N[1,3]') ORDER BY `t1`.`name`;",
-				Expected: []sql.Row{{1, "n1"}, {3, "n3"}},
+				Expected: []sql.UntypedSqlRow{{1, "n1"}, {3, "n3"}},
 			},
 		},
 	},
@@ -8742,7 +8742,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT DISTINCT YM.YW AS YW,\n  (SELECT YW FROM YF WHERE YF.XB = YM.XB) AS YF_YW,\n  (\n    SELECT YW\n    FROM yp\n    WHERE\n      yp.XJ = YM.XJ AND\n      (yp.XL = YM.XL OR (yp.XL IS NULL AND YM.XL IS NULL)) AND\n      yp.XT = nd.XT\n    ) AS YJ,\n  XE AS XE,\n  XI AS YO,\n  XK AS XK,\n  XM AS XM,\n  CASE\n    WHEN YM.XO <> 'Z'\n  THEN YM.XO\n  ELSE NULL\n  END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n    FROM XA\n  ) YM\n  INNER JOIN XS nd\n    ON nd.XV = XF\n  WHERE\n    XB IN (SELECT XB FROM YF) AND\n    (XF IS NOT NULL AND XF <> 'Z')\n  UNION\n  SELECT DISTINCT YL.YW AS YW,\n    (\n      SELECT YW\n      FROM YF\n      WHERE YF.XB = YL.XB\n    ) AS YF_YW,\n    (\n      SELECT YW FROM yp\n      WHERE\n        yp.XJ = YL.XJ AND\n        (yp.XL = YL.XL OR (yp.XL IS NULL AND YL.XL IS NULL)) AND\n        yp.XT = YN.XT\n    ) AS YJ,\n    XE AS XE,\n    XI AS YO,\n    XK AS XK,\n    XM AS XM,\n    CASE WHEN YL.XO <> 'Z' THEN YL.XO ELSE NULL END AS XO\n  FROM (\n    SELECT YW, XB, XC, XE, XF, XI, XJ, XK,\n      CASE WHEN XL = 'Z' OR XL = 'Z' THEN NULL ELSE XL END AS XL,\n      XM, XO\n      FROM XA\n  ) YL\n  INNER JOIN XS YN\n    ON YN.XC = YL.XC\n  WHERE\n    XB IN (SELECT XB FROM YF) AND \n    (XF IS NULL OR XF = 'Z');",
-				Expected: []sql.Row{{"", "", "", "", "", "", "", ""}},
+				Expected: []sql.UntypedSqlRow{{"", "", "", "", "", "", "", ""}},
 			},
 		},
 	},
@@ -8754,7 +8754,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "alter table tbl_i add column j int, add check (j < 10);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
@@ -8770,15 +8770,15 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from v1;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:    "rename table t1 to t2;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "show tables;",
-				Expected: []sql.Row{{"myview"}, {"t2"}, {"v1"}},
+				Expected: []sql.UntypedSqlRow{{"myview"}, {"t2"}, {"v1"}},
 			},
 			{
 				Query:          "select * from v1;",
@@ -8786,12 +8786,12 @@ var BrokenScriptTests = []ScriptTest{
 			},
 			{
 				Query:                 "show create view v1;",
-				Expected:              []sql.Row{{"v1", "CREATE VIEW `v1` AS select * from t1", "utf8mb4", "utf8mb4_0900_bin"}},
+				Expected:              []sql.UntypedSqlRow{{"v1", "CREATE VIEW `v1` AS select * from t1", "utf8mb4", "utf8mb4_0900_bin"}},
 				ExpectedWarningsCount: 1,
 			},
 			{
 				Query:    "show warnings;",
-				Expected: []sql.Row{{"Warning", 1356, "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"}},
+				Expected: []sql.UntypedSqlRow{{"Warning", 1356, "View 'v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them"}},
 			},
 		},
 	},
@@ -8804,15 +8804,15 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET SESSION time_zone = '-05:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "SELECT DATE_FORMAT(ts, '%H:%i:%s'), DATE_FORMAT(dt, '%H:%i:%s') from timezone_test;",
-				Expected: []sql.Row{{"11:47:00", "08:47:00"}},
+				Expected: []sql.UntypedSqlRow{{"11:47:00", "08:47:00"}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP(ts), UNIX_TIMESTAMP(dt) from timezone_test;",
-				Expected: []sql.Row{{float64(1676393220), float64(1676382420)}},
+				Expected: []sql.UntypedSqlRow{{float64(1676393220), float64(1676382420)}},
 			},
 		},
 	},
@@ -8824,23 +8824,23 @@ var CreateDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE DATABASE testdb",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "USE testdb",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{"testdb"}},
+				Expected: []sql.UntypedSqlRow{{"testdb"}},
 			},
 			{
 				Query:    "CREATE TABLE test (pk int primary key)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW TABLES",
-				Expected: []sql.Row{{"test"}},
+				Expected: []sql.UntypedSqlRow{{"test"}},
 			},
 		},
 	},
@@ -8849,23 +8849,23 @@ var CreateDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE DATABASE IF NOT EXISTS testdb2",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "USE testdb2",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{"testdb2"}},
+				Expected: []sql.UntypedSqlRow{{"testdb2"}},
 			},
 			{
 				Query:    "CREATE TABLE test (pk int primary key)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW TABLES",
-				Expected: []sql.Row{{"test"}},
+				Expected: []sql.UntypedSqlRow{{"test"}},
 			},
 		},
 	},
@@ -8874,23 +8874,23 @@ var CreateDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE SCHEMA testdb3",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "USE testdb3",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{"testdb3"}},
+				Expected: []sql.UntypedSqlRow{{"testdb3"}},
 			},
 			{
 				Query:    "CREATE TABLE test (pk int primary key)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW TABLES",
-				Expected: []sql.Row{{"test"}},
+				Expected: []sql.UntypedSqlRow{{"test"}},
 			},
 		},
 	},
@@ -8903,19 +8903,19 @@ var CreateDatabaseScripts = []ScriptTest{
 			},
 			{
 				Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SHOW WARNINGS /* 1 */",
-				Expected: []sql.Row{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
+				Expected: []sql.UntypedSqlRow{{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"}},
 			},
 			{
 				Query:    "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "SHOW WARNINGS /* 2 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"Warning", 1235, "Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"},
 				},
 			},
@@ -8925,11 +8925,11 @@ var CreateDatabaseScripts = []ScriptTest{
 			},
 			{
 				Query:    "CREATE DATABASE IF NOT EXISTS mydb",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SHOW WARNINGS /* 3 */",
-				Expected: []sql.Row{{"Note", 1007, "Can't create database mydb; database exists "}},
+				Expected: []sql.UntypedSqlRow{{"Note", 1007, "Can't create database mydb; database exists "}},
 			},
 		},
 	},
@@ -8941,11 +8941,11 @@ var DropDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DROP DATABASE mydb",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				// TODO: incorrect error returned because the currentdb is not set to empty
@@ -8963,11 +8963,11 @@ var DropDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "USE testdb",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "DROP DATABASE testdb",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:       "USE testdb",
@@ -8984,11 +8984,11 @@ var DropDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DROP DATABASE TESTDB",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				Query:       "USE testdb",
@@ -9004,7 +9004,7 @@ var DropDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DROP SCHEMA TESTDB",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:       "USE testdb",
@@ -9021,23 +9021,23 @@ var DropDatabaseScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DROP DATABASE IF EXISTS mydb",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query:    "SHOW WARNINGS",
-				Expected: []sql.Row{{"Note", 1008, "Can't drop database mydb; database doesn't exist "}},
+				Expected: []sql.UntypedSqlRow{{"Note", 1008, "Can't drop database mydb; database doesn't exist "}},
 			},
 			{
 				Query:    "DROP DATABASE IF EXISTS testdb",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SHOW WARNINGS",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				Query:       "USE testdb",
@@ -9045,11 +9045,11 @@ var DropDatabaseScripts = []ScriptTest{
 			},
 			{
 				Query:    "DROP DATABASE IF EXISTS testdb",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query:    "SHOW WARNINGS",
-				Expected: []sql.Row{{"Note", 1008, "Can't drop database testdb; database doesn't exist "}},
+				Expected: []sql.UntypedSqlRow{{"Note", 1008, "Can't drop database testdb; database doesn't exist "}},
 			},
 		},
 	},

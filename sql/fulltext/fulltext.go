@@ -99,8 +99,8 @@ func HashRow(row sql.Row) (string, error) {
 	h := sha256.New()
 	// Since we can't represent a NULL value in binary, we instead append the NULL results to the end, which will
 	// give us a unique representation for representing NULL values.
-	valIsNull := make([]bool, len(row))
-	for i, val := range row {
+	valIsNull := make([]bool, row.Len())
+	for i, val := range row.Values() {
 		var err error
 		valIsNull[i], err = writeHashedValue(h, val)
 		if err != nil {

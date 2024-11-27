@@ -148,7 +148,7 @@ func TestSingleQuery(t *testing.T) {
 	var test queries.QueryTest
 	test = queries.QueryTest{
 		Query:    `select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);`,
-		Expected: []sql.Row{{true, 0, true}},
+		Expected: []sql.UntypedSqlRow{{true, 0, true}},
 	}
 
 	fmt.Sprintf("%v", test)
@@ -174,7 +174,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 			{
 				// Original Issue: https://github.com/dolthub/dolt/issues/5714
 				Query: `select 1.0/0.0 from dual`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4},
 				},
 			},
@@ -230,7 +230,7 @@ func TestUnbuildableIndex(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "SELECT i FROM mytable2 WHERE i IN (SELECT i FROM mytable2) ORDER BY i",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{1},
 						{2},
 						{3},
@@ -888,14 +888,6 @@ func TestBlobs(t *testing.T) {
 
 func TestIndexes(t *testing.T) {
 	enginetest.TestIndexes(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestVectorIndexes(t *testing.T) {
-	enginetest.TestVectorIndexes(t, enginetest.NewDefaultMemoryHarness())
-}
-
-func TestVectorFunctions(t *testing.T) {
-	enginetest.TestVectorFunctions(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestIndexPrefix(t *testing.T) {

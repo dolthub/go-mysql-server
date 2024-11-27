@@ -157,10 +157,10 @@ type ResultEvaluationHarness interface {
 	// there are any
 	EvaluateQueryResults(
 		t *testing.T,
-		expectedRows []sql.Row,
+		expectedRows []sql.UntypedSqlRow,
 		expectedCols []*sql.Column,
 		expectdSch sql.Schema,
-		actualRows []sql.Row,
+		actualRows []sql.UntypedSqlRow,
 		query string,
 	)
 

@@ -30,11 +30,11 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t1 n inner join t2 m on n.name = m.name set n.cnt =m.cnt+1;",
-				Expected: []sql.Row{{newUpdateResult(2, 2)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(2, 2)}},
 			},
 			{
 				Query:    "select name, cnt from t1",
-				Expected: []sql.Row{{"one", 2}, {"two", 3}},
+				Expected: []sql.UntypedSqlRow{{"one", 2}, {"two", 3}},
 			},
 		},
 	},
@@ -48,11 +48,11 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t1 n inner join t2 m on n.y = m.y set n.x =n.y where n.x = 3;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t1",
-				Expected: []sql.Row{{1, 2}, {2, 3}, {4, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {2, 3}, {4, 5}},
 			},
 		},
 	},
@@ -65,11 +65,11 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM t1",
-				Expected: []sql.Row{{1, 2}, {2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {2, 2}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` bigint NOT NULL,\n" +
 						"  `v1` bigint DEFAULT '2',\n" +
@@ -87,11 +87,11 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM t2",
-				Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {2, 2}, {3, 3}},
 			},
 			{
 				Query: "show create table t2",
-				Expected: []sql.Row{{"t2",
+				Expected: []sql.UntypedSqlRow{{"t2",
 					"CREATE TABLE `t2` (\n" +
 						"  `pk` bigint NOT NULL,\n" +
 						"  `v1` smallint DEFAULT (greatest(`pk`,2)),\n" +
@@ -108,7 +108,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t3",
-			Expected: []sql.Row{{1, "2"}, {2, "2"}, {3, "3"}}},
+			Expected: []sql.UntypedSqlRow{{1, "2"}, {2, "2"}, {3, "3"}}},
 		},
 	},
 	{
@@ -119,7 +119,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t4",
-			Expected: []sql.Row{{1, 4}, {2, 4}}},
+			Expected: []sql.UntypedSqlRow{{1, 4}, {2, 4}}},
 		},
 	},
 	{
@@ -130,7 +130,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t5",
-			Expected: []sql.Row{{1, 7, 7}, {2, 7, 7}}},
+			Expected: []sql.UntypedSqlRow{{1, 7, 7}, {2, 7, 7}}},
 		},
 	},
 	{
@@ -141,7 +141,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t6",
-			Expected: []sql.Row{{1, 9, 9}, {2, 9, 9}}},
+			Expected: []sql.UntypedSqlRow{{1, 9, 9}, {2, 9, 9}}},
 		},
 	},
 	{
@@ -152,7 +152,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t7",
-			Expected: []sql.Row{{1, 8, 8}, {2, 8, 8}}},
+			Expected: []sql.UntypedSqlRow{{1, 8, 8}, {2, 8, 8}}},
 		},
 	},
 	{
@@ -163,7 +163,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t8",
-			Expected: []sql.Row{{1, 5, 4}, {2, 7, 6}}},
+			Expected: []sql.UntypedSqlRow{{1, 5, 4}, {2, 7, 6}}},
 		},
 	},
 	{
@@ -174,7 +174,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t9",
-			Expected: []sql.Row{{1, "77"}, {2, "77"}}},
+			Expected: []sql.UntypedSqlRow{{1, "77"}, {2, "77"}}},
 		},
 	},
 	{
@@ -186,7 +186,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t12",
-			Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}}},
+			Expected: []sql.UntypedSqlRow{{1, 2}, {2, 2}, {3, 3}}},
 		},
 	},
 	{
@@ -198,7 +198,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t13",
-			Expected: []sql.Row{{1, 4, 5}, {2, 4, 5}}},
+			Expected: []sql.UntypedSqlRow{{1, 4, 5}, {2, 4, 5}}},
 		},
 	},
 	{
@@ -210,7 +210,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t14",
-			Expected: []sql.Row{{1, 2, 4}, {2, 3, 5}}},
+			Expected: []sql.UntypedSqlRow{{1, 2, 4}, {2, 3, 5}}},
 		},
 	},
 	{
@@ -222,7 +222,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t15",
-			Expected: []sql.Row{{1, 2, 4}, {2, 3, 5}}},
+			Expected: []sql.UntypedSqlRow{{1, 2, 4}, {2, 3, 5}}},
 		},
 	},
 	{
@@ -234,7 +234,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t16",
-			Expected: []sql.Row{{5, 1, 4}, {5, 2, 4}}},
+			Expected: []sql.UntypedSqlRow{{5, 1, 4}, {5, 2, 4}}},
 		},
 	},
 	{
@@ -246,7 +246,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t17",
-			Expected: []sql.Row{{5, 1, 3}, {6, 2, 4}}},
+			Expected: []sql.UntypedSqlRow{{5, 1, 3}, {6, 2, 4}}},
 		},
 	},
 	{
@@ -258,7 +258,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t18",
-			Expected: []sql.Row{{1, 2, 1}, {2, 3, 2}}},
+			Expected: []sql.UntypedSqlRow{{1, 2, 1}, {2, 3, 2}}},
 		},
 	},
 	{
@@ -270,7 +270,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t19",
-			Expected: []sql.Row{{1, 4, 5}, {2, 4, 5}}},
+			Expected: []sql.UntypedSqlRow{{1, 4, 5}, {2, 4, 5}}},
 		},
 	},
 	{
@@ -283,7 +283,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t20",
-			Expected: []sql.Row{{-1, 1, 11}, {-2, 2, 12}, {-3, 3, 13}}},
+			Expected: []sql.UntypedSqlRow{{-1, 1, 11}, {-2, 2, 12}, {-3, 3, 13}}},
 		},
 	},
 	{
@@ -293,7 +293,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "ALTER TABLE t21 DROP COLUMN v1",
-			Expected: []sql.Row{{types.NewOkResult(0)}}},
+			Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
 		},
 	},
 	{
@@ -305,7 +305,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{{
 			Query:    "SELECT * FROM t22",
-			Expected: []sql.Row{{3, 1, 2}, {4, 2, 3}}},
+			Expected: []sql.UntypedSqlRow{{3, 1, 2}, {4, 2, 3}}},
 		},
 	},
 	{
@@ -319,7 +319,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t23 order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 1, 3},
 					{3, 2, 4},
 					{8, 3, 9},
@@ -338,7 +338,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t24 order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 3, 2},
 					{2, 4, 3},
 					{3, 5, 4},
@@ -357,7 +357,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t25",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2, 2},
 					{2, 4, 3},
 					{3, 6, -3},
@@ -376,7 +376,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t26",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2, 2},
 					{2, 3, 4},
 					{3, -3, 6},
@@ -390,7 +390,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "DESCRIBE t27",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", "NO", "PRI", nil, ""},
 					{"v1", "double", "YES", "", "-1.1", ""},
 				},
@@ -411,7 +411,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t29 ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2, 3},
 					{2, 3, 4},
 					{3, 4, 5},
@@ -419,7 +419,7 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE TABLE t29",
-				Expected: []sql.Row{{"t29", "CREATE TABLE `t29` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t29", "CREATE TABLE `t29` (\n" +
 					"  `pk` bigint NOT NULL,\n" +
 					"  `v1y` bigint,\n" +
 					"  `v2` bigint DEFAULT ((`v1y` + 1)),\n" +
@@ -438,7 +438,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT pk, v1, v2, V3 FROM t30",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 4, 5, 7},
 					{2, 4, 5, 7},
 				},
@@ -455,7 +455,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM t31",
-				Expected: []sql.Row{{1, 0}, {2, 0}, {3, 0}},
+				Expected: []sql.UntypedSqlRow{{1, 0}, {2, 0}, {3, 0}},
 			},
 		},
 	},
@@ -469,7 +469,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM t32",
-				Expected: []sql.Row{{1, ""}, {2, ""}, {3, ""}},
+				Expected: []sql.UntypedSqlRow{{1, ""}, {2, ""}, {3, ""}},
 			},
 		},
 	},
@@ -488,7 +488,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "desc t33",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "varchar(100)", "NO", "PRI", "(replace(uuid(), '-', ''))", "DEFAULT_GENERATED"},
 					{"v1_new", "timestamp(6)", "YES", "", "CURRENT_TIMESTAMP(6)", "DEFAULT_GENERATED"},
 					{"v2", "varchar(100)", "YES", "", nil, ""},
@@ -578,71 +578,71 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE t997(pk BIGINT PRIMARY KEY, v1 BLOB DEFAULT 0x61)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO t997 VALUES(42, DEFAULT)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * from t997",
-				Expected: []sql.Row{{42, []uint8{0x61}}},
+				Expected: []sql.UntypedSqlRow{{42, []uint8{0x61}}},
 			},
 			{
 				Query:    "CREATE TABLE t998(pk BIGINT PRIMARY KEY, v1 TEXT DEFAULT 'hi')",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO t998 VALUES(1, DEFAULT)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * from t998",
-				Expected: []sql.Row{{1, "hi"}},
+				Expected: []sql.UntypedSqlRow{{1, "hi"}},
 			},
 			{
 				Query:    "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT 'hi')",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO t999 VALUES(10, DEFAULT)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * from t999",
-				Expected: []sql.Row{{10, "hi"}},
+				Expected: []sql.UntypedSqlRow{{10, "hi"}},
 			},
 			{
 				Query:    "CREATE TABLE t34(pk INT PRIMARY KEY, v1 JSON)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t34 alter column v1 set default '{}'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO t34 VALUES(100, DEFAULT)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * from t34",
-				Expected: []sql.Row{{100, "{}"}},
+				Expected: []sql.UntypedSqlRow{{100, "{}"}},
 			},
 			{
 				Query:    "ALTER TABLE t34 alter column v1 set default ('{}')",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE t35(i int default 100, j JSON)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t35 alter column j set default '[]'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t35 alter column j set default ('[]')",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -784,7 +784,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int DEFAULT '2'\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -792,19 +792,19 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "YES", "", "2", ""},
 				},
 			},
 			{
 				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "i", "2"},
 				},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 		},
 	},
@@ -817,7 +817,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `f` float DEFAULT '1'\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -825,19 +825,19 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"f", "float", "YES", "", "1", ""},
 				},
 			},
 			{
 				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "f", "1"},
 				},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1.0}},
+				Expected: []sql.UntypedSqlRow{{1.0}},
 			},
 		},
 	},
@@ -850,7 +850,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `f` float DEFAULT '1.23'\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -858,19 +858,19 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"f", "float", "YES", "", "1.23", ""},
 				},
 			},
 			{
 				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "f", "1.23"},
 				},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1.23}},
+				Expected: []sql.UntypedSqlRow{{1.23}},
 			},
 		},
 	},
@@ -883,7 +883,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `f` float DEFAULT ('1.23000')\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -891,19 +891,19 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"f", "float", "YES", "", "('1.23000')", "DEFAULT_GENERATED"},
 				},
 			},
 			{
 				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "f", "'1.23000'"},
 				},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1.23}},
+				Expected: []sql.UntypedSqlRow{{1.23}},
 			},
 		},
 	},
@@ -916,7 +916,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "CREATE TABLE `t` (\n" +
 						"  `i` int DEFAULT (1)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
@@ -924,19 +924,19 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 			{
 				Query: "describe t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "YES", "", "(1)", "DEFAULT_GENERATED"},
 				},
 			},
 			{
 				Query: "select table_name, column_name, column_default from information_schema.columns where table_name = 't';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "i", "1"},
 				},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},

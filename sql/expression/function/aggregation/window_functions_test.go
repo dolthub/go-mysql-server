@@ -35,128 +35,128 @@ func TestGroupedAggFuncs(t *testing.T) {
 		{
 			Name:     "count star",
 			Agg:      NewCountAgg(expression.NewStar()),
-			Expected: sql.Row{int64(4), int64(4), int64(6)},
+			Expected: sql.UntypedSqlRow{int64(4), int64(4), int64(6)},
 		},
 		{
 			Name:     "count without nulls",
 			Agg:      NewCountAgg(expression.NewGetField(1, types.LongText, "x", true)),
-			Expected: sql.Row{int64(4), int64(4), int64(6)},
+			Expected: sql.UntypedSqlRow{int64(4), int64(4), int64(6)},
 		},
 		{
 			Name:     "count with nulls",
 			Agg:      NewCountAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{int64(3), int64(3), int64(4)},
+			Expected: sql.UntypedSqlRow{int64(3), int64(3), int64(4)},
 		},
 		{
 			Name:     "max ints",
 			Agg:      NewMaxAgg(expression.NewGetField(1, types.LongText, "x", true)),
-			Expected: sql.Row{4, 4, 6},
+			Expected: sql.UntypedSqlRow{4, 4, 6},
 		},
 		{
 			Name:     "max int64",
 			Agg:      NewMaxAgg(expression.NewGetField(2, types.LongText, "x", true)),
-			Expected: sql.Row{int64(3), int64(3), int64(5)},
+			Expected: sql.UntypedSqlRow{int64(3), int64(3), int64(5)},
 		},
 		{
 			Name:     "max w/ nulls",
 			Agg:      NewMaxAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{4, 4, 6},
+			Expected: sql.UntypedSqlRow{4, 4, 6},
 		},
 		{
 			Name:     "max w/ float",
 			Agg:      NewMaxAgg(expression.NewGetField(3, types.LongText, "x", true)),
-			Expected: sql.Row{float64(4), float64(4), float64(6)},
+			Expected: sql.UntypedSqlRow{float64(4), float64(4), float64(6)},
 		},
 		{
 			Name:     "min ints",
 			Agg:      NewMinAgg(expression.NewGetField(1, types.LongText, "x", true)),
-			Expected: sql.Row{1, 1, 1},
+			Expected: sql.UntypedSqlRow{1, 1, 1},
 		},
 		{
 			Name:     "min int64",
 			Agg:      NewMinAgg(expression.NewGetField(2, types.LongText, "x", true)),
-			Expected: sql.Row{int64(1), int64(1), int64(1)},
+			Expected: sql.UntypedSqlRow{int64(1), int64(1), int64(1)},
 		},
 		{
 			Name:     "min w/ nulls",
 			Agg:      NewMinAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{1, 1, 1},
+			Expected: sql.UntypedSqlRow{1, 1, 1},
 		},
 		{
 			Name:     "min w/ float",
 			Agg:      NewMinAgg(expression.NewGetField(3, types.LongText, "x", true)),
-			Expected: sql.Row{float64(1), float64(1), float64(1)},
+			Expected: sql.UntypedSqlRow{float64(1), float64(1), float64(1)},
 		},
 		{
 			Name:     "avg nulls",
 			Agg:      NewAvgAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{float64(8) / float64(3), float64(8) / float64(3), float64(14) / float64(4)},
+			Expected: sql.UntypedSqlRow{float64(8) / float64(3), float64(8) / float64(3), float64(14) / float64(4)},
 		},
 		{
 			Name:     "avg int",
 			Agg:      NewAvgAgg(expression.NewGetField(1, types.LongText, "x", true)),
-			Expected: sql.Row{float64(10) / float64(4), float64(10) / float64(4), float64(21) / float64(6)},
+			Expected: sql.UntypedSqlRow{float64(10) / float64(4), float64(10) / float64(4), float64(21) / float64(6)},
 		},
 		{
 			Name:     "avg int64",
 			Agg:      NewAvgAgg(expression.NewGetField(2, types.LongText, "x", true)),
-			Expected: sql.Row{float64(8) / float64(4), float64(8) / float64(4), float64(17) / float64(6)},
+			Expected: sql.UntypedSqlRow{float64(8) / float64(4), float64(8) / float64(4), float64(17) / float64(6)},
 		},
 		{
 			Name:     "avg float",
 			Agg:      NewAvgAgg(expression.NewGetField(3, types.LongText, "x", true)),
-			Expected: sql.Row{float64(10) / float64(4), float64(10) / float64(4), float64(21) / float64(6)},
+			Expected: sql.UntypedSqlRow{float64(10) / float64(4), float64(10) / float64(4), float64(21) / float64(6)},
 		},
 		{
 			Name:     "sum nulls",
 			Agg:      NewSumAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{float64(8), float64(8), float64(14)},
+			Expected: sql.UntypedSqlRow{float64(8), float64(8), float64(14)},
 		},
 		{
 			Name:     "sum ints",
 			Agg:      NewSumAgg(expression.NewGetField(1, types.LongText, "x", true)),
-			Expected: sql.Row{float64(10), float64(10), float64(21)},
+			Expected: sql.UntypedSqlRow{float64(10), float64(10), float64(21)},
 		},
 		{
 			Name:     "sum int64",
 			Agg:      NewSumAgg(expression.NewGetField(2, types.LongText, "x", true)),
-			Expected: sql.Row{float64(8), float64(8), float64(17)},
+			Expected: sql.UntypedSqlRow{float64(8), float64(8), float64(17)},
 		},
 		{
 			Name:     "sum float64",
 			Agg:      NewSumAgg(expression.NewGetField(3, types.LongText, "x", true)),
-			Expected: sql.Row{float64(10), float64(10), float64(21)},
+			Expected: sql.UntypedSqlRow{float64(10), float64(10), float64(21)},
 		},
 		{
 			Name:     "first",
 			Agg:      NewFirstAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{1, 1, 1},
+			Expected: sql.UntypedSqlRow{1, 1, 1},
 		},
 		{
 			Name:     "last",
 			Agg:      NewLastAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{4, 4, 6},
+			Expected: sql.UntypedSqlRow{4, 4, 6},
 		},
 		// list aggregations
 		{
 			Name:     "group concat null",
 			Agg:      NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, types.LongText, "x", true)}, 1042)),
-			Expected: sql.Row{"1,3,4", "1,3,4", "1,2,5,6"},
+			Expected: sql.UntypedSqlRow{"1,3,4", "1,3,4", "1,2,5,6"},
 		},
 		{
 			Name:     "group concat int",
 			Agg:      NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(1, types.LongText, "x", true)}, 1042)),
-			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
+			Expected: sql.UntypedSqlRow{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
 		},
 		{
 			Name:     "group concat float",
 			Agg:      NewGroupConcatAgg(NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(3, types.LongText, "x", true)}, 1042)),
-			Expected: sql.Row{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
+			Expected: sql.UntypedSqlRow{"1,2,3,4", "1,2,3,4", "1,2,3,4,5,6"},
 		},
 		{
 			Name: "json array null",
 			Agg:  NewJsonArrayAgg(expression.NewGetField(0, types.LongText, "x", true)),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				types.JSONDocument{Val: []interface{}{1, nil, 3, 4}},
 				types.JSONDocument{Val: []interface{}{1, nil, 3, 4}},
 				types.JSONDocument{Val: []interface{}{1, 2, nil, nil, 5, 6}},
@@ -165,7 +165,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 		{
 			Name: "json array int",
 			Agg:  NewJsonArrayAgg(expression.NewGetField(1, types.LongText, "x", true)),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				types.JSONDocument{Val: []interface{}{1, 2, 3, 4}},
 				types.JSONDocument{Val: []interface{}{1, 2, 3, 4}},
 				types.JSONDocument{Val: []interface{}{1, 2, 3, 4, 5, 6}},
@@ -174,7 +174,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 		{
 			Name: "json array float",
 			Agg:  NewJsonArrayAgg(expression.NewGetField(3, types.LongText, "x", true)),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				types.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4)}},
 				types.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4)}},
 				types.JSONDocument{Val: []interface{}{float64(1), float64(2), float64(3), float64(4), float64(5), float64(6)}},
@@ -188,7 +188,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 					expression.NewGetField(0, types.LongText, "y", true),
 				).(*JSONObjectAgg),
 			),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
 				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
 				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": 2, "3": nil, "4": nil, "5": 5, "6": 6}},
@@ -202,7 +202,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 					expression.NewGetField(0, types.LongText, "x", true),
 				).(*JSONObjectAgg),
 			),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
 				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": nil, "3": 3, "4": 4}},
 				types.JSONDocument{Val: map[string]interface{}{"1": 1, "2": 2, "3": nil, "4": nil, "5": 5, "6": 6}},
@@ -216,7 +216,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 					expression.NewGetField(3, types.LongText, "x", true),
 				).(*JSONObjectAgg),
 			),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
 				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
 				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4), "5": float64(5), "6": float64(6)}},
@@ -230,7 +230,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 					expression.NewGetField(3, types.LongText, "x", true),
 				).(*JSONObjectAgg),
 			),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
 				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4)}},
 				types.JSONDocument{Val: map[string]interface{}{"1": float64(1), "2": float64(2), "3": float64(3), "4": float64(4), "5": float64(5), "6": float64(6)}},
@@ -238,7 +238,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 		},
 	}
 
-	buf := []sql.Row{
+	buf := ConvertDefaultSqlSliceToInterface([]sql.UntypedSqlRow{
 		{1, 1, int64(1), float64(1), 1, 1},
 		{nil, 2, int64(2), float64(2), 1, 1},
 		{3, 3, int64(3), float64(3), 1, 2},
@@ -253,7 +253,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 		{nil, 4, int64(4), float64(4), 3},
 		{5, 5, int64(5), float64(5), 3},
 		{6, 6, int64(2), float64(6), 4},
-	}
+	})
 
 	partitions := []sql.WindowInterval{
 		{Start: 0, End: 4},
@@ -264,7 +264,7 @@ func TestGroupedAggFuncs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
-			res := make(sql.Row, len(partitions))
+			res := make(sql.UntypedSqlRow, len(partitions))
 			for i, p := range partitions {
 				err := tt.Agg.StartPartition(ctx, p, buf)
 				require.NoError(t, err)
@@ -284,7 +284,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		{
 			Name:     "lag",
 			Agg:      NewLag(expression.NewGetField(1, types.LongText, "x", true), nil, 2),
-			Expected: sql.Row{nil, nil, 1, 2, nil, nil, 1, 2, nil, nil, 1, 2, 3, 4},
+			Expected: sql.UntypedSqlRow{nil, nil, 1, 2, nil, nil, 1, 2, nil, nil, 1, 2, 3, 4},
 		},
 		{
 			Name: "lag w/ default",
@@ -293,7 +293,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 				expression.NewGetField(1, types.LongText, "x", true),
 				2,
 			),
-			Expected: sql.Row{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4},
+			Expected: sql.UntypedSqlRow{1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 3, 4},
 		},
 		{
 			Name: "lag nil",
@@ -302,12 +302,12 @@ func TestWindowedAggFuncs(t *testing.T) {
 				nil,
 				1,
 			),
-			Expected: sql.Row{nil, 1, nil, 3, nil, 1, nil, 3, nil, 1, 2, nil, nil, 5},
+			Expected: sql.UntypedSqlRow{nil, 1, nil, 3, nil, 1, nil, 3, nil, 1, 2, nil, nil, 5},
 		},
 		{
 			Name:     "lead",
 			Agg:      NewLead(expression.NewGetField(1, types.LongText, "x", true), nil, 2),
-			Expected: sql.Row{3, 4, nil, nil, 3, 4, nil, nil, 3, 4, 5, 6, nil, nil},
+			Expected: sql.UntypedSqlRow{3, 4, nil, nil, 3, 4, nil, nil, 3, 4, 5, 6, nil, nil},
 		},
 		{
 			Name: "lead w/ default",
@@ -316,17 +316,17 @@ func TestWindowedAggFuncs(t *testing.T) {
 				expression.NewGetField(1, types.LongText, "x", true),
 				2,
 			),
-			Expected: sql.Row{3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6},
+			Expected: sql.UntypedSqlRow{3, 4, 3, 4, 3, 4, 3, 4, 3, 4, 5, 6, 5, 6},
 		},
 		{
 			Name:     "row number",
 			Agg:      NewRowNumber(),
-			Expected: sql.Row{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6},
+			Expected: sql.UntypedSqlRow{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6},
 		},
 		{
 			Name: "percent rank no peers",
 			Agg:  NewPercentRank([]sql.Expression{}),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				float64(0), float64(0), float64(0), float64(0),
 				float64(0), float64(0), float64(0), float64(0),
 				float64(0), float64(0), float64(0), float64(0), float64(0), float64(0),
@@ -335,7 +335,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		{
 			Name: "percent rank peer groups",
 			Agg:  NewPercentRank([]sql.Expression{expression.NewGetField(5, types.LongText, "x", true)}),
-			Expected: sql.Row{
+			Expected: sql.UntypedSqlRow{
 				float64(0), float64(0) / float64(3), float64(2) / float64(3), float64(3) / float64(3),
 				float64(0), float64(1) / float64(3), float64(1) / float64(3), float64(3) / float64(3),
 				float64(0), float64(1) / float64(5), float64(1) / float64(5), float64(3) / float64(5), float64(3) / float64(5), float64(1),
@@ -343,7 +343,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		},
 	}
 
-	buf := []sql.Row{
+	buf := ConvertDefaultSqlSliceToInterface([]sql.UntypedSqlRow{
 		{1, 1, int64(1), float64(1), 1, 1},
 		{nil, 2, int64(2), float64(2), 1, 1},
 		{3, 3, int64(3), float64(3), 1, 2},
@@ -358,7 +358,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 		{nil, 4, int64(4), float64(4), 3, 5},
 		{5, 5, int64(5), float64(5), 3, 5},
 		{6, 6, int64(2), float64(6), 3, 6},
-	}
+	})
 
 	partitions := []sql.WindowInterval{
 		{Start: 0, End: 4},
@@ -369,7 +369,7 @@ func TestWindowedAggFuncs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
-			res := make(sql.Row, len(buf))
+			res := make(sql.UntypedSqlRow, len(buf))
 			i := 0
 			for _, p := range partitions {
 				err := tt.Agg.StartPartition(ctx, p, buf)

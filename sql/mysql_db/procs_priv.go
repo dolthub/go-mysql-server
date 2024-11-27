@@ -50,10 +50,12 @@ func NewUserProcsIndexedSetTable(set in_mem_table.IndexedSet[*User], lock, rlock
 }
 
 func newEmptyRow(ctx *sql.Context) sql.Row {
-	row := make(sql.Row, len(procsPrivTblSchema))
+	row := sql.NewSqlRowWithLen(len(procsPrivTblSchema))
 	var err error
 	for i, col := range procsPrivTblSchema {
-		row[i], err = col.Default.Eval(ctx, nil)
+		var v interface{}
+		v, err = col.Default.Eval(ctx, nil)
+		row.SetValue(i, v)
 		if err != nil {
 			panic(err) // Schema is static. New rows should never fail.
 		}
@@ -71,11 +73,11 @@ func UserToProcsPrivRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 			}
 			row := newEmptyRow(ctx)
 
-			row[procsPrivTblColIndex_Host] = user.Host
-			row[procsPrivTblColIndex_Db] = dbSet.Name()
-			row[procsPrivTblColIndex_User] = user.User
-			row[procsPrivTblColIndex_RoutineName] = routineSet.RoutineName()
-			row[procsPrivTblColIndex_RoutineType] = routineSet.RoutineType()
+			row.SetValue(procsPrivTblColIndex_Host, user.Host)
+			row.SetValue(procsPrivTblColIndex_Db, dbSet.Name())
+			row.SetValue(procsPrivTblColIndex_User, user.User)
+			row.SetValue(procsPrivTblColIndex_RoutineName, routineSet.RoutineName())
+			row.SetValue(procsPrivTblColIndex_RoutineType, routineSet.RoutineType())
 
 			var privs []string
 			for _, priv := range routineSet.ToSlice() {
@@ -89,7 +91,7 @@ func UserToProcsPrivRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 				}
 			}
 			privsStr := strings.Join(privs, ",")
-			row[procsPrivTblColIndex_ProcPriv] = privsStr
+			row.SetValue(procsPrivTblColIndex_ProcPriv, privsStr)
 
 			ans = append(ans, row)
 		}

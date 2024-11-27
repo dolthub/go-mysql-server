@@ -54,8 +54,8 @@ func NewOkResult(rowsAffected int) OkResult {
 
 // IsOkResult returns whether the given row represents an OkResult.
 func IsOkResult(row sql.Row) bool {
-	if len(row) == 1 {
-		if _, ok := row[0].(OkResult); ok {
+	if row.Len() == 1 {
+		if _, ok := row.GetValue(0).(OkResult); ok {
 			return true
 		}
 	}
@@ -64,5 +64,5 @@ func IsOkResult(row sql.Row) bool {
 
 // GetOkResult extracts the OkResult from the row given
 func GetOkResult(row sql.Row) OkResult {
-	return row[0].(OkResult)
+	return row.GetValue(0).(OkResult)
 }

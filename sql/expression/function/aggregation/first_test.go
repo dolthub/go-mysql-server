@@ -27,12 +27,12 @@ import (
 func TestFirst(t *testing.T) {
 	testCases := []struct {
 		name     string
-		rows     []sql.Row
+		rows     []sql.UntypedSqlRow
 		expected interface{}
 	}{
 		{"no rows", nil, nil},
-		{"one row", []sql.Row{{"first"}}, "first"},
-		{"three rows", []sql.Row{{"first"}, {"second"}, {"last"}}, "first"},
+		{"one row", []sql.UntypedSqlRow{{"first"}}, "first"},
+		{"three rows", []sql.UntypedSqlRow{{"first"}, {"second"}, {"last"}}, "first"},
 	}
 
 	agg := NewFirst(expression.NewGetField(0, types.Text, "", false))

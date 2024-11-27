@@ -139,7 +139,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 			// value of new.field, so that the wrapping iterator can use it for the insert / update. Otherwise, this iterator
 			// always returns its input row.
 			if shouldUseTriggerStatementForReturnRow(s) {
-				row = newRow[len(newRow)/2:]
+				row = newRow.Subslice(newRow.Len()/2, newRow.Len())
 			}
 		}
 	}
@@ -245,7 +245,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		}
 	}()
 
-	var logicRow sql.Row
+	var logicRow sql.Row = sql.UntypedSqlRow{}
 	for {
 		row, err := logicIter.Next(ctx)
 		if err == io.EOF {
@@ -280,7 +280,7 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 				return true
 			})
 		}
-		return hasSetField, row[len(row)/2:]
+		return hasSetField, row.Subslice(row.Len()/2, row.Len())
 	case *plan.TriggerBeginEndBlock:
 		hasSetField := false
 		transform.Inspect(logic, func(n sql.Node) bool {
@@ -347,8 +347,8 @@ func (r *replaceRowHandler) handleRowUpdate(row sql.Row) error {
 
 	// If a row was deleted as well as inserted, increment the counter again. A row was deleted if at least one column in
 	// the first half of the row is non-null.
-	for i := 0; i < len(row)/2; i++ {
-		if row[i] != nil {
+	for i := 0; i < row.Len()/2; i++ {
+		if row.GetValue(i) != nil {
 			r.rowsAffected++
 			break
 		}
@@ -370,14 +370,14 @@ type onDuplicateUpdateHandler struct {
 func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	// See https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html for row count semantics
 	// If a row was inserted, increment by 1
-	if len(row) == len(o.schema) {
+	if row.Len() == len(o.schema) {
 		o.rowsAffected++
 		return nil
 	}
 
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
-	oldRow := row[:len(row)/2]
-	newRow := row[len(row)/2:]
+	oldRow := row.Subslice(0, row.Len()/2)
+	newRow := row.Subslice(row.Len()/2, row.Len())
 	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
 		if equals {
 			// Ig the CLIENT_FOUND_ROWS capabilities flag is set, increment by 1 if a row stays the same.
@@ -407,8 +407,8 @@ type updateRowHandler struct {
 
 func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
 	u.rowsMatched++
-	oldRow := row[:len(row)/2]
-	newRow := row[len(row)/2:]
+	oldRow := row.Subslice(0, row.Len()/2)
+	newRow := row.Subslice(row.Len()/2, row.Len())
 	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
 		if !equals {
 			u.rowsAffected++
@@ -462,8 +462,8 @@ func (u *updateJoinRowHandler) handleRowMatched() {
 }
 
 func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
-	oldJoinRow := row[:len(row)/2]
-	newJoinRow := row[len(row)/2:]
+	oldJoinRow := row.Subslice(0, row.Len()/2)
+	newJoinRow := row.Subslice(row.Len()/2, row.Len())
 
 	tableToOldRow := plan.SplitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 	tableToNewRow := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
@@ -685,9 +685,9 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 	// scope, which will be the first N values in the row.
 	// TODO: handle this in the analyzer instead?
 	expectedSchemaLen := len(u.tableSchema)
-	if expectedSchemaLen < len(oldRow) {
-		oldRow = oldRow[len(oldRow)-expectedSchemaLen:]
-		newRow = newRow[len(newRow)-expectedSchemaLen:]
+	if expectedSchemaLen < oldRow.Len() {
+		oldRow = oldRow.Subslice(oldRow.Len()-expectedSchemaLen, oldRow.Len())
+		newRow = newRow.Subslice(newRow.Len()-expectedSchemaLen, newRow.Len())
 	}
 
 	return oldRow.Append(newRow), nil

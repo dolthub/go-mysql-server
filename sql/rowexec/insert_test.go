@@ -91,7 +91,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 			row, err := ri.Next(ctx)
 			require.NoError(t, err)
 
-			require.Equal(t, sql.Row{tc.expected}, row)
+			require.Equal(t, sql.UntypedSqlRow{tc.expected}, row)
 
 			var warningCnt int
 			if tc.err {

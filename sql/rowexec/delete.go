@@ -85,12 +85,12 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	// the columns that are part of that target table. This means looking at the position in the schema for
 	// the target table and also removing any prepended columns contributed by outer scopes.
 	fullSchemaLength := len(d.schema)
-	rowLength := len(row)
+	rowLength := row.Len()
 	for _, deleter := range d.deleters {
 		schemaLength := deleter.schemaEnd - deleter.schemaStart
 		subSlice := row
 		if schemaLength < rowLength {
-			subSlice = row[(rowLength - fullSchemaLength + deleter.schemaStart):(rowLength - fullSchemaLength + deleter.schemaEnd)]
+			subSlice = row.Subslice((rowLength - fullSchemaLength + deleter.schemaStart), (rowLength - fullSchemaLength + deleter.schemaEnd))
 		}
 		err = deleter.deleter.Delete(ctx, subSlice)
 		if err != nil {

@@ -357,11 +357,12 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 
 		row := make([]sqltypes.Value, len(fields))
 		for i := range row {
-			scanRow[i], _, err = types[i].Convert(scanRow[i])
+			newV, _, err := types[i].Convert(scanRow.GetValue(i))
 			if err != nil {
 				return nil, false, err
 			}
-			row[i], err = types[i].SQL(ctx, nil, scanRow[i])
+			scanRow.SetValue(i, newV)
+			row[i], err = types[i].SQL(ctx, nil, scanRow.GetValue(i))
 			if err != nil {
 				return nil, false, err
 			}
@@ -428,13 +429,13 @@ func scanResultRow(results *dsql.Rows) (sql.Row, error) {
 		return nil, err
 	}
 
-	scanRow := make(sql.Row, len(cols))
+	scanRow := make(sql.UntypedSqlRow, len(cols))
 	for i := range cols {
-		scanRow[i] = reflect.New(cols[i].ScanType()).Interface()
+		scanRow.SetValue(i, reflect.New(cols[i].ScanType()).Interface())
 	}
 
 	for i, columnType := range cols {
-		scanRow[i] = reflect.New(columnType.ScanType()).Interface()
+		scanRow.SetValue(i, reflect.New(columnType.ScanType()).Interface())
 	}
 
 	if err = results.Scan(scanRow...); err != nil {
@@ -445,60 +446,60 @@ func scanResultRow(results *dsql.Rows) (sql.Row, error) {
 		switch t := v.(type) {
 		case dsql.RawBytes:
 			if t == nil {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			} else {
-				scanRow[i] = string(t)
+				scanRow.SetValue(i, string(t))
 			}
 		case dsql.NullBool:
 			if t.Valid {
-				scanRow[i] = t.Bool
+				scanRow.SetValue(i, t.Bool)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		case dsql.NullByte:
 			if t.Valid {
-				scanRow[i] = t.Byte
+				scanRow.SetValue(i, t.Byte)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		case dsql.NullFloat64:
 			if t.Valid {
-				scanRow[i] = t.Float64
+				scanRow.SetValue(i, t.Float64)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		case dsql.NullInt16:
 			if t.Valid {
-				scanRow[i] = t.Int16
+				scanRow.SetValue(i, t.Int16)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		case dsql.NullInt32:
 			if t.Valid {
-				scanRow[i] = t.Int32
+				scanRow.SetValue(i, t.Int32)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		case dsql.NullInt64:
 			if t.Valid {
-				scanRow[i] = t.Int64
+				scanRow.SetValue(i, t.Int64)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		case dsql.NullString:
 			if t.Valid {
-				scanRow[i] = t.String
+				scanRow.SetValue(i, t.String)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		case dsql.NullTime:
 			if t.Valid {
-				scanRow[i] = t.Time
+				scanRow.SetValue(i, t.Time)
 			} else {
-				scanRow[i] = nil
+				scanRow.SetValue(i, nil)
 			}
 		default:
-			scanRow[i] = t
+			scanRow.SetValue(i, t)
 		}
 	}
 	return scanRow, nil

@@ -174,16 +174,10 @@ func (h Histogram) Clone(context.Context) JSONWrapper {
 func (h Histogram) ToInterface() (interface{}, error) {
 	ret := make([]interface{}, len(h))
 	for i, b := range h {
-		var upperBound Row
-		for _, v := range b.UpperBound() {
-			upperBound = append(upperBound, v)
-		}
+		upperBound := b.UpperBound().Copy()
 		mcvs := make([]Row, len(b.Mcvs()))
 		for i, mcv := range b.Mcvs() {
-			var row Row
-			for _, v := range mcv {
-				row = append(row, v)
-			}
+			row := mcv.Copy()
 			mcvs[i] = row
 		}
 		ret[i] = map[string]interface{}{
@@ -206,7 +200,7 @@ func (h Histogram) DebugString() string {
 	for _, bucket := range h {
 		cnt := int(bucket.RowCount())
 		var key []string
-		for _, v := range bucket.UpperBound() {
+		for _, v := range bucket.UpperBound().Values() {
 			key = append(key, fmt.Sprintf("%v", v))
 		}
 		bounds = append(bounds, strings.Join(key, ","))

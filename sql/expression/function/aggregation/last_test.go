@@ -27,12 +27,12 @@ import (
 func TestLast(t *testing.T) {
 	testCases := []struct {
 		name     string
-		rows     []sql.Row
+		rows     []sql.UntypedSqlRow
 		expected interface{}
 	}{
 		{"no rows", nil, nil},
-		{"one row", []sql.Row{{"first"}}, "first"},
-		{"three rows", []sql.Row{{"first"}, {"second"}, {"last"}}, "last"},
+		{"one row", []sql.UntypedSqlRow{{"first"}}, "first"},
+		{"three rows", []sql.UntypedSqlRow{{"first"}, {"second"}, {"last"}}, "last"},
 	}
 
 	agg := NewLast(expression.NewGetField(0, types.Text, "", false))

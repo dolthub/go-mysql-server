@@ -40,8 +40,8 @@ func TestInSubquery(t *testing.T) {
 		{Name: "t", Source: "foo", Type: varChar3},
 	}), nil)
 
-	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
-	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"one"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"two"}))
 
 	project := func(expr sql.Expression) sql.Node {
 		return plan.NewProject([]sql.Expression{
@@ -150,9 +150,9 @@ func TestNotInSubquery(t *testing.T) {
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
-	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
-	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
-	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"one"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"two"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"three"}))
 
 	project := func(expr sql.Expression) sql.Node {
 		return plan.NewProject([]sql.Expression{

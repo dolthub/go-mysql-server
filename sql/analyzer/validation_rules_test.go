@@ -81,12 +81,12 @@ func TestValidateGroupBy(t *testing.T) {
 
 	child := memory.NewTable(db, "test", childSchema, nil)
 
-	rows := []sql.Row{
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_1", int64(2222)),
-		sql.NewRow("col1_2", int64(4444)),
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_2", int64(4444)),
+	rows := []sql.UntypedSqlRow{
+		{"col1_1", int64(1111)},
+		{"col1_1", int64(2222)},
+		{"col1_2", int64(4444)},
+		{"col1_1", int64(1111)},
+		{"col1_2", int64(4444)},
 	}
 
 	for _, r := range rows {
@@ -129,12 +129,12 @@ func TestValidateGroupByErr(t *testing.T) {
 
 	child := memory.NewTable(db, "test", childSchema, nil)
 
-	rows := []sql.Row{
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_1", int64(2222)),
-		sql.NewRow("col1_2", int64(4444)),
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_2", int64(4444)),
+	rows := []sql.UntypedSqlRow{
+		{"col1_1", int64(1111)},
+		{"col1_1", int64(2222)},
+		{"col1_2", int64(4444)},
+		{"col1_1", int64(1111)},
+		{"col1_2", int64(4444)},
 	}
 
 	for _, r := range rows {

@@ -25,38 +25,65 @@ import (
 )
 
 // Row is a tuple of values.
-type Row []interface{}
+type Row interface {
+	GetValue(i int) interface{}
+	GetBytes() []byte
+	SetValue(i int, v interface{})
+	SetBytes(i int, v []byte)
+	GetType(i int)
+	Values() []interface{}
+	Copy() Row
+	Len() int
+	Subslice(i, j int) Row
+	Append(Row) Row
+	Equals(row Row, schema Schema) (bool, error)
+}
 
-// NewRow creates a row from the given values.
-func NewRow(values ...interface{}) Row {
+type SqlRow struct {
+	values []interface{}
+	types  []Type
+}
+
+func NewSqlRowWithLen(l int) Row {
+	return make(UntypedSqlRow, l)
+}
+
+func NewSqlRow(values ...interface{}) *SqlRow {
 	row := make([]interface{}, len(values))
 	copy(row, values)
-	return row
+	return &SqlRow{values: row}
 }
 
-// Copy creates a new row with the same values as the current one.
-func (r Row) Copy() Row {
-	return NewRow(r...)
+var _ Row = (*SqlRow)(nil)
+
+func (r *SqlRow) Subslice(i, j int) Row {
+	return &SqlRow{values: r.values[i:j]}
 }
 
-// Append appends all the values in r2 to this row and returns the result
-func (r Row) Append(r2 Row) Row {
-	row := make(Row, len(r)+len(r2))
-	copy(row, r)
-	for i := range r2 {
-		row[i+len(r)] = r2[i]
+func (r *SqlRow) Len() int {
+	return len(r.values)
+}
+
+func (r *SqlRow) Copy() Row {
+	return NewSqlRow(r.values...)
+}
+
+func (r *SqlRow) Append(r2 Row) Row {
+	row := make([]interface{}, r.Len()+r2.Len())
+	copy(row, r.values)
+	for i := range r2.Values() {
+		row[i+r.Len()] = r2.GetValue(i)
 	}
-	return row
+	return &SqlRow{values: row}
 }
 
-// Equals checks whether two rows are equal given a schema.
-func (r Row) Equals(row Row, schema Schema) (bool, error) {
-	if len(row) != len(r) || len(row) != len(schema) {
+func (r *SqlRow) Equals(row Row, schema Schema) (bool, error) {
+	if row.Len() != r.Len() || row.Len() != len(schema) {
 		return false, nil
 	}
 
-	for i, colLeft := range r {
-		colRight := row[i]
+	for i, colLeft := range r.Values() {
+		colRight := row.GetValue(i)
 		cmp, err := schema[i].Type.Compare(colLeft, colRight)
 		if err != nil {
 			return false, err
@@ -69,11 +96,118 @@ func (r Row) Equals(row Row, schema Schema) (bool, error) {
 	return true, nil
 }
 
+func (r *SqlRow) GetValue(i int) interface{} {
+	return r.values[i]
+}
+
+func (r *SqlRow) GetBytes() []byte {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *SqlRow) SetValue(i int, v interface{}) {
+	r.values[i] = v
+}
+
+func (r *SqlRow) SetBytes(i int, v []byte) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *SqlRow) GetType(i int) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *SqlRow) Values() []interface{} {
+	return r.values
+}
+
+// NewRow creates a row from the given values.
+func NewRow(values ...interface{}) Row {
+	return NewSqlRow(values...)
+}
+
+func NewUntypedRow(v ...interface{}) Row {
+	return UntypedSqlRow(v)
+}
+
+type UntypedSqlRow []interface{}
+
+func (r UntypedSqlRow) Append(row Row) Row {
+	if row == nil || row.Len() == 0 {
+		return r
+	}
+	return append(r, row.Values()...)
+}
+
+func (r UntypedSqlRow) GetValue(i int) interface{} {
+	return r[i]
+}
+
+func (r UntypedSqlRow) GetBytes() []byte {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r UntypedSqlRow) SetValue(i int, v interface{}) {
+	r[i] = v
+}
+
+func (r UntypedSqlRow) SetBytes(i int, v []byte) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r UntypedSqlRow) GetType(i int) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r UntypedSqlRow) Values() []interface{} {
+	return r
+}
+
+func (r UntypedSqlRow) Copy() Row {
+	cp := make([]interface{}, len(r))
+	copy(cp, r)
+	return UntypedSqlRow(cp)
+}
+
+func (r UntypedSqlRow) Len() int {
+	return len(r)
+}
+
+func (r UntypedSqlRow) Subslice(i, j int) Row {
+	return r[i:j]
+}
+
+func (r UntypedSqlRow) Equals(row Row, schema Schema) (bool, error) {
+	if row.Len() != r.Len() || row.Len() != len(schema) {
+		return false, nil
+	}
+
+	for i, colLeft := range r.Values() {
+		colRight := row.GetValue(i)
+		cmp, err := schema[i].Type.Compare(colLeft, colRight)
+		if err != nil {
+			return false, err
+		}
+		if cmp != 0 {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+var _ Row = UntypedSqlRow{}
+
 // FormatRow returns a formatted string representing this row's values
 func FormatRow(row Row) string {
 	var sb strings.Builder
 	sb.WriteRune('[')
-	for i, v := range row {
+	for i, v := range row.Values() {
 		if i > 0 {
 			sb.WriteRune(',')
 		}
@@ -113,7 +247,7 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 }
 
 func rowFromRow2(sch Schema, r Row2) Row {
-	row := make(Row, len(sch))
+	row := make([]interface{}, len(sch))
 	for i, col := range sch {
 		switch col.Type.Type() {
 		case query.Type_INT8:
@@ -174,7 +308,7 @@ func rowFromRow2(sch Schema, r Row2) Row {
 			panic(fmt.Sprintf("unknown type %T", col.Type))
 		}
 	}
-	return row
+	return NewSqlRow(row...)
 }
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.
@@ -208,4 +342,16 @@ type MutableRowIter interface {
 	RowIter
 	GetChildIter() RowIter
 	WithChildIter(childIter RowIter) RowIter
+}
+
+func RowsToUntyped(rows []Row) []UntypedSqlRow {
+	var dest []UntypedSqlRow
+	for _, r := range rows {
+		if ur, ok := r.(UntypedSqlRow); ok {
+			dest = append(dest, ur)
+		} else {
+			dest = append(dest, NewUntypedRow(r.Values()...).(UntypedSqlRow))
+		}
+	}
+	return dest
 }

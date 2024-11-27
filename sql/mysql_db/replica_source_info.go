@@ -35,28 +35,30 @@ type ReplicaSourceInfo struct {
 }
 
 func ReplicaSourceInfoToRow(ctx *sql.Context, v *ReplicaSourceInfo) (sql.Row, error) {
-	row := make(sql.Row, len(replicaSourceInfoTblSchema))
+	row := sql.NewSqlRowWithLen(len(replicaSourceInfoTblSchema))
 	var err error
 	for i, col := range replicaSourceInfoTblSchema {
-		row[i], err = col.Default.Eval(ctx, nil)
+		var v interface{}
+		v, err = col.Default.Eval(ctx, nil)
+		row.SetValue(i, v)
 		if err != nil {
 			panic(err) // Should never happen, schema is static
 		}
 	}
 	//TODO: once the remaining fields are added, fill those in as well
 	if v.Host != "" {
-		row[replicaSourceInfoTblColIndex_Host] = v.Host
+		row.SetValue(replicaSourceInfoTblColIndex_Host, v.Host)
 	}
 	if v.User != "" {
-		row[replicaSourceInfoTblColIndex_User_name] = v.User
+		row.SetValue(replicaSourceInfoTblColIndex_User_name, v.User)
 	}
 	if v.Uuid != "" {
-		row[replicaSourceInfoTblColIndex_Uuid] = v.Uuid
+		row.SetValue(replicaSourceInfoTblColIndex_Uuid, v.Uuid)
 	}
-	row[replicaSourceInfoTblColIndex_User_password] = v.Password
-	row[replicaSourceInfoTblColIndex_Port] = v.Port
-	row[replicaSourceInfoTblColIndex_Connect_retry] = v.ConnectRetryInterval
-	row[replicaSourceInfoTblColIndex_Retry_count] = v.ConnectRetryCount
+	row.SetValue(replicaSourceInfoTblColIndex_User_password, v.Password)
+	row.SetValue(replicaSourceInfoTblColIndex_Port, v.Port)
+	row.SetValue(replicaSourceInfoTblColIndex_Connect_retry, v.ConnectRetryInterval)
+	row.SetValue(replicaSourceInfoTblColIndex_Retry_count, v.ConnectRetryCount)
 
 	return row, nil
 }
@@ -67,13 +69,13 @@ func ReplicaSourceInfoFromRow(ctx *sql.Context, row sql.Row) (*ReplicaSourceInfo
 	}
 
 	return &ReplicaSourceInfo{
-		Host:                 row[replicaSourceInfoTblColIndex_Host].(string),
-		User:                 row[replicaSourceInfoTblColIndex_User_name].(string),
-		Password:             row[replicaSourceInfoTblColIndex_User_password].(string),
-		Port:                 row[replicaSourceInfoTblColIndex_Port].(uint16),
-		Uuid:                 row[replicaSourceInfoTblColIndex_Uuid].(string),
-		ConnectRetryInterval: row[replicaSourceInfoTblColIndex_Connect_retry].(uint32),
-		ConnectRetryCount:    row[replicaSourceInfoTblColIndex_Retry_count].(uint64),
+		Host:                 row.GetValue(replicaSourceInfoTblColIndex_Host).(string),
+		User:                 row.GetValue(replicaSourceInfoTblColIndex_User_name).(string),
+		Password:             row.GetValue(replicaSourceInfoTblColIndex_User_password).(string),
+		Port:                 row.GetValue(replicaSourceInfoTblColIndex_Port).(uint16),
+		Uuid:                 row.GetValue(replicaSourceInfoTblColIndex_Uuid).(string),
+		ConnectRetryInterval: row.GetValue(replicaSourceInfoTblColIndex_Connect_retry).(uint32),
+		ConnectRetryCount:    row.GetValue(replicaSourceInfoTblColIndex_Retry_count).(uint64),
 	}, nil
 }
 

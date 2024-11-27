@@ -41,7 +41,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t add column b varchar(16000), add column c varchar(10)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -61,7 +61,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM t32",
 				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"v4", "int", nil, "YES", "", nil, "", "", ""},
 					{"v1", "varchar(100)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
@@ -71,7 +71,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t32_2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"v2", "int", nil, "YES", "", nil, "", "", ""},
 					{"v3", "int", nil, "YES", "", nil, "", "", ""},
@@ -80,7 +80,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t32_3",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"v5", "int", nil, "YES", "", nil, "", "", ""},
 					{"v2", "int", nil, "YES", "", nil, "", "", ""},
@@ -113,7 +113,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "SHOW FULL COLUMNS FROM t33",
 				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"v4", "int", nil, "YES", "", nil, "", "", ""},
 					{"v1", "int", nil, "YES", "", nil, "", "", ""},
@@ -121,7 +121,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM information_schema.CHECK_CONSTRAINTS",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "v1gt0", "(v1 > 0)"},
 				},
 			},
@@ -158,23 +158,23 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t alter column col2 DROP DEFAULT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP(6),\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP(6),\n  `col2` varchar(1000),\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "alter table t alter column col2 SET DEFAULT 'FOO!';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP(6),\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"t", "CREATE TABLE `t` (\n  `pk` int NOT NULL,\n  `col1` timestamp(6) DEFAULT CURRENT_TIMESTAMP(6),\n  `col2` varchar(1000) DEFAULT 'FOO!',\n  PRIMARY KEY (`pk`),\n  KEY `idx1` (`pk`,`col1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "alter table t drop index idx1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -189,7 +189,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t34",
-				Expected: []sql.Row{{"t34", "CREATE TABLE `t34` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t34", "CREATE TABLE `t34` (\n" +
 					"  `i` bigint NOT NULL,\n" +
 					"  `s` varchar(20),\n" +
 					"  PRIMARY KEY (`i`)\n" +
@@ -206,7 +206,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t42",
-				Expected: []sql.Row{{"t42",
+				Expected: []sql.UntypedSqlRow{{"t42",
 					"CREATE TABLE `t42` (\n" +
 						"  `i` bigint NOT NULL,\n" +
 						"  `j` int,\n" +
@@ -226,7 +226,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t42",
-				Expected: []sql.Row{{"t42",
+				Expected: []sql.UntypedSqlRow{{"t42",
 					"CREATE TABLE `t42` (\n" +
 						"  `i` bigint NOT NULL,\n" +
 						"  `j` int,\n" +
@@ -249,7 +249,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t42",
-				Expected: []sql.Row{{"t42", "CREATE TABLE `t42` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t42", "CREATE TABLE `t42` (\n" +
 					"  `i` bigint NOT NULL,\n" +
 					"  `s` varchar(20),\n" +
 					"  PRIMARY KEY (`i`)\n" +
@@ -270,7 +270,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t41",
-				Expected: []sql.Row{{"t41", "CREATE TABLE `t41` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t41", "CREATE TABLE `t41` (\n" +
 					"  `i` bigint NOT NULL,\n" +
 					"  `s` varchar(20),\n" +
 					"  `k` int,\n" +
@@ -295,7 +295,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "show create table t43",
-				Expected: []sql.Row{{"t43", "CREATE TABLE `t43` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t43", "CREATE TABLE `t43` (\n" +
 					"  `i` bigint NOT NULL,\n" +
 					"  `s` varchar(20),\n" +
 					"  `j` int,\n" +
@@ -316,7 +316,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t35",
-				Expected: []sql.Row{{"t35", "CREATE TABLE `t35` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t35", "CREATE TABLE `t35` (\n" +
 					"  `i` bigint NOT NULL,\n" +
 					"  `s` varchar(20),\n" +
 					"  PRIMARY KEY (`i`),\n" +
@@ -385,19 +385,19 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t38 DROP INDEX u_col1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO t38 VALUES (5, 1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "ALTER TABLE t38 ADD UNIQUE u_col1 (col1)",
@@ -405,7 +405,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "show create table t38;",
-				Expected: []sql.Row{{"t38", "CREATE TABLE `t38` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t38", "CREATE TABLE `t38` (\n" +
 					"  `pk` int NOT NULL,\n" +
 					"  `col1` int,\n" +
 					"  PRIMARY KEY (`pk`)\n" +
@@ -413,11 +413,11 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE t39 DROP INDEX u_col1_col2;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO t39 VALUES (10, 1, 1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "ALTER TABLE t39 ADD UNIQUE u_col1_col2 (col1, col2)",
@@ -425,7 +425,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "show create table t39;",
-				Expected: []sql.Row{{"t39", "CREATE TABLE `t39` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t39", "CREATE TABLE `t39` (\n" +
 					"  `pk` int NOT NULL,\n" +
 					"  `col1` int,\n" +
 					"  `col2` int,\n" +
@@ -443,11 +443,11 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t40 MODIFY COLUMN pk int",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "describe t40",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"val", "int", "YES", "", nil, ""},
 				},
@@ -458,22 +458,22 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "drop table t40",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE t40 (pk int AUTO_INCREMENT PRIMARY KEY, val int)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "INSERT INTO t40 VALUES (NULL, 1)",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     1,
 				}}},
 			},
 			{
 				Query:    "SELECT * FROM t40",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 		},
 	},
@@ -486,11 +486,11 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t1 add column j int unique",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1", "CREATE TABLE `t1` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t1", "CREATE TABLE `t1` (\n" +
 					"  `i` bigint NOT NULL,\n" +
 					"  `s` varchar(20),\n" +
 					"  `j` int,\n" +
@@ -542,13 +542,13 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "alter table t add column c4 int null, add unique index uniq(c4)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table t",
-				Expected: []sql.Row{sql.Row{"t",
+				Expected: []sql.UntypedSqlRow{{"t",
 					"CREATE TABLE `t` (\n" +
 						"  `c1` int NOT NULL,\n" +
 						"  `c2` int,\n" +
@@ -560,7 +560,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "select * from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 1, nil},
 					{2, 2, 2, nil},
 					{3, 3, 3, nil},
@@ -579,7 +579,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SHOW CREATE TABLE test1",
-				Expected: []sql.Row{{"test1",
+				Expected: []sql.UntypedSqlRow{{"test1",
 					"CREATE TABLE `test1` (\n" +
 						"  `v1` varchar(200),\n" +
 						"  `v2` enum('a'),\n" +
@@ -588,7 +588,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE TABLE test2",
-				Expected: []sql.Row{{"test2",
+				Expected: []sql.UntypedSqlRow{{"test2",
 					"CREATE TABLE `test2` (\n" +
 						"  `v1` varchar(200),\n" +
 						"  `v2` enum('a'),\n" +
@@ -597,7 +597,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE TABLE test3",
-				Expected: []sql.Row{{"test3",
+				Expected: []sql.UntypedSqlRow{{"test3",
 					"CREATE TABLE `test3` (\n" +
 						"  `v1` varchar(200),\n" +
 						"  `v2` enum('a'),\n" +
@@ -606,7 +606,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE TABLE test4",
-				Expected: []sql.Row{{"test4",
+				Expected: []sql.UntypedSqlRow{{"test4",
 					"CREATE TABLE `test4` (\n" +
 						"  `v1` varchar(200) COLLATE utf8mb4_0900_ai_ci,\n" +
 						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
@@ -615,23 +615,23 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test1 COLLATE utf8mb4_general_ci;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE test2 COLLATE utf8mb4_0900_bin;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE test3 COLLATE utf8mb4_0900_bin;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE test4 COLLATE utf8mb4_unicode_ci;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE test1",
-				Expected: []sql.Row{{"test1",
+				Expected: []sql.UntypedSqlRow{{"test1",
 					"CREATE TABLE `test1` (\n" +
 						"  `v1` varchar(200) COLLATE utf8mb4_0900_bin,\n" +
 						"  `v2` enum('a') COLLATE utf8mb4_0900_bin,\n" +
@@ -640,7 +640,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE TABLE test2",
-				Expected: []sql.Row{{"test2",
+				Expected: []sql.UntypedSqlRow{{"test2",
 					"CREATE TABLE `test2` (\n" +
 						"  `v1` varchar(200) COLLATE utf8mb4_general_ci,\n" +
 						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
@@ -649,7 +649,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE TABLE test3",
-				Expected: []sql.Row{{"test3",
+				Expected: []sql.UntypedSqlRow{{"test3",
 					"CREATE TABLE `test3` (\n" +
 						"  `v1` varchar(200) COLLATE utf8mb4_general_ci,\n" +
 						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
@@ -658,7 +658,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE TABLE test4",
-				Expected: []sql.Row{{"test4",
+				Expected: []sql.UntypedSqlRow{{"test4",
 					"CREATE TABLE `test4` (\n" +
 						"  `v1` varchar(200) COLLATE utf8mb4_0900_ai_ci,\n" +
 						"  `v2` enum('a') COLLATE utf8mb4_general_ci,\n" +
@@ -675,11 +675,11 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test ADD CONSTRAINT cx CHECK (v1 < 100)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE test DROP CHECK cx, ADD CHECK (v1 < 50)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO test VALUES (1, 99)",
@@ -687,7 +687,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test VALUES (2, 2)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -701,7 +701,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -714,7 +714,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"uk", "int", "NO", "UNI", nil, "auto_increment"},
 				},
@@ -743,7 +743,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "describe test",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", "NO", "PRI", nil, ""},
 					{"mk", "int", "NO", "MUL", nil, "auto_increment"},
 				},
@@ -760,7 +760,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -774,12 +774,12 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 rename to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// reset name
 				Query:    "alter table abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl rename to t1",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -789,12 +789,12 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 rename column a to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// reset name
 				Query:    "alter table t1 rename column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl to a",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -804,7 +804,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl check (a > 0)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -814,7 +814,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk0 foreign key(a) references parent(a)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -824,7 +824,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 add constraint abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 unique key(a)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -834,7 +834,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 rename index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk1 to abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -844,7 +844,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 add column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 int",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -854,7 +854,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 change column abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk2 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 int",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -864,7 +864,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				// 64 characters
 				Query:    "alter table t1 add index abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk3 (b)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// 65 characters
@@ -900,11 +900,11 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t add index idx2 (col1(10));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t",
-				Expected: []sql.Row{{"t",
+				Expected: []sql.UntypedSqlRow{{"t",
 					"CREATE TABLE `t` (\n" +
 						"  `pk` int NOT NULL,\n" +
 						"  `col1` varchar(100),\n" +
@@ -925,27 +925,27 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t1 drop index MYINDEX1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show indexes from t1;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "alter table t2 rename index myIndex2 to mySecondIndex;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show indexes from t2;",
-				Expected: []sql.Row{{"t2", 1, "mySecondIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
+				Expected: []sql.UntypedSqlRow{{"t2", 1, "mySecondIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
 			},
 			{
 				Query:    "alter table t3 rename index MYiNDEX3 to anotherIndex;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show indexes from t3;",
-				Expected: []sql.Row{{"t3", 1, "anotherIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
+				Expected: []sql.UntypedSqlRow{{"t3", 1, "anotherIndex", 1, "i", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil}},
 			},
 		},
 	},
@@ -973,7 +973,7 @@ var AlterTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "select j from tt;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -985,7 +985,7 @@ var RenameTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "RENAME TABLE mytable TO newTableName",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "SELECT COUNT(*) FROM mytable",
@@ -993,7 +993,7 @@ var RenameTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM newTableName",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 		},
 	},
@@ -1002,7 +1002,7 @@ var RenameTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "RENAME TABLE othertable to othertable2, newTableName to mytable",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "SELECT COUNT(*) FROM othertable",
@@ -1014,11 +1014,11 @@ var RenameTableScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM mytable",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM othertable2",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 		},
 	},
@@ -1047,11 +1047,11 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t1 add column pk int primary key auto_increment;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `i` int,\n" +
 						"  `j` int,\n" +
@@ -1061,7 +1061,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk from t1 order by pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
@@ -1080,11 +1080,11 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t1 add column pk int primary key auto_increment first",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  `i` int,\n" +
@@ -1094,7 +1094,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk from t1 order by pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
@@ -1109,11 +1109,11 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "alter table t1 add column j int auto_increment unique",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `i` bigint NOT NULL,\n" +
 						"  `s` varchar(20),\n" +
@@ -1124,7 +1124,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 			},
 			{
 				Query: "select * from t1 order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a", 1},
 					{2, "b", 2},
 					{3, "c", 3},
@@ -1161,7 +1161,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `i` int,\n" +
 						"  `j` int\n" +
@@ -1169,11 +1169,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t1 add primary key (i, j)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `i` int NOT NULL,\n" +
 						"  `j` int NOT NULL,\n" +
@@ -1191,7 +1191,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t1 order by pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a1", "a2"},
 					{"a2", "a3"},
 					{"a3", "a4"},
@@ -1199,11 +1199,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select * from t1 order by pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a1", "a2"},
 					{"a2", "a3"},
 					{"a3", "a4"},
@@ -1211,11 +1211,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert into t1 values ('a1', 'a2')",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "select * from t1 order by pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a1", "a2"},
 					{"a1", "a2"},
 					{"a2", "a3"},
@@ -1228,15 +1228,15 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "delete from t1 where pk = 'a1' limit 1",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "alter table t1 add primary key (pk, v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` varchar(20) NOT NULL,\n" +
 						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo')),\n" +
@@ -1245,23 +1245,23 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "alter table t1 add index myidx (v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "alter table t1 add primary key (pk)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "insert into t1 values ('a4', 'a3')",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` varchar(20) NOT NULL,\n" +
 						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo')),\n" +
@@ -1271,30 +1271,30 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query: "select * from t1 where v = 'a3' order by pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a2", "a3"},
 					{"a4", "a3"},
 				},
 			},
 			{
 				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "truncate t1",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 			},
 			{
 				Query:    "alter table t1 drop index myidx",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "alter table t1 add primary key (pk, v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "insert into t1 values ('a1', 'a2'), ('a2', 'a3'), ('a3', 'a4')",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			},
 		},
 	},
@@ -1307,7 +1307,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO t1 (pk, v) values ('a100', 'a3')",
@@ -1315,15 +1315,15 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table t1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t1",
-				Expected: []sql.Row{{"t1",
+				Expected: []sql.UntypedSqlRow{{"t1",
 					"CREATE TABLE `t1` (\n" +
 						"  `pk` varchar(20) NOT NULL,\n" +
 						"  `v` varchar(20) NOT NULL DEFAULT (concat(`pk`,'-foo'))\n" +
@@ -1341,7 +1341,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SHOW CREATE TABLE newdb.tab1",
-				Expected: []sql.Row{{"tab1",
+				Expected: []sql.UntypedSqlRow{{"tab1",
 					"CREATE TABLE `tab1` (\n" +
 						"  `pk` int NOT NULL,\n" +
 						"  `c1` int,\n" +
@@ -1350,11 +1350,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "alter table newdb.tab1 drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE newdb.tab1",
-				Expected: []sql.Row{{"tab1",
+				Expected: []sql.UntypedSqlRow{{"tab1",
 					"CREATE TABLE `tab1` (\n" +
 						"  `pk` int NOT NULL,\n" +
 						"  `c1` int\n" +
@@ -1374,11 +1374,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test modify pk int",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE test",
-				Expected: []sql.Row{{"test",
+				Expected: []sql.UntypedSqlRow{{"test",
 					"CREATE TABLE `test` (\n" +
 						"  `pk` int NOT NULL,\n" +
 						"  `val` int,\n" +
@@ -1387,11 +1387,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE test drop primary key",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE test",
-				Expected: []sql.Row{{"test",
+				Expected: []sql.UntypedSqlRow{{"test",
 					"CREATE TABLE `test` (\n" +
 						"  `pk` int NOT NULL,\n" +
 						"  `val` int\n" +
@@ -1403,11 +1403,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO test VALUES (2, 2), (3, 3)",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query: "SELECT * FROM test ORDER BY pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 2},
 					{3, 3},
 				},
@@ -1429,15 +1429,15 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			{
 				// Adding a unique index on the pk column allows us to drop the PK
 				Query:    "ALTER TABLE t ADD UNIQUE KEY id (id);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t", "CREATE TABLE `t` (\n" +
 					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
 					"  `c1` varchar(255),\n" +
 					"  UNIQUE KEY `id` (`id`)\n" +
@@ -1445,11 +1445,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert into t (c1) values('two');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, "one"}, {2, "two"}},
+				Expected: []sql.UntypedSqlRow{{1, "one"}, {2, "two"}},
 			},
 		},
 	},
@@ -1468,15 +1468,15 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			{
 				// Adding an index on the PK columns allows us to drop the PK
 				Query:    "ALTER TABLE t ADD KEY id (id);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t", "CREATE TABLE `t` (\n" +
 					"  `id` int NOT NULL AUTO_INCREMENT,\n" +
 					"  `c1` varchar(255),\n" +
 					"  KEY `id` (`id`)\n" +
@@ -1484,11 +1484,11 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert into t (c1) values('two');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, "one"}, {2, "two"}},
+				Expected: []sql.UntypedSqlRow{{1, "one"}, {2, "two"}},
 			},
 		},
 	},
@@ -1506,7 +1506,7 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			{
 				// Adding an index that doesn't start with the auto_increment column doesn't allow us to drop the PK
 				Query:    "ALTER TABLE t ADD KEY c1id1 (c1, id1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "ALTER TABLE t DROP PRIMARY KEY;",
@@ -1515,23 +1515,23 @@ var AddDropPrimaryKeyScripts = []ScriptTest{
 			{
 				// Adding a supporting key (i.e the first column is the auto_increment column) allows us to drop the PK
 				Query:    "ALTER TABLE t ADD KEY id1c1 (id1, c1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE t DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "insert into t (id2, c1) values(-2, 'two');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 			{
 				Query:    "select * from t;",
-				Expected: []sql.Row{{1, -1, "one"}, {2, -2, "two"}},
+				Expected: []sql.UntypedSqlRow{{1, -1, "one"}, {2, -2, "two"}},
 			},
 			{
 				Query: "show create table t;",
-				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+				Expected: []sql.UntypedSqlRow{{"t", "CREATE TABLE `t` (\n" +
 					"  `id1` int NOT NULL AUTO_INCREMENT,\n" +
 					"  `id2` int NOT NULL,\n" +
 					"  `c1` varchar(255),\n" +
@@ -1549,13 +1549,13 @@ var AddColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
 				// | Field | Type | Collation | Null | Key | Default | Extra | Privileges | Comment |
 				// TODO: missing privileges
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 					{"i2", "int", nil, "YES", "", "42", "", "", "hello"},
@@ -1563,10 +1563,10 @@ var AddColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM mytable ORDER BY i;",
-				Expected: []sql.Row{
-					sql.NewRow(int64(1), "first row", int32(42)),
-					sql.NewRow(int64(2), "second row", int32(42)),
-					sql.NewRow(int64(3), "third row", int32(42)),
+				Expected: []sql.UntypedSqlRow{
+					{int64(1), "first row", int32(42)},
+					{int64(2), "second row", int32(42)},
+					{int64(3), "third row", int32(42)},
 				},
 			},
 		},
@@ -1576,11 +1576,11 @@ var AddColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"s2", "text", "utf8mb4_0900_bin", "YES", "", nil, "", "", "hello"},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
@@ -1589,27 +1589,27 @@ var AddColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM mytable ORDER BY i;",
-				Expected: []sql.Row{
-					sql.NewRow(int64(1), nil, "first row", int32(42)),
-					sql.NewRow(int64(2), nil, "second row", int32(42)),
-					sql.NewRow(int64(3), nil, "third row", int32(42)),
+				Expected: []sql.UntypedSqlRow{
+					{int64(1), nil, "first row", int32(42)},
+					{int64(2), nil, "second row", int32(42)},
+					{int64(3), nil, "third row", int32(42)},
 				},
 			},
 			{
 				Query:    "insert into mytable values (4, 's2', 'fourth row', 11);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "update mytable set s2 = 'updated s2' where i2 = 42;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}}},
 			},
 			{
 				Query: "SELECT * FROM mytable ORDER BY i;",
-				Expected: []sql.Row{
-					sql.NewRow(int64(1), "updated s2", "first row", int32(42)),
-					sql.NewRow(int64(2), "updated s2", "second row", int32(42)),
-					sql.NewRow(int64(3), "updated s2", "third row", int32(42)),
-					sql.NewRow(int64(4), "s2", "fourth row", int32(11)),
+				Expected: []sql.UntypedSqlRow{
+					{int64(1), "updated s2", "first row", int32(42)},
+					{int64(2), "updated s2", "second row", int32(42)},
+					{int64(3), "updated s2", "third row", int32(42)},
+					{int64(4), "s2", "fourth row", int32(11)},
 				},
 			},
 		},
@@ -1619,11 +1619,11 @@ var AddColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"s2", "text", "utf8mb4_0900_bin", "YES", "", nil, "", "", "hello"},
@@ -1633,11 +1633,11 @@ var AddColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM mytable ORDER BY i;",
-				Expected: []sql.Row{
-					sql.NewRow("yay", int64(1), "updated s2", "first row", int32(42)),
-					sql.NewRow("yay", int64(2), "updated s2", "second row", int32(42)),
-					sql.NewRow("yay", int64(3), "updated s2", "third row", int32(42)),
-					sql.NewRow("yay", int64(4), "s2", "fourth row", int32(11)),
+				Expected: []sql.UntypedSqlRow{
+					{"yay", int64(1), "updated s2", "first row", int32(42)},
+					{"yay", int64(2), "updated s2", "second row", int32(42)},
+					{"yay", int64(3), "updated s2", "third row", int32(42)},
+					{"yay", int64(4), "s2", "fourth row", int32(11)},
 				},
 			},
 		},
@@ -1647,11 +1647,11 @@ var AddColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(1) not null after s3",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
 					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
@@ -1662,11 +1662,11 @@ var AddColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM mytable ORDER BY i;",
-				Expected: []sql.Row{
-					sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42)),
-					sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42)),
-					sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42)),
-					sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11)),
+				Expected: []sql.UntypedSqlRow{
+					{"yay", "", int64(1), "updated s2", "first row", int32(42)},
+					{"yay", "", int64(2), "updated s2", "second row", int32(42)},
+					{"yay", "", int64(3), "updated s2", "third row", int32(42)},
+					{"yay", "", int64(4), "s2", "fourth row", int32(11)},
 				},
 			},
 		},
@@ -1676,11 +1676,11 @@ var AddColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable ADD COLUMN s5 VARCHAR(26), ADD COLUMN s6 VARCHAR(27)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
 					{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
@@ -1693,11 +1693,11 @@ var AddColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM mytable ORDER BY i;",
-				Expected: []sql.Row{
-					sql.NewRow("yay", "", int64(1), "updated s2", "first row", int32(42), nil, nil),
-					sql.NewRow("yay", "", int64(2), "updated s2", "second row", int32(42), nil, nil),
-					sql.NewRow("yay", "", int64(3), "updated s2", "third row", int32(42), nil, nil),
-					sql.NewRow("yay", "", int64(4), "s2", "fourth row", int32(11), nil, nil),
+				Expected: []sql.UntypedSqlRow{
+					{"yay", "", int64(1), "updated s2", "first row", int32(42), nil, nil},
+					{"yay", "", int64(2), "updated s2", "second row", int32(42), nil, nil},
+					{"yay", "", int64(3), "updated s2", "third row", int32(42), nil, nil},
+					{"yay", "", int64(4), "s2", "fourth row", int32(11), nil, nil},
 				},
 			},
 		},
@@ -1760,18 +1760,18 @@ var RenameColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i2", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 					{"s2", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 				},
 			},
 			{
 				Query: "select * from mytable order by i2 limit 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "first row"},
 				},
 			},
@@ -1789,13 +1789,13 @@ var RenameColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable RENAME COLUMN s2 TO s3",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'mytable' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"test_check", "(i2 < 12345)", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"test_check", "(i2 < 12345)", "YES"}},
 			},
 		},
 	},
@@ -1807,44 +1807,44 @@ var ModifyColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i bigint NOT NULL COMMENT 'modified'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 1 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "modified"},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", "column s"},
 				},
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 2 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", "column s"},
 					{"i", "tinyint", nil, "NO", "PRI", nil, "", "", "yes"},
 				},
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 3 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", "column s"},
 				},
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 4 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
 				},
@@ -1857,11 +1857,11 @@ var ModifyColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable MODIFY i BIGINT auto_increment",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 1 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "auto_increment", "", ""},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
 				},
@@ -1882,7 +1882,7 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 2 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "auto_increment", "", ""},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
 					{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
@@ -1890,11 +1890,11 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 3 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
 					{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
@@ -1902,11 +1902,11 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 4 */",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
 					{"s", "varchar(20)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed"},
 					{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
@@ -1951,11 +1951,11 @@ var DropColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW FULL COLUMNS FROM mytable",
-				Expected: []sql.Row{{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""}},
+				Expected: []sql.UntypedSqlRow{{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""}},
 			},
 			{
 				Query:    "select * from mytable order by i",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 		},
 	},
@@ -1968,11 +1968,11 @@ var DropColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t1 DROP COLUMN a",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
 					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
 					{"k", "bigint", nil, "NO", "PRI", nil, "", "", ""},
@@ -1980,7 +1980,7 @@ var DropColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM t1 ORDER BY b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", 2, 3},
 					{"def", 5, 6},
 				},
@@ -1996,11 +1996,11 @@ var DropColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t2 DROP COLUMN b",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a", "int", nil, "YES", "", nil, "", "", ""},
 					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
 					{"k", "bigint", nil, "NO", "PRI", nil, "", "", ""},
@@ -2008,7 +2008,7 @@ var DropColumnScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM t2 ORDER BY c",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2, 3},
 					{4, 5, 6},
 				},
@@ -2026,12 +2026,12 @@ var DropColumnScripts = []ScriptTest{
 			{
 				Skip:     true,
 				Query:    "ALTER TABLE t3 DROP COLUMN a",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Skip:  true,
 				Query: "SHOW FULL COLUMNS FROM t3",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
 					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
@@ -2039,7 +2039,7 @@ var DropColumnScripts = []ScriptTest{
 			{
 				Skip:  true,
 				Query: "SELECT * FROM t3 ORDER BY b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", 2},
 					{"def", 4},
 				},
@@ -2077,11 +2077,11 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t0 DROP COLUMN s",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW FULL COLUMNS FROM t0",
-				Expected: []sql.Row{{"i", "bigint", nil, "YES", "", nil, "", "", ""}},
+				Expected: []sql.UntypedSqlRow{{"i", "bigint", nil, "YES", "", nil, "", "", ""}},
 			},
 		},
 	},
@@ -2094,18 +2094,18 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t1 DROP COLUMN a",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"b", "varchar(10)", "utf8mb4_0900_bin", "YES", "", nil, "", "", ""},
 					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
 				Query: "SELECT * FROM t1 ORDER BY b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", 2},
 					{"def", 5},
 				},
@@ -2121,18 +2121,18 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t2 DROP COLUMN b",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a", "int", nil, "YES", "", nil, "", "", ""},
 					{"c", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
 				Query: "SELECT * FROM t2 ORDER BY c",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{4, 5},
 				},
@@ -2153,7 +2153,7 @@ var DropColumnKeylessTablesScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM t2 ORDER BY c",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{4, 5},
 				},

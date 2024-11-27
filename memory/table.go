@@ -29,7 +29,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -471,10 +470,10 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	var row sql.Row
+	var row sql.Row = sql.UntypedSqlRow{}
 	for ; i.i < len(i.indexRows) && i.i >= 0; i.incrementFunc() {
 		idxRow := i.indexRows[i.i]
-		rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+		rowLoc := idxRow.GetValue(idxRow.Len() - 1).(primaryRowLocation)
 		// this is a bit of a hack: during self-referential foreign key delete cascades, the index storage rows don't get
 		// updated at the same time the primary table storage does, since we update the slices directly in the case of
 		// the primary index but update the map entries for the secondary index storage.
@@ -485,7 +484,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		candidate := i.primaryRows[rowLoc.partition][rowLoc.idx]
 
-		matches, err := indexRowMatches(i.ranges, idxRow[:len(idxRow)-1])
+		matches, err := indexRowMatches(i.ranges, idxRow.Subslice(0, idxRow.Len()-1))
 		if err != nil {
 			return nil, err
 		}
@@ -497,7 +496,7 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
-	if row == nil {
+	if row == nil || row.Len() == 0 {
 		return nil, io.EOF
 	}
 
@@ -711,9 +710,9 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func projectRow(columns []int, row sql.Row) sql.Row {
 	if columns != nil {
-		resultRow := make(sql.Row, len(columns))
+		resultRow := sql.NewSqlRowWithLen(len(columns))
 		for i, j := range columns {
-			resultRow[i] = row[j]
+			resultRow.SetValue(i, row.GetValue(j))
 		}
 		return resultRow
 	}
@@ -726,18 +725,18 @@ func normalizeRowForRead(row sql.Row, numColumns int, virtualCols []int) sql.Row
 		return row
 	}
 
-	var virtualRow sql.Row
+	var virtualRow sql.Row = sql.UntypedSqlRow{}
 
 	// Columns are the indexes of projected columns, which we don't always have. In either case, we are filling the row
 	// with nil values for virtual columns. The simple iteration below only works when the column and virtual column
 	// indexes are in ascending order, which is true for the time being.
 	var j int
-	virtualRow = make(sql.Row, numColumns)
+	virtualRow = sql.NewSqlRowWithLen(numColumns)
 	for i := 0; i < numColumns; i++ {
 		if j < len(virtualCols) && i == virtualCols[j] {
 			j++
 		} else {
-			virtualRow[i] = row[i-j]
+			virtualRow.SetValue(i, row.GetValue(i-j))
 		}
 	}
 
@@ -773,10 +772,10 @@ func projectOnRow(columns []int, row sql.Row) sql.Row {
 
 	projected := make([]interface{}, len(columns))
 	for i, selected := range columns {
-		projected[i] = row[selected]
+		projected[i] = row.GetValue(selected)
 	}
 
-	return projected
+	return sql.NewUntypedRow(projected...)
 }
 
 func (i *tableIter) getFromIndex(ctx *sql.Context) (sql.Row, error) {
@@ -817,7 +816,7 @@ func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	// if the range [i.minX, i.maxX] and [gMinX, gMaxX] overlap and
 	// if the range [i.minY, i.maxY] and [gMinY, gMaxY] overlap
 	// then, the bounding boxes intersect
-	g, ok := row[i.ord].(types.GeometryValue)
+	g, ok := row.GetValue(i.ord).(types.GeometryValue)
 	if !ok {
 		return nil, fmt.Errorf("spatial index over non-geometry column")
 	}
@@ -834,9 +833,9 @@ func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return i.Next(ctx)
 	}
 
-	resultRow := make(sql.Row, len(i.columns))
+	resultRow := sql.NewSqlRowWithLen(len(i.columns))
 	for i, j := range i.columns {
-		resultRow[i] = row[j]
+		resultRow.SetValue(i, row.GetValue(j))
 	}
 	return resultRow, nil
 }
@@ -1234,18 +1233,18 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 		if newColIdx < len(data.schema.Schema) {
 			for _, p := range data.partitions {
 				for _, row := range p {
-					if row[newColIdx] == nil {
+					if row.GetValue(newColIdx) == nil {
 						continue
 					}
 
-					cmp, err := newCol.Type.Compare(row[newColIdx], data.autoIncVal)
+					cmp, err := newCol.Type.Compare(row.GetValue(newColIdx), data.autoIncVal)
 					if err != nil {
 						panic(err)
 					}
 
 					if cmp > 0 {
 						var val interface{}
-						val, _, err = types.Uint64.Convert(row[newColIdx])
+						val, _, err = types.Uint64.Convert(row.GetValue(newColIdx))
 						if err != nil {
 							panic(err)
 						}
@@ -1326,10 +1325,7 @@ func (t *Table) DropColumn(ctx *sql.Context, columnName string) error {
 	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
-			var newRow sql.Row
-			newRow = append(newRow, row[:droppedCol]...)
-			newRow = append(newRow, row[droppedCol+1:]...)
-			newP[i] = newRow
+			newP[i] = row.Subslice(0, droppedCol).Append(row.Subslice(droppedCol+1, row.Len()))
 		}
 		data.partitions[k] = newP
 	}
@@ -1410,10 +1406,10 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
-			var oldRowWithoutVal sql.Row
-			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
-			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
-			newVal, inRange, err := column.Type.Convert(row[oldIdx])
+			var oldRowWithoutVal sql.Row = sql.UntypedSqlRow{}
+			oldRowWithoutVal = oldRowWithoutVal.Append(row.Subslice(0, oldIdx))
+			oldRowWithoutVal = oldRowWithoutVal.Append(row.Subslice(oldIdx+1, row.Len()))
+			newVal, inRange, err := column.Type.Convert(row.GetValue(oldIdx))
 			if err != nil {
 				if sql.ErrNotMatchingSRID.Is(err) {
 					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
@@ -1421,12 +1417,12 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 				return err
 			}
 			if !inRange {
-				return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
+				return sql.ErrValueOutOfRange.New(row.GetValue(oldIdx), column.Type)
 			}
-			var newRow sql.Row
-			newRow = append(newRow, oldRowWithoutVal[:newIdx]...)
-			newRow = append(newRow, newVal)
-			newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
+			var newRow sql.Row = sql.UntypedSqlRow{}
+			newRow = newRow.Append(oldRowWithoutVal.Subslice(0, newIdx))
+			newRow = newRow.Append(sql.NewUntypedRow(newVal))
+			newRow = newRow.Append(oldRowWithoutVal.Subslice(newIdx, oldRowWithoutVal.Len()))
 			newP[i] = newRow
 		}
 		data.partitions[k] = newP
@@ -1598,6 +1594,7 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 
 	if lookup.VectorOrderAndLimit.OrderBy != nil {
 		return &vectorPartitionIter{
+			Column:        lookup.Index.(*Index).Exprs[0],
 			OrderAndLimit: lookup.VectorOrderAndLimit,
 		}, nil
 	}
@@ -2011,11 +2008,6 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		}
 	}
 
-	var vectorFunction vector.DistanceType
-	if constraint == sql.IndexConstraint_Vector {
-		vectorFunction = vector.DistanceL2Squared{}
-	}
-
 	return &Index{
 		DB:                      t.dbName(),
 		DriverName:              "",
@@ -2026,7 +2018,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 		Unique:                  constraint == sql.IndexConstraint_Unique,
 		Spatial:                 constraint == sql.IndexConstraint_Spatial,
 		Fulltext:                constraint == sql.IndexConstraint_Fulltext,
-		SupportedVectorFunction: vectorFunction,
+		SupportedVectorFunction: nil,
 		CommentStr:              comment,
 		PrefixLens:              prefixLengths,
 	}, nil
@@ -2126,7 +2118,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 	return nil
 }
 
-func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceType vector.DistanceType) error {
+func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceType expression.DistanceType) error {
 	if len(idx.Columns) > 1 {
 		return fmt.Errorf("vector indexes must have exactly one column")
 	}
@@ -2238,7 +2230,7 @@ func (ps partitionssort) Less(i, j int) bool {
 
 func (ps partitionssort) pkLess(l, r sql.Row) bool {
 	for _, f := range ps.pk {
-		r, err := f.c.Type.Compare(l[f.i], r[f.i])
+		r, err := f.c.Type.Compare(l.GetValue(f.i), r.GetValue(f.i))
 		if err != nil {
 			panic(err)
 		}
@@ -2259,17 +2251,17 @@ func (ps partitionssort) Swap(i, j int) {
 	// sorted slices for rows and indexes, some sort of sorted collection.
 	for _, indexRows := range ps.indexes {
 		for _, idxRow := range indexRows {
-			rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+			rowLoc := idxRow.GetValue(idxRow.Len() - 1).(primaryRowLocation)
 			if rowLoc.partition == lidx.partitionName && rowLoc.idx == lidx.rowIdx {
-				idxRow[len(idxRow)-1] = primaryRowLocation{
+				idxRow.SetValue(idxRow.Len()-1, primaryRowLocation{
 					partition: ridx.partitionName,
 					idx:       ridx.rowIdx,
-				}
+				})
 			} else if rowLoc.partition == ridx.partitionName && rowLoc.idx == ridx.rowIdx {
-				idxRow[len(idxRow)-1] = primaryRowLocation{
+				idxRow.SetValue(idxRow.Len()-1, primaryRowLocation{
 					partition: lidx.partitionName,
 					idx:       lidx.rowIdx,
-				}
+				})
 			}
 		}
 	}
@@ -2487,7 +2479,7 @@ func removeDroppedColumns(schema sql.PrimaryKeySchema, idx *Index) []sql.Express
 
 func hasNullForAnyCols(row sql.Row, cols []int) bool {
 	for _, idx := range cols {
-		if row[idx] == nil {
+		if row.GetValue(idx) == nil {
 			return true
 		}
 	}

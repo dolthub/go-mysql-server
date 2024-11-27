@@ -339,7 +339,7 @@ func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	i.didIteration = true
 
-	var row sql.Row
+	row := sql.NewUntypedRow()
 	switch table := i.table.(type) {
 	case *plan.ResolvedTable:
 		// MySQL behavior is to allow show create table for views, but not show create view for tables.
@@ -453,7 +453,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 
 		colStmts = append(colStmts, sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(),
-			index.IsFullText(), index.IsVector(), index.ID(), indexCols, index.Comment()))
+			index.IsFullText(), index.ID(), indexCols, index.Comment()))
 	}
 
 	fkt, err := getForeignKeyTable(table)

@@ -29,26 +29,26 @@ var xFds = sql.NewTablescanFDs(sql.NewColSet(1, 2, 3), []sql.ColSet{sql.NewColSe
 // NULL, 0,5,10,15,20, 5 row buckets of duplicates, two buckets for each value
 var x1Stat = &Statistic{Hist: buckets_x_1, Typs: []sql.Type{types.Int64}, Fds: xFds, Colset: sql.NewColSet(1)}
 var buckets_x_1 = sql.Histogram{
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{5}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{5}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{5}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{5}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{15}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{15}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 5},
 }
 
 // staggered buckets, 2 vals per, half is last bound half is current bound
 var x2Stat = &Statistic{Hist: buckets_x_2, Typs: []sql.Type{types.Int64}, Fds: xFds, Colset: sql.NewColSet(1)}
 var buckets_x_2 = sql.Histogram{
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 3, BoundVal: []interface{}{5}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{10}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{15}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{20}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 3, BoundVal: sql.UntypedSqlRow{5}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: sql.UntypedSqlRow{15}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 2},
 }
 
 var xyFds = sql.NewTablescanFDs(sql.NewColSet(1, 2, 3), []sql.ColSet{sql.NewColSet(1, 2)}, nil, sql.NewColSet(1, 2, 3))
@@ -56,34 +56,34 @@ var xyFds = sql.NewTablescanFDs(sql.NewColSet(1, 2, 3), []sql.ColSet{sql.NewColS
 var xy1Stat = &Statistic{Hist: buckets_xy_1, Typs: []sql.Type{types.Int64, types.Int64}, Fds: xyFds, Colset: sql.NewColSet(1, 2)}
 
 var buckets_xy_1 = sql.Histogram{
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{1, 3}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{4, 3}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: []interface{}{4, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, 4}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, 4}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{1, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{1, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{1, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{1, 1}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{1, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{3, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{3, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{4, 3}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 0, BoundVal: sql.UntypedSqlRow{4, 3}, BoundCnt: 5},
 }
 
 var xy2Stat = &Statistic{Hist: buckets_xy_2, Typs: []sql.Type{types.Int64, types.Int64}, Fds: xyFds, Colset: sql.NewColSet(1, 2)}
 
 var buckets_xy_2 = sql.Histogram{
-	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: []interface{}{nil, nil}, BoundCnt: 5},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{nil, 1}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{nil, 4}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: []interface{}{1, nil}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{1, 1}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{1, 3}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{2, 3}, BoundCnt: 2},
-	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: []interface{}{3, 3}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 1, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, nil}, BoundCnt: 5},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, 1}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: sql.UntypedSqlRow{nil, 4}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 5, BoundVal: sql.UntypedSqlRow{1, nil}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: sql.UntypedSqlRow{1, 1}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: sql.UntypedSqlRow{1, 3}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: sql.UntypedSqlRow{2, 3}, BoundCnt: 2},
+	&Bucket{RowCnt: 5, DistinctCnt: 2, NullCnt: 0, BoundVal: sql.UntypedSqlRow{3, 3}, BoundCnt: 2},
 }
 
 func TestPrefixKey(t *testing.T) {
@@ -99,7 +99,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_1 nil key",
 			statistic:        x1Stat,
-			pref:             []interface{}{nil},
+			pref:             sql.UntypedSqlRow{nil},
 			expBuckets:       3,
 			expRowCount:      uint64(15),
 			expDistinctCount: uint64(3),
@@ -108,7 +108,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_1 (2) key",
 			statistic:        x1Stat,
-			pref:             []interface{}{2},
+			pref:             sql.UntypedSqlRow{2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -117,7 +117,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_1 (5) key",
 			statistic:        x1Stat,
-			pref:             []interface{}{5},
+			pref:             sql.UntypedSqlRow{5},
 			expBuckets:       3,
 			expRowCount:      uint64(15),
 			expDistinctCount: uint64(3),
@@ -126,7 +126,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_1 (6) key",
 			statistic:        x1Stat,
-			pref:             []interface{}{6},
+			pref:             sql.UntypedSqlRow{6},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -135,7 +135,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_1 (20) key",
 			statistic:        x1Stat,
-			pref:             []interface{}{20},
+			pref:             sql.UntypedSqlRow{20},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(2),
@@ -144,7 +144,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_1 (21) key",
 			statistic:        x1Stat,
-			pref:             []interface{}{21},
+			pref:             sql.UntypedSqlRow{21},
 			expBuckets:       0,
 			expRowCount:      uint64(0),
 			expDistinctCount: uint64(0),
@@ -154,7 +154,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_2 (nil) key",
 			statistic:        x2Stat,
-			pref:             []interface{}{nil},
+			pref:             sql.UntypedSqlRow{nil},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(3),
@@ -163,7 +163,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_2 (2) key",
 			statistic:        x2Stat,
-			pref:             []interface{}{2},
+			pref:             sql.UntypedSqlRow{2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -172,7 +172,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_2 (5) key",
 			statistic:        x2Stat,
-			pref:             []interface{}{5},
+			pref:             sql.UntypedSqlRow{5},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(4),
@@ -181,7 +181,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_2 (6) key",
 			statistic:        x2Stat,
-			pref:             []interface{}{6},
+			pref:             sql.UntypedSqlRow{6},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -190,7 +190,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_2 (20) key",
 			statistic:        x2Stat,
-			pref:             []interface{}{20},
+			pref:             sql.UntypedSqlRow{20},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -199,7 +199,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "x_2 (21) key",
 			statistic:        x2Stat,
-			pref:             []interface{}{21},
+			pref:             sql.UntypedSqlRow{21},
 			expBuckets:       0,
 			expRowCount:      uint64(0),
 			expDistinctCount: uint64(0),
@@ -209,7 +209,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 nil key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{nil},
+			pref:             sql.UntypedSqlRow{nil},
 			expBuckets:       7,
 			expRowCount:      uint64(35),
 			expDistinctCount: uint64(7),
@@ -218,7 +218,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (1) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{1},
+			pref:             sql.UntypedSqlRow{1},
 			expBuckets:       6,
 			expRowCount:      uint64(30),
 			expDistinctCount: uint64(6),
@@ -227,7 +227,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (2) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{2},
+			pref:             sql.UntypedSqlRow{2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -236,7 +236,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (4) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{4},
+			pref:             sql.UntypedSqlRow{4},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(2),
@@ -245,7 +245,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (6) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{5},
+			pref:             sql.UntypedSqlRow{5},
 			expBuckets:       0,
 			expRowCount:      uint64(0),
 			expDistinctCount: uint64(0),
@@ -255,7 +255,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (nil,nil) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{nil, nil},
+			pref:             sql.UntypedSqlRow{nil, nil},
 			expBuckets:       3,
 			expRowCount:      uint64(15),
 			expDistinctCount: uint64(3),
@@ -264,7 +264,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (nil,1) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{nil, 1},
+			pref:             sql.UntypedSqlRow{nil, 1},
 			expBuckets:       3,
 			expRowCount:      uint64(15),
 			expDistinctCount: uint64(3),
@@ -273,7 +273,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (nil,2) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{nil, 2},
+			pref:             sql.UntypedSqlRow{nil, 2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -282,7 +282,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (0,nil) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{0, nil},
+			pref:             sql.UntypedSqlRow{0, nil},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -291,7 +291,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (1,nil) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{1, nil},
+			pref:             sql.UntypedSqlRow{1, nil},
 			expBuckets:       3,
 			expRowCount:      uint64(15),
 			expDistinctCount: uint64(3),
@@ -300,7 +300,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (1,1) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{1, 1},
+			pref:             sql.UntypedSqlRow{1, 1},
 			expBuckets:       3,
 			expRowCount:      uint64(15),
 			expDistinctCount: uint64(3),
@@ -309,7 +309,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (1,2) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{1, 2},
+			pref:             sql.UntypedSqlRow{1, 2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -318,7 +318,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (1,3) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{1, 3},
+			pref:             sql.UntypedSqlRow{1, 3},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(2),
@@ -327,7 +327,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (2,nil) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{2, nil},
+			pref:             sql.UntypedSqlRow{2, nil},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -336,7 +336,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (2,2) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{2, 2},
+			pref:             sql.UntypedSqlRow{2, 2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -345,7 +345,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (2,3) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{2, 3},
+			pref:             sql.UntypedSqlRow{2, 3},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -354,7 +354,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (3,3) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{3, 3},
+			pref:             sql.UntypedSqlRow{3, 3},
 			expBuckets:       3,
 			expRowCount:      uint64(15),
 			expDistinctCount: uint64(3),
@@ -363,7 +363,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (3,4) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{3, 4},
+			pref:             sql.UntypedSqlRow{3, 4},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(1),
@@ -372,7 +372,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (4,3) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{4, 3},
+			pref:             sql.UntypedSqlRow{4, 3},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(2),
@@ -381,7 +381,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_1 (4,4) key",
 			statistic:        xy1Stat,
-			pref:             []interface{}{4, 4},
+			pref:             sql.UntypedSqlRow{4, 4},
 			expBuckets:       0,
 			expRowCount:      uint64(0),
 			expDistinctCount: uint64(0),
@@ -391,7 +391,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 nil key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{nil},
+			pref:             sql.UntypedSqlRow{nil},
 			expBuckets:       4,
 			expRowCount:      uint64(20),
 			expDistinctCount: uint64(7),
@@ -400,7 +400,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (2) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{2},
+			pref:             sql.UntypedSqlRow{2},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(4),
@@ -409,7 +409,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (3) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{3},
+			pref:             sql.UntypedSqlRow{3},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -418,7 +418,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (5) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{5},
+			pref:             sql.UntypedSqlRow{5},
 			expBuckets:       0,
 			expRowCount:      uint64(0),
 			expDistinctCount: uint64(0),
@@ -428,7 +428,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (nil,nil) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{nil, nil},
+			pref:             sql.UntypedSqlRow{nil, nil},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(3),
@@ -437,7 +437,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (nil,1) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{nil, 1},
+			pref:             sql.UntypedSqlRow{nil, 1},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(4),
@@ -446,7 +446,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (nil,2) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{nil, 2},
+			pref:             sql.UntypedSqlRow{nil, 2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -455,7 +455,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (0,nil) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{0, nil},
+			pref:             sql.UntypedSqlRow{0, nil},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -464,7 +464,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (1,nil) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{1, nil},
+			pref:             sql.UntypedSqlRow{1, nil},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(4),
@@ -473,7 +473,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (1,1) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{1, 1},
+			pref:             sql.UntypedSqlRow{1, 1},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(4),
@@ -482,7 +482,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (1,2) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{1, 2},
+			pref:             sql.UntypedSqlRow{1, 2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -491,7 +491,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (1,3) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{1, 3},
+			pref:             sql.UntypedSqlRow{1, 3},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(4),
@@ -500,7 +500,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (2,nil) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{2, nil},
+			pref:             sql.UntypedSqlRow{2, nil},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -509,7 +509,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (2,2) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{2, 2},
+			pref:             sql.UntypedSqlRow{2, 2},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -518,7 +518,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (2,3) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{2, 3},
+			pref:             sql.UntypedSqlRow{2, 3},
 			expBuckets:       2,
 			expRowCount:      uint64(10),
 			expDistinctCount: uint64(4),
@@ -527,7 +527,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (3,3) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{3, 3},
+			pref:             sql.UntypedSqlRow{3, 3},
 			expBuckets:       1,
 			expRowCount:      uint64(5),
 			expDistinctCount: uint64(2),
@@ -536,7 +536,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (3,4) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{3, 4},
+			pref:             sql.UntypedSqlRow{3, 4},
 			expBuckets:       0,
 			expRowCount:      uint64(0),
 			expDistinctCount: uint64(0),
@@ -545,7 +545,7 @@ func TestPrefixKey(t *testing.T) {
 		{
 			name:             "xy_2 (4,3) key",
 			statistic:        xy2Stat,
-			pref:             []interface{}{4, 3},
+			pref:             sql.UntypedSqlRow{4, 3},
 			expBuckets:       0,
 			expRowCount:      uint64(0),
 			expDistinctCount: uint64(0),
@@ -569,10 +569,10 @@ func TestPrefixKey(t *testing.T) {
 	}
 }
 
-func collectBounds(s []sql.HistogramBucket) [][]interface{} {
-	var bounds [][]interface{}
+func collectBounds(s []sql.HistogramBucket) []sql.UntypedSqlRow {
+	var bounds []sql.UntypedSqlRow
 	for _, b := range s {
-		bounds = append(bounds, b.UpperBound())
+		bounds = append(bounds, b.UpperBound().(sql.UntypedSqlRow))
 	}
 	return bounds
 }
@@ -580,20 +580,20 @@ func collectBounds(s []sql.HistogramBucket) [][]interface{} {
 // TODO these will use the same tests as above, just with different expected values
 func TestPrefixIsNull(t *testing.T) {
 	tests := []struct {
-		vals     [][]interface{}
+		vals     []sql.UntypedSqlRow
 		key      []interface{}
 		expLower int
 		expUpper int
 		typs     []sql.Type
 	}{
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			expLower: 0,
 			expUpper: 1,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			expLower: 0,
 			expUpper: 3,
 			typs:     []sql.Type{types.Int64},
@@ -622,20 +622,20 @@ func TestPrefixIsNull(t *testing.T) {
 
 func TestPrefixIsNotNull(t *testing.T) {
 	tests := []struct {
-		vals     [][]interface{}
+		vals     []sql.UntypedSqlRow
 		key      []interface{}
 		expLower int
 		expUpper int
 		typs     []sql.Type
 	}{
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			expLower: 1,
 			expUpper: 4,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			expLower: 3,
 			expUpper: 6,
 			typs:     []sql.Type{types.Int64},
@@ -666,35 +666,35 @@ func TestPrefixIsNotNull(t *testing.T) {
 
 func TestPrefixGt(t *testing.T) {
 	tests := []struct {
-		vals     [][]interface{}
+		vals     []sql.UntypedSqlRow
 		key      interface{}
 		expLower int
 		expUpper int
 		typs     []sql.Type
 	}{
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			key:      2,
 			expLower: 2,
 			expUpper: 4,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      nil,
 			expLower: 3,
 			expUpper: 6,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      3,
 			expLower: 5,
 			expUpper: 6,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      4,
 			expLower: 6,
 			expUpper: 6,
@@ -725,35 +725,35 @@ func TestPrefixGt(t *testing.T) {
 
 func TestPrefixGte(t *testing.T) {
 	tests := []struct {
-		vals     [][]interface{}
+		vals     []sql.UntypedSqlRow
 		key      interface{}
 		expLower int
 		expUpper int
 		typs     []sql.Type
 	}{
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			key:      2,
 			expLower: 1,
 			expUpper: 4,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      3,
 			expLower: 4,
 			expUpper: 6,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      4,
 			expLower: 5,
 			expUpper: 6,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      5,
 			expLower: 6,
 			expUpper: 6,
@@ -784,49 +784,49 @@ func TestPrefixGte(t *testing.T) {
 
 func TestPrefixLt(t *testing.T) {
 	tests := []struct {
-		vals     [][]interface{}
+		vals     []sql.UntypedSqlRow
 		key      interface{}
 		expLower int
 		expUpper int
 		typs     []sql.Type
 	}{
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			key:      2,
 			expLower: 1,
 			expUpper: 1,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			key:      nil,
 			expLower: 1,
 			expUpper: 1,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{2}, {3}, {4}},
 			key:      2,
 			expLower: 0,
 			expUpper: 0,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      3,
 			expLower: 3,
 			expUpper: 4,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      4,
 			expLower: 3,
 			expUpper: 5,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      5,
 			expLower: 3,
 			expUpper: 6,
@@ -858,49 +858,49 @@ func TestPrefixLt(t *testing.T) {
 
 func TestPrefixLte(t *testing.T) {
 	tests := []struct {
-		vals     [][]interface{}
+		vals     []sql.UntypedSqlRow
 		key      interface{}
 		expLower int
 		expUpper int
 		typs     []sql.Type
 	}{
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			key:      2,
 			expLower: 1,
 			expUpper: 2,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {2}, {3}, {4}},
 			key:      nil,
 			expLower: 1,
 			expUpper: 1,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{2}, {3}, {4}},
 			key:      2,
 			expLower: 0,
 			expUpper: 1,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      3,
 			expLower: 3,
 			expUpper: 5,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      4,
 			expLower: 3,
 			expUpper: 6,
 			typs:     []sql.Type{types.Int64},
 		},
 		{
-			vals:     [][]interface{}{{nil}, {nil}, {nil}, {2}, {3}, {4}},
+			vals:     []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {2}, {3}, {4}},
 			key:      5,
 			expLower: 3,
 			expUpper: 6,

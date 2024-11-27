@@ -75,12 +75,12 @@ func TestGroupByRowIter(t *testing.T) {
 	}
 	child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
-	rows := []sql.Row{
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_2", int64(4444)),
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_2", int64(4444)),
+	rows := []sql.UntypedSqlRow{
+		{"col1_1", int64(1111)},
+		{"col1_1", int64(1111)},
+		{"col1_2", int64(4444)},
+		{"col1_1", int64(1111)},
+		{"col1_2", int64(4444)},
 	}
 
 	for _, r := range rows {
@@ -111,12 +111,13 @@ func TestGroupByRowIter(t *testing.T) {
 
 	require.Equal(1, len(p.Children()))
 
-	rows, err := NodeToRows(ctx, p)
+	sqlRows, err := NodeToRows(ctx, p)
 	require.NoError(err)
-	require.Len(rows, 2)
+	require.Len(sqlRows, 2)
+	rows = sql.RowsToUntyped(sqlRows)
 
-	require.Equal(sql.NewRow("col1_1", int64(1111)), rows[0])
-	require.Equal(sql.NewRow("col1_2", int64(4444)), rows[1])
+	require.Equal(sql.UntypedSqlRow{"col1_1", int64(1111)}, rows[0])
+	require.Equal(sql.UntypedSqlRow{"col1_2", int64(4444)}, rows[1])
 }
 
 func TestGroupByAggregationGrouping(t *testing.T) {
@@ -133,12 +134,12 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 
 	child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
-	rows := []sql.Row{
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_2", int64(4444)),
-		sql.NewRow("col1_1", int64(1111)),
-		sql.NewRow("col1_2", int64(4444)),
+	rows := []sql.UntypedSqlRow{
+		{"col1_1", int64(1111)},
+		{"col1_1", int64(1111)},
+		{"col1_2", int64(4444)},
+		{"col1_1", int64(1111)},
+		{"col1_2", int64(4444)},
 	}
 
 	for _, r := range rows {
@@ -157,10 +158,12 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	rows, err := NodeToRows(ctx, p)
+	sqlRows, err := NodeToRows(ctx, p)
 	require.NoError(err)
 
-	expected := []sql.Row{
+	rows = sql.RowsToUntyped(sqlRows)
+
+	expected := []sql.UntypedSqlRow{
 		{int64(3), false},
 		{int64(2), false},
 	}
@@ -214,12 +217,12 @@ func TestGroupByCollations(t *testing.T) {
 
 			child := memory.NewTable(db.BaseDatabase, "test", sql.NewPrimaryKeySchema(childSchema), nil)
 
-			rows := []sql.Row{
-				sql.NewRow(tc.Value(t, "col1_1"), int64(1111)),
-				sql.NewRow(tc.Value(t, "Col1_1"), int64(1111)),
-				sql.NewRow(tc.Value(t, "col1_2"), int64(4444)),
-				sql.NewRow(tc.Value(t, "col1_1"), int64(1111)),
-				sql.NewRow(tc.Value(t, "Col1_2"), int64(4444)),
+			rows := []sql.UntypedSqlRow{
+				{tc.Value(t, "col1_1"), int64(1111)},
+				{tc.Value(t, "Col1_1"), int64(1111)},
+				{tc.Value(t, "col1_2"), int64(4444)},
+				{tc.Value(t, "col1_1"), int64(1111)},
+				{tc.Value(t, "Col1_2"), int64(4444)},
 			}
 
 			for _, r := range rows {
@@ -238,15 +241,15 @@ func TestGroupByCollations(t *testing.T) {
 				plan.NewResolvedTable(child, nil, nil),
 			)
 
-			rows, err := NodeToRows(ctx, p)
+			sqlRows, err := NodeToRows(ctx, p)
 			require.NoError(err)
 
-			expected := []sql.Row{
+			expected := []sql.UntypedSqlRow{
 				{float64(3333)},
 				{float64(8888)},
 			}
 
-			require.Equal(expected, rows)
+			require.Equal(expected, sql.RowsToUntyped(sqlRows))
 		})
 	}
 }
@@ -264,9 +267,9 @@ func BenchmarkGroupBy(b *testing.B) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	expected := []sql.Row{{int64(200)}}
+	expected := []sql.UntypedSqlRow{{int64(200)}}
 
-	bench := func(node sql.Node, expected []sql.Row) func(*testing.B) {
+	bench := func(node sql.Node, expected []sql.UntypedSqlRow) func(*testing.B) {
 		return func(b *testing.B) {
 			require := require.New(b)
 
@@ -297,9 +300,9 @@ func BenchmarkGroupBy(b *testing.B) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	expected = []sql.Row{}
+	expected = []sql.UntypedSqlRow{}
 	for i := int64(0); i < 50; i++ {
-		expected = append(expected, sql.NewRow(i, int64(200)))
+		expected = append(expected, sql.UntypedSqlRow{i, int64(200)})
 	}
 
 	b.Run("grouping", bench(node, expected))
@@ -317,7 +320,7 @@ func benchmarkTable(t testing.TB) sql.Table {
 
 	for i := int64(0); i < 50; i++ {
 		for j := int64(200); j > 0; j-- {
-			row := sql.NewRow(i, j)
+			row := sql.UntypedSqlRow{i, j}
 			require.NoError(table.Insert(sql.NewEmptyContext(), row))
 		}
 	}

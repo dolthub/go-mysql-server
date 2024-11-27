@@ -285,19 +285,19 @@ func NewHistogramBucket(rowCount, distinctCount, nullCount, boundCount uint64, b
 		NullCnt:     nullCount,
 		McvsCnt:     mcvCounts,
 		BoundCnt:    boundCount,
-		BoundVal:    boundValue,
-		McvVals:     mcvs,
+		BoundVal:    boundValue.Values(),
+		McvVals:     sql.RowsToUntyped(mcvs),
 	}
 }
 
 type Bucket struct {
-	RowCnt      uint64    `json:"row_count"`
-	DistinctCnt uint64    `json:"distinct_count"`
-	NullCnt     uint64    `json:"null_count"`
-	McvsCnt     []uint64  `json:"mcv_counts"`
-	BoundCnt    uint64    `json:"bound_count"`
-	BoundVal    sql.Row   `json:"upper_bound"`
-	McvVals     []sql.Row `json:"mcvs"`
+	RowCnt      uint64              `json:"row_count"`
+	DistinctCnt uint64              `json:"distinct_count"`
+	NullCnt     uint64              `json:"null_count"`
+	McvsCnt     []uint64            `json:"mcv_counts"`
+	BoundCnt    uint64              `json:"bound_count"`
+	BoundVal    sql.UntypedSqlRow   `json:"upper_bound"`
+	McvVals     []sql.UntypedSqlRow `json:"mcvs"`
 }
 
 var _ sql.HistogramBucket = (*Bucket)(nil)
@@ -327,5 +327,9 @@ func (b Bucket) McvCounts() []uint64 {
 }
 
 func (b Bucket) Mcvs() []sql.Row {
-	return b.McvVals
+	rows := make([]sql.Row, len(b.McvVals))
+	for i, r := range b.McvVals {
+		rows[i] = r
+	}
+	return rows
 }

@@ -160,7 +160,7 @@ func TestIntervalEvalDelta(t *testing.T) {
 		{
 			NewGetField(0, types.Int64, "foo", false),
 			"DAY",
-			sql.Row{int64(2)},
+			sql.UntypedSqlRow{int64(2)},
 			TimeDelta{Days: 2},
 		},
 		{

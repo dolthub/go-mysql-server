@@ -77,7 +77,7 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 			})
 			table := memory.NewTable(db, "foo", sch, nil)
 
-			err := table.Insert(ctx, sql.Row{nil})
+			err := table.Insert(ctx, sql.UntypedSqlRow{nil})
 			require.NoError(t, err)
 
 			// Run the UPDATE IGNORE
@@ -102,7 +102,7 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, 1, len(rows))
-			require.Equal(t, tc.expected, rows[0][0])
+			require.Equal(t, tc.expected, rows[0].GetValue(0))
 		})
 	}
 }

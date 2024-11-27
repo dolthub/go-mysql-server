@@ -31,62 +31,62 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT pk, v1 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi"}},
 			},
 			{
 				Query:              "SELECT v1, v2 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{"ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{"ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT pk, v1, v2 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT pk, v2 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "jkl"}},
 			},
 			{
 				Query:              "SELECT v1 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{"ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"ghi"}},
 			},
 			{
 				Query:              "SELECT v2 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{"jkl"}},
+				Expected:           []sql.UntypedSqlRow{{"jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl') = 0;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl') > 0;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno') AND pk = 3;",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(3), "mno", "mno"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(3), "mno", "mno"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno') OR pk = 1;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def pqr"}, {uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -100,22 +100,22 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT uk, v1 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi"}},
 			},
 			{
 				Query:              "SELECT uk, v2, v1 FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "jkl", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "jkl", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -129,32 +129,32 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{"ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT v1 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"ghi"}},
 			},
 			{
 				Query:              "SELECT v2 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"jkl"}},
+				Expected:           []sql.UntypedSqlRow{{"jkl"}},
 			},
 			{
 				Query:              "SELECT v2, v1 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"jkl", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"jkl", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{"ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"ghi", "jkl"}, {"mno", "mno"}, {"ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{"ghi", "jkl"}, {"mno", "mno"}, {"ghs", "mno shg"}},
 			},
 		},
 	},
@@ -168,12 +168,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -187,12 +187,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -206,12 +206,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", uint64(1), "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}, {uint64(3), "mno", uint64(1), "mno"}, {uint64(5), "ghs", uint64(1), "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", uint64(1), "jkl"}, {uint64(3), "mno", uint64(1), "mno"}, {uint64(5), "ghs", uint64(1), "mno shg"}},
 			},
 		},
 	},
@@ -225,17 +225,17 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT v2, uk2 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{"jkl", uint64(1)}},
+				Expected:           []sql.UntypedSqlRow{{"jkl", uint64(1)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -249,12 +249,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), uint64(1), "ghi", "jkl"}, {uint64(3), uint64(1), "mno", "mno"}, {uint64(5), uint64(1), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -268,17 +268,17 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", uint64(1), "jkl"}},
 			},
 			{
 				Query:              "SELECT v2, uk2 FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{"jkl", uint64(1)}},
+				Expected:           []sql.UntypedSqlRow{{"jkl", uint64(1)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", uint64(1), "jkl"}, {uint64(3), "mno", uint64(1), "mno"}, {uint64(5), "ghs", uint64(1), "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", uint64(1), "jkl"}, {uint64(3), "mno", uint64(1), "mno"}, {uint64(5), "ghs", uint64(1), "mno shg"}},
 			},
 		},
 	},
@@ -292,39 +292,39 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = 'rgb' WHERE pk = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('rgb');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "rgb", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "rgb", "jkl"}},
 			},
 			{
 				Query:    "UPDATE test SET v2 = 'mno' WHERE pk = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "rgb", "mno"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "rgb", "mno"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 			{
 				Query:    "DELETE FROM test WHERE pk = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "rgb", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "rgb", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -338,36 +338,36 @@ var FulltextTests = []ScriptTest{
 			{ // Full-Text handles NULL values by ignoring them, meaning non-null values are still added to the document
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(1), "abc", nil}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", nil}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:    "UPDATE test SET v1 = NULL WHERE pk = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('jkl');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), nil, "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), nil, "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST (NULL);",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT pk, v1, v2, MATCH(v1, v2) AGAINST (NULL) FROM test;",
 				CheckIndexedAccess: false,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(1), "abc", nil, float32(0)},
 					{uint64(2), nil, "jkl", float32(0)},
 					{uint64(3), "mno", "mno", float32(0)},
@@ -377,11 +377,11 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP INDEX idx ON test;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE test ADD FULLTEXT INDEX idx (v1, v2);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -397,62 +397,62 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('jkl') = 0;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
 			},
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('jkl mno') AND pk = 3;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(3), "mno", "mno"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(3), "mno", "mno"}},
 			},
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('GHI');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('JKL') = 0;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def pqr"}, {uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
 			},
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v2, v1) AGAINST ('JKL MNO') AND pk = 3;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('jkl') = 0;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('jkl mno') AND pk = 3;",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(3), "mno", "mno"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(3), "mno", "mno"}},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('GHI');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('JKL') = 0;",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def pqr"}, {uint64(3), "mno", "mno"}, {uint64(4), "stu vwx", "xyz zyx yzx"}, {uint64(5), "ghs", "mno shg"}},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v2, v1) AGAINST ('JKL MNO') AND pk = 3;",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(3), "mno", "mno"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(3), "mno", "mno"}},
 			},
 		},
 	},
@@ -465,7 +465,7 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{float32(5.9636202)},
 					{float32(4.0278959)},
 					{float32(3.3721533)},
@@ -474,7 +474,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT MATCH(doc) AGAINST('aaaa') AS relevance, pk FROM test ORDER BY relevance DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{float32(5.9636202), int32(4)},
 					{float32(4.0278959), int32(2)},
 					{float32(3.3721533), int32(3)},
@@ -483,7 +483,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(1), float32(0)},
 					{int32(3), float32(3.3721533)},
 					{int32(2), float32(4.0278959)},
@@ -492,7 +492,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(4), "AAAA aaaa aaaac aaaa Aaaa aaaa", float32(5.9636202)},
 					{int32(2), "g hhhh aaaab ooooo aaaa", float32(4.0278959)},
 					{int32(3), "aaaA ff j kkkk llllllll", float32(3.3721533)},
@@ -501,7 +501,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT pk, doc, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance ASC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(1), "bbbb ff cccc ddd eee", float32(0)},
 					{int32(3), "aaaA ff j kkkk llllllll", float32(3.3721533)},
 					{int32(2), "g hhhh aaaab ooooo aaaa", float32(4.0278959)},
@@ -510,7 +510,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(4)},
 					{int32(2)},
 					{int32(3)},
@@ -519,7 +519,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT pk, doc FROM test ORDER BY MATCH(doc) AGAINST('aaaa') ASC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(1), "bbbb ff cccc ddd eee"},
 					{int32(3), "aaaA ff j kkkk llllllll"},
 					{int32(2), "g hhhh aaaab ooooo aaaa"},
@@ -528,7 +528,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT 1 FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(1)},
 					{int32(1)},
 					{int32(1)},
@@ -537,18 +537,18 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test HAVING relevance > 4 ORDER BY relevance DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(4), float32(5.9636202)},
 					{int32(2), float32(4.0278959)},
 				},
 			},
 			{ // Test with an added column to ensure that unnecessary columns do not affect the results
 				Query:    "ALTER TABLE test ADD COLUMN extracol INT DEFAULT 7;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(4)},
 					{int32(2)},
 					{int32(3)},
@@ -557,11 +557,11 @@ var FulltextTests = []ScriptTest{
 			},
 			{ // Drop the primary key to ensure that results are still consistent without a primary key
 				Query:    "ALTER TABLE test DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT pk FROM test ORDER BY MATCH(doc) AGAINST('aaaa') ASC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(1)},
 					{int32(3)},
 					{int32(2)},
@@ -570,7 +570,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT pk, MATCH(doc) AGAINST('aaaa') AS relevance FROM test ORDER BY relevance DESC;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int32(4), float32(5.9636202)},
 					{int32(2), float32(4.0278959)},
 					{int32(3), float32(3.3721533)},
@@ -590,12 +590,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -610,12 +610,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -630,12 +630,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -650,12 +650,12 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('jkl mno');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}, {uint64(3), "mno", "mno"}, {uint64(5), "ghs", "mno shg"}},
 			},
 		},
 	},
@@ -669,11 +669,11 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:    "DROP INDEX idx ON test;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
@@ -693,11 +693,11 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:    "ALTER TABLE test DROP INDEX idx;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
@@ -715,12 +715,12 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test ADD COLUMN v3 FLOAT DEFAULT 7 FIRST;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{float32(7), uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{float32(7), uint64(2), "ghi", "jkl"}},
 			},
 		},
 	},
@@ -733,12 +733,12 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test MODIFY COLUMN v3 FLOAT AFTER pk;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), float32(7), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), float32(7), "ghi", "jkl"}},
 			},
 		},
 	},
@@ -751,12 +751,12 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test MODIFY COLUMN v2 TEXT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 		},
 	},
@@ -782,12 +782,12 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test DROP COLUMN v3;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 		},
 	},
@@ -801,25 +801,25 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(1), "abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2) AGAINST ('def');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(1), "abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(1), "abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "def", "ghi"}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v2` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`,`v2`),\n  FULLTEXT KEY `idx2` (`v2`),\n  FULLTEXT KEY `idx3` (`v2`,`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v2` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`,`v2`),\n  FULLTEXT KEY `idx2` (`v2`),\n  FULLTEXT KEY `idx3` (`v2`,`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER TABLE test DROP COLUMN v2;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
@@ -839,25 +839,25 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1) AGAINST ('abc');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(1), "abc", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v3) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(1), "abc", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc", "ghi"}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`),\n  FULLTEXT KEY `idx3` (`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  `v3` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`),\n  FULLTEXT KEY `idx3` (`v3`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER TABLE test DROP COLUMN v3;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1) AGAINST ('abc');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(1), "abc"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(1), "abc"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v3) AGAINST ('ghi');",
@@ -866,7 +866,7 @@ var FulltextTests = []ScriptTest{
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `pk` bigint unsigned NOT NULL,\n  `v1` varchar(200),\n  PRIMARY KEY (`pk`),\n  FULLTEXT KEY `idx1` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -879,12 +879,12 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test ADD PRIMARY KEY (pk);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 		},
 	},
@@ -897,12 +897,12 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test DROP PRIMARY KEY;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 		},
 	},
@@ -915,7 +915,7 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{ // This is mainly to check for a panic
 				Query:    "DROP TABLE test;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -929,16 +929,16 @@ var FulltextTests = []ScriptTest{
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{{uint64(2), "ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{uint64(2), "ghi", "jkl"}},
 			},
 			{
 				Query:    "TRUNCATE TABLE test;",
-				Expected: []sql.Row{{types.NewOkResult(5)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(5)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: true,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -947,15 +947,15 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE `film_text` (`film_id` SMALLINT NOT NULL, `title` VARCHAR(255) NOT NULL, `description` TEXT, PRIMARY KEY (`film_id`), FULLTEXT KEY `idx_title_description` (`title`,`description`));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE other_table (pk BIGINT PRIMARY KEY, v1 TEXT);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE other_table ADD FULLTEXT INDEX idx (v1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -968,40 +968,40 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "RENAME TABLE test1 TO test2;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('abc');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def"}},
 			},
 			{
 				Query:    "CREATE TABLE test1 (v1 VARCHAR(200), v2 VARCHAR(200), FULLTEXT idx (v1, v2));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO test1 VALUES ('ghi', 'jkl');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('abc');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('abc');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def"}},
 			},
 			{
 				Query:              "SELECT * FROM test1 WHERE MATCH(v1, v2) AGAINST ('jkl');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"ghi", "jkl"}},
+				Expected:           []sql.UntypedSqlRow{{"ghi", "jkl"}},
 			},
 			{
 				Query:              "SELECT * FROM test2 WHERE MATCH(v1, v2) AGAINST ('jkl');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1014,20 +1014,20 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `v1` varchar(200),\n  `v2` varchar(200),\n  FULLTEXT KEY `idx` (`v2`,`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `v1` varchar(200),\n  `v2` varchar(200),\n  FULLTEXT KEY `idx` (`v2`,`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER TABLE test RENAME INDEX idx TO new_idx;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v1) AGAINST ('abc');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def"}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE test;",
-				Expected: []sql.Row{{"test", "CREATE TABLE `test` (\n  `v1` varchar(200),\n  `v2` varchar(200),\n  FULLTEXT KEY `new_idx` (`v2`,`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"test", "CREATE TABLE `test` (\n  `v1` varchar(200),\n  `v2` varchar(200),\n  FULLTEXT KEY `new_idx` (`v2`,`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -1042,47 +1042,47 @@ var FulltextTests = []ScriptTest{
 				Query: "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('abc');",
 				// TODO keyColumns are null type, blocks index access
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('def');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v3) AGAINST ('abc');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v3) AGAINST ('def');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v3) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('abc');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{},
+				Expected:           []sql.UntypedSqlRow{},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('def');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def", "ghi"}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v2, v3) AGAINST ('ghi');",
 				CheckIndexedAccess: false,
-				Expected:           []sql.Row{{"abc", "def", "ghi"}},
+				Expected:           []sql.UntypedSqlRow{{"abc", "def", "ghi"}},
 			},
 		},
 	},
@@ -1137,11 +1137,11 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (v1) VALUES ('abc'), ('def');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 1}}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{uint64(1), "abc"}, {uint64(2), "def"}},
+				Expected: []sql.UntypedSqlRow{{uint64(1), "abc"}, {uint64(2), "def"}},
 			},
 		},
 	},
@@ -1153,19 +1153,19 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (v1) VALUES ('abc');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "INSERT INTO test (pk, v1) VALUES (2, 'def');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{uint64(1), "abc"}, {uint64(2), "def"}},
+				Expected: []sql.UntypedSqlRow{{uint64(1), "abc"}, {uint64(2), "def"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('def');",
-				Expected: []sql.Row{{uint64(2), "def"}},
+				Expected: []sql.UntypedSqlRow{{uint64(2), "def"}},
 			},
 		},
 	},
@@ -1177,31 +1177,31 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (v1) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "REPLACE INTO test (v1) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{uint64(1), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+				Expected: []sql.UntypedSqlRow{{uint64(1), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE MATCH(v1) AGAINST ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},

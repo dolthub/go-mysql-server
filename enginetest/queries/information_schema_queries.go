@@ -24,11 +24,11 @@ import (
 var InfoSchemaQueries = []QueryTest{
 	{
 		Query:    "SHOW PLUGINS",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SHOW KEYS FROM `columns` FROM `information_schema`;",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `SELECT 
@@ -58,7 +58,7 @@ var InfoSchemaQueries = []QueryTest{
 				Type: types.Text,
 			},
 		},
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", "idx_si", "", 1, "s,i"},
 			{"mytable", "mytable_i_s", "", 1, "i,s"},
 			{"mytable", "mytable_s", "", 0, "s"},
@@ -72,7 +72,7 @@ var InfoSchemaQueries = []QueryTest{
 				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
 			},
 		},
-		Expected: []sql.Row{{"mytable"}},
+		Expected: []sql.UntypedSqlRow{{"mytable"}},
 	},
 	{
 		Query: `select table_catalog, table_schema, table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
@@ -81,11 +81,11 @@ var InfoSchemaQueries = []QueryTest{
 			{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
 			{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
 		},
-		Expected: []sql.Row{{"def", "mydb", "mytable"}},
+		Expected: []sql.UntypedSqlRow{{"def", "mydb", "mytable"}},
 	},
 	{
 		Query: `select table_name from information_schema.tables where table_schema = 'information_schema' order by table_name;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"administrable_role_authorizations"},
 			{"applicable_roles"},
 			{"character_sets"},
@@ -169,7 +169,7 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: "SHOW TABLES",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"myview"},
 			{"fk_tbl"},
 			{"mytable"},
@@ -177,7 +177,7 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: "SHOW FULL TABLES",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"fk_tbl", "BASE TABLE"},
 			{"myview", "VIEW"},
 			{"mytable", "BASE TABLE"},
@@ -185,73 +185,73 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: "SHOW TABLES FROM foo",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"othertable"},
 		},
 	},
 	{
 		Query: "SHOW TABLES LIKE '%table'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable"},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", "NO", "PRI", nil, ""},
 			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `DESCRIBE mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", "NO", "PRI", nil, ""},
 			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `DESC mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", "NO", "PRI", nil, ""},
 			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", "NO", "PRI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", "NO", "PRI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW FULL COLUMNS FROM mytable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 		},
 	},
 	{
 		Query: `SHOW FULL COLUMNS FROM mytable FROM mydb`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
 			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
 		},
 	},
 	{
 		Query: `SHOW FULL COLUMNS FROM othertable in foo`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"text", "varchar(20)", "utf8mb4_0900_bin", "NO", "PRI", nil, "", "", ""},
 			{"number", "mediumint", nil, "YES", "", nil, "", "", ""},
 		},
 	},
 	{
 		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable"},
 		},
 	},
@@ -284,7 +284,7 @@ var InfoSchemaQueries = []QueryTest{
 		WHERE TABLE_SCHEMA='mydb' AND (TABLE_TYPE='BASE TABLE' OR TABLE_TYPE='VIEW')
 		ORDER BY 1
 		`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"fk_tbl"},
 			{"mytable"},
 			{"myview"},
@@ -295,7 +295,7 @@ var InfoSchemaQueries = []QueryTest{
 		SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS
 		WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='mytable'
 		`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"s", "varchar"},
 			{"i", "bigint"},
 		},
@@ -306,7 +306,7 @@ var InfoSchemaQueries = []QueryTest{
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY COLUMN_NAME
 		`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"s"},
 			{"i"},
 		},
@@ -317,7 +317,7 @@ var InfoSchemaQueries = []QueryTest{
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY 1
 		`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"s"},
 			{"i"},
 		},
@@ -328,7 +328,7 @@ var InfoSchemaQueries = []QueryTest{
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY 1
 		`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"s"},
 			{"i"},
 		},
@@ -352,7 +352,7 @@ var InfoSchemaQueries = []QueryTest{
 			&sql.Column{Name: "Visible", Type: types.LongText},
 			&sql.Column{Name: "Expression", Type: types.LongText, Nullable: true},
 		},
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
@@ -363,19 +363,19 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SHOW INDEXES FROM othertable FROM foo`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
 		Query: `SHOW INDEXES FROM foo.othertable`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
 		Query: `SHOW KEYS FROM mytaBLE`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
@@ -386,7 +386,7 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE mytaBLE`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mytable", "CREATE TABLE `mytable` (\n" +
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
@@ -399,7 +399,7 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SHOW CREATE TABLE fk_TBL`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"fk_tbl", "CREATE TABLE `fk_tbl` (\n" +
 				"  `pk` bigint NOT NULL,\n" +
 				"  `a` bigint,\n" +
@@ -414,14 +414,14 @@ var InfoSchemaQueries = []QueryTest{
 
 		Query: "SELECT table_name, `auto_increment` FROM information_schema.tables " +
 			"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"fk_tbl", nil},
 			{"mytable", nil},
 		},
 	},
 	{
 		Query: "SHOW ENGINES",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
 		ExpectedColumns: sql.Schema{
@@ -453,7 +453,7 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
@@ -463,11 +463,11 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "SELECT * FROM information_schema.key_column_usage ORDER BY constraint_schema, table_name",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"def", "foo", "PRIMARY", "def", "foo", "othertable", "text", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "fk_tbl", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
@@ -493,17 +493,17 @@ var InfoSchemaQueries = []QueryTest{
 					  col.column_name like 'pk%'
 				group by the_table, col.column_name
 				`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mydb.fk_tbl", "pk", "pk,pk,pk"},
 		},
 	},
 	{
 		Query:    `SELECT count(*) FROM information_schema.COLLATIONS`,
-		Expected: []sql.Row{{286}},
+		Expected: []sql.UntypedSqlRow{{286}},
 	},
 	{
 		Query: `SELECT * FROM information_schema.COLLATIONS ORDER BY collation_name LIMIT 4`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"armscii8_bin", "armscii8", uint64(64), "", "Yes", uint32(1), "PAD SPACE"},
 			{"armscii8_general_ci", "armscii8", uint64(32), "Yes", "Yes", uint32(1), "PAD SPACE"},
 			{"ascii_bin", "ascii", uint64(65), "", "Yes", uint32(1), "PAD SPACE"},
@@ -512,7 +512,7 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"armscii8_bin", "armscii8"},
 			{"armscii8_general_ci", "armscii8"},
 			{"ascii_bin", "ascii"},
@@ -521,7 +521,7 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SELECT * FROM information_schema.ENGINES ORDER BY engine`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
 		ExpectedColumns: sql.Schema{
@@ -553,199 +553,199 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query:    `SELECT * from information_schema.administrable_role_authorizations`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.applicable_roles`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.column_privileges`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.optimizer_trace`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "SELECT * FROM information_schema.partitions",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.plugins`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.profiling`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.resource_groups`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.role_column_grants`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.role_routine_grants`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tablespaces`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tablespaces_extensions`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.view_routine_usage`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.view_table_usage`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_buffer_page`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_buffer_page_lru`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_buffer_pool_stats`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_cached_indexes`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_cmp`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_cmp_reset`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_cmpmem`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_cmpmem_reset`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_cmp_per_index`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_cmp_per_index_reset`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_columns`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_datafiles`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_fields`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_foreign`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_foreign_cols`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_ft_being_deleted`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_ft_config`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_ft_default_stopword`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_ft_deleted`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_ft_index_cache`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_ft_index_table`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_indexes`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_metrics`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_session_temp_tablespaces`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_tables`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_tablespaces`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_tablespaces_brief`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_tablestats`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_temp_table_info`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_trx`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from information_schema.innodb_virtual`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: `SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, SEQ_IN_INDEX, 'PRIMARY' AS PK_NAME 
 FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='PRIMARY' ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"mydb", "fk_tbl", "pk", 1, "PRIMARY"},
 			{"mydb", "mytable", "i", 1, "PRIMARY"},
 		},
 	},
 	{
 		Query:    "select * from information_schema.character_sets;",
-		Expected: []sql.Row{{"utf8mb4", "utf8mb4_0900_ai_ci", "UTF-8 Unicode", uint32(4)}},
+		Expected: []sql.UntypedSqlRow{{"utf8mb4", "utf8mb4_0900_ai_ci", "UTF-8 Unicode", uint32(4)}},
 	},
 	{
 		Query: `show columns from fk_tbl from mydb`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"pk", "bigint", "NO", "PRI", nil, ""},
 			{"a", "bigint", "YES", "MUL", nil, ""},
 			{"b", "varchar(20)", "YES", "", nil, ""},
@@ -753,17 +753,17 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	},
 	{
 		Query: "SELECT * FROM information_schema.referential_constraints where CONSTRAINT_SCHEMA = 'mydb'",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{"def", "mydb", "fk1", "def", "mydb", nil, "NONE", "NO ACTION", "CASCADE", "fk_tbl", "mytable"},
 		},
 	},
 	{
 		Query:    "SELECT count(*) FROM information_schema.keywords",
-		Expected: []sql.Row{{747}},
+		Expected: []sql.UntypedSqlRow{{747}},
 	},
 	{
 		Query: "SELECT * FROM information_schema.st_spatial_reference_systems order by srs_id desc limit 10",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{`WGS 84 / TM 36 SE`, uint32(32766), `EPSG`, uint32(32766), `PROJCS["WGS 84 / TM 36 SE",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",36,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32766"]]`, nil},
 			{`WGS 84 / UPS South (N,E)`, uint32(32761), `EPSG`, uint32(32761), `PROJCS["WGS 84 / UPS South (N,E)",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Polar Stereographic (variant A)",AUTHORITY["EPSG","9810"]],PARAMETER["Latitude of natural origin",-90,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",0,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.994,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",2000000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",2000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["N",NORTH],AXIS["E",NORTH],AUTHORITY["EPSG","32761"]]`, nil},
 			{`WGS 84 / UTM zone 60S`, uint32(32760), `EPSG`, uint32(32760), `PROJCS["WGS 84 / UTM zone 60S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",177,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32760"]]`, nil},
@@ -778,31 +778,31 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	},
 	{
 		Query:    "SELECT count(*) FROM information_schema.st_units_of_measure",
-		Expected: []sql.Row{{47}},
+		Expected: []sql.UntypedSqlRow{{47}},
 	},
 	{
 		Query:    "SELECT * FROM information_schema.schemata_extensions",
-		Expected: []sql.Row{{"def", "information_schema", ""}, {"def", "foo", ""}, {"def", "mydb", ""}},
+		Expected: []sql.UntypedSqlRow{{"def", "information_schema", ""}, {"def", "foo", ""}, {"def", "mydb", ""}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.columns_extensions where table_name = 'mytable'`,
-		Expected: []sql.Row{{"def", "mydb", "mytable", "i", nil, nil}, {"def", "mydb", "mytable", "s", nil, nil}},
+		Expected: []sql.UntypedSqlRow{{"def", "mydb", "mytable", "i", nil, nil}, {"def", "mydb", "mytable", "s", nil, nil}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.table_constraints_extensions where table_name = 'fk_tbl'`,
-		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
+		Expected: []sql.UntypedSqlRow{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,
-		Expected: []sql.Row{{"def", "mydb", "mytable", nil, nil}},
+		Expected: []sql.UntypedSqlRow{{"def", "mydb", "mytable", nil, nil}},
 	},
 	{
 		Query:    "SELECT table_rows FROM INFORMATION_SCHEMA.TABLES where table_name='mytable'",
-		Expected: []sql.Row{{uint64(3)}},
+		Expected: []sql.UntypedSqlRow{{uint64(3)}},
 	},
 	{
 		Query:    "select table_name from information_schema.tables where table_schema collate utf8_general_ci = 'information_schema' and table_name collate utf8_general_ci = 'parameters'",
-		Expected: []sql.Row{{"parameters"}},
+		Expected: []sql.UntypedSqlRow{{"parameters"}},
 	},
 }
 
@@ -814,7 +814,7 @@ var SkippedInfoSchemaQueries = []QueryTest{
 		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME LIKE '%table'
 		GROUP BY 1 HAVING SUBSTRING(COLUMN_NAME, 1, 1) = "s"
 		`,
-		Expected: []sql.Row{{"s"}},
+		Expected: []sql.UntypedSqlRow{{"s"}},
 	},
 }
 
@@ -829,11 +829,11 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
-				Expected: []sql.Row{{"PRIMARY"}},
+				Expected: []sql.UntypedSqlRow{{"PRIMARY"}},
 			},
 			{
 				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
-				Expected: []sql.Row{{"a"}},
+				Expected: []sql.UntypedSqlRow{{"a"}},
 			},
 			{
 				Query: "set foreign_key_checks=0;",
@@ -843,19 +843,19 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert into child values (1), (2);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "select * from child;",
-				Expected: []sql.Row{{1}, {2}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}},
 			},
 			{
 				Query:    "delete from child;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "select * from child;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "set foreign_key_checks=1;",
@@ -866,11 +866,11 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 			{
 				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
-				Expected: []sql.Row{{nil}},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 			{
 				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
-				Expected: []sql.Row{{"a"}},
+				Expected: []sql.UntypedSqlRow{{"a"}},
 			},
 		},
 	},
@@ -882,11 +882,11 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select column_name from information_schema.columns where column_name like 'condition%';",
-				Expected: []sql.Row{{"condition_choose"}},
+				Expected: []sql.UntypedSqlRow{{"condition_choose"}},
 			},
 			{
 				Query:    "select column_name from information_schema.columns where column_name like '%condition%';",
-				Expected: []sql.Row{{"ACTION_CONDITION"}, {"condition_choose"}},
+				Expected: []sql.UntypedSqlRow{{"ACTION_CONDITION"}, {"condition_choose"}},
 			},
 		},
 	},
@@ -901,7 +901,7 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT table_schema, table_name, column_name, character_set_name, collation_name, column_type FROM information_schema.columns where table_schema = 'test_db' order by column_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test_db", "small_table", "a", nil, nil, "binary(1)"},
 					{"test_db", "small_table", "b", "utf8mb3", "utf8mb3_bin", "varchar(50)"},
 					{"test_db", "test_table", "col1", "utf8mb4", "utf8mb4_0900_bin", "text"},
@@ -920,7 +920,7 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.table_constraints where table_name='t' ORDER BY constraint_type,constraint_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "PRIMARY", "mydb", "t", "PRIMARY KEY", "YES"},
 				},
 			},
@@ -935,7 +935,7 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.key_column_usage where table_name='t'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "PRIMARY", "def", "mydb", "t", "pk", 1, nil, nil, nil, nil},
 				},
 			},
@@ -953,7 +953,7 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.key_column_usage where table_name='ptable2' ORDER BY constraint_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "fkr", "def", "mydb", "ptable2", "test_score2", 1, 1, "mydb", "ptable", "test_score"},
 					{"def", "mydb", "fkr", "def", "mydb", "ptable2", "height2", 2, 2, "mydb", "ptable", "height"},
 					{"def", "mydb", "PRIMARY", "def", "mydb", "ptable2", "pk", 1, nil, nil, nil, nil},
@@ -961,7 +961,7 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM information_schema.key_column_usage where table_name='atable' ORDER BY constraint_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "PRIMARY", "def", "mydb", "atable", "pk", 1, nil, nil, nil, nil},
 					{"def", "mydb", "PRIMARY", "def", "mydb", "atable", "test_score", 2, nil, nil, nil, nil},
 				},
@@ -982,7 +982,7 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.referential_constraints where constraint_schema = 'mydb' and table_name = 'ref_table'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "fk_across_dbs_ref_pk", "def", "mydb", "PRIMARY", "NONE", "NO ACTION", "NO ACTION", "ref_table", "my_table"},
 					{"def", "mydb", "fk_across_dbs_key", "def", "mydb", nil, "NONE", "NO ACTION", "NO ACTION", "ref_table", "my_table"},
 					{"def", "mydb", "fk_across_dbs_unique", "def", "mydb", "w", "NONE", "NO ACTION", "NO ACTION", "ref_table", "my_table"},
@@ -1000,7 +1000,7 @@ var InfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT trigger_name, event_object_table, definer FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_name = 'trigger1'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"trigger1", "aa", "dolt@localhost"},
 				},
 			},
@@ -1010,7 +1010,7 @@ event_object_schema, event_object_table, action_order, action_condition, action_
 action_reference_old_table, action_reference_new_table, action_reference_old_row, action_reference_new_row, sql_mode, definer,
 character_set_client, collation_connection, database_collation
 FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "trigger1", "INSERT", "def", "mydb", "aa", 1, nil, "SET NEW.x = NEW.x + 1", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
 						"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "dolt@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"def", "mydb", "trigger2", "INSERT", "def", "mydb", "aa", 2, nil, "SET NEW.y = NEW.y + 2", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
@@ -1029,7 +1029,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.statistics where table_name='t'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "t", 1, "mydb", "myindex", 1, "test_score", "A", 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 					{"def", "mydb", "t", 0, "mydb", "PRIMARY", 1, "pk", "A", 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
@@ -1047,7 +1047,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='t' order by 1,2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t", "fname", "", "NO"},
 					{"t", "h", nil, "YES"},
 					{"t", "lname", "ln", "NO"},
@@ -1064,7 +1064,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.CoLuMnS where table_name='test_table'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test_table", "pk", nil, "NO"},
 					{"test_table", "col2", "4.5", "NO"},
 					{"test_table", "col3", "3.14159", "NO"},
@@ -1082,7 +1082,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"test_table", "pk", nil, "NO"},
 					{"test_table", "col2", "length('he`Llo')", "YES"},
 					{"test_table", "col3", "greatest(`pk`,2)", "YES"},
@@ -1101,7 +1101,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select column_name, numeric_precision, numeric_scale from information_schema.columns where table_name='digits' order by ordinal_position;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"c0", 3, 0},
 					{"c1", 3, 0},
 					{"c2", 5, 0},
@@ -1136,7 +1136,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 					"routine_body, external_name, external_language, parameter_style, is_deterministic, " +
 					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
 					"character_set_client, collation_connection, database_collation FROM information_schema.routines order by routine_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
 						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"hi", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
@@ -1166,7 +1166,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "foo", "t", "i", uint32(1), nil, "NO", "int", nil, nil, 10, 0, nil, nil, nil, "int", "PRI", "", "insert,references,select,update", "", "", nil},
 					{"def", "foo", "t", "j", uint32(2), "UUID_TO_BIN(uuid())", "YES", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "DEFAULT_GENERATED", "insert,references,select,update", "", "", nil},
 					{"def", "foo", "tt", "ii", uint32(1), nil, "NO", "int", nil, nil, 10, 0, nil, nil, nil, "int", "PRI", "", "insert,references,select,update", "", "", nil},
@@ -1193,7 +1193,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, COLUMN_TYPE, COLUMN_KEY, CHARACTER_MAXIMUM_LENGTH, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'about'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"about", "id", nil, "NO", "int unsigned", "UNI", nil, "auto_increment"},
 					{"about", "uuid", nil, "NO", "char(36)", "PRI", 36, ""},
 					{"about", "status", "draft", "NO", "varchar(255)", "", 255, ""},
@@ -1213,7 +1213,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, CHARACTER_MAXIMUM_LENGTH, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'new_table'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"new_table", "id", "NO", "int", "int", "MUL", nil, ""},
 					{"new_table", "name", "YES", "varchar", "varchar(30)", "", 30, ""},
 					{"new_table", "cname", "YES", "varbinary", "varbinary(100)", "", 100, ""},
@@ -1229,7 +1229,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, COLUMN_TYPE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'comp_uni'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"comp_uni", "pk", "NO", "int", "PRI"},
 					{"comp_uni", "c0", "YES", "int", "MUL"},
 					{"comp_uni", "c1", "YES", "int", ""},
@@ -1245,7 +1245,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'ptable'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ptable", "id", "NO", "int", "int", "PRI"},
 					{"ptable", "id2", "NO", "int", "int", "UNI"},
 					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
@@ -1261,7 +1261,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, SRS_ID FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'stable'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"stable", "geo", "point(2,5)", "NO", "geometry", "geometry", "", nil},
 					{"stable", "line", nil, "NO", "linestring", "linestring", "", nil},
 					{"stable", "pnt", nil, "YES", "point", "point", "", uint32(4326)},
@@ -1282,7 +1282,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select index_name, seq_in_index, column_name, sub_part from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"b", 1, "b", 4},
 					{"b_and_c", 1, "b", 5},
 					{"b_and_c", 2, "c", 6},
@@ -1294,12 +1294,12 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				// TODO: cardinality not supported
 				Skip:     true,
 				Query:    `select cardinality from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
-				Expected: []sql.Row{{2}, {2}, {2}, {2}, {2}},
+				Expected: []sql.UntypedSqlRow{{2}, {2}, {2}, {2}, {2}},
 			},
 			{
 				Query: `SELECT seq_in_index, sub_part, index_name, index_type, CASE non_unique WHEN 0 THEN 'TRUE' ELSE 'FALSE' END AS is_unique, column_name
 	FROM information_schema.statistics WHERE table_schema='mydb' AND table_name='ptable' ORDER BY index_name, seq_in_index;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 4, "b", "BTREE", "TRUE", "b"},
 					{1, 5, "b_and_c", "BTREE", "FALSE", "b"},
 					{2, 6, "b_and_c", "BTREE", "FALSE", "c"},
@@ -1354,7 +1354,7 @@ PRIMARY KEY (pk)
 			{
 				Query: `SELECT table_catalog, table_schema, table_name, column_name, ordinal_position
 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_types' ORDER BY ORDINAL_POSITION`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "all_types", "pk", uint32(1)},
 					{"def", "mydb", "all_types", "binary_1", uint32(2)},
 					{"def", "mydb", "all_types", "big_int", uint32(3)},
@@ -1394,7 +1394,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 			{
 				Query: `SELECT column_name, column_default, is_nullable, data_type, column_type, character_maximum_length, character_octet_length
 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_types' ORDER BY ORDINAL_POSITION`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", nil, "NO", "int", "int", nil, nil},
 					{"binary_1", "0x31", "YES", "binary", "binary(1)", 1, 1},
 					{"big_int", "1", "YES", "bigint", "bigint", nil, nil},
@@ -1434,7 +1434,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 			{
 				Query: `SELECT column_name, column_type, numeric_precision, numeric_scale, datetime_precision, character_set_name, collation_name, column_key, extra, column_comment, generation_expression, srs_id
 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_types' ORDER BY ORDINAL_POSITION`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pk", "int", 10, 0, nil, nil, nil, "PRI", "", "", "", nil},
 					{"binary_1", "binary(1)", nil, nil, nil, nil, nil, "", "", "", "", nil},
 					{"big_int", "bigint", 19, 0, nil, nil, nil, "", "", "", "", nil},
@@ -1485,7 +1485,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT table_catalog, table_schema, table_name, table_type, table_comment FROM information_schema.tables WHERE table_schema = 'mydb' and table_type IN ('VIEW') ORDER BY TABLE_NAME;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "myview", "VIEW", "VIEW"},
 					{"def", "mydb", "myview1", "VIEW", "VIEW"},
 					{"def", "mydb", "myview2", "VIEW", "VIEW"},
@@ -1493,7 +1493,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 			},
 			{
 				Query: "SELECT table_rows as count FROM information_schema.TABLES WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='bigtable';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(5)},
 				},
 			},
@@ -1519,7 +1519,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"chk1", "(B > 0)", "YES"},
 					{"chk2", "(b > 0)", "NO"},
 					{"chk3", "(B > 1)", "YES"},
@@ -1528,7 +1528,7 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			},
 			{
 				Query: `select * from information_schema.table_constraints where table_schema = 'mydb' and table_name = 'checks';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "PRIMARY", "mydb", "checks", "PRIMARY KEY", "YES"},
 					{"def", "mydb", "chk1", "mydb", "checks", "CHECK", "YES"},
 					{"def", "mydb", "chk2", "mydb", "checks", "CHECK", "NO"},
@@ -1538,7 +1538,7 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			},
 			{
 				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "chk1", "(B > 0)"},
 					{"def", "mydb", "chk2", "(b > 0)"},
 					{"def", "mydb", "chk3", "(B > 1)"},
@@ -1547,7 +1547,7 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			},
 			{
 				Query: `select * from information_schema.table_constraints where table_schema = 'mydb' and table_name = 'ptable';`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "PRIMARY", "mydb", "ptable", "PRIMARY KEY", "YES"},
 					{"def", "mydb", "b", "mydb", "ptable", "UNIQUE", "YES"},
 					{"def", "mydb", "ptable_checks", "mydb", "ptable", "FOREIGN KEY", "YES"},
@@ -1572,7 +1572,7 @@ END ;`,
 routine_body, external_language, parameter_style, is_deterministic, sql_data_access, security_type, sql_mode, 
 routine_comment, definer, character_set_client, collation_connection, database_collation
 from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"count_i_from_mytable", "def", "mydb", "count_i_from_mytable", "PROCEDURE", "", "SQL", "SQL", "SQL", "NO",
 						"READS SQL DATA", "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
@@ -1580,7 +1580,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 			{
 				Query: `select routine_definition from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"BEGIN\n     SELECT SUM(i)\n     FROM mytable\n     INTO total_i;\nEND"},
 				},
 			},
@@ -1601,7 +1601,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 				Query: `SELECT table_catalog, table_schema, table_name, table_type, engine, version, row_format, table_rows,
 				auto_increment, table_collation, checksum, create_options, table_comment
 				FROM information_schema.tables where table_schema = 'mydb' order by table_name`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "bigtable", "BASE TABLE", "InnoDB", 10, "Dynamic", uint64(5), nil, "utf8mb4_0900_bin", nil, "", ""},
 					{"def", "mydb", "fk_tbl", "BASE TABLE", "InnoDB", 10, "Dynamic", uint64(0), nil, "utf8mb4_0900_bin", nil, "", ""},
 					{"def", "mydb", "mytable", "BASE TABLE", "InnoDB", 10, "Dynamic", uint64(3), nil, "utf8mb4_0900_bin", nil, "", ""},
@@ -1612,7 +1612,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 			{
 				Query: "SELECT table_comment,table_rows,auto_increment FROM information_schema.tables WHERE TABLE_NAME = 'names' AND TABLE_SCHEMA = 'mydb';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"", uint64(3), uint64(4)},
 				},
 			},
@@ -1627,7 +1627,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from information_schema.views where table_schema = 'mydb' order by table_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
 					{"def", "mydb", "myview1", "select count(*) from mytable", "NONE", "NO", "root@localhost", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"},
 					{"def", "mydb", "myview2", "SELECT * FROM myview WHERE i > 1", "NONE", "NO", "UserName@localhost", "INVOKER", "utf8mb4", "utf8mb4_0900_bin"},
@@ -1644,7 +1644,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.schemata where schema_name like 'mydb%' order by schema_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "utf8mb4", "utf8mb4_0900_bin", nil, "NO"},
 					{"def", "mydb1", "latin1", "latin1_general_ci", nil, "NO"},
 					{"def", "mydb2", "utf8mb3", "utf8mb3_general_ci", nil, "NO"},
@@ -1660,7 +1660,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.st_geometry_columns where table_schema = 'mydb' order by column_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "spatial_table", "g", "", uint32(0), "geometry"},
 					{"def", "mydb", "spatial_table", "m", nil, nil, "multipoint"},
 					{"def", "mydb", "spatial_table", "p", "WGS 84", uint32(4326), "polygon"},
@@ -1676,7 +1676,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.parameters where specific_name = 'testabc'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "testabc", uint64(1), "IN", "x", "double", nil, nil, 22, 0, nil, nil, nil, "double", "PROCEDURE"},
 					{"def", "mydb", "testabc", uint64(2), "IN", "y", "float", nil, nil, 12, 0, nil, nil, nil, "float", "PROCEDURE"},
 					{"def", "mydb", "testabc", uint64(3), "OUT", "abc", "decimal", nil, nil, 5, 1, nil, nil, nil, "decimal(5,1)", "PROCEDURE"},
@@ -1734,7 +1734,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 					"organization 'test_org' identified by 1234 " +
 					"definition 'test_definition' " +
 					"description 'test_description'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
@@ -1744,13 +1744,13 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 					"organization 'test_org' identified by 1234 " +
 					"definition 'test_definition' " +
 					"description 'test_description'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "select srs_id, srs_name, organization, organization_coordsys_id, definition, description from information_schema.st_spatial_reference_systems where srs_id = 1234",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint32(1234), "test_name", "test_org", uint32(1234), "test_definition", "test_description"},
 				},
 			},
@@ -1760,13 +1760,13 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 					"organization 'new_test_org' identified by 1234 " +
 					"definition 'new_test_definition' " +
 					"description 'new_test_description'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "select srs_id, srs_name, organization, organization_coordsys_id, definition, description from information_schema.st_spatial_reference_systems where srs_id = 1234",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint32(1234), "test_name", "test_org", uint32(1234), "test_definition", "test_description"},
 				},
 			},
@@ -1781,7 +1781,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select table_comment from information_schema.tables where table_name = 't';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"this is a table comment"},
 				},
 			},
@@ -1795,13 +1795,13 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select table_schema, table_name, column_name table_comment from information_schema.columns where (table_name, column_name) in (('TEST', 'COL'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mydb", "TEST", "COL"},
 				},
 			},
 			{
 				Query: "select table_schema, table_name, column_name table_comment from information_schema.columns where (table_name, column_name) in (('test', 'col'));",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mydb", "TEST", "COL"},
 				},
 			},
@@ -1822,7 +1822,7 @@ var SkippedInfoSchemaScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM information_schema.key_column_usage where constraint_name = 'fk_across_dbs'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "keydb", "fk_across_dbs", "def", "keydb", "key_table", "a", 1, 1, "mydb", "my_table", "i"},
 				},
 			},

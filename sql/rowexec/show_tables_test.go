@@ -48,15 +48,15 @@ func TestShowTables(t *testing.T) {
 
 	res, err := iter.Next(ctx)
 	require.NoError(err)
-	require.Equal("test1", res[0])
+	require.Equal("test1", res.GetValue(0))
 
 	res, err = iter.Next(ctx)
 	require.NoError(err)
-	require.Equal("test2", res[0])
+	require.Equal("test2", res.GetValue(0))
 
 	res, err = iter.Next(ctx)
 	require.NoError(err)
-	require.Equal("test3", res[0])
+	require.Equal("test3", res.GetValue(0))
 
 	_, err = iter.Next(ctx)
 	require.Equal(io.EOF, err)

@@ -29,7 +29,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"chk1", "(B > 0)", "YES"}, {"chk2", "(b > 0)", "NO"}, {"chk3", "(B > 1)", "YES"}, {"chk4", "(upper(C) = c)", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"chk1", "(B > 0)", "YES"}, {"chk2", "(b > 0)", "NO"}, {"chk3", "(B > 1)", "YES"}, {"chk4", "(upper(C) = c)", "YES"}},
 			},
 		},
 	},
@@ -43,7 +43,7 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 				Query: `SELECT LENGTH(TC.CONSTRAINT_NAME) > 0
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK' AND  CC.CHECK_CLAUSE = '(b > 100)';`,
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 		},
 	},
@@ -66,7 +66,7 @@ CREATE TABLE T2
 				Query: `SELECT CC.CHECK_CLAUSE
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 't2' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"(c1 = c2)"}, {"(c1 > 10)"}, {"(c2 > 0)"}, {"(c3 < 100)"}, {"(c1 = 0)"}, {"(C1 > C3)"}},
+				Expected: []sql.UntypedSqlRow{{"(c1 = c2)"}, {"(c1 > 10)"}, {"(c2 > 0)"}, {"(c3 < 100)"}, {"(c1 = 0)"}, {"(C1 > C3)"}},
 			},
 		},
 	},
@@ -115,7 +115,7 @@ CREATE TABLE t4
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SHOW CREATE TABLE mytable1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable1",
 						"CREATE TABLE `mytable1` (\n  `pk` int NOT NULL,\n" +
@@ -128,7 +128,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable2",
 						"CREATE TABLE `mytable2` (\n  `pk` int NOT NULL,\n" +
@@ -142,7 +142,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable3",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable3",
 						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n" +
@@ -156,7 +156,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable4",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable4",
 						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n" +
@@ -169,7 +169,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable5",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable5",
 						"CREATE TABLE `mytable5` (\n  `pk` int NOT NULL,\n" +
@@ -182,7 +182,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable6",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable6",
 						"CREATE TABLE `mytable6` (\n  `pk` int NOT NULL,\n" +
@@ -195,7 +195,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable7",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable7",
 						"CREATE TABLE `mytable7` (\n  `pk` int NOT NULL,\n" +
@@ -208,7 +208,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable8",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable8",
 						"CREATE TABLE `mytable8` (\n  `pk` int NOT NULL,\n" +
@@ -221,7 +221,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable9",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable9",
 						"CREATE TABLE `mytable9` (\n  `pk` int NOT NULL,\n" +
@@ -234,7 +234,7 @@ CREATE TABLE t4
 			},
 			{
 				Query: "SHOW CREATE TABLE mytable10",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mytable10",
 						"CREATE TABLE `mytable10` (\n  `pk` int NOT NULL,\n" +
@@ -255,14 +255,14 @@ CREATE TABLE t4
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "hcheck", "(height < 10)"},
 					{"def", "mydb", "mycheck", "(test_score >= 50)"},
 				},
 			},
 			{
 				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
@@ -280,7 +280,7 @@ CREATE TABLE t4
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT pk FROM test where lower(v1) = 'happy' and lower(v2) = 'birthday' order by 1",
-				Expected: []sql.Row{{1}, {2}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}},
 			},
 		},
 	},
@@ -308,11 +308,11 @@ CREATE TABLE t4
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM test ORDER BY i",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query: "SELECT * FROM test where i = 2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -336,7 +336,7 @@ var DropCheckConstraintsScripts = []ScriptTest{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 't1' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"chk3", "(c > 0)", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"chk3", "(c > 0)", "YES"}},
 			},
 		},
 	},
@@ -377,7 +377,7 @@ var ChecksOnInsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM t1;",
-				Expected: []sql.Row{{1, 1, "ABC"}},
+				Expected: []sql.UntypedSqlRow{{1, 1, "ABC"}},
 			},
 			{
 				Query:       "INSERT INTO t1 (a,b) VALUES (0,0)",
@@ -410,7 +410,7 @@ var ChecksOnInsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM t1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, "ABC"},
 					{2, 2, "ABC"},
 					{4, nil, nil},
@@ -432,30 +432,30 @@ var ChecksOnInsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO t1 (a,b) select a, b from t2",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				// Check that INSERT IGNORE correctly drops errors with check constraints and does not update the actual table.
 				Query:    "INSERT IGNORE INTO t1 VALUES (5,2, 'abc')",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query:    "SELECT count(*) FROM t1 where a = 5",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				// One value is correctly accepted and the other value is not accepted due to a check constraint violation.
 				// The accepted value is correctly added to the table.
 				Query:    "INSERT IGNORE INTO t1 VALUES (4,4, null), (5,2, 'abc')",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT count(*) FROM t1 where a = 5",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				Query:    "SELECT count(*) FROM t1 where a = 4",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -474,7 +474,7 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM t1;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:       "UPDATE t1 set b = 0;",
@@ -503,19 +503,19 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
-				Expected: []sql.Row{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
 			},
 			{
 				Query:    "select * from sales;",
-				Expected: []sql.Row{{1901}},
+				Expected: []sql.UntypedSqlRow{{1901}},
 			},
 			{
 				Query:    "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET S1.year_built = 1902;",
-				Expected: []sql.Row{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
 			},
 			{
 				Query:    "select * from sales;",
-				Expected: []sql.Row{{1902}},
+				Expected: []sql.UntypedSqlRow{{1902}},
 			},
 			{
 				Query:       "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET t.year_built = 1903;",

@@ -91,7 +91,7 @@ func (sc *ShowCharset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	iter := sql.NewCharacterSetsIterator()
 	for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
 		if charset.Encoder != nil && charset.BinaryCollation.Sorter() != nil && charset.DefaultCollation.Sorter() != nil {
-			rows = append(rows, sql.Row{
+			rows = append(rows, sql.UntypedSqlRow{
 				charset.Name,
 				charset.Description,
 				charset.DefaultCollation.String(),
@@ -113,10 +113,10 @@ func (sci *showCharsetIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	// switch the ordering (see notes on Schema())
-	defaultCollationName := row[1]
+	defaultCollationName := row.GetValue(1)
 
-	row[1] = row[2]
-	row[2] = defaultCollationName
+	row.SetValue(1, row.GetValue(2))
+	row.SetValue(2, defaultCollationName)
 
 	return row, nil
 }

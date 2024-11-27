@@ -72,8 +72,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
 	// case the additional scope variables are prepended to the row.
-	if len(row) > len(i.schema) {
-		row = row[len(row)-len(i.schema):]
+	if row.Len() > len(i.schema) {
+		row = row.Subslice(row.Len()-len(i.schema), row.Len())
 	}
 
 	err = i.validateNullability(ctx, i.schema, row)
@@ -86,15 +86,14 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 
-	origRow := make(sql.Row, len(row))
-	copy(origRow, row)
+	origRow := row.Copy()
 
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
-		if row[idx] != nil {
-			converted, inRange, cErr := col.Type.Convert(row[idx])
+		if row.GetValue(idx) != nil {
+			converted, inRange, cErr := col.Type.Convert(row.GetValue(idx))
 			if cErr == nil && !inRange {
-				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
+				cErr = sql.ErrValueOutOfRange.New(row.GetValue(idx), col.Type)
 			}
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
@@ -107,7 +106,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 						if converted == nil {
 							converted = i.schema[idx].Type.Zero()
 						}
-						row[idx] = converted
+						row.SetValue(idx, converted)
 						// Add a warning instead
 						ctx.Session.Warn(&sql.Warning{
 							Level:   "Note",
@@ -121,21 +120,21 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				} else {
 					// Fill in error with information
 					if types.ErrLengthBeyondLimit.Is(cErr) {
-						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
+						cErr = types.ErrLengthBeyondLimit.New(row.GetValue(idx), col.Name)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
 				}
 			}
-			row[idx] = converted
+			row.SetValue(idx, converted)
 		}
 	}
 
 	if i.replacer != nil {
-		toReturn := make(sql.Row, len(row)*2)
-		for i := 0; i < len(row); i++ {
-			toReturn[i+len(row)] = row[i]
+		toReturn := sql.NewSqlRowWithLen(row.Len() * 2)
+		for i := 0; i < row.Len(); i++ {
+			toReturn.SetValue(i+row.Len(), row.GetValue(i))
 		}
 		// May have multiple duplicate pk & unique errors due to multiple indexes
 		//TODO: how does this interact with triggers?
@@ -154,7 +153,9 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
-				copy(toReturn, ue.Existing)
+				for i, v := range ue.Existing.Values() {
+					toReturn.SetValue(i, v)
+				}
 			} else {
 				break
 			}
@@ -178,8 +179,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (returnRow sql.Row, returnErr error) {
 	var err error
-	updateAcc := append(oldRow, newRow...)
-	var evalRow sql.Row
+	updateAcc := oldRow.Append(newRow)
+	var evalRow sql.Row = sql.UntypedSqlRow{}
 	for _, updateExpr := range i.updateExprs {
 		// this SET <val> indexes into LHS, but the <expr> can
 		// reference the new row on RHS
@@ -200,7 +201,7 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 		updateAcc = val.(sql.Row)
 	}
 	// project LHS only
-	evalRow = updateAcc[:len(oldRow)]
+	evalRow = updateAcc.Subslice(0, oldRow.Len())
 
 	// Should revaluate the check conditions.
 	err = i.evaluateChecks(ctx, evalRow)
@@ -245,7 +246,7 @@ func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 				err = fmt.Errorf("VALUES functions may only contain column names")
 				return false
 			}
-			valuesExpr.Value = insertRow[getField.Index()]
+			valuesExpr.Value = insertRow.GetValue(getField.Index())
 			return false
 		})
 		if err != nil {
@@ -304,7 +305,7 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
-			return toInt64(row[i])
+			return toInt64(row.GetValue(i))
 		}
 	}
 	return 0
@@ -324,9 +325,9 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
 	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
-		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+		row.SetValue(columnIdx, row.GetValue(columnIdx).(string)[:maxLength]) // truncate string
 	} else {
-		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
+		row.SetValue(columnIdx, tableSchema[columnIdx].Type.Zero())
 	}
 
 	sqlerr := sql.CastSQLError(err)
@@ -393,10 +394,10 @@ func (i *insertIter) evaluateChecks(ctx *sql.Context, row sql.Row) error {
 
 func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
 	for count, col := range dstSchema {
-		if !col.Nullable && row[count] == nil {
+		if !col.Nullable && row.GetValue(count) == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if i.ignore {
-				row[count] = col.Type.Zero()
+				row.SetValue(count, col.Type.Zero())
 				_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 			} else {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)

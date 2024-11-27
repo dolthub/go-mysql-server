@@ -140,12 +140,12 @@ func TestRowsCache(t *testing.T) {
 
 		cache := newRowsCache(mockMemory{}, fixedReporter(5, 50))
 
-		require.NoError(cache.Add(Row{1}))
+		require.NoError(cache.Add(UntypedSqlRow{1}))
 		require.Len(cache.Get(), 1)
 
 		cache.Dispose()
 		require.Panics(func() {
-			_ = cache.Add(Row{2})
+			_ = cache.Add(UntypedSqlRow{2})
 		})
 	})
 
@@ -153,7 +153,7 @@ func TestRowsCache(t *testing.T) {
 		require := require.New(t)
 		cache := newRowsCache(mockMemory{}, fixedReporter(51, 50))
 
-		err := cache.Add(Row{1, "foo"})
+		err := cache.Add(UntypedSqlRow{1, "foo"})
 		require.Error(err)
 		require.True(ErrNoMemoryAvailable.Is(err))
 	})
@@ -172,7 +172,7 @@ func TestRowsCache(t *testing.T) {
 				return 51
 			}, 50},
 		)
-		require.NoError(cache.Add(Row{1, "foo"}))
+		require.NoError(cache.Add(UntypedSqlRow{1, "foo"}))
 		require.Len(cache.Get(), 1)
 		require.True(freed)
 	})

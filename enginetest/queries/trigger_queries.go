@@ -36,19 +36,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from a order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1}, {2, 2}, {3, 3},
 				},
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4},
 				},
 			},
 			{
 				Query: "insert into a values (4,0), (5,0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -65,19 +65,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from a order by j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0}, {0, 1}, {0, 2},
 				},
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {1}, {2},
 				},
 			},
 			{
 				Query: "insert into a values (0,0), (0,0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -94,19 +94,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "insert into a values (7), (9)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -124,19 +124,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
 			{
 				Query: "insert into a values (7), (9)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -154,13 +154,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {1}, {3}, {5}, {8},
 				},
 			},
@@ -177,19 +177,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "insert into a values (7), (9)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -206,19 +206,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select z from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "insert into a values (7,8), (9,10)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -236,19 +236,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
 			{
 				Query: "insert into a values (7), (9)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -266,13 +266,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {1}, {3}, {5}, {8},
 				},
 			},
@@ -292,19 +292,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 0}, {1, 1, 2}, {2, 2, 4}, {3, 3, 6}, {4, 4, 8},
 				},
 			},
 			{
 				Query: "select x from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{5},
 				},
 			},
 			{
 				Query: "select y from c order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 				},
 			},
@@ -318,7 +318,7 @@ var TriggerTests = []ScriptTest{
 			"insert into a values (1)",
 		},
 		Query: "select x from a order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2},
 		},
 	},
@@ -330,7 +330,7 @@ var TriggerTests = []ScriptTest{
 			"insert into x values (1, 10, 100)",
 		},
 		Query: "select * from x order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 100, 0},
 		},
 	},
@@ -344,7 +344,7 @@ var TriggerTests = []ScriptTest{
 			"insert into x values (1, 10, 100), (2, 20, 200)",
 		},
 		Query: "select *, @@auto_increment_increment from x order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 100, 0, 3},
 			{3, 200, 0, 3},
 		},
@@ -358,13 +358,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a (y, x) values (5,7), (9,11)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select x, y from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14, 15},
 					{22, 27},
 				},
@@ -380,13 +380,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a (y, x) values (5,7), (9,11)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select x, y, z from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14, 15, 25},
 					{22, 27, 25},
 				},
@@ -408,7 +408,7 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 2}, {1, 3}, {2, -440}, {6, -880},
 				},
 			},
@@ -434,19 +434,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 2}, {1, 3}, {2, -440}, {6, -880},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{6, 44}, {18, 88},
 				},
 			},
 			{
 				Query: "SELECT * FROM test3 ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10, -440}, {30, -880},
 				},
 			},
@@ -465,19 +465,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from foo.a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from foo.b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "insert into foo.a values (7), (9)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -500,7 +500,7 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM testStr",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"joe's:1", "jill's:2", "stan\"s:3"},
 				},
 			},
@@ -520,19 +520,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4}, {8},
 				},
 			},
 			{
 				Query: "update a set x = x + 1 where x = 5",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -557,13 +557,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {3}, {5}, {6}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {7},
 				},
 			},
@@ -582,13 +582,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {3}, {5}, {6}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {6}, {8}, {10},
 				},
 			},
@@ -606,19 +606,19 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4}, {8},
 				},
 			},
 			{
 				Query: "update a set x = x + 1 where x = 5",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -643,13 +643,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {3}, {5}, {6}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {7},
 				},
 			},
@@ -668,13 +668,13 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {3}, {5}, {6}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {6}, {8}, {10},
 				},
 			},
@@ -689,7 +689,7 @@ var TriggerTests = []ScriptTest{
 			"update a set x = x + 1",
 		},
 		Query: "select x from a order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3}, {21},
 		},
 	},
@@ -702,7 +702,7 @@ var TriggerTests = []ScriptTest{
 			"update a set x = x + 1",
 		},
 		Query: "select x from a order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1}, {10},
 		},
 	},
@@ -715,7 +715,7 @@ var TriggerTests = []ScriptTest{
 			"update a set x = x + 1, y = y + 1",
 		},
 		Query: "select x, y from a order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{5, 5},
 			{31, 31},
 		},
@@ -729,7 +729,7 @@ var TriggerTests = []ScriptTest{
 			"update a set x = x + 1, y = y + 1",
 		},
 		Query: "select x, y from a order by 1",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{6, 7},
 			{32, 41},
 		},
@@ -746,14 +746,14 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x, y from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 3},
 					{11, 20},
 				},
 			},
 			{
 				Query: "select z from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{100},
 				},
 			},
@@ -770,7 +770,7 @@ var TriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, -70}, {1, -100},
 				},
 			},
@@ -791,23 +791,23 @@ BEGIN
 		THEN SET new.stat_id = new.stat_id * -1;
 	END IF;
 END;`,
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "update test set stat_id=2 where stat_id=1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "select * from test order by stat_id;",
-				Expected: []sql.Row{{-2}, {-1}},
+				Expected: []sql.UntypedSqlRow{{-2}, {-1}},
 			},
 			{
 				Query:    "update test set stat_id=-2 where stat_id=-1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "select * from test;",
-				Expected: []sql.Row{{-2}, {-2}},
+				Expected: []sql.UntypedSqlRow{{-2}, {-2}},
 			},
 		},
 	},
@@ -826,23 +826,23 @@ BEGIN
 		THEN SET new.stat_id = new.stat_id * -1;
 	END IF;
 END;`,
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "update test set stat_id=2 where stat_id=1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "select * from test order by stat_id;",
-				Expected: []sql.Row{{-2}, {-1}},
+				Expected: []sql.UntypedSqlRow{{-2}, {-1}},
 			},
 			{
 				Query:    "update test set stat_id=-2 where stat_id=-1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "select * from test;",
-				Expected: []sql.Row{{-2}, {-2}},
+				Expected: []sql.UntypedSqlRow{{-2}, {-2}},
 			},
 		},
 	},
@@ -860,19 +860,19 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4},
 				},
 			},
 			{
 				Query: "delete from a where x = 5",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
@@ -891,13 +891,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
@@ -916,13 +916,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {3}, {5}, {7}, {8},
 				},
 			},
@@ -940,19 +940,19 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3}, {5}, {7},
 				},
 			},
 			{
 				Query: "delete from a where x = 0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
@@ -971,13 +971,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {9},
 				},
 			},
@@ -996,13 +996,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {8},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {4}, {6}, {9},
 				},
 			},
@@ -1020,13 +1020,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4}, {8},
 				},
 			},
@@ -1045,11 +1045,11 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from a order by 1",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "select x from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{9},
 				},
 			},
@@ -1124,19 +1124,19 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (2), (3), (5)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {21}, {22}, {33}, {35}, {55},
 				},
 			},
@@ -1153,13 +1153,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-1}, {3},
 				},
 			},
@@ -1178,13 +1178,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-23}, {-11},
 				},
 			},
@@ -1202,7 +1202,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set x = x * 2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 3,
 						Info: plan.UpdateInfo{
@@ -1214,13 +1214,13 @@ END;`,
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4}, {6}, {10},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {21}, {22}, {33}, {35}, {55},
 				},
 			},
@@ -1240,7 +1240,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set x = x * 2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 3,
 						Info: plan.UpdateInfo{
@@ -1252,13 +1252,13 @@ END;`,
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4}, {6}, {10},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {21}, {22}, {26}, {33}, {34}, {35}, {39}, {51}, {55}, {65}, {85},
 				},
 			},
@@ -1276,17 +1276,17 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "delete from a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query:    "select x from a order by 1",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {21}, {22}, {33}, {35}, {55},
 				},
 			},
@@ -1306,17 +1306,17 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "delete from a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query:    "select x from a order by 1",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {21}, {22}, {26}, {33}, {34}, {35}, {39}, {51}, {55}, {65}, {85},
 				},
 			},
@@ -1342,13 +1342,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-23}, {-11},
 				},
 			},
@@ -1356,7 +1356,7 @@ END;`,
 				Query: "select y from b order by 1",
 				// This result is a bit counter-intutitive: it doesn't match the inserted row, because all 4 triggers run their
 				// update statement twice on the rows in b, once for each row inserted into a
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-167}, {-95},
 				},
 			},
@@ -1377,13 +1377,13 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select id, is_dirty from is_dirty",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 				},
 			},
 			{
 				Query: "update trigger_on_update set id = 1, first = 'george', last = 'smith' where id = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						types.OkResult{
 							RowsAffected: 0,
@@ -1397,7 +1397,7 @@ end;`,
 			},
 			{
 				Query: "select id, is_dirty from is_dirty",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 				},
 			},
@@ -1428,7 +1428,7 @@ end;`,
 			},
 			{
 				Query:    "select id from rn",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1452,7 +1452,7 @@ end;`,
 			},
 			{
 				Query:    "select id from t1",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1476,19 +1476,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "select z from c order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {28}, {42},
 				},
 			},
@@ -1508,19 +1508,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "select z from c order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {28}, {42},
 				},
 			},
@@ -1539,19 +1539,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "select z from c order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {28}, {42},
 				},
 			},
@@ -1570,19 +1570,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "select z from c order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {28}, {42},
 				},
 			},
@@ -1601,19 +1601,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
 			{
 				Query: "select z from c order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {28}, {42},
 				},
 			},
@@ -1636,15 +1636,15 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select x from a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select y from b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select z from c;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1664,15 +1664,15 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select x from a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select y from b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select z from c;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1692,15 +1692,15 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select x from a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select y from b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select z from c;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1720,15 +1720,15 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select x from a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select y from b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select z from c;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1749,19 +1749,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: "select y from b;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{5},
 				},
 			},
 			{
 				Query: "select z from c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 				},
 			},
@@ -1783,19 +1783,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: "select y from b;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{5},
 				},
 			},
 			{
 				Query: "select z from c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 				},
 			},
@@ -1817,19 +1817,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: "select y from b;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{5},
 				},
 			},
 			{
 				Query: "select z from c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 				},
 			},
@@ -1851,19 +1851,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from a;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: "select y from b;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{5},
 				},
 			},
 			{
 				Query: "select z from c;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 				},
 			},
@@ -1889,7 +1889,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
@@ -1899,19 +1899,19 @@ end;`,
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4},
 				},
 			},
 			{
 				Query: "select z from c order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3},
 				},
 			},
@@ -1929,7 +1929,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create trigger a1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"a1", // Trigger
 						"",   // sql_mode
@@ -1943,7 +1943,7 @@ end;`,
 			},
 			{
 				Query: "show create trigger b1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"b1", // Trigger
 						"",   // sql_mode
@@ -1975,7 +1975,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show triggers",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"t1",                    // Trigger
 						"INSERT",                // Event
@@ -2032,7 +2032,7 @@ end;`,
 			},
 			{
 				Query: "show triggers from mydb",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"t1",                    // Trigger
 						"INSERT",                // Event
@@ -2089,7 +2089,7 @@ end;`,
 			},
 			{
 				Query: "show triggers like '%cc'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"t3",                             // Trigger
 						"INSERT",                         // Event
@@ -2120,7 +2120,7 @@ end;`,
 			},
 			{
 				Query: "show triggers where `event` = 'INSERT'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"t1",                    // Trigger
 						"INSERT",                // Event
@@ -2164,7 +2164,7 @@ end;`,
 			},
 			{
 				Query: "show triggers where timing = 'AFTER'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"t3",                             // Trigger
 						"INSERT",                         // Event
@@ -2182,7 +2182,7 @@ end;`,
 			},
 			{
 				Query: "show triggers where timing = 'BEFORE' and `Table` like '%bb'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"t1",                    // Trigger
 						"INSERT",                // Event
@@ -2234,15 +2234,15 @@ end;`,
 			},
 			{
 				Query:    "drop trigger t4",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "drop trigger t3",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "drop trigger if exists t5",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:       "drop trigger t5",
@@ -2250,18 +2250,18 @@ end;`,
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t1"},
 					{"t2"},
 				},
 			},
 			{
 				Query:    "drop trigger if exists t2",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t1"},
 				},
 			},
@@ -2287,11 +2287,11 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "drop table a",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t3"},
 					{"t4"},
 					{"t5"},
@@ -2302,11 +2302,11 @@ end;`,
 			},
 			{
 				Query:    "drop table if exists b, d, e",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t5"},
 					{"t6"},
 				},
@@ -2329,11 +2329,11 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "drop table a",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "show triggers",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -2356,19 +2356,19 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into mytable () values ();",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable (sometext) values ('hello');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable values (10, 'goodbye');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "select * from mytable order by id",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 					{2, "hello"},
 					{3, "goodbye"},
@@ -2394,23 +2394,23 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into mytable () values ();",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable (sometext) values ('hello');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable values (10, 'goodbye');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "insert into mytable () values (), ();",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query: "select * from mytable order by id",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 					{2, "hello"},
 					{3, "goodbye"},
@@ -2428,7 +2428,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "create trigger insert_into_b after insert on a for each row insert into b values (new.x + 1)",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:       "insert into a values (1), (3), (5)",
@@ -2436,23 +2436,23 @@ end;`,
 			},
 			{
 				Query:    "create table b (y int primary key)",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query: "insert into a values (1), (3), (5)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 3}},
 				},
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {4}, {6},
 				},
 			},
@@ -2467,7 +2467,7 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TRIGGER ins_film AFTER INSERT ON film FOR EACH ROW BEGIN INSERT INTO film_text (film_id, title, description) VALUES (new.film_id, new.title, new.description); END;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query: `CREATE TRIGGER upd_film AFTER UPDATE ON film FOR EACH ROW BEGIN
@@ -2479,11 +2479,11 @@ end;`,
                 film_id=new.film_id
         WHERE film_id=old.film_id;
     END IF; END;`,
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE TRIGGER del_film AFTER DELETE ON film FOR EACH ROW BEGIN DELETE FROM film_text WHERE film_id = old.film_id; END;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:       "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
@@ -2499,39 +2499,39 @@ end;`,
 			},
 			{
 				Query:    "CREATE TABLE film_text (film_id smallint NOT NULL, title varchar(255) NOT NULL, description text, PRIMARY KEY (film_id))",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 			{
 				Query:    "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film_text",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 			{
 				Query:    "UPDATE film SET title = 'DIFFERENT MOVIE' WHERE title = 'ADAPTATION HOLES'",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1, Warnings: 0}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1, Warnings: 0}}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "DELETE FROM film WHERE title = 'DIFFERENT MOVIE'",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film_text WHERE title = 'DIFFERENT MOVIE'",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 		},
 	},
@@ -2545,17 +2545,17 @@ end;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM t0;",
-				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
+				Expected: []sql.UntypedSqlRow{{1, 2, "abc"}, {2, 3, "def"}},
 			},
 			{
 				Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
 SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
 INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:       "INSERT INTO t0 (v1, v2) VALUES (5, 'ggg');",
@@ -2563,20 +2563,20 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			},
 			{
 				Query:    "CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
 				Query:                         "CALL add_entry(4, 'aaa');",
-				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected:                      []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",
-				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
+				Expected: []sql.UntypedSqlRow{{1, 2, "abc"}, {2, 3, "def"}, {3, 4, "aaa"}},
 			},
 			{
 				Query:    "SELECT * FROM t1;",
-				Expected: []sql.Row{{1, 8, "aaa"}},
+				Expected: []sql.UntypedSqlRow{{1, 8, "aaa"}},
 			},
 			{
 				Query:          "CALL add_entry(54, 'bbb');",
@@ -2607,13 +2607,13 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (1), (2), (3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select * from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{21},
 					{32},
 					{43},
@@ -2630,13 +2630,13 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (1), (2), (3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select * from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{11},
 					{12},
 					{13},
@@ -2653,13 +2653,13 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (1), (2), (3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select * from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{11},
 					{12},
 					{13},
@@ -2684,13 +2684,13 @@ end;
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (1), (2), (3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select * from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -2698,7 +2698,7 @@ end;
 			},
 			{
 				Query: "select * from t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 					{20},
 					{30},
@@ -2724,13 +2724,13 @@ end;
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (1), (2), (3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select * from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -2738,7 +2738,7 @@ end;
 			},
 			{
 				Query: "select * from t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 					{20},
 					{30},
@@ -2764,13 +2764,13 @@ end;
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (1), (2), (3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select * from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -2778,7 +2778,7 @@ end;
 			},
 			{
 				Query:    "select * from t2;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -2805,13 +2805,13 @@ end;
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (1), (2), (3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select * from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -2819,7 +2819,7 @@ end;
 			},
 			{
 				Query: "select * from t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{11},
 					{12},
 					{13},
@@ -2848,19 +2848,19 @@ end;
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t1 values (1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "select * from t1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t2 order by j;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1000},
 					{3000},
 				},
@@ -2906,13 +2906,13 @@ for each row
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "delete from t1 where id = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "select * from t order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{2},
@@ -2921,7 +2921,7 @@ for each row
 			},
 			{
 				Query: "select * from tt order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{10},
 					{20},
@@ -2929,15 +2929,15 @@ for each row
 			},
 			{
 				Query:    "select * from t1;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t2;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t3;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -2988,13 +2988,13 @@ for each row
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "delete from t1 where id = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "select * from t order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{2},
@@ -3004,7 +3004,7 @@ for each row
 			},
 			{
 				Query: "select * from tt order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{20},
 					{30},
 					{9999},
@@ -3012,15 +3012,15 @@ for each row
 			},
 			{
 				Query:    "select * from t1;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t2;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from t3;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -3070,13 +3070,13 @@ for each row
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t1 values (1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "select * from t order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -3087,7 +3087,7 @@ for each row
 			},
 			{
 				Query: "select * from tt order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 100},
 					{2, 200},
 					{3, 300},
@@ -3095,23 +3095,23 @@ for each row
 			},
 			{
 				Query:    "select * from ttt order by i;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "select * from t1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
 			{
 				Query: "select * from t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 10},
 				},
 			},
 			{
 				Query: "select * from t3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3, 100, 12},
 				},
 			},
@@ -3166,13 +3166,13 @@ for each row
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update t1 set i = 2 where i = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
 			{
 				Query: "select * from t order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{0},
 					{0},
@@ -3195,7 +3195,7 @@ for each row
 			},
 			{
 				Query: "select * from tt order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 100},
 					{2, 200},
 					{3, 0},
@@ -3203,25 +3203,25 @@ for each row
 			},
 			{
 				Query: "select * from ttt order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3},
 				},
 			},
 			{
 				Query: "select * from t1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: "select * from t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 20},
 				},
 			},
 			{
 				Query: "select * from t3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 100},
 				},
 			},
@@ -3281,13 +3281,13 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select x from b order by x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2},
 				},
 			},
@@ -3297,7 +3297,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2},
 				},
 			},
@@ -3313,13 +3313,13 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select x from b order by x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2},
 				},
 			},
@@ -3329,7 +3329,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2},
 				},
 			},
@@ -3346,13 +3346,13 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3362,7 +3362,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3379,13 +3379,13 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3395,7 +3395,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3413,13 +3413,13 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "select x from b order by x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3429,7 +3429,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3447,13 +3447,13 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "select x from b order by x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3463,7 +3463,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3483,15 +3483,15 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:    "select * from a",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from b",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "insert into a values (0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
@@ -3501,13 +3501,13 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
@@ -3527,15 +3527,15 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query:    "select * from a",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from b",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "insert into a values (0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
@@ -3545,13 +3545,13 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 				},
 			},
@@ -3569,7 +3569,7 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set i = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -3581,7 +3581,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3591,7 +3591,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3608,7 +3608,7 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set i = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -3620,7 +3620,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3630,7 +3630,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3648,7 +3648,7 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set i = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -3660,7 +3660,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3670,7 +3670,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3688,7 +3688,7 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set i = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -3700,7 +3700,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3710,7 +3710,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3728,7 +3728,7 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set i = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -3740,7 +3740,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3750,7 +3750,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3768,7 +3768,7 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set i = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -3780,7 +3780,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3790,7 +3790,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -3808,19 +3808,19 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (2), (3), (5)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {21}, {22}, {33}, {35}, {55},
 				},
 			},
@@ -3830,13 +3830,13 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2}, {3}, {5},
 				},
 			},
 			{
 				Query: "select y from b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{14}, {21}, {22}, {33}, {35}, {55},
 				},
 			},
@@ -3854,13 +3854,13 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into a values (1), (2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select x from b order by x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2},
 				},
 			},
@@ -3870,7 +3870,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2},
 				},
 			},
@@ -3888,7 +3888,7 @@ var RollbackTriggerTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update a set i = 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{
 						RowsAffected: 1,
 						Info: plan.UpdateInfo{
@@ -3900,7 +3900,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3910,7 +3910,7 @@ var RollbackTriggerTests = []ScriptTest{
 			},
 			{
 				Query: "select * from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -3932,11 +3932,11 @@ var BrokenTriggerQueries = []ScriptTest{
 			// Should produce new keys 2, 3, but instead produces a duplicate key error
 			{
 				Query:    "insert into mytable () values (), ();",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query: "select * from mytable order by id",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 					{2, nil},
 					{3, nil},
@@ -3961,13 +3961,13 @@ var BrokenTriggerQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 2}, {1, 3}, {2, -440},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, -440},
 				},
 			},
@@ -3989,13 +3989,13 @@ var BrokenTriggerQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x from foo.a order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0}, {3}, {5}, {6}, {8},
 				},
 			},
 			{
 				Query: "select y from foo.b order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {3}, {7},
 				},
 			},
@@ -4015,13 +4015,13 @@ var BrokenTriggerQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM a ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 11}, {2, 13}, {3, 15},
 				},
 			},
 			{
 				Query: "SELECT * FROM b ORDER BY x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4},
 				},
 			},
@@ -4039,19 +4039,19 @@ var BrokenTriggerQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from a order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0}, {2, 0}, {3, 0},
 				},
 			},
 			{
 				Query: "select x from b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3},
 				},
 			},
 			{
 				Query: "insert into a values (4,0), (5,0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},

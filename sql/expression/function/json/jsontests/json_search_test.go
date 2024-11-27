@@ -52,191 +52,191 @@ func TestJSONSearch(t *testing.T) {
 
 	testCases := []struct {
 		f    sql.Expression
-		row  sql.Row
+		row  sql.UntypedSqlRow
 		exp  interface{}
 		err  error
 		skip bool
 	}{
 		{
 			f:   f3,
-			row: sql.Row{1, "one", "abc"},
+			row: sql.UntypedSqlRow{1, "one", "abc"},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_search"),
 		},
 		{
 			f:   f3,
-			row: sql.Row{"", "one", "abc"},
+			row: sql.UntypedSqlRow{"", "one", "abc"},
 			err: sql.ErrInvalidJSONText.New(1, "json_search", ""),
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "NotOneOrAll", "abc"},
+			row: sql.UntypedSqlRow{jsonInput, "NotOneOrAll", "abc"},
 			err: json.ErrOneOrAll,
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "one ", "abc"},
+			row: sql.UntypedSqlRow{jsonInput, "one ", "abc"},
 			err: json.ErrOneOrAll,
 		},
 		{
 			f:   f4,
-			row: sql.Row{jsonInput, "one", "abc", "badescape"},
+			row: sql.UntypedSqlRow{jsonInput, "one", "abc", "badescape"},
 			err: json.ErrBadEscape,
 		},
 
 		{
 			f:   f3,
-			row: sql.Row{nil, "one", "abc"},
+			row: sql.UntypedSqlRow{nil, "one", "abc"},
 			exp: nil,
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, nil, "abc"},
+			row: sql.UntypedSqlRow{jsonInput, nil, "abc"},
 			exp: nil,
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "one", nil},
+			row: sql.UntypedSqlRow{jsonInput, "one", nil},
 			exp: nil,
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "one", "abc", "", nil},
+			row: sql.UntypedSqlRow{jsonInput, "one", "abc", "", nil},
 			exp: nil,
 		},
 		{
 			f:   f6,
-			row: sql.Row{jsonInput, "one", "abc", "", "$", nil},
+			row: sql.UntypedSqlRow{jsonInput, "one", "abc", "", "$", nil},
 			exp: nil,
 		},
 
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "one", "abc"},
+			row: sql.UntypedSqlRow{jsonInput, "one", "abc"},
 			exp: types.MustJSON(`"$[0]"`),
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "ONE", "abc"},
+			row: sql.UntypedSqlRow{jsonInput, "ONE", "abc"},
 			exp: types.MustJSON(`"$[0]"`),
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "all", "abc"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "abc"},
 			exp: types.MustJSON(`["$[0]", "$[2].x"]`),
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "all", "ghi"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "ghi"},
 			exp: nil,
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "all", "10"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "10"},
 			exp: types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "10", nil, "$"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "10", nil, "$"},
 			exp: types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "10", nil, "$[*]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "10", nil, "$[*]"},
 			exp: types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			// TODO: need to implement ** wildcard in jsonpath package
 			skip: true,
 			f:    f5,
-			row:  sql.Row{jsonInput, "all", "10", nil, "$**.k"},
+			row:  sql.UntypedSqlRow{jsonInput, "all", "10", nil, "$**.k"},
 			exp:  types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			skip: true,
 			f:    f5,
-			row:  sql.Row{jsonInput, "all", "10", nil, "$[*][0].k"},
+			row:  sql.UntypedSqlRow{jsonInput, "all", "10", nil, "$[*][0].k"},
 			exp:  types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "10", nil, "$[1]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "10", nil, "$[1]"},
 			exp: types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "10", nil, "$[1][0]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "10", nil, "$[1][0]"},
 			exp: types.MustJSON(`"$[1][0].k"`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "abc", nil, "$[2]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "abc", nil, "$[2]"},
 			exp: types.MustJSON(`"$[2].x"`),
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "all", "%a%"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "%a%"},
 			exp: types.MustJSON(`["$[0]", "$[2].x"]`),
 		},
 		{
 			f:   f3,
-			row: sql.Row{jsonInput, "all", "%b%"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "%b%"},
 			exp: types.MustJSON(`["$[0]", "$[2].x", "$[3].y"]`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "%b%", nil, "$[0]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "%b%", nil, "$[0]"},
 			exp: types.MustJSON(`"$[0]"`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "%b%", nil, "$[2]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "%b%", nil, "$[2]"},
 			exp: types.MustJSON(`"$[2].x"`),
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "%b%", nil, "$[1]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "%b%", nil, "$[1]"},
 			exp: nil,
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "%b%", "", "$[1]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "%b%", "", "$[1]"},
 			exp: nil,
 		},
 		{
 			f:   f5,
-			row: sql.Row{jsonInput, "all", "%b%", "", "$[3]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", "%b%", "", "$[3]"},
 			exp: types.MustJSON(`"$[3].y"`),
 		},
 
 		{
 			f:   f4,
-			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a%c%`, ""},
+			row: sql.UntypedSqlRow{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a%c%`, ""},
 			exp: types.MustJSON(`["$[0].a", "$[1].b"]`),
 		},
 		{
 			f:   f4,
-			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a\%c\%`, ""},
+			row: sql.UntypedSqlRow{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a\%c\%`, ""},
 			exp: types.MustJSON(`"$[0].a"`),
 		},
 		{
 			f:   f4,
-			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a\%c\%`, `\`},
+			row: sql.UntypedSqlRow{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `a\%c\%`, `\`},
 			exp: types.MustJSON(`"$[0].a"`),
 		},
 		{
 			f:   f4,
-			row: sql.Row{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `as%cs%`, `s`},
+			row: sql.UntypedSqlRow{`[{"a": "a%c%"}, {"b": "abcd"}]`, "all", `as%cs%`, `s`},
 			exp: types.MustJSON(`"$[0].a"`),
 		},
 
 		{
 			f:   f6,
-			row: sql.Row{jsonInput, "all", `abc`, "", "$[0]", "$[2]"},
+			row: sql.UntypedSqlRow{jsonInput, "all", `abc`, "", "$[0]", "$[2]"},
 			exp: types.MustJSON(`["$[0]", "$[2].x"]`),
 		},
 		{
 			f:   f6,
-			row: sql.Row{jsonInput, "all", `abc`, "", "$[2]", "$"},
+			row: sql.UntypedSqlRow{jsonInput, "all", `abc`, "", "$[2]", "$"},
 			exp: types.MustJSON(`["$[2].x", "$[0]"]`),
 		},
 	}

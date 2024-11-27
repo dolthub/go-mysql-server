@@ -35,128 +35,128 @@ func TestJSONType(t *testing.T) {
 	f1 := buildGetFieldExpressions(t, json.NewJSONType, 1)
 	testCases := []struct {
 		f   sql.Expression
-		row sql.Row
+		row sql.UntypedSqlRow
 		exp interface{}
 		err error
 	}{
 		{
 			f:   f1,
-			row: sql.Row{``},
+			row: sql.UntypedSqlRow{``},
 			err: sql.ErrInvalidJSONText.New(1, "json_type", ""),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`badjson`},
+			row: sql.UntypedSqlRow{`badjson`},
 			err: sql.ErrInvalidJSONText.New(1, "json_type", "badjson"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{true},
+			row: sql.UntypedSqlRow{true},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{1},
+			row: sql.UntypedSqlRow{1},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{1.5},
+			row: sql.UntypedSqlRow{1.5},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{decimal.New(15, -1)},
+			row: sql.UntypedSqlRow{decimal.New(15, -1)},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_type"),
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{nil},
+			row: sql.UntypedSqlRow{nil},
 			exp: "NULL",
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`null`},
+			row: sql.UntypedSqlRow{`null`},
 			exp: "NULL",
 		},
 		{
 			f:   f1,
-			row: sql.Row{`1`},
+			row: sql.UntypedSqlRow{`1`},
 			exp: "INTEGER",
 		},
 		{
 			f:   f1,
-			row: sql.Row{`true`},
+			row: sql.UntypedSqlRow{`true`},
 			exp: "BOOLEAN",
 		},
 		{
 			f:   f1,
-			row: sql.Row{`123.456`},
+			row: sql.UntypedSqlRow{`123.456`},
 			exp: "DOUBLE",
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`[]`},
+			row: sql.UntypedSqlRow{`[]`},
 			exp: "ARRAY",
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{}`},
+			row: sql.UntypedSqlRow{`{}`},
 			exp: "OBJECT",
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`[1, 2, 3]`},
+			row: sql.UntypedSqlRow{`[1, 2, 3]`},
 			exp: "ARRAY",
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
+			row: sql.UntypedSqlRow{`{"aa": 1, "bb": 2, "c": 3}`},
 			exp: "OBJECT",
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{nil}},
+			row: sql.UntypedSqlRow{types.JSONDocument{nil}},
 			exp: "NULL",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{uint64(1)}},
+			row: sql.UntypedSqlRow{types.JSONDocument{uint64(1)}},
 			exp: "UNSIGNED INTEGER",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{int64(1)}},
+			row: sql.UntypedSqlRow{types.JSONDocument{int64(1)}},
 			exp: "INTEGER",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{true}},
+			row: sql.UntypedSqlRow{types.JSONDocument{true}},
 			exp: "BOOLEAN",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{123.456}},
+			row: sql.UntypedSqlRow{types.JSONDocument{123.456}},
 			exp: "DOUBLE",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{decimal.New(123456, -3)}},
+			row: sql.UntypedSqlRow{types.JSONDocument{decimal.New(123456, -3)}},
 			exp: "DECIMAL",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{[]interface{}{}}},
+			row: sql.UntypedSqlRow{types.JSONDocument{[]interface{}{}}},
 			exp: "ARRAY",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{map[string]interface{}{}}},
+			row: sql.UntypedSqlRow{types.JSONDocument{map[string]interface{}{}}},
 			exp: "OBJECT",
 		},
 	}

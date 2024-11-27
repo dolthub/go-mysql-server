@@ -136,7 +136,7 @@ func (i *TableFunctionRowIter) Next(_ *sql.Context) (sql.Row, error) {
 	if i.done {
 		return nil, io.EOF
 	}
-	ret := sql.Row{i.val}
+	ret := sql.UntypedSqlRow{i.val}
 	i.done = true
 	return ret, nil
 }

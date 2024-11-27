@@ -107,7 +107,7 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 		mcvs[i] = StringifyKey(mcv, s.types)
 	}
 
-	return sql.Row{
+	return sql.UntypedSqlRow{
 		s.qual.Db(),
 		s.qual.Table(),
 		s.qual.Index(),
@@ -125,13 +125,13 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 }
 
 func ParseRow(rowStr string, types []sql.Type) (sql.Row, error) {
-	var row sql.Row
+	var row sql.Row = sql.UntypedSqlRow{}
 	for i, v := range strings.Split(rowStr, ",") {
 		val, _, err := types[i].Convert(v)
 		if err != nil {
 			return nil, err
 		}
-		row = append(row, val)
+		row = row.Append(sql.NewUntypedRow(val))
 	}
 	return row, nil
 }
@@ -139,7 +139,7 @@ func ParseRow(rowStr string, types []sql.Type) (sql.Row, error) {
 func StringifyKey(r sql.Row, typs []sql.Type) string {
 	b := strings.Builder{}
 	sep := ""
-	for i, v := range r {
+	for i, v := range r.Values() {
 		typ := typs[i]
 		if _, ok := typ.(sql.StringType); ok {
 			typ = types.LongText

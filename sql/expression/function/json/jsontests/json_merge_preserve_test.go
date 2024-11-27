@@ -33,58 +33,58 @@ func TestJSONMergePreserve(t *testing.T) {
 
 	testCases := []struct {
 		f   sql.Expression
-		row sql.Row
+		row sql.UntypedSqlRow
 		exp interface{}
 		err error
 	}{
 		{
 			f:   f2,
-			row: sql.Row{nil, nil},
+			row: sql.UntypedSqlRow{nil, nil},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`null`, `null`},
+			row: sql.UntypedSqlRow{`null`, `null`},
 			exp: types.MustJSON(`[null, null]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`1`, `true`},
+			row: sql.UntypedSqlRow{`1`, `true`},
 			exp: types.MustJSON(`[1, true]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`"abc"`, `"def"`},
+			row: sql.UntypedSqlRow{`"abc"`, `"def"`},
 			exp: types.MustJSON(`["abc", "def"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[1, 2]`, `null`},
+			row: sql.UntypedSqlRow{`[1, 2]`, `null`},
 			exp: types.MustJSON(`[1, 2, null]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[1, 2]`, `{"id": 47}`},
+			row: sql.UntypedSqlRow{`[1, 2]`, `{"id": 47}`},
 			exp: types.MustJSON(`[1, 2, {"id": 47}]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[1, 2]`, `[true, false]`},
+			row: sql.UntypedSqlRow{`[1, 2]`, `[true, false]`},
 			exp: types.MustJSON(`[1, 2, true, false]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"name": "x"}`, `{"id": 47}`},
+			row: sql.UntypedSqlRow{`{"name": "x"}`, `{"id": 47}`},
 			exp: types.MustJSON(`{"id": 47, "name": "x"}`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"id": 123}`, `{"id": null}`},
+			row: sql.UntypedSqlRow{`{"id": 123}`, `{"id": null}`},
 			exp: types.MustJSON(`{"id": [123, null]}`),
 		},
 		{
 			f: f2,
-			row: sql.Row{
+			row: sql.UntypedSqlRow{
 				`{
 					"Suspect": {
 						"Name": "Bart",
@@ -125,7 +125,7 @@ func TestJSONMergePreserve(t *testing.T) {
 		},
 		{
 			f: f3,
-			row: sql.Row{
+			row: sql.UntypedSqlRow{
 				`{"a": 1, "b": 2}`,
 				`{"a": 3, "c": 4}`,
 				`{"a": 5, "d": 6}`,
@@ -134,7 +134,7 @@ func TestJSONMergePreserve(t *testing.T) {
 		},
 		{
 			f: f4,
-			row: sql.Row{
+			row: sql.UntypedSqlRow{
 				`{"a": 1, "b": 2}`,
 				`{"a": 3, "c": 4}`,
 				`{"a": 5, "d": 6}`,
@@ -144,27 +144,27 @@ func TestJSONMergePreserve(t *testing.T) {
 		},
 		{
 			f:   f3,
-			row: sql.Row{`{"a": 1, "b": 2}`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `"single value"`},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": 2}`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `"single value"`},
 			exp: types.MustJSON(`[{"a": [1, {"e": 8, "one": false, "two": 2.55}], "b": 2}, "single value"]`),
 		},
 		{
 			f:   f3,
-			row: sql.Row{1, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
+			row: sql.UntypedSqlRow{1, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_merge_preserve"),
 		},
 		{
 			f:   f3,
-			row: sql.Row{`{"a": {"one": false, "two": 2.55, "e": 8}}`, 1, `{"a": 1, "b": 2}`},
+			row: sql.UntypedSqlRow{`{"a": {"one": false, "two": 2.55, "e": 8}}`, 1, `{"a": 1, "b": 2}`},
 			err: sql.ErrInvalidJSONArgument.New(2, "json_merge_preserve"),
 		},
 		{
 			f:   f3,
-			row: sql.Row{`{`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
+			row: sql.UntypedSqlRow{`{`, `{"a": {"one": false, "two": 2.55, "e": 8}}`, `{"a": 1, "b": 2}`},
 			err: sql.ErrInvalidJSONText.New(1, "json_merge_preserve", "{"),
 		},
 		{
 			f:   f3,
-			row: sql.Row{`{"a": {"one": false, "two": 2.55, "e": 8}}`, `}`, `{"a": 1, "b": 2}`},
+			row: sql.UntypedSqlRow{`{"a": {"one": false, "two": 2.55, "e": 8}}`, `}`, `{"a": 1, "b": 2}`},
 			err: sql.ErrInvalidJSONText.New(2, "json_merge_preserve", "}"),
 		},
 	}

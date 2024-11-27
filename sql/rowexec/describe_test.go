@@ -105,7 +105,7 @@ func TestDescribeQuery(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{"Project"},
 		{" ├─ columns: [foo.a, foo.b]"},
 		{" └─ Filter"},
@@ -114,5 +114,5 @@ func TestDescribeQuery(t *testing.T) {
 		{"         └─ name: foo"},
 	}
 
-	require.Equal(expected, rows)
+	require.Equal(expected, sql.RowsToUntyped(rows))
 }

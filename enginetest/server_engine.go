@@ -326,43 +326,43 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 	for i, col := range sch {
 		switch col.Type.Type() {
 		case query.Type_GEOMETRY:
-			if row[i] != nil {
-				r, _, err := types.GeometryType{}.Convert(row[i].([]byte))
+			if row.GetValue(i) != nil {
+				r, _, err := types.GeometryType{}.Convert(row.GetValue(i).([]byte))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error converting returned geometry result"))
 				} else {
-					row[i] = r
+					row.SetValue(i, r)
 				}
 			}
 		case query.Type_JSON:
-			if row[i] != nil {
+			if row.GetValue(i) != nil {
 				// TODO: dolt returns the json result without escaped quotes and backslashes, which does not Unmarshall
-				r, err := attemptUnmarshalJSON(string(row[i].([]byte)))
+				r, err := attemptUnmarshalJSON(string(row.GetValue(i).([]byte)))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error unmarshalling returned json result"))
-					row[i] = nil
+					row.SetValue(i, nil)
 				} else {
-					row[i] = r
+					row.SetValue(i, r)
 				}
 			}
 		case query.Type_TIME:
-			if row[i] != nil {
-				r, _, err := types.TimespanType_{}.Convert(string(row[i].([]byte)))
+			if row.GetValue(i) != nil {
+				r, _, err := types.TimespanType_{}.Convert(string(row.GetValue(i).([]byte)))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error converting returned timespan result"))
 				} else {
-					row[i] = r
+					row.SetValue(i, r)
 				}
 			}
 		case query.Type_UINT8, query.Type_UINT16, query.Type_UINT24, query.Type_UINT32, query.Type_UINT64:
 			// TODO: check todo in 'emptyValuePointerForType' method
 			//  we try to cast any value we got to uint64
-			if row[i] != nil {
-				r, err := castToUint64(row[i])
+			if row.GetValue(i) != nil {
+				r, err := castToUint64(row.GetValue(i))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error converting returned unsigned int result"))
 				} else {
-					row[i] = r
+					row.SetValue(i, r)
 				}
 			}
 		}
@@ -410,13 +410,13 @@ func castToUint64(v any) (uint64, error) {
 }
 
 func derefRow(r []any) (sql.Row, error) {
-	row := make(sql.Row, len(r))
+	row := make(sql.UntypedSqlRow, len(r))
 	for i, v := range r {
-		var err error
-		row[i], err = deref(v)
+		dv, err := deref(v)
 		if err != nil {
 			return nil, err
 		}
+		row.SetValue(i, dv)
 	}
 	return row, nil
 }

@@ -34,11 +34,11 @@ var StatisticsQueries = []ScriptTest{
 			{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 24, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, nil),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, nil),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, nil),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(1)}, nil, nil),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(2)}, nil, nil),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(3)}, nil, nil),
 					}, sql.IndexClassDefault, nil),
 					},
 				},
@@ -54,26 +54,26 @@ var StatisticsQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "analyze table t update histogram on (i) using data '{\"row_count\": 40, \"distinct_count\": 40, \"null_count\": 1, \"buckets\": [{\"row_count\": 20, \"distinct_count\": 20, \"upper_bound\": [50], \"bound_count\": 1}, {\"row_count\": 20, \"distinct_count\": 20, \"upper_bound\": [80], \"bound_count\": 1}]}'",
-				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
+				Expected: []sql.UntypedSqlRow{{"t", "histogram", "status", "OK"}},
 			},
 			{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mydb", "t", "i", stats.NewStatistic(40, 40, 1, 0, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
-						stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(50)}, nil, nil),
-						stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(80)}, nil, nil),
+						stats.NewHistogramBucket(20, 20, 0, 1, sql.UntypedSqlRow{float64(50)}, nil, nil),
+						stats.NewHistogramBucket(20, 20, 0, 1, sql.UntypedSqlRow{float64(80)}, nil, nil),
 					}, sql.IndexClassDefault, nil),
 					},
 				},
 			},
 			{
 				Query:    "analyze table t drop histogram on (i)",
-				Expected: []sql.Row{{"t", "histogram", "status", "OK"}},
+				Expected: []sql.UntypedSqlRow{{"t", "histogram", "status", "OK"}},
 			},
 			{
 				Query:    "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -88,17 +88,17 @@ var StatisticsQueries = []ScriptTest{
 			{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(1)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(2)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(3)}, nil, []sql.Row{}),
 					}, sql.IndexClassDefault, nil),
 					},
 					{"mydb", "t", "j", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "", "t", "j"), []string{"j"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(4)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(5)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(6)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(4)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(5)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{int64(6)}, nil, []sql.Row{}),
 					}, sql.IndexClassDefault, nil),
 					},
 				},
@@ -116,12 +116,12 @@ var StatisticsQueries = []ScriptTest{
 			{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mydb", "t", "i", stats.NewStatistic(4, 4, 0, 32, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Float64}, []sql.HistogramBucket{
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(1.25)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(7.5)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(10.5)}, nil, []sql.Row{}),
-						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(45.25)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{float64(1.25)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{float64(7.5)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{float64(10.5)}, nil, []sql.Row{}),
+						stats.NewHistogramBucket(1, 1, 0, 1, sql.UntypedSqlRow{float64(45.25)}, nil, []sql.Row{}),
 					}, sql.IndexClassDefault, nil),
 					},
 				},
@@ -137,7 +137,7 @@ var StatisticsQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -151,7 +151,7 @@ var StatisticsQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -237,7 +237,7 @@ analyze table xy update histogram on (x,y) using data
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:           "select * from xy where x > 4 and y = 1 and w = 'a'",
-				Expected:        []sql.Row{},
+				Expected:        []sql.UntypedSqlRow{},
 				ExpectedIndexes: []string{"y"},
 			},
 		},

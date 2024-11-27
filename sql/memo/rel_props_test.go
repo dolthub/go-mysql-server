@@ -229,10 +229,6 @@ func (dummyIndex) IsFullText() bool {
 	return false
 }
 
-func (dummyIndex) IsVector() bool {
-	return false
-}
-
 func (dummyIndex) CanSupportOrderBy(sql.Expression) bool {
 	return false
 }

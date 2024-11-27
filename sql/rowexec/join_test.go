@@ -106,10 +106,10 @@ func testInnerJoin(t *testing.T, db *memory.Database, ctx *sql.Context) {
 	rows := collectRows(t, ctx, j)
 	require.Len(rows, 2)
 
-	require.Equal([]sql.Row{
+	require.Equal([]sql.UntypedSqlRow{
 		{"col1_1", "col2_1", int32(1), int64(2), "col1_1", "col2_1", int32(1), int64(2)},
 		{"col1_2", "col2_2", int32(3), int64(4), "col1_2", "col2_2", int32(3), int64(4)},
-	}, rows)
+	}, sql.RowsToUntyped(rows))
 }
 
 func TestInnerJoinEmpty(t *testing.T) {
@@ -175,7 +175,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 		),
 	)
 
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{int64(0), "t1_0", int64(0), "t2_0"},
 		{int64(1), "t1_1", int64(1), "t2_1"},
 		{int64(2), "t1_2", int64(2), "t2_2"},
@@ -258,7 +258,7 @@ func TestLeftJoin(t *testing.T) {
 	require.NoError(err)
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
-	require.ElementsMatch([]sql.Row{
+	require.ElementsMatch([]sql.UntypedSqlRow{
 		{"col1_1", "col2_1", int32(1), int64(2), "col1_2", "col2_2", int32(3), int64(4)},
 		{"col1_2", "col2_2", int32(3), int64(4), nil, nil, nil, nil},
 	}, rows)

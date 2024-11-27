@@ -67,7 +67,7 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 // Insert implements the interface sql.RowInserter.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	sb := strings.Builder{}
-	for i, val := range row {
+	for i, val := range row.Values() {
 		if i != 0 {
 			sb.WriteByte(',')
 		}
@@ -87,11 +87,11 @@ func (t *tableEditor) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
 
 // Delete implements the interface sql.RowDeleter.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	if len(row) != len(t.sch) {
-		return fmt.Errorf("expected `%d` values but got `%d` for DELETE", len(t.sch), len(row))
+	if row.Len() != len(t.sch) {
+		return fmt.Errorf("expected `%d` values but got `%d` for DELETE", len(t.sch), row.Len())
 	}
 	sb := strings.Builder{}
-	for i, val := range row {
+	for i, val := range row.Values() {
 		if i != 0 {
 			sb.WriteString(" AND")
 		}

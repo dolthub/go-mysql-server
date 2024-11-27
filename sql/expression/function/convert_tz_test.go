@@ -162,7 +162,7 @@ func TestConvertTz(t *testing.T) {
 			time.Local = loc
 			fn := NewConvertTz(expression.NewLiteral(test.datetime, types.Text), expression.NewLiteral(test.fromTimeZone, types.Text), expression.NewLiteral(test.toTimeZone, types.Text))
 
-			res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+			res, err := fn.Eval(sql.NewEmptyContext(), sql.UntypedSqlRow{})
 			require.NoError(t, err)
 
 			assert.Equal(t, test.expectedResult, res)

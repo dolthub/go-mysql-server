@@ -37,15 +37,15 @@ var (
 )
 
 func UserAddGlobalGrantsRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
-	if len(row) != len(globalGrantsTblSchema) {
+	if row.Len() != len(globalGrantsTblSchema) {
 		return nil, errGlobalGrantRow
 	}
 
-	privilege, ok := row[globalGrantsTblColIndex_PRIV].(string)
+	privilege, ok := row.GetValue(globalGrantsTblColIndex_PRIV).(string)
 	if !ok {
 		return nil, errGlobalGrantRow
 	}
-	withGrantOption, ok := row[globalGrantsTblColIndex_WITH_GRANT_OPTION].(uint16)
+	withGrantOption, ok := row.GetValue(globalGrantsTblColIndex_WITH_GRANT_OPTION).(uint16)
 	if !ok {
 		return nil, errGlobalGrantRow
 	}
@@ -59,17 +59,17 @@ func UserAddGlobalGrantsRow(ctx *sql.Context, row sql.Row, user *User) (*User, e
 }
 
 func UserRemoveGlobalGrantsRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
-	if len(row) != len(globalGrantsTblSchema) {
+	if row.Len() != len(globalGrantsTblSchema) {
 		return nil, errGlobalGrantRow
 	}
 
-	privilege, ok := row[globalGrantsTblColIndex_PRIV].(string)
+	privilege, ok := row.GetValue(globalGrantsTblColIndex_PRIV).(string)
 	if !ok {
 		return nil, errGlobalGrantRow
 	}
 
 	//TODO: handle "WITH GRANT OPTION"
-	//withGrantOption, ok := row[globalGrantsTblColIndex_WITH_GRANT_OPTION].(uint16)
+	//withGrantOption, ok := row.GetValue(globalGrantsTblColIndex_WITH_GRANT_OPTION).(uint16)
 	//if !ok {
 	//	return nil, errGlobalGrantRow
 	//}
@@ -82,14 +82,14 @@ func UserRemoveGlobalGrantsRow(ctx *sql.Context, row sql.Row, user *User) (*User
 }
 
 func UserFromGlobalGrantsRow(ctx *sql.Context, row sql.Row) (*User, error) {
-	if len(row) != len(globalGrantsTblSchema) {
+	if row.Len() != len(globalGrantsTblSchema) {
 		return nil, errGlobalGrantRow
 	}
-	host, ok := row[globalGrantsTblColIndex_HOST].(string)
+	host, ok := row.GetValue(globalGrantsTblColIndex_HOST).(string)
 	if !ok {
 		return nil, errGlobalGrantRow
 	}
-	user, ok := row[globalGrantsTblColIndex_USER].(string)
+	user, ok := row.GetValue(globalGrantsTblColIndex_USER).(string)
 	if !ok {
 		return nil, errGlobalGrantRow
 	}
@@ -102,20 +102,22 @@ func UserFromGlobalGrantsRow(ctx *sql.Context, row sql.Row) (*User, error) {
 func UserToGlobalGrantsRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 	var rows []sql.Row
 	for dynamicPriv, _ := range user.PrivilegeSet.globalDynamic {
-		row := make(sql.Row, len(globalGrantsTblSchema))
+		row := sql.NewSqlRowWithLen(len(globalGrantsTblSchema))
 		var err error
 		for i, col := range globalGrantsTblSchema {
-			row[i], err = col.Default.Eval(ctx, nil)
+			var v interface{}
+			v, err = col.Default.Eval(ctx, nil)
+			row.SetValue(i, v)
 			if err != nil {
 				return nil, err // Should never happen, schema is static
 			}
 		}
 
-		row[globalGrantsTblColIndex_USER] = user.User
-		row[globalGrantsTblColIndex_HOST] = user.Host
-		row[globalGrantsTblColIndex_PRIV] = strings.ToUpper(dynamicPriv)
+		row.SetValue(globalGrantsTblColIndex_USER, user.User)
+		row.SetValue(globalGrantsTblColIndex_HOST, user.Host)
+		row.SetValue(globalGrantsTblColIndex_PRIV, strings.ToUpper(dynamicPriv))
 		//TODO: handle "WITH GRANT OPTION"
-		row[globalGrantsTblColIndex_WITH_GRANT_OPTION] = 2
+		row.SetValue(globalGrantsTblColIndex_WITH_GRANT_OPTION, 2)
 
 		rows = append(rows, row)
 	}

@@ -170,7 +170,7 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 			}
 			return nil, nil, err
 		}
-		input = append(input, append(row, j))
+		input = append(input, row.Append(sql.NewUntypedRow(j)))
 		j++
 	}
 
@@ -189,9 +189,9 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 	// maintain output sort ordering
 	// TODO: push sort above aggregation, makes this code unnecessarily complex
 	outputOrdering := make([]int, len(input))
-	outputIdx := len(input[0]) - 1
+	outputIdx := input[0].Len() - 1
 	for k, row := range input {
-		outputOrdering[k], input[k] = row[outputIdx].(int), row[:outputIdx]
+		outputOrdering[k], input[k] = row.GetValue(outputIdx).(int), row.Subslice(0, outputIdx)
 	}
 
 	return input, outputOrdering, nil
@@ -209,7 +209,7 @@ func (i *WindowPartitionIter) initializePartitions(ctx *sql.Context) ([]sql.Wind
 
 	partitions := make([]sql.WindowInterval, 0)
 	startIdx := 0
-	var lastRow sql.Row
+	var lastRow sql.Row = sql.UntypedSqlRow{}
 	for j, row := range i.input {
 		newPart, err := isNewPartition(ctx, i.w.PartitionBy, lastRow, row)
 		if err != nil {
@@ -240,7 +240,7 @@ func (i *WindowPartitionIter) materializeOutput(ctx *sql.Context) (sql.WindowBuf
 	}
 
 	output := make(sql.WindowBuffer, 0, len(i.input))
-	var row sql.Row
+	row := sql.NewUntypedRow()
 	var err error
 	for {
 		row, err = i.compute(ctx)
@@ -258,7 +258,7 @@ func (i *WindowPartitionIter) materializeOutput(ctx *sql.Context) (sql.WindowBuf
 // compute evaluates each function in [i.Aggs], returning the result as an sql.Row with
 // the outputOrdering index appended, or an io.EOF error if we are finished iterating.
 func (i *WindowPartitionIter) compute(ctx *sql.Context) (sql.Row, error) {
-	var row = make(sql.Row, len(i.w.Aggs)+1)
+	var row = sql.NewSqlRowWithLen(len(i.w.Aggs) + 1)
 
 	// each [agg] has its own [agg.framer] that is globally positioned
 	// but updated independently. This allows aggregations with the same
@@ -275,12 +275,12 @@ func (i *WindowPartitionIter) compute(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 		}
-		row[j] = agg.fn.Compute(ctx, interval, i.input)
+		row.SetValue(j, agg.fn.Compute(ctx, interval, i.input))
 	}
 
 	// TODO: move sort by above aggregation
 	if len(i.outputOrdering) > 0 {
-		row[len(i.w.Aggs)] = i.outputOrdering[i.outputOrderingPos]
+		row.SetValue(len(i.w.Aggs), i.outputOrdering[i.outputOrderingPos])
 	}
 
 	i.outputOrderingPos++
@@ -297,13 +297,13 @@ func (i *WindowPartitionIter) sortAndFilterOutput() error {
 		return nil
 	}
 
-	originalOrderIdx := len(i.output[0]) - 1
+	originalOrderIdx := i.output[0].Len() - 1
 	sort.SliceStable(i.output, func(j, k int) bool {
-		return i.output[j][originalOrderIdx].(int) < i.output[k][originalOrderIdx].(int)
+		return i.output[j].GetValue(originalOrderIdx).(int) < i.output[k].GetValue(originalOrderIdx).(int)
 	})
 
 	for j, row := range i.output {
-		i.output[j] = row[:originalOrderIdx]
+		i.output[j] = row.Subslice(0, originalOrderIdx)
 	}
 
 	return nil
@@ -350,7 +350,7 @@ func partitionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
 }
 
 func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
+	if last.Len() == 0 {
 		return true, nil
 	}
 
@@ -369,7 +369,7 @@ func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row
 	}
 
 	for i, expr := range partitionBy {
-		cmp, err := expr.Type().Compare(lastExp[i], thisExp[i])
+		cmp, err := expr.Type().Compare(lastExp.GetValue(i), thisExp.GetValue(i))
 		if err != nil {
 			return false, err
 		}

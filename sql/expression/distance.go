@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package vector
+package expression
 
 import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -26,8 +25,6 @@ type DistanceType interface {
 	String() string
 	Eval(left []float64, right []float64) (float64, error)
 	CanEval(distanceType DistanceType) bool
-	FunctionName() string
-	Description() string
 }
 
 type DistanceL2Squared struct{}
@@ -55,40 +52,17 @@ func (d DistanceL2Squared) CanEval(other DistanceType) bool {
 	return other == DistanceL2Squared{}
 }
 
-func (d DistanceL2Squared) FunctionName() string {
-	return "vec_distance_l2_squared"
-}
-
-func (d DistanceL2Squared) Description() string {
-	return "returns the squared l2 norm (euclidian distance) between two vectors"
-}
-
 type Distance struct {
 	DistanceType DistanceType
-	expression.BinaryExpressionStub
-}
-
-func (d Distance) FunctionName() string {
-	return d.DistanceType.FunctionName()
-}
-
-func (d Distance) Description() string {
-	return d.DistanceType.Description()
+	BinaryExpressionStub
 }
 
 var _ sql.Expression = (*Distance)(nil)
-var _ sql.FunctionExpression = (*Distance)(nil)
 var _ sql.CollationCoercible = (*Distance)(nil)
 
 // NewDistance creates a new Distance expression.
 func NewDistance(distanceType DistanceType, left sql.Expression, right sql.Expression) sql.Expression {
-	return &Distance{DistanceType: distanceType, BinaryExpressionStub: expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
-}
-
-var _ sql.CreateFunc2Args = NewL2SquaredDistance
-
-func NewL2SquaredDistance(left, right sql.Expression) sql.Expression {
-	return NewDistance(DistanceL2Squared{}, left, right)
+	return &Distance{DistanceType: distanceType, BinaryExpressionStub: BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
 func (d Distance) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {

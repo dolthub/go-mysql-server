@@ -45,10 +45,10 @@ func TestBinary(t *testing.T) {
 
 	for _, tt := range testCases {
 		f := NewBinary(NewLiteral(tt.val, tt.valType))
-		require.Equal(tt.expected, eval(t, f, sql.Row{nil}))
+		require.Equal(tt.expected, eval(t, f, sql.UntypedSqlRow{nil}))
 	}
 
 	// Try with nil case
 	e = NewBinary(NewLiteral(nil, types.Null))
-	require.Equal(nil, eval(t, e, sql.Row{nil}))
+	require.Equal(nil, eval(t, e, sql.UntypedSqlRow{nil}))
 }

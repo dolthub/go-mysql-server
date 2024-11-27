@@ -41,8 +41,8 @@ func TestShowStatus(t *testing.T) {
 		if err == io.EOF {
 			break
 		}
-		if res[0] == "uptime" {
-			require.True(res[1].(int) >= 0)
+		if res.GetValue(0) == "uptime" {
+			require.True(res.GetValue(1).(int) >= 0)
 		}
 		require.NoError(err)
 	}

@@ -815,6 +815,10 @@ func resolvedViewScope(outScope *scope, view sql.Node, db string, name string) (
 func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {
 	var view *sql.View
 
+	if pdb, ok := database.(mysql_db.PrivilegedDatabase); ok {
+		database = pdb.Unwrap()
+	}
+
 	if vdb, vok := database.(sql.ViewDatabase); vok {
 		viewDef, vdok, err := vdb.GetViewDefinition(b.ctx, name)
 		if err != nil {

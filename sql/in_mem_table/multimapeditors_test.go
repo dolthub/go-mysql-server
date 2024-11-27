@@ -25,31 +25,31 @@ import (
 
 var userValueOps = ValueOps[*user]{
 	ToRow: func(ctx *sql.Context, u *user) (sql.Row, error) {
-		return sql.Row{u.username, u.email}, nil
+		return sql.UntypedSqlRow{u.username, u.email}, nil
 	},
 	FromRow: func(ctx *sql.Context, r sql.Row) (*user, error) {
-		if len(r) != 2 {
+		if r.Len() != 2 {
 			return nil, errors.New("invalid schema for user insert")
 		}
-		username, ok := r[0].(string)
+		username, ok := r.GetValue(0).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user insert")
 		}
-		email, ok := r[1].(string)
+		email, ok := r.GetValue(1).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user insert")
 		}
 		return &user{username, email, 0}, nil
 	},
 	UpdateWithRow: func(ctx *sql.Context, r sql.Row, u *user) (*user, error) {
-		if len(r) != 2 {
+		if r.Len() != 2 {
 			return nil, errors.New("invalid schema for user insert")
 		}
-		username, ok := r[0].(string)
+		username, ok := r.GetValue(0).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user insert")
 		}
-		email, ok := r[1].(string)
+		email, ok := r.GetValue(1).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user insert")
 		}
@@ -65,7 +65,7 @@ func TestTableEditorInsert(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
+		require.NoError(t, ed.Insert(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 1, set.Count())
 		require.Len(t, set.GetMany(usernameKeyer{}, "aaron"), 1)
@@ -74,16 +74,16 @@ func TestTableEditorInsert(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
-		require.Error(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
+		require.NoError(t, ed.Insert(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com"}))
+		require.Error(t, ed.Insert(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com"}))
 	})
 	t.Run("InsertBadSchema", func(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.Error(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com", "extra value"}))
-		require.Error(t, ed.Insert(nil, sql.Row{123, "aaron@dolthub.com"}))
-		require.Error(t, ed.Insert(nil, sql.Row{"aaron", 123}))
+		require.Error(t, ed.Insert(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "extra value"}))
+		require.Error(t, ed.Insert(nil, sql.UntypedSqlRow{123, "aaron@dolthub.com"}))
+		require.Error(t, ed.Insert(nil, sql.UntypedSqlRow{"aaron", 123}))
 	})
 }
 
@@ -94,7 +94,7 @@ func TestTableEditorDelete(t *testing.T) {
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
+		require.NoError(t, ed.Delete(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 1, set.Count())
 		require.Len(t, set.GetMany(usernameKeyer{}, "brian"), 1)
@@ -105,7 +105,7 @@ func TestTableEditorDelete(t *testing.T) {
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Delete(nil, sql.Row{"jason", "jason@dolthub.com"}))
+		require.NoError(t, ed.Delete(nil, sql.UntypedSqlRow{"jason", "jason@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 2, set.Count())
 		require.Len(t, set.GetMany(usernameKeyer{}, "brian"), 1)
@@ -117,7 +117,7 @@ func TestTableEditorDelete(t *testing.T) {
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron+alternative@dolthub.com"}))
+		require.NoError(t, ed.Delete(nil, sql.UntypedSqlRow{"aaron", "aaron+alternative@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 1, set.Count())
 		require.Len(t, set.GetMany(usernameKeyer{}, "brian"), 1)
@@ -132,7 +132,7 @@ func TestTableEditorUpdate(t *testing.T) {
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com"}, sql.Row{"aaron", "aaron+new@dolthub.com"}))
+		require.NoError(t, ed.Update(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com"}, sql.UntypedSqlRow{"aaron", "aaron+new@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 2, set.Count())
 		require.Len(t, set.GetMany(usernameKeyer{}, "brian"), 1)
@@ -146,7 +146,7 @@ func TestTableEditorUpdate(t *testing.T) {
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com"}, sql.Row{"aaron.son", "aaron+new@dolthub.com"}))
+		require.NoError(t, ed.Update(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com"}, sql.UntypedSqlRow{"aaron.son", "aaron+new@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 2, set.Count())
 		require.Len(t, set.GetMany(usernameKeyer{}, "brian"), 1)
@@ -165,7 +165,7 @@ func TestTableEditorUpdate(t *testing.T) {
 		set.Put(&user{"brian", "brian@dolthub.com", 1})
 		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Update(nil, sql.Row{"brian", "brian@dolthub.com"}, sql.Row{"brian", "brian+new@dolthub.com"}))
+		require.NoError(t, ed.Update(nil, sql.UntypedSqlRow{"brian", "brian@dolthub.com"}, sql.UntypedSqlRow{"brian", "brian+new@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 2, set.Count())
 		res := set.GetMany(usernameKeyer{}, "brian")
@@ -184,29 +184,29 @@ var userPetsMultiValueOps = MultiValueOps[*user]{
 	ToRows: func(ctx *sql.Context, u *user) ([]sql.Row, error) {
 		var res []sql.Row
 		if (u.sidecar & userPetDog) == userPetDog {
-			res = append(res, sql.Row{u.username, u.email, "dog"})
+			res = append(res, sql.UntypedSqlRow{u.username, u.email, "dog"})
 		}
 		if (u.sidecar & userPetCat) == userPetCat {
-			res = append(res, sql.Row{u.username, u.email, "cat"})
+			res = append(res, sql.UntypedSqlRow{u.username, u.email, "cat"})
 		}
 		if (u.sidecar & userPetFish) == userPetFish {
-			res = append(res, sql.Row{u.username, u.email, "fish"})
+			res = append(res, sql.UntypedSqlRow{u.username, u.email, "fish"})
 		}
 		return res, nil
 	},
 	FromRow: func(ctx *sql.Context, r sql.Row) (*user, error) {
-		if len(r) != 3 {
+		if r.Len() != 3 {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
-		username, ok := r[0].(string)
+		username, ok := r.GetValue(0).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
-		email, ok := r[1].(string)
+		email, ok := r.GetValue(1).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
-		pet, ok := r[2].(string)
+		pet, ok := r.GetValue(2).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
@@ -223,10 +223,10 @@ var userPetsMultiValueOps = MultiValueOps[*user]{
 		return &user{username, email, sidecar}, nil
 	},
 	AddRow: func(ctx *sql.Context, r sql.Row, u *user) (*user, error) {
-		if len(r) != 3 {
+		if r.Len() != 3 {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
-		pet, ok := r[2].(string)
+		pet, ok := r.GetValue(2).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
@@ -245,10 +245,10 @@ var userPetsMultiValueOps = MultiValueOps[*user]{
 		return &uu, nil
 	},
 	DeleteRow: func(ctx *sql.Context, r sql.Row, u *user) (*user, error) {
-		if len(r) != 3 {
+		if r.Len() != 3 {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
-		pet, ok := r[2].(string)
+		pet, ok := r.GetValue(2).(string)
 		if !ok {
 			return nil, errors.New("invalid schema for user pet insert")
 		}
@@ -274,8 +274,8 @@ func TestMultiTableEditorInsert(t *testing.T) {
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
 		ed := &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}))
-		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com", "fish"}))
+		require.NoError(t, ed.Insert(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "dog"}))
+		require.NoError(t, ed.Insert(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "fish"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 1, set.Count())
 		res := set.GetMany(usernameKeyer{}, "aaron")
@@ -290,8 +290,8 @@ func TestMultiTableEditorDelete(t *testing.T) {
 		set.Put(&user{"aaron", "aaron@dolthub.com", userPetDog | userPetFish})
 		ed := &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron@dolthub.com", "fish"}))
-		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron@dolthub.com", "cat"}))
+		require.NoError(t, ed.Delete(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "fish"}))
+		require.NoError(t, ed.Delete(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "cat"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 1, set.Count())
 		res := set.GetMany(usernameKeyer{}, "aaron")
@@ -313,7 +313,7 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 		set.Put(&user{"aaron", "aaron@dolthub.com", userPetDog | userPetFish})
 		ed := &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}, sql.Row{"aaron", "aaron+new@dolthub.com", "cat"}))
+		require.NoError(t, ed.Update(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "dog"}, sql.UntypedSqlRow{"aaron", "aaron+new@dolthub.com", "cat"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 1, set.Count())
 		res := set.GetMany(usernameKeyer{}, "aaron")
@@ -330,7 +330,7 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 		set.Put(&user{"aaron", "aaron@dolthub.com", userPetDog | userPetFish})
 		ed = &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
 		ed.StatementBegin(nil)
-		require.Error(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}, sql.Row{"aaron.son", "aaron@dolthub.com", "cat"}))
+		require.Error(t, ed.Update(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "dog"}, sql.UntypedSqlRow{"aaron.son", "aaron@dolthub.com", "cat"}))
 
 		// And we simply update the matching entry if we try to change
 		// the primary key to something that does exist.
@@ -339,7 +339,7 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 		set.Put(&user{"brian", "brian@dolthub.com", userPetDog})
 		ed = &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
 		ed.StatementBegin(nil)
-		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}, sql.Row{"brian", "brian@dolthub.com", "cat"}))
+		require.NoError(t, ed.Update(nil, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "dog"}, sql.UntypedSqlRow{"brian", "brian@dolthub.com", "cat"}))
 		require.NoError(t, ed.StatementComplete(nil))
 		require.Equal(t, 2, set.Count())
 		res = set.GetMany(usernameKeyer{}, "aaron")

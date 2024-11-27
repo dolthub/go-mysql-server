@@ -18,6 +18,7 @@ import (
 	"context"
 	sql2 "database/sql"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"io"
 	"net"
 	"runtime"
@@ -243,6 +244,8 @@ func TestShowProcessList(t *testing.T) {
 	addr2 := "127.0.0.1:34568"
 	username := "foo"
 
+	variables.InitStatusVariables()
+
 	p := sqle.NewProcessList()
 	p.AddConnection(1, addr1)
 	p.AddConnection(2, addr2)
@@ -278,7 +281,7 @@ func TestShowProcessList(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{int64(1), username, addr1, nil, "Query", int64(0),
 			`
 a (4/5 partitions)
@@ -290,7 +293,7 @@ b (2/6 partitions)
 		{int64(2), username, addr2, nil, "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
 	}
 
-	require.ElementsMatch(expected, rows)
+	require.ElementsMatch(expected, sql.RowsToUntyped(rows))
 }
 
 func TestConcurrentProcessList(t *testing.T) {
@@ -483,12 +486,12 @@ func TestRecursiveViewDefinition(t *testing.T) {
 }
 
 func TestShowCharset(t *testing.T) {
-	iterForAllImplemented := func(t *testing.T) []sql.Row {
-		var rows []sql.Row
+	iterForAllImplemented := func(t *testing.T) []sql.UntypedSqlRow {
+		var rows []sql.UntypedSqlRow
 		iter := sql.NewCharacterSetsIterator()
 		for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
 			if charset.Encoder != nil {
-				rows = append(rows, sql.Row{
+				rows = append(rows, sql.UntypedSqlRow{
 					charset.Name,
 					charset.Description,
 					charset.DefaultCollation.String(),
@@ -501,7 +504,7 @@ func TestShowCharset(t *testing.T) {
 
 	tests := []struct {
 		Query  string
-		RowGen func(t *testing.T) []sql.Row
+		RowGen func(t *testing.T) []sql.UntypedSqlRow
 	}{
 		{
 			Query:  "SHOW CHARACTER SET;",
@@ -513,12 +516,12 @@ func TestShowCharset(t *testing.T) {
 		},
 		{
 			Query: "SHOW CHARSET LIKE 'utf8%'",
-			RowGen: func(t *testing.T) []sql.Row {
-				var rows []sql.Row
+			RowGen: func(t *testing.T) []sql.UntypedSqlRow {
+				var rows []sql.UntypedSqlRow
 				iter := sql.NewCharacterSetsIterator()
 				for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
 					if charset.Encoder != nil && strings.HasPrefix(charset.Name, "utf8") {
-						rows = append(rows, sql.Row{
+						rows = append(rows, sql.UntypedSqlRow{
 							charset.Name,
 							charset.Description,
 							charset.DefaultCollation.String(),
@@ -531,12 +534,12 @@ func TestShowCharset(t *testing.T) {
 		},
 		{
 			Query: "SHOW CHARSET WHERE Charset='binary'",
-			RowGen: func(t *testing.T) []sql.Row {
-				var rows []sql.Row
+			RowGen: func(t *testing.T) []sql.UntypedSqlRow {
+				var rows []sql.UntypedSqlRow
 				iter := sql.NewCharacterSetsIterator()
 				for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
 					if charset.Encoder != nil && charset.Name == "binary" {
-						rows = append(rows, sql.Row{
+						rows = append(rows, sql.UntypedSqlRow{
 							charset.Name,
 							charset.Description,
 							charset.DefaultCollation.String(),
@@ -549,12 +552,12 @@ func TestShowCharset(t *testing.T) {
 		},
 		{
 			Query: `SHOW CHARSET WHERE Charset = 'foo'`,
-			RowGen: func(t *testing.T) []sql.Row {
-				var rows []sql.Row
+			RowGen: func(t *testing.T) []sql.UntypedSqlRow {
+				var rows []sql.UntypedSqlRow
 				iter := sql.NewCharacterSetsIterator()
 				for charset, ok := iter.Next(); ok; charset, ok = iter.Next() {
 					if charset.Encoder != nil && charset.Name == "foo" {
-						rows = append(rows, sql.Row{
+						rows = append(rows, sql.UntypedSqlRow{
 							charset.Name,
 							charset.Description,
 							charset.DefaultCollation.String(),
@@ -658,8 +661,8 @@ func TestTriggerViewWarning(t *testing.T) {
 	ctx := harness.NewContext()
 	enginetest.CreateNewConnectionForServerEngine(ctx, e)
 
-	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
-	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "trigger on view is not supported; 'DROP TRIGGER  view_trig' to fix"}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.UntypedSqlRow{{types.NewOkResult(1)}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.UntypedSqlRow{{"Warning", 0, "trigger on view is not supported; 'DROP TRIGGER  view_trig' to fix"}}, nil, nil, nil)
 	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, nil, "expected insert destination to be resolved or unresolved table")
 }
 
@@ -698,13 +701,13 @@ func TestCollationCoercion(t *testing.T) {
 					rows, err := sql.RowIterToRows(ctx, iter)
 					require.NoError(t, err)
 					require.Equal(t, 1, len(rows))
-					require.Equal(t, 1, len(rows[0]))
+					require.Equal(t, 1, rows[0].Len())
 					if i == 0 {
-						num, _, err := types.Int64.Convert(rows[0][0])
+						num, _, err := types.Int64.Convert(rows[0].GetValue(0))
 						require.NoError(t, err)
 						require.Equal(t, test.Coercibility, num.(int64))
 					} else {
-						str, _, err := types.LongText.Convert(rows[0][0])
+						str, _, err := types.LongText.Convert(rows[0].GetValue(0))
 						require.NoError(t, err)
 						require.Equal(t, test.Collation.Name(), str.(string))
 					}
@@ -756,25 +759,25 @@ func TestRegex(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "SELECT * FROM test1 WHERE v1 REGEXP 'def' ORDER BY v1;",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"abcdef"},
 					},
 				},
 				{
 					Query: "SELECT * FROM test2 WHERE v1 REGEXP 'def' ORDER BY v1;",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"abcdef"},
 					},
 				},
 				{
 					Query: "SELECT * FROM test3 WHERE v1 REGEXP 'def' ORDER BY v1;",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"abcDEF"}, {"abcdef"},
 					},
 				},
 				{
 					Query: "SELECT * FROM test4 WHERE v1 REGEXP 'def' ORDER BY v1;",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"abcDEF"}, {"abcdef"},
 					},
 				},
@@ -907,7 +910,7 @@ func (itr *SimpleTableFunctionRowIter) Next(_ *sql.Context) (sql.Row, error) {
 	}
 
 	itr.returnedResults = true
-	return sql.Row{"foo", 123}, nil
+	return sql.UntypedSqlRow{"foo", 123}, nil
 }
 
 func (itr *SimpleTableFunctionRowIter) Close(_ *sql.Context) error {

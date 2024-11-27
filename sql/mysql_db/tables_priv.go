@@ -38,19 +38,19 @@ var (
 )
 
 func UserAddTablesRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
-	if len(row) != len(tablesPrivTblSchema) {
+	if row.Len() != len(tablesPrivTblSchema) {
 		return nil, errTablesPrivRow
 	}
 
-	dbName, ok := row[tablesPrivTblColIndex_Db].(string)
+	dbName, ok := row.GetValue(tablesPrivTblColIndex_Db).(string)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
-	tblName, ok := row[tablesPrivTblColIndex_Table_name].(string)
+	tblName, ok := row.GetValue(tablesPrivTblColIndex_Table_name).(string)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
-	tablePrivs, ok := row[tablesPrivTblColIndex_Table_priv].(uint64)
+	tablePrivs, ok := row.GetValue(tablesPrivTblColIndex_Table_priv).(uint64)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
@@ -100,15 +100,15 @@ func UserAddTablesRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) 
 }
 
 func UserRemoveTablesRow(ctx *sql.Context, row sql.Row, user *User) (*User, error) {
-	if len(row) != len(tablesPrivTblSchema) {
+	if row.Len() != len(tablesPrivTblSchema) {
 		return nil, errTablesPrivRow
 	}
 
-	db, ok := row[tablesPrivTblColIndex_Db].(string)
+	db, ok := row.GetValue(tablesPrivTblColIndex_Db).(string)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
-	tbl, ok := row[tablesPrivTblColIndex_Table_name].(string)
+	tbl, ok := row.GetValue(tablesPrivTblColIndex_Table_name).(string)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
@@ -119,14 +119,14 @@ func UserRemoveTablesRow(ctx *sql.Context, row sql.Row, user *User) (*User, erro
 }
 
 func UserFromTablesRow(ctx *sql.Context, row sql.Row) (*User, error) {
-	if len(row) != len(tablesPrivTblSchema) {
+	if row.Len() != len(tablesPrivTblSchema) {
 		return nil, errTablesPrivRow
 	}
-	host, ok := row[tablesPrivTblColIndex_Host].(string)
+	host, ok := row.GetValue(tablesPrivTblColIndex_Host).(string)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
-	user, ok := row[tablesPrivTblColIndex_User].(string)
+	user, ok := row.GetValue(tablesPrivTblColIndex_User).(string)
 	if !ok {
 		return nil, errTablesPrivRow
 	}
@@ -138,10 +138,12 @@ func UserFromTablesRow(ctx *sql.Context, row sql.Row) (*User, error) {
 
 func UserToTablesRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 	newRow := func() (sql.Row, error) {
-		row := make(sql.Row, len(tablesPrivTblSchema))
+		row := sql.NewSqlRowWithLen(len(tablesPrivTblSchema))
 		var err error
 		for i, col := range tablesPrivTblSchema {
-			row[i], err = col.Default.Eval(ctx, nil)
+			var v interface{}
+			v, err = col.Default.Eval(ctx, nil)
+			row.SetValue(i, v)
 			if err != nil {
 				return nil, err // Should never happen, schema is static
 			}
@@ -160,10 +162,10 @@ func UserToTablesRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 				return nil, err
 			}
 
-			row[tablesPrivTblColIndex_User] = user.User
-			row[tablesPrivTblColIndex_Host] = user.Host
-			row[tablesPrivTblColIndex_Db] = dbSet.Name()
-			row[tablesPrivTblColIndex_Table_name] = tblSet.Name()
+			row.SetValue(tablesPrivTblColIndex_User, user.User)
+			row.SetValue(tablesPrivTblColIndex_Host, user.Host)
+			row.SetValue(tablesPrivTblColIndex_Db, dbSet.Name())
+			row.SetValue(tablesPrivTblColIndex_Table_name, tblSet.Name())
 
 			var privs []string
 			for _, priv := range tblSet.ToSlice() {
@@ -200,7 +202,7 @@ func UserToTablesRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			row[tablesPrivTblColIndex_Table_priv] = formattedSet.(uint64)
+			row.SetValue(tablesPrivTblColIndex_Table_priv, formattedSet.(uint64))
 			rows = append(rows, row)
 		}
 	}

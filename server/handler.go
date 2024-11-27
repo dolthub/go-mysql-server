@@ -497,7 +497,7 @@ func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, erro
 	if err := iter.Close(ctx); err != nil {
 		return nil, err
 	}
-	return resultFromOkResult(row[0].(types.OkResult)), nil
+	return resultFromOkResult(row.GetValue(0).(types.OkResult)), nil
 }
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
@@ -665,7 +665,7 @@ func (h *Handler) resultForDefaultIter(
 					if len(r.Rows) > 0 {
 						panic("Got OkResult mixed with RowResult")
 					}
-					r = resultFromOkResult(row[0].(types.OkResult))
+					r = resultFromOkResult(row.GetValue(0).(types.OkResult))
 					continue
 				}
 
@@ -941,12 +941,12 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 	outVals := make([]sqltypes.Value, len(sch))
 	if len(projs) == 0 {
 		for i, col := range sch {
-			if row[i] == nil {
+			if row.GetValue(i) == nil {
 				outVals[i] = sqltypes.NULL
 				continue
 			}
 			var err error
-			outVals[i], err = col.Type.SQL(ctx, nil, row[i])
+			outVals[i], err = col.Type.SQL(ctx, nil, row.GetValue(i))
 			if err != nil {
 				return nil, err
 			}

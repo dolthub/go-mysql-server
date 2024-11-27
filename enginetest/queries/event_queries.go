@@ -31,31 +31,31 @@ var EventTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE EVENT event_with_starts_and_ends ON SCHEDULE EVERY '1:2' MINUTE_SECOND STARTS CURRENT_TIMESTAMP + INTERVAL 1 HOUR ENDS CURRENT_TIMESTAMP + INTERVAL 1 DAY DISABLE DO INSERT INTO totals VALUES (1);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE EVENT event_with_starts_only ON SCHEDULE EVERY '1:2' MINUTE_SECOND STARTS CURRENT_TIMESTAMP + INTERVAL 1 HOUR DISABLE DO INSERT INTO totals VALUES (1);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE EVENT event_with_ends_only ON SCHEDULE EVERY '1:2' MINUTE_SECOND ENDS CURRENT_TIMESTAMP + INTERVAL 1 DAY DISABLE DO INSERT INTO totals VALUES (1);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE EVENT event_without_starts_and_ends ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "CREATE EVENT event2 ON SCHEDULE EVERY 3 DAY STARTS '2037-10-16 23:59:00' + INTERVAL 2 DAY ENDS '2037-11-16 23:59:00' + INTERVAL 1 MONTH DO INSERT INTO totals VALUES (1000);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW EVENTS LIKE 'event2';",
-				Expected: []sql.Row{{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "RECURRING", nil, "3", "DAY", "2037-10-18 23:59:00", "2037-12-16 23:59:00", "ENABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "RECURRING", nil, "3", "DAY", "2037-10-18 23:59:00", "2037-12-16 23:59:00", "ENABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query: "SHOW CREATE EVENT event2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"event2", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `event2` ON SCHEDULE EVERY 3 DAY STARTS '2037-10-18 23:59:00' ENDS '2037-12-16 23:59:00' ON COMPLETION NOT PRESERVE ENABLE DO INSERT INTO totals VALUES (1000)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
@@ -70,11 +70,11 @@ var EventTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE EVENT event2 ON SCHEDULE AT '38-01-16 12:2:3.' + INTERVAL 1 DAY ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (100);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW EVENTS;",
-				Expected: []sql.Row{{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 12:02:03", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"mydb", "event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 12:02:03", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -88,15 +88,15 @@ var EventTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW EVENTS;",
-				Expected: []sql.Row{{"mydb", "event1", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"mydb", "event1", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2038-01-17 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "DROP EVENT event1",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW EVENTS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -118,7 +118,7 @@ var EventTests = []ScriptTest{
 			},
 			{
 				Query:                           "CREATE EVENT IF NOT EXISTS my_event1 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (1);",
-				Expected:                        []sql.Row{{types.OkResult{}}},
+				Expected:                        []sql.UntypedSqlRow{{types.OkResult{}}},
 				ExpectedWarning:                 1537,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Event 'my_event1' already exists",
@@ -137,36 +137,36 @@ var EventTests = []ScriptTest{
 			},
 			{
 				Query:                           "DROP EVENT IF EXISTS non_existent_event",
-				Expected:                        []sql.Row{{types.OkResult{}}},
+				Expected:                        []sql.UntypedSqlRow{{types.OkResult{}}},
 				ExpectedWarning:                 1305,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Event non_existent_event does not exist",
 			},
 			{
 				Query:                           "CREATE EVENT past_event1 ON SCHEDULE AT '2006-02-10 23:59:00' DISABLE DO INSERT INTO totals VALUES (100);",
-				Expected:                        []sql.Row{{types.OkResult{}}},
+				Expected:                        []sql.UntypedSqlRow{{types.OkResult{}}},
 				ExpectedWarning:                 1588,
 				ExpectedWarningMessageSubstring: "Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation.",
 				ExpectedWarningsCount:           1,
 			},
 			{
 				Query:    "SHOW EVENTS LIKE 'past_event1';",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:                           "CREATE EVENT past_event2 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DO INSERT INTO totals VALUES (100);",
-				Expected:                        []sql.Row{{types.OkResult{}}},
+				Expected:                        []sql.UntypedSqlRow{{types.OkResult{}}},
 				ExpectedWarning:                 1544,
 				ExpectedWarningMessageSubstring: "Event execution time is in the past. Event has been disabled",
 				ExpectedWarningsCount:           1,
 			},
 			{
 				Query:    "SHOW EVENTS LIKE 'past_event2';",
-				Expected: []sql.Row{{"mydb", "past_event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2006-02-10 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"mydb", "past_event2", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2006-02-10 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:                           "CREATE EVENT myevent ON SCHEDULE AT CURRENT_TIMESTAMP ON COMPLETION PRESERVE DISABLE ON SLAVE DO INSERT INTO totals VALUES (100);",
-				Expected:                        []sql.Row{{types.OkResult{}}},
+				Expected:                        []sql.UntypedSqlRow{{types.OkResult{}}},
 				ExpectedWarning:                 1235,
 				ExpectedWarningMessageSubstring: "DISABLE ON SLAVE status is not supported yet, used DISABLE status instead",
 				ExpectedWarningsCount:           1,
@@ -187,14 +187,14 @@ var EventTests = []ScriptTest{
 			},
 			{
 				Query:                           "ALTER EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE;",
-				Expected:                        []sql.Row{{types.OkResult{}}},
+				Expected:                        []sql.UntypedSqlRow{{types.OkResult{}}},
 				ExpectedWarning:                 1544,
 				ExpectedWarningsCount:           1,
 				ExpectedWarningMessageSubstring: "Event execution time is in the past. Event has been disabled",
 			},
 			{
 				Query:    "CREATE EVENT my_event2 ON SCHEDULE EVERY '1:2' MINUTE_SECOND DISABLE DO INSERT INTO totals VALUES (2);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:       "ALTER EVENT my_event2 RENAME TO my_event1;",
@@ -212,11 +212,11 @@ var EventTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER EVENT my_event1 ENABLE;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW CREATE EVENT my_event1;",
-				Expected: []sql.Row{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -230,23 +230,23 @@ var EventTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER EVENT my_event1 ON COMPLETION NOT PRESERVE;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW CREATE EVENT my_event1;",
-				Expected: []sql.Row{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION NOT PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION NOT PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "SHOW EVENTS;",
-				Expected: []sql.Row{{"mydb", "my_event1", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2006-02-10 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"mydb", "my_event1", "`root`@`localhost`", "SYSTEM", "ONE TIME", "2006-02-10 23:59:00", nil, nil, nil, nil, "DISABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER EVENT my_event1 ENABLE;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW EVENTS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -260,19 +260,19 @@ var EventTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER EVENT my_event1 ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW CREATE EVENT my_event1;",
-				Expected: []sql.Row{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER EVENT my_event1 ON SCHEDULE EVERY 5 HOUR STARTS '2037-10-16 23:59:00' COMMENT 'updating the event schedule from AT';",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW CREATE EVENT my_event1;",
-				Expected: []sql.Row{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE EVERY 5 HOUR STARTS '2037-10-16 23:59:00' ON COMPLETION PRESERVE DISABLE COMMENT 'updating the event schedule from AT' DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE EVERY 5 HOUR STARTS '2037-10-16 23:59:00' ON COMPLETION PRESERVE DISABLE COMMENT 'updating the event schedule from AT' DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -286,23 +286,23 @@ var EventTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE EVENT my_event1;",
-				Expected: []sql.Row{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"my_event1", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `my_event1` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER EVENT my_event1 RENAME TO newEventName;",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW CREATE EVENT newEventName;",
-				Expected: []sql.Row{{"newEventName", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `newEventName` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"newEventName", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `newEventName` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE DO INSERT INTO totals VALUES (1)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER EVENT newEventName COMMENT 'insert 2 instead of 1' DO INSERT INTO totals VALUES (2);",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "SHOW CREATE EVENT newEventName;",
-				Expected: []sql.Row{{"newEventName", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `newEventName` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE COMMENT 'insert 2 instead of 1' DO INSERT INTO totals VALUES (2)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"newEventName", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `newEventName` ON SCHEDULE AT '2006-02-10 23:59:00' ON COMPLETION PRESERVE DISABLE COMMENT 'insert 2 instead of 1' DO INSERT INTO totals VALUES (2)", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 		},
 	},

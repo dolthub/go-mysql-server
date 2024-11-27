@@ -39,10 +39,10 @@ func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error
 		var err error
 		for i := 0; i < prefixCnt; i++ {
 			if s1.Types()[i].Equals(s2.Types()[i]) {
-				cmp, err = s1.Types()[i].Compare(row1[i], row2[i])
+				cmp, err = s1.Types()[i].Compare(row1.GetValue(i), row2.GetValue(i))
 			} else {
-				k1 := row1[i]
-				k2, _, err := s1.Types()[i].Convert(row2[i])
+				k1 := row1.GetValue(i)
+				k2, _, err := s1.Types()[i].Convert(row2.GetValue(i))
 				if err != nil {
 					return 0, fmt.Errorf("incompatible types")
 				}
@@ -501,7 +501,7 @@ type BucketConstructor func(rows, distinct, nulls, boundCnt uint64, bound sql.Ro
 func MergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type, newB BucketConstructor) ([]sql.HistogramBucket, error) {
 	cmp := func(l, r sql.Row) (int, error) {
 		for i := 0; i < len(types); i++ {
-			cmp, err := types[i].Compare(l[i], r[i])
+			cmp, err := types[i].Compare(l.GetValue(i), r.GetValue(i))
 			if err != nil {
 				return 0, err
 			}
@@ -570,11 +570,11 @@ const (
 func euclideanDistance(row1, row2 sql.Row, prefixLen int) (float64, error) {
 	var distSq float64
 	for i := 0; i < prefixLen; i++ {
-		v1, _, err := types.Float64.Convert(row1[i])
+		v1, _, err := types.Float64.Convert(row1.GetValue(i))
 		if err != nil {
 			return 0, err
 		}
-		v2, _, err := types.Float64.Convert(row2[i])
+		v2, _, err := types.Float64.Convert(row2.GetValue(i))
 		if err != nil {
 			return 0, err
 		}

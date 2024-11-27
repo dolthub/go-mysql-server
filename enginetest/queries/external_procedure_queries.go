@@ -35,7 +35,7 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @outparam;",
-				Expected: []sql.Row{{16}},
+				Expected: []sql.UntypedSqlRow{{16}},
 			},
 		},
 	},
@@ -47,19 +47,19 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @uservar12;",
-				Expected: []sql.Row{{5}},
+				Expected: []sql.UntypedSqlRow{{5}},
 			},
 			{
 				Query:    "SELECT @uservar13;",
-				Expected: []sql.Row{{uint(5)}},
+				Expected: []sql.UntypedSqlRow{{uint(5)}},
 			},
 			{
 				Query:    "SELECT @uservar14;",
-				Expected: []sql.Row{{"5"}},
+				Expected: []sql.UntypedSqlRow{{"5"}},
 			},
 			{
 				Query:    "SELECT @uservar15;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 		},
 	},
@@ -71,7 +71,7 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL p1(11);",
-				Expected: []sql.Row{{22}},
+				Expected: []sql.UntypedSqlRow{{22}},
 			},
 		},
 	},
@@ -80,15 +80,15 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL memory_overloaded_mult(1);",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "CALL memory_overloaded_mult(2, 3);",
-				Expected: []sql.Row{{6}},
+				Expected: []sql.UntypedSqlRow{{6}},
 			},
 			{
 				Query:    "CALL memory_overloaded_mult(4, 5, 6);",
-				Expected: []sql.Row{{120}},
+				Expected: []sql.UntypedSqlRow{{120}},
 			},
 		},
 	},
@@ -98,17 +98,17 @@ var ExternalProcedureTests = []ScriptTest{
 			{
 				Query: "CALL memory_overloaded_type_test(1, 100, 10000, 1000000, 100000000, 3, 300," +
 					"10, 1000, 100000, 10000000, 1000000000, 30, 3000);",
-				Expected: []sql.Row{{1111114444}},
+				Expected: []sql.UntypedSqlRow{{1111114444}},
 			},
 			{
 				Query: "CALL memory_overloaded_type_test(false, 'hi', 'A', '2020-02-20 12:00:00', 123.456," +
 					"true, 'bye', 'B', '2022-02-02 12:00:00', 654.32);",
-				Expected: []sql.Row{{`aa:false,ba:true,ab:"hi",bb:"bye",ac:[65],bc:[66],ad:2020-02-20,bd:2022-02-02,ae:123.456,be:654.32`}},
+				Expected: []sql.UntypedSqlRow{{`aa:false,ba:true,ab:"hi",bb:"bye",ac:[65],bc:[66],ad:2020-02-20,bd:2022-02-02,ae:123.456,be:654.32`}},
 			},
 			{
 				Query: "CALL memory_type_test3(1, 100, 10000, 1000000, 100000000, 3, 300," +
 					"10, 1000, 100000, 10000000, 1000000000, 30, 3000);",
-				Expected: []sql.Row{{uint64(1111114444)}},
+				Expected: []sql.UntypedSqlRow{{uint64(1111114444)}},
 			},
 		},
 	},
@@ -123,23 +123,23 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @outparam1, @outparam2, @outparam3, @outparam4;",
-				Expected: []sql.Row{{1, 0, "A", "B"}},
+				Expected: []sql.UntypedSqlRow{{1, 0, "A", "B"}},
 			},
 			{
 				Query:    "CALL memory_inout_bool_byte(@outparam1, @outparam2, @outparam3, @outparam4);",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT @outparam1, @outparam2, @outparam3, @outparam4;",
-				Expected: []sql.Row{{1, 1, "A", []byte("C")}},
+				Expected: []sql.UntypedSqlRow{{1, 1, "A", []byte("C")}},
 			},
 			{
 				Query:    "CALL memory_inout_bool_byte(@outparam1, @outparam2, @outparam3, @outparam4);",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT @outparam1, @outparam2, @outparam3, @outparam4;",
-				Expected: []sql.Row{{1, 0, "A", []byte("D")}},
+				Expected: []sql.UntypedSqlRow{{1, 0, "A", []byte("D")}},
 			},
 		},
 	},
@@ -157,23 +157,23 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL memory_variadic_add();",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				Query:    "CALL memory_variadic_add(1);",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "CALL memory_variadic_add(1, 2);",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query:    "CALL memory_variadic_add(1, 2, 3);",
-				Expected: []sql.Row{{6}},
+				Expected: []sql.UntypedSqlRow{{6}},
 			},
 			{
 				Query:    "CALL memory_variadic_add(1, 2, 3, 4);",
-				Expected: []sql.Row{{10}},
+				Expected: []sql.UntypedSqlRow{{10}},
 			},
 		},
 	},
@@ -182,15 +182,15 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL memory_variadic_byte_slice();",
-				Expected: []sql.Row{{""}},
+				Expected: []sql.UntypedSqlRow{{""}},
 			},
 			{
 				Query:    "CALL memory_variadic_byte_slice('A');",
-				Expected: []sql.Row{{"A"}},
+				Expected: []sql.UntypedSqlRow{{"A"}},
 			},
 			{
 				Query:    "CALL memory_variadic_byte_slice('A', 'B');",
-				Expected: []sql.Row{{"AB"}},
+				Expected: []sql.UntypedSqlRow{{"AB"}},
 			},
 		},
 	},
@@ -207,7 +207,7 @@ var ExternalProcedureTests = []ScriptTest{
 			},
 			{
 				Query:    "CALL memory_variadic_overload('A', 'B');",
-				Expected: []sql.Row{{"A-B"}},
+				Expected: []sql.UntypedSqlRow{{"A-B"}},
 			},
 			{
 				Query:       "CALL memory_variadic_overload('A', 'B', 'C');",
@@ -215,7 +215,7 @@ var ExternalProcedureTests = []ScriptTest{
 			},
 			{
 				Query:    "CALL memory_variadic_overload('A', 'B', 5);",
-				Expected: []sql.Row{{"A,B,[5]"}},
+				Expected: []sql.UntypedSqlRow{{"A,B,[5]"}},
 			},
 		},
 	},
@@ -224,7 +224,7 @@ var ExternalProcedureTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create procedure memory_variadic_overload;",
-				Expected: []sql.Row{{
+				Expected: []sql.UntypedSqlRow{{
 					"memory_variadic_overload",
 					"",
 					"CREATE PROCEDURE memory_variadic_overload() SELECT 'External stored procedure';",

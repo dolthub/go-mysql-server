@@ -92,7 +92,7 @@ func (s *ShowCreateProcedure) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter,
 	if s.ExternalStoredProcedure != nil {
 		// If an external stored procedure has been plugged in by the analyzer, use that
 		fakeCreateProcedureStmt := s.ExternalStoredProcedure.FakeCreateProcedureStmt()
-		return sql.RowsToRowIter(sql.Row{
+		return sql.RowsToRowIter(sql.UntypedSqlRow{
 			s.ExternalStoredProcedure.Name, // Procedure
 			"",                             // sql_mode
 			fakeCreateProcedureStmt,        // Create Procedure
@@ -112,7 +112,7 @@ func (s *ShowCreateProcedure) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter,
 		}
 		for _, procedure := range procedures {
 			if strings.ToLower(procedure.Name) == s.ProcedureName {
-				return sql.RowsToRowIter(sql.Row{
+				return sql.RowsToRowIter(sql.UntypedSqlRow{
 					procedure.Name,            // Procedure
 					"",                        // sql_mode
 					procedure.CreateStatement, // Create Procedure

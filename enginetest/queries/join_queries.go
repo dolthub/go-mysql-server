@@ -21,7 +21,7 @@ import (
 var JoinQueryTests = []QueryTest{
 	{
 		Query: "select ab.* from ab join pq on a = p where b = (select y from xy where y in (select v from uv where v = b)) order by a;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{1, 2},
 			{2, 2},
@@ -30,7 +30,7 @@ var JoinQueryTests = []QueryTest{
 	},
 	{
 		Query: "select * from ab where b in (select y from xy where y in (select v from uv where v = b));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{1, 2},
 			{2, 2},
@@ -39,14 +39,14 @@ var JoinQueryTests = []QueryTest{
 	},
 	{
 		Query: "select * from ab where a in (select y from xy where y in (select v from uv where v = a));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 2},
 			{2, 2},
 		},
 	},
 	{
 		Query: "select * from ab where a in (select x from xy where x in (select u from uv where u = a));",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 2},
 			{2, 2},
 			{0, 2},
@@ -57,7 +57,7 @@ var JoinQueryTests = []QueryTest{
 		// sqe index lookup must reference schema of outer scope after
 		// join planning reorders (lookup uv xy)
 		Query: `select y, (select 1 from uv where y = 1 and u = x) is_one from xy join uv on x = v order by y;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{0, nil},
 			{1, 1},
@@ -66,7 +66,7 @@ var JoinQueryTests = []QueryTest{
 	},
 	{
 		Query: `select y, (select 1 where y = 1) is_one from xy join uv on x = v order by y`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{0, nil},
 			{1, 1},
@@ -75,7 +75,7 @@ var JoinQueryTests = []QueryTest{
 	},
 	{
 		Query: `select * from (select y, (select 1 where y = 1) is_one from xy join uv on x = v) sq order by y`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{0, nil},
 			{1, 1},
@@ -85,23 +85,23 @@ var JoinQueryTests = []QueryTest{
 	//{
 	// TODO this is invalid, should error
 	//	Query:    `with cte1 as (select u, v from cte2 join ab on cte2.u = b), cte2 as (select u,v from uv join ab on u = b where u in (2,3)) select * from xy where (x) not in (select u from cte1) order by 1`,
-	//	Expected: []sql.Row{{0, 2}, {1, 0}, {3, 3}},
+	//	Expected: []sql.UntypedSqlRow{{0, 2}, {1, 0}, {3, 3}},
 	//},
 	{
 		Query:    `SELECT (SELECT 1 FROM (SELECT x FROM xy INNER JOIN uv ON (x = u OR y = v) LIMIT 1) r) AS s FROM xy`,
-		Expected: []sql.Row{{1}, {1}, {1}, {1}},
+		Expected: []sql.UntypedSqlRow{{1}, {1}, {1}, {1}},
 	},
 	{
 		Query:    `select a from ab where exists (select 1 from xy where a =x)`,
-		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{0}, {1}, {2}, {3}},
 	},
 	{
 		Query:    "select a from ab where exists (select 1 from xy where a = x and b = 2 and y = 2);",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    "select * from uv where exists (select 1, count(a) from ab where u = a group by a)",
-		Expected: []sql.Row{{0, 1}, {1, 1}, {2, 2}, {3, 2}},
+		Expected: []sql.UntypedSqlRow{{0, 1}, {1, 1}, {2, 2}, {3, 2}},
 	},
 	{
 		Query: `
@@ -112,7 +112,7 @@ select * from
   where exists (select * from pq where u = p)
 ) alias2
 inner join xy on a = x;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 1, 0, 2},
 			{1, 2, 1, 1, 1, 0},
 			{2, 2, 2, 2, 2, 1},
@@ -128,7 +128,7 @@ where exists
   left join pq on u = p
   where a = u
 );`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{1, 2},
 			{2, 2},
@@ -143,7 +143,7 @@ select * from
   where not exists (select * from uv where a = v)
 ) alias1
 where exists (select * from xy where a = x);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2},
 			{3, 1},
 		}},
@@ -156,7 +156,7 @@ select * from
 ) alias1
 inner join uv on true
 inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 2, 0, 1, 0, 0},
 			{0, 2, 0, 2, 0, 1, 1, 1},
 			{0, 2, 0, 2, 0, 1, 2, 2},
@@ -173,7 +173,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	) alias1
 	left join pq on alias1.a = p
 	where exists (select * from uv where a = u);`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 0},
 		}},
 	{
@@ -183,22 +183,22 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 			"INNER JOIN othertable ON (mytable.i = othertable.i2) " +
 			"LEFT JOIN othertable T4 ON (mytable.i = T4.i2) " +
 			"ORDER BY othertable.i2, T4.s2",
-		Expected: []sql.Row{{1}, {2}, {3}},
+		Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 	},
 	{
 		// test cross join used as projected subquery expression
 		Query:    "select 1 as exprAlias, 2, 3, (select exprAlias + count(*) from one_pk_three_idx a cross join one_pk_three_idx b);",
-		Expected: []sql.Row{{1, 2, 3, 65}},
+		Expected: []sql.UntypedSqlRow{{1, 2, 3, 65}},
 	},
 	{
 		// test cross join used in an IndexedInFilter subquery expression
 		Query:    "select pk, v1, v2 from one_pk_three_idx where v1 in (select max(a.v1) from one_pk_three_idx a cross join (select 'foo' from dual) b);",
-		Expected: []sql.Row{{7, 4, 4}},
+		Expected: []sql.UntypedSqlRow{{7, 4, 4}},
 	},
 	{
 		// test cross join used as subquery alias
 		Query: "select * from (select a.v1, b.v2 from one_pk_three_idx a cross join one_pk_three_idx b) dt order by 1 desc, 2 desc limit 5;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{4, 4},
 			{4, 3},
 			{4, 2},
@@ -208,7 +208,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v2 where b.pk = 0 and a.v2 = 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, 0},
 			{2, 0},
 			{2, 0},
@@ -217,7 +217,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v3 where b.pk = 0 and c.v2 = 0 order by a.pk;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 0},
 			{1, 0},
@@ -238,7 +238,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b inner join (select * from one_pk_three_idx where v2 = 0) c on b.pk = c.v3 where b.pk = 0 and c.v2 = 0 order by a.pk;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 0},
 			{1, 0},
@@ -259,7 +259,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v1+1 where b.pk = 0 order by a.pk;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, nil},
 			{1, nil},
 			{2, nil},
@@ -272,7 +272,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and c.v2 = 0 order by a.pk;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 0},
 			{1, 0},
@@ -293,7 +293,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, nil, nil, 3, "third row"},
 			{1, "first row", 2, "second row", 1, "first row"},
 			{1, "first row", 3, "third row", 2, "second row"},
@@ -305,7 +305,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a CROSS JOIN mytable b LEFT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "first row", nil, nil},
 			{1, "first row", 2, "second row", 1, "first row"},
 			{1, "first row", 3, "third row", 2, "second row"},
@@ -319,7 +319,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.i, b.i, c.i from mytable a CROSS JOIN mytable b LEFT JOIN mytable c ON b.i+1 = c.i order by 1,2,3;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 1, 2},
 			{1, 2, 3},
 			{1, 3, nil},
@@ -332,7 +332,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 		}},
 	{
 		Query: "select * from mytable a LEFT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "first row", nil, nil},
 			{2, "second row", 2, "second row", 1, "first row"},
 			{3, "third row", 3, "third row", 2, "second row"},
@@ -340,7 +340,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a LEFT JOIN  mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, nil, nil, 3, "third row"},
 			{2, "second row", 2, "second row", 1, "first row"},
 			{3, "third row", 3, "third row", 2, "second row"},
@@ -348,7 +348,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i = c.i + 1 order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, nil, nil, 3, "third row"},
 			{2, "second row", 2, "second row", 1, "first row"},
 			{3, "third row", 3, "third row", 2, "second row"},
@@ -356,7 +356,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i = c.i + 1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "first row", nil, nil},
 			{2, "second row", 2, "second row", 1, "first row"},
 			{3, "third row", 3, "third row", 2, "second row"},
@@ -364,28 +364,28 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a LEFT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i+1 = c.i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 			{3, "third row", 3, "third row", nil, nil},
 		}},
 	{
 		Query: "select * from mytable a LEFT JOIN  mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i+1 = c.i order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, nil, nil, 1, "first row"},
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 		}},
 	{
 		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i RIGHT JOIN mytable c ON b.i+1= c.i order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, nil, nil, 1, "first row"},
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 		}},
 	{
 		Query: "select * from mytable a RIGHT JOIN mytable b on a.i = b.i LEFT JOIN mytable c ON b.i+1 = c.i order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 			{3, "third row", 3, "third row", nil, nil},
@@ -393,7 +393,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i+1 = c.i order by 1,2,3,4,5,6;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, nil, nil, 1, "first row"},
 			{1, "first row", 1, "first row", 2, "second row"},
 			{1, "first row", 2, "second row", 3, "third row"},
@@ -405,7 +405,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "with a as (select a.i, a.s from mytable a CROSS JOIN mytable b) select * from a RIGHT JOIN mytable c on a.i+1 = c.i-1;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, 1, "first row"},
 			{nil, nil, 2, "second row"},
 			{1, "first row", 3, "third row"},
@@ -415,7 +415,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.* from mytable a RIGHT JOIN mytable b on a.i = b.i+1 LEFT JOIN mytable c on a.i = c.i-1 RIGHT JOIN mytable d on b.i = d.i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row"},
 			{3, "third row"},
 			{nil, nil},
@@ -423,7 +423,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.*,b.* from mytable a RIGHT JOIN othertable b on a.i = b.i2+1 LEFT JOIN mytable c on a.i = c.i-1 LEFT JOIN othertable d on b.i2 = d.i2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row", "third", 1},
 			{3, "third row", "second", 2},
 			{nil, nil, "first", 3},
@@ -431,7 +431,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.*,b.* from mytable a RIGHT JOIN othertable b on a.i = b.i2+1 RIGHT JOIN mytable c on a.i = c.i-1 LEFT JOIN othertable d on b.i2 = d.i2;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, nil, nil},
 			{nil, nil, nil, nil},
 			{2, "second row", "third", 1},
@@ -439,27 +439,27 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query:    "select i.pk, j.v3 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk;",
-		Expected: []sql.Row{{0, 0}, {1, 1}, {2, 0}, {3, 2}, {4, 0}, {5, 3}, {6, 0}, {7, 4}},
+		Expected: []sql.UntypedSqlRow{{0, 0}, {1, 1}, {2, 0}, {3, 2}, {4, 0}, {5, 3}, {6, 0}, {7, 4}},
 	},
 	{
 		Query:    "select i.pk, j.v3, k.c1 from one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk JOIN one_pk k on j.v3 = k.pk;",
-		Expected: []sql.Row{{0, 0, 0}, {1, 1, 10}, {2, 0, 0}, {3, 2, 20}, {4, 0, 0}, {5, 3, 30}, {6, 0, 0}},
+		Expected: []sql.UntypedSqlRow{{0, 0, 0}, {1, 1, 10}, {2, 0, 0}, {3, 2, 20}, {4, 0, 0}, {5, 3, 30}, {6, 0, 0}},
 	},
 	{
 		Query:    "select i.pk, j.v3 from (one_pk_two_idx i JOIN one_pk_three_idx j on((i.v1 = j.pk)));",
-		Expected: []sql.Row{{0, 0}, {1, 1}, {2, 0}, {3, 2}, {4, 0}, {5, 3}, {6, 0}, {7, 4}},
+		Expected: []sql.UntypedSqlRow{{0, 0}, {1, 1}, {2, 0}, {3, 2}, {4, 0}, {5, 3}, {6, 0}, {7, 4}},
 	},
 	{
 		Query:    "select i.pk, j.v3, k.c1 from ((one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk))) JOIN one_pk k on((j.v3 = k.pk)));",
-		Expected: []sql.Row{{0, 0, 0}, {1, 1, 10}, {2, 0, 0}, {3, 2, 20}, {4, 0, 0}, {5, 3, 30}, {6, 0, 0}},
+		Expected: []sql.UntypedSqlRow{{0, 0, 0}, {1, 1, 10}, {2, 0, 0}, {3, 2, 20}, {4, 0, 0}, {5, 3, 30}, {6, 0, 0}},
 	},
 	{
 		Query:    "select i.pk, j.v3, k.c1 from (one_pk_two_idx i JOIN one_pk_three_idx j on ((i.v1 = j.pk)) JOIN one_pk k on((j.v3 = k.pk)));",
-		Expected: []sql.Row{{0, 0, 0}, {1, 1, 10}, {2, 0, 0}, {3, 2, 20}, {4, 0, 0}, {5, 3, 30}, {6, 0, 0}},
+		Expected: []sql.UntypedSqlRow{{0, 0, 0}, {1, 1, 10}, {2, 0, 0}, {3, 2, 20}, {4, 0, 0}, {5, 3, 30}, {6, 0, 0}},
 	},
 	{
 		Query: "select a.* from one_pk_two_idx a RIGHT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.v1 = j.pk) on a.pk = i.v1 LEFT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v1 = l.pk) on a.pk = l.v2;",
-		Expected: []sql.Row{{0, 0, 0},
+		Expected: []sql.UntypedSqlRow{{0, 0, 0},
 			{0, 0, 0},
 			{0, 0, 0},
 			{0, 0, 0},
@@ -473,7 +473,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.* from one_pk_two_idx a LEFT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.pk = j.v3) on a.pk = i.pk RIGHT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v2 = l.v3) on a.v1 = l.v2;",
-		Expected: []sql.Row{{0, 0, 0},
+		Expected: []sql.UntypedSqlRow{{0, 0, 0},
 			{0, 0, 0},
 			{0, 0, 0},
 			{0, 0, 0},
@@ -497,26 +497,26 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select a.* from mytable a join mytable b on a.i = b.i and a.i > 2",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row"},
 		},
 	},
 	{
 		Query: "select a.* from mytable a join mytable b on a.i = b.i and now() >= coalesce(NULL, NULL, now())",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"}},
 	},
 	{
 		Query: "select * from mytable a join niltable  b on a.i = b.i and b <=> NULL",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, nil, nil, nil},
 		},
 	},
 	{
 		Query: "select * from mytable a join niltable  b on a.i = b.i and s IS NOT NULL",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, "first row", 1, nil, nil, nil},
 			{2, "second row", 2, 2, 1, nil},
 			{3, "third row", 3, nil, 0, nil},
@@ -524,20 +524,20 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a join niltable  b on a.i = b.i and b IS NOT NULL",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row", 2, 2, 1, nil},
 			{3, "third row", 3, nil, 0, nil},
 		},
 	},
 	{
 		Query: "select * from mytable a join niltable  b on a.i = b.i and b != 0",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{2, "second row", 2, 2, 1, nil},
 		},
 	},
 	{
 		Query: "select * from mytable a join niltable  b on a.i <> b.i and b != 0;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row", 2, 2, 1, nil},
 			{1, "first row", 2, 2, 1, nil},
 			{3, "third row", 5, nil, 1, float64(5)},
@@ -547,7 +547,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from mytable a join niltable  b on a.i <> b.i;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{3, "third row", 1, nil, nil, nil},
 			{2, "second row", 1, nil, nil, nil},
 			{3, "third row", 2, 2, 1, nil},
@@ -570,7 +570,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
 						ORDER BY 3;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{nil, nil, 1},
 			{1, 1, 2},
 			{2, 2, 3},
@@ -581,7 +581,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: "select * from ab full join pq on a = p order by 1,2,3,4;",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 0},
 			{1, 2, 1, 1},
 			{2, 2, 2, 2},
@@ -593,7 +593,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	select * from ab
 	inner join uv on a = u
 	full join pq on a = p order by 1,2,3,4,5,6;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 1, 0, 0},
 			{1, 2, 1, 1, 1, 1},
 			{2, 2, 2, 2, 2, 2},
@@ -605,7 +605,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	select * from ab
 	full join pq on a = p
 	left join xy on a = x order by 1,2,3,4,5,6;`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 0, 0, 2},
 			{1, 2, 1, 1, 1, 0},
 			{2, 2, 2, 2, 2, 1},
@@ -614,7 +614,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query: `select * from (select a,v from ab join uv on a=u) av join (select x,q from xy join pq on x = p) xq on av.v = xq.x`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 1, 1, 1},
 			{1, 1, 1, 1},
 			{2, 2, 2, 2},
@@ -623,17 +623,17 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		Query:    "select x from xy join uv on y = v join ab on y = b and u = -1",
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query: "select a.* from one_pk_two_idx a LEFT JOIN (one_pk_two_idx i JOIN one_pk_three_idx j on i.pk = j.v3) on a.pk = i.pk LEFT JOIN (one_pk_two_idx k JOIN one_pk_three_idx l on k.v2 = l.v3) on a.v1 = l.v2;",
-		Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0},
+		Expected: []sql.UntypedSqlRow{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0},
 			{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {7, 7, 7},
 		},
 	},
 	{
 		Query:    "with recursive a(x,y) as (select i,i from mytable where i < 4 union select a.x, mytable.i from a join mytable on a.x+1 = mytable.i limit 2) select * from a;",
-		Expected: []sql.Row{{1, 1}, {2, 2}},
+		Expected: []sql.UntypedSqlRow{{1, 1}, {2, 2}},
 	},
 	{
 		Query: `
@@ -641,7 +641,7 @@ select * from (
     (ab JOIN pq ON (1 = p))
 	LEFT OUTER JOIN uv on (2 = u)
 );`,
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 1, 1, 2, 2},
 			{1, 2, 1, 1, 2, 2},
 			{2, 2, 1, 1, 2, 2},
@@ -650,7 +650,7 @@ select * from (
 	},
 	{
 		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (1,2,3)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 2, 0, 0},
 			{1, 2, 1, 1},
 			{1, 2, 2, 2},
@@ -658,7 +658,7 @@ select * from (
 	},
 	{
 		Query: "select * from (ab JOIN pq ON (a = p)) where a in (select a from ab)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 0},
 			{1, 2, 1, 1},
 			{2, 2, 2, 2},
@@ -666,7 +666,7 @@ select * from (
 	},
 	{
 		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (select a from ab)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 2, 0, 0},
 			{1, 2, 1, 1},
 			{1, 2, 2, 2},
@@ -674,7 +674,7 @@ select * from (
 	},
 	{
 		Query: "select * from (ab JOIN pq) where a in (select a from ab)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{0, 2, 0, 0},
 			{0, 2, 1, 1},
 			{0, 2, 2, 2},
@@ -694,7 +694,7 @@ select * from (
 	},
 	{
 		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (1,2,3)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 2, 0, 0},
 			{1, 2, 1, 1},
 			{1, 2, 2, 2},
@@ -702,7 +702,7 @@ select * from (
 	},
 	{
 		Query: "select * from (ab JOIN pq ON (a = 1)) where a in (select a from ab)",
-		Expected: []sql.Row{
+		Expected: []sql.UntypedSqlRow{
 			{1, 2, 0, 0},
 			{1, 2, 1, 1},
 			{1, 2, 2, 2},
@@ -723,71 +723,71 @@ JSON_TABLE(
 	'$[*]' COLUMNS(z float path '$.c', w float path '$.d')
 ) as t2
 on w = 0;`,
-		Expected: []sql.Row{{0}},
+		Expected: []sql.UntypedSqlRow{{0}},
 	},
 	{
 		Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab_hasnull)`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab)`,
-		Expected: []sql.Row{{1, 0}},
+		Expected: []sql.UntypedSqlRow{{1, 0}},
 	},
 	{
 		Query:    `SELECT * from xy where y not in (SELECT b from ab_hasnull)`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    `SELECT * from xy where null not in (SELECT b from ab)`,
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Query:    "select * from othertable join foo.othertable on othertable.s2 = 'third'",
-		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+		Expected: []sql.UntypedSqlRow{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
 		Query:    "select * from othertable join foo.othertable on mydb.othertable.s2 = 'third'",
-		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+		Expected: []sql.UntypedSqlRow{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
 		Query:    "select * from othertable join foo.othertable on foo.othertable.text = 'a'",
-		Expected: []sql.Row{{"third", 1, "a", 4}, {"second", 2, "a", 4}, {"first", 3, "a", 4}},
+		Expected: []sql.UntypedSqlRow{{"third", 1, "a", 4}, {"second", 2, "a", 4}, {"first", 3, "a", 4}},
 	},
 	{
 		Query:    "select * from foo.othertable join othertable on othertable.s2 = 'third'",
-		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
+		Expected: []sql.UntypedSqlRow{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
 	},
 	{
 		Query:    "select * from foo.othertable join othertable on mydb.othertable.s2 = 'third'",
-		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
+		Expected: []sql.UntypedSqlRow{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
 	},
 	{
 		Query:    "select * from foo.othertable join othertable on foo.othertable.text = 'a'",
-		Expected: []sql.Row{{"a", 4, "third", 1}, {"a", 4, "second", 2}, {"a", 4, "first", 3}},
+		Expected: []sql.UntypedSqlRow{{"a", 4, "third", 1}, {"a", 4, "second", 2}, {"a", 4, "first", 3}},
 	},
 	{
 		Query:    "select * from mydb.othertable join foo.othertable on othertable.s2 = 'third'",
-		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+		Expected: []sql.UntypedSqlRow{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
 		Query:    "select * from mydb.othertable join foo.othertable on mydb.othertable.s2 = 'third'",
-		Expected: []sql.Row{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
+		Expected: []sql.UntypedSqlRow{{"third", 1, "a", 4}, {"third", 1, "b", 2}, {"third", 1, "c", 0}},
 	},
 	{
 		Query:    "select * from mydb.othertable join foo.othertable on foo.othertable.text = 'a'",
-		Expected: []sql.Row{{"third", 1, "a", 4}, {"second", 2, "a", 4}, {"first", 3, "a", 4}},
+		Expected: []sql.UntypedSqlRow{{"third", 1, "a", 4}, {"second", 2, "a", 4}, {"first", 3, "a", 4}},
 	},
 	{
 		Query:    "select * from foo.othertable join mydb.othertable on othertable.s2 = 'third'",
-		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
+		Expected: []sql.UntypedSqlRow{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
 	},
 	{
 		Query:    "select * from foo.othertable join mydb.othertable on mydb.othertable.s2 = 'third'",
-		Expected: []sql.Row{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
+		Expected: []sql.UntypedSqlRow{{"a", 4, "third", 1}, {"b", 2, "third", 1}, {"c", 0, "third", 1}},
 	},
 	{
 		Query:    "select * from foo.othertable join mydb.othertable on foo.othertable.text = 'a'",
-		Expected: []sql.Row{{"a", 4, "third", 1}, {"a", 4, "second", 2}, {"a", 4, "first", 3}},
+		Expected: []sql.UntypedSqlRow{{"a", 4, "third", 1}, {"a", 4, "second", 2}, {"a", 4, "first", 3}},
 	},
 }
 
@@ -813,7 +813,7 @@ var JoinScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    " SELECT `t1`.`username`, COUNT(`t1`.`id`) AS `ct` FROM ((SELECT `t2`.`id`, `t2`.`content`, `t3`.`username` FROM `tweet` AS `t2` INNER JOIN `users` AS `t3` ON (`t2`.`user_id` = `t3`.`id`) WHERE (`t3`.`username` = 'u3')) UNION (SELECT `t4`.`id`, `t4`.`content`, `t5`.`username` FROM `tweet` AS `t4` INNER JOIN `users` AS `t5` ON (`t4`.`user_id` = `t5`.`id`) WHERE (`t5`.`username` IN ('u2', 'u4')))) AS `t1` GROUP BY `t1`.`username` ORDER BY COUNT(`t1`.`id`) DESC;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -835,7 +835,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select i from t1 join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 				},
@@ -847,77 +847,77 @@ var JoinScriptTests = []ScriptTest{
 
 			{
 				Query: "select * from t1 join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 30},
 					{2, 20, 20},
 				},
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select * from t1 join t2 using (j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{30, 3, 1},
 					{20, 2, 2},
 				},
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3, 30, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select * from t1 join t2 using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20},
 				},
 			},
 			{
 				Query: "select * from t1 join t2 using (j, i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20},
 				},
 			},
 			{
 				Query: "select * from t1 natural join t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20},
 				},
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 join t2 using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select i, j, t1.*, t2.*, t1.i, t1.j, t2.i, t2.j from t1 natural join t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a join t2 b using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select i, j, a.*, b.*, a.i, a.j, b.i, b.j from t1 a natural join t2 b;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 20, 2, 20, 2, 20, 2, 20, 2, 20},
 				},
 			},
@@ -925,7 +925,7 @@ var JoinScriptTests = []ScriptTest{
 			// Left Join
 			{
 				Query: "select * from t1 left join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 30},
 					{2, 20, 20},
 					{3, 30, nil},
@@ -933,7 +933,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 					{3, 30, nil, nil},
@@ -941,7 +941,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t1 left join t2 using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10},
 					{2, 20},
 					{3, 30},
@@ -949,7 +949,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t1 natural left join t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10},
 					{2, 20},
 					{3, 30},
@@ -957,7 +957,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 left join t2 using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, nil, nil},
 					{2, 20, 2, 20},
 					{3, 30, nil, nil},
@@ -965,7 +965,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural left join t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, nil, nil},
 					{2, 20, 2, 20},
 					{3, 30, nil, nil},
@@ -975,7 +975,7 @@ var JoinScriptTests = []ScriptTest{
 			// Right Join
 			{
 				Query: "select * from t1 right join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 30, 10},
 					{2, 20, 20},
 					{5, 50, nil},
@@ -983,7 +983,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 					{nil, nil, 5, 50},
@@ -991,7 +991,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t1 right join t2 using (j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{30, 1, 3},
 					{20, 2, 2},
 					{50, 5, nil},
@@ -999,7 +999,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3, 30, 1, 30},
 					{2, 20, 2, 20},
 					{nil, nil, 5, 50},
@@ -1007,7 +1007,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t1 right join t2 using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 30},
 					{2, 20},
 					{5, 50},
@@ -1015,7 +1015,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t1 natural right join t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 30},
 					{2, 20},
 					{5, 50},
@@ -1023,7 +1023,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 right join t2 using (i, j);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil, nil, 1, 30},
 					{2, 20, 2, 20},
 					{nil, nil, 5, 50},
@@ -1031,7 +1031,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j from t1 natural right join t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil, nil, 1, 30},
 					{2, 20, 2, 20},
 					{nil, nil, 5, 50},
@@ -1041,7 +1041,7 @@ var JoinScriptTests = []ScriptTest{
 			// Nested Join
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 on t1.i = t3.i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30, 1, 200},
 					{2, 20, 2, 20, 2, 20},
 				},
@@ -1052,14 +1052,14 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select t1.i, t1.j, t2.i, t2.j, t3.i, t3.j from t1 join t2 using (i) join t3 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30, 1, 200},
 					{2, 20, 2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select * from t1 join t2 using (i) join t3 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 30, 200},
 					{2, 20, 20, 20},
 				},
@@ -1068,20 +1068,20 @@ var JoinScriptTests = []ScriptTest{
 			// Subquery Tests
 			{
 				Query: "select t1.i, t1.j, tt.i from t1 join (select 1 as i) tt using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1},
 				},
 			},
 			{
 				Query: "select t1.i, t1.j, tt.i, tt.j from t1 join (select * from t2) tt using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "select tt1.i, tt1.j, tt2.i, tt2.j from (select * from t1) tt1 join (select * from t2) tt2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
@@ -1090,21 +1090,21 @@ var JoinScriptTests = []ScriptTest{
 			// CTE Tests
 			{
 				Query: "with cte as (select * from t1) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "with cte1 as (select * from t1), cte2 as (select * from t2) select cte1.i, cte1.j, cte2.i, cte2.j from cte1 join cte2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
 				},
 			},
 			{
 				Query: "WITH cte(i, j) AS (SELECT 1, 1 UNION ALL SELECT i, j from t1) SELECT cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 1, 30},
 					{1, 10, 1, 30},
 					{2, 20, 2, 20},
@@ -1112,7 +1112,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "with recursive cte(i, j) AS (select 1, 1 union all select i + 1, j * 10 from cte where i < 3) select cte.i, cte.j, t2.i, t2.j from cte join t2 using (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 1, 30},
 					{2, 10, 2, 20},
 				},
@@ -1143,7 +1143,7 @@ var JoinScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM a LEFT JOIN b ON 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{1, 1},
 					{2, 2},
@@ -1152,7 +1152,7 @@ var JoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM a RIGHT JOIN b ON 8+9;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{1, 1},
 					{2, 2},
@@ -1176,13 +1176,13 @@ var LateralJoinScriptTests = []ScriptTest{
 			// Lateral Cross Join
 			{
 				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 				},
 			},
 			{
 				Query: "select * from t, lateral (select * from t1 where t.i != t1.j) as tt order by tt.j, t.i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 1},
 					{3, 1},
 					{1, 4},
@@ -1195,21 +1195,21 @@ var LateralJoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t, t1, lateral (select * from t1 where t.i != t1.j) as tt where t.i > t1.j and t1.j = tt.j order by t.i, t1.j, tt.j;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 1, 1},
 					{3, 1, 1},
 				},
 			},
 			{
 				Query: "select * from t, lateral (select * from t1 where t.i = t1.j) tt, lateral (select * from t1 where t.i != t1.j) as ttt order by t.i, tt.j, ttt.j;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 4},
 					{1, 1, 5},
 				},
 			},
 			{
 				Query: `WITH RECURSIVE cte(x) AS (SELECT 1 union all SELECT x + 1 from cte where x < 5) SELECT * FROM cte, lateral (select * from t where t.i = cte.x) tt;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{2, 2},
 					{3, 3},
@@ -1217,7 +1217,7 @@ var LateralJoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from (select * from t, lateral (select * from t1 where t.i = t1.j) as tt order by t.i, tt.j) ttt;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 				},
 			},
@@ -1225,26 +1225,26 @@ var LateralJoinScriptTests = []ScriptTest{
 			// Lateral Inner Join
 			{
 				Query: "select * from t inner join lateral (select * from t1 where t.i != t1.j) as tt on t.i > tt.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, 1},
 					{3, 1},
 				},
 			},
 			{
 				Query: "select * from t inner join lateral (select * from t1 where t.i = t1.j) as tt on t.i = tt.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 				},
 			},
 			{
 				Query:    "select * from t inner join lateral (select * from t1 where t.i = t1.j) as tt on t.i != tt.j",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			// Lateral Left Join
 			{
 				Query: "select * from t left join lateral (select * from t1 where t.i = t1.j) as tt on t.i = tt.j order by t.i, tt.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{2, nil},
 					{3, nil},
@@ -1252,7 +1252,7 @@ var LateralJoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t left join lateral (select * from t1 where t.i != t1.j) as tt on t.i + 1 = tt.j or t.i + 2 = tt.j order by t.i, tt.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 					{2, 4},
 					{3, 4},
@@ -1267,7 +1267,7 @@ var LateralJoinScriptTests = []ScriptTest{
 			},
 			{
 				Query: "select * from t right join lateral (select * from t1) as tt on t.i > tt.j order by t.i, tt.j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil, 4},
 					{nil, 5},
 					{2, 1},
@@ -1332,7 +1332,7 @@ LATERAL (
 	select name as class_name from classes where grade.cid = classes.id
 ) class
 `,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"Elle", "ESG Studies", 97.0},
 					{"Latham", "Greek Mythology", 92.0},
 				},
@@ -1350,7 +1350,7 @@ LATERAL (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x, u from xy, lateral (select * from uv where y = u) uv;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 					{2, 1},
 					{3, 2},

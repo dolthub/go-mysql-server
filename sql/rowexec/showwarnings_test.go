@@ -40,9 +40,9 @@ func TestShowWarnings(t *testing.T) {
 
 	n := 3
 	for row, err := it.Next(ctx); err == nil; row, err = it.Next(ctx) {
-		level := row[0].(string)
-		code := row[1].(int)
-		message := row[2].(string)
+		level := row.GetValue(0).(string)
+		code := row.GetValue(1).(int)
+		message := row.GetValue(2).(string)
 
 		t.Logf("level: %s\tcode: %v\tmessage: %s\n", level, code, message)
 

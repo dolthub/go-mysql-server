@@ -195,7 +195,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 			if procedure.SecurityContext == plan.ProcedureSecurityContext_Invoker {
 				securityType = "INVOKER"
 			}
-			rows = append(rows, Row{
+			rows = append(rows, UntypedSqlRow{
 				procedure.Name,             // specific_name NOT NULL
 				"def",                      // routine_catalog
 				dbName,                     // routine_schema
@@ -289,7 +289,7 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 					datetimePrecision = 6
 				}
 
-				rows = append(rows, Row{
+				rows = append(rows, UntypedSqlRow{
 					"def",             // specific_catalog
 					dbName,            // specific_schema
 					procedure.Name,    // specific_name
