@@ -27,9 +27,7 @@ import (
 // Row is a tuple of values.
 type Row interface {
 	GetValue(i int) interface{}
-	GetBytes() []byte
 	SetValue(i int, v interface{})
-	SetBytes(i int, v []byte)
 	GetType(i int)
 	Values() []interface{}
 	Copy() Row
@@ -37,6 +35,10 @@ type Row interface {
 	Subslice(i, j int) Row
 	Append(Row) Row
 	Equals(row Row, schema Schema) (bool, error)
+}
+
+type BytesRow interface {
+	GetBytes(int, Type) ([]byte, error)
 }
 
 type SqlRow struct {

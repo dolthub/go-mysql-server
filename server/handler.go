@@ -939,13 +939,24 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 	}
 
 	outVals := make([]sqltypes.Value, len(sch))
+	var err error
+	if br, ok := row.(sql.BytesRow); ok {
+		for i, col := range sch {
+			buf, err := br.GetBytes(i, col.Type)
+			outVals[i] = sqltypes.MakeTrusted(col.Type.Type(), buf)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return outVals, nil
+	}
+
 	if len(projs) == 0 {
 		for i, col := range sch {
 			if row.GetValue(i) == nil {
 				outVals[i] = sqltypes.NULL
 				continue
 			}
-			var err error
 			outVals[i], err = col.Type.SQL(ctx, nil, row.GetValue(i))
 			if err != nil {
 				return nil, err
