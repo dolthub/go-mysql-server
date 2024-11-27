@@ -1344,7 +1344,12 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	for _, e := range idx.SqlIdx().Expressions() {
 		cols = append(cols, strings.TrimPrefix(e, tablePrefix))
 	}
-	stats, _ := statsProv.GetStats(ctx, sql.NewStatQualifier(tn.Database().Name(), tn.Name(), idx.SqlIdx().ID()), cols)
+	var schemaName string
+	if schTab, ok := tn.(sql.DatabaseSchemaTable); ok {
+		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+	}
+
+	stats, _ := statsProv.GetStats(ctx, sql.NewStatQualifier(tn.Database().Name(), schemaName, tn.Name(), idx.SqlIdx().ID()), cols)
 
 	return &memo.IndexScan{
 		Table: ret,

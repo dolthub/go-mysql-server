@@ -79,15 +79,16 @@ func (u *UpdateHistogram) IsReadOnly() bool {
 	return false
 }
 
-func NewDropHistogram(db, table string, cols []string) *DropHistogram {
-	return &DropHistogram{db: db, cols: cols, table: table}
+func NewDropHistogram(db, schema, table string, cols []string) *DropHistogram {
+	return &DropHistogram{db: db, schema: schema, cols: cols, table: table}
 }
 
 type DropHistogram struct {
-	db    string
-	table string
-	cols  []string
-	prov  sql.StatsProvider
+	db     string
+	schema string
+	table  string
+	cols   []string
+	prov   sql.StatsProvider
 }
 
 var _ sql.Node = (*DropHistogram)(nil)
@@ -104,6 +105,10 @@ func (d *DropHistogram) WithProvider(prov sql.StatsProvider) *DropHistogram {
 
 func (d *DropHistogram) Db() string {
 	return d.db
+}
+
+func (d *DropHistogram) SchemaName() string {
+	return d.schema
 }
 
 func (d *DropHistogram) Table() string {

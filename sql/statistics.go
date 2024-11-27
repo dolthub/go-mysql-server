@@ -91,6 +91,7 @@ type MutableStatistic interface {
 	WithLowerBound(Row) Statistic
 }
 
+// NewQualifierFromString creates a new StatQualifier from a string.
 func NewQualifierFromString(q string) (StatQualifier, error) {
 	parts := strings.Split(q, ".")
 	if len(parts) < 3 {
@@ -99,23 +100,42 @@ func NewQualifierFromString(q string) (StatQualifier, error) {
 	return StatQualifier{Database: parts[0], Tab: parts[1], Idx: parts[2]}, nil
 }
 
-func NewStatQualifier(db, table, index string) StatQualifier {
-	return StatQualifier{Database: strings.ToLower(db), Tab: strings.ToLower(table), Idx: strings.ToLower(index)}
+// NewSchemaQualifierFromString creates a new StatQualifier from a string,
+// assuming the string contains a schema part.
+func NewSchemaQualifierFromString(q string) (StatQualifier, error) {
+	parts := strings.Split(q, ".")
+	if len(parts) < 4 {
+		return StatQualifier{}, fmt.Errorf("invalid qualifier string: '%s', expected '<database>.<schema>.<table>.<index>'", q)
+	}
+	return StatQualifier{Database: parts[0], Sch: parts[1], Tab: parts[2], Idx: parts[3]}, nil
+}
+
+func NewStatQualifier(db, schema, table, index string) StatQualifier {
+	return StatQualifier{
+		Database: strings.ToLower(db),
+		Sch:      strings.ToLower(schema),
+		Tab:      strings.ToLower(table),
+		Idx:      strings.ToLower(index)}
 }
 
 // StatQualifier is the namespace hierarchy for a given statistic.
 // The qualifier and set of columns completely describes a unique stat.
 type StatQualifier struct {
 	Database string `json:"database"`
+	Sch      string `json:"schema"`
 	Tab      string `json:"table"`
 	Idx      string `json:"index"`
 }
 
 func (q StatQualifier) String() string {
-	if q.Idx != "" {
-		return fmt.Sprintf("%s.%s.%s", q.Database, q.Tab, q.Idx)
+	tableName := q.Tab
+	if q.Sch != "" {
+		tableName = fmt.Sprintf("%s.%s", q.Sch, q.Tab)
 	}
-	return fmt.Sprintf("%s.%s", q.Database, q.Tab)
+	if q.Idx != "" {
+		return fmt.Sprintf("%s.%s.%s", q.Database, tableName, q.Idx)
+	}
+	return fmt.Sprintf("%s.%s", q.Database, tableName)
 }
 
 func (q StatQualifier) Empty() bool {
@@ -124,6 +144,10 @@ func (q StatQualifier) Empty() bool {
 
 func (q StatQualifier) Db() string {
 	return q.Database
+}
+
+func (q StatQualifier) Schema() string {
+	return q.Sch
 }
 
 func (q StatQualifier) Table() string {

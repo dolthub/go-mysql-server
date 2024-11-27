@@ -583,7 +583,7 @@ func TestRangeBuilder(t *testing.T) {
 				idx = idx_1
 			}
 
-			stat, err := newUniformDistStatistic("mydb", testTable, sch, idx, 10, 10)
+			stat, err := newUniformDistStatistic("mydb", "", testTable, sch, idx, 10, 10)
 			require.NoError(t, err)
 
 			err = c.cost(root, stat, idx)
