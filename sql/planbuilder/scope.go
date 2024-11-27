@@ -613,6 +613,7 @@ func (c scopeColumn) unwrapGetFieldAliasId() columnId {
 }
 
 func (c scopeColumn) withOriginal(col string) scopeColumn {
+	c.originalCol = col
 	return c
 }
 

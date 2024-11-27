@@ -38,19 +38,19 @@ var InfoSchemaQueries = []QueryTest{
    GROUP BY index_name;`,
 		ExpectedColumns: sql.Schema{
 			{
-				Name: "TABLE_NAME",
+				Name: "table_name",
 				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
 			},
 			{
-				Name: "INDEX_NAME",
+				Name: "index_name",
 				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
 			},
 			{
-				Name: "COMMENT",
+				Name: "comment",
 				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
 			},
 			{
-				Name: "NON_UNIQUE",
+				Name: "non_unique",
 				Type: types.Int32,
 			},
 			{
@@ -68,7 +68,7 @@ var InfoSchemaQueries = []QueryTest{
 		Query: `select table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
 		ExpectedColumns: sql.Schema{
 			{
-				Name: "TABLE_NAME",
+				Name: "table_name",
 				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
 			},
 		},
@@ -77,9 +77,9 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: `select table_catalog, table_schema, table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
 		ExpectedColumns: sql.Schema{
-			{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
-			{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
-			{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "table_catalog", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "table_schema", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "table_name", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
 		},
 		Expected: []sql.Row{{"def", "mydb", "mytable"}},
 	},
