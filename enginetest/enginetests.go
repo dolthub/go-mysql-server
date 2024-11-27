@@ -4314,14 +4314,14 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
 					},
-					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+					ExpectedErrStr: "invalid string for charset utf8mb4: '[153 152 151]'",
 				},
 				{
 					Query: "INSERT INTO test VALUES (?);",
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable(string([]byte{0x99, 0x98, 0x97})),
 					},
-					ExpectedErrStr: "incorrect string value: '[153 152 151]'",
+					ExpectedErrStr: "invalid string for charset utf8mb4: '[153 152 151]'",
 				},
 				{
 					Query: "INSERT INTO test2 VALUES (?);",

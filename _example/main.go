@@ -58,7 +58,7 @@ func main() {
 
 	session := memory.NewSession(sql.NewBaseSession(), pro)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
-	ctx.SetCurrentDatabase("test")
+	ctx.SetCurrentDatabase(dbName)
 
 	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
 	// set up the "mysql" database to allow user creation and user checking when establishing connections. This is set

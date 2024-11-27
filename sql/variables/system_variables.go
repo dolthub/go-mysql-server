@@ -1057,6 +1057,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("innodb_autoinc_lock_mode", 0, 2, false),
 		Default:           int64(2),
 	},
+	"innodb_buffer_pool_size": &sql.MysqlSystemVariable{
+		Name:              "innodb_buffer_pool_size",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemIntType("innodb_buffer_pool_size", 5242880, math.MaxInt64, false),
+		Default:           int64(134217728),
+	},
 	// Row locking is currently not supported. This variable is provided for 3p tools, and we always return the
 	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.
 	"innodb_lock_wait_timeout": &sql.MysqlSystemVariable{
@@ -2430,7 +2438,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: true,
-		Type:              types.NewSystemSetType("sql_mode", sql.Collation_utf8mb4_0900_ai_ci, "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL", "ANSI"),
+		Type:              types.NewSystemSetType("sql_mode", sql.Collation_utf8mb4_0900_ai_ci, "ALLOW_INVALID_DATES", "ANSI_QUOTES", "ERROR_FOR_DIVISION_BY_ZERO", "HIGH_NOT_PRECEDENCE", "IGNORE_SPACE", "NO_AUTO_VALUE_ON_ZERO", "NO_AUTO_CREATE_USER", "NO_BACKSLASH_ESCAPES", "NO_DIR_IN_CREATE", "NO_ENGINE_SUBSTITUTION", "NO_UNSIGNED_SUBTRACTION", "NO_ZERO_DATE", "NO_ZERO_IN_DATE", "ONLY_FULL_GROUP_BY", "PAD_CHAR_TO_FULL_LENGTH", "PIPES_AS_CONCAT", "REAL_AS_FLOAT", "STRICT_ALL_TABLES", "STRICT_TRANS_TABLES", "TIME_TRUNCATE_FRACTIONAL", "TRADITIONAL", "ANSI"),
 		Default:           sql.DefaultSqlMode,
 	},
 	"sql_notes": &sql.MysqlSystemVariable{

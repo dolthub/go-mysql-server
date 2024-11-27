@@ -156,7 +156,17 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 			types = append(types, sch[i].Type)
 		}
 
-		qual, err := sql.NewQualifierFromString(string(key))
+		var schemaName string
+		if tabSch, ok := table.(sql.DatabaseSchemaTable); ok {
+			schemaName = tabSch.DatabaseSchema().SchemaName()
+		}
+
+		var qual sql.StatQualifier
+		if schemaName == "" {
+			qual, err = sql.NewQualifierFromString(string(key))
+		} else {
+			qual, err = sql.NewSchemaQualifierFromString(string(key))
+		}
 		if err != nil {
 			return err
 		}
@@ -260,7 +270,7 @@ func (s *StatsProv) GetStats(ctx *sql.Context, qual sql.StatQualifier, cols []st
 
 func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) error {
 	colsSuff := strings.Join(cols, ",") + ")"
-	for key, _ := range s.colStats {
+	for key := range s.colStats {
 		if strings.HasPrefix(string(key), qual.String()) && strings.HasSuffix(string(key), colsSuff) {
 			delete(s.colStats, key)
 		}
@@ -295,7 +305,7 @@ func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (ui
 }
 
 func (s *StatsProv) DropDbStats(ctx *sql.Context, db string, flush bool) error {
-	for key, _ := range s.colStats {
+	for key := range s.colStats {
 		if strings.HasPrefix(string(key), db) {
 			delete(s.colStats, key)
 		}
