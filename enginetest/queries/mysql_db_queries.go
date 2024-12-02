@@ -46,11 +46,11 @@ var MySqlDbTests = []ScriptTest{
 				Expected: []sql.Row{{"mysql"}},
 			},
 			{
-				Query:    "create database mysql;",
+				Query:       "create database mysql;",
 				ExpectedErr: sql.ErrDatabaseExists,
 			},
 			{
-				Query:    "drop database mysql;",
+				Query:          "drop database mysql;",
 				ExpectedErrStr: "unable to drop database: mysql",
 			},
 			{
