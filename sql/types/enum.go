@@ -288,7 +288,8 @@ func (t EnumType) Zero() interface{} {
 func (t EnumType) At(index int) (string, bool) {
 	// The elements listed in the column specification are assigned index numbers, beginning with 1.
 	index -= 1
-	if index == -1 {
+	if index <= -1 {
+		// for index zero, the value is empty. It's used for insert ignore.
 		return "", true
 	} else if index >= len(t.indexToVal) {
 		return "", false
