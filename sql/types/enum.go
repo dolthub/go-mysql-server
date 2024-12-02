@@ -287,9 +287,10 @@ func (t EnumType) Zero() interface{} {
 // At implements EnumType interface.
 func (t EnumType) At(index int) (string, bool) {
 	// The elements listed in the column specification are assigned index numbers, beginning with 1.
-	if index == 0 {
+	index -= 1
+	if index == -1 {
 		return "", true
-	} else if index > len(t.indexToVal) {
+	} else if index >= len(t.indexToVal) {
 		return "", false
 	}
 	return t.indexToVal[index], true
