@@ -199,7 +199,7 @@ func TestEnumZero(t *testing.T) {
 			typ := MustCreateEnumType(test.vals, sql.Collation_Default)
 			v, ok := typ.Zero().(uint16)
 			assert.True(t, ok)
-			assert.Equal(t, uint16(1), v)
+			assert.Equal(t, uint16(0), v)
 		})
 	}
 }

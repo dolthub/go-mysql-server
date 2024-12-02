@@ -570,7 +570,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			oldStr, _ := oldEnum.At(oldIdx)
 			newIdx := newEnum.IndexOf(oldStr)
 			if newIdx == -1 {
-				return false, fmt.Errorf("data truncated for column %s", newCol.Name)
+				return false, types.ErrDataTruncatedForColumn.New(newCol.Name)
 			}
 			newRow[newColIdx] = uint16(newIdx)
 		}
