@@ -41,6 +41,8 @@ const (
 var (
 	ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
 
+	ErrDataTruncatedForColumn = errors.NewKind("Data truncated for column '%s'")
+
 	enumValueType = reflect.TypeOf(uint16(0))
 )
 
@@ -278,15 +280,18 @@ func (t EnumType) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Zero implements Type interface.
 func (t EnumType) Zero() interface{} {
-	// / If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
-	return uint16(1)
+	// TODO: If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
+	return uint16(0)
 }
 
 // At implements EnumType interface.
 func (t EnumType) At(index int) (string, bool) {
-	// / The elements listed in the column specification are assigned index numbers, beginning with 1.
+	// The elements listed in the column specification are assigned index numbers, beginning with 1.
 	index -= 1
-	if index < 0 || index >= len(t.indexToVal) {
+	if index <= -1 {
+		// for index zero, the value is empty. It's used for insert ignore.
+		return "", true
+	} else if index >= len(t.indexToVal) {
 		return "", false
 	}
 	return t.indexToVal[index], true

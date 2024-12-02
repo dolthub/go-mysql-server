@@ -4368,7 +4368,7 @@ CREATE TABLE tab3 (
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
 						0,
-						"first",
+						"",
 						"",
 					},
 				},
