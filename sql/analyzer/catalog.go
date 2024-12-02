@@ -156,7 +156,7 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	if !ok {
 		return sql.ErrImmutableDatabaseProvider.New()
 	}
-	if strings.EqualFold(dbName, "information_schema") || c.MySQLDb.Enabled() {
+	if strings.EqualFold(dbName, "information_schema") || (c.MySQLDb.Enabled() && strings.EqualFold(dbName, "mysql")) {
 		return fmt.Errorf("unable to drop database: %s", dbName)
 	}
 	return mut.DropDatabase(ctx, dbName)
