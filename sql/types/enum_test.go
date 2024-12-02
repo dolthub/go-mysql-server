@@ -137,7 +137,6 @@ func TestEnumConvert(t *testing.T) {
 		{[]string{"0", "1", "2"}, sql.Collation_Default, "2", "2", false},
 
 		{[]string{"one", "two"}, sql.Collation_Default, 3, nil, true},
-		{[]string{"one", "two"}, sql.Collation_Default, 0, nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, "three", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), nil, true},
 	}

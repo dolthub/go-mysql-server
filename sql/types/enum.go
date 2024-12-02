@@ -280,17 +280,16 @@ func (t EnumType) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Zero implements Type interface.
 func (t EnumType) Zero() interface{} {
-	// If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
+	// TODO: If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
 	return uint16(0)
 }
 
 // At implements EnumType interface.
 func (t EnumType) At(index int) (string, bool) {
 	// The elements listed in the column specification are assigned index numbers, beginning with 1.
-	index -= 1
-	if index == -1 {
+	if index == 0 {
 		return "", true
-	} else if index >= len(t.indexToVal) {
+	} else if index > len(t.indexToVal) {
 		return "", false
 	}
 	return t.indexToVal[index], true
