@@ -656,6 +656,7 @@ func TestTriggerViewWarning(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := harness.NewContext()
+	ctx.SetCurrentDatabase("mydb")
 	enginetest.CreateNewConnectionForServerEngine(ctx, e)
 
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
@@ -1000,6 +1001,7 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := harness.NewContext()
+			ctx.SetCurrentDatabase("mydb")
 			_, iter, _, err := engine.Query(ctx, tt.q)
 			// errors should be analyze time, not execution time
 			if tt.err {

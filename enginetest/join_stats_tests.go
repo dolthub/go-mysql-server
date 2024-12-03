@@ -29,6 +29,7 @@ func TestJoinStats(t *testing.T, harness Harness) {
 			e.EngineAnalyzer().Catalog.DbProvider = newPro.(sql.DatabaseProvider)
 
 			ctx := harness.NewContext()
+			ctx.SetCurrentDatabase("mydb")
 			for _, q := range tt.setup {
 				_, iter, _, err := e.Query(ctx, q)
 				require.NoError(t, err)

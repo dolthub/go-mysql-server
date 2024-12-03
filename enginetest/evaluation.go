@@ -87,6 +87,10 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 			if sh.SkipQueryTest(script.Name) {
 				t.Skip()
 			}
+
+			if !supportedDialect(harness,  script.Dialect) {
+				t.Skip()
+			}
 		}
 
 		for _, statement := range script.SetUpScript {
@@ -95,6 +99,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					t.Skip()
 				}
 			}
+			
 			ctx = ctx.WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
@@ -120,10 +125,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					ctx = th.NewSession()
 				}
 
-				if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
-					t.Skip()
-				}
-				if assertion.Skip {
+				if skipAssertion(t, harness, assertion) {
 					t.Skip()
 				}
 
@@ -156,6 +158,22 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 			})
 		}
 	})
+}
+
+func skipAssertion(t *testing.T, harness Harness, assertion queries.ScriptTestAssertion) bool {
+	if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
+		return true
+	}
+
+	if !supportedDialect(harness, assertion.Dialect) {
+		return true
+	}
+
+	if assertion.Skip {
+		return true
+	}
+	
+	return false
 }
 
 // TestScriptPrepared substitutes literals for bindvars, runs the test script given,
@@ -1113,6 +1131,11 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			t.Skip()
 		}
 	}
+	
+	if !supportedDialect(harness,  tt.Dialect) {
+		t.Skip()
+	}
+	
 	ctx := NewContext(harness)
 	TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil, nil)
 	expectedSelect := tt.ExpectedSelect
@@ -1120,6 +1143,18 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 		expectedSelect = nil
 	}
 	TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil, nil)
+}
+
+func supportedDialect(harness Harness, dialect string) bool {
+	if dialect == "" {
+		return true
+	}
+	
+	harnessDialect := "mysql"
+	if hd, ok := harness.(DialectHarness); ok {
+		harnessDialect = hd.Dialect()
+	}
+	return harnessDialect == dialect
 }
 
 func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {
