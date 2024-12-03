@@ -48,6 +48,9 @@ type ScriptTest struct {
 	JoinTypes []plan.JoinType
 	// SkipPrepared is true when we skip a test for prepared statements only
 	SkipPrepared bool
+	// Dialect is the supported dialect for this script, which must match the dialect of the harness if specified.
+	// The script is skipped if the dialect doesn't match.
+	Dialect string
 }
 
 type ScriptTestAssertion struct {
@@ -101,6 +104,10 @@ type ScriptTestAssertion struct {
 
 	// CheckIndexedAccess indicates whether we should verify the query plan uses an index
 	CheckIndexedAccess bool
+	
+	// Dialect is the supported dialect for this assertion, which must match the dialect of the harness if specified.
+	// The assertion is skipped if the dialect doesn't match.
+	Dialect string
 }
 
 // ScriptTests are a set of test scripts to run.

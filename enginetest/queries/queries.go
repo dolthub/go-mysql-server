@@ -30,12 +30,23 @@ import (
 )
 
 type QueryTest struct {
+	// Query is the query string to execute
 	Query            string
+	// Expected is the expected result of the query
 	Expected         []sql.Row
-	ExpectedColumns  sql.Schema // only Name and Type matter here, because that's what we send on the wire
+	// ExpectedColumns is the set of expected column names for the query results, if specified.
+	// Only the Name and Type matter of the columns are checked.
+	ExpectedColumns  sql.Schema
+	// Bindings are the bind values for the query, if provided
 	Bindings         map[string]sqlparser.Expr
+	// SkipPrepared indicates that the query should be skipped when testing prepared statements
 	SkipPrepared     bool
+	// SkipServerEngine indicates that the query should be skipped when testing a server engine (as opposed to the 
+	// simpler in-place engine object)
 	SkipServerEngine bool
+	// Dialect is the supported dialect for this query, which must match the dialect of the harness if specified.
+	// The query is skipped if the dialect doesn't match.
+	Dialect string
 }
 
 type QueryPlanTest struct {
@@ -11255,13 +11266,24 @@ var BrokenErrorQueries = []QueryErrorTest{
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
 // validate the results.
 type WriteQueryTest struct {
+	// WriteQuery is the INSERT, UPDATE. etc. statement to execute
 	WriteQuery          string
+	// ExpectedWriteResult is the expected result of the write query
 	ExpectedWriteResult []sql.Row
+	// SelectQuery is a SELECT query to run after successfully executing the WriteQuery
 	SelectQuery         string
+	// ExpectedSelect is the expected result of the SelectQuery
 	ExpectedSelect      []sql.Row
+	// Bindings are the set of values to bind to the query
 	Bindings            map[string]sqlparser.Expr
+	// Skip indicates whether this test should be skipped
 	Skip                bool
+	// SkipServerEngine indicates whether this test should be skipped when the test is being run against a running 
+	// server (as opposed to the simpler Engine-based tests)   
 	SkipServerEngine    bool
+	// Dialect is the supported dialect for this test, which must match the dialect of the harness if specified.
+	// The script is skipped if the dialect doesn't match.
+	Dialect string
 }
 
 // GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what
