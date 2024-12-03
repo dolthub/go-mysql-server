@@ -8,7 +8,7 @@ var AutoincrementData = []SetupScript{{
 	`INSERT INTO auto_increment_tbl (c0) values
     (11),
     (22),
-    (3)`,
+    (33)`,
 }}
 
 var BigtableData = []SetupScript{{
