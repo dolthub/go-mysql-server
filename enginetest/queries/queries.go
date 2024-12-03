@@ -5346,7 +5346,7 @@ Select * from (
 	{
 		Query: "SELECT version()",
 		Expected: []sql.Row{
-			{string("8.0.11")},
+			{"8.0.23"},
 		},
 	},
 	{
@@ -5742,7 +5742,7 @@ Select * from (
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", "8.0.11"},
+			{"autocommit", 1}, {"version", "8.0.23"},
 		},
 	},
 	{
@@ -5782,7 +5782,7 @@ Select * from (
 	{
 		Query: "SHOW VARIABLES LIKE 'VERSION'",
 		Expected: []sql.Row{
-			{"version", "8.0.11"},
+			{"version", "8.0.23"},
 		},
 	},
 	{

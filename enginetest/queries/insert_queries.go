@@ -2702,6 +2702,28 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/8611
+		Name: "issue 8611: insert ignore on enum type column",
+		SetUpScript: []string{
+			"create table test_table (x int auto_increment primary key, y enum('hello','bye'))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into test_table values (1, 'invalid'), (2, 'comparative politics'), (3, null)",
+				ExpectedErr: types.ErrConvertingToEnum, // TODO: should be ErrDataTruncatedForColumn
+			},
+			{
+				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+				//ExpectedWarning: mysql.ERWarnDataTruncated, // TODO: incorrect code
+			},
+			{
+				Query:    "select * from test_table",
+				Expected: []sql.Row{{1, ""}, {2, "bye"}, {3, nil}},
+			},
+		},
+	},
 }
 
 var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
@@ -2955,6 +2977,23 @@ var InsertBrokenScripts = []ScriptTest{
 					{1, 1},
 					{2, 2},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/8617
+		Name: "INSERT INTO with ENUM NOT NULL",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 ENUM('a','b','c') NOT NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{{1, "a"}},
 			},
 		},
 	},

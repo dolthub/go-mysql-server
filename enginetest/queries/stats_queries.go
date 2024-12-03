@@ -35,7 +35,7 @@ var StatisticsQueries = []ScriptTest{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 24, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
+					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 24, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, nil),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, nil),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, nil),
@@ -60,7 +60,7 @@ var StatisticsQueries = []ScriptTest{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(40, 40, 1, 0, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
+					{"mydb", "t", "i", stats.NewStatistic(40, 40, 1, 0, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
 						stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(50)}, nil, nil),
 						stats.NewHistogramBucket(20, 20, 0, 1, sql.Row{float64(80)}, nil, nil),
 					}, sql.IndexClassDefault, nil),
@@ -89,13 +89,13 @@ var StatisticsQueries = []ScriptTest{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
+					{"mydb", "t", "i", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(1)}, nil, []sql.Row{}),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(2)}, nil, []sql.Row{}),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(3)}, nil, []sql.Row{}),
 					}, sql.IndexClassDefault, nil),
 					},
-					{"mydb", "t", "j", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "t", "j"), []string{"j"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
+					{"mydb", "t", "j", stats.NewStatistic(3, 3, 0, 48, time.Now(), sql.NewStatQualifier("mydb", "", "t", "j"), []string{"j"}, []sql.Type{types.Int64}, []sql.HistogramBucket{
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(4)}, nil, []sql.Row{}),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(5)}, nil, []sql.Row{}),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{int64(6)}, nil, []sql.Row{}),
@@ -117,7 +117,7 @@ var StatisticsQueries = []ScriptTest{
 				SkipResultCheckOnServerEngine: true, // the non-interface types are not identified over the wire result
 				Query:                         "SELECT * FROM information_schema.column_statistics",
 				Expected: []sql.Row{
-					{"mydb", "t", "i", stats.NewStatistic(4, 4, 0, 32, time.Now(), sql.NewStatQualifier("mydb", "t", "primary"), []string{"i"}, []sql.Type{types.Float64}, []sql.HistogramBucket{
+					{"mydb", "t", "i", stats.NewStatistic(4, 4, 0, 32, time.Now(), sql.NewStatQualifier("mydb", "", "t", "primary"), []string{"i"}, []sql.Type{types.Float64}, []sql.HistogramBucket{
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(1.25)}, nil, []sql.Row{}),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(7.5)}, nil, []sql.Row{}),
 						stats.NewHistogramBucket(1, 1, 0, 1, sql.Row{float64(10.5)}, nil, []sql.Row{}),

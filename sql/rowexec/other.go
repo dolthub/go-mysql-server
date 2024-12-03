@@ -333,6 +333,7 @@ func (b *BaseBuilder) buildDropHistogram(ctx *sql.Context, n *plan.DropHistogram
 
 	return &dropHistogramIter{
 		db:      n.Db(),
+		schema:  n.SchemaName(),
 		table:   n.Table(),
 		columns: n.Cols(),
 		prov:    n.StatsProvider(),

@@ -153,11 +153,13 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	defer c.mu.Unlock()
 
 	mut, ok := c.DbProvider.(sql.MutableDatabaseProvider)
-	if ok {
-		return mut.DropDatabase(ctx, dbName)
-	} else {
+	if !ok {
 		return sql.ErrImmutableDatabaseProvider.New()
 	}
+	if strings.EqualFold(dbName, "information_schema") || (c.MySQLDb.Enabled() && strings.EqualFold(dbName, "mysql")) {
+		return fmt.Errorf("unable to drop database: %s", dbName)
+	}
+	return mut.DropDatabase(ctx, dbName)
 }
 
 func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
