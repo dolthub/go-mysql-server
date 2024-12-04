@@ -16,7 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/types"
+"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -79,7 +80,7 @@ var emptySch = make(sql.Schema, 0)
 func (i *Into) Schema() sql.Schema {
 	// SELECT INTO does not return results directly (only through SQL vars or files),
 	// so it's result schema is always empty.
-	return emptySch
+	return types.OkResultSchema
 }
 
 func (i *Into) IsReadOnly() bool {

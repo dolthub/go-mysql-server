@@ -630,7 +630,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 			}
 			file.WriteString(n.LinesTerminatedBy)
 		}
-		return sql.RowsToRowIter(sql.Row{}), nil
+		return sql.RowsToRowIter(sql.Row{types.NewOkResult(len(rows))}), nil
 	}
 
 	rowNum := len(rows)
@@ -652,12 +652,12 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 				file.WriteString(fmt.Sprintf("%v", val))
 			}
 		}
-		return sql.RowsToRowIter(sql.Row{}), nil
+		return sql.RowsToRowIter(sql.Row{types.NewOkResult(rowNum)}), nil
 	}
 
 	if rowNum == 0 {
 		// a warning with error code 1329 occurs (No data), and make no change to variables
-		return sql.RowsToRowIter(sql.Row{}), nil
+		return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 	}
 	if len(rows[0]) != len(n.IntoVars) {
 		return nil, sql.ErrColumnNumberDoesNotMatch.New()
@@ -684,7 +684,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		}
 	}
 
-	return sql.RowsToRowIter(sql.Row{}), nil
+	return sql.RowsToRowIter(sql.Row{types.NewOkResult(1)}), nil
 }
 
 func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalProcedure, row sql.Row) (sql.RowIter, error) {
