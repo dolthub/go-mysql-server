@@ -129,6 +129,7 @@ var ScriptTests = []ScriptTest{
 	},
 	{
 		Name: "alter nil enum",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y enum ('a', 'b'));",
 			"insert into xy values (0, NULL),(1, 'b')",
@@ -1040,6 +1041,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "alter table out of range value error of column type change",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int primary key, i2 int, key(i2));",
 			"insert into t values (0,-1)",
@@ -1053,6 +1055,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "alter keyless table",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
 			"insert into t values (1, 'one', NULL);",
@@ -1138,6 +1141,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
 			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
@@ -1193,6 +1197,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
 		},
@@ -1275,10 +1280,12 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "REPLACE INTO test VALUES (1,7), (4,8), (5,9);",
+				Dialect: "mysql",
 				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
 				Query:    "SELECT * FROM test;",
+				Dialect: "mysql",
 				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
 			},
 			{
@@ -1563,6 +1570,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "UUIDs used in the wild.",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
 			"SET @binuuid = '0011223344556677'",
@@ -1616,6 +1624,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "Test cases on select into statement",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"SELECT * FROM (VALUES ROW(22,44,88)) AS t INTO @x,@y,@z",
 			"CREATE TABLE tab1 (id int primary key, v1 int)",
@@ -1724,6 +1733,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "last_insert_uuid() behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table varchar36 (pk varchar(36) primary key default (UUID()), i int);",
 			"create table char36 (pk char(36) primary key default (UUID()), i int);",
@@ -1996,6 +2006,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "last_insert_id() behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table a (x int primary key auto_increment, y int)",
 			"create table b (x int primary key)",
@@ -2067,6 +2078,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "last_insert_id(expr) behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table a (x int primary key auto_increment, y int)",
 		},
@@ -2103,6 +2115,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "last_insert_id(default) behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (pk int primary key auto_increment, i int default 0)",
 		},
@@ -2318,6 +2331,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "row_count() behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table b (x int primary key)",
 			"insert into b values (1), (2), (3), (4)",
@@ -2618,6 +2632,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "Group Concat Queries",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE x (pk int)",
 			"INSERT INTO x VALUES (1),(2),(3),(4),(NULL)",
@@ -2706,6 +2721,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "CONVERT USING still converts between incompatible character sets",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(200)) COLLATE=utf8mb4_0900_ai_ci;",
 			"INSERT INTO test VALUES (1, '63273াম'), (2, 'GHD30r'), (3, '8জ্রিয277'), (4, NULL);",
