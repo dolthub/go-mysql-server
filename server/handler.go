@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 	"net"
 	"regexp"
@@ -940,12 +941,50 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 
 	outVals := make([]sqltypes.Value, len(sch))
 	var err error
+	var buf []byte = make([]byte, 256)
 	if br, ok := row.(sql.BytesRow); ok {
+		if len(projs) == 0 {
+			for i, col := range sch {
+				val, err := br.GetBytes(i, col.Type, buf[:0])
+				buf = buf[len(val):]
+				if err != nil {
+					return nil, err
+				}
+				outVals[i] = sqltypes.MakeTrusted(col.Type.Type(), val)
+
+				//v := row.GetValue(i)
+				//cmpBuf, _ := col.Type.SQL(ctx, nil, v)
+				//fmt.Printf("exp: %s, actual: %s, equal: %d\n", cmpBuf, val, bytes.Compare(cmpBuf.ToBytes(), val))
+			}
+			return outVals, nil
+		}
+
 		for i, col := range sch {
-			buf, err := br.GetBytes(i, col.Type)
-			outVals[i] = sqltypes.MakeTrusted(col.Type.Type(), buf)
-			if err != nil {
-				return nil, err
+			e := projs[i]
+			switch e := e.(type) {
+			case *expression.GetField:
+				val, err := br.GetBytes(e.Index(), col.Type, buf[:0])
+				buf = buf[len(val):]
+				if err != nil {
+					return nil, err
+				}
+				outVals[i] = sqltypes.MakeTrusted(col.Type.Type(), val)
+				//v := row.GetValue(e.Index())
+				//cmpBuf, _ := col.Type.SQL(ctx, nil, v)
+				//fmt.Printf("exp: %s, actual: %s, equal: %d\n", cmpBuf, val, bytes.Compare(cmpBuf.ToBytes(), val))
+			default:
+				field, err := projs[i].Eval(ctx, row)
+				if err != nil {
+					return nil, err
+				}
+				if field == nil {
+					outVals[i] = sqltypes.NULL
+					continue
+				}
+				outVals[i], err = col.Type.SQL(ctx, nil, field)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 		return outVals, nil

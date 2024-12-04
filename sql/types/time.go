@@ -468,7 +468,9 @@ func (t Timespan) String() string {
 	if isNegative {
 		sign = "-"
 	}
+
 	if microseconds == 0 {
+
 		return fmt.Sprintf("%v%02d:%02d:%02d", sign, hours, minutes, seconds)
 	}
 	return fmt.Sprintf("%v%02d:%02d:%02d.%06d", sign, hours, minutes, seconds, microseconds)

@@ -38,7 +38,7 @@ type Row interface {
 }
 
 type BytesRow interface {
-	GetBytes(int, Type) ([]byte, error)
+	GetBytes(int, Type, []byte) ([]byte, error)
 }
 
 type SqlRow struct {
