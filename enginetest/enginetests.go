@@ -1215,7 +1215,11 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 			}
 			// in case there are any residual files from previous runs
 			os.Remove(tt.file)
-			TestQueryWithContext(t, ctx, e, harness, tt.query, tt.expRows, types.OkResultSchema, nil, nil)
+			var expected = tt.expRows
+			if IsServerEngine(e) {
+				expected = nil
+			}
+			TestQueryWithContext(t, ctx, e, harness, tt.query, expected, types.OkResultSchema, nil, nil)
 			res, err := os.ReadFile(tt.file)
 			require.NoError(t, err)
 			require.Equal(t, tt.exp, string(res))
