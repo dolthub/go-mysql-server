@@ -15,7 +15,6 @@
 package types
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"strconv"
@@ -263,7 +262,7 @@ func (t TimespanType_) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t TimespanType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -272,7 +271,7 @@ func (t TimespanType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltyp
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, ti.String())
+	val := AppendAndSliceBytes(dest, ti.Bytes())
 
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
@@ -463,15 +462,76 @@ func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8,
 
 // String returns the Timespan formatted as a string (such as for display purposes).
 func (t Timespan) String() string {
+	return string(t.Bytes())
+}
+
+func (t Timespan) Bytes() []byte {
 	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
-	sign := ""
+	ret := make([]byte, 1000)
+	i := 0
 	if isNegative {
-		sign = "-"
+		ret[0] = '-'
+		i++
 	}
-	if microseconds == 0 {
-		return fmt.Sprintf("%v%02d:%02d:%02d", sign, hours, minutes, seconds)
+
+	var tmpBuf []byte
+	// hours
+	if hours == 0 {
+		ret[i] = '0'
+		ret[i+1] = '0'
+		i += 2
+	} else if hours < 10 {
+		ret[i] = '0'
+		i++
+	} else {
+		tmpBuf = strconv.AppendInt(ret[i:i], int64(hours), 10)
+		i += len(tmpBuf)
 	}
-	return fmt.Sprintf("%v%02d:%02d:%02d.%06d", sign, hours, minutes, seconds, microseconds)
+	ret[i] = ':'
+	i++
+
+	if minutes == 0 {
+		ret[i] = '0'
+		ret[i+1] = '0'
+		i += 2
+	} else if minutes < 10 {
+		ret[i] = '0'
+		i++
+	} else {
+		tmpBuf = strconv.AppendInt(ret[i:i], int64(minutes), 10)
+		i += len(tmpBuf)
+	}
+	ret[i] = ':'
+	i++
+
+	if seconds == 0 {
+		ret[i] = '0'
+		ret[i+1] = '0'
+		i += 2
+	} else if seconds < 10 {
+		ret[i] = '0'
+		i++
+	} else {
+		tmpBuf = strconv.AppendInt(ret[i:i], int64(seconds), 10)
+		i += len(tmpBuf)
+	}
+	if microseconds > 0 {
+		ret[i] = '.'
+		i++
+		if microseconds == 0 {
+			ret[i] = '0'
+			ret[i+1] = '0'
+			i += 2
+		} else if microseconds < 10 {
+			ret[i] = '0'
+			i++
+		} else {
+			tmpBuf = strconv.AppendInt(ret[i:i], int64(microseconds), 10)
+			i += len(tmpBuf)
+		}
+	}
+
+	return ret[:i]
 }
 
 // AsMicroseconds returns the Timespan in microseconds.
