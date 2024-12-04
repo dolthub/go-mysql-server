@@ -615,9 +615,9 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 			err := sql.ErrInvalidAsOfExpression.New(v)
 			b.handleErr(err)
 		}
-	case *ast.Subquery:
-		b.handleErr(fmt.Errorf("invalid AS OF expression type"))
+	case *ast.ConvertExpr:
 	default:
+		b.handleErr(fmt.Errorf("invalid AS OF expression type"))
 	}
 	return b.buildScalar(b.newScope(), time)
 }
