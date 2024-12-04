@@ -349,6 +349,10 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
+	if s.b == nil {
+		return nil, fmt.Errorf("attempted to evaluate uninitialized subquery")
+	}
+
 	iter, err := s.b.Build(ctx, q, row)
 	if err != nil {
 		return nil, err
@@ -432,6 +436,10 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
 	if err != nil {
 		return false, err
+	}
+
+	if s.b == nil {
+		return false, fmt.Errorf("attempted to evaluate uninitialized subquery")
 	}
 
 	iter, err := s.b.Build(ctx, q, row)
