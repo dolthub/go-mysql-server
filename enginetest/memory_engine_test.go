@@ -197,20 +197,12 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "test script",
-			SetUpScript: []string{
-				"create table t (i tinytext unique);",
-				"insert into t values ('hello');",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:          "insert into t values ('hello');",
-					ExpectedErrStr: "asdf",
-				},
-			},
+			Name:        "test script",
+			SetUpScript: []string{},
+			Assertions:  []queries.ScriptTestAssertion{},
 		},
 	}
 
