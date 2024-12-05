@@ -1623,8 +1623,6 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// SELECT INTO has an empty result schema
-				// https://github.com/dolthub/dolt/issues/6105
 				Query:           `SELECT 1 INTO @abc`,
 				SkipResultCheckOnServerEngine: true,
 				Expected:        []sql.Row{{types.NewOkResult(1)}},
