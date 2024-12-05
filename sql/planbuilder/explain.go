@@ -29,6 +29,7 @@ func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *
 
 	describeOptions := sql.DescribeOptions{
 		Analyze: n.Analyze,
+		Plan:    n.Plan,
 	}
 
 	formatFlags := strings.Split(n.ExplainFormat, "_")
