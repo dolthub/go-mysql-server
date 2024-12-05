@@ -174,8 +174,8 @@ type ResultEvaluationHarness interface {
 
 type DialectHarness interface {
 	Harness
-	
-	// Dialect returns the dialect that the engine being tested supports. If this harness interface isn't implemented, 
+
+	// Dialect returns the dialect that the engine being tested supports. If this harness interface isn't implemented,
 	// the dialect "mysql" is used by engine tests.
 	Dialect() string
 }

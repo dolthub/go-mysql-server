@@ -88,7 +88,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 				t.Skip()
 			}
 
-			if !supportedDialect(harness,  script.Dialect) {
+			if !supportedDialect(harness, script.Dialect) {
 				t.Skip()
 			}
 		}
@@ -99,7 +99,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					t.Skip()
 				}
 			}
-			
+
 			ctx = ctx.WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
@@ -172,7 +172,7 @@ func skipAssertion(t *testing.T, harness Harness, assertion queries.ScriptTestAs
 	if assertion.Skip {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -1131,11 +1131,11 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			t.Skip()
 		}
 	}
-	
-	if !supportedDialect(harness,  tt.Dialect) {
+
+	if !supportedDialect(harness, tt.Dialect) {
 		t.Skip()
 	}
-	
+
 	ctx := NewContext(harness)
 	TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil, nil)
 	expectedSelect := tt.ExpectedSelect
@@ -1149,7 +1149,7 @@ func supportedDialect(harness Harness, dialect string) bool {
 	if dialect == "" {
 		return true
 	}
-	
+
 	harnessDialect := "mysql"
 	if hd, ok := harness.(DialectHarness); ok {
 		harnessDialect = hd.Dialect()

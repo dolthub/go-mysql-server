@@ -30,28 +30,28 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
 		ExpectedSelect:      []sql.Row{{nil, nil}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO keyless () VALUES ();",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
 		ExpectedSelect:      []sql.Row{{nil, nil}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '10.0');",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(10)}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '64.6');",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(65)}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', 999);",
@@ -70,7 +70,7 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (999, 'x');",
@@ -83,21 +83,21 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.Row{{int64(999)}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (999, _binary 'x');",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
 		ExpectedSelect:      []sql.Row{{"x"}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET i = 999, s = _binary 'x';",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
 		ExpectedSelect:      []sql.Row{{"x"}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (
@@ -483,7 +483,7 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt(new_i,new_s) ON DUPLICATE KEY UPDATE s=new_s",
@@ -504,21 +504,21 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.Row{{int64(1), "duplicate"}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'mar'), (2,'par') ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'tial')",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(4)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i IN (1,2) ORDER BY i",
 		ExpectedSelect:      []sql.Row{{int64(1), "martial"}, {int64(2), "partial"}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'maybe') ON DUPLICATE KEY UPDATE i=VALUES(i)+8000, s=VALUES(s)",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 8001",
 		ExpectedSelect:      []sql.Row{{int64(8001), "maybe"}},
-		Dialect: "mysql",
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44)",
@@ -930,7 +930,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert into sparse auto_increment table",
+		Name:    "insert into sparse auto_increment table",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
@@ -949,7 +949,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert negative values into auto_increment values",
+		Name:    "insert negative values into auto_increment values",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
@@ -998,7 +998,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert into auto_increment key/index column",
+		Name:    "insert into auto_increment key/index column",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto_no_primary (i int auto_increment, index(i))",
@@ -1014,7 +1014,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert into auto_increment with multiple key/index columns",
+		Name:    "insert into auto_increment with multiple key/index columns",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto_no_primary (i int auto_increment, j int, index(i))",
@@ -1030,7 +1030,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment table handles deletes",
+		Name:    "auto increment table handles deletes",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
@@ -1048,7 +1048,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "create auto_increment table with out-of-line primary key def",
+		Name:    "create auto_increment table with out-of-line primary key def",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			`create table auto (
@@ -1068,7 +1068,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "alter auto_increment value",
+		Name:    "alter auto_increment value",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			`create table auto (
@@ -1100,7 +1100,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "alter auto_increment value to float",
+		Name:    "alter auto_increment value to float",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			`create table auto (
@@ -1122,7 +1122,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on tinyint",
+		Name:    "auto increment on tinyint",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk tinyint primary key auto_increment)",
@@ -1138,7 +1138,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on smallint",
+		Name:    "auto increment on smallint",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk smallint primary key auto_increment)",
@@ -1154,7 +1154,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on mediumint",
+		Name:    "auto increment on mediumint",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk mediumint primary key auto_increment)",
@@ -1170,7 +1170,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on int",
+		Name:    "auto increment on int",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
@@ -1186,7 +1186,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on bigint",
+		Name:    "auto increment on bigint",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk bigint primary key auto_increment)",
@@ -1202,7 +1202,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on tinyint unsigned",
+		Name:    "auto increment on tinyint unsigned",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk tinyint unsigned primary key auto_increment)",
@@ -1218,7 +1218,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on smallint unsigned",
+		Name:    "auto increment on smallint unsigned",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk smallint unsigned primary key auto_increment)",
@@ -1234,7 +1234,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on mediumint unsigned",
+		Name:    "auto increment on mediumint unsigned",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk mediumint unsigned primary key auto_increment)",
@@ -1250,7 +1250,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on int unsigned",
+		Name:    "auto increment on int unsigned",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int unsigned primary key auto_increment)",
@@ -1266,7 +1266,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on bigint unsigned",
+		Name:    "auto increment on bigint unsigned",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk bigint unsigned primary key auto_increment)",
@@ -1282,7 +1282,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on float",
+		Name:    "auto increment on float",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk float primary key auto_increment)",
@@ -1298,7 +1298,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on double",
+		Name:    "auto increment on double",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk double primary key auto_increment)",
@@ -1314,7 +1314,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "sql_mode=NO_auto_value_ON_ZERO",
+		Name:    "sql_mode=NO_auto_value_ON_ZERO",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"set @old_sql_mode=@@sql_mode;",
@@ -1398,7 +1398,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "explicit DEFAULT",
+		Name:    "explicit DEFAULT",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t1(id int DEFAULT '2', dt datetime DEFAULT now());",
@@ -1496,7 +1496,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "Explicit default with column reference",
+		Name:    "Explicit default with column reference",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
@@ -1994,8 +1994,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "INSERT INTO ... SELECT works properly with ENUM",
-		Dialect: "mysql",		
+		Name:    "INSERT INTO ... SELECT works properly with ENUM",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 ENUM('a','b','c'));",
 		},
@@ -2011,7 +2011,7 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "INSERT INTO ... SELECT works properly with SET",
+		Name:    "INSERT INTO ... SELECT works properly with SET",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 SET('a','b','c'));",
@@ -2065,7 +2065,7 @@ var InsertScripts = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5411
-		Name: "Defaults with escaped strings",
+		Name:    "Defaults with escaped strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE escpe (
@@ -2114,7 +2114,7 @@ var InsertScripts = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5411
-		Name: "check constrains with escaped strings",
+		Name:    "check constrains with escaped strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE quoted ( id int NOT NULL AUTO_INCREMENT,
