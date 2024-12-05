@@ -84,7 +84,7 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 		return sql.RowsToRowIter(rows...), nil
 	}
 
-	dummyRow := sql.Row {
+	dummyRow := sql.Row{
 		1,        // id
 		"SELECT", // select_type
 		"NULL",   // table
@@ -96,7 +96,7 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 		"NULL",   // ref
 		"NULL",   // rows
 		"NULL",   // filtered
-		"",   // Extra
+		"",       // Extra
 	}
 	return sql.RowsToRowIter(dummyRow), nil
 }

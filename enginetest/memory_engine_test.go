@@ -200,16 +200,14 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test script",
+			Name: "test script",
 			SetUpScript: []string{
 				"create table t (i int);",
 			},
-			Assertions:  []queries.ScriptTestAssertion{
+			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select 1 into @a",
-					Expected: []sql.Row{
-
-					},
+					Query:    "select 1 into @a",
+					Expected: []sql.Row{},
 				},
 			},
 		},
