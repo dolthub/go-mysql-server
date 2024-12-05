@@ -1623,10 +1623,10 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           `SELECT 1 INTO @abc`,
+				Query:                         `SELECT 1 INTO @abc`,
 				SkipResultCheckOnServerEngine: true,
-				Expected:        []sql.Row{{types.NewOkResult(1)}},
-				ExpectedColumns: nil,
+				Expected:                      []sql.Row{{types.NewOkResult(1)}},
+				ExpectedColumns:               nil,
 			},
 			{
 				Query:    `SELECT @abc`,
