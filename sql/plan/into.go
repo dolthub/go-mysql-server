@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Into is a node to wrap the top-level node in a query plan so that any result will set user-defined or others
@@ -79,7 +80,7 @@ var emptySch = make(sql.Schema, 0)
 func (i *Into) Schema() sql.Schema {
 	// SELECT INTO does not return results directly (only through SQL vars or files),
 	// so it's result schema is always empty.
-	return emptySch
+	return types.OkResultSchema
 }
 
 func (i *Into) IsReadOnly() bool {

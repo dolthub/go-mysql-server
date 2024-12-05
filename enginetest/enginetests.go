@@ -1017,44 +1017,50 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	})
 
 	tests := []struct {
-		file  string
-		query string
-		exp   string
-		err   *errors.Kind
-		skip  bool
+		file    string
+		query   string
+		exp     string
+		expRows []sql.Row
+		err     *errors.Kind
+		skip    bool
 	}{
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
 				"3\tthird row\n",
 		},
 		{
-			file:  "dumpfile.txt",
-			query: "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
-			exp:   "1first row",
+			file:    "dumpfile.txt",
+			query:   "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(1)}},
+			exp:     "1first row",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row\n" +
 				"2,second row\n" +
 				"3,third row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1$$first row\n" +
 				"2$$second row\n" +
 				"3$$third row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,\"first row\"\n" +
 				"2,\"second row\"\n" +
@@ -1071,56 +1077,63 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 			err:   sql.ErrUnexpectedSeparator,
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"\"1\",\"first row\"\n" +
 				"\"2\",\"second row\"\n" +
 				"\"3\",\"third row\"\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row;" +
 				"2,second row;" +
 				"3,third row;",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,fi\\rst \\rowr" +
 				"2,second \\rowr" +
 				"3,thi\\rd \\rowr",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"r1,first row\n" +
 				"r2,second row\n" +
 				"r3,third row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
 				"3\tthird row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row" +
 				"2,second row" +
 				"3,third row",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "1\t\\N\t\\N\t\\N\n" +
 				"2\t2\t1\t\\N\n" +
 				"3\t\\N\t0\t\\N\n" +
@@ -1129,8 +1142,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"6\t6\t0\t6\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "\"1\",\\N,\\N,\\N\n" +
 				"\"2\",\"2\",\"1\",\\N\n" +
 				"\"3\",\\N,\"0\",\\N\n" +
@@ -1139,8 +1153,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"\"6\",\"6\",\"0\",\"6\"\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "1,$N,$N,$N\n" +
 				"2,2,1,$N\n" +
 				"3,$N,0,$N\n" +
@@ -1149,8 +1164,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"6,6,0,6\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "1,NULL,NULL,NULL\n" +
 				"2,2,1,NULL\n" +
 				"3,NULL,0,NULL\n" +
@@ -1159,8 +1175,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"6,6,0,6\n",
 		},
 		{
-			file:  "./subdir/outfile.txt",
-			query: "select * from mytable into outfile './subdir/outfile.txt';",
+			file:    "./subdir/outfile.txt",
+			query:   "select * from mytable into outfile './subdir/outfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
@@ -1198,7 +1215,11 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 			}
 			// in case there are any residual files from previous runs
 			os.Remove(tt.file)
-			TestQueryWithContext(t, ctx, e, harness, tt.query, nil, nil, nil, nil)
+			var expected = tt.expRows
+			if IsServerEngine(e) {
+				expected = nil
+			}
+			TestQueryWithContext(t, ctx, e, harness, tt.query, expected, types.OkResultSchema, nil, nil)
 			res, err := os.ReadFile(tt.file)
 			require.NoError(t, err)
 			require.Equal(t, tt.exp, string(res))
