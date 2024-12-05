@@ -5090,7 +5090,6 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "Querying existing view that references non-existing table",
-		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE a(id int primary key, col1 int);",
 			"CREATE VIEW b AS SELECT * FROM a;",
@@ -5354,7 +5353,7 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Complex Filter Index Scan",
+		Name: "Complex Filter Index Scan #2",
 		SetUpScript: []string{
 			"create table t (pk int primary key, v1 int, v2 int, v3 int, v4 int);",
 			"create index v_idx on t (v1, v2, v3, v4);",
@@ -5370,7 +5369,7 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Complex Filter Index Scan",
+		Name: "Complex Filter Index Scan #3",
 		SetUpScript: []string{
 			"create table t (pk integer primary key, col0 integer, col1 float);",
 			"create index idx on t (col0, col1);",
@@ -5984,6 +5983,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "floats in tuple are properly hashed",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (b bool);",
 			"insert into t values (false);",
@@ -6020,6 +6020,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "strings in tuple are properly hashed",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (v varchar(100));",
 			"insert into t values (false);",
@@ -6111,6 +6112,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "resolve foreign key on indexed update",
+		Dialect: "mysql", // no way to disable foreign keys in doltgres yet
 		SetUpScript: []string{
 			"set foreign_key_checks=0;",
 			"create table parent (i int primary key);",
@@ -6128,6 +6130,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "between type conversion",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t0(c0 bool);",
 			"create table t1(c1 bool);",
@@ -6182,6 +6185,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "bool and string",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 BOOL, PRIMARY KEY(c0));",
 			"INSERT INTO t0 (c0) VALUES (true);",
@@ -6212,6 +6216,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "bool and int",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 INTEGER, PRIMARY KEY(c0));",
 			"INSERT INTO t0 (c0) VALUES (true);",
@@ -6315,6 +6320,7 @@ CREATE TABLE tab3 (
 	},
 	{
 		Name: "range query convert int to string zero value",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE t0(c0 VARCHAR(500));`,
 			`INSERT INTO t0(c0) VALUES ('a');`,
@@ -6951,7 +6957,6 @@ where
 					{"12345", "1234567890"},
 				},
 			},
-
 			{
 				Query:          "insert into t2 (a, b) values ('1234567890', '12345')",
 				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
@@ -7015,6 +7020,7 @@ where
 	},
 	{
 		Name: "test show create database",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create database def_db;",
 			"create database latin1_db character set latin1;",
@@ -7050,6 +7056,7 @@ where
 	},
 	{
 		Name: "test create database with modified server variables",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"set @@session.character_set_server = 'latin1';",
 			"create database latin1_db;",
@@ -7078,6 +7085,7 @@ where
 	},
 	{
 		Name: "test index naming",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int);",
 			"alter table t add index (i);",
@@ -7120,6 +7128,7 @@ where
 	},
 	{
 		Name: "test parenthesized tables",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (i int);",
 			"insert into t1 values (1), (2), (3);",
@@ -7222,6 +7231,7 @@ where
 	},
 	{
 		Name: "unix_timestamp script tests",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"set time_zone = 'UTC';",
 			"create table t1 (i int primary key, v varchar(100));",
@@ -7252,6 +7262,7 @@ where
 	},
 	{
 		Name: "name_const queries",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
 			"insert into t values (1), (2), (3);",
