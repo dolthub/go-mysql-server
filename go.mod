@@ -6,7 +6,7 @@ require (
 	github.com/dolthub/go-icu-regex v0.0.0-20240916130659-0118adc6b662
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20241126223332-cd8f828f26ac
+	github.com/dolthub/vitess v0.0.0-20241206185536-814752c66695
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
 	github.com/gocraft/dbr/v2 v2.7.2
@@ -43,4 +43,6 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 )
 
-go 1.22.2
+go 1.23.3
+
+toolchain go1.23.4
