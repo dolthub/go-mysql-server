@@ -63,6 +63,8 @@ var (
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 	TimestampDatetimeLayouts = append(DateOnlyLayouts, []string{
+		time.RFC3339,
+		time.RFC3339Nano,
 		"2006-01-02 15:4",
 		"2006-01-02 15:04",
 		"2006-01-02 15:04:",
@@ -70,8 +72,6 @@ var (
 		"2006-01-02 15:04:05.",
 		"2006-01-02 15:04:05.999999",
 		"2006-1-2 15:4:5.999999",
-		time.RFC3339,
-		time.RFC3339Nano,
 		"2006-01-02T15:04:05",
 		"20060102150405",
 		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
@@ -235,6 +235,9 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		parsed := false
 		for _, fmt := range TimestampDatetimeLayouts {
+			if len(fmt) < len(value) {
+				continue
+			}
 			if t, err := time.Parse(fmt, value); err == nil {
 				res = t.UTC()
 				parsed = true

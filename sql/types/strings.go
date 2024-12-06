@@ -413,7 +413,9 @@ func ConvertToBytes(v interface{}, t sql.StringType, dest []byte) ([]byte, error
 				// TODO: this should count the string's length properly according to the character set
 				// convert 'val' string to rune to count the character length, not byte length
 				if int64(len(val)) > st.maxCharLength {
-					return nil, ErrLengthBeyondLimit.New(val, t.String())
+					if int64(len([]rune(string(val)))) > st.maxCharLength {
+						return nil, ErrLengthBeyondLimit.New(val, t.String())
+					}
 				}
 			}
 		}
@@ -520,6 +522,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.NULL, nil
 	}
 
+	start := len(dest)
 	var val []byte
 	if IsBinaryType(t) {
 		v, err = ConvertToBytes(v, t, dest)
@@ -529,17 +532,62 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		val = AppendAndSliceBytes(dest, v.([]byte))
 	} else {
 		var valueBytes []byte
-		if json, ok := v.(JSONBytes); ok {
-			valueBytes, err = json.GetBytes()
+		switch v := v.(type) {
+		case JSONBytes:
+			valueBytes, err = v.GetBytes()
 			if err != nil {
 				return sqltypes.Value{}, err
 			}
-		} else {
-			valueBytes, err = ConvertToBytes(v, t, nil)
+		case []byte:
+			valueBytes = v
+		case string:
+			valueBytes = []byte(v)
+		case int, int8, int16, int32, int64:
+			num, _, err := convertToInt64(Int64.(NumberTypeImpl_), v)
 			if err != nil {
 				return sqltypes.Value{}, err
+			}
+			valueBytes = strconv.AppendInt(dest, num, 10)
+		case uint, uint8, uint16, uint32, uint64:
+			num, _, err := convertToUint64(Int64.(NumberTypeImpl_), v)
+			if err != nil {
+				return sqltypes.Value{}, err
+			}
+			valueBytes = strconv.AppendUint(dest, num, 10)
+		case bool:
+			if v {
+				valueBytes = append(dest, '1')
+			} else {
+				valueBytes = append(dest, '0')
+			}
+		case float64:
+			valueBytes = strconv.AppendFloat(dest, v, 'f', -1, 64)
+			if valueBytes[start] == '-' {
+				valueBytes = valueBytes[start+1:]
+			}
+		case float32:
+			valueBytes = strconv.AppendFloat(dest, float64(v), 'f', -1, 32)
+			if valueBytes[start] == '-' {
+				valueBytes = valueBytes[start+1:]
+			}
+		default:
+			valueBytes, err = ConvertToBytes(v, t, dest)
+		}
+		if t.baseType == sqltypes.Binary {
+			val = append(val, bytes.Repeat([]byte{0}, int(t.maxCharLength)-len(val))...)
+		}
+		if !IsBinaryType(t) && !utf8.Valid(valueBytes) {
+			charset := t.CharacterSet()
+			if charset == sql.CharacterSet_utf8mb4 {
+				return sqltypes.Value{}, ErrBadCharsetString.New(charset.String(), valueBytes)
+			} else {
+				var ok bool
+				if valueBytes, ok = t.CharacterSet().Encoder().Decode(valueBytes); !ok {
+					return sqltypes.Value{}, ErrBadCharsetString.New(charset.String(), valueBytes)
+				}
 			}
 		}
+
 		resultCharset := ctx.GetCharacterSetResults()
 		if resultCharset == sql.CharacterSet_Unspecified || resultCharset == sql.CharacterSet_binary {
 			resultCharset = t.collation.CharacterSet()
