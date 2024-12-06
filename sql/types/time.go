@@ -474,64 +474,37 @@ func (t Timespan) Bytes() []byte {
 		i++
 	}
 
-	var tmpBuf []byte
-	// hours
-	if hours == 0 {
-		ret[i] = '0'
-		ret[i+1] = '0'
-		i += 2
-	} else if hours < 10 {
-		ret[i] = '0'
-		i++
-	} else {
-		tmpBuf = strconv.AppendInt(ret[i:i], int64(hours), 10)
-		i += len(tmpBuf)
-	}
+	i = printDigit(int64(hours), 2, ret, i)
 	ret[i] = ':'
 	i++
-
-	if minutes == 0 {
-		ret[i] = '0'
-		ret[i+1] = '0'
-		i += 2
-	} else if minutes < 10 {
-		ret[i] = '0'
-		i++
-	} else {
-		tmpBuf = strconv.AppendInt(ret[i:i], int64(minutes), 10)
-		i += len(tmpBuf)
-	}
+	i = printDigit(int64(minutes), 2, ret, i)
 	ret[i] = ':'
 	i++
-
-	if seconds == 0 {
-		ret[i] = '0'
-		ret[i+1] = '0'
-		i += 2
-	} else if seconds < 10 {
-		ret[i] = '0'
-		i++
-	} else {
-		tmpBuf = strconv.AppendInt(ret[i:i], int64(seconds), 10)
-		i += len(tmpBuf)
-	}
+	i = printDigit(int64(seconds), 2, ret, i)
 	if microseconds > 0 {
 		ret[i] = '.'
 		i++
-		if microseconds == 0 {
-			ret[i] = '0'
-			ret[i+1] = '0'
-			i += 2
-		} else if microseconds < 10 {
-			ret[i] = '0'
-			i++
-		} else {
-			tmpBuf = strconv.AppendInt(ret[i:i], int64(microseconds), 10)
-			i += len(tmpBuf)
-		}
+		i = printDigit(int64(microseconds), 6, ret, i)
 	}
 
 	return ret[:i]
+}
+
+func printDigit(v int64, extend int, buf []byte, i int) int {
+	cmp := int64(1)
+	for _ = range extend - 1 {
+		cmp *= 10
+	}
+	for cmp > 0 && v < cmp {
+		buf[i] = '0'
+		i++
+		cmp /= 10
+	}
+	if v == 0 {
+		return i
+	}
+	tmpBuf := strconv.AppendInt(buf[i:i], v, 10)
+	return i + len(tmpBuf)
 }
 
 // AsMicroseconds returns the Timespan in microseconds.
