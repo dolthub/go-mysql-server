@@ -120,7 +120,8 @@ func TestJoinOps(t *testing.T) {
 }
 
 func TestJoinStats(t *testing.T) {
-	harness := enginetest.NewDefaultMemoryHarness()
+	// We keep join stats in the session, so we need to retain the session after setup
+	harness := enginetest.NewDefaultMemoryHarness().RetainSessionAfterSetup()
 	if harness.IsUsingServer() {
 		t.Skip("join stats don't work with bindvars")
 	}
@@ -457,7 +458,7 @@ func TestTpchQueryPlans(t *testing.T) {
 
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer).RetainSessionAfterSetup()
 			enginetest.TestTpchPlans(t, harness)
 		})
 	}

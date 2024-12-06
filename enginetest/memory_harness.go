@@ -47,6 +47,7 @@ type MemoryHarness struct {
 	skippedQueries            map[string]struct{}
 	session                   sql.Session
 	retainSession             bool
+	retainSessionAfterSetup   bool
 	setupData                 []setup.SetupScript
 	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 	server                    bool
@@ -96,6 +97,11 @@ func NewReadOnlyMemoryHarness() *MemoryHarness {
 	h := NewDefaultMemoryHarness()
 	h.readonly = true
 	return h
+}
+
+func (m MemoryHarness) RetainSessionAfterSetup() *MemoryHarness {
+	m.retainSessionAfterSetup = true
+	return &m
 }
 
 func (m *MemoryHarness) SessionBuilder() server.SessionBuilder {
@@ -189,6 +195,11 @@ func (m *MemoryHarness) NewEngine(t *testing.T) (QueryEngine, error) {
 
 	if m.server {
 		return NewServerQueryEngine(t, engine, m.SessionBuilder())
+	}
+
+	// reset the session to clear any session state that may have been set during engine creation
+	if !m.retainSessionAfterSetup {
+		m.session = nil
 	}
 
 	return engine, nil
