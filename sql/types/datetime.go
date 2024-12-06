@@ -373,42 +373,42 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, err := ConvertToTime(v, t)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
 	vt := v.(time.Time)
 
 	var typ query.Type
-	var val string
+	var val []byte
 
 	switch t.baseType {
 	case sqltypes.Date:
 		typ = sqltypes.Date
 		if vt.Equal(zeroTime) {
-			val = vt.Format(ZeroDateStr)
+			val = vt.AppendFormat(dest, ZeroDateStr)
 		} else {
-			val = vt.Format(sql.DateLayout)
+			val = vt.AppendFormat(dest, sql.DateLayout)
 		}
 	case sqltypes.Datetime:
 		typ = sqltypes.Datetime
 		if vt.Equal(zeroTime) {
-			val = vt.Format(ZeroTimestampDatetimeStr)
+			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
 		} else {
-			val = vt.Format(sql.TimestampDatetimeLayout)
+			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
 		}
 	case sqltypes.Timestamp:
 		typ = sqltypes.Timestamp
 		if vt.Equal(zeroTime) {
-			val = vt.Format(ZeroTimestampDatetimeStr)
+			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
 		} else {
-			val = vt.Format(sql.TimestampDatetimeLayout)
+			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
 		}
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
 
-	valBytes := AppendAndSliceString(dest, val)
+	valBytes := AppendAndSliceBytes(dest, val)
 
 	return sqltypes.MakeTrusted(typ, valBytes), nil
 }
