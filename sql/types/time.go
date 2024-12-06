@@ -467,30 +467,35 @@ func (t Timespan) String() string {
 
 func (t Timespan) Bytes() []byte {
 	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
-	ret := make([]byte, 1000)
+	sz := 10
+	if microseconds > 0 {
+		sz += 7
+	}
+	ret := make([]byte, sz)
 	i := 0
 	if isNegative {
 		ret[0] = '-'
 		i++
 	}
 
-	i = printDigit(int64(hours), 2, ret, i)
+	i = appendDigit(int64(hours), 2, ret, i)
 	ret[i] = ':'
 	i++
-	i = printDigit(int64(minutes), 2, ret, i)
+	i = appendDigit(int64(minutes), 2, ret, i)
 	ret[i] = ':'
 	i++
-	i = printDigit(int64(seconds), 2, ret, i)
+	i = appendDigit(int64(seconds), 2, ret, i)
 	if microseconds > 0 {
 		ret[i] = '.'
 		i++
-		i = printDigit(int64(microseconds), 6, ret, i)
+		i = appendDigit(int64(microseconds), 6, ret, i)
 	}
 
 	return ret[:i]
 }
 
-func printDigit(v int64, extend int, buf []byte, i int) int {
+// appendDigit format prints 0-entended integer into buffer
+func appendDigit(v int64, extend int, buf []byte, i int) int {
 	cmp := int64(1)
 	for _ = range extend - 1 {
 		cmp *= 10
