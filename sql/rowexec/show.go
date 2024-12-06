@@ -84,6 +84,7 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 		return sql.RowsToRowIter(rows...), nil
 	}
 
+	ctx.Warn(0, "EXPLAIN Output is currently a placeholder; use EXPLAIN PLAN for old behavior")
 	dummyRow := sql.Row{
 		1,        // id
 		"SELECT", // select_type
