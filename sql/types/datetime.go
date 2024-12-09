@@ -62,7 +62,7 @@ var (
 	// versions of common cases and dates that use non common separators.
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
-	TimestampDatetimeLayouts = append(DateOnlyLayouts, []string{
+	TimestampDatetimeLayouts = append([]string{
 		time.RFC3339,
 		time.RFC3339Nano,
 		"2006-01-02 15:4",
@@ -75,7 +75,7 @@ var (
 		"2006-01-02T15:04:05",
 		"20060102150405",
 		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
-	}...)
+	}, DateOnlyLayouts...)
 
 	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
 	zeroTime = time.Unix(-62167219200, 0).UTC()
@@ -233,17 +233,8 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 			return zeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
-		parsed := false
-		for _, fmt := range TimestampDatetimeLayouts {
-			if len(fmt) < len(value) {
-				continue
-			}
-			if t, err := time.Parse(fmt, value); err == nil {
-				res = t.UTC()
-				parsed = true
-				break
-			}
-		}
+		var parsed bool
+		res, parsed = parseDatetime(value)
 		if !parsed {
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
@@ -340,6 +331,15 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	return res, nil
 }
 
+func parseDatetime(value string) (time.Time, bool) {
+	for _, fmt := range TimestampDatetimeLayouts {
+		if t, err := time.Parse(fmt, value); err == nil {
+			return t.UTC(), true
+		}
+	}
+	return time.Time{}, false
+}
+
 func (t datetimeType) MustConvert(v interface{}) interface{} {
 	value, _, err := t.Convert(v)
 	if err != nil {
@@ -376,15 +376,15 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.NULL, nil
 	}
 
-	v, err := ConvertToTime(v, t)
+	vt, err := ConvertToTime(v, t)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	vt := v.(time.Time)
 
 	var typ query.Type
 	var val []byte
 
+	start := len(dest)
 	switch t.baseType {
 	case sqltypes.Date:
 		typ = sqltypes.Date
@@ -408,10 +408,11 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
 		}
 	default:
-		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
+		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 
-	valBytes := AppendAndSliceBytes(dest, val)
+	//valBytes := AppendAndSliceBytes(dest, val)
+	valBytes := val[start:]
 
 	return sqltypes.MakeTrusted(typ, valBytes), nil
 }

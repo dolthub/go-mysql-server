@@ -271,9 +271,9 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceBytes(dest, ti.Bytes())
+	//val := AppendAndSliceBytes(dest, ti.Bytes())
 
-	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
+	return sqltypes.MakeTrusted(sqltypes.Time, ti.Bytes()), nil
 }
 
 // String implements Type interface.

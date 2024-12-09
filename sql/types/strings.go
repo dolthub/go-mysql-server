@@ -338,12 +338,12 @@ func ConvertToBytes(v interface{}, t sql.StringType, dest []byte) ([]byte, error
 		}
 	case float64:
 		val = strconv.AppendFloat(dest, s, 'f', -1, 64)
-		if val[start] == '-' {
+		if len(val) == 2 && val[start] == '-' && val[start+1] == '0' {
 			val = val[start+1:]
 		}
 	case float32:
 		val = strconv.AppendFloat(dest, float64(s), 'f', -1, 32)
-		if val[start] == '-' {
+		if len(val) == 2 && val[start] == '-' && val[start+1] == '0' {
 			val = val[start+1:]
 		}
 	case int:

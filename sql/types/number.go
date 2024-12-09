@@ -565,10 +565,6 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 		return sqltypes.NULL, nil
 	}
 
-	if ti, ok := v.(time.Time); ok {
-		v = ti.UTC().Unix()
-	}
-
 	var err error
 	if jv, ok := v.(sql.JSONWrapper); ok {
 		v, err = jv.ToInterface()
@@ -948,6 +944,8 @@ func (t NumberTypeImpl_) DisplayWidth() int {
 
 func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
+	case time.Time:
+		return v.UTC().Unix(), sql.InRange, nil
 	case int:
 		return int64(v), sql.InRange, nil
 	case int8:
@@ -1118,6 +1116,8 @@ func convertValueToUint64(t NumberTypeImpl_, v sql.Value) (uint64, error) {
 
 func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
+	case time.Time:
+		return uint64(v.UTC().Unix()), sql.InRange, nil
 	case int:
 		if v < 0 {
 			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
@@ -1504,6 +1504,8 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 
 func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	switch v := v.(type) {
+	case time.Time:
+		return float64(v.UTC().Unix()), nil
 	case int:
 		return float64(v), nil
 	case int8:
