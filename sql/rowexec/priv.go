@@ -415,7 +415,7 @@ func (b *BaseBuilder) buildCreateRole(ctx *sql.Context, n *plan.CreateRole, row 
 			Host:                userPk.Host,
 			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
 			Plugin:              "mysql_native_password",
-			Password:            "",
+			AuthString:          "",
 			PasswordLastChanged: time.Now().UTC(),
 			Locked:              true,
 			Attributes:          nil,

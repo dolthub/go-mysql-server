@@ -169,7 +169,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		host := b.CreateString(user.Host)
 		privilegeSet := serializePrivilegeSet(b, &user.PrivilegeSet)
 		plugin := b.CreateString(user.Plugin)
-		password := b.CreateString(user.Password)
+		authString := b.CreateString(user.AuthString)
 		attributes := serializeAttributes(b, user.Attributes)
 		identity := b.CreateString(user.Identity)
 
@@ -178,7 +178,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		serial.UserAddHost(b, host)
 		serial.UserAddPrivilegeSet(b, privilegeSet)
 		serial.UserAddPlugin(b, plugin)
-		serial.UserAddPassword(b, password)
+		serial.UserAddPassword(b, authString)
 		serial.UserAddPasswordLastChanged(b, user.PasswordLastChanged.Unix())
 		serial.UserAddLocked(b, user.Locked)
 		serial.UserAddAttributes(b, attributes)

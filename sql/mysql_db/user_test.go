@@ -34,7 +34,7 @@ func TestUserJson(t *testing.T) {
 		Host:                "localhost",
 		PrivilegeSet:        NewPrivilegeSet(),
 		Plugin:              "mysql_native_password",
-		Password:            "*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19",
+		AuthString:          "*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19",
 		PasswordLastChanged: time.Unix(184301, 0),
 		Locked:              false,
 		Attributes:          nil,
