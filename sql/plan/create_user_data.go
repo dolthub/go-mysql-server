@@ -19,6 +19,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // UserName represents either a user or role name.
@@ -47,8 +49,9 @@ func (un *UserName) String(quote string) string {
 type Authentication interface {
 	// Plugin returns the name of the plugin that this authentication represents.
 	Plugin() string
-	// Password returns the value to insert into the database as the password.
-	Password() string
+	// AuthString returns the authentication string that encodes the password
+	// in an obscured or hashed form specific to an auth plugin's protocol.
+	AuthString() (string, error)
 }
 
 // AuthenticatedUser represents a user with the relevant methods of authentication.
@@ -89,6 +92,55 @@ type PasswordOptions struct {
 	LockTime       *int64
 }
 
+// CachingSha2PasswordAuthentication implements the Authentication interface for the
+// caching_sha2_password auth plugin.
+type CachingSha2PasswordAuthentication struct {
+	password                 string
+	authorizationStringBytes []byte
+}
+
+var _ Authentication = (*CachingSha2PasswordAuthentication)(nil)
+
+// NewCachingSha2PasswordAuthentication creates a new CachingSha2PasswordAuthentication
+// instance that will obscure the specified |password| when the AuthString() method is called.
+func NewCachingSha2PasswordAuthentication(password string) Authentication {
+	return CachingSha2PasswordAuthentication{password: password}
+}
+
+// Plugin implements the Authentication interface.
+func (a CachingSha2PasswordAuthentication) Plugin() string {
+	return string(mysql.CachingSha2Password)
+}
+
+// AuthString implements the Authentication interface.
+func (a CachingSha2PasswordAuthentication) AuthString() (string, error) {
+	// We cache the computed authorization data, since it's expensive to compute
+	// and we must return the same authorization data on multiple calls, not
+	// generate new auth data with a new salt.
+	if a.authorizationStringBytes != nil {
+		return string(a.authorizationStringBytes), nil
+	}
+
+	// If there is no password, caching_sha2_password uses an empty auth string
+	if a.password == "" {
+		return "", nil
+	}
+
+	salt, err := mysql.NewSalt()
+	if err != nil {
+		return "", err
+	}
+
+	authorizationStringBytes, err := mysql.SerializeCachingSha2PasswordAuthString(
+		a.password, salt, mysql.DefaultCachingSha2PasswordHashIterations)
+	if err != nil {
+		return "", err
+	}
+	a.authorizationStringBytes = authorizationStringBytes
+
+	return string(a.authorizationStringBytes), nil
+}
+
 // AuthenticationMysqlNativePassword is an authentication type that represents "mysql_native_password".
 type AuthenticationMysqlNativePassword string
 
@@ -96,13 +148,13 @@ var _ Authentication = AuthenticationMysqlNativePassword("")
 
 // Plugin implements the interface Authentication.
 func (a AuthenticationMysqlNativePassword) Plugin() string {
-	return "mysql_native_password"
+	return string(mysql.MysqlNativePassword)
 }
 
-// Password implements the interface Authentication.
-func (a AuthenticationMysqlNativePassword) Password() string {
+// AuthString implements the interface Authentication.
+func (a AuthenticationMysqlNativePassword) AuthString() (string, error) {
 	if len(a) == 0 {
-		return ""
+		return "", nil
 	}
 	// native = sha1(sha1(password))
 	hash := sha1.New()
@@ -111,7 +163,7 @@ func (a AuthenticationMysqlNativePassword) Password() string {
 	hash.Reset()
 	hash.Write(s1)
 	s2 := hash.Sum(nil)
-	return "*" + strings.ToUpper(hex.EncodeToString(s2))
+	return "*" + strings.ToUpper(hex.EncodeToString(s2)), nil
 }
 
 // NewDefaultAuthentication returns the given password with the default
@@ -137,9 +189,10 @@ func (a AuthenticationOther) Plugin() string {
 	return a.plugin
 }
 
-func (a AuthenticationOther) Password() string {
+// AuthString implements the interface Authentication.
+func (a AuthenticationOther) AuthString() (string, error) {
 	if a.password == "" {
-		return a.identity
+		return a.identity, nil
 	}
-	return string(a.password)
+	return a.password, nil
 }

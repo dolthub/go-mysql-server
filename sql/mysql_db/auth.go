@@ -27,6 +27,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// DefaultAuthMethod specifies the MySQL auth protocol (e.g. mysql_native_password,
+// caching_sha2_password) that is used by default. When the auth server advertises
+// what auth protocol it prefers, as part of the auth handshake, it is controlled
+// by this constant. When a new user is created, if no auth plugin is specified, this
+// auth method will be used.
+const DefaultAuthMethod = mysql.MysqlNativePassword
+
 // authServer implements the mysql.AuthServer interface. It exposes configured AuthMethod implementations
 // that the auth framework in Vitess uses to negotiate authentication with a client. By default, authServer
 // configures support for the mysql_native_password auth plugin, as well as an extensible auth method, built
@@ -42,10 +49,10 @@ var _ mysql.AuthServer = (*authServer)(nil)
 // mysql_native_password support, as well as an extensible auth method, built on the mysql_clear_password auth
 // method, that allows integrators to extend authentication to allow additional schemes.
 func newAuthServer(db *MySQLDb) *authServer {
-	// The native password auth method allows auth over the mysql_native_password protocol
+	// mysql_native_password auth support
 	nativePasswordAuthMethod := mysql.NewMysqlNativeAuthMethod(
 		&nativePasswordHashStorage{db: db},
-		&nativePasswordUserValidator{db: db})
+		newUserValidator(db, mysql.MysqlNativePassword))
 
 	// TODO: Add CachingSha2Password AuthMethod
 
@@ -67,7 +74,7 @@ func (as *authServer) AuthMethods() []mysql.AuthMethod {
 
 // DefaultAuthMethodDescription implements the mysql.AuthServer interface.
 func (db *authServer) DefaultAuthMethodDescription() mysql.AuthMethodDescription {
-	return mysql.MysqlNativePassword
+	return DefaultAuthMethod
 }
 
 // extendedAuthPlainTextStorage implements the mysql.PlainTextStorage interface and plugs into
@@ -205,8 +212,8 @@ func (nphs *nativePasswordHashStorage) UserEntryWithHash(_ []*x509.Certificate, 
 	if userEntry == nil || userEntry.Locked {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
-	if len(userEntry.Password) > 0 {
-		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
+	if len(userEntry.AuthString) > 0 {
+		if !validateMysqlNativePassword(authResponse, salt, userEntry.AuthString) {
 			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 		}
 	} else if len(authResponse) > 0 {
@@ -218,18 +225,32 @@ func (nphs *nativePasswordHashStorage) UserEntryWithHash(_ []*x509.Certificate, 
 	return sql.MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
 }
 
-// nativePasswordUserValidator implements the mysql.UserValidator interface and plugs into the mysql_native_password
-// auth method in Vitess. This implementation is called by the native password auth method to determine if a specific
-// user and remote address can connect to this server via the mysql_native_password auth protocol.
-type nativePasswordUserValidator struct {
+// userValidator implements the mysql.UserValidator interface. It looks up a user and host from the
+// associated mysql database (|db|) and validates that a user entry exists and that it is configured
+// for the specified authentication plugin (|authMethod|).
+type userValidator struct {
+	// db is the mysql database that contains user information
 	db *MySQLDb
+
+	// authMethod is the name of the auth plugin for which this validator will
+	// validate users.
+	authMethod mysql.AuthMethodDescription
 }
 
-var _ mysql.UserValidator = (*nativePasswordUserValidator)(nil)
+var _ mysql.UserValidator = (*userValidator)(nil)
+
+// newUserValidator creates a new userValidator instance, configured to use |db| to look up user
+// entries and validate that they have the specified auth plugin (|authMethod|) configured.
+func newUserValidator(db *MySQLDb, authMethod mysql.AuthMethodDescription) *userValidator {
+	return &userValidator{
+		db:         db,
+		authMethod: authMethod,
+	}
+}
 
 // HandleUser implements the mysql.UserValidator interface and verifies if the mysql_native_password auth method
 // can be used for the specified |user| at the specified |remoteAddr|.
-func (uv *nativePasswordUserValidator) HandleUser(user string, remoteAddr net.Addr) bool {
+func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 	// If the mysql database is not enabled, then we don't have user information, so
 	// go ahead and return true without trying to look up the user in the db.
 	if !uv.db.Enabled() {
@@ -251,7 +272,7 @@ func (uv *nativePasswordUserValidator) HandleUser(user string, remoteAddr net.Ad
 	}
 	userEntry := db.GetUser(rd, user, host, false)
 
-	return userEntry != nil && (userEntry.Plugin == "" || userEntry.Plugin == string(mysql.MysqlNativePassword))
+	return userEntry != nil && userEntry.Plugin == string(uv.authMethod)
 }
 
 // extractHostAddress extracts the host address from |addr|, checking to see if it is a unix socket, and if
