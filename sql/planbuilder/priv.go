@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -153,8 +154,14 @@ func (b *Builder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.Authenti
 	}
 	if user.Auth1 != nil {
 		authUser.Identity = user.Auth1.Identity
-		if user.Auth1.Plugin == "mysql_native_password" && len(user.Auth1.Password) > 0 {
+		if user.Auth1.Password == "" && user.Auth1.Identity != "" {
+			// If an identity has been specified, instead of a password, then use the auth details
+			// directly, without an Authentication implementation that would obscure the password.
+			authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin, user.Auth1.Identity)
+		} else if user.Auth1.Plugin == string(mysql.MysqlNativePassword) {
 			authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
+		} else if user.Auth1.Plugin == string(mysql.CachingSha2Password) {
+			authUser.Auth1 = plan.NewCachingSha2PasswordAuthentication(user.Auth1.Password)
 		} else if len(user.Auth1.Plugin) > 0 {
 			authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin, user.Auth1.Identity)
 		} else {

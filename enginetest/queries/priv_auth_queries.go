@@ -692,15 +692,55 @@ var UserPrivTests = []UserPrivilegeTest{
 				},
 			},
 			{
-				Query: "SELECT Host, User FROM mysql.user;",
+				Query: "SELECT Host, User, Plugin, length(authentication_string) > 0 FROM mysql.user order by User;",
 				Expected: []sql.Row{
-					{"localhost", "root"},
-					{"localhost", "testuser2"},
-					{"127.0.0.1", "testuser"},
+					{"localhost", "root", "mysql_native_password", false},
+					{"127.0.0.1", "testuser", "mysql_native_password", false},
+					// testuser2 was inserted directly into the table, so it uses the column default
+					// from the plugin field – caching_sha2_password
+					{"localhost", "testuser2", "caching_sha2_password", false},
 				},
 			},
 		},
 	},
+	{
+		Name: "User creation with auth plugin specified: mysql_native_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with mysql_native_password by 'pass1';",
+			"CREATE USER testuser2@`127.0.0.1` identified with 'mysql_native_password';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
+				Expected: []sql.Row{{"testuser2", "127.0.0.1", "mysql_native_password", ""}},
+			},
+		},
+	},
+	{
+		Name: "User creation with auth plugin specified: caching_sha2_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with caching_sha2_password by 'pass1';",
+			"CREATE USER testuser2@`127.0.0.1` identified with 'caching_sha2_password';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				// caching_sha2_password auth uses a random salt to create the authentication
+				// string. Since it's not a consistent value during each test run, we just sanity
+				// check the first bytes of metadata (digest type, iterations) in the auth string.
+				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
+				Expected: []sql.Row{{"testuser2", "127.0.0.1", "caching_sha2_password", ""}},
+			},
+		},
+	},
+
 	{
 		Name: "Dynamic privilege support",
 		SetUpScript: []string{

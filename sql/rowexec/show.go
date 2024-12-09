@@ -74,14 +74,32 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 	}
 
 	var rows []sql.Row
-	formatString := sql.Describe(n.Child, n.Format)
-
-	for _, l := range strings.Split(formatString, "\n") {
-		if strings.TrimSpace(l) != "" {
-			rows = append(rows, sql.NewRow(l))
+	if n.Format.Plan {
+		formatString := sql.Describe(n.Child, n.Format)
+		for _, l := range strings.Split(formatString, "\n") {
+			if strings.TrimSpace(l) != "" {
+				rows = append(rows, sql.NewRow(l))
+			}
 		}
+		return sql.RowsToRowIter(rows...), nil
 	}
-	return sql.RowsToRowIter(rows...), nil
+
+	ctx.Warn(0, "EXPLAIN Output is currently a placeholder; use EXPLAIN PLAN for old behavior")
+	dummyRow := sql.Row{
+		1,        // id
+		"SELECT", // select_type
+		"NULL",   // table
+		"NULL",   // partitions
+		"NULL",   // type
+		"NULL",   // possible_keys
+		"NULL",   // key
+		"NULL",   // key_len
+		"NULL",   // ref
+		"NULL",   // rows
+		"NULL",   // filtered
+		"",       // Extra
+	}
+	return sql.RowsToRowIter(dummyRow), nil
 }
 
 func (b *BaseBuilder) buildShowWarnings(ctx *sql.Context, n plan.ShowWarnings, row sql.Row) (sql.RowIter, error) {

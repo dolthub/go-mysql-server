@@ -48,6 +48,9 @@ type ScriptTest struct {
 	JoinTypes []plan.JoinType
 	// SkipPrepared is true when we skip a test for prepared statements only
 	SkipPrepared bool
+	// Dialect is the supported dialect for this script, which must match the dialect of the harness if specified.
+	// The script is skipped if the dialect doesn't match.
+	Dialect string
 }
 
 type ScriptTestAssertion struct {
@@ -101,6 +104,10 @@ type ScriptTestAssertion struct {
 
 	// CheckIndexedAccess indicates whether we should verify the query plan uses an index
 	CheckIndexedAccess bool
+
+	// Dialect is the supported dialect for this assertion, which must match the dialect of the harness if specified.
+	// The assertion is skipped if the dialect doesn't match.
+	Dialect string
 }
 
 // ScriptTests are a set of test scripts to run.
@@ -121,7 +128,8 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "alter nil enum",
+		Name:    "alter nil enum",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y enum ('a', 'b'));",
 			"insert into xy values (0, NULL),(1, 'b')",
@@ -1032,7 +1040,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "alter table out of range value error of column type change",
+		Name:    "alter table out of range value error of column type change",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int primary key, i2 int, key(i2));",
 			"insert into t values (0,-1)",
@@ -1045,7 +1054,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "alter keyless table",
+		Name:    "alter keyless table",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
 			"insert into t values (1, 'one', NULL);",
@@ -1130,7 +1140,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		Name:    "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
 			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
@@ -1185,7 +1196,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		Name:    "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
 		},
@@ -1268,10 +1280,12 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "REPLACE INTO test VALUES (1,7), (4,8), (5,9);",
+				Dialect:     "mysql",
 				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
 				Query:    "SELECT * FROM test;",
+				Dialect:  "mysql",
 				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
 			},
 			{
@@ -1555,7 +1569,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "UUIDs used in the wild.",
+		Name:    "UUIDs used in the wild.",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
 			"SET @binuuid = '0011223344556677'",
@@ -1608,7 +1623,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Test cases on select into statement",
+		Name:    "Test cases on select into statement",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"SELECT * FROM (VALUES ROW(22,44,88)) AS t INTO @x,@y,@z",
 			"CREATE TABLE tab1 (id int primary key, v1 int)",
@@ -1715,7 +1731,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "last_insert_uuid() behavior",
+		Name:    "last_insert_uuid() behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table varchar36 (pk varchar(36) primary key default (UUID()), i int);",
 			"create table char36 (pk char(36) primary key default (UUID()), i int);",
@@ -1987,7 +2004,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "last_insert_id() behavior",
+		Name:    "last_insert_id() behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table a (x int primary key auto_increment, y int)",
 			"create table b (x int primary key)",
@@ -2058,7 +2076,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "last_insert_id(expr) behavior",
+		Name:    "last_insert_id(expr) behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table a (x int primary key auto_increment, y int)",
 		},
@@ -2094,7 +2113,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "last_insert_id(default) behavior",
+		Name:    "last_insert_id(default) behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (pk int primary key auto_increment, i int default 0)",
 		},
@@ -2309,7 +2329,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "row_count() behavior",
+		Name:    "row_count() behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table b (x int primary key)",
 			"insert into b values (1), (2), (3), (4)",
@@ -2419,7 +2440,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "found_rows() behavior",
+		Name:    "found_rows() behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table b (x int primary key)",
 			"insert into b values (1), (2), (3), (4)",
@@ -2609,7 +2631,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Group Concat Queries",
+		Name:    "Group Concat Queries",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE x (pk int)",
 			"INSERT INTO x VALUES (1),(2),(3),(4),(NULL)",
@@ -2697,7 +2720,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "CONVERT USING still converts between incompatible character sets",
+		Name:    "CONVERT USING still converts between incompatible character sets",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(200)) COLLATE=utf8mb4_0900_ai_ci;",
 			"INSERT INTO test VALUES (1, '63273াম'), (2, 'GHD30r'), (3, '8জ্রিয277'), (4, NULL);",
@@ -2710,7 +2734,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "ALTER TABLE, ALTER COLUMN SET , DROP DEFAULT",
+		Name:    "ALTER TABLE, ALTER COLUMN SET, DROP DEFAULT",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
 		},
@@ -2965,7 +2990,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "unix_timestamp function usage",
+		Name:    "unix_timestamp function usage",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			// NOTE: session time zone needs to be set as UNIX_TIMESTAMP function depends on it and converts the final result
 			"SET @@SESSION.time_zone = 'UTC';",
@@ -2989,7 +3015,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "unix_timestamp with non UTC timezone",
+		Name:    "unix_timestamp with non UTC timezone",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"SET @@SESSION.time_zone = 'UTC';",
 			"CREATE TABLE `datetime_table` (   `i` bigint NOT NULL,   `datetime_col` datetime,   `timestamp_col` timestamp,   PRIMARY KEY (`i`) )",
@@ -3006,7 +3033,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
+		Name:    "Issue #499", // https://github.com/dolthub/go-mysql-server/issues/499
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"SET @@SESSION.time_zone = 'UTC';",
 			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
@@ -3040,7 +3068,8 @@ CREATE TABLE tab3 (
 		SkipPrepared: true,
 	},
 	{
-		Name: "WHERE clause considers ENUM/SET types for comparisons",
+		Name:    "WHERE clause considers ENUM/SET types for comparisons",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
 			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
@@ -3084,7 +3113,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Simple Update Join test that manipulates two tables",
+		Name:    "Simple Update Join test that manipulates two tables",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk int primary key);",
 			`CREATE TABLE test2 (pk int primary key, val int);`,
@@ -3213,7 +3243,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Ensure scale is not rounded when inserting to DECIMAL type through float64",
+		Name:    "Ensure scale is not rounded when inserting to DECIMAL type through float64",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table test (number decimal(40,16));",
 			"insert into test values ('11981.5923291839784651');",
@@ -3446,7 +3477,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Multialter DDL with ADD/DROP Primary Key",
+		Name:    "Multialter DDL with ADD/DROP Primary Key",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t(pk int primary key, v1 int)",
 		},
@@ -3478,7 +3510,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Multialter DDL with ADD/DROP INDEX",
+		Name:    "Multialter DDL with ADD/DROP INDEX",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t(pk int primary key, v1 int)",
 		},
@@ -3598,7 +3631,8 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query: "show create table test",
+				Query:   "show create table test",
+				Dialect: "mysql",
 				Expected: []sql.Row{
 					{"test", "CREATE TABLE `test` (\n  `i` int DEFAULT '999',\n  `j` json DEFAULT ('[]')\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -3606,7 +3640,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
+		Name:    "ALTER TABLE MULTI ADD/DROP COLUMN",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
 		},
@@ -3702,7 +3737,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "describe and show columns with various keys and constraints",
+		Name:    "describe and show columns with various keys and constraints",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (i int not null, unique key (i));",
 			"create table t2 (i int not null, j int not null, unique key (j), unique key(i));",
@@ -3795,7 +3831,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
+		Name:    "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
 			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
@@ -3812,7 +3849,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "ALTER TABLE MODIFY column with multiple KEYS",
+		Name:    "ALTER TABLE MODIFY column with multiple KEYS",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
 			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
@@ -3848,7 +3886,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "failed conversion shows warning",
+		Name:    "failed conversion shows warning",
+		Dialect: "mysql",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:                           "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
@@ -3888,7 +3927,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Describe with expressions and views work correctly",
+		Name:    "Describe with expressions and views work correctly",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t(pk int primary key, val int DEFAULT (pk * 2))",
 		},
@@ -3903,7 +3943,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Check support for deprecated BINARY attribute after character set",
+		Name:    "Check support for deprecated BINARY attribute after character set",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf8mb4_0900_bin);",
 		},
@@ -3990,7 +4031,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "basic test on tables dual and `dual`",
+		Name:    "basic test on tables dual and `dual`",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE `dual` (id int)",
 			"INSERT INTO `dual` VALUES (2)",
@@ -4005,6 +4047,7 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{3}},
 			},
 			{
+				Dialect:     "mysql",
 				Query:       "SELECT * from dual;",
 				ExpectedErr: sql.ErrNoTablesUsed,
 			},
@@ -4111,7 +4154,7 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "create view t as select 1 from dual",
+				Query:       "create view t as select 1",
 				ExpectedErr: sql.ErrTableAlreadyExists,
 			},
 		},
@@ -4119,7 +4162,7 @@ CREATE TABLE tab3 (
 	{
 		Name: "can't create table with same name as existing view",
 		SetUpScript: []string{
-			"create view t as select 1 from dual",
+			"create view t as select 1",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -4166,13 +4209,15 @@ CREATE TABLE tab3 (
 					{1.9230769936149668}, {2.083333250549108}, {2.272727223467237}},
 			},
 			{
+				Dialect:  "mysql",
 				Query:    `select f/'a' from floats;`,
 				Expected: []sql.Row{{nil}, {nil}, {nil}},
 			},
 		},
 	},
 	{
-		Name: "'%' mod operation result in decimal or float",
+		Name:    "'%' mod operation result in decimal or float",
+		Dialect: "mysql", // % operator between types not defined in other dialects
 		SetUpScript: []string{
 			"create table a (pk int primary key, c1 int, c2 double, c3 decimal(5,3));",
 			"insert into a values (1, 1, 1.111, 1.111), (2, 2, 2.111, 2.111);",
@@ -4229,7 +4274,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "year type behavior",
+		Name:    "year type behavior",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (pk int primary key, col1 year);",
 		},
@@ -4313,7 +4359,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "INSERT IGNORE correctly truncates column data",
+		Name:    "INSERT IGNORE correctly truncates column data",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE t (
 				pk int primary key,
@@ -4399,7 +4446,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "hash lookup for joins works with binary",
+		Name:    "hash lookup for joins works with binary",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table uv (u int primary key, v int);",
 			"create table xy (x int primary key, y int);",
@@ -4418,7 +4466,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "enum columns work as expected in when clauses",
+		Name:    "enum columns work as expected in when clauses",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table enums (e enum('a'));",
 			"insert into enums values ('a');",
@@ -4435,7 +4484,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "SET and ENUM properly handle integers using UPDATE and DELETE statements",
+		Name:    "SET and ENUM properly handle integers using UPDATE and DELETE statements",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE setenumtest (pk INT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
 		},
@@ -4567,7 +4617,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "drop table if exists on unknown table shows warning",
+		Name:    "drop table if exists on unknown table shows warning",
+		Dialect: "mysql",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:                           "DROP TABLE IF EXISTS non_existent_table;",
@@ -4579,7 +4630,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "find_in_set tests",
+		Name:    "find_in_set tests",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table set_tbl (i int primary key, s set('a','b','c'));",
 			"insert into set_tbl values (0, '');",
@@ -4643,7 +4695,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "coalesce tests",
+		Name:    "coalesce tests",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table c select coalesce(NULL, 1);",
 		},
@@ -4679,7 +4732,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "renaming views with RENAME TABLE ... TO .. statement",
+		Name:    "renaming views with RENAME TABLE ... TO .. statement",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (id int primary key, v1 int);",
 			"create view v1 as select * from t1;",
@@ -4708,7 +4762,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "renaming views with ALTER TABLE ... RENAME .. statement should fail",
+		Name:    "renaming views with ALTER TABLE ... RENAME .. statement should fail",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (id int primary key, v1 int);",
 			"create view v1 as select * from t1;",
@@ -4729,7 +4784,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "timezone default settings",
+		Name:    "timezone default settings",
+		Dialect: "mysql",
 		Assertions: []ScriptTestAssertion{
 			{
 				// TODO: Skipping this test while we figure out why this change causes the mysql java
@@ -4748,7 +4804,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "current time functions",
+		Name:    "current time functions",
+		Dialect: "mysql",
 		Assertions: []ScriptTestAssertion{
 			{
 				// Smoke test that NOW() and UTC_TIMESTAMP() return non-null values with the SYSTEM time zone
@@ -4793,7 +4850,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "timestamp timezone conversion",
+		Name:    "timestamp timezone conversion",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"set time_zone='+00:00';",
 			"create table timezonetest(pk int primary key, dt datetime, ts timestamp);",
@@ -4897,7 +4955,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "case insensitive index handling",
+		Name:    "case insensitive index handling",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table table_One (Id int primary key, Val1 int);",
 			"create table TableTwo (iD int primary key, VAL2 int, vAL3 int);",
@@ -4995,7 +5054,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "UNIX_TIMESTAMP function usage with session different time zones",
+		Dialect: "mysql",
+		Name:    "UNIX_TIMESTAMP function usage with session different time zones",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET time_zone = '+07:00';",
@@ -5292,7 +5352,7 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Complex Filter Index Scan",
+		Name: "Complex Filter Index Scan #2",
 		SetUpScript: []string{
 			"create table t (pk int primary key, v1 int, v2 int, v3 int, v4 int);",
 			"create index v_idx on t (v1, v2, v3, v4);",
@@ -5308,7 +5368,7 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "Complex Filter Index Scan",
+		Name: "Complex Filter Index Scan #3",
 		SetUpScript: []string{
 			"create table t (pk integer primary key, col0 integer, col1 float);",
 			"create index idx on t (col0, col1);",
@@ -5921,7 +5981,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "floats in tuple are properly hashed",
+		Name:    "floats in tuple are properly hashed",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (b bool);",
 			"insert into t values (false);",
@@ -5957,7 +6018,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "strings in tuple are properly hashed",
+		Name:    "strings in tuple are properly hashed",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (v varchar(100));",
 			"insert into t values (false);",
@@ -6048,7 +6110,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "resolve foreign key on indexed update",
+		Name:    "resolve foreign key on indexed update",
+		Dialect: "mysql", // no way to disable foreign keys in doltgres yet
 		SetUpScript: []string{
 			"set foreign_key_checks=0;",
 			"create table parent (i int primary key);",
@@ -6065,7 +6128,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "between type conversion",
+		Name:    "between type conversion",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t0(c0 bool);",
 			"create table t1(c1 bool);",
@@ -6119,7 +6183,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "bool and string",
+		Name:    "bool and string",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 BOOL, PRIMARY KEY(c0));",
 			"INSERT INTO t0 (c0) VALUES (true);",
@@ -6149,7 +6214,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "bool and int",
+		Name:    "bool and int",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 INTEGER, PRIMARY KEY(c0));",
 			"INSERT INTO t0 (c0) VALUES (true);",
@@ -6252,7 +6318,8 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "range query convert int to string zero value",
+		Name:    "range query convert int to string zero value",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE t0(c0 VARCHAR(500));`,
 			`INSERT INTO t0(c0) VALUES ('a');`,
@@ -6889,7 +6956,6 @@ where
 					{"12345", "1234567890"},
 				},
 			},
-
 			{
 				Query:          "insert into t2 (a, b) values ('1234567890', '12345')",
 				ExpectedErrStr: "string '1234567890' is too large for column 'a'",
@@ -6952,7 +7018,8 @@ where
 		},
 	},
 	{
-		Name: "test show create database",
+		Name:    "test show create database",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create database def_db;",
 			"create database latin1_db character set latin1;",
@@ -6987,7 +7054,8 @@ where
 		},
 	},
 	{
-		Name: "test create database with modified server variables",
+		Name:    "test create database with modified server variables",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"set @@session.character_set_server = 'latin1';",
 			"create database latin1_db;",
@@ -7015,7 +7083,8 @@ where
 		},
 	},
 	{
-		Name: "test index naming",
+		Name:    "test index naming",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int);",
 			"alter table t add index (i);",
@@ -7057,7 +7126,8 @@ where
 		},
 	},
 	{
-		Name: "test parenthesized tables",
+		Name:    "test parenthesized tables",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (i int);",
 			"insert into t1 values (1), (2), (3);",
@@ -7159,7 +7229,8 @@ where
 		},
 	},
 	{
-		Name: "unix_timestamp script tests",
+		Name:    "unix_timestamp script tests",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"set time_zone = 'UTC';",
 			"create table t1 (i int primary key, v varchar(100));",
@@ -7189,7 +7260,8 @@ where
 		},
 	},
 	{
-		Name: "name_const queries",
+		Name:    "name_const queries",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int primary key);",
 			"insert into t values (1), (2), (3);",
