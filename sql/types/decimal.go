@@ -312,9 +312,7 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-
 	val := encodings.StringToBytes(t.DecimalValueStringFixed(value.Decimal))
-
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 

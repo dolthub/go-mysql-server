@@ -453,10 +453,10 @@ func (t NumberTypeImpl_) SQLInt32(ctx *sql.Context, dest []byte, v interface{}) 
 	if err != nil {
 		return nil, err
 	}
-	if num > (1<<23 - 1) {
-		num = int64(1<<23 - 1)
-	} else if num < (-1 << 23) {
-		num = int64(-1 << 23)
+	if num > math.MaxInt32 {
+		num = math.MaxInt32
+	} else if num < math.MinInt32 {
+		num = math.MinInt32
 	}
 	dest = strconv.AppendInt(dest, num, 10)
 	return dest, nil

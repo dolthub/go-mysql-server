@@ -177,6 +177,7 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Int16, inp: uint16(1), exp: int16(1), err: false, inRange: sql.InRange},
 		{typ: Int24, inp: false, exp: int32(0), err: false, inRange: sql.InRange},
 		{typ: Int32, inp: nil, exp: nil, err: false, inRange: sql.InRange},
+		{typ: Int32, inp: 2147483647, exp: int32(2147483647), err: false, inRange: sql.InRange},
 		{typ: Int64, inp: "33", exp: int64(33), err: false, inRange: sql.InRange},
 		{typ: Int64, inp: "33.0", exp: int64(33), err: false, inRange: sql.InRange},
 		{typ: Int64, inp: "33.1", exp: int64(33), err: false, inRange: sql.InRange},
