@@ -10,15 +10,20 @@ import (
 
 // replaceIdxSort applies an IndexAccess when there is an `OrderBy` over a prefix of any columns with Indexes
 func replaceIdxOrderByDistance(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return replaceIdxOrderByDistanceHelper(ctx, scope, n, nil)
+	return replaceIdxOrderByDistanceHelper(ctx, scope, n, nil, nil)
 }
 
-func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.TopN) (sql.Node, transform.TreeIdentity, error) {
+func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode plan.Sortable, limit sql.Expression) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
 	case *plan.TopN:
 		sortNode = n // lowest parent sort node
+		limit = n.Limit
+	case plan.Sortable:
+		sortNode = n
+	case *plan.Limit:
+		limit = n.Limit
 	case *plan.ResolvedTable:
-		if sortNode == nil {
+		if sortNode == nil || limit == nil {
 			return n, transform.SameTree, nil
 		}
 
@@ -44,7 +49,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 
 		// Column references have not been assigned their final indexes yet, so do that for the ORDER BY expression now.
 		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
-		sortNode = offsetAssignIndexes(sortNode).(*plan.TopN)
+		sortNode = offsetAssignIndexes(sortNode).(plan.Sortable)
 
 		sfExprs := normalizeExpressions(tableAliases, sortNode.GetSortFields().ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
@@ -91,8 +96,6 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			return n, transform.SameTree, nil
 		}
 
-		limit := sortNode.Limit
-
 		lookup := sql.IndexLookup{
 			Index:  idx,
 			Ranges: sql.MySQLRangeCollection{},
@@ -116,7 +119,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		same := transform.SameTree
 		switch c := child.(type) {
 		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.TopN, *plan.Offset, *plan.Sort, *plan.IndexedTableAccess:
-			newChildren[i], same, err = replaceIdxOrderByDistanceHelper(ctx, scope, child, sortNode)
+			newChildren[i], same, err = replaceIdxOrderByDistanceHelper(ctx, scope, child, sortNode, limit)
 		default:
 			newChildren[i] = c
 		}

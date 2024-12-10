@@ -114,7 +114,7 @@ func TestVectorIndex(t *testing.T) {
 
 	for _, testCase := range vectorIndexTestCases(t, db, vectorIndexTable) {
 		t.Run(testCase.name, func(t *testing.T) {
-			res, same, err := replaceIdxOrderByDistanceHelper(nil, nil, testCase.inputPlan, nil)
+			res, same, err := replaceIdxOrderByDistanceHelper(nil, nil, testCase.inputPlan, nil, nil)
 			require.NoError(t, err)
 			require.Equal(t, testCase.usesVectorIndex, !bool(same))
 			res = offsetAssignIndexes(res)
