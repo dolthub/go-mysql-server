@@ -435,7 +435,6 @@ func ConvertToBytes(v interface{}, t sql.StringType, dest []byte) ([]byte, error
 	// On top of that, we internally only work with UTF8MB4 strings, so we'll make a hard assumption that all UTF8
 	// strings are valid for all character sets, and that all invalid UTF8 strings have not yet been converted.
 	// This isn't correct, but it's a better approximation than the old logic.
-	//bytesVal := encodings.StringToBytes(val)
 	bytesVal := val
 	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
 		charset := t.CharacterSet()
