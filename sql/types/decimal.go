@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"math/big"
 	"reflect"
 	"strings"
@@ -312,7 +313,7 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(value.Decimal))
+	val := encodings.StringToBytes(t.DecimalValueStringFixed(value.Decimal))
 
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
