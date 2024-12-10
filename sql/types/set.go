@@ -44,6 +44,7 @@ type SetType struct {
 	collation             sql.CollationID
 	hashedValToBit        map[uint64]uint64
 	bitToVal              map[uint64]string
+	valToBit              map[string]uint64
 	maxResponseByteLength uint32
 }
 
@@ -63,6 +64,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 
 	hashedValToBit := make(map[uint64]uint64)
 	bitToVal := make(map[uint64]string)
+	valToBit := make(map[string]uint64)
 	var maxByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
@@ -84,6 +86,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		}
 		bit := uint64(1 << uint64(i))
 		hashedValToBit[hashedVal] = bit
+		valToBit[value] = bit
 		bitToVal[bit] = value
 		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
 		if i != 0 {
@@ -94,6 +97,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		collation:             collation,
 		hashedValToBit:        hashedValToBit,
 		bitToVal:              bitToVal,
+		valToBit:              valToBit,
 		maxResponseByteLength: maxByteLength,
 	}, nil
 }
@@ -366,15 +370,28 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, nil
 	}
 	var bitField uint64
-	vals := strings.Split(str, ",")
-	for _, val := range vals {
-		// empty string should hash to 0, so just skip
-		if val == "" {
+	lastI := 0
+	var val string
+	for i := 0; i < len(str)+1; i++ {
+		if i < len(str) && str[i] != ',' {
 			continue
 		}
+
+		// empty string should hash to 0, so just skip
+		if lastI == i {
+			lastI = i + 1
+			continue
+		}
+		val = str[lastI:i]
+		lastI = i + 1
+
 		compareVal := val
 		if t.collation != sql.Collation_binary {
 			compareVal = strings.TrimRight(compareVal, " ")
+		}
+		if bit, ok := t.valToBit[compareVal]; ok {
+			bitField |= bit
+			continue
 		}
 		hashedVal, err := t.collation.HashToUint(compareVal)
 		if err == nil {
