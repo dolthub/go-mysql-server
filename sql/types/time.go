@@ -270,7 +270,7 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	
+
 	return sqltypes.MakeTrusted(sqltypes.Time, ti.Bytes()), nil
 }
 
