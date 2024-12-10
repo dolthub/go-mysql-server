@@ -1,10 +1,12 @@
 package types
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
+	"testing"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/shopspring/decimal"
-	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var result_ sqltypes.Value
