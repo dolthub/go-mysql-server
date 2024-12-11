@@ -54,7 +54,11 @@ func newAuthServer(db *MySQLDb) *authServer {
 		&nativePasswordHashStorage{db: db},
 		newUserValidator(db, mysql.MysqlNativePassword))
 
-	// TODO: Add CachingSha2Password AuthMethod
+	// caching_sha2_password auth support
+	cachingSha2PasswordAuthMethod := mysql.NewSha2CachingAuthMethod(
+		&noopCachingStorage{db: db},
+		&sha2PlainTextStorage{db: db},
+		newUserValidator(db, mysql.CachingSha2Password))
 
 	// The extended auth method allows for integrators to register their own PlaintextAuthPlugin implementations,
 	// and uses the MySQL clear auth method to send the auth information from the client to the server.
@@ -63,7 +67,11 @@ func newAuthServer(db *MySQLDb) *authServer {
 		&extendedAuthUserValidator{db: db})
 
 	return &authServer{
-		authMethods: []mysql.AuthMethod{nativePasswordAuthMethod, extendedAuthMethod},
+		authMethods: []mysql.AuthMethod{
+			nativePasswordAuthMethod,
+			cachingSha2PasswordAuthMethod,
+			extendedAuthMethod,
+		},
 	}
 }
 
@@ -75,6 +83,135 @@ func (as *authServer) AuthMethods() []mysql.AuthMethod {
 // DefaultAuthMethodDescription implements the mysql.AuthServer interface.
 func (db *authServer) DefaultAuthMethodDescription() mysql.AuthMethodDescription {
 	return DefaultAuthMethod
+}
+
+// noopCachingStorage is a simple implementation of mysql.CachingStorage that doesn't actually
+// use a cache yet. Eventually this will be replaced with a real authentication info cache, but
+// for the initial implementation there is no caching supported. This means that repeated
+// authentication for the same user will take longer to complete, since the full auth process
+// needs to be performed each time. Implementing auth caching will optimize repeated logins for users.
+type noopCachingStorage struct {
+	db *MySQLDb
+}
+
+var _ mysql.CachingStorage = (*noopCachingStorage)(nil)
+
+// UserEntryWithCacheHash implements the mysql.CachingStorage interface. This method gets called by
+// Vitess' cachingSha2Password auth method implementation during the initial/fast auth portion of
+// caching_sha2_password authentication. The client sends a scrambled password over the wire and
+// this method looks for a matching cached scrambled password for the specified user. If a matching
+// scrambled password is found, then the server responds back to the client with an auth success
+// message. If no match is found, the server responds with a more auth data needed message and the
+// client then ensures a TLS connection is present and sends the password in plaintext for the
+// server to validate using the more secure, but slower, full auth process. See the implementation
+// in sha2PlainTextStorage for more details.
+//
+// This implementation also handles authentication when a client doesn't send an auth response and
+// the associated user account does not have a password set.
+func (n noopCachingStorage) UserEntryWithCacheHash(_ []*x509.Certificate, _ []byte, user string, authResponse []byte, remoteAddr net.Addr) (mysql.Getter, mysql.CacheState, error) {
+	db := n.db
+
+	// If there is no mysql database of user info, then don't approve or reject, since we can't look at
+	// user data to validate; just ask for more data
+	if !db.Enabled() {
+		return nil, mysql.AuthNeedMoreData, nil
+	}
+
+	// If we have a user database and the client didn't send an auth response, then check to see if this user
+	// account has no password configured. If there is no password, then we can go ahead and accept the request
+	// without having to do the full auth process.
+	emptyClientAuthResponse := len(authResponse) == 0 || (len(authResponse) == 1 && authResponse[0] == 0)
+	if emptyClientAuthResponse {
+		host, err := extractHostAddress(remoteAddr)
+		if err != nil {
+			return nil, mysql.AuthRejected, err
+		}
+
+		rd := db.Reader()
+		defer rd.Close()
+
+		userEntry := db.GetUser(rd, user, host, false)
+		if userEntry == nil || userEntry.Locked {
+			return nil, mysql.AuthRejected, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		}
+
+		if userEntry.AuthString == "" {
+			return sql.MysqlConnectionUser{User: user, Host: host}, mysql.AuthAccepted, nil
+		} else {
+			return nil, mysql.AuthRejected, nil
+		}
+	}
+
+	// TODO: Add auth caching as an optimization. The full auth process is fairly expensive since
+	//       it involves an additional network roundtrip and many rounds of hashing. Instead, we
+	//       can store a less secure (hashed only twice) version of the password in memory once a
+	//       user has successfully logged in once with the full auth process, and then compare the
+	//       password with that hash on future logins.
+	//
+	//       The only trick to this optimization is that we must ensure a user who logs and gets
+	//       their password cached, cannot change their password and then still login with the old
+	//       password. This means invalidating the cache entry when a user changes their password.
+
+	return nil, mysql.AuthNeedMoreData, nil
+}
+
+// sha2PlainTextStorage implements the mysql.PlainTextStorage interface for the caching_sha2_password
+// authentication protocol. This type is responsible for looking up a user entry in the mysql database
+// (|db|) and hashing a plaintext password to compare against the user entry's authentication string
+// to determine if a user login is valid.
+type sha2PlainTextStorage struct {
+	db *MySQLDb
+}
+
+var _ mysql.PlainTextStorage = (*sha2PlainTextStorage)(nil)
+
+// UserEntryWithPassword implements the mysql.PlainTextStorage interface.
+// The auth framework in Vitess also passes in user certificates, but we don't support that feature yet.
+func (s sha2PlainTextStorage) UserEntryWithPassword(_ []*x509.Certificate, user string, password string, remoteAddr net.Addr) (mysql.Getter, error) {
+	db := s.db
+
+	host, err := extractHostAddress(remoteAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if !db.Enabled() {
+		return sql.MysqlConnectionUser{User: user, Host: host}, nil
+	}
+
+	rd := db.Reader()
+	defer rd.Close()
+
+	userEntry := db.GetUser(rd, user, host, false)
+	if userEntry == nil || userEntry.Locked {
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+	}
+
+	if len(userEntry.AuthString) > 0 {
+		digestType, iterations, salt, _, err := mysql.DeserializeCachingSha2PasswordAuthString([]byte(userEntry.AuthString))
+		if err != nil {
+			return nil, err
+		}
+		if digestType != "SHA256" {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError,
+				"Access denied for user '%v': unsupported digest type: %s", user, digestType)
+		}
+
+		authString, err := mysql.SerializeCachingSha2PasswordAuthString(password, salt, iterations)
+		if err != nil {
+			return nil, err
+		}
+
+		if userEntry.AuthString != string(authString) {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		}
+	} else if len(password) > 0 {
+		// password is nil or empty, therefore no password is set
+		// a password was given and the account has no password set, therefore access is denied
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+	}
+
+	return sql.MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
 }
 
 // extendedAuthPlainTextStorage implements the mysql.PlainTextStorage interface and plugs into

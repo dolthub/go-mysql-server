@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"crypto/tls"
 	dsql "database/sql"
 	"fmt"
 	"io"
@@ -2010,11 +2011,19 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				User:    "root",
 				Address: "localhost",
 			})
+
+			tlsCert, err := tls.LoadX509KeyPair("./testdata/selfsigned_cert.pem", "./testdata/selfsigned_key.pem")
+			require.NoError(t, err)
+			tlsConfig := tls.Config{
+				Certificates: []tls.Certificate{tlsCert},
+			}
+
 			serverConfig := server.Config{
-				Protocol:                 "tcp",
-				Address:                  fmt.Sprintf("localhost:%d", port),
-				MaxConnections:           1000,
-				AllowClearTextWithoutTLS: true,
+				Protocol:               "tcp",
+				Address:                fmt.Sprintf("localhost:%d", port),
+				MaxConnections:         1000,
+				TLSConfig:              &tlsConfig,
+				RequireSecureTransport: true,
 			}
 
 			e := mustNewEngine(t, clientHarness)
@@ -2055,24 +2064,37 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}()
 
 			for _, assertion := range script.Assertions {
-				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true",
-					assertion.Username, assertion.Password, port), nil)
-				require.NoError(t, err)
-				r, err := conn.Query(assertion.Query)
-				if assertion.ExpectedErr || len(assertion.ExpectedErrStr) > 0 || assertion.ExpectedErrKind != nil {
-					if !assert.Error(t, err) {
-						require.NoError(t, r.Close())
-					} else if len(assertion.ExpectedErrStr) > 0 {
-						assert.Equal(t, assertion.ExpectedErrStr, err.Error())
-					} else if assertion.ExpectedErrKind != nil {
-						assert.True(t, assertion.ExpectedErrKind.Is(err))
+				t.Run(assertion.Query, func(t *testing.T) {
+					conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true&tls=skip-verify",
+						assertion.Username, assertion.Password, port), nil)
+					require.NoError(t, err)
+					r, err := conn.Query(assertion.Query)
+					if assertion.ExpectedErr || len(assertion.ExpectedErrStr) > 0 || assertion.ExpectedErrKind != nil {
+						if !assert.Error(t, err) {
+							require.NoError(t, r.Close())
+						} else if len(assertion.ExpectedErrStr) > 0 {
+							assert.Equal(t, assertion.ExpectedErrStr, err.Error())
+						} else if assertion.ExpectedErrKind != nil {
+							assert.True(t, assertion.ExpectedErrKind.Is(err))
+						}
+					} else {
+						if assert.NoError(t, err) {
+							require.NoError(t, r.Close())
+						}
+						if assertion.ExpectedAuthPlugin != "" {
+							// NOTE: This query works as long as there is only one account configured for the current user
+							r, err := conn.Query("SELECT plugin FROM mysql.user WHERE user=SUBSTRING_INDEX(USER(),'@',1);")
+							require.NoError(t, err)
+							require.True(t, r.Next())
+							var authPlugin string
+							err = r.Scan(&authPlugin)
+							require.False(t, r.Next())
+							require.NoError(t, err)
+							require.Equal(t, assertion.ExpectedAuthPlugin, authPlugin)
+						}
 					}
-				} else {
-					if assert.NoError(t, err) {
-						require.NoError(t, r.Close())
-					}
-				}
-				require.NoError(t, conn.Close())
+					require.NoError(t, conn.Close())
+				})
 			}
 		})
 	}
