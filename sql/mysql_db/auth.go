@@ -166,6 +166,7 @@ type sha2PlainTextStorage struct {
 var _ mysql.PlainTextStorage = (*sha2PlainTextStorage)(nil)
 
 // UserEntryWithPassword implements the mysql.PlainTextStorage interface.
+// The auth framework in Vitess also passes in user certificates, but we don't support that feature yet.
 func (s sha2PlainTextStorage) UserEntryWithPassword(_ []*x509.Certificate, user string, password string, remoteAddr net.Addr) (mysql.Getter, error) {
 	db := s.db
 
