@@ -48,9 +48,9 @@ var (
 
 type EnumType struct {
 	collation             sql.CollationID
-	hashedValToIndex      map[uint64]int
+	hashedValToIdx        map[uint64]int
 	valToIdx              map[string]int
-	indexToVal            []string
+	idxToVal              []string
 	maxResponseByteLength uint32
 }
 
@@ -98,8 +98,8 @@ func CreateEnumType(values []string, collation sql.CollationID) (sql.EnumType, e
 	}
 	return EnumType{
 		collation:             collation,
-		hashedValToIndex:      hashedValToIndex,
-		indexToVal:            values,
+		hashedValToIdx:        hashedValToIndex,
+		idxToVal:              values,
 		valToIdx:              valToIdx,
 		maxResponseByteLength: maxResponseByteLength,
 	}, nil
@@ -217,9 +217,9 @@ func (t EnumType) MustConvert(v interface{}) interface{} {
 
 // Equals implements the Type interface.
 func (t EnumType) Equals(otherType sql.Type) bool {
-	if ot, ok := otherType.(EnumType); ok && t.collation.Equals(ot.collation) && len(t.indexToVal) == len(ot.indexToVal) {
-		for i, val := range t.indexToVal {
-			if ot.indexToVal[i] != val {
+	if ot, ok := otherType.(EnumType); ok && t.collation.Equals(ot.collation) && len(t.idxToVal) == len(ot.idxToVal) {
+		for i, val := range t.idxToVal {
+			if ot.idxToVal[i] != val {
 				return false
 			}
 		}
@@ -289,16 +289,19 @@ func (t EnumType) Zero() interface{} {
 }
 
 // At implements EnumType interface.
-func (t EnumType) At(index int) (string, bool) {
-	// The elements listed in the column specification are assigned index numbers, beginning with 1.
-	index -= 1
-	if index <= -1 {
-		// for index zero, the value is empty. It's used for insert ignore.
-		return "", true
-	} else if index >= len(t.indexToVal) {
+func (t EnumType) At(idx int) (string, bool) {
+	// for index zero, the value is empty. It's used for insert ignore.
+	if idx < 0 {
 		return "", false
 	}
-	return t.indexToVal[index], true
+	if idx == 0 {
+		return "", true
+	}
+	if idx > len(t.idxToVal) {
+		return "", false
+	}
+	// The elements listed in the column specification are assigned index numbers, beginning with 1.
+	return t.idxToVal[idx-1], true
 }
 
 // CharacterSet implements EnumType interface.
@@ -318,7 +321,7 @@ func (t EnumType) IndexOf(v string) int {
 	}
 	hashedVal, err := t.collation.HashToUint(v)
 	if err == nil {
-		if index, ok := t.hashedValToIndex[hashedVal]; ok {
+		if index, ok := t.hashedValToIdx[hashedVal]; ok {
 			return index
 		}
 	}
@@ -334,24 +337,24 @@ func (t EnumType) IndexOf(v string) int {
 
 // NumberOfElements implements EnumType interface.
 func (t EnumType) NumberOfElements() uint16 {
-	return uint16(len(t.indexToVal))
+	return uint16(len(t.idxToVal))
 }
 
 // Values implements EnumType interface.
 func (t EnumType) Values() []string {
-	vals := make([]string, len(t.indexToVal))
-	copy(vals, t.indexToVal)
+	vals := make([]string, len(t.idxToVal))
+	copy(vals, t.idxToVal)
 	return vals
 }
 
 // WithNewCollation implements sql.TypeWithCollation interface.
 func (t EnumType) WithNewCollation(collation sql.CollationID) (sql.Type, error) {
-	return CreateEnumType(t.indexToVal, collation)
+	return CreateEnumType(t.idxToVal, collation)
 }
 
 // StringWithTableCollation implements sql.TypeWithCollation interface.
 func (t EnumType) StringWithTableCollation(tableCollation sql.CollationID) string {
-	s := fmt.Sprintf("enum('%v')", strings.Join(t.indexToVal, `','`))
+	s := fmt.Sprintf("enum('%v')", strings.Join(t.idxToVal, `','`))
 	if t.CharacterSet() != tableCollation.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}

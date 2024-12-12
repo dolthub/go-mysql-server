@@ -17,6 +17,8 @@ package planbuilder
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -131,6 +133,13 @@ func (f *factory) buildConvert(expr sql.Expression, castToType string, typeLengt
 			f.log("eliminated convert")
 			return expr, nil
 		}
+	}
+	if types.IsText(n.Type()) && types.IsEnum(expr.Type()) {
+		newNode, err := n.WithChildren(expression.NewEnumToString(expr))
+		if err != nil {
+			return nil, err
+		}
+		return newNode, nil
 	}
 	return n, nil
 }

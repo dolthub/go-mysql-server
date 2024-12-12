@@ -517,11 +517,11 @@ func TypesEqual(a, b sql.Type) bool {
 	case EnumType:
 		aEnumType := at
 		bEnumType := b.(EnumType)
-		if len(aEnumType.indexToVal) != len(bEnumType.indexToVal) {
+		if len(aEnumType.idxToVal) != len(bEnumType.idxToVal) {
 			return false
 		}
-		for i := 0; i < len(aEnumType.indexToVal); i++ {
-			if aEnumType.indexToVal[i] != bEnumType.indexToVal[i] {
+		for i := 0; i < len(aEnumType.idxToVal); i++ {
+			if aEnumType.idxToVal[i] != bEnumType.idxToVal[i] {
 				return false
 			}
 		}

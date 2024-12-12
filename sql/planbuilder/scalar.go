@@ -794,7 +794,20 @@ func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Exp
 		elseExpr = b.buildScalar(inScope, e.Else)
 	}
 
-	return expression.NewCase(expr, branches, elseExpr), nil
+	newCase := expression.NewCase(expr, branches, elseExpr)
+	if types.IsText(newCase.Type()) {
+		for _, branch := range branches {
+			if types.IsEnum(branch.Value.Type()) {
+				branch.Value = expression.NewEnumToString(branch.Value)
+			}
+		}
+		if elseExpr != nil && types.IsEnum(elseExpr.Type()) {
+			elseExpr = expression.NewEnumToString(elseExpr)
+		}
+		newCase = expression.NewCase(expr, branches, elseExpr)
+	}
+
+	return newCase, nil
 }
 
 func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) *expression.Interval {
