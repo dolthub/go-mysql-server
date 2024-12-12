@@ -7642,6 +7642,7 @@ where
 	{
 		// https://github.com/dolthub/dolt/issues/8598
 		Name: "enum cast to int and string",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
 			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
@@ -7683,6 +7684,7 @@ where
 	},
 	{
 		Name: "enum errors",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
 		},
