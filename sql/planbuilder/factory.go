@@ -15,8 +15,9 @@
 package planbuilder
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql/types"
-"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"

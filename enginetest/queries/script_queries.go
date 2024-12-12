@@ -7690,11 +7690,11 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t values (1, 500)",
+				Query:          "insert into t values (1, 500)",
 				ExpectedErrStr: "value 500 is not valid for this Enum",
 			},
 			{
-				Query: "insert into t values (1, -1)",
+				Query:          "insert into t values (1, -1)",
 				ExpectedErrStr: "value -1 is not valid for this Enum",
 			},
 		},
