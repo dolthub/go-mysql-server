@@ -7648,7 +7648,6 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:  true,
 				Query: "select i, cast(e as signed) from t;",
 				Expected: []sql.Row{
 					{1, 1},
@@ -7657,13 +7656,44 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select i, cast(e as char) from t;",
 				Expected: []sql.Row{
 					{1, "abc"},
 					{2, "def"},
 					{3, "ghi"},
 				},
+			},
+			{
+				Query: "select i, cast(e as binary) from t;",
+				Expected: []sql.Row{
+					{1, []uint8("abc")},
+					{2, []uint8("def")},
+					{3, []uint8("ghi")},
+				},
+			},
+			{
+				Query: "select case when e = 'abc' then 'abc' when e = 'def' then 123 else e end from t",
+				Expected: []sql.Row{
+					{"abc"},
+					{"123"},
+					{"ghi"},
+				},
+			},
+		},
+	},
+	{
+		Name: "enum errors",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1, 500)",
+				ExpectedErrStr: "value 500 is not valid for this Enum",
+			},
+			{
+				Query: "insert into t values (1, -1)",
+				ExpectedErrStr: "value -1 is not valid for this Enum",
 			},
 		},
 	},
