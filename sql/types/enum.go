@@ -301,7 +301,7 @@ func (t EnumType) At(idx int) (string, bool) {
 		return "", false
 	}
 	// The elements listed in the column specification are assigned index numbers, beginning with 1.
-	return t.idxToVal[idx - 1], true
+	return t.idxToVal[idx-1], true
 }
 
 // CharacterSet implements EnumType interface.
