@@ -1529,7 +1529,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
+		Name:    "Try INSERT IGNORE with primary key, non null, and single row violations",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
 			"INSERT IGNORE INTO y VALUES (1, 1), (1,2), (2, 2), (3, 3)",
@@ -2171,7 +2172,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "INSERT IGNORE works with FK Violations",
+		Name:    "INSERT IGNORE works with FK Violations",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
 			"CREATE TABLE t2 (id INT PRIMARY KEY, v2 int, CONSTRAINT mfk FOREIGN KEY (v2) REFERENCES t1(id));",
@@ -2909,7 +2911,8 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 var InsertBrokenScripts = []ScriptTest{
 	// TODO: Condense all of our casting logic into a single error.
 	{
-		Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
+		Name:    "Test that INSERT IGNORE assigns the closest dataype correctly",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
 			`INSERT IGNORE INTO x VALUES (1, "one"), (2, TRUE), (3, "three")`,
