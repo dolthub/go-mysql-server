@@ -1042,15 +1042,25 @@ func AssertWarningAndTestQuery(
 		// check warnings depend on context, which ServerEngine does not depend on
 		if expectedWarningsCount > 0 {
 			assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
+			// Verify that if warnings are expected, we also configured a specific value check.
+			if expectedCode == 0 && len(expectedWarningMessageSubstring) == 0 {
+				require.Fail("Invalid test setup. Warning expected, but no value validation was configured.")
+			}
+		} else {
+			if expectedCode != 0 || len(expectedWarningMessageSubstring) != 0 {
+				require.Fail("Invalid test setup. No warnings expected, but value validation was configured")
+			}
+			assert.Zero(t, len(ctx.Warnings()), "Unexpected warnings")
 		}
 
 		if expectedCode > 0 {
+			// Not ideal. We are only supporting all warning codes being identical in a given test.
 			for _, warning := range ctx.Warnings() {
 				assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
 			}
 		}
-
 		if len(expectedWarningMessageSubstring) > 0 {
+			// Not ideal. All messages must have the same substring for a given test.
 			for _, warning := range ctx.Warnings() {
 				assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
 			}
