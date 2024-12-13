@@ -384,7 +384,6 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 	var typ query.Type
 	var val []byte
 
-	start := len(dest)
 	switch t.baseType {
 	case sqltypes.Date:
 		typ = sqltypes.Date
@@ -411,7 +410,7 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 
-	valBytes := val[start:]
+	valBytes := AppendAndSliceBytes(dest, val)
 
 	return sqltypes.MakeTrusted(typ, valBytes), nil
 }

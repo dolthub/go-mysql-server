@@ -600,8 +600,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			snippetStr := strings2.ToValidUTF8(string(snippet), string(utf8.RuneError))
 			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(snippetStr), snippet)
 		}
-		//val = AppendAndSliceBytes(dest, encodedBytes)
-		val = encodedBytes
+		val = AppendAndSliceBytes(dest, encodedBytes)
 	}
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
