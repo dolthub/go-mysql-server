@@ -218,7 +218,6 @@ func (i vectorIndexTable) SkipIndexCosting() bool {
 }
 
 func (i vectorIndexTable) IndexWithPrefix(ctx *sql.Context, expressions []string) (sql.Index, error) {
-	//TODO implement me
 	panic("implement me")
 }
 
