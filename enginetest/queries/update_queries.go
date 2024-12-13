@@ -623,18 +623,20 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "UPDATE IGNORE pkTable set pk = pk + 1, val = val + 1",
-				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "UPDATE IGNORE pkTable set pk = pk + 1, val = val + 1",
+				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM pkTable order by pk",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}},
 			},
 			{
-				Query:           "UPDATE IGNORE idxTable set val = val + 1",
-				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "UPDATE IGNORE idxTable set val = val + 1",
+				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM idxTable order by pk",
@@ -649,9 +651,10 @@ var UpdateIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{{1, 1}, {2, 3}, {4, 4}},
 			},
 			{
-				Query:           "UPDATE IGNORE pkTable SET pk = NULL",
-				Expected:        []sql.Row{{newUpdateResult(3, 3)}},
-				ExpectedWarning: mysql.ERBadNullError,
+				Query:                 "UPDATE IGNORE pkTable SET pk = NULL",
+				Expected:              []sql.Row{{newUpdateResult(3, 3)}},
+				ExpectedWarningsCount: 3,
+				ExpectedWarning:       mysql.ERBadNullError,
 			},
 			{
 				Query:    "SELECT * FROM pkTable order by pk",
@@ -666,9 +669,10 @@ var UpdateIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{{0, 0}, {0, 3}, {0, 4}},
 			},
 			{
-				Query:           "UPDATE IGNORE idxTable set pk = pk + 1, val = val + 1", // two bad updates
-				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "UPDATE IGNORE idxTable set pk = pk + 1, val = val + 1", // two bad updates
+				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM idxTable order by pk",
@@ -684,18 +688,20 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "UPDATE IGNORE t1 SET v1 = 'dsddads'",
-				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				Query:                 "UPDATE IGNORE t1 SET v1 = 'dsddads'",
+				Expected:              []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query:    "SELECT * FROM t1",
 				Expected: []sql.Row{{1, 0, 1}},
 			},
 			{
-				Query:           "UPDATE IGNORE t1 SET pk = 'dasda', v2 = 'dsddads'",
-				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				Query:                 "UPDATE IGNORE t1 SET pk = 'dasda', v2 = 'dsddads'",
+				Expected:              []sql.Row{{newUpdateResult(1, 1)}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query:    "SELECT * FROM t1",
@@ -713,9 +719,10 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "UPDATE IGNORE objects SET color = 'orange' where id = 2",
-				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
-				ExpectedWarning: mysql.ErNoReferencedRow2,
+				Query:                 "UPDATE IGNORE objects SET color = 'orange' where id = 2",
+				Expected:              []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ErNoReferencedRow2,
 			},
 			{
 				Query:    "SELECT * FROM objects ORDER BY id",
@@ -732,9 +739,10 @@ var UpdateIgnoreScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "UPDATE IGNORE checksTable SET pk = pk + 1 where pk = 4",
-				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
-				ExpectedWarning: mysql.ERUnknownError,
+				Query:                 "UPDATE IGNORE checksTable SET pk = pk + 1 where pk = 4",
+				Expected:              []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERUnknownError,
 			},
 			{
 				Query:    "SELECT * from checksTable ORDER BY pk",

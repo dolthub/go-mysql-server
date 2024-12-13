@@ -1546,49 +1546,56 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (5, NULL)",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERBadNullError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERBadNullError,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk+10 FROM y WHERE pk > 1);",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 5,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 10, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 11, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual) UNION SELECT 12, 0 FROM dual;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 13, 0 FROM dual UNION SELECT 14, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (3, 8)",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 		},
 	},
@@ -2176,7 +2183,8 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ErNoReferencedRow2,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ErNoReferencedRow2,
 			},
 		},
 	},
@@ -2622,7 +2630,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERBadNullError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERBadNullError,
 			},
 		},
 	},
@@ -2638,7 +2647,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query: "SELECT * FROM t1",
@@ -2651,7 +2661,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERUnknownError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERUnknownError,
 			},
 			{
 				Query: "SELECT * FROM t2",
@@ -2675,7 +2686,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 2}},
 				},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query: "SELECT * FROM t1",
@@ -2688,7 +2700,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERUnknownError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERUnknownError,
 			},
 			{
 				Query: "SELECT * FROM t2",
@@ -2722,7 +2735,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 3}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from one_uniq;",
@@ -2735,7 +2749,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 8}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from two_uniq;",
@@ -2784,7 +2799,8 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 3}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from one_uniq;",
@@ -2797,7 +2813,8 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 8}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from two_uniq;",
@@ -2831,9 +2848,10 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:           "INSERT IGNORE INTO keyless VALUES (1, 3)",
-				Expected:        []sql.Row{{types.NewOkResult(0)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "INSERT IGNORE INTO keyless VALUES (1, 3)",
+				Expected:              []sql.Row{{types.NewOkResult(0)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 		},
 	},
@@ -2857,27 +2875,28 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 			{
-				Query:           "UPDATE IGNORE keyless SET val = 1 where pk = 1",
-				Expected:        []sql.Row{{newUpdateResult(1, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:    "UPDATE IGNORE keyless SET val = 1 where pk = 1",
+				Expected: []sql.Row{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:           "UPDATE IGNORE keyless SET val = 3 where pk = 1",
-				Expected:        []sql.Row{{newUpdateResult(1, 0)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "UPDATE IGNORE keyless SET val = 3 where pk = 1",
+				Expected:              []sql.Row{{newUpdateResult(1, 0)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
-				Query:           "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
-				Expected:        []sql.Row{{newUpdateResult(3, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
+				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
@@ -2915,7 +2934,8 @@ var InsertBrokenScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 		},
 	},
