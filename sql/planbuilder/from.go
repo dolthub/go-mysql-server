@@ -16,13 +16,13 @@ package planbuilder
 
 import (
 	"fmt"
-	dtablefunctions "github.com/dolthub/go-mysql-server/sql/expression/tablefunction"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	dtablefunctions "github.com/dolthub/go-mysql-server/sql/expression/tablefunction"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
