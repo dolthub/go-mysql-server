@@ -360,12 +360,12 @@ func (t TestProvider) Function(ctx *sql.Context, name string) (sql.Function, boo
 	return nil, false
 }
 
-func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, bool) {
 	if tf, ok := t.tableFunctions[strings.ToLower(name)]; ok {
-		return tf, nil
+		return tf, true
 	}
 
-	return nil, sql.ErrTableFunctionNotFound.New(name)
+	return nil, false
 }
 
 func (t TestProvider) WithTableFunctions(fns ...sql.TableFunction) (sql.TableFunctionProvider, error) {

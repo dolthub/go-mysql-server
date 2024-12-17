@@ -58,7 +58,7 @@ type CollatedDatabaseProvider interface {
 // always) implemented by a DatabaseProvider.
 type TableFunctionProvider interface {
 	// TableFunction returns the table function with the name provided, case-insensitive
-	TableFunction(ctx *Context, name string) (TableFunction, error)
+	TableFunction(ctx *Context, name string) (TableFunction, bool)
 	// WithTableFunctions returns a new provider with (only) the list of table functions arguments
 	WithTableFunctions(fns ...TableFunction) (TableFunctionProvider, error)
 }

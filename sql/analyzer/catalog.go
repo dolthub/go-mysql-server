@@ -384,17 +384,14 @@ func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql
 }
 
 // TableFunction implements the TableFunctionProvider interface
-func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, bool) {
 	if fp, ok := c.DbProvider.(sql.TableFunctionProvider); ok {
-		tf, err := fp.TableFunction(ctx, name)
-		if err != nil {
-			return nil, err
-		} else if tf != nil {
-			return tf, nil
+		tf, found := fp.TableFunction(ctx, name)
+		if found && tf != nil {
+			return tf, true
 		}
 	}
-
-	return nil, sql.ErrTableFunctionNotFound.New(name)
+	return nil, false
 }
 
 func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string) error {
