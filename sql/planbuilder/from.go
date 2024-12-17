@@ -467,7 +467,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 		if !funcFound {
 			b.handleErr(sql.ErrTableFunctionNotFound.New(utf.Name()))
 		}
-		tableFunction = dtablefunctions.NewTableFunction(f)
+		tableFunction = dtablefunctions.NewTableFunctionWrapper(f)
 	}
 
 	database := b.currentDb()
