@@ -194,10 +194,10 @@ func (pro *DbProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]
 }
 
 // TableFunction implements sql.TableFunctionProvider
-func (pro *DbProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+func (pro *DbProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, bool) {
 	if tableFunction, ok := pro.tableFunctions[name]; ok {
-		return tableFunction, nil
+		return tableFunction, true
 	}
 
-	return nil, sql.ErrTableFunctionNotFound.New(name)
+	return nil, false
 }
