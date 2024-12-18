@@ -580,6 +580,19 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				sch = pkt.PrimaryKeySchema().Schema
 			}
 
+			// column matching logic is dependent on the schema not being a sql.ProjectedTable
+			if ta, ok := srcNode.(*plan.TableAlias); ok {
+				if rt, ok := ta.Child.(*plan.ResolvedTable); ok {
+					if t := rt.UnderlyingTable(); t != nil {
+						if pt, ok := t.(sql.ProjectedTable); ok {
+							tmpTbl := pt.WithProjections(nil)
+							sch = tmpTbl.Schema()
+						}
+					}
+				}
+			}
+
+			// get column info from schema for each column id...
 			firstCol, _ := srcNode.Columns().Next(1)
 			idx := int(colId - firstCol)
 			col := sch[idx]
