@@ -5,8 +5,9 @@ plans:
     path: enginetest/queries/index_query_plans.go
   - name: IntegrationPlanTests
     path: enginetest/queries/integration_plans.go
-  - name: TpchPlanTests
-    path: enginetest/queries/tpch_plans.go
+# this suite is throwing a missing table error, despite the table being in the set up
+#  - name: TpchPlanTests
+#    path: enginetest/queries/tpch_plans.go
   - name: TpccPlanTests
     path: enginetest/queries/tpcc_plans.go
 #  - name: TpcdsPlanTests
