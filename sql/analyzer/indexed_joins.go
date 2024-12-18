@@ -574,7 +574,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 			sch := srcNode.Schema()
 			var table sql.Table
 			var node sql.Node = srcNode
-			if ta, ok := srcNode.(*plan.TableAlias); ok {
+			if ta, ok := node.(*plan.TableAlias); ok {
 				node = ta.Child
 			}
 			if tw, ok := node.(sql.TableNode); ok {
