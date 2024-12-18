@@ -573,23 +573,15 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 
 			sch := srcNode.Schema()
 			var table sql.Table
-			if tw, ok := srcNode.(sql.TableNode); ok {
+			var node sql.Node = srcNode
+			if ta, ok := srcNode.(*plan.TableAlias); ok {
+				node = ta.Child
+			}
+			if tw, ok := node.(sql.TableNode); ok {
 				table = tw.UnderlyingTable()
 			}
 			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
 				sch = pkt.PrimaryKeySchema().Schema
-			}
-
-			// column matching logic is dependent on the schema not being a sql.ProjectedTable
-			if ta, ok := srcNode.(*plan.TableAlias); ok {
-				if rt, ok := ta.Child.(*plan.ResolvedTable); ok {
-					if t := rt.UnderlyingTable(); t != nil {
-						if pt, ok := t.(sql.ProjectedTable); ok {
-							tmpTbl := pt.WithProjections(nil)
-							sch = tmpTbl.Schema()
-						}
-					}
-				}
 			}
 
 			firstCol, _ := srcNode.Columns().Next(1)
