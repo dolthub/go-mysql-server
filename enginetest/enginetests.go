@@ -5760,7 +5760,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 							break
 						}
 						expectedEngineRow := make([]*string, len(engineRow))
-						row, err := server.RowToSQL(ctx, sch, engineRow, nil)
+						row, err := server.RowToSQL(ctx, sch, engineRow, nil, nil)
 						if !assert.NoError(t, err) {
 							break
 						}
