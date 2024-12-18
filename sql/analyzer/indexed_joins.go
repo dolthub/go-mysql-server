@@ -592,7 +592,6 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				}
 			}
 
-			// get column info from schema for each column id...
 			firstCol, _ := srcNode.Columns().Next(1)
 			idx := int(colId - firstCol)
 			col := sch[idx]
