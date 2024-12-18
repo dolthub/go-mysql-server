@@ -944,7 +944,14 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 				continue
 			}
 			var err error
-			outVals[i], err = col.Type.SQL(ctx, buf.Get(100), row[i])
+			spare := buf.Spare()
+			outVals[i], err = col.Type.SQL(ctx, buf.Get(), row[i])
+			if outVals[i].Len() > spare {
+				buf.Double()
+			} else {
+				buf.Advance(outVals[i].Len())
+			}
+
 			if err != nil {
 				return nil, err
 			}
@@ -961,7 +968,13 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 			outVals[i] = sqltypes.NULL
 			continue
 		}
-		outVals[i], err = col.Type.SQL(ctx, buf.Get(100), field)
+		spare := buf.Spare()
+		outVals[i], err = col.Type.SQL(ctx, buf.Get(), row[i])
+		if outVals[i].Len() > spare {
+			buf.Double()
+		} else {
+			buf.Advance(outVals[i].Len())
+		}
 		if err != nil {
 			return nil, err
 		}
