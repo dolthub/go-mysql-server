@@ -36,6 +36,9 @@ type User struct {
 	Attributes          *string
 	Identity            string
 	IsSuperUser         bool
+	// IsEphemeral is true if this user is ephemeral, meaning it will only exist
+	// for the lifetime of the server process and will not be persisted to disk.
+	IsEphemeral bool
 	//TODO: add the remaining fields
 
 	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a

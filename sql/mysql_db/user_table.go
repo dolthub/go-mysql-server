@@ -215,7 +215,7 @@ func init() {
 	}
 }
 
-func addSuperUser(ed *Editor, username string, host string, authString string) {
+func addSuperUser(ed *Editor, username string, host string, authString string, ephemeral bool) {
 	ed.PutUser(&User{
 		User:                username,
 		Host:                host,
@@ -227,6 +227,7 @@ func addSuperUser(ed *Editor, username string, host string, authString string) {
 		Attributes:          nil,
 		IsRole:              false,
 		IsSuperUser:         true,
+		IsEphemeral:         ephemeral,
 	})
 }
 
