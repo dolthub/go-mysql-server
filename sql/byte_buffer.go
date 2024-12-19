@@ -1,6 +1,21 @@
 package sql
 
+import (
+	"sync"
+)
+
 var SingletonBuf = NewByteBuffer(16000)
+
+var defaultByteBuffCap = 1000
+
+var ByteBufPool = sync.Pool{
+	New: func() any {
+		// The Pool's New function should generally only return pointer
+		// types, since a pointer can be put into the return interface
+		// value without an allocation:
+		return NewByteBuffer(defaultByteBuffCap)
+	},
+}
 
 type ByteBuffer struct {
 	buf []byte

@@ -442,9 +442,10 @@ func (h *Handler) doQuery(
 	var r *sqltypes.Result
 	var processedAtLeastOneBatch bool
 
-	buf := sql.SingletonBuf
+	buf := sql.ByteBufPool.Get().(*sql.ByteBuffer)
 	defer func() {
-		sql.SingletonBuf.Reset()
+		buf.Reset()
+		sql.ByteBufPool.Put(buf)
 	}()
 
 	// zero/single return schema use spooling shortcut
@@ -930,6 +931,20 @@ func updateMaxUsedConnectionsStatusVariable() {
 	}()
 }
 
+func toSqlHelper(ctx *sql.Context, typ sql.Type, buf *sql.ByteBuffer, val interface{}) (sqltypes.Value, error) {
+	if buf == nil {
+		return typ.SQL(ctx, buf.Get(), val)
+	}
+	spare := buf.Spare()
+	ret, err := typ.SQL(ctx, buf.Get(), val)
+	if ret.Len() > spare {
+		buf.Double()
+	} else {
+		buf.Advance(ret.Len())
+	}
+	return ret, err
+}
+
 func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression, buf *sql.ByteBuffer) ([]sqltypes.Value, error) {
 	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
 	if len(sch) == 0 {
@@ -937,21 +952,14 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 	}
 
 	outVals := make([]sqltypes.Value, len(sch))
+	var err error
 	if len(projs) == 0 {
 		for i, col := range sch {
 			if row[i] == nil {
 				outVals[i] = sqltypes.NULL
 				continue
 			}
-			var err error
-			spare := buf.Spare()
-			outVals[i], err = col.Type.SQL(ctx, buf.Get(), row[i])
-			if outVals[i].Len() > spare {
-				buf.Double()
-			} else {
-				buf.Advance(outVals[i].Len())
-			}
-
+			outVals[i], err = toSqlHelper(ctx, col.Type, buf, row[i])
 			if err != nil {
 				return nil, err
 			}
@@ -968,13 +976,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 			outVals[i] = sqltypes.NULL
 			continue
 		}
-		spare := buf.Spare()
-		outVals[i], err = col.Type.SQL(ctx, buf.Get(), field)
-		if outVals[i].Len() > spare {
-			buf.Double()
-		} else {
-			buf.Advance(outVals[i].Len())
-		}
+		outVals[i], err = toSqlHelper(ctx, col.Type, buf, field)
 		if err != nil {
 			return nil, err
 		}
