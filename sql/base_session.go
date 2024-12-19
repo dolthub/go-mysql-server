@@ -178,6 +178,9 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 	}
 	sysVarName := strings.ToLower(sysVar.GetName())
 	s.systemVars[sysVarName] = svv
+	if sysVarName == characterSetResultsSysVarName {
+		s.charset = CharacterSet_Unspecified
+	}
 	return nil
 }
 
