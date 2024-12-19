@@ -47,6 +47,7 @@ type BaseSession struct {
 	lastQueryInfo    map[string]*atomic.Value
 	tx               Transaction
 	ignoreAutocommit bool
+	charset          CharacterSetID
 
 	// When the MySQL database updates any tables related to privileges, it increments its counter. We then update our
 	// privilege set if our counter doesn't equal the database's counter.
@@ -177,6 +178,9 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 	}
 	sysVarName := strings.ToLower(sysVar.GetName())
 	s.systemVars[sysVarName] = svv
+	if sysVarName == characterSetResultsSysVarName {
+		s.charset = CharacterSet_Unspecified
+	}
 	return nil
 }
 
@@ -263,15 +267,18 @@ func (s *BaseSession) GetCharacterSet() CharacterSetID {
 
 // GetCharacterSetResults returns the result character set for this session (defined by the system variable `character_set_results`).
 func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
-	sysVar, _ := s.systemVars[characterSetResultsSysVarName]
-	if sysVar.Val == nil {
-		return CharacterSet_Unspecified
+	if s.charset == CharacterSet_Unspecified {
+		sysVar, _ := s.systemVars[characterSetResultsSysVarName]
+		if sysVar.Val == nil {
+			return CharacterSet_Unspecified
+		}
+		var err error
+		s.charset, err = ParseCharacterSet(sysVar.Val.(string))
+		if err != nil {
+			panic(err) // shouldn't happen
+		}
 	}
-	charSet, err := ParseCharacterSet(sysVar.Val.(string))
-	if err != nil {
-		panic(err) // shouldn't happen
-	}
-	return charSet
+	return s.charset
 }
 
 // GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
