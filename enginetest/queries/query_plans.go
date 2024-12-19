@@ -6088,7 +6088,7 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [a.i:0!null, a.s:1!null]\n" +
+			"     ├─ columns: [mytable.i:0!null, mytable.s:1!null]\n" +
 			"     └─ Filter\n" +
 			"         ├─ b.i:2!null IS NULL\n" +
 			"         └─ LeftOuterMergeJoin\n" +
@@ -6117,7 +6117,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [a.i, a.s]\n" +
+			"     ├─ columns: [mytable.i, mytable.s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ b.i IS NULL\n" +
 			"         └─ LeftOuterMergeJoin (estimated cost=6.120 rows=3)\n" +
@@ -6135,7 +6135,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [a.i, a.s]\n" +
+			"     ├─ columns: [mytable.i, mytable.s]\n" +
 			"     └─ Filter\n" +
 			"         ├─ b.i IS NULL\n" +
 			"         └─ LeftOuterMergeJoin (estimated cost=6.120 rows=3) (actual rows=3 loops=1)\n" +
@@ -25116,56 +25116,48 @@ order by x, y;
 	{
 		Query: `select distinct pk1 from two_pk order by pk1`,
 		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1:0!null]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1]\n" +
 			"",
 	},
 	{
 		Query: `select distinct pk2 from two_pk order by pk2`,
 		ExpectedPlan: "Sort(two_pk.pk2:0!null ASC nullsFirst)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk2:1!null]\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk2]\n" +
 			"",
 		ExpectedEstimates: "Sort(two_pk.pk2 ASC)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk2]\n" +
-			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk2]\n" +
 			"",
 		ExpectedAnalysis: "Sort(two_pk.pk2 ASC)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk2]\n" +
-			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk2]\n" +
 			"",
 	},
 	{
@@ -25177,21 +25169,23 @@ order by x, y;
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk1]\n" +
 			"     └─ Sort(two_pk.pk2 ASC)\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk1]\n" +
 			"     └─ Sort(two_pk.pk2 ASC)\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -25206,131 +25200,117 @@ order by x, y;
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk2]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk2]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk1`,
 		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk2`,
 		ExpectedPlan: "Sort(two_pk.pk2:1!null ASC nullsFirst)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Sort(two_pk.pk2 ASC)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Sort(two_pk.pk2 ASC)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk1, pk2`,
 		ExpectedPlan: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
 		Query: `select distinct pk1, pk2 from two_pk order by pk2, pk1`,
 		ExpectedPlan: "Sort(two_pk.pk2:1!null ASC nullsFirst, two_pk.pk1:0!null ASC nullsFirst)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null]\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
 			" └─ Distinct\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [two_pk.pk1, two_pk.pk2]\n" +
-			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -25345,21 +25325,23 @@ order by x, y;
 			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
 			"     └─ IndexedTableAccess(two_pk)\n" +
 			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -25371,21 +25353,23 @@ order by x, y;
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
 			" └─ Distinct\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Sort(two_pk.pk2 ASC, two_pk.pk1 ASC)\n" +
 			" └─ Distinct\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [two_pk.pk2, two_pk.pk1]\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{
@@ -25397,47 +25381,51 @@ order by x, y;
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ columns: [pk1]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [(two_pk.pk1 + 1) as pk1 + 1]\n" +
 			"     └─ Sort((two_pk.pk1 + 1) ASC)\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [(two_pk.pk1 + 1) as pk1 + 1]\n" +
 			"     └─ Sort((two_pk.pk1 + 1) ASC)\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk1]\n" +
 			"",
 	},
 	{
 		Query: `select distinct pk2 + 1 from two_pk order by pk2 + 1`,
 		ExpectedPlan: "Distinct\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(two_pk.pk2:1!null + 1 (tinyint)) as pk2 + 1]\n" +
-			"     └─ Sort((two_pk.pk2:1!null + 1 (tinyint)) ASC nullsFirst)\n" +
+			"     ├─ columns: [(two_pk.pk2:0!null + 1 (tinyint)) as pk2 + 1]\n" +
+			"     └─ Sort((two_pk.pk2:0!null + 1 (tinyint)) ASC nullsFirst)\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: two_pk\n" +
-			"                 └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ columns: [pk2]\n" +
 			"",
 		ExpectedEstimates: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [(two_pk.pk2 + 1) as pk2 + 1]\n" +
 			"     └─ Sort((two_pk.pk2 + 1) ASC)\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk2]\n" +
 			"",
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [(two_pk.pk2 + 1) as pk2 + 1]\n" +
 			"     └─ Sort((two_pk.pk2 + 1) ASC)\n" +
 			"         └─ Table\n" +
-			"             └─ name: two_pk\n" +
+			"             ├─ name: two_pk\n" +
+			"             └─ columns: [pk2]\n" +
 			"",
 	},
 }
