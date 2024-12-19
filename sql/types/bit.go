@@ -214,7 +214,7 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
 		data[i], data[j] = data[j], data[i]
 	}
-	val := AppendAndSliceBytes(dest, data)
+	val := data
 
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
 }

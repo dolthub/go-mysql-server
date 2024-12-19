@@ -410,7 +410,7 @@ func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 
-	valBytes := AppendAndSliceBytes(dest, val)
+	valBytes := val
 
 	return sqltypes.MakeTrusted(typ, valBytes), nil
 }

@@ -257,7 +257,7 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		snippet = strings.ToValidUTF8(snippet, string(utf8.RuneError))
 		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(value), snippet)
 	}
-	val := AppendAndSliceBytes(dest, encodedBytes)
+	val := encodedBytes
 
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }

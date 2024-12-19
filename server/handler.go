@@ -969,7 +969,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 			continue
 		}
 		spare := buf.Spare()
-		outVals[i], err = col.Type.SQL(ctx, buf.Get(), row[i])
+		outVals[i], err = col.Type.SQL(ctx, buf.Get(), field)
 		if outVals[i].Len() > spare {
 			buf.Double()
 		} else {
