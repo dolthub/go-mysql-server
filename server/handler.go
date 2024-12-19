@@ -933,15 +933,10 @@ func updateMaxUsedConnectionsStatusVariable() {
 
 func toSqlHelper(ctx *sql.Context, typ sql.Type, buf *sql.ByteBuffer, val interface{}) (sqltypes.Value, error) {
 	if buf == nil {
-		return typ.SQL(ctx, buf.Get(), val)
+		return typ.SQL(ctx, nil, val)
 	}
-	spare := buf.Spare()
 	ret, err := typ.SQL(ctx, buf.Get(), val)
-	if ret.Len() > spare {
-		buf.Double()
-	} else {
-		buf.Advance(ret.Len())
-	}
+	buf.Update(ret.Raw())
 	return ret, err
 }
 
