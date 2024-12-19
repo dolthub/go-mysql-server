@@ -540,7 +540,8 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		case []byte:
 			valueBytes = v
 		case string:
-			valueBytes = []byte(v)
+			dest = append(dest, v...)
+			valueBytes = dest[start:]
 		case int, int8, int16, int32, int64:
 			num, _, err := convertToInt64(Int64.(NumberTypeImpl_), v)
 			if err != nil {
@@ -555,10 +556,11 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			valueBytes = strconv.AppendUint(dest, num, 10)
 		case bool:
 			if v {
-				valueBytes = append(dest, '1')
+				dest = append(dest, '1')
 			} else {
-				valueBytes = append(dest, '0')
+				dest = append(dest, '0')
 			}
+			valueBytes = dest[start:]
 		case float64:
 			valueBytes = strconv.AppendFloat(dest, v, 'f', -1, 64)
 			if valueBytes[start] == '-' {

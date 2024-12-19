@@ -1,6 +1,6 @@
 package sql
 
-var SingletonBuf = NewByteBuffer(1000)
+var SingletonBuf = NewByteBuffer(16000)
 
 type ByteBuffer struct {
 	buf []byte
