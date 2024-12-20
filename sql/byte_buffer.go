@@ -1,3 +1,17 @@
+// Copyright 2024 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package sql
 
 import (
@@ -26,15 +40,19 @@ func NewByteBuffer(initCap int) *ByteBuffer {
 // are responsible for accurately reporting which bytes
 // they expect to be protected.
 func (b *ByteBuffer) Grow(n int) {
-	if b.i+n > len(b.buf) {
-		// Runtime alloc'd into a separate backing array, but it chooses
-		// the doubling cap using the non-optimal |cap(b.buf)-b.i|*2.
-		// We do not need to increment |b.i| b/c the latest value is in
-		// the other array.
-		b.Double()
-	} else {
-		b.i += n
+	newI := b.i
+	if b.i+n <= len(b.buf) {
+		// Increment |b.i| if no alloc
+		newI += n
 	}
+	if b.i+n >= len(b.buf) {
+		// No more space, double.
+		// An external allocation doubled the cap using the size of
+		// the override object, which if used could lead to overall
+		// shrinking behavior.
+		b.Double()
+	}
+	b.i = newI
 }
 
 // Double expands the backing array by 2x. We do this
