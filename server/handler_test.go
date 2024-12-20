@@ -789,7 +789,7 @@ func TestHandlerKillQuery(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	sleepQuery := "SELECT SLEEP(2)"
+	sleepQuery := "SELECT SLEEP(5)"
 	go func() {
 		defer wg.Done()
 		err = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
