@@ -800,6 +800,7 @@ func TestHandlerKillQuery(t *testing.T) {
 		//require.Error(serr)
 	}()
 
+	time.Sleep(100 * time.Millisecond)
 	var sleepQueryID string
 	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
 		// 1,  ,  , test, Query, 0, ...    , SELECT SLEEP(1000)
@@ -824,11 +825,13 @@ func TestHandlerKillQuery(t *testing.T) {
 	})
 	require.NoError(err)
 
+	time.Sleep(100 * time.Millisecond)
 	err = handler.ComQuery(context.Background(), conn2, "KILL QUERY "+sleepQueryID, func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
 	wg.Wait()
+	time.Sleep(100 * time.Millisecond)
 	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
 		// 1,  ,  , test, Sleep, 0,        ,
 		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
