@@ -30,6 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -130,7 +131,25 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 			b.handleErr(err)
 		}
-		c = c.withOriginal(v.Name.String())
+		// Look past table aliases
+		// TODO: also find it through joins??? wtf
+		var origTbl string
+		if inScope.node != nil {
+			transform.Inspect(inScope.node, func(node sql.Node) bool {
+				switch n := node.(type) {
+				case *plan.TableAlias:
+					if n.Name() == c.table {
+						if child, ok := n.Child.(sql.Nameable); ok {
+							origTbl = child.Name()
+						}
+					}
+					return false
+				}
+				return true
+			})
+		}
+
+		c = c.withOriginal(origTbl, v.Name.String())
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()

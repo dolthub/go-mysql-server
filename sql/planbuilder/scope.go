@@ -612,10 +612,12 @@ func (c scopeColumn) unwrapGetFieldAliasId() columnId {
 	return c.id
 }
 
-func (c scopeColumn) withOriginal(col string) scopeColumn {
+func (c scopeColumn) withOriginal(origTbl, col string) scopeColumn {
 	// info schema columns always presented as uppercase, except for processlist
 	// can't reference information_schema.ProcessListTableName because of import cycles
-	if !strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) || (strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(c.table, "processlist")) {
+	if !strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) ||
+		(strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(c.table, "processlist")) ||
+		(strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(origTbl, "processlist")) {
 		c.originalCol = col
 	}
 	return c
