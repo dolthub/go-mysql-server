@@ -132,7 +132,6 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			b.handleErr(err)
 		}
 		// Look past table aliases
-		// TODO: also find it through joins??? wtf
 		var origTbl string
 		if inScope.node != nil {
 			transform.Inspect(inScope.node, func(node sql.Node) bool {
