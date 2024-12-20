@@ -15,7 +15,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -800,21 +799,19 @@ func TestHandlerKillQuery(t *testing.T) {
 	}()
 
 	time.Sleep(100 * time.Millisecond)
-	var sleepQueryID []byte
+	var sleepQueryID string
 	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
 		// 1,  ,  , test, Query, 0, ...    , SELECT SLEEP(1000)
 		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
 		require.Equal(2, len(res.Rows))
 		hasSleepQuery := false
-		fmt.Println(res.Rows[0][0].ToString(), res.Rows[0][7].ToString())
-		fmt.Println(res.Rows[1][0].ToString(), res.Rows[1][7].ToString())
 		for _, row := range res.Rows {
-			if !bytes.Equal(row[7].Raw(), []byte(sleepQuery)) {
+			if row[7].ToString() != sleepQuery {
 				continue
 			}
 			hasSleepQuery = true
-			sleepQueryID = row[0].Raw()
-			require.Equal([]byte("Query"), row[4].Raw())
+			sleepQueryID = row[0].ToString()
+			require.Equal("Query", row[4].ToString())
 		}
 		require.True(hasSleepQuery)
 		return nil
@@ -822,7 +819,7 @@ func TestHandlerKillQuery(t *testing.T) {
 	require.NoError(err)
 
 	time.Sleep(100 * time.Millisecond)
-	err = handler.ComQuery(context.Background(), conn2, "KILL QUERY "+string(sleepQueryID), func(res *sqltypes.Result, more bool) error {
+	err = handler.ComQuery(context.Background(), conn2, "KILL QUERY "+sleepQueryID, func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -835,12 +832,12 @@ func TestHandlerKillQuery(t *testing.T) {
 		require.Equal(2, len(res.Rows))
 		hasSleepQueryID := false
 		for _, row := range res.Rows {
-			if !bytes.Equal(row[0].ToBytes(), sleepQueryID) {
+			if row[0].ToString() != sleepQueryID {
 				continue
 			}
 			hasSleepQueryID = true
-			require.Equal([]byte("Sleep"), row[4].ToBytes())
-			require.Equal([]byte{}, row[7].ToBytes())
+			require.Equal("Sleep", row[4].ToString())
+			require.Equal("", row[7].ToString())
 		}
 		require.True(hasSleepQueryID)
 		return nil
