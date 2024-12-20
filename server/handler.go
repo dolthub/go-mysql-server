@@ -936,7 +936,7 @@ func toSqlHelper(ctx *sql.Context, typ sql.Type, buf *sql.ByteBuffer, val interf
 		return typ.SQL(ctx, nil, val)
 	}
 	ret, err := typ.SQL(ctx, buf.Get(), val)
-	buf.Update(ret.Raw())
+	buf.Grow(ret.Len())
 	return ret, err
 }
 

@@ -28,7 +28,7 @@ func BenchmarkVarchar10SQL(b *testing.B) {
 	ctx := sql.NewEmptyContext()
 	for i := 0; i < b.N; i++ {
 		res, _ = t.SQL(ctx, buf.Get(), "char")
-		buf.Update(res.Raw())
+		buf.Grow(res.Len())
 		buf.Reset()
 	}
 	result_ = res
