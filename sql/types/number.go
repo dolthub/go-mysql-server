@@ -613,6 +613,8 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 		default:
 			return sqltypes.Value{}, err
 		}
+	} else if err != nil {
+		return sqltypes.Value{}, err
 	}
 
 	val := dest[stop:]

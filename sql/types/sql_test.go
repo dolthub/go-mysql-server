@@ -24,9 +24,12 @@ func BenchmarkNumI64SQL(b *testing.B) {
 func BenchmarkVarchar10SQL(b *testing.B) {
 	var res sqltypes.Value
 	t := MustCreateStringWithDefaults(sqltypes.VarChar, 10)
+	buf := sql.NewByteBuffer(1000)
 	ctx := sql.NewEmptyContext()
 	for i := 0; i < b.N; i++ {
-		res, _ = t.SQL(ctx, nil, "char")
+		res, _ = t.SQL(ctx, buf.Get(), "char")
+		buf.Grow(res.Len())
+		buf.Reset()
 	}
 	result_ = res
 }

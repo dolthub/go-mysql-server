@@ -271,7 +271,7 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceBytes(dest, ti.Bytes())
+	val := ti.Bytes()
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
 

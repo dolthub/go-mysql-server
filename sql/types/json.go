@@ -140,7 +140,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		if err != nil {
 			return sqltypes.NULL, err
 		}
-		val = AppendAndSliceBytes(dest, str)
+		val = str
 	} else {
 		// Convert to jsonType
 		jsVal, _, err := t.Convert(v)

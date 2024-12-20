@@ -442,15 +442,21 @@ func (h *Handler) doQuery(
 	var r *sqltypes.Result
 	var processedAtLeastOneBatch bool
 
+	buf := sql.ByteBufPool.Get().(*sql.ByteBuffer)
+	defer func() {
+		buf.Reset()
+		sql.ByteBufPool.Put(buf)
+	}()
+
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
 		r, err = resultForOkIter(sqlCtx, rowIter)
 	} else if schema == nil {
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
-		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields)
+		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
 	} else {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
+		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
 	if err != nil {
 		return remainder, err
@@ -542,7 +548,7 @@ func GetDeferredProjections(iter sql.RowIter) (sql.RowIter, []sql.Expression) {
 }
 
 // resultForMax1RowIter ensures that an empty iterator returns at most one row
-func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field) (*sqltypes.Result, error) {
+func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field, buf *sql.ByteBuffer) (*sqltypes.Result, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForMax1RowIter").End()
 	row, err := iter.Next(ctx)
 	if err == io.EOF {
@@ -557,7 +563,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 	if err := iter.Close(ctx); err != nil {
 		return nil, err
 	}
-	outputRow, err := RowToSQL(ctx, schema, row, nil)
+	outputRow, err := RowToSQL(ctx, schema, row, nil, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -569,14 +575,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 
 // resultForDefaultIter reads batches of rows from the iterator
 // and writes results into the callback function.
-func (h *Handler) resultForDefaultIter(
-	ctx *sql.Context,
-	c *mysql.Conn,
-	schema sql.Schema,
-	iter sql.RowIter,
-	callback func(*sqltypes.Result, bool) error,
-	resultFields []*querypb.Field,
-	more bool) (r *sqltypes.Result, processedAtLeastOneBatch bool, returnErr error) {
+func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter, callback func(*sqltypes.Result, bool) error, resultFields []*querypb.Field, more bool, buf *sql.ByteBuffer) (r *sqltypes.Result, processedAtLeastOneBatch bool, returnErr error) {
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
@@ -669,7 +668,7 @@ func (h *Handler) resultForDefaultIter(
 					continue
 				}
 
-				outputRow, err := RowToSQL(ctx, schema, row, projs)
+				outputRow, err := RowToSQL(ctx, schema, row, projs, buf)
 				if err != nil {
 					return err
 				}
@@ -932,21 +931,30 @@ func updateMaxUsedConnectionsStatusVariable() {
 	}()
 }
 
-func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression) ([]sqltypes.Value, error) {
+func toSqlHelper(ctx *sql.Context, typ sql.Type, buf *sql.ByteBuffer, val interface{}) (sqltypes.Value, error) {
+	if buf == nil {
+		return typ.SQL(ctx, nil, val)
+	}
+	ret, err := typ.SQL(ctx, buf.Get(), val)
+	buf.Grow(ret.Len())
+	return ret, err
+}
+
+func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression, buf *sql.ByteBuffer) ([]sqltypes.Value, error) {
 	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
 	if len(sch) == 0 {
 		return []sqltypes.Value{}, nil
 	}
 
 	outVals := make([]sqltypes.Value, len(sch))
+	var err error
 	if len(projs) == 0 {
 		for i, col := range sch {
 			if row[i] == nil {
 				outVals[i] = sqltypes.NULL
 				continue
 			}
-			var err error
-			outVals[i], err = col.Type.SQL(ctx, nil, row[i])
+			outVals[i], err = toSqlHelper(ctx, col.Type, buf, row[i])
 			if err != nil {
 				return nil, err
 			}
@@ -963,7 +971,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 			outVals[i] = sqltypes.NULL
 			continue
 		}
-		outVals[i], err = col.Type.SQL(ctx, nil, field)
+		outVals[i], err = toSqlHelper(ctx, col.Type, buf, field)
 		if err != nil {
 			return nil, err
 		}
