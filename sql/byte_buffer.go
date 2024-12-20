@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-const defaultByteBuffCap = 10
+const defaultByteBuffCap = 4096
 
 var ByteBufPool = sync.Pool{
 	New: func() any {
