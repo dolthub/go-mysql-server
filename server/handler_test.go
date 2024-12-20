@@ -791,13 +791,13 @@ func TestHandlerKillQuery(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	sleepQuery := "SELECT SLEEP(100000)"
+	var sleepErr error
 	go func() {
 		defer wg.Done()
 		// need a local |err| variable to avoid being overwritten
-		_ = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
+		sleepErr = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
 			return nil
 		})
-		//require.Error(serr)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -831,6 +831,8 @@ func TestHandlerKillQuery(t *testing.T) {
 	})
 	require.NoError(err)
 	wg.Wait()
+	require.Error(sleepErr)
+
 	time.Sleep(100 * time.Millisecond)
 	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
 		// 1,  ,  , test, Sleep, 0,        ,
