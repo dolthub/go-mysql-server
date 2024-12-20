@@ -794,10 +794,10 @@ func TestHandlerKillQuery(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		// need a local |err| variable to avoid being overwritten
-		err := handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
+		serr := handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
 			return nil
 		})
-		require.Error(err)
+		require.Error(serr)
 	}()
 
 	var sleepQueryID string
