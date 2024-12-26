@@ -1070,6 +1070,12 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 		//    Check to see if any rIndexes match that set of filters
 		//    Remove the last matched filter
 		for _, lIndex := range lIndexes {
+			if lIndex.Order() == sql.IndexOrderNone {
+				// lookups can be unordered, merge indexes need to
+				// be globally ordered
+				continue
+			}
+
 			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
 			for len(matchedEqFilters) > 0 {
 				for _, rIndex := range rIndexes {
