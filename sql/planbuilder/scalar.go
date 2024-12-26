@@ -410,10 +410,10 @@ func (b *Builder) getOrigTblName(node sql.Node, alias string) string {
 	// Look past table aliases
 	var origTbl string
 	transform.Inspect(node, func(n sql.Node) bool {
-		switch n := node.(type) {
+		switch nn := n.(type) {
 		case *plan.TableAlias:
-			if n.Name() == alias {
-				if child, ok := n.Child.(sql.Nameable); ok {
+			if nn.Name() == alias {
+				if child, ok := nn.Child.(sql.Nameable); ok {
 					origTbl = child.Name()
 				}
 			}
