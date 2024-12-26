@@ -131,23 +131,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 			b.handleErr(err)
 		}
-		// Look past table aliases
-		var origTbl string
-		if inScope.node != nil {
-			transform.Inspect(inScope.node, func(node sql.Node) bool {
-				switch n := node.(type) {
-				case *plan.TableAlias:
-					if n.Name() == c.table {
-						if child, ok := n.Child.(sql.Nameable); ok {
-							origTbl = child.Name()
-						}
-					}
-					return false
-				}
-				return true
-			})
-		}
 
+		origTbl := b.getOrigTblName(inScope.node, c.table)
 		c = c.withOriginal(origTbl, v.Name.String())
 		return c.scalarGf()
 	case *ast.FuncExpr:
@@ -416,6 +401,28 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	}
 	return nil
+}
+
+func (b *Builder) getOrigTblName(node sql.Node, alias string) string {
+	if node == nil {
+		return ""
+	}
+	// Look past table aliases
+	var origTbl string
+	transform.Inspect(node, func(n sql.Node) bool {
+		switch n := node.(type) {
+		case *plan.TableAlias:
+			if n.Name() == alias {
+				if child, ok := n.Child.(sql.Nameable); ok {
+					origTbl = child.Name()
+				}
+			}
+			return false
+		default:
+			return true
+		}
+	})
+	return origTbl
 }
 
 // getJsonValueTypeLiteral converts a type coercion string into a literal
