@@ -1079,6 +1079,9 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
 			for len(matchedEqFilters) > 0 {
 				for _, rIndex := range rIndexes {
+					if rIndex.Order() == sql.IndexOrderNone {
+						continue
+					}
 					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
