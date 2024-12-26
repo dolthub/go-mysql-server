@@ -163,7 +163,7 @@ func (b *Builder) buildAuthenticatedUser(user ast.AccountWithAuth) plan.Authenti
 		} else if user.Auth1.Plugin == string(mysql.CachingSha2Password) {
 			authUser.Auth1 = plan.NewCachingSha2PasswordAuthentication(user.Auth1.Password)
 		} else if len(user.Auth1.Plugin) > 0 {
-			authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin)
+			authUser.Auth1 = plan.NewOtherAuthentication(user.Auth1.Password, user.Auth1.Plugin, user.Auth1.Identity)
 		} else {
 			// We default to using the password, even if it's empty
 			authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)

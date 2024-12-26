@@ -949,12 +949,12 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 
 	outVals := make([]sqltypes.Value, len(sch))
 	var err error
-	var buf []byte = make([]byte, 256)
+	var newBuf = make([]byte, 256)
 	if br, ok := row.(sql.BytesRow); ok {
 		if len(projs) == 0 {
 			for i, col := range sch {
-				val, err := br.GetBytes(i, col.Type, buf[:0])
-				buf = buf[len(val):]
+				val, err := br.GetBytes(i, col.Type, newBuf[:0])
+				newBuf = newBuf[len(val):]
 				if err != nil {
 					return nil, err
 				}
@@ -971,8 +971,8 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 			e := projs[i]
 			switch e := e.(type) {
 			case *expression.GetField:
-				val, err := br.GetBytes(e.Index(), col.Type, buf[:0])
-				buf = buf[len(val):]
+				val, err := br.GetBytes(e.Index(), col.Type, newBuf[:0])
+				newBuf = newBuf[len(val):]
 				if err != nil {
 					return nil, err
 				}

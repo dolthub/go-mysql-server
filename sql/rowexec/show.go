@@ -78,14 +78,14 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 		formatString := sql.Describe(n.Child, n.Format)
 		for _, l := range strings.Split(formatString, "\n") {
 			if strings.TrimSpace(l) != "" {
-				rows = append(rows, sql.NewRow(l))
+				rows = append(rows, sql.NewUntypedRow(l))
 			}
 		}
 		return sql.RowsToRowIter(rows...), nil
 	}
 
 	ctx.Warn(0, "EXPLAIN Output is currently a placeholder; use EXPLAIN PLAN for old behavior")
-	dummyRow := sql.Row{
+	dummyRow := sql.UntypedSqlRow{
 		1,        // id
 		"SELECT", // select_type
 		"NULL",   // table
