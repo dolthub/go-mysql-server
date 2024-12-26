@@ -18,7 +18,6 @@ import (
 	"context"
 	sql2 "database/sql"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 	"io"
 	"net"
 	"runtime"
@@ -47,6 +46,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
