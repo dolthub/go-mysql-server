@@ -16,6 +16,9 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Describe is a node that describes its children.
@@ -102,6 +105,22 @@ func (*DescribeQuery) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 
 // DescribeSchema is the schema returned by a DescribeQuery node.
 var DescribeSchema = sql.Schema{
+	{Name: "id", Type: types.Uint64},
+	{Name: "select_type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 57)},
+	{Name: "table", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192)},
+	{Name: "partitions", Type: types.Text},
+	{Name: "type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 30)},
+	{Name: "possible_keys", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 12288)},
+	{Name: "key", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192)},
+	{Name: "key_len", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 12288)},
+	{Name: "ref", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3072)},
+	{Name: "rows", Type: types.Uint64},
+	{Name: "filtered", Type: types.Float64},
+	{Name: "Extra", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 765)},
+}
+
+// DescribePlanSchema is the schema returned by a DescribeQuery node.
+var DescribePlanSchema = sql.Schema{
 	{Name: "plan", Type: VarChar25000},
 }
 
@@ -112,7 +131,11 @@ func NewDescribeQuery(format sql.DescribeOptions, child sql.Node) *DescribeQuery
 
 // Schema implements the Node interface.
 func (d *DescribeQuery) Schema() sql.Schema {
-	return DescribeSchema
+	if d.Format.Plan {
+		return DescribePlanSchema
+	} else {
+		return DescribeSchema
+	}
 }
 
 func (d *DescribeQuery) Describe(options sql.DescribeOptions) string {

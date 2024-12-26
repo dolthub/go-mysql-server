@@ -39,8 +39,8 @@ func TestPopulateFDs(t *testing.T) {
 			notNull: sql.NewColSet(1, 2, 3),
 			indexes: []*Index{
 				{
-					order: []sql.ColumnId{2, 1},
-					set:   sql.NewColSet(1, 2),
+					cols: []sql.ColumnId{2, 1},
+					set:  sql.NewColSet(1, 2),
 				},
 			},
 			key: sql.NewColSet(1, 2),
@@ -62,8 +62,8 @@ func TestPopulateFDs(t *testing.T) {
 			notNull: sql.NewColSet(1, 2, 3),
 			indexes: []*Index{
 				{
-					order: []sql.ColumnId{1, 2, 3},
-					set:   sql.NewColSet(1, 2, 3),
+					cols: []sql.ColumnId{1, 2, 3},
+					set:  sql.NewColSet(1, 2, 3),
 				},
 			},
 			key: sql.NewColSet(1, 2, 3),

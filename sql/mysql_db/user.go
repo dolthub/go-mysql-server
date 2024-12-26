@@ -30,7 +30,7 @@ type User struct {
 	Host                string
 	PrivilegeSet        PrivilegeSet
 	Plugin              string
-	Password            string
+	AuthString          string
 	PasswordLastChanged time.Time
 	Locked              bool
 	Attributes          *string
@@ -58,7 +58,7 @@ func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {
 	row.SetValue(userTblColIndex_User, u.User)
 	row.SetValue(userTblColIndex_Host, u.Host)
 	row.SetValue(userTblColIndex_plugin, u.Plugin)
-	row.SetValue(userTblColIndex_authentication_string, u.Password)
+	row.SetValue(userTblColIndex_authentication_string, u.AuthString)
 	row.SetValue(userTblColIndex_password_last_changed, u.PasswordLastChanged)
 	row.SetValue(userTblColIndex_identity, u.Identity)
 	if u.Locked {
@@ -89,7 +89,7 @@ func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
 		Host:                row.GetValue(userTblColIndex_Host).(string),
 		PrivilegeSet:        UserRowToPrivSet(ctx, row),
 		Plugin:              row.GetValue(userTblColIndex_plugin).(string),
-		Password:            row.GetValue(userTblColIndex_authentication_string).(string),
+		AuthString:          row.GetValue(userTblColIndex_authentication_string).(string),
 		PasswordLastChanged: passwordLastChanged,
 		Locked:              row.GetValue(userTblColIndex_account_locked).(uint16) == 2,
 		Attributes:          attributes,
@@ -119,7 +119,7 @@ func UserEquals(left, right *User) bool {
 	if left.User != right.User ||
 		left.Host != right.Host ||
 		left.Plugin != right.Plugin ||
-		left.Password != right.Password ||
+		left.AuthString != right.AuthString ||
 		left.Identity != right.Identity ||
 		!left.PasswordLastChanged.Equal(right.PasswordLastChanged) ||
 		left.Locked != right.Locked ||

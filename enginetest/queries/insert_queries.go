@@ -30,24 +30,28 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
 		ExpectedSelect:      []sql.UntypedSqlRow{{nil, nil}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO keyless () VALUES ();",
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
 		ExpectedSelect:      []sql.UntypedSqlRow{{nil, nil}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '10.0');",
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(10)}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '64.6');",
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(65)}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', 999);",
@@ -66,6 +70,7 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (999, 'x');",
@@ -78,18 +83,21 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (999, _binary 'x');",
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
 		ExpectedSelect:      []sql.UntypedSqlRow{{"x"}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET i = 999, s = _binary 'x';",
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
 		ExpectedSelect:      []sql.UntypedSqlRow{{"x"}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (
@@ -475,6 +483,7 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "hi"}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt(new_i,new_s) ON DUPLICATE KEY UPDATE s=new_s",
@@ -495,18 +504,21 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "duplicate"}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'mar'), (2,'par') ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'tial')",
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i IN (1,2) ORDER BY i",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "martial"}, {int64(2), "partial"}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'maybe') ON DUPLICATE KEY UPDATE i=VALUES(i)+8000, s=VALUES(s)",
 		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 8001",
 		ExpectedSelect:      []sql.UntypedSqlRow{{int64(8001), "maybe"}},
+		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44)",
@@ -541,6 +553,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
+		Dialect: "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (0, 44)",
@@ -552,6 +565,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
+		Dialect: "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (5, 44)",
@@ -579,6 +593,7 @@ var InsertQueries = []WriteQueryTest{
 			{10, 110},
 			{11, 121},
 		},
+		Dialect: "mysql",
 	},
 	{
 		WriteQuery:          `INSERT INTO auto_increment_tbl (c0) SELECT 44 FROM dual`,
@@ -590,6 +605,7 @@ var InsertQueries = []WriteQueryTest{
 			{3, 33},
 			{4, 44},
 		},
+		Dialect: "mysql",
 	},
 	{
 		WriteQuery:          `INSERT INTO othertable VALUES ("fourth", 1) ON DUPLICATE KEY UPDATE s2="fourth"`,
@@ -914,7 +930,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert into sparse auto_increment table",
+		Name:    "insert into sparse auto_increment table",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
 			"insert into auto values (10), (20), (30)",
@@ -932,7 +949,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert negative values into auto_increment values",
+		Name:    "insert negative values into auto_increment values",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
 			"insert into auto values (10), (20), (30)",
@@ -980,7 +998,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert into auto_increment key/index column",
+		Name:    "insert into auto_increment key/index column",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto_no_primary (i int auto_increment, index(i))",
 			"insert into auto_no_primary (i) values (0), (0), (0)",
@@ -995,7 +1014,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert into auto_increment with multiple key/index columns",
+		Name:    "insert into auto_increment with multiple key/index columns",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto_no_primary (i int auto_increment, j int, index(i))",
 			"insert into auto_no_primary (i) values (0), (0), (0)",
@@ -1010,7 +1030,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment table handles deletes",
+		Name:    "auto increment table handles deletes",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
 			"insert into auto values (10)",
@@ -1027,7 +1048,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "create auto_increment table with out-of-line primary key def",
+		Name:    "create auto_increment table with out-of-line primary key def",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`create table auto (
 				pk int auto_increment,
@@ -1046,7 +1068,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "alter auto_increment value",
+		Name:    "alter auto_increment value",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`create table auto (
 				pk int auto_increment,
@@ -1077,7 +1100,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "alter auto_increment value to float",
+		Name:    "alter auto_increment value to float",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`create table auto (
 				pk int auto_increment,
@@ -1098,7 +1122,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on tinyint",
+		Name:    "auto increment on tinyint",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk tinyint primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1113,7 +1138,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on smallint",
+		Name:    "auto increment on smallint",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk smallint primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1128,7 +1154,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on mediumint",
+		Name:    "auto increment on mediumint",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk mediumint primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1143,7 +1170,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on int",
+		Name:    "auto increment on int",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1158,7 +1186,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on bigint",
+		Name:    "auto increment on bigint",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk bigint primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1173,7 +1202,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on tinyint unsigned",
+		Name:    "auto increment on tinyint unsigned",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk tinyint unsigned primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1188,7 +1218,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on smallint unsigned",
+		Name:    "auto increment on smallint unsigned",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk smallint unsigned primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1203,7 +1234,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on mediumint unsigned",
+		Name:    "auto increment on mediumint unsigned",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk mediumint unsigned primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1218,7 +1250,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on int unsigned",
+		Name:    "auto increment on int unsigned",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk int unsigned primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1233,7 +1266,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on bigint unsigned",
+		Name:    "auto increment on bigint unsigned",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk bigint unsigned primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1248,7 +1282,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on float",
+		Name:    "auto increment on float",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk float primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1263,7 +1298,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "auto increment on double",
+		Name:    "auto increment on double",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table auto (pk double primary key auto_increment)",
 			"insert into auto values (NULL),(10),(0)",
@@ -1278,7 +1314,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "sql_mode=NO_auto_value_ON_ZERO",
+		Name:    "sql_mode=NO_auto_value_ON_ZERO",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"set @old_sql_mode=@@sql_mode;",
 			"set @@sql_mode='NO_auto_value_ON_ZERO';",
@@ -1361,7 +1398,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "explicit DEFAULT",
+		Name:    "explicit DEFAULT",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t1(id int DEFAULT '2', dt datetime DEFAULT now());",
 			"CREATE TABLE t2(id varchar(100) DEFAULT (uuid()));",
@@ -1458,7 +1496,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "Explicit default with column reference",
+		Name:    "Explicit default with column reference",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (a int default 1, b int default (a+1));",
 		},
@@ -1490,7 +1529,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
+		Name:    "Try INSERT IGNORE with primary key, non null, and single row violations",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
 			"INSERT IGNORE INTO y VALUES (1, 1), (1,2), (2, 2), (3, 3)",
@@ -1507,49 +1547,56 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (5, NULL)",
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERBadNullError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERBadNullError,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk+10 FROM y WHERE pk > 1);",
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 5,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 10, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 11, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual) UNION SELECT 12, 0 FROM dual;",
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 13, 0 FROM dual UNION SELECT 14, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERSubqueryNo1Row,
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (3, 8)",
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 		},
 	},
@@ -1955,7 +2002,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "INSERT INTO ... SELECT works properly with ENUM",
+		Name:    "INSERT INTO ... SELECT works properly with ENUM",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 ENUM('a','b','c'));",
 		},
@@ -1971,7 +2019,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "INSERT INTO ... SELECT works properly with SET",
+		Name:    "INSERT INTO ... SELECT works properly with SET",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 SET('a','b','c'));",
 		},
@@ -2024,7 +2073,8 @@ var InsertScripts = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5411
-		Name: "Defaults with escaped strings",
+		Name:    "Defaults with escaped strings",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE escpe (
                                id int NOT NULL AUTO_INCREMENT,
@@ -2072,7 +2122,8 @@ var InsertScripts = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5411
-		Name: "check constrains with escaped strings",
+		Name:    "check constrains with escaped strings",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE quoted ( id int NOT NULL AUTO_INCREMENT,
                                    val varchar(15) NOT NULL CHECK (val IN ('joe''s',
@@ -2121,7 +2172,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "INSERT IGNORE works with FK Violations",
+		Name:    "INSERT IGNORE works with FK Violations",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
 			"CREATE TABLE t2 (id INT PRIMARY KEY, v2 int, CONSTRAINT mfk FOREIGN KEY (v2) REFERENCES t1(id));",
@@ -2133,7 +2185,8 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
-				ExpectedWarning: mysql.ErNoReferencedRow2,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ErNoReferencedRow2,
 			},
 		},
 	},
@@ -2579,7 +2632,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERBadNullError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERBadNullError,
 			},
 		},
 	},
@@ -2595,7 +2649,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query: "SELECT * FROM t1",
@@ -2608,7 +2663,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERUnknownError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERUnknownError,
 			},
 			{
 				Query: "SELECT * FROM t2",
@@ -2632,7 +2688,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query: "SELECT * FROM t1",
@@ -2645,7 +2702,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERUnknownError,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERUnknownError,
 			},
 			{
 				Query: "SELECT * FROM t2",
@@ -2679,7 +2737,8 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 3}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from one_uniq;",
@@ -2692,13 +2751,36 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 8}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from two_uniq;",
 				Expected: []sql.UntypedSqlRow{
 					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/8611
+		Name: "issue 8611: insert ignore on enum type column",
+		SetUpScript: []string{
+			"create table test_table (x int auto_increment primary key, y enum('hello','bye'))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into test_table values (1, 'invalid'), (2, 'comparative politics'), (3, null)",
+				ExpectedErr: types.ErrConvertingToEnum, // TODO: should be ErrDataTruncatedForColumn
+			},
+			{
+				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+				//ExpectedWarning: mysql.ERWarnDataTruncated, // TODO: incorrect code
+			},
+			{
+				Query:    "select * from test_table",
+				Expected: []sql.Row{{1, ""}, {2, "bye"}, {3, nil}},
 			},
 		},
 	},
@@ -2719,7 +2801,8 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 3}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from one_uniq;",
@@ -2732,7 +2815,8 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 8}},
 				},
-				ExpectedWarning: mysql.ERDupEntry,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query: "SELECT * from two_uniq;",
@@ -2766,9 +2850,10 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
-				Query:           "INSERT IGNORE INTO keyless VALUES (1, 3)",
-				Expected:        []sql.UntypedSqlRow{{types.NewOkResult(0)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "INSERT IGNORE INTO keyless VALUES (1, 3)",
+				Expected:              []sql.UntypedSqlRow{{types.NewOkResult(0)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 		},
 	},
@@ -2792,27 +2877,28 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 				ExpectedErr: sql.ErrUniqueKeyViolation,
 			},
 			{
-				Query:           "UPDATE IGNORE keyless SET val = 1 where pk = 1",
-				Expected:        []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:    "UPDATE IGNORE keyless SET val = 1 where pk = 1",
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
 				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
-				Query:           "UPDATE IGNORE keyless SET val = 3 where pk = 1",
-				Expected:        []sql.UntypedSqlRow{{newUpdateResult(1, 0)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "UPDATE IGNORE keyless SET val = 3 where pk = 1",
+				Expected:              []sql.UntypedSqlRow{{newUpdateResult(1, 0)}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
 				Expected: []sql.UntypedSqlRow{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
-				Query:           "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
-				Expected:        []sql.UntypedSqlRow{{newUpdateResult(3, 1)}},
-				ExpectedWarning: mysql.ERDupEntry,
+				Query:                 "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
+				Expected:              []sql.UntypedSqlRow{{newUpdateResult(3, 1)}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
@@ -2825,7 +2911,8 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 var InsertBrokenScripts = []ScriptTest{
 	// TODO: Condense all of our casting logic into a single error.
 	{
-		Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
+		Name:    "Test that INSERT IGNORE assigns the closest dataype correctly",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
 			`INSERT IGNORE INTO x VALUES (1, "one"), (2, TRUE), (3, "three")`,
@@ -2850,7 +2937,8 @@ var InsertBrokenScripts = []ScriptTest{
 				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
 		},
 	},
@@ -2955,6 +3043,23 @@ var InsertBrokenScripts = []ScriptTest{
 					{1, 1},
 					{2, 2},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/8617
+		Name: "INSERT INTO with ENUM NOT NULL",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY NOT NULL, v1 ENUM('a','b','c') NOT NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{{1, "a"}},
 			},
 		},
 	},

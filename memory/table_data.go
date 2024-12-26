@@ -139,7 +139,7 @@ func (td TableData) partition(row sql.Row) (int, error) {
 
 		t, isStringType := td.schema.Schema[keyColumns[i]].Type.(sql.StringType)
 		if isStringType && v != nil {
-			v, err = types.ConvertToString(v, t)
+			v, err = types.ConvertToString(v, t, nil)
 			if err == nil {
 				err = t.Collation().WriteWeightString(hash, v.(string))
 			}

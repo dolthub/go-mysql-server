@@ -57,8 +57,9 @@ type CollatedDatabaseProvider interface {
 // TableFunctionProvider is an interface that allows custom table functions to be provided. It's usually (but not
 // always) implemented by a DatabaseProvider.
 type TableFunctionProvider interface {
-	// TableFunction returns the table function with the name provided, case-insensitive
-	TableFunction(ctx *Context, name string) (TableFunction, error)
+	// TableFunction returns the table function with the name provided, case-insensitive.
+	// It also returns boolean param for whether the table function was found.
+	TableFunction(ctx *Context, name string) (TableFunction, bool)
 	// WithTableFunctions returns a new provider with (only) the list of table functions arguments
 	WithTableFunctions(fns ...TableFunction) (TableFunctionProvider, error)
 }

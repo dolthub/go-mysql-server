@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	dtablefunctions "github.com/dolthub/go-mysql-server/sql/expression/tablefunction"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -447,20 +448,11 @@ func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedT
 func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
 	//TODO what are valid mysql table arguments
 	args := make([]sql.Expression, 0, len(t.Exprs))
-	for _, e := range t.Exprs {
-		switch e := e.(type) {
+	for _, expr := range t.Exprs {
+		switch e := expr.(type) {
 		case *ast.AliasedExpr:
-			expr := b.buildScalar(inScope, e.Expr)
-
-			if !e.As.IsEmpty() {
-				b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
-			}
-
-			if selectExprNeedsAlias(e, expr) {
-				b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
-			}
-
-			args = append(args, expr)
+			scalarExpr := b.buildScalar(inScope, e.Expr)
+			args = append(args, scalarExpr)
 		default:
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 		}
@@ -468,9 +460,14 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 
 	utf := expression.NewUnresolvedTableFunction(t.Name, args)
 
-	tableFunction, err := b.cat.TableFunction(b.ctx, utf.Name())
-	if err != nil {
-		b.handleErr(err)
+	tableFunction, found := b.cat.TableFunction(b.ctx, utf.Name())
+	if !found {
+		// try getting regular function
+		f, funcFound := b.cat.Function(b.ctx, utf.Name())
+		if !funcFound {
+			b.handleErr(sql.ErrTableFunctionNotFound.New(utf.Name()))
+		}
+		tableFunction = dtablefunctions.NewTableFunctionWrapper(f)
 	}
 
 	database := b.currentDb()

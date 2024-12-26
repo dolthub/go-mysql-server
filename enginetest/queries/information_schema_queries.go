@@ -1807,6 +1807,27 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 		},
 	},
+	{
+		Name: "test information_schema database",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show databases like 'information_schema';",
+				Expected: []sql.Row{{"information_schema"}},
+			},
+			{
+				Query:       "create database information_schema;",
+				ExpectedErr: sql.ErrDatabaseExists,
+			},
+			{
+				Query:          "drop database information_schema;",
+				ExpectedErrStr: "unable to drop database: information_schema",
+			},
+			{
+				Query:    "show databases like 'information_schema';",
+				Expected: []sql.Row{{"information_schema"}},
+			},
+		},
+	},
 }
 
 var SkippedInfoSchemaScripts = []ScriptTest{

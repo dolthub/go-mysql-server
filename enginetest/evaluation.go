@@ -87,6 +87,10 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 			if sh.SkipQueryTest(script.Name) {
 				t.Skip()
 			}
+
+			if !supportedDialect(harness, script.Dialect) {
+				t.Skip()
+			}
 		}
 
 		for _, statement := range script.SetUpScript {
@@ -95,6 +99,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					t.Skip()
 				}
 			}
+
 			ctx = ctx.WithQuery(statement)
 			RunQueryWithContext(t, e, harness, ctx, statement)
 		}
@@ -120,10 +125,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					ctx = th.NewSession()
 				}
 
-				if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
-					t.Skip()
-				}
-				if assertion.Skip {
+				if skipAssertion(t, harness, assertion) {
 					t.Skip()
 				}
 
@@ -156,6 +158,22 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 			})
 		}
 	})
+}
+
+func skipAssertion(t *testing.T, harness Harness, assertion queries.ScriptTestAssertion) bool {
+	if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
+		return true
+	}
+
+	if !supportedDialect(harness, assertion.Dialect) {
+		return true
+	}
+
+	if assertion.Skip {
+		return true
+	}
+
+	return false
 }
 
 // TestScriptPrepared substitutes literals for bindvars, runs the test script given,
@@ -1024,15 +1042,25 @@ func AssertWarningAndTestQuery(
 		// check warnings depend on context, which ServerEngine does not depend on
 		if expectedWarningsCount > 0 {
 			assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
+			// Verify that if warnings are expected, we also configured a specific value check.
+			if expectedCode == 0 && len(expectedWarningMessageSubstring) == 0 {
+				require.Fail("Invalid test setup. Warning expected, but no value validation was configured.")
+			}
+		} else {
+			if expectedCode != 0 || len(expectedWarningMessageSubstring) != 0 {
+				require.Fail("Invalid test setup. No warnings expected, but value validation was configured")
+			}
+			assert.Zero(t, len(ctx.Warnings()), "Unexpected warnings")
 		}
 
 		if expectedCode > 0 {
+			// Not ideal. We are only supporting all warning codes being identical in a given test.
 			for _, warning := range ctx.Warnings() {
 				assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
 			}
 		}
-
 		if len(expectedWarningMessageSubstring) > 0 {
+			// Not ideal. All messages must have the same substring for a given test.
 			for _, warning := range ctx.Warnings() {
 				assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
 			}
@@ -1113,6 +1141,11 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			return
 		}
 	}
+
+	if !supportedDialect(harness, tt.Dialect) {
+		t.Skip()
+	}
+
 	ctx := NewContext(harness)
 	TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil, nil)
 	expectedSelect := tt.ExpectedSelect
@@ -1120,6 +1153,18 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 		expectedSelect = nil
 	}
 	TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil, nil)
+}
+
+func supportedDialect(harness Harness, dialect string) bool {
+	if dialect == "" {
+		return true
+	}
+
+	harnessDialect := "mysql"
+	if hd, ok := harness.(DialectHarness); ok {
+		harnessDialect = hd.Dialect()
+	}
+	return harnessDialect == dialect
 }
 
 func runWriteQueryTestPrepared(t *testing.T, harness Harness, tt queries.WriteQueryTest) {

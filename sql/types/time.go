@@ -15,7 +15,6 @@
 package types
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"strconv"
@@ -263,7 +262,7 @@ func (t TimespanType_) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t TimespanType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -272,8 +271,7 @@ func (t TimespanType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltyp
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, ti.String())
-
+	val := ti.Bytes()
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
 
@@ -463,17 +461,56 @@ func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8,
 
 // String returns the Timespan formatted as a string (such as for display purposes).
 func (t Timespan) String() string {
+	return string(t.Bytes())
+}
+
+func (t Timespan) Bytes() []byte {
 	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
-	sign := ""
+	sz := 10
+	if microseconds > 0 {
+		sz += 7
+	}
+	ret := make([]byte, sz)
+	i := 0
 	if isNegative {
-		sign = "-"
+		ret[0] = '-'
+		i++
 	}
 
-	if microseconds == 0 {
-
-		return fmt.Sprintf("%v%02d:%02d:%02d", sign, hours, minutes, seconds)
+	i = appendDigit(int64(hours), 2, ret, i)
+	ret[i] = ':'
+	i++
+	i = appendDigit(int64(minutes), 2, ret, i)
+	ret[i] = ':'
+	i++
+	i = appendDigit(int64(seconds), 2, ret, i)
+	if microseconds > 0 {
+		ret[i] = '.'
+		i++
+		i = appendDigit(int64(microseconds), 6, ret, i)
 	}
-	return fmt.Sprintf("%v%02d:%02d:%02d.%06d", sign, hours, minutes, seconds, microseconds)
+
+	return ret[:i]
+}
+
+// appendDigit format prints 0-entended integer into buffer
+func appendDigit(v int64, extend int, buf []byte, i int) int {
+	cmp := int64(1)
+	for _ = range extend - 1 {
+		cmp *= 10
+	}
+
+	for cmp > 0 && v < cmp{
+
+		buf[i] = '0'
+		i++
+		cmp /= 10
+	}
+	if v == 0 {
+		return i
+	}
+	tmpBuf := strconv.AppendInt(buf[i:i], v, 10)
+	return i + len(tmpBuf)
 }
 
 // AsMicroseconds returns the Timespan in microseconds.

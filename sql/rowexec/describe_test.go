@@ -83,6 +83,7 @@ func TestDescribeQuery(t *testing.T) {
 		Analyze:   false,
 		Estimates: false,
 		Debug:     false,
+		Plan:      true,
 	}
 	node := plan.NewDescribeQuery(format, plan.NewProject(
 		[]sql.Expression{

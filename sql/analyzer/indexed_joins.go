@@ -573,7 +573,11 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 
 			sch := srcNode.Schema()
 			var table sql.Table
-			if tw, ok := srcNode.(sql.TableNode); ok {
+			var node sql.Node = srcNode
+			if ta, ok := node.(*plan.TableAlias); ok {
+				node = ta.Child
+			}
+			if tw, ok := node.(sql.TableNode); ok {
 				table = tw.UnderlyingTable()
 			}
 			if pkt, ok := table.(sql.PrimaryKeyTable); ok {
@@ -1066,9 +1070,18 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 		//    Check to see if any rIndexes match that set of filters
 		//    Remove the last matched filter
 		for _, lIndex := range lIndexes {
+			if lIndex.Order() == sql.IndexOrderNone {
+				// lookups can be unordered, merge indexes need to
+				// be globally ordered
+				continue
+			}
+
 			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
 			for len(matchedEqFilters) > 0 {
 				for _, rIndex := range rIndexes {
+					if rIndex.Order() == sql.IndexOrderNone {
+						continue
+					}
 					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {

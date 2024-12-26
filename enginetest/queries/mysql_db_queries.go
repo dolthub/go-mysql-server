@@ -38,4 +38,25 @@ var MySqlDbTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "test mysql database",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show databases like 'mysql';",
+				Expected: []sql.Row{{"mysql"}},
+			},
+			{
+				Query:       "create database mysql;",
+				ExpectedErr: sql.ErrDatabaseExists,
+			},
+			{
+				Query:          "drop database mysql;",
+				ExpectedErrStr: "unable to drop database: mysql",
+			},
+			{
+				Query:    "show databases like 'mysql';",
+				Expected: []sql.Row{{"mysql"}},
+			},
+		},
+	},
 }

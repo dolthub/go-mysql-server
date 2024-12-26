@@ -108,6 +108,7 @@ type DescribeOptions struct {
 	Analyze   bool
 	Estimates bool
 	Debug     bool
+	Plan      bool
 }
 
 func (d DescribeOptions) String() string {

@@ -171,3 +171,11 @@ type ResultEvaluationHarness interface {
 	// EvaluateExpectedErrorKind compares expected error kinds to actual errors and emits failed test assertions in the
 	EvaluateExpectedErrorKind(t *testing.T, expected *errors.Kind, err error)
 }
+
+type DialectHarness interface {
+	Harness
+
+	// Dialect returns the dialect that the engine being tested supports. If this harness interface isn't implemented,
+	// the dialect "mysql" is used by engine tests.
+	Dialect() string
+}

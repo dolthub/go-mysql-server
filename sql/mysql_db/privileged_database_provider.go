@@ -80,6 +80,10 @@ func (pdp PrivilegedDatabaseProvider) Database(ctx *sql.Context, name string) (s
 
 // HasDatabase implements the interface sql.DatabaseProvider.
 func (pdp PrivilegedDatabaseProvider) HasDatabase(ctx *sql.Context, name string) bool {
+	if strings.EqualFold(name, "mysql") {
+		return true
+	}
+
 	db, err := pdp.provider.Database(ctx, name)
 	if sql.ErrDatabaseNotFound.Is(err) {
 		// continue to check below, which will deny access or return not found as appropriate

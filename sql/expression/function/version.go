@@ -21,8 +21,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-const mysqlVersion = "8.0.11"
-
 // Version is a function that returns server version.
 type Version string
 
@@ -86,9 +84,12 @@ func (f Version) Children() []sql.Expression { return nil }
 
 // Eval implements the Expression interface.
 func (f Version) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if f == "" {
-		return mysqlVersion, nil
+	v, err := ctx.Session.GetSessionVariable(ctx, "version")
+	if err != nil {
+		return nil, err
 	}
-
-	return fmt.Sprintf("%s-%s", mysqlVersion, string(f)), nil
+	if f == "" {
+		return v, nil
+	}
+	return fmt.Sprintf("%s-%s", v, string(f)), nil
 }

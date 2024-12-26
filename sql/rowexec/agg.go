@@ -259,7 +259,7 @@ func groupingKey(
 
 		t, isStringType := expr.Type().(sql.StringType)
 		if isStringType && v != nil {
-			v, err = types.ConvertToString(v, t)
+			v, err = types.ConvertToString(v, t, nil)
 			if err == nil {
 				err = t.Collation().WriteWeightString(hash, v.(string))
 			}

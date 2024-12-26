@@ -459,7 +459,7 @@ var processListSchema = Schema{
 	{Name: "DB", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ProcessListTableName},
 	{Name: "COMMAND", Type: types.MustCreateString(sqltypes.VarChar, 16, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: ProcessListTableName},
 	{Name: "TIME", Type: types.Int32, Default: nil, Nullable: false, Source: ProcessListTableName},
-	{Name: "STATE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ProcessListTableName},
+	{Name: "STATE", Type: types.MustCreateString(sqltypes.VarChar, 65535, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ProcessListTableName},
 	{Name: "INFO", Type: types.MustCreateString(sqltypes.VarChar, 65535, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ProcessListTableName},
 }
 

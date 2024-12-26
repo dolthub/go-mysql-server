@@ -159,7 +159,7 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	return nil
 }
 
-func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, bool) {
 	//TODO implement me
 	panic("implement me")
 }

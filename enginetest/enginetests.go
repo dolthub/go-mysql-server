@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"crypto/tls"
 	dsql "database/sql"
 	"fmt"
 	"io"
@@ -311,6 +312,51 @@ func TestInfoSchema(t *testing.T, h Harness) {
 			{uint64(1), "root", "localhost", nil, "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"},
 			{uint64(2), "root", "otherhost", "otherdb", "Sleep", 0, "", ""},
 		}, nil, nil, nil)
+	})
+
+	t.Run("information_schema.processlist projection case", func(t *testing.T) {
+		e := mustNewEngine(t, h)
+		defer e.Close()
+
+		if IsServerEngine(e) {
+			t.Skip("skipping for server engine as the processlist returned from server differs")
+		}
+		p := sqle.NewProcessList()
+		p.AddConnection(1, "localhost")
+
+		ctx := NewContext(h)
+		ctx.Session.SetClient(sql.Client{Address: "localhost", User: "root"})
+		ctx.Session.SetConnectionId(1)
+		ctx.ProcessList = p
+		ctx.SetCurrentDatabase("")
+
+		p.ConnectionReady(ctx.Session)
+
+		ctx, err := p.BeginQuery(ctx, "SELECT foo")
+		require.NoError(t, err)
+
+		p.AddConnection(2, "otherhost")
+		sess2 := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "otherhost", User: "root"}, 2)
+		sess2.SetCurrentDatabase("otherdb")
+		p.ConnectionReady(sess2)
+		ctx2 := sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess2))
+		ctx2, err = p.BeginQuery(ctx2, "SELECT bar")
+		require.NoError(t, err)
+		p.EndQuery(ctx2)
+
+		TestQueryWithContext(t, ctx, e, h,
+			"SELECT id, uSeR, hOST FROM information_schema.processlist ORDER BY id",
+			[]sql.Row{
+				{uint64(1), "root", "localhost"},
+				{uint64(2), "root", "otherhost"},
+			},
+			sql.Schema{
+				{Name: "id", Type: types.Uint64},
+				{Name: "uSeR", Type: types.MustCreateString(sqltypes.VarChar, 96, sql.Collation_Information_Schema_Default)},
+				{Name: "hOST", Type: types.MustCreateString(sqltypes.VarChar, 783, sql.Collation_Information_Schema_Default)},
+			},
+			nil, nil,
+		)
 	})
 
 	for _, tt := range queries.SkippedInfoSchemaQueries {
@@ -972,44 +1018,50 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	})
 
 	tests := []struct {
-		file  string
-		query string
-		exp   string
-		err   *errors.Kind
-		skip  bool
+		file    string
+		query   string
+		exp     string
+		expRows []sql.Row
+		err     *errors.Kind
+		skip    bool
 	}{
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
 				"3\tthird row\n",
 		},
 		{
-			file:  "dumpfile.txt",
-			query: "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
-			exp:   "1first row",
+			file:    "dumpfile.txt",
+			query:   "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(1)}},
+			exp:     "1first row",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row\n" +
 				"2,second row\n" +
 				"3,third row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1$$first row\n" +
 				"2$$second row\n" +
 				"3$$third row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,\"first row\"\n" +
 				"2,\"second row\"\n" +
@@ -1026,56 +1078,63 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 			err:   sql.ErrUnexpectedSeparator,
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"\"1\",\"first row\"\n" +
 				"\"2\",\"second row\"\n" +
 				"\"3\",\"third row\"\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row;" +
 				"2,second row;" +
 				"3,third row;",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,fi\\rst \\rowr" +
 				"2,second \\rowr" +
 				"3,thi\\rd \\rowr",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"r1,first row\n" +
 				"r2,second row\n" +
 				"r3,third row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
 				"3\tthird row\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
+			file:    "outfile.txt",
+			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row" +
 				"2,second row" +
 				"3,third row",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "1\t\\N\t\\N\t\\N\n" +
 				"2\t2\t1\t\\N\n" +
 				"3\t\\N\t0\t\\N\n" +
@@ -1084,8 +1143,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"6\t6\t0\t6\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "\"1\",\\N,\\N,\\N\n" +
 				"\"2\",\"2\",\"1\",\\N\n" +
 				"\"3\",\\N,\"0\",\\N\n" +
@@ -1094,8 +1154,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"\"6\",\"6\",\"0\",\"6\"\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "1,$N,$N,$N\n" +
 				"2,2,1,$N\n" +
 				"3,$N,0,$N\n" +
@@ -1104,8 +1165,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"6,6,0,6\n",
 		},
 		{
-			file:  "outfile.txt",
-			query: "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
+			file:    "outfile.txt",
+			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
+			expRows: []sql.Row{{types.NewOkResult(6)}},
 			exp: "1,NULL,NULL,NULL\n" +
 				"2,2,1,NULL\n" +
 				"3,NULL,0,NULL\n" +
@@ -1114,8 +1176,9 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 				"6,6,0,6\n",
 		},
 		{
-			file:  "./subdir/outfile.txt",
-			query: "select * from mytable into outfile './subdir/outfile.txt';",
+			file:    "./subdir/outfile.txt",
+			query:   "select * from mytable into outfile './subdir/outfile.txt';",
+			expRows: []sql.Row{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
@@ -1153,7 +1216,11 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 			}
 			// in case there are any residual files from previous runs
 			os.Remove(tt.file)
-			TestQueryWithContext(t, ctx, e, harness, tt.query, nil, nil, nil, nil)
+			var expected = tt.expRows
+			if IsServerEngine(e) {
+				expected = nil
+			}
+			TestQueryWithContext(t, ctx, e, harness, tt.query, expected, types.OkResultSchema, nil, nil)
 			res, err := os.ReadFile(tt.file)
 			require.NoError(t, err)
 			require.Equal(t, tt.exp, string(res))
@@ -1944,11 +2011,19 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				User:    "root",
 				Address: "localhost",
 			})
+
+			tlsCert, err := tls.LoadX509KeyPair("./testdata/selfsigned_cert.pem", "./testdata/selfsigned_key.pem")
+			require.NoError(t, err)
+			tlsConfig := tls.Config{
+				Certificates: []tls.Certificate{tlsCert},
+			}
+
 			serverConfig := server.Config{
-				Protocol:                 "tcp",
-				Address:                  fmt.Sprintf("localhost:%d", port),
-				MaxConnections:           1000,
-				AllowClearTextWithoutTLS: true,
+				Protocol:               "tcp",
+				Address:                fmt.Sprintf("localhost:%d", port),
+				MaxConnections:         1000,
+				TLSConfig:              &tlsConfig,
+				RequireSecureTransport: true,
 			}
 
 			e := mustNewEngine(t, clientHarness)
@@ -1989,24 +2064,37 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}()
 
 			for _, assertion := range script.Assertions {
-				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true",
-					assertion.Username, assertion.Password, port), nil)
-				require.NoError(t, err)
-				r, err := conn.Query(assertion.Query)
-				if assertion.ExpectedErr || len(assertion.ExpectedErrStr) > 0 || assertion.ExpectedErrKind != nil {
-					if !assert.Error(t, err) {
-						require.NoError(t, r.Close())
-					} else if len(assertion.ExpectedErrStr) > 0 {
-						assert.Equal(t, assertion.ExpectedErrStr, err.Error())
-					} else if assertion.ExpectedErrKind != nil {
-						assert.True(t, assertion.ExpectedErrKind.Is(err))
+				t.Run(assertion.Query, func(t *testing.T) {
+					conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/?allowCleartextPasswords=true&tls=skip-verify",
+						assertion.Username, assertion.Password, port), nil)
+					require.NoError(t, err)
+					r, err := conn.Query(assertion.Query)
+					if assertion.ExpectedErr || len(assertion.ExpectedErrStr) > 0 || assertion.ExpectedErrKind != nil {
+						if !assert.Error(t, err) {
+							require.NoError(t, r.Close())
+						} else if len(assertion.ExpectedErrStr) > 0 {
+							assert.Equal(t, assertion.ExpectedErrStr, err.Error())
+						} else if assertion.ExpectedErrKind != nil {
+							assert.True(t, assertion.ExpectedErrKind.Is(err))
+						}
+					} else {
+						if assert.NoError(t, err) {
+							require.NoError(t, r.Close())
+						}
+						if assertion.ExpectedAuthPlugin != "" {
+							// NOTE: This query works as long as there is only one account configured for the current user
+							r, err := conn.Query("SELECT plugin FROM mysql.user WHERE user=SUBSTRING_INDEX(USER(),'@',1);")
+							require.NoError(t, err)
+							require.True(t, r.Next())
+							var authPlugin string
+							err = r.Scan(&authPlugin)
+							require.False(t, r.Next())
+							require.NoError(t, err)
+							require.Equal(t, assertion.ExpectedAuthPlugin, authPlugin)
+						}
 					}
-				} else {
-					if assert.NoError(t, err) {
-						require.NoError(t, r.Close())
-					}
-				}
-				require.NoError(t, conn.Close())
+					require.NoError(t, conn.Close())
+				})
 			}
 		})
 	}
@@ -5655,6 +5743,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 					require.NoError(t, err)
 					expectedRowSet := script.Results[queryIdx]
 					expectedRowIdx := 0
+					buf := sql.NewByteBuffer(1000)
 					var engineRow sql.Row
 					for engineRow, err = engineIter.Next(ctx); err == nil; engineRow, err = engineIter.Next(ctx) {
 						if !assert.True(t, r.Next()) {
@@ -5672,7 +5761,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 							break
 						}
 						expectedEngineRow := make([]*string, engineRow.Len())
-						row, err := server.RowToSQL(ctx, sch, engineRow, nil)
+						row, err := server.RowToSQL(ctx, sch, engineRow, nil, buf)
 						if !assert.NoError(t, err) {
 							break
 						}

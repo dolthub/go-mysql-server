@@ -780,8 +780,8 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 	if userEntry == nil || userEntry.Locked {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
-	if len(userEntry.Password) > 0 {
-		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
+	if len(userEntry.AuthString) > 0 {
+		if !validateMysqlNativePassword(authResponse, salt, userEntry.AuthString) {
 			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 		}
 	} else if len(authResponse) > 0 { // password is nil or empty, therefore no password is set

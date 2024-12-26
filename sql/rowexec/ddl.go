@@ -522,20 +522,27 @@ func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.
 		return nil, sql.ErrUserAlterFailure.New(user.UserName.String("'"))
 	}
 
-	plugin := "mysql_native_password"
-	password := ""
+	// Default the auth plugin and authorization string to the currently configured values.
+	// We can only change the auth info if a new password was specified, otherwise, we don't
+	// have a plaintext password to process into an authorization string for the auth plugin.
+	plugin := previousUserEntry.Plugin
+	authString := previousUserEntry.AuthString
 	if user.Auth1 != nil {
 		plugin = user.Auth1.Plugin()
-		password = user.Auth1.Password()
+		var err error
+		authString, err = user.Auth1.AuthString()
+		if err != nil {
+			return nil, err
+		}
 	}
-	if plugin != "mysql_native_password" {
+	if plugin != string(mysql.MysqlNativePassword) && plugin != string(mysql.CachingSha2Password) {
 		if err := mysqlDb.VerifyPlugin(plugin); err != nil {
 			return nil, sql.ErrUserAlterFailure.New(err)
 		}
 	}
 
 	previousUserEntry.Plugin = plugin
-	previousUserEntry.Password = password
+	previousUserEntry.AuthString = authString
 	previousUserEntry.PasswordLastChanged = time.Now().UTC()
 	editor.PutUser(previousUserEntry)
 
@@ -581,13 +588,17 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, _ sq
 			return nil, sql.ErrUserHostTooLong.New(user.UserName.Host)
 		}
 
-		plugin := "mysql_native_password"
-		password := ""
+		plugin := string(mysql_db.DefaultAuthMethod)
+		authString := ""
 		if user.Auth1 != nil {
 			plugin = user.Auth1.Plugin()
-			password = user.Auth1.Password()
+			var err error
+			authString, err = user.Auth1.AuthString()
+			if err != nil {
+				return nil, err
+			}
 		}
-		if plugin != "mysql_native_password" {
+		if plugin != string(mysql.MysqlNativePassword) && plugin != string(mysql.CachingSha2Password) {
 			if err := mysqlDb.VerifyPlugin(plugin); err != nil {
 				return nil, sql.ErrUserCreationFailure.New(err)
 			}
@@ -600,7 +611,7 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, _ sq
 			Host:                user.UserName.Host,
 			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
 			Plugin:              plugin,
-			Password:            password,
+			AuthString:          authString,
 			PasswordLastChanged: time.Now().UTC(),
 			Locked:              false,
 			Attributes:          nil,

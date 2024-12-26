@@ -95,12 +95,13 @@ type ServerAuthenticationTest struct {
 
 // ServerAuthenticationTestAssertion is within a ServerAuthenticationTest to assert functionality.
 type ServerAuthenticationTestAssertion struct {
-	Username        string
-	Password        string
-	Query           string
-	ExpectedErr     bool
-	ExpectedErrKind *errors.Kind
-	ExpectedErrStr  string
+	Username           string
+	Password           string
+	Query              string
+	ExpectedErr        bool
+	ExpectedErrKind    *errors.Kind
+	ExpectedErrStr     string
+	ExpectedAuthPlugin string
 }
 
 // UserPrivTests test the user and privilege systems. These tests always have the root account available, and the root
@@ -692,12 +693,82 @@ var UserPrivTests = []UserPrivilegeTest{
 				},
 			},
 			{
-				Query: "SELECT Host, User FROM mysql.user;",
+				Query: "SELECT Host, User, Plugin, length(authentication_string) > 0 FROM mysql.user order by User;",
 				Expected: []sql.UntypedSqlRow{
-					{"localhost", "root"},
-					{"localhost", "testuser2"},
-					{"127.0.0.1", "testuser"},
+					{"localhost", "root", "mysql_native_password", false},
+					{"127.0.0.1", "testuser", "mysql_native_password", false},
+					// testuser2 was inserted directly into the table, so it uses the column default
+					// from the plugin field – caching_sha2_password
+					{"localhost", "testuser2", "caching_sha2_password", false},
 				},
+			},
+		},
+	},
+	{
+		Name: "User creation with auth plugin specified: mysql_native_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with mysql_native_password by 'pass1';",
+			"CREATE USER testuser2@`127.0.0.1` identified with 'mysql_native_password';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
+				Expected: []sql.Row{{"testuser2", "127.0.0.1", "mysql_native_password", ""}},
+			},
+		},
+	},
+	{
+		Name: "User creation with auth plugin specified: caching_sha2_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with caching_sha2_password by 'pass1';",
+			"CREATE USER testuser2@`127.0.0.1` identified with 'caching_sha2_password';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				// caching_sha2_password auth uses a random salt to create the authentication
+				// string. Since it's not a consistent value during each test run, we just sanity
+				// check the first bytes of metadata (digest type, iterations) in the auth string.
+				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
+				Expected: []sql.Row{{"testuser2", "127.0.0.1", "caching_sha2_password", ""}},
+			},
+		},
+	},
+	{
+		Name: "Migrate a user from mysql_native_password to caching_sha2_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with mysql_native_password by 'pass1';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+			},
+			{
+				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password BY 'pass1';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// caching_sha2_password auth uses a random salt to create the authentication
+				// string. Since it's not a consistent value during each test run, we just sanity
+				// check the first bytes of metadata (digest type, iterations) in the auth string.
+				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+			},
+			{
+				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", ""}},
 			},
 		},
 	},
@@ -2546,10 +2617,10 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
-				Username:    "rand_user",
-				Password:    "rand_pass",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: false,
+				Username:           "rand_user",
+				Password:           "rand_pass",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "mysql_native_password",
 			},
 			{
 				Username:    "rand_user",
@@ -2572,17 +2643,17 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 	},
 	{
-		Name: "Create User with plugin specification",
+		Name: "Create User explicitly with mysql_native_password plugin",
 		SetUpScript: []string{
 			"CREATE USER ranuse@localhost IDENTIFIED WITH mysql_native_password BY 'ranpas';",
 			"GRANT ALL ON *.* TO ranuse@localhost WITH GRANT OPTION;",
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
-				Username:    "ranuse",
-				Password:    "ranpas",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: false,
+				Username:           "ranuse",
+				Password:           "ranpas",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "mysql_native_password",
 			},
 			{
 				Username:    "ranuse",
@@ -2599,6 +2670,103 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 	},
 	{
+		Name: "Create User explicitly with caching_sha2_password plugin",
+		SetUpScript: []string{
+			// testuser1 is created with a password
+			"CREATE USER testuser1@localhost IDENTIFIED WITH caching_sha2_password BY 'mypassword3';",
+			"GRANT ALL ON *.* TO testuser1@localhost WITH GRANT OPTION;",
+			// testuser2 is created without a password
+			"CREATE USER testuser2@localhost IDENTIFIED WITH caching_sha2_password;",
+			"GRANT ALL ON *.* TO testuser2@localhost WITH GRANT OPTION;",
+		},
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:           "testuser1",
+				Password:           "mypassword3",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "what",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
+			},
+			{
+				Username:       "testuser2",
+				Password:       "wrong",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser2'",
+			},
+			{
+				Username:           "testuser2",
+				Password:           "",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedErr:        false,
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+		},
+	},
+	{
+		Name: "Migrate user from mysql_native_password to caching_sha2_password",
+		SetUpScript: []string{
+			// testuser1 is created with a password
+			"CREATE USER testuser1@localhost IDENTIFIED WITH mysql_native_password BY 'mypassword3';",
+			"GRANT ALL ON *.* TO testuser1@localhost WITH GRANT OPTION;",
+		},
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:           "testuser1",
+				Password:           "mypassword3",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "mysql_native_password",
+			},
+			{
+				Username: "root",
+				Query:    "ALTER USER testuser1@localhost IDENTIFIED WITH caching_sha2_password BY 'pass1';",
+			},
+			{
+				Username:           "testuser1",
+				Password:           "pass1",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "wrong",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
+			},
+			{
+				Username: "root",
+				Query:    "ALTER USER testuser1@localhost IDENTIFIED WITH caching_sha2_password;",
+			},
+			{
+				Username:           "testuser1",
+				Password:           "",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "wrong",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
+			},
+		},
+	},
+	{
 		Name: "Create User with jwt plugin specification",
 		SetUpScript: []string{
 			"CREATE USER `test-user`@localhost IDENTIFIED WITH authentication_dolt_jwt AS 'jwks=testing,sub=test-user,iss=dolthub.com,aud=some_id';",
@@ -2610,22 +2778,25 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
-				Username:    "test-user",
-				Password:    "what",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: true,
+				Username:       "test-user",
+				Password:       "what",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'test-user'",
 			},
 			{
-				Username:    "test-user",
-				Password:    "",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: true,
+				Username:       "test-user",
+				Password:       "",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'test-user'",
 			},
 			{
-				Username:    "test-user",
-				Password:    "right-password",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: false,
+
+				Username:           "test-user",
+				Password:           "right-password",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "authentication_dolt_jwt",
 			},
 		},
 	},

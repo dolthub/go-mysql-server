@@ -25,11 +25,11 @@ func (t MapCatalog) Function(ctx *Context, name string) (Function, bool) {
 	return nil, false
 }
 
-func (t MapCatalog) TableFunction(ctx *Context, name string) (TableFunction, error) {
+func (t MapCatalog) TableFunction(ctx *Context, name string) (TableFunction, bool) {
 	if f, ok := t.tabFuncs[name]; ok {
-		return f, nil
+		return f, true
 	}
-	return nil, fmt.Errorf("table func not found")
+	return nil, false
 }
 
 func (t MapCatalog) ExternalStoredProcedure(ctx *Context, name string, numOfParams int) (*ExternalStoredProcedureDetails, error) {

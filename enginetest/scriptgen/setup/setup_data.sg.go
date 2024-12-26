@@ -5,10 +5,10 @@ package setup
 var AutoincrementData = []SetupScript{{
 	`drop table if exists auto_increment_tbl`,
 	"CREATE TABLE `auto_increment_tbl` (   `pk` bigint NOT NULL AUTO_INCREMENT,   `c0` bigint,   PRIMARY KEY (`pk`) )",
-	`INSERT INTO auto_increment_tbl values
-    (1, 11),
-    (2, 22),
-    (3, 33)`,
+	`INSERT INTO auto_increment_tbl (c0) values
+    (11),
+    (22),
+    (33)`,
 }}
 
 var BigtableData = []SetupScript{{

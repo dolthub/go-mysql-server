@@ -20,6 +20,7 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -789,13 +790,14 @@ func TestHandlerKillQuery(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	sleepQuery := "SELECT SLEEP(1)"
+	sleepQuery := "SELECT SLEEP(100000)"
+	var sleepErr error
 	go func() {
 		defer wg.Done()
-		err = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
+		// need a local |err| variable to avoid being overwritten
+		sleepErr = handler.ComQuery(context.Background(), conn1, sleepQuery, func(res *sqltypes.Result, more bool) error {
 			return nil
 		})
-		require.Error(err)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -805,12 +807,17 @@ func TestHandlerKillQuery(t *testing.T) {
 		// 2,  ,  , test, Query, 0, running, SHOW PROCESSLIST
 		require.Equal(2, len(res.Rows))
 		hasSleepQuery := false
+		fmt.Println(res.Rows[0][0], res.Rows[0][4], res.Rows[0][7])
+		fmt.Println(res.Rows[1][0], res.Rows[1][4], res.Rows[1][7])
 		for _, row := range res.Rows {
 			if row[7].ToString() != sleepQuery {
 				continue
 			}
 			hasSleepQuery = true
-			sleepQueryID = row[0].ToString()
+			// the values inside a callback are generally only valid for the
+			// duration of the query, and need to be copied to avoid being
+			// overwritten
+			sleepQueryID = strings.Clone(row[0].ToString())
 			require.Equal("Query", row[4].ToString())
 		}
 		require.True(hasSleepQuery)
@@ -824,6 +831,7 @@ func TestHandlerKillQuery(t *testing.T) {
 	})
 	require.NoError(err)
 	wg.Wait()
+	require.Error(sleepErr)
 
 	time.Sleep(100 * time.Millisecond)
 	err = handler.ComQuery(context.Background(), conn2, "SHOW PROCESSLIST", func(res *sqltypes.Result, more bool) error {
