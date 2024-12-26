@@ -226,7 +226,7 @@ func (p *relProps) populateFds() {
 			// strict if primary key or all nonNull and unique
 			columns := idxExprsColumns(idx)
 			strict := true
-			normIdx := &Index{idx: idx, cols: make([]sql.ColumnId, len(columns))}
+			normIdx := &Index{idx: idx, cols: make([]sql.ColumnId, len(columns)), order: sql.IndexOrderNone}
 			if oidx, ok := idx.(sql.OrderedIndex); ok {
 				normIdx.order = oidx.Order()
 			}
