@@ -1812,7 +1812,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show databases like 'information_schema';",
-				Expected: []sql.Row{{"information_schema"}},
+				Expected: []sql.UntypedSqlRow{{"information_schema"}},
 			},
 			{
 				Query:       "create database information_schema;",
@@ -1824,7 +1824,7 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 			{
 				Query:    "show databases like 'information_schema';",
-				Expected: []sql.Row{{"information_schema"}},
+				Expected: []sql.UntypedSqlRow{{"information_schema"}},
 			},
 		},
 	},

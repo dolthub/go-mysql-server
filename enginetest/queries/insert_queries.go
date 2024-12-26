@@ -2775,12 +2775,12 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 3}}},
 				//ExpectedWarning: mysql.ERWarnDataTruncated, // TODO: incorrect code
 			},
 			{
 				Query:    "select * from test_table",
-				Expected: []sql.Row{{1, ""}, {2, "bye"}, {3, nil}},
+				Expected: []sql.UntypedSqlRow{{1, ""}, {2, "bye"}, {3, nil}},
 			},
 		},
 	},
@@ -3055,11 +3055,11 @@ var InsertBrokenScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from t2;",
-				Expected: []sql.Row{{1, "a"}},
+				Expected: []sql.UntypedSqlRow{{1, "a"}},
 			},
 		},
 	},
