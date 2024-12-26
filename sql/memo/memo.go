@@ -743,14 +743,15 @@ type SourceRel interface {
 
 type Index struct {
 	// ordered list of index columns
-	order []sql.ColumnId
+	cols []sql.ColumnId
 	// unordered column set
-	set sql.ColSet
-	idx sql.Index
+	set   sql.ColSet
+	idx   sql.Index
+	order sql.IndexOrder
 }
 
 func (i *Index) Cols() []sql.ColumnId {
-	return i.order
+	return i.cols
 }
 
 func (i *Index) ColSet() sql.ColSet {
@@ -759,6 +760,10 @@ func (i *Index) ColSet() sql.ColSet {
 
 func (i *Index) SqlIdx() sql.Index {
 	return i.idx
+}
+
+func (i *Index) Order() sql.IndexOrder {
+	return i.order
 }
 
 type sourceBase struct {
