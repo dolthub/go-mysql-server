@@ -30,6 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -130,7 +131,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 			b.handleErr(err)
 		}
-		c = c.withOriginal(v.Name.String())
+
+		origTbl := b.getOrigTblName(inScope.node, c.table)
+		c = c.withOriginal(origTbl, v.Name.String())
 		return c.scalarGf()
 	case *ast.FuncExpr:
 		name := v.Name.Lowered()
@@ -398,6 +401,28 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	}
 	return nil
+}
+
+func (b *Builder) getOrigTblName(node sql.Node, alias string) string {
+	if node == nil {
+		return ""
+	}
+	// Look past table aliases
+	var origTbl string
+	transform.Inspect(node, func(n sql.Node) bool {
+		switch nn := n.(type) {
+		case *plan.TableAlias:
+			if nn.Name() == alias {
+				if child, ok := nn.Child.(sql.Nameable); ok {
+					origTbl = child.Name()
+				}
+			}
+			return false
+		default:
+			return true
+		}
+	})
+	return origTbl
 }
 
 // getJsonValueTypeLiteral converts a type coercion string into a literal
