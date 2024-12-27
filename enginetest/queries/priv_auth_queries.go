@@ -713,11 +713,11 @@ var UserPrivTests = []UserPrivilegeTest{
 		Assertions: []UserPrivilegeTestAssertion{
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
 			},
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
-				Expected: []sql.Row{{"testuser2", "127.0.0.1", "mysql_native_password", ""}},
+				Expected: []sql.UntypedSqlRow{{"testuser2", "127.0.0.1", "mysql_native_password", ""}},
 			},
 		},
 	},
@@ -733,11 +733,11 @@ var UserPrivTests = []UserPrivilegeTest{
 				// string. Since it's not a consistent value during each test run, we just sanity
 				// check the first bytes of metadata (digest type, iterations) in the auth string.
 				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
 			},
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
-				Expected: []sql.Row{{"testuser2", "127.0.0.1", "caching_sha2_password", ""}},
+				Expected: []sql.UntypedSqlRow{{"testuser2", "127.0.0.1", "caching_sha2_password", ""}},
 			},
 		},
 	},
@@ -749,26 +749,26 @@ var UserPrivTests = []UserPrivilegeTest{
 		Assertions: []UserPrivilegeTestAssertion{
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
 			},
 			{
 				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password BY 'pass1';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// caching_sha2_password auth uses a random salt to create the authentication
 				// string. Since it's not a consistent value during each test run, we just sanity
 				// check the first bytes of metadata (digest type, iterations) in the auth string.
 				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
 			},
 			{
 				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", ""}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "caching_sha2_password", ""}},
 			},
 		},
 	},

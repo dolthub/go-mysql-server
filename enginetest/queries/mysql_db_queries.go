@@ -43,7 +43,7 @@ var MySqlDbTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show databases like 'mysql';",
-				Expected: []sql.Row{{"mysql"}},
+				Expected: []sql.UntypedSqlRow{{"mysql"}},
 			},
 			{
 				Query:       "create database mysql;",
@@ -55,7 +55,7 @@ var MySqlDbTests = []ScriptTest{
 			},
 			{
 				Query:    "show databases like 'mysql';",
-				Expected: []sql.Row{{"mysql"}},
+				Expected: []sql.UntypedSqlRow{{"mysql"}},
 			},
 		},
 	},
