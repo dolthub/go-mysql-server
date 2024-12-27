@@ -208,7 +208,7 @@ func TestSingleScript(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query:    "select 1 into @a",
-					Expected: []sql.Row{},
+					Expected: []sql.UntypedSqlRow{},
 				},
 			},
 		},

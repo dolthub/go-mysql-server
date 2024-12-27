@@ -7666,7 +7666,7 @@ where
 			},
 			{
 				Query: "select i, cast(e as binary) from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, []uint8("abc")},
 					{2, []uint8("def")},
 					{3, []uint8("ghi")},
@@ -7674,7 +7674,7 @@ where
 			},
 			{
 				Query: "select case when e = 'abc' then 'abc' when e = 'def' then 123 else e end from t",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 					{"123"},
 					{"ghi"},
