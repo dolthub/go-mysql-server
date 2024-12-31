@@ -950,7 +950,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 	outVals := make([]sqltypes.Value, len(sch))
 	var err error
 	var newBuf = make([]byte, 256)
-	if br, ok := row.(sql.BytesRow); ok {
+	if br, ok := row.(sql.BytesRow); ok && false {
 		if len(projs) == 0 {
 			for i, col := range sch {
 				val, err := br.GetBytes(i, col.Type, newBuf[:0])
