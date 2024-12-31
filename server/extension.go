@@ -35,9 +35,9 @@ func Intercept(h Interceptor) {
 func WithChain() Option {
 	return func(e *sqle.Engine, sm *SessionManager, handler mysql.Handler) {
 		f := DefaultProtocolListenerFunc
-		DefaultProtocolListenerFunc = func(cfg mysql.ListenerConfig) (ProtocolListener, error) {
+		DefaultProtocolListenerFunc = func(cfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error) {
 			cfg.Handler = buildChain(cfg.Handler)
-			return f(cfg)
+			return f(cfg, sel)
 		}
 	}
 }
