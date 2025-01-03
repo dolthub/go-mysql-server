@@ -522,6 +522,7 @@ func (db *MySQLDb) AddRootAccount() {
 // the server is restarted, this superuser account will not be present.
 func (db *MySQLDb) AddEphemeralSuperUser(ed *Editor, username string, host string, password string) {
 	db.SetEnabled(true)
+
 	if len(password) > 0 {
 		hash := sha1.New()
 		hash.Write([]byte(password))
@@ -545,6 +546,7 @@ func (db *MySQLDb) AddEphemeralSuperUser(ed *Editor, username string, host strin
 func (db *MySQLDb) AddSuperUser(ed *Editor, username string, host string, password string) {
 	//TODO: remove this function and the called function
 	db.SetEnabled(true)
+
 	if len(password) > 0 {
 		hash := sha1.New()
 		hash.Write([]byte(password))
@@ -560,6 +562,32 @@ func (db *MySQLDb) AddSuperUser(ed *Editor, username string, host string, passwo
 		User: username,
 	}); !ok {
 		addSuperUser(ed, username, host, password, false)
+	}
+}
+
+// AddLockedSuperUser adds a new superuser with the specified |username|, |host|, and |password|
+// and sets the account to be locked so that it cannot be used to log in.
+func (db *MySQLDb) AddLockedSuperUser(ed *Editor, username string, host string, password string) {
+	user := db.GetUser(ed, username, host, false)
+
+	// If the user doesn't exist yet, create it and lock it
+	if user == nil {
+		db.AddSuperUser(ed, username, host, password)
+		user = db.GetUser(ed, username, host, false)
+		if user == nil {
+			panic("unable to load newly created superuser: " + username)
+		}
+
+		// Lock the account to prevent it being used to log in
+		user.Locked = true
+		ed.PutUser(user)
+	}
+
+	// If the user exists, but isn't a superuser or locked, fix it
+	if user.IsSuperUser == false || user.Locked == false {
+		user.IsSuperUser = true
+		user.Locked = true
+		ed.PutUser(user)
 	}
 }
 
