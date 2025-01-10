@@ -680,9 +680,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				}
 
 				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-				if len(r.Rows) == 0 {
-					print()
-				}
 				r.Rows = append(r.Rows, outputRow)
 				r.RowsAffected++
 			case <-timer.C:
