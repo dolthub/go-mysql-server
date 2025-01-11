@@ -85,6 +85,7 @@ func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns
 
 func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name string, columns []string) *scope {
 	l, r := splitRecursiveCteUnion(name, union)
+	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	if r == nil {
 		// not recursive
 		sqScope := inScope.pushSubquery()
@@ -104,9 +105,10 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 				c.tableId = tabId
 				cteScope.cols[i] = c
 				colset.Add(sql.ColumnId(c.id))
+				scopeMapping[sql.ColumnId(c.id)] = c.scalarGf()
 			}
 
-			cteScope.node = sq.WithId(tabId).WithColumns(colset)
+			cteScope.node = sq.WithScopeMapping(scopeMapping).WithId(tabId).WithColumns(colset)
 		}
 		return cteScope
 	}
@@ -128,7 +130,6 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	cteScope := leftScope.replace()
 	tableId := cteScope.addTable(name)
 	var cols sql.ColSet
-	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	{
 		rInit = leftScope.node
 		recSch = make(sql.Schema, len(rInit.Schema()))
@@ -149,7 +150,6 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 			c.scalar = nil
 			c.table = name
 			toId := cteScope.newColumn(c)
-			scopeMapping[sql.ColumnId(toId)] = c.scalarGf()
 			cols.Add(sql.ColumnId(toId))
 		}
 		b.renameSource(cteScope, name, columns)

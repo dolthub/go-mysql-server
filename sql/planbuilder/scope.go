@@ -360,13 +360,19 @@ func (s *scope) aliasCte(alias string) *scope {
 		return nil
 	}
 	outScope := s.copy()
-	if _, ok := s.tables[alias]; ok || alias == "" {
-		return outScope
-	}
 
 	sq, _ := outScope.node.(*plan.SubqueryAlias)
 
-	tabId := outScope.addTable(alias)
+	name := strings.ToLower(outScope.node.(sql.NameableNode).Name())
+
+	var tabId sql.TableId
+	if alias != "" {
+		tabId = outScope.addTable(alias)
+	} else {
+		alias = name
+		tabId = s.tables[strings.ToLower(name)]
+	}
+
 	outScope.cols = nil
 	var colSet sql.ColSet
 	scopeMapping := make(map[sql.ColumnId]sql.Expression)
@@ -462,6 +468,7 @@ func (s *scope) getCte(name string) *scope {
 		if checkScope.ctes != nil {
 			cte, ok := checkScope.ctes[strings.ToLower(name)]
 			if ok {
+				cte.tables[name] += 1
 				return cte
 			}
 		}

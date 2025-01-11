@@ -53,6 +53,9 @@ func TestPlanBuilder(t *testing.T) {
 
 	var tests = []planTest{
 		{
+			Query: "WITH cte AS (SELECT * FROM xy) SELECT *, (SELECT SUM(x) FROM cte) AS xy FROM cte",
+		},
+		{
 			Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
 			ExpectedPlan: `
 Project
