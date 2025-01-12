@@ -3767,8 +3767,8 @@ var TpcdsData = []SetupScript{{
 }}
 
 var TpchData = []SetupScript{{
-	`CREATE DATABASE tpch character set utf8mb4;`,
-	`USE tpch;`,
+	//`CREATE DATABASE tpch character set utf8mb4;`,
+	//`USE tpch;`,
 	`CREATE TABLE nation  ( N_NATIONKEY INTEGER primary key,
     N_NAME       CHAR(25) NOT NULL,
     N_REGIONKEY  INTEGER NOT NULL,

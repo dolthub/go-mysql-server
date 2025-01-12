@@ -1,12 +1,4 @@
 exec
-CREATE DATABASE tpch character set utf8mb4;
-----
-
-exec
-USE tpch;
-----
-
-exec
 CREATE TABLE nation  ( N_NATIONKEY INTEGER primary key,
     N_NAME       CHAR(25) NOT NULL,
     N_REGIONKEY  INTEGER NOT NULL,
