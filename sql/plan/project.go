@@ -95,7 +95,9 @@ func unwrapGetField(expr sql.Expression) *expression.GetField {
 	}
 }
 
-func ExprDeps(exprs []sql.Expression) sql.ColSet {
+// ExprDeps returns a column set of the ids referenced
+// in this list of expressions.
+func ExprDeps(exprs ...sql.Expression) sql.ColSet {
 	var deps sql.ColSet
 	for _, e := range exprs {
 		sql.Inspect(e, func(e sql.Expression) bool {
