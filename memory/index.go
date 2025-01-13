@@ -20,7 +20,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -39,7 +38,7 @@ type Index struct {
 	Fulltext   bool
 	// If SupportedVectorFunction is non-nil, this index can be used to optimize ORDER BY
 	// expressions on this type of distance function.
-	SupportedVectorFunction vector.DistanceType
+	SupportedVectorFunction expression.DistanceType
 	CommentStr              string
 	PrefixLens              []uint16
 	fulltextInfo
@@ -122,15 +121,11 @@ func (idx *Index) IsFullText() bool {
 	return idx.Fulltext
 }
 
-func (idx *Index) IsVector() bool {
-	return idx.SupportedVectorFunction != nil
-}
-
 func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
 	if idx.SupportedVectorFunction == nil {
 		return false
 	}
-	dist, isDist := expr.(*vector.Distance)
+	dist, isDist := expr.(*expression.Distance)
 	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceType)
 }
 
@@ -155,19 +150,21 @@ func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx in
 	}
 
 	exprs := idx.ExtendedExprs()
-	newRow := make(sql.Row, len(exprs)+1)
+	newRow := sql.NewSqlRowWithLen(len(exprs) + 1)
+	var v interface{}
 	for i, expr := range exprs {
 		var err error
-		newRow[i], err = expr.Eval(nil, row)
+		v, err = expr.Eval(nil, row)
 		if err != nil {
 			return nil, err
 		}
+		newRow.SetValue(i, v)
 	}
 	// The final element of the row is the location of the row in the primary table storage slice.
-	newRow[len(exprs)] = primaryRowLocation{
+	newRow.SetValue(len(exprs), primaryRowLocation{
 		partition: partitionName,
 		idx:       rowIdx,
-	}
+	})
 
 	return newRow, nil
 }

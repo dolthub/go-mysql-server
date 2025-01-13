@@ -40,7 +40,7 @@ var ProcedureLogicTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL p1;",
-				Expected: []sql.Row{{42}},
+				Expected: []sql.UntypedSqlRow{{42}},
 			},
 		},
 	},
@@ -61,7 +61,7 @@ var ProcedureLogicTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL p1;",
-				Expected: []sql.Row{{42}},
+				Expected: []sql.UntypedSqlRow{{42}},
 			},
 		},
 	},
@@ -74,7 +74,7 @@ var ProcedureLogicTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL testabc(2, 3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						6.0,
 					},
@@ -82,7 +82,7 @@ var ProcedureLogicTests = []ScriptTest{
 			},
 			{
 				Query: "CALL testabc(9, 9.5)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						85.5,
 					},
@@ -109,7 +109,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 					{"2"},
 					{"30"},
@@ -119,7 +119,7 @@ END;`,
 			},
 			{
 				Query: "SELECT * FROM t1 ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 					{"2"},
 					{"30"},
@@ -162,7 +162,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(@outparam, 1, 2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"1 is less than 2.",
 					},
@@ -170,7 +170,7 @@ END;`,
 			},
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"1 is less than 2.",
 					},
@@ -178,7 +178,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1(@outparam, null, 2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						nil,
 					},
@@ -186,7 +186,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1(@outparam, 7, 4)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"7 is greater than 4.",
 					},
@@ -194,7 +194,7 @@ END;`,
 			},
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"7 is greater than 4.",
 					},
@@ -202,7 +202,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1(@outparam, 5, 5)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"5 equals 5.",
 					},
@@ -210,7 +210,7 @@ END;`,
 			},
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"5 equals 5.",
 					},
@@ -218,7 +218,7 @@ END;`,
 			},
 			{
 				Query: "CALL p2(@outparam, 9, 3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"9 is greater than 3.",
 					},
@@ -226,7 +226,7 @@ END;`,
 			},
 			{ // Not affected as p2 has an IN param rather than OUT
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"5 equals 5.",
 					},
@@ -266,7 +266,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(1000),
 					},
@@ -274,7 +274,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1(1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(1001),
 					},
@@ -283,7 +283,7 @@ END;`,
 			{
 				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
 				Query:                         "CALL p1(2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						types.NewOkResult(2),
 					},
@@ -295,7 +295,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1(11)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(8)},
 					{int64(9)},
 					{int64(10)},
@@ -305,7 +305,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1(12)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(2003),
 					},
@@ -328,20 +328,20 @@ END`,
 			//       need to filter out Result Sets that should be completely omitted.
 			{
 				Query:    "CALL p1(0)",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "CALL p1(1)",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "CALL p1(2)",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/6230
 				Query:    "CALL p1(200)",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 		},
 	},
@@ -362,15 +362,15 @@ END`,
 			//       need to filter out Result Sets that should be completely omitted.
 			{
 				Query:    "CALL p1(0)",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "CALL p1(1)",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "CALL p1(2)",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 		},
 	},
@@ -455,49 +455,49 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"aaaabbbb"},
 				},
 			},
 			{
 				Query: "CALL p1(3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abbbb"},
 				},
 			},
 			{
 				Query: "CALL p1(6)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"bb"},
 				},
 			},
 			{
 				Query: "CALL p1(9)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{""},
 				},
 			},
 			{
 				Query: "CALL p2(1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc"},
 				},
 			},
 			{
 				Query: "CALL p2(2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"bc"},
 				},
 			},
 			{
 				Query: "CALL p2(3)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"c"},
 				},
 			},
 			{
 				Query: "CALL p2(4)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{""},
 				},
 			},
@@ -519,13 +519,13 @@ END;`,
 			},
 			{
 				Query: "CALL p5(0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"aa"},
 				},
 			},
 			{
 				Query: "CALL p5(1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"a"},
 				},
 			},
@@ -552,7 +552,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{ // Enforces that this is the expected output from the query normally
 				Query: "SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
 					{int64(3), "x", "f"},
@@ -560,7 +560,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
 					{int64(3), "x", "f"},
@@ -568,7 +568,7 @@ END;`,
 			},
 			{
 				Query: "CALL p2()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
 					{int64(3), "x", "f"},
@@ -577,7 +577,7 @@ END;`,
 			{
 				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
 				Query:                         "CALL p3()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
 					{int64(3), "x", "f"},
@@ -585,7 +585,7 @@ END;`,
 			},
 			{
 				Query: "CALL p4()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
 					{int64(3), "x", "f"},
@@ -594,7 +594,7 @@ END;`,
 			{
 				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
 				Query:                         "CALL p5()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "z", "d"},
 					{int64(2), "y", "e"},
 					{int64(3), "x", "f"},
@@ -613,21 +613,21 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(20)},
 					{int64(30)},
 				},
 			},
 			{
 				Query: "CALL p1(2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(200)},
 					{int64(300)},
 				},
 			},
 			{
 				Query: "CALL p1(5)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(10)},
 					{int64(15)},
 				},
@@ -655,7 +655,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1)},
 					{int64(2)},
 					{int64(3)},
@@ -663,7 +663,7 @@ END;`,
 			},
 			{
 				Query: "CALL p1(1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1)},
 					{int64(2)},
 					{int64(3)},
@@ -687,13 +687,13 @@ INSERT INTO items (item) VALUES (txt)`,
 			{
 				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
 				Query:                         "CALL add_item('A test item');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
 			},
 			{
 				Query: "SELECT * FROM items;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "A test item"},
 				},
 			},
@@ -714,14 +714,14 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(3, 4)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4, 6},
 					{3, 4},
 				},
 			},
 			{
 				Query: "CALL p2(5, 6)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{6, 8},
 					{5, 6},
 				},
@@ -744,13 +744,13 @@ END`,
 			{
 				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
 				Query:                         "CALL add_item(6);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: "SELECT * FROM items ORDER BY 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 5},
 					{2, 6},
 					{3, 7},
@@ -774,14 +774,14 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(0)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1)},
 					{int64(2)},
 				},
 			},
 			{
 				Query: "CALL p1(5)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(6)},
 					{int64(7)},
 				},
@@ -797,13 +797,13 @@ END;`,
 			{
 				SkipResultCheckOnServerEngine: true, // the user var has null type, which returns nil value over the wire.
 				Query:                         "CALL p1('hi')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(2)},
 				},
 			},
 			{
 				Query: "CALL p1('hello')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(5)},
 				},
 			},
@@ -819,11 +819,11 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @res1",
-				Expected: []sql.Row{{float64(6)}},
+				Expected: []sql.UntypedSqlRow{{float64(6)}},
 			},
 			{
 				Query:    "SELECT @res2",
-				Expected: []sql.Row{{float64(85.5)}},
+				Expected: []sql.UntypedSqlRow{{float64(85.5)}},
 			},
 		},
 	},
@@ -837,11 +837,11 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @res1, @res2",
-				Expected: []sql.Row{{float64(6), float64(5)}},
+				Expected: []sql.UntypedSqlRow{{float64(6), float64(5)}},
 			},
 			{
 				Query:    "SELECT @res3, @res4",
-				Expected: []sql.Row{{float64(85.5), float64(18.5)}},
+				Expected: []sql.UntypedSqlRow{{float64(85.5), float64(18.5)}},
 			},
 		},
 	},
@@ -858,7 +858,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @shelf1, @shelf2, @shelf3",
-				Expected: []sql.Row{{3, 1, 0}},
+				Expected: []sql.UntypedSqlRow{{3, 1, 0}},
 			},
 		},
 	},
@@ -875,11 +875,11 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @result1",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				Query:    "SELECT @result2",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -897,7 +897,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT @s1, @s2",
-				Expected: []sql.Row{{3, "d"}},
+				Expected: []sql.UntypedSqlRow{{3, "d"}},
 			},
 		},
 	},
@@ -914,11 +914,11 @@ END`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL count_and_print(1, @total)",
-				Expected: []sql.Row{{"a"}, {"b"}, {"d"}},
+				Expected: []sql.UntypedSqlRow{{"a"}, {"b"}, {"d"}},
 			},
 			{
 				Query:    "SELECT @total",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 		},
 	},
@@ -943,13 +943,13 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(@x);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4, 2, "a"},
 				},
 			},
 			{
 				Query: "SELECT @x;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{6},
 				},
 			},
@@ -968,7 +968,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{9},
 				},
 			},
@@ -986,15 +986,15 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET @x = 2;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "CALL p1(@x);",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query: "SELECT @x;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
@@ -1118,7 +1118,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 				},
 			},
@@ -1147,7 +1147,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 				},
 			},
@@ -1164,19 +1164,19 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "call limited(1,0)",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				Query:    "call limited(2,0)",
-				Expected: []sql.Row{{0}, {1}},
+				Expected: []sql.UntypedSqlRow{{0}, {1}},
 			},
 			{
 				Query:    "call limited(2,2)",
-				Expected: []sql.Row{{2}, {3}},
+				Expected: []sql.UntypedSqlRow{{2}, {3}},
 			},
 			{
 				Query:    "call limited_uns(2,2)",
-				Expected: []sql.Row{{2}, {3}},
+				Expected: []sql.UntypedSqlRow{{2}, {3}},
 			},
 			{
 				Query:          "CREATE PROCEDURE limited_inv(the_limit CHAR(3), the_offset INT) SELECT * FROM t LIMIT the_limit OFFSET the_offset",
@@ -1211,7 +1211,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 				},
 			},
@@ -1235,7 +1235,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4},
 				},
 			},
@@ -1276,15 +1276,15 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL eof();",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "CALL duplicate_key();",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				Query:    "CALL duplicate_key();",
-				Expected: []sql.Row{{7}},
+				Expected: []sql.UntypedSqlRow{{7}},
 			},
 		},
 	},
@@ -1327,11 +1327,11 @@ END`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL curdemo()",
-				Expected: []sql.Row{{"success"}},
+				Expected: []sql.UntypedSqlRow{{"success"}},
 			},
 			{
 				Query:    "SELECT * from t3",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "INSERT INTO t1 values ('a', 10), ('b', 20)",
@@ -1341,11 +1341,11 @@ END`,
 			},
 			{
 				Query:    "CALL curdemo()",
-				Expected: []sql.Row{{"success"}},
+				Expected: []sql.UntypedSqlRow{{"success"}},
 			},
 			{
 				Query:    "SELECT * from t3",
-				Expected: []sql.Row{{"a", 10}, {"b", 15}},
+				Expected: []sql.UntypedSqlRow{{"a", 10}, {"b", 15}},
 			},
 		},
 	},
@@ -1393,11 +1393,11 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL outer_declare();",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "CALL inner_declare();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1001},
 				},
 			},
@@ -1421,7 +1421,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{4},
 				},
 			},
@@ -1447,7 +1447,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{50},
 				},
 			},
@@ -1468,7 +1468,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 				},
 			},
@@ -1503,7 +1503,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2230},
 				},
 			},
@@ -1539,7 +1539,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2230},
 				},
 			},
@@ -1574,7 +1574,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2230},
 				},
 			},
@@ -1592,13 +1592,13 @@ END`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(@uservar4);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 				},
 			},
 			{
 				Query: "SELECT @uservar4;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"5"},
 				},
 			},
@@ -1634,13 +1634,13 @@ END`,
 			{
 				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
 				Query:                         "call create_cal_entries_for_event('cb8ba301-6c27-4bf8-b99b-617082d72621');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "SELECT * FROM person_cal_entries;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"d17cb898-7b9b-11ed-a1eb-0242ac120002", "cb8ba301-6c27-4bf8-b99b-617082d72621", "6140e23e-7b9b-11ed-a1eb-0242ac120002"},
 				},
 			},
@@ -1660,18 +1660,18 @@ BEGIN
         INSERT INTO test (id) VALUES (val);
     END IF;
 END;`,
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query: "CALL populate(1);",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 				}}},
 				SkipResultCheckOnServerEngine: true,
 			},
 			{
 				Query: "SELECT * FROM test;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -1691,18 +1691,18 @@ BEGIN
         INSERT INTO test (id) VALUES (val);
     END IF;
 END;`,
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query: "CALL populate(1);",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 				}}},
 				SkipResultCheckOnServerEngine: true,
 			},
 			{
 				Query: "SELECT * FROM test;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -1724,18 +1724,18 @@ BEGIN
 		SELECT 0;
     END IF;
 END;`,
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query: "CALL populate(1);",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 				}}},
 				SkipResultCheckOnServerEngine: true,
 			},
 			{
 				Query: "SELECT * FROM test;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -1768,7 +1768,7 @@ END`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10},
 				},
 			},
@@ -1899,11 +1899,11 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL stable();",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query:    "CALL fragile();",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query:            "SHOW PROCEDURE STATUS LIKE 'stable'",
@@ -1915,11 +1915,11 @@ END;`,
 			},
 			{
 				Query:    "alter table t drop other;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query:          "CALL fragile();",
@@ -1935,27 +1935,27 @@ END;`,
 			},
 			{
 				Query:    "ALTER TABLE t ADD COLUMN other INT",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CALL stable();",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				Query:    "CALL fragile();",
-				Expected: []sql.Row{{nil}, {nil}, {nil}},
+				Expected: []sql.UntypedSqlRow{{nil}, {nil}, {nil}},
 			},
 			{
 				Query:    "INSERT INTO t VALUES (4, 4), (5, 5), (6, 6);",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "CALL stable();",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}, {6}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}, {5}, {6}},
 			},
 			{
 				Query:    "CALL fragile();",
-				Expected: []sql.Row{{nil}, {nil}, {nil}, {4}, {5}, {6}},
+				Expected: []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {4}, {5}, {6}},
 			},
 		},
 	},
@@ -2123,7 +2123,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1234},
 				},
 			},
@@ -2141,7 +2141,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1(1234);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1234},
 				},
 			},
@@ -2176,7 +2176,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL computeSummary('i am not used');",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{float64(0.5), 4},
 				},
 			},
@@ -2195,7 +2195,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(9),
 					},
@@ -2213,7 +2213,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						nil,
 					},
@@ -2231,7 +2231,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(9),
 					},
@@ -2249,7 +2249,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(5),
 					},
@@ -2269,7 +2269,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(777),
 					},
@@ -2287,7 +2287,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT @outparam",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						nil,
 					},
@@ -2334,7 +2334,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL proc1(1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(6),
 					},
@@ -2342,28 +2342,28 @@ var ProcedureCallTests = []ScriptTest{
 			},
 			{
 				Query: "CALL proc1(2)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(2),
 					},
 				},
 			}, {
 				Query: "CALL proc1(4)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(0),
 					},
 				},
 			}, {
 				Query: "CALL proc2(3, @foo)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(1),
 					},
 				},
 			}, {
 				Query: "SELECT @foo",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(44),
 					},
@@ -2381,23 +2381,23 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL p1()",
-				Expected: []sql.Row{{42}},
+				Expected: []sql.UntypedSqlRow{{42}},
 			},
 			{
 				Query:    "CALL mydb.p1()",
-				Expected: []sql.Row{{42}},
+				Expected: []sql.UntypedSqlRow{{42}},
 			},
 			{
 				Query:    "CALL otherdb.p1()",
-				Expected: []sql.Row{{43}},
+				Expected: []sql.UntypedSqlRow{{43}},
 			},
 			{
 				Query:    "USE otherdb",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "CALL p1()",
-				Expected: []sql.Row{{43}},
+				Expected: []sql.UntypedSqlRow{{43}},
 			},
 		},
 	},
@@ -2411,15 +2411,15 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL joe('open')",
-				Expected: []sql.Row{{"joe's bar:open"}},
+				Expected: []sql.UntypedSqlRow{{"joe's bar:open"}},
 			},
 			{
 				Query:    "CALL jill('closed')",
-				Expected: []sql.Row{{"jill's bar:closed"}},
+				Expected: []sql.UntypedSqlRow{{"jill's bar:closed"}},
 			},
 			{
 				Query:    "CALL stan('quarantined')",
-				Expected: []sql.Row{{"stan's bar:quarantined"}},
+				Expected: []sql.UntypedSqlRow{{"stan's bar:quarantined"}},
 			},
 		},
 	},
@@ -2437,7 +2437,7 @@ var ProcedureCallTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CALL populate_if_empty();",
-				Expected: []sql.Row{{"hi"}},
+				Expected: []sql.UntypedSqlRow{{"hi"}},
 			},
 		},
 	},
@@ -2453,7 +2453,7 @@ var ProcedureDropTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(5),
 					},
@@ -2461,7 +2461,7 @@ var ProcedureDropTests = []ScriptTest{
 			},
 			{
 				Query: "CALL p2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						int64(6),
 					},
@@ -2469,7 +2469,7 @@ var ProcedureDropTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP PROCEDURE p1",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:       "CALL p1",
@@ -2477,7 +2477,7 @@ var ProcedureDropTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP PROCEDURE IF EXISTS p2",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:       "CALL p2",
@@ -2489,7 +2489,7 @@ var ProcedureDropTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP PROCEDURE IF EXISTS p4",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 		},
 	},
@@ -2506,7 +2506,7 @@ var ProcedureShowStatus = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SHOW PROCEDURE STATUS",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mydb",                // Db
 						"p1",                  // Name
@@ -2550,7 +2550,7 @@ var ProcedureShowStatus = []ScriptTest{
 			},
 			{
 				Query: "SHOW PROCEDURE STATUS LIKE 'p2%'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mydb",                // Db
 						"p2",                  // Name
@@ -2581,11 +2581,11 @@ var ProcedureShowStatus = []ScriptTest{
 			},
 			{
 				Query:    "SHOW PROCEDURE STATUS LIKE 'p4'",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query: "SHOW PROCEDURE STATUS WHERE Db = 'mydb'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mydb",                // Db
 						"p1",                  // Name
@@ -2629,7 +2629,7 @@ var ProcedureShowStatus = []ScriptTest{
 			},
 			{
 				Query: "SHOW PROCEDURE STATUS WHERE Name LIKE '%1'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mydb",                // Db
 						"p1",                  // Name
@@ -2660,7 +2660,7 @@ var ProcedureShowStatus = []ScriptTest{
 			},
 			{
 				Query: "SHOW PROCEDURE STATUS WHERE Security_type = 'INVOKER'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mydb",                // Db
 						"p2",                  // Name
@@ -2678,7 +2678,7 @@ var ProcedureShowStatus = []ScriptTest{
 			},
 			{
 				Query: "SHOW PROCEDURE STATUS",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"mydb",                // Db
 						"p1",                  // Name
@@ -2735,7 +2735,7 @@ var ProcedureShowCreate = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SHOW CREATE PROCEDURE p1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"p1", // Procedure
 						"",   // sql_mode
@@ -2748,7 +2748,7 @@ var ProcedureShowCreate = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE PROCEDURE p2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"p2", // Procedure
 						"",   // sql_mode
@@ -2761,7 +2761,7 @@ var ProcedureShowCreate = []ScriptTest{
 			},
 			{
 				Query: "SHOW CREATE PROCEDURE p21",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"p21", // Procedure
 						"",    // sql_mode
@@ -2828,15 +2828,15 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 var NoDbProcedureTests = []ScriptTestAssertion{
 	{
 		Query:    "SHOW databases;",
-		Expected: []sql.Row{{"information_schema"}, {"mydb"}, {"mysql"}},
+		Expected: []sql.UntypedSqlRow{{"information_schema"}, {"mydb"}, {"mysql"}},
 	},
 	{
 		Query:    "SELECT database();",
-		Expected: []sql.Row{{nil}},
+		Expected: []sql.UntypedSqlRow{{nil}},
 	},
 	{
 		Query:    "CREATE PROCEDURE mydb.p5() SELECT 42;",
-		Expected: []sql.Row{{types.NewOkResult(0)}},
+		Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 	},
 	{
 		Query:            "SHOW CREATE PROCEDURE mydb.p5;",

@@ -32,57 +32,57 @@ var DerivedTableOuterScopeVisibilityQueries = []ScriptTest{
 				// A subquery containing a derived table, used in the WHERE clause of a top-level query, has visibility
 				// to tables and columns in the top-level query.
 				Query:    "SELECT * FROM t1 WHERE t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
-				Expected: []sql.Row{{2, 2, 2, 200, 200}},
+				Expected: []sql.UntypedSqlRow{{2, 2, 2, 200, 200}},
 			},
 			{
 				// A subquery containing a derived table, used in the HAVING clause of a top-level query, has visibility
 				// to tables and columns in the top-level query.
 				Query:    "SELECT * FROM t1 HAVING t1.d > (SELECT dt.a FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt);",
-				Expected: []sql.Row{{2, 2, 2, 200, 200}},
+				Expected: []sql.UntypedSqlRow{{2, 2, 2, 200, 200}},
 			},
 			{
 				Query:    "SELECT (SELECT dt.z FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
-				Expected: []sql.Row{{nil}, {2}},
+				Expected: []sql.UntypedSqlRow{{nil}, {2}},
 			},
 			{
 				Query:    "SELECT (SELECT max(dt.z) FROM (SELECT t2.a AS z FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
-				Expected: []sql.Row{{nil}, {2}},
+				Expected: []sql.UntypedSqlRow{{nil}, {2}},
 			},
 			{
 				// A subquery containing a derived table, projected in a SELECT query, has visibility to tables and columns
 				// in the top-level query.
 				Query:    "SELECT t1.*, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1;",
-				Expected: []sql.Row{{1, 1, 1, 100, 100, nil}, {2, 2, 2, 200, 200, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1, 100, 100, nil}, {2, 2, 2, 200, 200, 2}},
 			},
 			{
 				// A subquery containing a derived table, projected in a GROUPBY query, has visibility to tables and columns
 				// in the top-level query.
 				Query:    "SELECT t1.a, t1.b, (SELECT max(dt.a) FROM (SELECT t2.a AS a FROM t2 WHERE t2.b = t1.b) dt) FROM t1 GROUP BY 1, 2, 3;",
-				Expected: []sql.Row{{1, 1, nil}, {2, 2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1, nil}, {2, 2, 2}},
 			},
 			{
 				// A subquery containing a derived table, projected in a WINDOW query, has visibility to tables and columns
 				// in the top-level query.
 				Query:    "SELECT val, row_number() over (partition by val) as 'row_number', (SELECT two from (SELECT val*2, val*3) as dt(one, two)) as a1 from numbers having a1 > 10;",
-				Expected: []sql.Row{{4, 1, 12}, {5, 1, 15}, {6, 1, 18}, {6, 2, 18}, {6, 3, 18}},
+				Expected: []sql.UntypedSqlRow{{4, 1, 12}, {5, 1, 15}, {6, 1, 18}, {6, 2, 18}, {6, 3, 18}},
 			},
 			{
 				// A subquery containing a derived table, used in the GROUP BY clause of a top-level query as a grouping
 				// expression, has visibility to tables and columns in the top-level query.
 				Skip:     true, // memoization to fix
 				Query:    "SELECT max(val), (select max(dt.a) from (SELECT val as a) as dt(a)) as a1 from numbers group by a1;",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}},
 			},
 			{
 				// CTEs are eligible for outer scope visibility, as long as they are contained in a subquery expression.
 				Query:    "SELECT DISTINCT numbers.val, (WITH cte1 AS (SELECT val * 2 as val2 from numbers) SELECT count(*) from cte1 where numbers.val = cte1.val2) as count from numbers having count > 0;",
-				Expected: []sql.Row{{2, 2}, {4, 1}, {6, 3}},
+				Expected: []sql.UntypedSqlRow{{2, 2}, {4, 1}, {6, 3}},
 			},
 			{
 				// Recursive CTEs are eligible for outer scope visibility as well, as long as they are contained in a
 				// subquery expression.
 				Query:    "select distinct n1.val, (with recursive cte1(n) as (select (n1.val) from dual union all select n + 1 from cte1 where n < 10) select sum(n) from cte1) from numbers n1 where n1.val > 4;",
-				Expected: []sql.Row{{5, 45.0}, {6, 40.0}},
+				Expected: []sql.UntypedSqlRow{{5, 45.0}, {6, 40.0}},
 			},
 		},
 	},
@@ -148,11 +148,11 @@ SELECT (
 ) AS rack_count
 FROM dcim_rackgroup
 WHERE dcim_rackgroup.id IN ('rackgroup1', 'rackgroup2')`,
-				Expected: []sql.Row{{4}, {1}},
+				Expected: []sql.UntypedSqlRow{{4}, {1}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM (SELECT (SELECT count(*) FROM (SELECT U0.`id` FROM `dcim_rack` U0 INNER JOIN `dcim_rackgroup` U1 ON (U0.`group_id` = U1.`id`) WHERE (U1.`lft` >= `dcim_rackgroup`.`lft` AND U1.`lft` <= `dcim_rackgroup`.`rght` AND U1.`tree_id` = `dcim_rackgroup`.`tree_id`)) _count) AS `rack_count` FROM `dcim_rackgroup` WHERE `dcim_rackgroup`.`id` IN ('rackgroup1', 'rackgroup2')) subquery;",
-				Expected: []sql.Row{{2}},
+				Expected: []sql.UntypedSqlRow{{2}},
 			},
 		},
 	},

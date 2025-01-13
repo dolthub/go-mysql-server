@@ -41,10 +41,10 @@ func TestFilter(t *testing.T) {
 	})
 	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
 
-	rows := []sql.Row{
-		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),
-		sql.NewRow("col1_2", "col2_2", int32(3333), int64(4444)),
-		sql.NewRow("col1_3", "col2_3", nil, int64(4444)),
+	rows := []sql.UntypedSqlRow{
+		{"col1_1", "col2_1", int32(1111), int64(2222)},
+		{"col1_2", "col2_2", int32(3333), int64(4444)},
+		{"col1_3", "col2_3", nil, int64(4444)},
 	}
 
 	for _, r := range rows {
@@ -67,8 +67,8 @@ func TestFilter(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(row)
 
-	require.Equal("col1_1", row[0])
-	require.Equal("col2_1", row[1])
+	require.Equal("col1_1", row.GetValue(0))
+	require.Equal("col2_1", row.GetValue(1))
 
 	row, err = iter.Next(ctx)
 	require.NotNil(err)
@@ -87,8 +87,8 @@ func TestFilter(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(row)
 
-	require.Equal(int32(1111), row[2])
-	require.Equal(int64(2222), row[3])
+	require.Equal(int32(1111), row.GetValue(2))
+	require.Equal(int64(2222), row.GetValue(3))
 
 	f = plan.NewFilter(expression.NewEquals(
 		expression.NewGetField(3, types.Int64, "col4", true),
@@ -103,6 +103,6 @@ func TestFilter(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(row)
 
-	require.Equal(int32(3333), row[2])
-	require.Equal(int64(4444), row[3])
+	require.Equal(int32(3333), row.GetValue(2))
+	require.Equal(int64(4444), row.GetValue(3))
 }

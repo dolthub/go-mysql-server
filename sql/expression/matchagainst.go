@@ -84,7 +84,7 @@ func (expr *MatchAgainst) Children() []sql.Expression {
 
 // Eval implements sql.Expression
 func (expr *MatchAgainst) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	row = row[:expr.expectedRowLen]
+	row = row.Subslice(0, expr.expectedRowLen)
 	switch expr.SearchModifier {
 	case fulltext.SearchModifier_NaturalLanguage:
 		return expr.inNaturalLanguageMode(ctx, row)
@@ -304,7 +304,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			ranges := make(sql.MySQLRange, 1+len(expr.KeyCols.Positions))
 			ranges[0] = sql.ClosedRangeColumnExpr(wordStr, wordStr, expr.DocCountTable.Schema()[0].Type)
 			for i, keyColPos := range expr.KeyCols.Positions {
-				ranges[i+1] = sql.ClosedRangeColumnExpr(row[keyColPos], row[keyColPos], expr.DocCountTable.Schema()[i+1].Type)
+				ranges[i+1] = sql.ClosedRangeColumnExpr(row.GetValue(keyColPos), row.GetValue(keyColPos), expr.DocCountTable.Schema()[i+1].Type)
 			}
 			lookup = sql.IndexLookup{Ranges: sql.MySQLRangeCollection{ranges}, Index: expr.docCountIndex}
 		} else {
@@ -336,7 +336,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			return 0, fmt.Errorf("somehow there are duplicate entries within the Full-Text doc count table")
 		}
 		docCountRow := docCountRows[0]
-		docCount := float64(docCountRow[len(docCountRow)-1].(uint64))
+		docCount := float64(docCountRow.GetValue(docCountRow.Len() - 1).(uint64))
 		if docCount == 0 {
 			// We've got an empty document count, so the word does not match (so it should have been deleted)
 			continue
@@ -396,8 +396,8 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 
 		// Calculate the relevancy (partially based on an old MySQL implementation)
 		// https://web.archive.org/web/20220122170304/http://dev.mysql.com/doc/internals/en/full-text-search.html
-		globalCount := float64(globalCountRow[len(globalCountRow)-1].(uint64))
-		uniqueWords := float64(rowCountRow[2].(uint64))
+		globalCount := float64(globalCountRow.GetValue(globalCountRow.Len() - 1).(uint64))
+		uniqueWords := float64(rowCountRow.GetValue(2).(uint64))
 		base := math.Log(docCount) + 1
 		normFactor := uniqueWords / (1 + 0.115*uniqueWords)
 		globalMult := math.Log(float64(expr.parentRowCount)/globalCount) + 1

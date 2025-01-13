@@ -32,7 +32,7 @@ func NewDualTable() *Table {
 	tbl.ignoreSessionData = true
 	part := []byte{0}
 	tbl.data.partitions = map[string][]sql.Row{
-		string(part): {{"x"}},
+		string(part): {sql.UntypedSqlRow{"x"}},
 	}
 	tbl.data.partitionKeys = [][]byte{part}
 

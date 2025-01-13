@@ -915,12 +915,12 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 
 	sb := strings.Builder{}
 	for i, row := range rows {
-		lastIdx := len(row) - 1
+		lastIdx := row.Len() - 1
 		if i == 0 {
-			sb.WriteString(row[lastIdx].(string))
+			sb.WriteString(row.GetValue(lastIdx).(string))
 		} else {
 			sb.WriteString(a.gc.separator)
-			sb.WriteString(row[lastIdx].(string))
+			sb.WriteString(row.GetValue(lastIdx).(string))
 		}
 
 		// Don't allow the string to cross maxlen
@@ -958,9 +958,9 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 
 		var v interface{}
 		if retType == types.Blob {
-			v, _, err = types.Blob.Convert(evalRow[0])
+			v, _, err = types.Blob.Convert(evalRow.GetValue(0))
 		} else {
-			v, _, err = types.LongText.Convert(evalRow[0])
+			v, _, err = types.LongText.Convert(evalRow.GetValue(0))
 		}
 
 		if err != nil {
@@ -986,7 +986,7 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 
 		// Append the current value to the end of the row. We want to preserve the row's original structure for
 		// for sort ordering in the final step.
-		rows = append(rows, append(row, nil, vs))
+		rows = append(rows, row.Append(sql.NewUntypedRow(nil, vs)))
 	}
 	return rows, distinct, nil
 }

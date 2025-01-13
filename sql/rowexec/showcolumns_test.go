@@ -48,13 +48,13 @@ func TestShowColumns(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{"a", "text", "NO", "PRI", nil, ""},
 		{"b", "bigint", "YES", "", nil, ""},
 		{"c", "bigint", "NO", "", "1", ""},
 	}
 
-	require.Equal(expected, rows)
+	require.Equal(expected, sql.RowsToUntyped(rows))
 }
 
 func TestShowColumnsWithIndexes(t *testing.T) {
@@ -107,7 +107,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{"a", "text", "NO", "PRI", nil, ""},
 		{"b", "bigint", "YES", "MUL", nil, ""},
 		{"c", "bigint", "NO", "", "1", ""},
@@ -115,7 +115,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 		{"e", "bigint", "NO", "", "1", ""},
 	}
 
-	require.Equal(expected, rows)
+	require.Equal(expected, sql.RowsToUntyped(rows))
 
 	// Test the precedence of key type. PRI > UNI > MUL
 	showColumns.(*ShowColumns).Indexes = append(showColumns.(*ShowColumns).Indexes,
@@ -149,7 +149,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	rows, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	require.Equal(expected, rows)
+	require.Equal(expected, sql.RowsToUntyped(rows))
 }
 
 func TestShowColumnsFull(t *testing.T) {
@@ -173,11 +173,11 @@ func TestShowColumnsFull(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{"a", "text", "utf8mb4_0900_bin", "NO", "PRI", nil, "", "", ""},
 		{"b", "bigint", nil, "YES", "", nil, "", "", ""},
 		{"c", "bigint", nil, "NO", "", "1", "", "", "a comment"},
 	}
 
-	require.Equal(expected, rows)
+	require.Equal(expected, sql.RowsToUntyped(rows))
 }

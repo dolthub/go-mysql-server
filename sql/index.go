@@ -108,8 +108,6 @@ type Index interface {
 	IsSpatial() bool
 	// IsFullText returns whether this index is a Full-Text index
 	IsFullText() bool
-	// IsVector returns whether this index is a Full-Text index
-	IsVector() bool
 	// Comment returns the comment for this index
 	Comment() string
 	// IndexType returns the type of this index, e.g. BTREE

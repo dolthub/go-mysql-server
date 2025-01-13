@@ -33,119 +33,119 @@ func TestJSONDepth(t *testing.T) {
 	f1 := buildGetFieldExpressions(t, json.NewJSONDepth, 1)
 	testCases := []struct {
 		f   sql.Expression
-		row sql.Row
+		row sql.UntypedSqlRow
 		exp interface{}
 		err error
 	}{
 		{
 			f:   f1,
-			row: sql.Row{``},
+			row: sql.UntypedSqlRow{``},
 			err: sql.ErrInvalidJSONText.New(1, "json_depth", ``),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`badjson`},
+			row: sql.UntypedSqlRow{`badjson`},
 			err: sql.ErrInvalidJSONText.New(1, "json_depth", `badjson`),
 		},
 		{
 			f:   f1,
-			row: sql.Row{true},
+			row: sql.UntypedSqlRow{true},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{1},
+			row: sql.UntypedSqlRow{1},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_depth"),
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{nil},
+			row: sql.UntypedSqlRow{nil},
 			exp: nil,
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`null`},
+			row: sql.UntypedSqlRow{`null`},
 			exp: 1,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`1`},
+			row: sql.UntypedSqlRow{`1`},
 			exp: 1,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`true`},
+			row: sql.UntypedSqlRow{`true`},
 			exp: 1,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`123.456`},
+			row: sql.UntypedSqlRow{`123.456`},
 			exp: 1,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`"abcdef"`},
-			exp: 1,
-		},
-
-		{
-			f:   f1,
-			row: sql.Row{`[]`},
-			exp: 1,
-		},
-		{
-			f:   f1,
-			row: sql.Row{`{}`},
+			row: sql.UntypedSqlRow{`"abcdef"`},
 			exp: 1,
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`[null]`},
+			row: sql.UntypedSqlRow{`[]`},
+			exp: 1,
+		},
+		{
+			f:   f1,
+			row: sql.UntypedSqlRow{`{}`},
+			exp: 1,
+		},
+
+		{
+			f:   f1,
+			row: sql.UntypedSqlRow{`[null]`},
 			exp: 2,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{"a": null}`},
+			row: sql.UntypedSqlRow{`{"a": null}`},
 			exp: 2,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1]`},
+			row: sql.UntypedSqlRow{`[1]`},
 			exp: 2,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{"a": 1}`},
+			row: sql.UntypedSqlRow{`{"a": 1}`},
 			exp: 2,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1, 2, 3]`},
+			row: sql.UntypedSqlRow{`[1, 2, 3]`},
 			exp: 2,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
+			row: sql.UntypedSqlRow{`{"aa": 1, "bb": 2, "c": 3}`},
 			exp: 2,
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`{"a": 1, "b": [1, 2, 3]}`},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": [1, 2, 3]}`},
 			exp: 3,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[0, {"a": 1, "b": 2}]`},
+			row: sql.UntypedSqlRow{`[0, {"a": 1, "b": 2}]`},
 			exp: 3,
 		},
 
 		{
 			f:   f1,
-			row: sql.Row{`{"a": 1, "b": {"aa": 1, "bb": {"aaa": 1, "bbb": {"aaaa": 1}}}}`},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": {"aa": 1, "bb": {"aaa": 1, "bbb": {"aaaa": 1}}}}`},
 			exp: 5,
 		},
 	}

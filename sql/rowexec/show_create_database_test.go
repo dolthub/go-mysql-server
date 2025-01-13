@@ -34,9 +34,9 @@ func TestShowCreateDatabase(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	require.Equal([]sql.Row{
+	require.Equal([]sql.UntypedSqlRow{
 		{"foo", "CREATE DATABASE /*!32312 IF NOT EXISTS*/ `foo` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */"},
-	}, rows)
+	}, sql.RowsToUntyped(rows))
 
 	node = plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false)
 	ctx = sql.NewEmptyContext()
@@ -46,7 +46,7 @@ func TestShowCreateDatabase(t *testing.T) {
 	rows, err = sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	require.Equal([]sql.Row{
+	require.Equal([]sql.UntypedSqlRow{
 		{"foo", "CREATE DATABASE `foo` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */"},
-	}, rows)
+	}, sql.RowsToUntyped(rows))
 }

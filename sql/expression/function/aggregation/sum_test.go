@@ -28,52 +28,52 @@ func TestSum(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		rows     []sql.Row
+		rows     []sql.UntypedSqlRow
 		expected interface{}
 	}{
 		{
 			"string int values",
-			[]sql.Row{{"1"}, {"2"}, {"3"}, {"4"}},
+			[]sql.UntypedSqlRow{{"1"}, {"2"}, {"3"}, {"4"}},
 			float64(10),
 		},
 		{
 			"string float values",
-			[]sql.Row{{"1.5"}, {"2"}, {"3"}, {"4"}},
+			[]sql.UntypedSqlRow{{"1.5"}, {"2"}, {"3"}, {"4"}},
 			float64(10.5),
 		},
 		{
 			"string non-int values",
-			[]sql.Row{{"a"}, {"b"}, {"c"}, {"d"}},
+			[]sql.UntypedSqlRow{{"a"}, {"b"}, {"c"}, {"d"}},
 			float64(0),
 		},
 		{
 			"float values",
-			[]sql.Row{{1.}, {2.5}, {3.}, {4.}},
+			[]sql.UntypedSqlRow{{1.}, {2.5}, {3.}, {4.}},
 			float64(10.5),
 		},
 		{
 			"no rows",
-			[]sql.Row{},
+			[]sql.UntypedSqlRow{},
 			nil,
 		},
 		{
 			"nil values",
-			[]sql.Row{{nil}, {nil}},
+			[]sql.UntypedSqlRow{{nil}, {nil}},
 			nil,
 		},
 		{
 			"int64 values",
-			[]sql.Row{{int64(1)}, {int64(3)}},
+			[]sql.UntypedSqlRow{{int64(1)}, {int64(3)}},
 			float64(4),
 		},
 		{
 			"int32 values",
-			[]sql.Row{{int32(1)}, {int32(3)}},
+			[]sql.UntypedSqlRow{{int32(1)}, {int32(3)}},
 			float64(4),
 		},
 		{
 			"int32 and nil values",
-			[]sql.Row{{int32(1)}, {int32(3)}, {nil}},
+			[]sql.UntypedSqlRow{{int32(1)}, {int32(3)}, {nil}},
 			float64(4),
 		},
 	}
@@ -106,59 +106,59 @@ func TestSumWithDistinct(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		rows     []sql.Row
+		rows     []sql.UntypedSqlRow
 		expected interface{}
 	}{
 		{
 			"string int values",
-			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
+			[]sql.UntypedSqlRow{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
 			float64(10),
 		},
 		// TODO : DISTINCT returns incorrect result, it currently returns 11.00
 		//        https://github.com/dolthub/dolt/issues/4298
 		//{
 		//	"string int values",
-		//	[]sql.Row{{"1.00"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
+		//	[]sql.UntypedSqlRow{{"1.00"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
 		//	float64(10),
 		//},
 		{
 			"string float values",
-			[]sql.Row{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},
+			[]sql.UntypedSqlRow{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},
 			float64(10.5),
 		},
 		{
 			"string non-int values",
-			[]sql.Row{{"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}},
+			[]sql.UntypedSqlRow{{"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}},
 			float64(0),
 		},
 		{
 			"float values",
-			[]sql.Row{{1.}, {2.5}, {3.}, {4.}},
+			[]sql.UntypedSqlRow{{1.}, {2.5}, {3.}, {4.}},
 			float64(10.5),
 		},
 		{
 			"no rows",
-			[]sql.Row{},
+			[]sql.UntypedSqlRow{},
 			nil,
 		},
 		{
 			"nil values",
-			[]sql.Row{{nil}, {nil}},
+			[]sql.UntypedSqlRow{{nil}, {nil}},
 			nil,
 		},
 		{
 			"int64 values",
-			[]sql.Row{{int64(1)}, {int64(3)}, {int64(3)}, {int64(3)}},
+			[]sql.UntypedSqlRow{{int64(1)}, {int64(3)}, {int64(3)}, {int64(3)}},
 			float64(4),
 		},
 		{
 			"int32 values",
-			[]sql.Row{{int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}},
+			[]sql.UntypedSqlRow{{int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}},
 			float64(4),
 		},
 		{
 			"int32 and nil values",
-			[]sql.Row{{nil}, {int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}, {nil}, {nil}},
+			[]sql.UntypedSqlRow{{nil}, {int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}, {nil}, {nil}},
 			float64(4),
 		},
 	}

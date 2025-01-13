@@ -22,7 +22,7 @@ type TypeWireTest struct {
 	Name        string
 	SetUpScript []string
 	Queries     []string
-	Results     [][]sql.Row
+	Results     [][]sql.UntypedSqlRow
 }
 
 // TypeWireTests are used to ensure that types are properly represented over the wire (vs being directly returned from
@@ -41,7 +41,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-75", "-26"}, {"0", "0"}, {"107", "25"}, {"108", "25"}},
 			{{"-26", "-75"}, {"0", "0"}, {"25", "107"}, {"25", "108"}},
 			{{"-52", "-74"}, {"0", "1"}, {"50", "108"}, {"50", "109"}},
@@ -60,7 +60,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-76", "-2532"}, {"-75", "-2532"}, {"0", "0"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"-2532", "-76"}, {"-2532", "-75"}, {"0", "0"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"-5064", "-75"}, {"-5064", "-74"}, {"0", "1"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -79,7 +79,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-75", "-2532"}, {"0", "0"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"-2532", "-75"}, {"0", "0"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"-5064", "-74"}, {"0", "1"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -98,7 +98,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-75", "-2532"}, {"0", "0"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"-2532", "-75"}, {"0", "0"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"-5064", "-74"}, {"0", "1"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -117,7 +117,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-75", "-2532"}, {"0", "0"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"-2532", "-75"}, {"0", "0"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"-5064", "-74"}, {"0", "1"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -136,7 +136,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"0", "0"}, {"25", "25"}, {"32", "126"}, {"43", "126"}},
 			{{"0", "0"}, {"25", "25"}, {"126", "32"}, {"126", "43"}},
 			{{"0", "1"}, {"50", "26"}, {"252", "33"}, {"252", "44"}},
@@ -155,7 +155,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"0", "0"}, {"25", "2530"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"0", "0"}, {"2530", "25"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"0", "1"}, {"5060", "26"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -174,7 +174,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"0", "1"}, {"75", "2532"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"1", "0"}, {"2532", "75"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"2", "1"}, {"5064", "76"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -193,7 +193,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"0", "1"}, {"75", "2532"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"1", "0"}, {"2532", "75"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"2", "1"}, {"5064", "76"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -212,7 +212,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"0", "1"}, {"75", "2532"}, {"2547", "3325"}, {"2548", "3325"}},
 			{{"1", "0"}, {"2532", "75"}, {"3325", "2547"}, {"3325", "2548"}},
 			{{"2", "1"}, {"5064", "76"}, {"6650", "2548"}, {"6650", "2549"}},
@@ -231,7 +231,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-75.11", "-2532"}, {"0", "0"}, {"2547.2", "3325"}},
 			{{"-2532", "-75.11"}, {"0", "0"}, {"3325", "2547.2"}},
 			{{"-5064", "-74.11000061035156"}, {"0", "1"}, {"6650", "2548.199951171875"}},
@@ -250,7 +250,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-75.11", "-2532"}, {"0", "0"}, {"2547.2", "3325"}},
 			{{"-2532", "-75.11"}, {"0", "0"}, {"3325", "2547.2"}},
 			{{"-5064", "-74.11"}, {"0", "1"}, {"6650", "2548.2"}},
@@ -269,7 +269,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*2, pk+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-75", "-2532.35600"}, {"0", "0.00000"}, {"2547", "3325.00000"}},
 			{{"-2532.35600", "-75"}, {"0.00000", "0"}, {"3325.00000", "2547"}},
 			{{"-5064.71200", "-74"}, {"0.00000", "1"}, {"6650.00000", "2548"}},
@@ -288,7 +288,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v2, v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1*1, pk/10, v2+1 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"\x00\x00\x00\x00\x00\x00\x00", "\x00", "\x00\x00\x00"}, {"\x00\x00\x00\x00\x00\x00K", "\x00", "\x0020"}, {"\x00\x00\x00\x00\x00\t\xf3", "", "\x00\xfd"}},
 			{{"\x00\x00\x00", "\x00", "\x00\x00\x00\x00\x00\x00\x00"}, {"\x0020", "\x00", "\x00\x00\x00\x00\x00\x00K"}, {"\x00\xfd", "", "\x00\x00\x00\x00\x00\t\xf3"}},
 			{{"0", "0.0000", "1"}, {"0", "7.5000", "12849"}, {"1", "254.7000", "3326"}},
@@ -307,7 +307,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT v1+3, pk+2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1901", "1902"}, {"1950", "1951"}, {"1979", "1986"}},
 			{{"1902", "1901"}, {"1951", "1950"}, {"1986", "1979"}},
 			{{"1905", "1903"}, {"1954", "1952"}, {"1989", "1981"}},
@@ -331,7 +331,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 MINUTE);`,
 			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 HOUR);`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1980-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"1980-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"2000-01-01 00:00:00", "1980-04-12 12:02:11"}, {"2022-01-14 15:08:44", "1999-11-28 13:06:33"}},
@@ -359,7 +359,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 MINUTE);`,
 			`SELECT DATE_ADD('2022-10-26', INTERVAL 1 HOUR);`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1000-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"1000-04-12 12:02:11", "2000-01-01 00:00:00"}, {"1999-11-28 13:06:33", "2022-01-14 15:08:44"}},
 			{{"2000-01-01 00:00:00", "1000-04-12 12:02:11"}, {"2022-01-14 15:08:44", "1999-11-28 13:06:33"}},
@@ -387,7 +387,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT DATE_ADD(DATE('2022-10-26'), INTERVAL 1 QUARTER);`,
 			`SELECT DATE_ADD(DATE('2022-10-26'), INTERVAL 1 YEAR);`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1000-04-12", "2000-01-01"}, {"1999-11-28", "2022-01-14"}},
 			{{"1000-04-12", "2000-01-01"}, {"1999-11-28", "2022-01-14"}},
 			{{"2000-01-01", "1000-04-12"}, {"2022-01-14", "1999-11-28"}},
@@ -415,7 +415,7 @@ var TypeWireTests = []TypeWireTest{
 			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 MINUTE);`,
 			//`SELECT DATE_ADD(TIMEDIFF('12:13:14', '0:0:0'), INTERVAL 1 HOUR);`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"-800:00:00", "-120:12:20"}, {"00:00:00", "00:00:00"}, {"10:26:57", "30:53:14"}},
 			{{"-800:00:00", "-120:12:20"}, {"00:00:00", "00:00:00"}, {"10:26:57", "30:53:14"}},
 			{{"-120:12:20", "-800:00:00"}, {"00:00:00", "00:00:00"}, {"30:53:14", "10:26:57"}},
@@ -434,7 +434,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "a-c", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "a-c"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"a-cr", "2", "123"}, {"__2r", "3", "456"}},
@@ -454,7 +454,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 			`SELECT DATE_ADD('2022-10-26 13:14:15', INTERVAL 1 DAY);`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -474,7 +474,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc\x00\x00", "def\x00\x00\x00\x00\x00\x00\x00"}, {"2", "a-c\x00\x00", "123\x00\x00\x00\x00\x00\x00\x00"}, {"3", "__2\x00\x00", "456\x00\x00\x00\x00\x00\x00\x00"}},
 			{{"1", "def\x00\x00\x00\x00\x00\x00\x00", "abc\x00\x00"}, {"2", "123\x00\x00\x00\x00\x00\x00\x00", "a-c\x00\x00"}, {"3", "456\x00\x00\x00\x00\x00\x00\x00", "__2\x00\x00"}},
 			{{"abc\x00\x00r", "1", "def\x00\x00\x00\x00\x00\x00\x00"}, {"a-c\x00\x00r", "2", "123\x00\x00\x00\x00\x00\x00\x00"}, {"__2\x00\x00r", "3", "456\x00\x00\x00\x00\x00\x00\x00"}},
@@ -493,7 +493,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -512,7 +512,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -531,7 +531,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -550,7 +550,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -569,7 +569,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -588,7 +588,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -607,7 +607,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -626,7 +626,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -645,7 +645,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v2, v1 FROM test ORDER BY pk;`,
 			`SELECT CONCAT(v1, "r"), pk, v2 FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "abc", "def"}, {"2", "c-ax", "123"}, {"3", "__2", "456"}},
 			{{"1", "def", "abc"}, {"2", "123", "c-ax"}, {"3", "456", "__2"}},
 			{{"abcr", "1", "def"}, {"c-axr", "2", "123"}, {"__2r", "3", "456"}},
@@ -664,7 +664,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"a", "x"}, {"b", "x"}},
 			{{"a", "x"}, {"b", "x"}},
 			{{"x", "a"}, {"x", "b"}},
@@ -683,7 +683,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"", "w"}, {"b", "y"}, {"b,c", "w,x,y"}},
 			{{"", "w"}, {"b", "y"}, {"b,c", "w,x,y"}},
 			{{"w", ""}, {"y", "b"}, {"w,x,y", "b,c"}},
@@ -700,7 +700,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT pk, ST_ASWKT(v1) FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{
 				{"1", string([]byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40})},
 				{"2", string([]byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x40})},
@@ -730,7 +730,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT pk, ST_ASWKT(v1) FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{
 				{"1", string([]byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40})},
 				{"2", string([]byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x0B, 0x40, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x16, 0x40})},
@@ -759,7 +759,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT pk, ST_ASWKT(v1) FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{
 				{"1", string([]byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x40})},
 				{"2", string([]byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1C, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x40})},
@@ -785,7 +785,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v1 FROM test ORDER BY pk;`,
 			`SELECT pk, ST_ASWKT(v1) FROM test ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{
 				{"1", string([]byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F})},
 			},
@@ -810,7 +810,7 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT v1, pk FROM test ORDER BY pk;`,
 			`SELECT pk, JSON_ARRAYAGG(v1) FROM (SELECT * FROM test ORDER BY pk) as sub GROUP BY v1 ORDER BY pk;`,
 		},
-		Results: [][]sql.Row{
+		Results: [][]sql.UntypedSqlRow{
 			{{"1", "[\"a\",1]"}, {"2", "{\"key1\":\"value1\",\"key2\":\"value2\"}"}},
 			{{"[\"a\",1]", "1"}, {"{\"key1\":\"value1\",\"key2\":\"value2\"}", "2"}},
 			{{"1", "[[\"a\",1]]"}, {"2", "[{\"key1\":\"value1\",\"key2\":\"value2\"}]"}},

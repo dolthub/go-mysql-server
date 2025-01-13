@@ -87,7 +87,7 @@ func (cv *CreateView) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
-// String implements the fmt.Stringer interface, using sql.TreePrinter to
+// String implements the fmt.Stringer interface{}, using sql.TreePrinter to
 // generate the string.
 func (cv *CreateView) String() string {
 	pr := sql.NewTreePrinter()
@@ -112,13 +112,13 @@ func (*CreateView) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 7
 }
 
-// Database implements the Databaser interface, and it returns the database in
+// Database implements the Databaser interface{}, and it returns the database in
 // which CreateView will create the view.
 func (cv *CreateView) Database() sql.Database {
 	return cv.database
 }
 
-// WithDatabase implements the Databaser interface, and it returns a copy of this
+// WithDatabase implements the Databaser interface{}, and it returns a copy of this
 // node with the specified database.
 func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
 	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {

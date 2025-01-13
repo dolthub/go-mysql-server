@@ -47,8 +47,8 @@ func Example() {
 		}
 		checkIfError(err)
 
-		name := row[0]
-		count := row[1]
+		name := row.GetValue(0)
+		count := row.GetValue(1)
 
 		fmt.Println(name, count)
 	}
@@ -74,11 +74,11 @@ func createTestDatabase() *memory.DbProvider {
 	}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
 
-	rows := []sql.Row{
-		sql.NewRow("John Doe", "john@doe.com"),
-		sql.NewRow("John Doe", "johnalt@doe.com"),
-		sql.NewRow("Jane Doe", "jane@doe.com"),
-		sql.NewRow("Evil Bob", "evilbob@gmail.com"),
+	rows := []sql.UntypedSqlRow{
+		{"John Doe", "john@doe.com"},
+		{"John Doe", "johnalt@doe.com"},
+		{"Jane Doe", "jane@doe.com"},
+		{"Evil Bob", "evilbob@gmail.com"},
 	}
 
 	for _, row := range rows {

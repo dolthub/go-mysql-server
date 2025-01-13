@@ -31,40 +31,40 @@ func TestBinMerge(t *testing.T) {
 	}{
 		{
 			inp: sql.Histogram{
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{2}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{2}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{3}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{4}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{3}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{4}, BoundCnt: 5},
 			},
 			exp: sql.Histogram{
-				&Bucket{RowCnt: 10, DistinctCnt: 5, BoundVal: sql.Row{2}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{3}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{4}, BoundCnt: 5},
+				&Bucket{RowCnt: 10, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{3}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{4}, BoundCnt: 5},
 			},
 		},
 		{
 			inp: sql.Histogram{
-				&Bucket{RowCnt: 5, DistinctCnt: 10, BoundVal: sql.Row{2}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{3}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{3}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{4}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{3}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{3}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{4}, BoundCnt: 5},
 			},
 			exp: sql.Histogram{
-				&Bucket{RowCnt: 5, DistinctCnt: 10, BoundVal: sql.Row{2}, BoundCnt: 5},
-				&Bucket{RowCnt: 10, DistinctCnt: 1, BoundVal: sql.Row{3}, BoundCnt: 10},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{4}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 5},
+				&Bucket{RowCnt: 10, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{3}, BoundCnt: 10},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{4}, BoundCnt: 5},
 			},
 		},
 		{
 			inp: sql.Histogram{
-				&Bucket{RowCnt: 5, DistinctCnt: 10, BoundVal: sql.Row{2}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{2}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{4}, BoundCnt: 5},
-				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.Row{4}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{4}, BoundCnt: 5},
+				&Bucket{RowCnt: 5, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{4}, BoundCnt: 5},
 			},
 			exp: sql.Histogram{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{2}, BoundCnt: 10},
-				&Bucket{RowCnt: 10, DistinctCnt: 5, BoundVal: sql.Row{4}, BoundCnt: 10},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{2}, BoundCnt: 10},
+				&Bucket{RowCnt: 10, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{4}, BoundCnt: 10},
 			},
 		},
 	}
@@ -83,19 +83,19 @@ func TestEuclideanDistance(t *testing.T) {
 		dist float64
 	}{
 		{
-			x:    sql.Row{0, 3},
-			y:    sql.Row{4, 0},
+			x:    sql.UntypedSqlRow{0, 3},
+			y:    sql.UntypedSqlRow{4, 0},
 			dist: 5,
 		},
 		{
-			x:    sql.Row{5, 0, 0},
-			y:    sql.Row{0, 12, 0},
+			x:    sql.UntypedSqlRow{5, 0, 0},
+			y:    sql.UntypedSqlRow{0, 12, 0},
 			dist: 13,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%v x %v = %.2f", tt.x, tt.y, tt.dist), func(t *testing.T) {
-			cmp, err := euclideanDistance(tt.x, tt.y, len(tt.x))
+			cmp, err := euclideanDistance(tt.x, tt.y, tt.x.Len())
 			require.NoError(t, err)
 			require.Equal(t, tt.dist, cmp)
 		})
@@ -111,184 +111,184 @@ func TestBinAlignment(t *testing.T) {
 	}{
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 12, DistinctCnt: 12, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 2, DistinctCnt: 2, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 12, DistinctCnt: 12, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 2, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{40}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 23, DistinctCnt: 23, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: 23, DistinctCnt: 23, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{40}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{40}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{60}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{60}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 26, DistinctCnt: 26, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: 26, DistinctCnt: 26, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{40}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{60}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{60}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 20, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 20, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{60}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{60}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 30, DistinctCnt: 30, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 30, DistinctCnt: 30, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{60}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{60}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 30, DistinctCnt: 30, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 30, DistinctCnt: 30, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 30, DistinctCnt: 30, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 30, DistinctCnt: 30, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			expLeft: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 20, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 20, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 			expRight: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
 			},
 		},
 	}
 
 	cmp := func(i, j sql.Row) (int, error) {
-		return types.Int64.Compare(i[0], j[0])
+		return types.Int64.Compare(i.GetValue(0), j.GetValue(0))
 	}
 
 	for i, tt := range tests {
@@ -309,137 +309,137 @@ func TestJoin(t *testing.T) {
 	}{
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 20, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 20, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 11, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 11, BoundVal: sql.UntypedSqlRow{10}, McvVals: []sql.UntypedSqlRow{sql.UntypedSqlRow{1}, sql.UntypedSqlRow{2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{2}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.UntypedSqlRow{10}, McvVals: []sql.UntypedSqlRow{sql.UntypedSqlRow{2}}, McvsCnt: []uint64{4}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 29, DistinctCnt: 6, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 29, DistinctCnt: 6, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, McvVals: []sql.UntypedSqlRow{sql.UntypedSqlRow{1}, sql.UntypedSqlRow{2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.Row{10}, McvVals: []sql.Row{{3}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 6, BoundVal: sql.UntypedSqlRow{10}, McvVals: []sql.UntypedSqlRow{sql.UntypedSqlRow{3}}, McvsCnt: []uint64{4}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 6, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 6, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{1}, {2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, McvVals: []sql.UntypedSqlRow{sql.UntypedSqlRow{1}, sql.UntypedSqlRow{2}}, McvsCnt: []uint64{5, 5}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, McvVals: []sql.Row{{3}}, McvsCnt: []uint64{4}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, McvVals: []sql.UntypedSqlRow{sql.UntypedSqlRow{3}}, McvsCnt: []uint64{4}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 20, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 23, DistinctCnt: 23, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: 23, DistinctCnt: 23, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{40}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{30}, BoundCnt: 1},
-				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{40}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{40}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 12, DistinctCnt: 12, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 1, DistinctCnt: 1, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 12, DistinctCnt: 12, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 1, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 1, DistinctCnt: 1, BoundVal: sql.Row{50}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 10, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 6, DistinctCnt: 6, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 1, DistinctCnt: 1, BoundVal: sql.UntypedSqlRow{50}, BoundCnt: 1},
 			},
 		},
 		{
 			left: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			right: []sql.HistogramBucket{
-				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 5, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 10, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{RowCnt: 33, DistinctCnt: 3, BoundVal: sql.Row{0}, BoundCnt: 1},
-				&Bucket{RowCnt: 16, DistinctCnt: 2, BoundVal: sql.Row{10}, BoundCnt: 1},
-				&Bucket{RowCnt: 12, DistinctCnt: 2, BoundVal: sql.Row{20}, BoundCnt: 1},
-				&Bucket{RowCnt: 16, DistinctCnt: 2, BoundVal: sql.Row{30}, BoundCnt: 1},
+				&Bucket{RowCnt: 33, DistinctCnt: 3, BoundVal: sql.UntypedSqlRow{0}, BoundCnt: 1},
+				&Bucket{RowCnt: 16, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{10}, BoundCnt: 1},
+				&Bucket{RowCnt: 12, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{20}, BoundCnt: 1},
+				&Bucket{RowCnt: 16, DistinctCnt: 2, BoundVal: sql.UntypedSqlRow{30}, BoundCnt: 1},
 			},
 		},
 	}
 
 	cmp := func(i, j sql.Row) (int, error) {
-		return types.Int64.Compare(i[0], j[0])
+		return types.Int64.Compare(i.GetValue(0), j.GetValue(0))
 	}
 
 	for i, tt := range tests {

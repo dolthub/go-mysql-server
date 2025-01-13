@@ -26,51 +26,51 @@ import (
 var ReplaceQueries = []WriteQueryTest{
 	{
 		WriteQuery:          "REPLACE INTO mytable VALUES (1, 'first row');",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
-		ExpectedSelect:      []sql.Row{{"first row"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{"first row"}},
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET i = 1, s = 'first row';",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
-		ExpectedSelect:      []sql.Row{{"first row"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{"first row"}},
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable VALUES (1, 'new row same i');",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
-		ExpectedSelect:      []sql.Row{{"new row same i"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{"new row same i"}},
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET i = 1, s = 'new row same i';",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 1;",
-		ExpectedSelect:      []sql.Row{{"new row same i"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{"new row same i"}},
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable (s, i) VALUES ('x', 999);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET s = 'x', i = 999;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable VALUES (999, 'x');",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 	},
 	{
 		WriteQuery:          "REPLACE INTO mytable SET i = 999, s = 'x';",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable VALUES (
@@ -80,9 +80,9 @@ var ReplaceQueries = []WriteQueryTest{
 			'2037-04-05 12:51:36', '2231-11-07',
 			'random text', true, '{"key":"value"}', 'blobdata', 'v1', 'v2'
 			);`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
@@ -98,9 +98,9 @@ var ReplaceQueries = []WriteQueryTest{
 			ti = '2037-04-05 12:51:36', da = '2231-11-07',
 			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata', e1 = 'v1', s1 = 'v2'
 			;`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
@@ -117,9 +117,9 @@ var ReplaceQueries = []WriteQueryTest{
 			'0000-00-00 00:00:00', '0000-00-00',
 			'', false, '""', '', '', ''
 			);`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
@@ -136,9 +136,9 @@ var ReplaceQueries = []WriteQueryTest{
 			ti = '0000-00-00 00:00:00', da = '0000-00-00',
 			te = '', bo = false, js = '""', bl = '', e1 = '', s1 = ''
 			;`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
@@ -149,16 +149,16 @@ var ReplaceQueries = []WriteQueryTest{
 	{
 		WriteQuery: `REPLACE INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
 			null, null, null, null, null, null, null, null, null, null);`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 	},
 	{
 		WriteQuery: `REPLACE INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
 			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null, e1=null, s1=null;`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 	},
 }
 

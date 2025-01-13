@@ -366,45 +366,6 @@ func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
-	idxTbl, isIdxTbl := table.(sql.IndexAddressableTable)
-	if !isIdxTbl {
-		return nil
-	}
-	var idxDefs sql.IndexDefs
-	idxs, err := idxTbl.GetIndexes(b.ctx)
-	if err != nil {
-		b.handleErr(err)
-	}
-	for _, idx := range idxs {
-		if idx.IsGenerated() {
-			continue
-		}
-		constraint := sql.IndexConstraint_None
-		if idx.IsUnique() {
-			if idx.ID() == "PRIMARY" {
-				constraint = sql.IndexConstraint_Primary
-			} else {
-				constraint = sql.IndexConstraint_Unique
-			}
-		}
-		columns := make([]sql.IndexColumn, len(idx.Expressions()))
-		for i, col := range idx.Expressions() {
-			// TODO: find a better way to get only the column name if the table is present
-			col = strings.TrimPrefix(col, idxTbl.Name()+".")
-			columns[i] = sql.IndexColumn{Name: col}
-		}
-		idxDefs = append(idxDefs, &sql.IndexDef{
-			Name:       idx.ID(),
-			Storage:    sql.IndexUsing_Default,
-			Constraint: constraint,
-			Columns:    columns,
-			Comment:    idx.Comment(),
-		})
-	}
-	return idxDefs
-}
-
 func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	database, ok := b.resolveDbForTable(ct.Table)
 	if !ok {
@@ -518,6 +479,45 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 	outScope.setTableAlias(newTableName)
 	outScope.node = plan.NewCreateTable(database, newTableName, ct.IfNotExists, ct.Temporary, tableSpec)
 	return outScope
+}
+
+func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
+	idxTbl, isIdxTbl := table.(sql.IndexAddressableTable)
+	if !isIdxTbl {
+		return nil
+	}
+	var idxDefs sql.IndexDefs
+	idxs, err := idxTbl.GetIndexes(b.ctx)
+	if err != nil {
+		b.handleErr(err)
+	}
+	for _, idx := range idxs {
+		if idx.IsGenerated() {
+			continue
+		}
+		constraint := sql.IndexConstraint_None
+		if idx.IsUnique() {
+			if idx.ID() == "PRIMARY" {
+				constraint = sql.IndexConstraint_Primary
+			} else {
+				constraint = sql.IndexConstraint_Unique
+			}
+		}
+		columns := make([]sql.IndexColumn, len(idx.Expressions()))
+		for i, col := range idx.Expressions() {
+			// TODO: find a better way to get only the column name if the table is present
+			col = strings.TrimPrefix(col, idxTbl.Name()+".")
+			columns[i] = sql.IndexColumn{Name: col}
+		}
+		idxDefs = append(idxDefs, &sql.IndexDef{
+			Name:       idx.ID(),
+			Storage:    sql.IndexUsing_Default,
+			Constraint: constraint,
+			Columns:    columns,
+			Comment:    idx.Comment(),
+		})
+	}
+	return idxDefs
 }
 
 func (b *Builder) buildRenameTable(inScope *scope, ddl *ast.DDL) (outScope *scope) {
@@ -800,6 +800,7 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 		} else if idxDef.Info.Vector {
 			// TODO: different kinds of vector HNSW, IVFFLAT, etc...
 			constraint = sql.IndexConstraint_Vector
+			b.handleErr(sql.ErrUnsupportedFeature.New("vector index"))
 		}
 
 		columns := b.gatherIndexColumns(idxDef.Columns)
@@ -937,6 +938,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			constraint = sql.IndexConstraint_Spatial
 		case ast.VectorStr:
 			constraint = sql.IndexConstraint_Vector
+			b.handleErr(sql.ErrUnsupportedFeature.New("vector index"))
 		case ast.PrimaryStr:
 			constraint = sql.IndexConstraint_Primary
 		default:

@@ -26,10 +26,13 @@ import (
 
 // HashOf returns a hash of the given value to be used as key in a cache.
 func HashOf(v Row) (uint64, error) {
+	if v == nil {
+		return 0, nil
+	}
 	hash := digestPool.Get().(*xxhash.Digest)
 	hash.Reset()
 	defer digestPool.Put(hash)
-	for i, x := range v {
+	for i, x := range v.Values() {
 		if i > 0 {
 			// separate each value in the row with a nil byte
 			if _, err := hash.Write([]byte{0}); err != nil {

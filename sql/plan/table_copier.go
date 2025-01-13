@@ -122,7 +122,7 @@ func (tc *TableCopier) CopyTableOver(ctx *sql.Context, sourceTable string, desti
 		return sql.RowsToRowIter(), err
 	}
 
-	return sql.RowsToRowIter([]sql.Row{{types.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
+	return sql.RowsToRowIter(sql.NewSqlRow(types.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil})), nil
 }
 
 func (tc *TableCopier) Schema() sql.Schema {

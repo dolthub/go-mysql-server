@@ -95,7 +95,7 @@ func TestCountDistinctEvalStar(t *testing.T) {
 	b, _ := c.NewBuffer()
 	require.Equal(int64(0), evalBuffer(t, b))
 
-	require.NoError(b.Update(ctx, nil))
+	require.NoError(b.Update(ctx, sql.NewRow()))
 	require.NoError(b.Update(ctx, sql.NewRow("foo")))
 	require.NoError(b.Update(ctx, sql.NewRow(1)))
 	require.NoError(b.Update(ctx, sql.NewRow(nil)))

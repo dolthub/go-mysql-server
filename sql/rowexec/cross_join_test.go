@@ -78,29 +78,29 @@ func TestCrossJoin(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(row)
 
-	require.Equal(8, len(row))
+	require.Equal(8, row.Len())
 
-	require.Equal("col1_1", row[0])
-	require.Equal("col2_1", row[1])
-	require.Equal(int32(1), row[2])
-	require.Equal(int64(2), row[3])
-	require.Equal("col1_1", row[4])
-	require.Equal("col2_1", row[5])
-	require.Equal(int32(1), row[6])
-	require.Equal(int64(2), row[7])
+	require.Equal("col1_1", row.GetValue(0))
+	require.Equal("col2_1", row.GetValue(1))
+	require.Equal(int32(1), row.GetValue(2))
+	require.Equal(int64(2), row.GetValue(3))
+	require.Equal("col1_1", row.GetValue(4))
+	require.Equal("col2_1", row.GetValue(5))
+	require.Equal(int32(1), row.GetValue(6))
+	require.Equal(int64(2), row.GetValue(7))
 
 	row, err = iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 
-	require.Equal("col1_1", row[0])
-	require.Equal("col2_1", row[1])
-	require.Equal(int32(1), row[2])
-	require.Equal(int64(2), row[3])
-	require.Equal("col1_2", row[4])
-	require.Equal("col2_2", row[5])
-	require.Equal(int32(3), row[6])
-	require.Equal(int64(4), row[7])
+	require.Equal("col1_1", row.GetValue(0))
+	require.Equal("col2_1", row.GetValue(1))
+	require.Equal(int32(1), row.GetValue(2))
+	require.Equal(int64(2), row.GetValue(3))
+	require.Equal("col1_2", row.GetValue(4))
+	require.Equal("col2_2", row.GetValue(5))
+	require.Equal(int32(3), row.GetValue(6))
+	require.Equal(int64(4), row.GetValue(7))
 
 	for i := 0; i < 2; i++ {
 		row, err = iter.Next(ctx)
@@ -161,9 +161,9 @@ func insertData(t *testing.T, ctx *sql.Context, table *memory.Table) {
 	t.Helper()
 	require := require.New(t)
 
-	rows := []sql.Row{
-		sql.NewRow("col1_1", "col2_1", int32(1), int64(2)),
-		sql.NewRow("col1_2", "col2_2", int32(3), int64(4)),
+	rows := []sql.UntypedSqlRow{
+		{"col1_1", "col2_1", int32(1), int64(2)},
+		{"col1_2", "col2_2", int32(3), int64(4)},
 	}
 
 	for _, r := range rows {

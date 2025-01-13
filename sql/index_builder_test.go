@@ -200,10 +200,6 @@ func (testIndex) IsFullText() bool {
 	return false
 }
 
-func (testIndex) IsVector() bool {
-	return false
-}
-
 func (testIndex) Comment() string {
 	return ""
 }

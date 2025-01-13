@@ -32,11 +32,11 @@ var ViewScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT database()",
-				Expected: []sql.Row{{"mydb"}},
+				Expected: []sql.UntypedSqlRow{{"mydb"}},
 			},
 			{
 				Query:    "SELECT * from live.xy;",
-				Expected: []sql.Row{{1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}},
 			},
 		},
 	},
@@ -63,11 +63,11 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE VIEW view_2_tab1_157 AS SELECT pk, col0 FROM tab1 WHERE NOT ((col0 IN (SELECT col3 FROM tab1 WHERE ((col0 IS NULL) OR col3 > 5 OR col3 <= 50 OR col1 < 83.11))) OR col0 > 75)",
-				Expected: []sql.Row{{types.OkResult{}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{}}},
 			},
 			{
 				Query:    "select pk, col0 from view_2_tab1_157",
-				Expected: []sql.Row{{6, 0}},
+				Expected: []sql.UntypedSqlRow{{6, 0}},
 			},
 		},
 	},
@@ -79,7 +79,7 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * from v;",
-				Expected: []sql.Row{{4}},
+				Expected: []sql.UntypedSqlRow{{4}},
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "2+2",
@@ -99,7 +99,7 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * from xyv;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "u",
@@ -137,7 +137,7 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * from caseSensitive;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 				ExpectedColumns: sql.Schema{
 					{
 						Name: "AbCdEfG",
@@ -168,7 +168,7 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * from quotes order by id",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "joe's"},
 					{2, "mia\\'s"},
 					{3, "bob's"},
@@ -186,15 +186,15 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "show keys from v",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "show index from v from mydb",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "show index from v where Column_name = 'x'",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -212,61 +212,61 @@ CREATE TABLE tab1 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show full columns from v;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", nil, "NO", "", nil, "", "", ""},
 					{"j", "int", nil, "YES", "", "100", "", "", ""},
 				},
 			},
 			{
 				Query: "show columns from v;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "", nil, ""},
 					{"j", "int", "YES", "", "100", ""},
 				},
 			},
 			{
 				Query: "describe v;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "", nil, ""},
 					{"j", "int", "YES", "", "100", ""},
 				},
 			},
 			{
 				Query: "select * from v",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 100},
 				},
 			},
 			{
 				Query: "show full columns from v1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", nil, "NO", "", nil, "", "", ""},
 					{"jj", "bigint", nil, "YES", "", nil, "", "", ""},
 				},
 			},
 			{
 				Query: "show columns from v1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "", nil, ""},
 					{"jj", "bigint", "YES", "", nil, ""},
 				},
 			},
 			{
 				Query: "describe v1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "", nil, ""},
 					{"jj", "bigint", "YES", "", nil, ""},
 				},
 			},
 			{
 				Query: "select * from v1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 110},
 				},
 			},
 			{
 				Query: "show full columns from vv;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", nil, "NO", "", nil, "", "", ""},
 					{"ii", "int", nil, "NO", "", nil, "", "", ""},
 					{"j", "int", nil, "YES", "", "100", "", "", ""},
@@ -276,7 +276,7 @@ CREATE TABLE tab1 (
 			},
 			{
 				Query: "show columns from vv;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "", nil, ""},
 					{"ii", "int", "NO", "", nil, ""},
 					{"j", "int", "YES", "", "100", ""},
@@ -286,7 +286,7 @@ CREATE TABLE tab1 (
 			},
 			{
 				Query: "describe vv;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"i", "int", "NO", "", nil, ""},
 					{"ii", "int", "NO", "", nil, ""},
 					{"j", "int", "YES", "", "100", ""},
@@ -296,7 +296,7 @@ CREATE TABLE tab1 (
 			},
 			{
 				Query: "select * from vv",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 100, 121, 223},
 				},
 			},
@@ -320,7 +320,7 @@ var ViewCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from bar;",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 				Skip:     true,
 			},
 		},

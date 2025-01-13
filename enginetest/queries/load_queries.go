@@ -31,7 +31,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{int8(1)}, {int8(2)}, {int8(3)}, {int8(4)}},
+				Expected: []sql.UntypedSqlRow{{int8(1)}, {int8(2)}, {int8(3)}, {int8(4)}},
 			},
 		},
 	},
@@ -56,7 +56,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{int8(1), "hi"}, {int8(2), "hello"}},
+				Expected: []sql.UntypedSqlRow{{int8(1), "hi"}, {int8(2), "hello"}},
 			},
 		},
 	},
@@ -69,7 +69,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{int8(1), "hi"}, {int8(2), "hello"}},
+				Expected: []sql.UntypedSqlRow{{int8(1), "hi"}, {int8(2), "hello"}},
 			},
 		},
 	},
@@ -82,7 +82,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{"\"abc\"", int8(1)}, {"\"def\"", int8(2)}, {"\"hello\"", nil}},
+				Expected: []sql.UntypedSqlRow{{"\"abc\"", int8(1)}, {"\"def\"", int8(2)}, {"\"hello\"", nil}},
 			},
 		},
 	},
@@ -95,7 +95,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{"\"abc\"", int8(1)}, {"\"def\"", int8(2)}, {"\"hello\"", nil}},
+				Expected: []sql.UntypedSqlRow{{"\"abc\"", int8(1)}, {"\"def\"", int8(2)}, {"\"hello\"", nil}},
 			},
 		},
 	},
@@ -108,7 +108,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable ORDER BY pk",
-				Expected: []sql.Row{{1, nil}, {2, nil}, {3, nil}, {4, nil}},
+				Expected: []sql.UntypedSqlRow{{1, nil}, {2, nil}, {3, nil}, {4, nil}},
 			},
 		},
 	},
@@ -133,7 +133,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM inmate_population_snapshots",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"8946", time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 0, nil, nil, nil, 0, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "https://www.website.gov", "https://www.website.gov/other.html", nil, nil},
 					{"8976", time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC), 196, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 0, 73, nil, nil, 123, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "https://www.website.gov", "https://www.website.gov/other.html", nil, 0},
 					{"8978", time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC), 0, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, 0, nil, nil, nil, 0, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "https://www.website.gov", "https://www.website.gov/other.html", nil, nil},
@@ -157,7 +157,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 50, 5},
 					{2, 50, 5},
 					{3, 50, 5},
@@ -165,7 +165,7 @@ var LoadDataScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM test2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 50, 5},
 					{2, 50, 5},
 					{3, 50, 5},
@@ -173,7 +173,7 @@ var LoadDataScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM test3",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 9},
 					{2, 20, 19},
 					{3, 30, 29},
@@ -181,7 +181,7 @@ var LoadDataScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM test4",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 9},
 					{2, 20, 19},
 					{3, 30, 29},
@@ -200,7 +200,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 50, 5},
 					{2, 100, 5},
 					{3, 50, 5},
@@ -208,7 +208,7 @@ var LoadDataScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM test2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10, 9},
 					{2, 100, 99},
 					{3, 30, 29},
@@ -226,7 +226,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from loadtable",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "test"},
 					{2, "hello"},
 				},
@@ -243,7 +243,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from loadtable",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "hi"},
 					{2, "hello"},
 				},
@@ -267,35 +267,35 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from lt1 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", "def", "ghi"},
 					{"123", "mno", "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt2 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", "456", "ghi"},
 					{"123", "456", "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt3 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", "456", "789"},
 					{"123", "456", "789"},
 				},
 			},
 			{
 				Query: "select * from lt4 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"321", "def", "ghi"},
 					{"321", "mno", "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt5 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "defdef", "ghi"},
 					{"jkl", "mnomno", "pqr"},
 				},
@@ -317,28 +317,28 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from lt1 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", "def", "ghi"},
 					{"123", "mno", "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt2 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", "ghi", "abc"},
 					{"123", "pqr", "jkl"},
 				},
 			},
 			{
 				Query: "select * from lt3 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", "abc", "def"},
 					{"123", "jkl", "mno"},
 				},
 			},
 			{
 				Query: "select * from lt4 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", nil, "abc"},
 					{"123", nil, "jkl"},
 				},
@@ -359,7 +359,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from lt order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"123", "456", "789"},
 					{"123", "456", "789"},
 					{"123", "456", "ghi"},
@@ -389,67 +389,67 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from lt1 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil, "def", "ghi"},
 					{nil, "mno", "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt2 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", nil, "ghi"},
 					{"jkl", nil, "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt3 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "def", nil},
 					{"jkl", "mno", nil},
 				},
 			},
 			{
 				Query: "select @i, @j, @k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"jkl", "mno", "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt4 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil, nil, nil},
 					{nil, nil, nil},
 				},
 			},
 			{
 				Query: "select @ii, @jj, @kk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"jkl", "mno", "pqr"},
 				},
 			},
 			{
 				Query: "select * from lt5 order by i, j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "def"},
 					{"jkl", "mno"},
 				},
 			},
 			{
 				Query: "select @trash1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pqr"},
 				},
 			},
 			{
 				Query: "select * from lt6 order by j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def"},
 					{"mno"},
 				},
 			},
 			{
 				Query: "select @trash2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"pqr"},
 				},
 			},
@@ -472,35 +472,35 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from lt1 order by i, j, k",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"ghi", "def", "abc"},
 					{"pqr", "mno", "jkl"},
 				},
 			},
 			{
 				Query: "select * from lt2 order by i, j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "ghighi"},
 					{"jkl", "pqrpqr"},
 				},
 			},
 			{
 				Query: "select * from lt3 order by i, j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "defghi"},
 					{"jkl", "mnopqr"},
 				},
 			},
 			{
 				Query: "select * from lt4 order by i, j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "defghi"},
 					{"jkl", "mnopqr"},
 				},
 			},
 			{
 				Query: "select * from lt5 order by i, j",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"def", "abc"},
 					{"mno", "jkl"},
 				},
@@ -532,7 +532,7 @@ var LoadDataScripts = []ScriptTest{
 			{
 				Skip:  true, // escaped column names are ok
 				Query: "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(i, @j, `@@k`)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"abc", "def", "ghi"},
 					{"jkl", "mno", "pqr"},
 				},
@@ -548,7 +548,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select id, length(lt) from t order by id",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 65535},
 					{2, 100000},
 					{3, 1000000},
@@ -645,7 +645,7 @@ var LoadDataFailingScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{"hi"}, {"hello"}, {nil}, {"TryN"}, {fmt.Sprintf("%c", 26)}, {fmt.Sprintf("%c", 0)}, {"new\n"}},
+				Expected: []sql.UntypedSqlRow{{"hi"}, {"hello"}, {nil}, {"TryN"}, {fmt.Sprintf("%c", 26)}, {fmt.Sprintf("%c", 0)}, {"new\n"}},
 			},
 		},
 	},
@@ -658,7 +658,7 @@ var LoadDataFailingScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{int8(1)}, {int8(2)}, {int8(3)}, {int8(4)}},
+				Expected: []sql.UntypedSqlRow{{int8(1)}, {int8(2)}, {int8(3)}, {int8(4)}},
 			},
 		},
 	},
@@ -671,7 +671,7 @@ var LoadDataFailingScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{nil, 0}, {nil, 0}},
+				Expected: []sql.UntypedSqlRow{{nil, 0}, {nil, 0}},
 			},
 		},
 	},
@@ -684,7 +684,7 @@ var LoadDataFailingScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{"hi", 1}, {"hello", nil}},
+				Expected: []sql.UntypedSqlRow{{"hi", 1}, {"hello", nil}},
 			},
 		},
 	},
@@ -697,7 +697,7 @@ var LoadDataFailingScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from loadtable",
-				Expected: []sql.Row{{1, "hi"}, {nil, "hello"}},
+				Expected: []sql.UntypedSqlRow{{1, "hi"}, {nil, "hello"}},
 			},
 		},
 	},

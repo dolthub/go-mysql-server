@@ -499,7 +499,9 @@ func appendDigit(v int64, extend int, buf []byte, i int) int {
 	for _ = range extend - 1 {
 		cmp *= 10
 	}
+
 	for cmp > 0 && v < cmp {
+
 		buf[i] = '0'
 		i++
 		cmp /= 10

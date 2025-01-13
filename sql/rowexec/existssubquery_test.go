@@ -35,9 +35,9 @@ func TestExistsSubquery(t *testing.T) {
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
-	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
-	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
-	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"one"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"two"}))
+	require.NoError(t, table.Insert(ctx, sql.UntypedSqlRow{"three"}))
 
 	emptyTable := memory.NewTable(db.BaseDatabase, "empty", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "empty", Type: types.Int64},

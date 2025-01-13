@@ -35,7 +35,7 @@ func (r Row2) GetField(i int) Value {
 
 // Len returns the number of fields of this row
 func (r Row2) Len() int {
-	return len(r)
+	return r.Len()
 }
 
 // Value is a logical index into a Row2. For efficiency reasons, use sparingly.

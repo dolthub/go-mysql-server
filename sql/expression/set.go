@@ -64,8 +64,8 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, errCannotSetField.New(s.LeftChild)
 	}
 
-	if getField.fieldIndex < 0 || getField.fieldIndex >= len(row) {
-		return nil, ErrIndexOutOfBounds.New(getField.fieldIndex, len(row))
+	if getField.fieldIndex < 0 || getField.fieldIndex >= row.Len() {
+		return nil, ErrIndexOutOfBounds.New(getField.fieldIndex, row.Len())
 	}
 	val, err := s.RightChild.Eval(ctx, row)
 	if err != nil {
@@ -83,7 +83,7 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		val = convertedVal
 	}
 	updatedRow := row.Copy()
-	updatedRow[getField.fieldIndex] = val
+	updatedRow.SetValue(getField.fieldIndex, val)
 	return updatedRow, nil
 }
 

@@ -39,10 +39,10 @@ func TestTableAlias(t *testing.T) {
 	}), nil)
 	alias := plan.NewTableAlias("foo", plan.NewResolvedTable(table, nil, nil))
 
-	var rows = []sql.Row{
-		sql.NewRow("1", "2"),
-		sql.NewRow("3", "4"),
-		sql.NewRow("5", "6"),
+	var rows = []sql.UntypedSqlRow{
+		{"1", "2"},
+		{"3", "4"},
+		{"5", "6"},
 	}
 
 	for _, r := range rows {

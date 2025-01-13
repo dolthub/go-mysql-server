@@ -118,7 +118,7 @@ func rowsToResultStrings(ctx *sql.Context, iter sql.RowIter) ([]string, error) {
 			enginetest.DrainIteratorIgnoreErrors(ctx, iter)
 			return nil, err
 		} else {
-			for _, col := range row {
+			for _, col := range row.Values() {
 				results = append(results, toSqlString(col))
 			}
 		}

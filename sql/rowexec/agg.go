@@ -303,11 +303,13 @@ func evalBuffers(
 	ctx *sql.Context,
 	buffers []sql.AggregationBuffer,
 ) (sql.Row, error) {
-	var row = make(sql.Row, len(buffers))
+	row := sql.NewSqlRowWithLen(len(buffers))
 
 	var err error
 	for i, b := range buffers {
-		row[i], err = b.Eval(ctx)
+		var v interface{}
+		v, err = b.Eval(ctx)
+		row.SetValue(i, v)
 		if err != nil {
 			return nil, err
 		}

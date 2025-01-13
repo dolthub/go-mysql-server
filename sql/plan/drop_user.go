@@ -136,5 +136,5 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{types.NewOkResult(0)}), nil
 }

@@ -35,165 +35,165 @@ func TestSort(t *testing.T) {
 	})
 
 	type sortTest struct {
-		rows       []sql.Row
+		rows       []sql.UntypedSqlRow
 		sortFields []sql.SortField
-		expected   []sql.Row
+		expected   []sql.UntypedSqlRow
 	}
 
 	testCases := []sortTest{
 		{
-			rows: []sql.Row{
-				sql.NewRow("c", nil, nil),
-				sql.NewRow("a", int32(3), float64(3.0)),
-				sql.NewRow("b", int32(3), float64(3.0)),
-				sql.NewRow("c", int32(1), float64(1.0)),
-				sql.NewRow(nil, int32(1), nil),
+			rows: []sql.UntypedSqlRow{
+				{"c", nil, nil},
+				{"a", int32(3), float64(3.0)},
+				{"b", int32(3), float64(3.0)},
+				{"c", int32(1), float64(1.0)},
+				{nil, int32(1), nil},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Descending, NullOrdering: sql.NullsLast},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 			},
-			expected: []sql.Row{
-				sql.NewRow("c", nil, nil),
-				sql.NewRow(nil, int32(1), nil),
-				sql.NewRow("c", int32(1), float64(1.0)),
-				sql.NewRow("b", int32(3), float64(3.0)),
-				sql.NewRow("a", int32(3), float64(3.0)),
+			expected: []sql.UntypedSqlRow{
+				{"c", nil, nil},
+				{nil, int32(1), nil},
+				{"c", int32(1), float64(1.0)},
+				{"b", int32(3), float64(3.0)},
+				{"a", int32(3), float64(3.0)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow("c", int32(3), float64(3.0)),
-				sql.NewRow("c", int32(3), nil),
+			rows: []sql.UntypedSqlRow{
+				{"c", int32(3), float64(3.0)},
+				{"c", int32(3), nil},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Descending, NullOrdering: sql.NullsLast},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 			},
-			expected: []sql.Row{
-				sql.NewRow("c", int32(3), nil),
-				sql.NewRow("c", int32(3), float64(3.0)),
+			expected: []sql.UntypedSqlRow{
+				{"c", int32(3), nil},
+				{"c", int32(3), float64(3.0)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow("c", nil, nil),
-				sql.NewRow("a", int32(3), float64(3.0)),
-				sql.NewRow("b", int32(3), float64(3.0)),
-				sql.NewRow("c", int32(1), float64(1.0)),
-				sql.NewRow(nil, int32(1), nil),
+			rows: []sql.UntypedSqlRow{
+				{"c", nil, nil},
+				{"a", int32(3), float64(3.0)},
+				{"b", int32(3), float64(3.0)},
+				{"c", int32(1), float64(1.0)},
+				{nil, int32(1), nil},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsLast},
 			},
-			expected: []sql.Row{
-				sql.NewRow("c", nil, nil),
-				sql.NewRow(nil, int32(1), nil),
-				sql.NewRow("c", int32(1), float64(1.0)),
-				sql.NewRow("a", int32(3), float64(3.0)),
-				sql.NewRow("b", int32(3), float64(3.0)),
+			expected: []sql.UntypedSqlRow{
+				{"c", nil, nil},
+				{nil, int32(1), nil},
+				{"c", int32(1), float64(1.0)},
+				{"a", int32(3), float64(3.0)},
+				{"b", int32(3), float64(3.0)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow("a", int32(1), float64(2)),
-				sql.NewRow("a", int32(1), float64(1)),
+			rows: []sql.UntypedSqlRow{
+				{"a", int32(1), float64(2)},
+				{"a", int32(1), float64(1)},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 			},
-			expected: []sql.Row{
-				sql.NewRow("a", int32(1), float64(1)),
-				sql.NewRow("a", int32(1), float64(2)),
+			expected: []sql.UntypedSqlRow{
+				{"a", int32(1), float64(1)},
+				{"a", int32(1), float64(2)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow("a", int32(1), float64(2)),
-				sql.NewRow("a", int32(1), float64(1)),
-				sql.NewRow("a", int32(2), float64(2)),
-				sql.NewRow("a", int32(3), float64(1)),
-				sql.NewRow("b", int32(2), float64(2)),
-				sql.NewRow("c", int32(3), float64(1)),
+			rows: []sql.UntypedSqlRow{
+				{"a", int32(1), float64(2)},
+				{"a", int32(1), float64(1)},
+				{"a", int32(2), float64(2)},
+				{"a", int32(3), float64(1)},
+				{"b", int32(2), float64(2)},
+				{"c", int32(3), float64(1)},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 			},
-			expected: []sql.Row{
-				sql.NewRow("a", int32(3), float64(1)),
-				sql.NewRow("a", int32(2), float64(2)),
-				sql.NewRow("a", int32(1), float64(1)),
-				sql.NewRow("a", int32(1), float64(2)),
-				sql.NewRow("b", int32(2), float64(2)),
-				sql.NewRow("c", int32(3), float64(1)),
+			expected: []sql.UntypedSqlRow{
+				{"a", int32(3), float64(1)},
+				{"a", int32(2), float64(2)},
+				{"a", int32(1), float64(1)},
+				{"a", int32(1), float64(2)},
+				{"b", int32(2), float64(2)},
+				{"c", int32(3), float64(1)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow(nil, nil, float64(2)),
-				sql.NewRow(nil, nil, float64(1)),
+			rows: []sql.UntypedSqlRow{
+				{nil, nil, float64(2)},
+				{nil, nil, float64(1)},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 			},
-			expected: []sql.Row{
-				sql.NewRow(nil, nil, float64(1)),
-				sql.NewRow(nil, nil, float64(2)),
+			expected: []sql.UntypedSqlRow{
+				{nil, nil, float64(1)},
+				{nil, nil, float64(2)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow(nil, nil, float64(1)),
-				sql.NewRow(nil, nil, float64(2)),
+			rows: []sql.UntypedSqlRow{
+				{nil, nil, float64(1)},
+				{nil, nil, float64(2)},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 			},
-			expected: []sql.Row{
-				sql.NewRow(nil, nil, float64(2)),
-				sql.NewRow(nil, nil, float64(1)),
+			expected: []sql.UntypedSqlRow{
+				{nil, nil, float64(2)},
+				{nil, nil, float64(1)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow(nil, nil, float64(1)),
-				sql.NewRow(nil, nil, nil),
+			rows: []sql.UntypedSqlRow{
+				{nil, nil, float64(1)},
+				{nil, nil, nil},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 			},
-			expected: []sql.Row{
-				sql.NewRow(nil, nil, nil),
-				sql.NewRow(nil, nil, float64(1)),
+			expected: []sql.UntypedSqlRow{
+				{nil, nil, nil},
+				{nil, nil, float64(1)},
 			},
 		},
 		{
-			rows: []sql.Row{
-				sql.NewRow(nil, nil, nil),
-				sql.NewRow(nil, nil, float64(1)),
+			rows: []sql.UntypedSqlRow{
+				{nil, nil, nil},
+				{nil, nil, float64(1)},
 			},
 			sortFields: []sql.SortField{
 				{Column: expression.NewGetField(0, types.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsLast},
 				{Column: expression.NewGetField(1, types.Int32, "col2", true), Order: sql.Ascending, NullOrdering: sql.NullsLast},
 				{Column: expression.NewGetField(2, types.Float64, "col3", true), Order: sql.Ascending, NullOrdering: sql.NullsLast},
 			},
-			expected: []sql.Row{
-				sql.NewRow(nil, nil, float64(1)),
-				sql.NewRow(nil, nil, nil),
+			expected: []sql.UntypedSqlRow{
+				{nil, nil, float64(1)},
+				{nil, nil, nil},
 			},
 		},
 	}
@@ -215,7 +215,7 @@ func TestSort(t *testing.T) {
 
 			actual, err := NodeToRows(ctx, sort)
 			require.NoError(err)
-			require.Equal(tt.expected, actual)
+			require.Equal(tt.expected, sql.RowsToUntyped(actual))
 		})
 	}
 }
@@ -223,12 +223,12 @@ func TestSort(t *testing.T) {
 func TestSortAscending(t *testing.T) {
 	require := require.New(t)
 
-	data := []sql.Row{
-		sql.NewRow("c"),
-		sql.NewRow("a"),
-		sql.NewRow("d"),
-		sql.NewRow(nil),
-		sql.NewRow("b"),
+	data := []sql.UntypedSqlRow{
+		{"c"},
+		{"a"},
+		{"d"},
+		{nil},
+		{"b"},
 	}
 
 	db := memory.NewDatabase("test")
@@ -250,28 +250,28 @@ func TestSortAscending(t *testing.T) {
 	s := plan.NewSort(sf, plan.NewResolvedTable(child, nil, nil))
 	require.Equal(schema.Schema, s.Schema())
 
-	expected := []sql.Row{
-		sql.NewRow(nil),
-		sql.NewRow("a"),
-		sql.NewRow("b"),
-		sql.NewRow("c"),
-		sql.NewRow("d"),
+	expected := []sql.UntypedSqlRow{
+		{nil},
+		{"a"},
+		{"b"},
+		{"c"},
+		{"d"},
 	}
 
 	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
-	require.Equal(expected, actual)
+	require.Equal(expected, sql.RowsToUntyped(actual))
 }
 
 func TestSortDescending(t *testing.T) {
 	require := require.New(t)
 
-	data := []sql.Row{
-		sql.NewRow("c"),
-		sql.NewRow("a"),
-		sql.NewRow("d"),
-		sql.NewRow(nil),
-		sql.NewRow("b"),
+	data := []sql.UntypedSqlRow{
+		{"c"},
+		{"a"},
+		{"d"},
+		{nil},
+		{"b"},
 	}
 
 	db := memory.NewDatabase("test")
@@ -293,15 +293,15 @@ func TestSortDescending(t *testing.T) {
 	s := plan.NewSort(sf, plan.NewResolvedTable(child, nil, nil))
 	require.Equal(schema.Schema, s.Schema())
 
-	expected := []sql.Row{
-		sql.NewRow("d"),
-		sql.NewRow("c"),
-		sql.NewRow("b"),
-		sql.NewRow("a"),
-		sql.NewRow(nil),
+	expected := []sql.UntypedSqlRow{
+		{"d"},
+		{"c"},
+		{"b"},
+		{"a"},
+		{nil},
 	}
 
 	actual, err := NodeToRows(ctx, s)
 	require.NoError(err)
-	require.Equal(expected, actual)
+	require.Equal(expected, sql.RowsToUntyped(actual))
 }

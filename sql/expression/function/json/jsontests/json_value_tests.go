@@ -36,30 +36,30 @@ func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 		expected interface{}
 		err      error
 	}{
-		{row: sql.Row{prepare(t, `null`)}, expected: nil},
-		{row: sql.Row{prepare(t, `1`)}, expected: "1"},
-		{row: sql.Row{prepare(t, `[1]`)}, expected: `[1]`},
-		{row: sql.Row{prepare(t, `{"a": "fjsadflkd"}`)}, expected: `{"a": "fjsadflkd"}`},
-		{row: sql.Row{prepare(t, `[1, false]`)}, expected: `[1, false]`},
-		{row: sql.Row{prepare(t, `[1, false]`)}, path: "$[0]", typ: types.Int64, expected: int64(1)},
-		{row: sql.Row{prepare(t, `[1, false]`)}, path: "$[0]", typ: types.Uint64, expected: uint64(1)},
-		{row: sql.Row{prepare(t, `[1, false]`)}, path: "$[0]", expected: "1"},
-		{row: sql.Row{`[1, false]`}, path: "$[3]", expected: nil},
-		{row: sql.Row{prepare(t, `[1, {"a": 1}]`)}, path: "$[1].a", typ: types.Int64, expected: int64(1)},
-		{row: sql.Row{prepare(t, `[1, {"a": 1}]`)}, path: "$[1]", typ: types.JSON, expected: types.MustJSON(`{"a": 1}`)},
+		{row: sql.UntypedSqlRow{prepare(t, `null`)}, expected: nil},
+		{row: sql.UntypedSqlRow{prepare(t, `1`)}, expected: "1"},
+		{row: sql.UntypedSqlRow{prepare(t, `[1]`)}, expected: `[1]`},
+		{row: sql.UntypedSqlRow{prepare(t, `{"a": "fjsadflkd"}`)}, expected: `{"a": "fjsadflkd"}`},
+		{row: sql.UntypedSqlRow{prepare(t, `[1, false]`)}, expected: `[1, false]`},
+		{row: sql.UntypedSqlRow{prepare(t, `[1, false]`)}, path: "$[0]", typ: types.Int64, expected: int64(1)},
+		{row: sql.UntypedSqlRow{prepare(t, `[1, false]`)}, path: "$[0]", typ: types.Uint64, expected: uint64(1)},
+		{row: sql.UntypedSqlRow{prepare(t, `[1, false]`)}, path: "$[0]", expected: "1"},
+		{row: sql.UntypedSqlRow{`[1, false]`}, path: "$[3]", expected: nil},
+		{row: sql.UntypedSqlRow{prepare(t, `[1, {"a": 1}]`)}, path: "$[1].a", typ: types.Int64, expected: int64(1)},
+		{row: sql.UntypedSqlRow{prepare(t, `[1, {"a": 1}]`)}, path: "$[1]", typ: types.JSON, expected: types.MustJSON(`{"a": 1}`)},
 		{
-			row:      sql.Row{prepare(t, `[{"a": 1, "b": 2}, {"a": 3, "b": 4}]`)},
+			row:      sql.UntypedSqlRow{prepare(t, `[{"a": 1, "b": 2}, {"a": 3, "b": 4}]`)},
 			path:     "$[*].a",
 			typ:      types.JSON,
 			expected: types.MustJSON(`[1, 3]`),
 		},
-		{row: sql.Row{1}, path: `$.f`, err: sql.ErrInvalidJSONArgument.New(1, "json_value")},
-		{row: sql.Row{`}`}, path: `$.f`, err: sql.ErrInvalidJSONText.New(1, "json_value", "}")},
+		{row: sql.UntypedSqlRow{1}, path: `$.f`, err: sql.ErrInvalidJSONArgument.New(1, "json_value")},
+		{row: sql.UntypedSqlRow{`}`}, path: `$.f`, err: sql.ErrInvalidJSONText.New(1, "json_value", "}")},
 	}
 
 	for _, tt := range tests {
-		args := make([]string, len(tt.row))
-		for i, a := range tt.row {
+		args := make([]string, tt.row.Len())
+		for i, a := range tt.row.Values() {
 			args[i] = fmt.Sprint(a)
 		}
 		if tt.path == "" {

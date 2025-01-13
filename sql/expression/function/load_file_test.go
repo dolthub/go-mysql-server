@@ -38,7 +38,7 @@ func TestLoadFileNoSecurePriv(t *testing.T) {
 	fn := NewLoadFile(fileName)
 
 	// Assert that Load File returns the regardless since secure_file_priv is set to an empty directory
-	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	res, err := fn.Eval(sql.NewEmptyContext(), sql.UntypedSqlRow{})
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("my data"), res)
 }
@@ -64,7 +64,7 @@ func TestLoadFileBadDir(t *testing.T) {
 	fn := NewLoadFile(fileName)
 
 	// Assert that Load File returns nil since the file is not in secure_file_priv directory
-	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	res, err := fn.Eval(sql.NewEmptyContext(), sql.UntypedSqlRow{})
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
 }
@@ -121,7 +121,7 @@ func runLoadFileTest(t *testing.T, tt loadFileTestCase, dir string) {
 	fn := NewLoadFile(fileName)
 
 	// Load the file in
-	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	res, err := fn.Eval(sql.NewEmptyContext(), sql.UntypedSqlRow{})
 	assert.NoError(t, err)
 	assert.Equal(t, tt.fileData, res)
 }

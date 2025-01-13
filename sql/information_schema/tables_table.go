@@ -133,7 +133,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				}
 			}
 
-			rows = append(rows, Row{
+			rows = append(rows, UntypedSqlRow{
 				db.CatalogName, // table_catalog
 				db.SchemaName,  // table_schema
 				t.Name(),       // table_name
@@ -170,7 +170,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		}
 
 		for _, view := range views {
-			rows = append(rows, Row{
+			rows = append(rows, UntypedSqlRow{
 				db.CatalogName, // table_catalog
 				db.SchemaName,  // table_schema
 				view.Name,      // table_name

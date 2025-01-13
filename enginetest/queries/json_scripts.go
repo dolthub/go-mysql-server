@@ -27,100 +27,100 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select JSON_TYPE(CAST(1 AS JSON))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"INTEGER"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE("1")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"INTEGER"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE(CAST("1" AS JSON))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"INTEGER"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE("\"1\"")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"STRING"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE(CAST("\"1\"" AS JSON))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"STRING"},
 				},
 			},
 			{
 				// Casting without quotes: `321.4` is parsed as a decimal, then wrapped in a JSON Document.
 				Query: "select JSON_TYPE(CAST(321.4 AS JSON))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DECIMAL"},
 				},
 			},
 			{
 				// Casting with quotes: The string value is parsed as JSON, resulting in a wrapped double.
 				Query: `select JSON_TYPE("321.4")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
 			{
 				// Casting with quotes: The string value is parsed as JSON, resulting in a wrapped double.
 				Query: `select JSON_TYPE(CAST("321.4" AS JSON))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE("\"321.4\"")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"STRING"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE(CAST("\"321.4\"" AS JSON))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"STRING"},
 				},
 			},
 			{
 				Query: "select JSON_TYPE(CAST(1e-1 AS JSON))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE("1e-1")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE(CAST("1e-1" AS JSON))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
 			{
 				Query: "select JSON_TYPE(CAST(1.0e-1 AS JSON))",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE("1.0e-1")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE(CAST("1.0e-1" AS JSON))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DOUBLE"},
 				},
 			},
@@ -136,7 +136,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select x, JSON_TYPE(y) from xy",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, "DECIMAL"},
 					{1, "DOUBLE"},
 				},
@@ -153,7 +153,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select JSON_TYPE(y) from xy where x = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"UNSIGNED INTEGER"},
 				},
 			},
@@ -164,13 +164,13 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select JSON_TYPE(JSON_EXTRACT(JSON_OBJECT('a', CAST(12.34 AS DECIMAL(4, 2))), "$.a"));`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DECIMAL"},
 				},
 			},
 			{
 				Query: `select JSON_TYPE(JSON_EXTRACT(JSON_OBJECT('a', CAST(12 AS UNSIGNED)), "$.a"));`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"UNSIGNED INTEGER"},
 				},
 			},
@@ -185,13 +185,13 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: `select json_type(json_value(cast(cast(12.34 as decimal) as json), '$', 'json'))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"DECIMAL"},
 				},
 			},
 			{
 				Query: `select json_type(json_value(cast(cast(12 as unsigned) as json), '$', 'json'))`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"UNSIGNED INTEGER"},
 				},
 			},
@@ -207,7 +207,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select json_value(y, '$.a', 'json') from xy`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 					{nil},
 					{types.MustJSON("[{\"b\": 1}, {\"c\": 2}]")},
@@ -217,19 +217,19 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: `select json_value(y, '$.a[0].b', 'signed') from xy where x = 2`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1)},
 				},
 			},
 			{
 				Query: `select json_value(y, '$.a[0].b') from xy where x = 2`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"1"},
 				},
 			},
 			//{
 			//	Query: `select json_value(y, '$.a.b', 'signed') from xy where x = 2`,
-			//	Expected: []sql.Row{
+			//	Expected: []sql.UntypedSqlRow{
 			//		{nil},
 			//	},
 			//},
@@ -245,7 +245,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select json_length(y) from xy`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 					{4},
 					{1},
@@ -259,7 +259,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: `select json_length(json_extract(y, "$.a")) from xy`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 					{nil},
 					{2},
@@ -269,19 +269,19 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: `select json_length(json_extract(y, "$.a.b")) from xy where x = 3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: `select json_length(y, "$.a.b") from xy where x = 3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2},
 				},
 			},
 			{
 				Query: `select json_length(y, "$.a[0].b") from xy where x = 2`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 				},
 			},
@@ -301,7 +301,7 @@ var JsonScripts = []ScriptTest{
 				Bindings: map[string]sqlparser.Expr{
 					"v1": sqlparser.NewStrVal([]byte("ZH")),
 				},
-				Expected: []sql.Row{{uint64(1), "Tom", types.JSONDocument{Val: []interface{}{"ZH", "EN"}}}},
+				Expected: []sql.UntypedSqlRow{{uint64(1), "Tom", types.JSONDocument{Val: []interface{}{"ZH", "EN"}}}},
 			},
 		},
 	},
@@ -314,7 +314,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT JSON_ARRAYAGG(o_id) FROM (SELECT * FROM t ORDER BY o_id) as sub",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						types.MustJSON(`[1,2]`),
 					},
@@ -331,7 +331,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT JSON_ARRAYAGG(o_id), JSON_ARRAYAGG(`attribute`) FROM (SELECT * FROM t ORDER BY o_id) as sub;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						types.MustJSON(`[1,2]`),
 						types.MustJSON(`["color","fabric"]`),
@@ -349,7 +349,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT c0, JSON_ARRAYAGG(`attribute`) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						2,
 						types.MustJSON(`["color","fabric"]`),
@@ -358,7 +358,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT c0, JSON_ARRAYAGG(value) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						2,
 						types.MustJSON(`["red","silk"]`),
@@ -376,7 +376,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT val, JSON_ARRAYAGG(o_id) FROM (SELECT * FROM t2 ORDER BY o_id) AS sub GROUP BY val",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						1,
 						types.MustJSON(`[1,2,3]`),
@@ -406,7 +406,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT JSON_ARRAYAGG(o_id) FROM t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						types.MustJSON(`[]`),
 					},
@@ -423,13 +423,13 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT pk, JSON_ARRAYAGG(c1) FROM x GROUP BY pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, types.MustJSON(`[null]`)},
 				},
 			},
 			{
 				Query: "SELECT JSON_ARRAYAGG(c1) FROM x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.MustJSON(`[null]`)},
 				},
 			},
@@ -448,7 +448,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT JSON_ARRAYAGG(pk) FROM (SELECT * FROM x ORDER BY pk) as sub GROUP BY c1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.MustJSON(`[1,2]`)},
 					{types.MustJSON(`[3,4]`)},
 					{types.MustJSON(`[5]`)},
@@ -468,7 +468,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT pk, JSON_ARRAYAGG(field) FROM (SELECT * FROM j ORDER BY pk) as sub GROUP BY field ORDER BY pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, types.MustJSON(`[{"key1": {"key": "value"}}]`)},
 					{2, types.MustJSON(`[{"key1": "value1", "key2": "value2"}]`)},
 					{3, types.MustJSON(`[{"key1":{"key":[2,3]}}]`)},
@@ -486,7 +486,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT JSON_OBJECTAGG(val, o_id) FROM (SELECT * FROM t2 ORDER BY o_id) as sub GROUP BY val",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.MustJSON(`{"1": 3}`)},
 				},
 			},
@@ -502,14 +502,14 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT c0, JSON_OBJECTAGG(`attribute`, value) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, types.MustJSON(`{"color": "red", "fabric": "silk"}`)},
 					{3, types.MustJSON(`{"color": "green", "shape": "square"}`)},
 				},
 			},
 			{
 				Query: `SELECT c0, JSON_OBJECTAGG(c0, value) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, types.MustJSON(`{"2": "silk"}`)},
 					{3, types.MustJSON(`{"3": "square"}`)},
 				},
@@ -526,13 +526,13 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `select JSON_OBJECTAGG(c0, value) from (SELECT * FROM t ORDER BY o_id) as sub`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.MustJSON(`{"2": "silk", "3": "square"}`)},
 				},
 			},
 			{
 				Query: "select JSON_OBJECTAGG(`attribute`, value) from (SELECT * FROM t ORDER BY o_id) as sub",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.MustJSON(`{"color": "green", "fabric": "silk", "shape": "square"}`)},
 				},
 			},
@@ -547,7 +547,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT JSON_OBJECTAGG(pk, val) from test`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.MustJSON(`{"1": null}`)},
 				},
 			},
@@ -564,7 +564,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT JSON_OBJECTAGG(c0, val) from (SELECT * FROM j ORDER BY pk) as sub`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.MustJSON(`{"1": {"key1": {"key": [2, 3]}}, "2": ["a", 1]}`)},
 				},
 			},
@@ -578,7 +578,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT JSON_OBJECTAGG(pk, val) from test`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 				},
 			},
@@ -634,42 +634,42 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `select col1->'$.key1' from t;`,
-				Expected: []sql.Row{{types.MustJSON("1")}, {types.MustJSON("100")}},
+				Expected: []sql.UntypedSqlRow{{types.MustJSON("1")}, {types.MustJSON("100")}},
 			},
 			{
 				Query:    `select col1->>'$.key2' from t;`,
-				Expected: []sql.Row{{"abc"}, {"ghi"}},
+				Expected: []sql.UntypedSqlRow{{"abc"}, {"ghi"}},
 			},
 			{
 				Query:    `select pk, col1 from t where col1->'$.key1' = 1;`,
-				Expected: []sql.Row{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
+				Expected: []sql.UntypedSqlRow{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
 			},
 			{
 				Query:    `select pk, col1 from t where col1->>'$.key2' = 'abc';`,
-				Expected: []sql.Row{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
+				Expected: []sql.UntypedSqlRow{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
 			},
 			{
 				Query:    `select * from t where col1->>'$.key2' = 'def';`,
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    `SELECT col2->"$[3]", col2->>"$[3]" FROM t;`,
-				Expected: []sql.Row{{types.MustJSON("17"), "17"}, {types.MustJSON("17"), "17"}},
+				Expected: []sql.UntypedSqlRow{{types.MustJSON("17"), "17"}, {types.MustJSON("17"), "17"}},
 			},
 			{
 				Query:    `SELECT col2->"$[4]", col2->>"$[4]" FROM t where pk=1;`,
-				Expected: []sql.Row{{types.MustJSON("\"z\""), "z"}},
+				Expected: []sql.UntypedSqlRow{{types.MustJSON("\"z\""), "z"}},
 			},
 			{
 				// TODO: JSON_Extract doesn't seem able to handle a JSON path expression that references a nested array
 				//       This errors with "object is not Slice"
 				Skip:     true,
 				Query:    `SELECT col2->>"$[3]", col2->>"$[4][0]" FROM t;`,
-				Expected: []sql.Row{{17, 44}, {17, "y"}},
+				Expected: []sql.UntypedSqlRow{{17, 44}, {17, "y"}},
 			},
 			{
 				Query:    `SELECT k->"$.inner" from (SELECT j->"$.outer" AS k FROM t2) sq;`,
-				Expected: []sql.Row{{types.MustJSON("456")}},
+				Expected: []sql.UntypedSqlRow{{types.MustJSON("456")}},
 			},
 		},
 	},
@@ -686,7 +686,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from t order by col1 asc;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 					{3, types.MustJSON("null")},
 					{4, types.MustJSON("0")},
@@ -695,7 +695,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select * from t order by col1 desc;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{2, types.MustJSON("{}")},
 					{4, types.MustJSON("0")},
 					{3, types.MustJSON("null")},
@@ -745,7 +745,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select pk, cast(col1 as char) from t order by pk asc;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, `{"a": 1, "b": 2}`},
 					{2, `{"a": 1, "b": 2}`},
 					{3, `{"a": 1, "b": 2}`},
@@ -777,7 +777,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select pk, json_extract(col1, '$.items') from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, types.MustJSON("{\"1\":1,\"2\":2}")},
 					{2, nil},
 					{3, nil},
@@ -787,7 +787,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk, json_extract(col1, '$') from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, types.MustJSON("{\"items\": {\"1\": 1, \"2\": 2}}")},
 					{2, nil},
 					{3, types.MustJSON("{}")},
@@ -797,7 +797,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk, json_extract(col1, '$.items') is null from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, false},
 					{2, true},
 					{3, true},
@@ -807,7 +807,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk, json_extract(col1, '$.items') <> null from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil},
 					{2, nil},
 					{3, nil},
@@ -817,7 +817,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk, json_extract(col1, '$.items.*') from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, types.MustJSON("[1, 2]")},
 					{2, nil},
 					{3, nil},
@@ -827,11 +827,11 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query:    "select pk from t where json_extract(col1, '$.items') is null;",
-				Expected: []sql.Row{{2}, {3}, {5}},
+				Expected: []sql.UntypedSqlRow{{2}, {3}, {5}},
 			},
 			{
 				Query:    "select pk from t where json_extract(col1, '$.items') <> null;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -849,7 +849,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select pk, json_contains_path(col1, 'one', '$.a') from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, true},
 					{2, true},
 					{3, false},
@@ -859,7 +859,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk, json_contains_path(col1, 'one', '$.a', '$.x', '$.c.d') from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, true},
 					{2, true},
 					{3, true},
@@ -869,7 +869,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk, json_contains_path(col1, 'all', '$.a', '$.x') from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, false},
 					{2, false},
 					{3, false},
@@ -879,7 +879,7 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query: "select pk, json_contains_path(col1, 'all', '$.c.d', '$.x') from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, false},
 					{2, false},
 					{3, true},
@@ -898,22 +898,22 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT JSON_EXTRACT('0.4', '$')",
-				Expected: []sql.Row{{types.MustJSON(`0.4`)}},
+				Expected: []sql.UntypedSqlRow{{types.MustJSON(`0.4`)}},
 			},
 			{
 				Query:    "SELECT JSON_EXTRACT('0.4', '$') > 0;",
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 			{
 				Query:    "SELECT JSON_EXTRACT('0.4', '$') <= 0;",
-				Expected: []sql.Row{{false}},
+				Expected: []sql.UntypedSqlRow{{false}},
 			}, {
 				Query:    "SELECT JSON_EXTRACT('0.4', '$') = 0;",
-				Expected: []sql.Row{{false}},
+				Expected: []sql.UntypedSqlRow{{false}},
 			},
 			{
 				Query:    "SELECT JSON_EXTRACT('0.4', '$') = 0.4;",
-				Expected: []sql.Row{{true}},
+				Expected: []sql.UntypedSqlRow{{true}},
 			},
 		},
 	},
@@ -926,7 +926,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select j->'$.x' = true from t;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{true},
 					{false},
 				},
@@ -942,7 +942,7 @@ var JsonScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select pk, json_insert(col1, '$.x', 1), json_insert(col1, '$.y', 2) from t order by pk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, types.MustJSON("{\"x\":1}"), types.MustJSON("{\"y\":2}")},
 				},
 			},

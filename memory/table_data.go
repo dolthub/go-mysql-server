@@ -129,7 +129,7 @@ func (td TableData) partition(row sql.Row) (int, error) {
 	hash := xxhash.New()
 	var err error
 	for i := range keyColumns {
-		v := row[keyColumns[i]]
+		v := row.GetValue(keyColumns[i])
 		if i > 0 {
 			// separate each column with a null byte
 			if _, err = hash.Write([]byte{0}); err != nil {
@@ -251,17 +251,17 @@ func (td *TableData) toStorageRow(row sql.Row) sql.Row {
 		return row
 	}
 
-	storageRow := make(sql.Row, len(td.schema.Schema))
+	storageRow := sql.NewSqlRowWithLen(len(td.schema.Schema))
 	storageRowIdx := 0
 	for i, col := range td.schema.Schema {
 		if col.Virtual {
 			continue
 		}
-		storageRow[storageRowIdx] = row[i]
+		storageRow.SetValue(storageRowIdx, row.GetValue(i))
 		storageRowIdx++
 	}
 
-	return storageRow[:storageRowIdx]
+	return storageRow.Subslice(0, storageRowIdx)
 }
 
 func (td *TableData) numRows(ctx *sql.Context) (uint64, error) {
@@ -310,7 +310,7 @@ func (td *TableData) errIfDuplicateEntryExist(cols []string, idxName string) err
 }
 
 func hasNulls(row sql.Row) bool {
-	for _, v := range row {
+	for _, v := range row.Values() {
 		if v == nil {
 			return true
 		}
@@ -405,8 +405,8 @@ func (td *TableData) sortSecondaryIndexes() {
 		}
 		sort.Slice(idxStorage, func(i, j int) bool {
 			for t, typ := range types {
-				left := idxStorage[i][t]
-				right := idxStorage[j][t]
+				left := idxStorage[i].GetValue(t)
+				right := idxStorage[j].GetValue(t)
 
 				// Compare doesn't handle nil values, so we need to handle that case. Nils sort before other values
 				if left == nil {
@@ -446,18 +446,18 @@ func insertValueInRows(ctx *sql.Context, data *TableData, colIdx int, colDefault
 	for k, p := range data.partitions {
 		newP := make([]sql.Row, len(p))
 		for i, row := range p {
-			var newRow sql.Row
-			newRow = append(newRow, row[:colIdx]...)
-			newRow = append(newRow, nil)
-			newRow = append(newRow, row[colIdx:]...)
-			var err error
+			var newRow sql.Row = sql.UntypedSqlRow{}
+			newRow = newRow.Append(row.Subslice(0, colIdx))
+			newRow = newRow.Append(sql.NewUntypedRow(nil))
+			newRow = newRow.Append(row.Subslice(colIdx, row.Len()))
 			if !data.schema.Schema[colIdx].Nullable && colDefault == nil {
-				newRow[colIdx] = data.schema.Schema[colIdx].Type.Zero()
+				newRow.SetValue(colIdx, data.schema.Schema[colIdx].Type.Zero())
 			} else {
-				newRow[colIdx], err = colDefault.Eval(ctx, newRow)
+				v, err := colDefault.Eval(ctx, newRow)
 				if err != nil {
 					return err
 				}
+				newRow.SetValue(colIdx, v)
 			}
 			newP[i] = newRow
 		}

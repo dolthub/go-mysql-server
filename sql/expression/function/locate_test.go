@@ -117,11 +117,11 @@ func TestLocate(t *testing.T) {
 				expression.NewGetField(0, types.Text, "substr", false),
 				expression.NewGetField(1, types.LongText, "str", false),
 			}
-			row := sql.Row{tt.Substr, tt.Str}
+			row := sql.UntypedSqlRow{tt.Substr, tt.Str}
 
 			if tt.Start != nil {
 				exprs = append(exprs, expression.NewGetField(2, types.Int32, "start", false))
-				row = append(row, *tt.Start)
+				row = row.Append(sql.NewUntypedRow(*tt.Start)).(sql.UntypedSqlRow)
 			}
 
 			f, err := NewLocate(exprs...)

@@ -119,11 +119,11 @@ func TestMax_Distinct(t *testing.T) {
 
 	require.Equal(t, "MAX(DISTINCT field)", m.String())
 
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{2}))
-	require.NoError(t, b.Update(ctx, sql.Row{3}))
-	require.NoError(t, b.Update(ctx, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{2}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{3}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{3}))
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
@@ -132,10 +132,10 @@ func TestMax_Distinct(t *testing.T) {
 	m = NewMax(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ = m.NewBuffer()
 
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{nil}))
-	require.NoError(t, b.Update(ctx, sql.Row{1}))
-	require.NoError(t, b.Update(ctx, sql.Row{2}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{nil}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{1}))
+	require.NoError(t, b.Update(ctx, sql.UntypedSqlRow{2}))
 	v, err = b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(2, v)

@@ -110,7 +110,7 @@ func TestLength(t *testing.T) {
 
 			result, err := tt.fn(expression.NewGetField(0, tt.inputType, "foo", false)).Eval(
 				sql.NewEmptyContext(),
-				sql.Row{tt.input},
+				sql.UntypedSqlRow{tt.input},
 			)
 
 			require.NoError(err)

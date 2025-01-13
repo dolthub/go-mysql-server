@@ -84,7 +84,7 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 		// Only check the reference for the columns that are updated
 		hasChange := false
 		for _, idx := range reference.RowMapper.IndexPositions {
-			cmp, err := fkEditor.Schema[idx].Type.Compare(old[idx], new[idx])
+			cmp, err := fkEditor.Schema[idx].Type.Compare(old.GetValue(idx), new.GetValue(idx))
 			if err != nil {
 				return err
 			}
@@ -164,18 +164,18 @@ func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionDat
 		return err
 	}
 	defer rowIter.Close(ctx)
-	var rowToUpdate sql.Row
+	var rowToUpdate sql.Row = sql.UntypedSqlRow{}
 	for rowToUpdate, err = rowIter.Next(ctx); err == nil; rowToUpdate, err = rowIter.Next(ctx) {
 		if depth > 15 {
 			return sql.ErrForeignKeyDepthLimit.New()
 		}
-		updatedRow := make(sql.Row, len(rowToUpdate))
-		for i := range rowToUpdate {
+		updatedRow := sql.NewSqlRowWithLen(rowToUpdate.Len())
+		for i := range rowToUpdate.Values() {
 			mappedVal := refActionData.ChildParentMapping[i]
 			if mappedVal == -1 {
-				updatedRow[i] = rowToUpdate[i]
+				updatedRow.SetValue(i, rowToUpdate.GetValue(i))
 			} else {
-				updatedRow[i] = new[mappedVal]
+				updatedRow.SetValue(i, new.GetValue(mappedVal))
 			}
 		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
@@ -202,16 +202,16 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionDat
 		return err
 	}
 	defer rowIter.Close(ctx)
-	var rowToUpdate sql.Row
+	var rowToUpdate sql.Row = sql.UntypedSqlRow{}
 	for rowToUpdate, err = rowIter.Next(ctx); err == nil; rowToUpdate, err = rowIter.Next(ctx) {
 		if depth > 15 {
 			return sql.ErrForeignKeyDepthLimit.New()
 		}
-		updatedRow := make(sql.Row, len(rowToUpdate))
-		for i := range rowToUpdate {
+		updatedRow := sql.NewSqlRowWithLen(rowToUpdate.Len())
+		for i := range rowToUpdate.Values() {
 			// Row contents are nil by default, so we only need to assign the non-affected values
 			if refActionData.ChildParentMapping[i] == -1 {
-				updatedRow[i] = rowToUpdate[i]
+				updatedRow.SetValue(i, rowToUpdate.GetValue(i))
 			}
 		}
 		err = refActionData.Editor.Update(ctx, rowToUpdate, updatedRow, depth)
@@ -280,7 +280,7 @@ func (fkEditor *ForeignKeyEditor) OnDeleteCascade(ctx *sql.Context, refActionDat
 		return err
 	}
 	defer rowIter.Close(ctx)
-	var rowToDelete sql.Row
+	var rowToDelete sql.Row = sql.UntypedSqlRow{}
 	for rowToDelete, err = rowIter.Next(ctx); err == nil; rowToDelete, err = rowIter.Next(ctx) {
 		// MySQL seems to have a bug where cyclical foreign keys return an error at a depth of 15 instead of 16.
 		// This replicates the observed behavior, regardless of whether we're replicating a bug or intentional behavior.
@@ -309,7 +309,7 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetNull(ctx *sql.Context, refActionDat
 		return err
 	}
 	defer rowIter.Close(ctx)
-	var rowToNull sql.Row
+	var rowToNull sql.Row = sql.UntypedSqlRow{}
 	for rowToNull, err = rowIter.Next(ctx); err == nil; rowToNull, err = rowIter.Next(ctx) {
 		// MySQL seems to have a bug where cyclical foreign keys return an error at a depth of 15 instead of 16.
 		// This replicates the observed behavior, regardless of whether we're replicating a bug or intentional behavior.
@@ -320,11 +320,11 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetNull(ctx *sql.Context, refActionDat
 				return sql.ErrForeignKeyDepthLimit.New()
 			}
 		}
-		nulledRow := make(sql.Row, len(rowToNull))
-		for i := range rowToNull {
+		nulledRow := sql.NewSqlRowWithLen(rowToNull.Len())
+		for i := range rowToNull.Values() {
 			// Row contents are nil by default, so we only need to assign the non-affected values
 			if refActionData.ChildParentMapping[i] == -1 {
-				nulledRow[i] = rowToNull[i]
+				nulledRow.SetValue(i, rowToNull.GetValue(i))
 			}
 		}
 		err = refActionData.Editor.Update(ctx, rowToNull, nulledRow, depth)
@@ -346,8 +346,8 @@ func (fkEditor *ForeignKeyEditor) ColumnsUpdated(refActionData ForeignKeyRefActi
 		if mappedVal == -1 {
 			continue
 		}
-		oldVal := old[mappedVal]
-		newVal := new[mappedVal]
+		oldVal := old.GetValue(mappedVal)
+		newVal := new.GetValue(mappedVal)
 		cmp, err := fkEditor.Schema[mappedVal].Type.Compare(oldVal, newVal)
 		if err != nil {
 			return false, err
@@ -387,7 +387,7 @@ func (reference *ForeignKeyReferenceHandler) IsInitialized() bool {
 func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, row sql.Row) error {
 	// If even one of the values are NULL then we don't check the parent
 	for _, pos := range reference.RowMapper.IndexPositions {
-		if row[pos] == nil {
+		if row.GetValue(pos) == nil {
 			return nil
 		}
 	}
@@ -412,7 +412,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		for i := range reference.ForeignKey.Columns {
 			colPos := reference.SelfCols[strings.ToLower(reference.ForeignKey.Columns[i])]
 			refPos := reference.SelfCols[strings.ToLower(reference.ForeignKey.ParentColumns[i])]
-			cmp, err := reference.RowMapper.SourceSch[colPos].Type.Compare(row[colPos], row[refPos])
+			cmp, err := reference.RowMapper.SourceSch[colPos].Type.Compare(row.GetValue(colPos), row.GetValue(refPos))
 			if err != nil {
 				return err
 			}
@@ -476,7 +476,7 @@ func (mapper *ForeignKeyRowMapper) IsInitialized() bool {
 func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refCheck bool) (sql.RowIter, error) {
 	rang := make(sql.MySQLRange, len(mapper.IndexPositions)+len(mapper.AppendTypes))
 	for rangPosition, rowPos := range mapper.IndexPositions {
-		rowVal := row[rowPos]
+		rowVal := row.GetValue(rowPos)
 		// If any value is NULL then it is ignored by foreign keys
 		if rowVal == nil {
 			return sql.RowsToRowIter(), nil
@@ -513,7 +513,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 func (mapper *ForeignKeyRowMapper) GetKeyString(row sql.Row) string {
 	keyStrParts := make([]string, len(mapper.IndexPositions))
 	for i, rowPos := range mapper.IndexPositions {
-		keyStrParts[i] = fmt.Sprint(row[rowPos])
+		keyStrParts[i] = fmt.Sprint(row.GetValue(rowPos))
 	}
 	return fmt.Sprintf("[%s]", strings.Join(keyStrParts, ","))
 }

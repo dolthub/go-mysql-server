@@ -40,6 +40,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
@@ -503,7 +504,7 @@ func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, erro
 	if err := iter.Close(ctx); err != nil {
 		return nil, err
 	}
-	return resultFromOkResult(row[0].(types.OkResult)), nil
+	return resultFromOkResult(row.GetValue(0).(types.OkResult)), nil
 }
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
@@ -670,7 +671,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					if len(r.Rows) > 0 {
 						panic("Got OkResult mixed with RowResult")
 					}
-					r = resultFromOkResult(row[0].(types.OkResult))
+					r = resultFromOkResult(row.GetValue(0).(types.OkResult))
 					continue
 				}
 
@@ -954,13 +955,62 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 
 	outVals := make([]sqltypes.Value, len(sch))
 	var err error
+	var newBuf = make([]byte, 256)
+	if br, ok := row.(sql.BytesRow); ok && false {
+		if len(projs) == 0 {
+			for i, col := range sch {
+				val, err := br.GetBytes(i, col.Type, newBuf[:0])
+				newBuf = newBuf[len(val):]
+				if err != nil {
+					return nil, err
+				}
+				outVals[i] = sqltypes.MakeTrusted(col.Type.Type(), val)
+
+				//v := row.GetValue(i)
+				//cmpBuf, _ := col.Type.SQL(ctx, nil, v)
+				//fmt.Printf("exp: %s, actual: %s, equal: %d\n", cmpBuf, val, bytes.Compare(cmpBuf.ToBytes(), val))
+			}
+			return outVals, nil
+		}
+
+		for i, col := range sch {
+			e := projs[i]
+			switch e := e.(type) {
+			case *expression.GetField:
+				val, err := br.GetBytes(e.Index(), col.Type, newBuf[:0])
+				newBuf = newBuf[len(val):]
+				if err != nil {
+					return nil, err
+				}
+				outVals[i] = sqltypes.MakeTrusted(col.Type.Type(), val)
+				//v := row.GetValue(e.Index())
+				//cmpBuf, _ := col.Type.SQL(ctx, nil, v)
+				//fmt.Printf("exp: %s, actual: %s, equal: %d\n", cmpBuf, val, bytes.Compare(cmpBuf.ToBytes(), val))
+			default:
+				field, err := projs[i].Eval(ctx, row)
+				if err != nil {
+					return nil, err
+				}
+				if field == nil {
+					outVals[i] = sqltypes.NULL
+					continue
+				}
+				outVals[i], err = col.Type.SQL(ctx, nil, field)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		return outVals, nil
+	}
+
 	if len(projs) == 0 {
 		for i, col := range sch {
-			if row[i] == nil {
+			if row.GetValue(i) == nil {
 				outVals[i] = sqltypes.NULL
 				continue
 			}
-			outVals[i], err = toSqlHelper(ctx, col.Type, buf, row[i])
+			outVals[i], err = toSqlHelper(ctx, col.Type, buf, row.GetValue(i))
 			if err != nil {
 				return nil, err
 			}

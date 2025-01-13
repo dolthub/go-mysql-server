@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 )
 
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered
@@ -310,8 +309,6 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "week", Fn: NewWeek},
 	sql.Function1{Name: "values", Fn: NewValues},
 	sql.Function1{Name: "validate_password_strength", Fn: NewValidatePasswordStrength},
-	sql.Function2{Name: "vec_distance", Fn: vector.NewL2SquaredDistance},
-	sql.Function2{Name: "vec_distance_l2_squared", Fn: vector.NewL2SquaredDistance},
 	sql.Function1{Name: "weekday", Fn: NewWeekday},
 	sql.Function1{Name: "weekofyear", Fn: NewWeekOfYear},
 	sql.Function1{Name: "year", Fn: NewYear},

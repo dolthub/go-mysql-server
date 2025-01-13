@@ -218,7 +218,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 	var v interface{}
 	var vs string
 	if types.IsBlobType(retType) {
-		v, _, err = types.Blob.Convert(evalRow[0])
+		v, _, err = types.Blob.Convert(evalRow.GetValue(0))
 		if err != nil {
 			return err
 		}
@@ -227,7 +227,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 			return nil
 		}
 	} else {
-		v, _, err = types.LongText.Convert(evalRow[0])
+		v, _, err = types.LongText.Convert(evalRow.GetValue(0))
 		if err != nil {
 			return err
 		}
@@ -250,7 +250,7 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	// Append the current value to the end of the row. We want to preserve the row's original structure for
 	// for sort ordering in the final step.
-	g.rows = append(g.rows, append(originalRow, nil, vs))
+	g.rows = append(g.rows, originalRow.Append(sql.NewUntypedRow(nil, vs)))
 
 	return nil
 }
@@ -280,12 +280,12 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 
 	sb := strings.Builder{}
 	for i, row := range rows {
-		lastIdx := len(row) - 1
+		lastIdx := row.Len() - 1
 		if i == 0 {
-			sb.WriteString(row[lastIdx].(string))
+			sb.WriteString(row.GetValue(lastIdx).(string))
 		} else {
 			sb.WriteString(g.gc.separator)
-			sb.WriteString(row[lastIdx].(string))
+			sb.WriteString(row.GetValue(lastIdx).(string))
 		}
 
 		// Don't allow the string to cross maxlen
@@ -310,15 +310,16 @@ func (g *groupConcatBuffer) Dispose() {
 }
 
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
-	result := make(sql.Row, len(exprs))
+	result := sql.NewSqlRowWithLen(len(exprs))
 	retType := types.Blob
+	var v interface{}
 	for i, expr := range exprs {
 		var err error
-		result[i], err = expr.Eval(ctx, row)
+		v, err = expr.Eval(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
-
+		result.SetValue(i, v)
 		// If every expression returns Blob type return Blob otherwise return Text.
 		if expr.Type() != types.Blob {
 			retType = types.Text

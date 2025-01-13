@@ -82,55 +82,55 @@ func TestCase(t *testing.T) {
 		{
 			"with expr and else branch 1",
 			f1,
-			sql.Row{int64(1)},
+			sql.UntypedSqlRow{int64(1)},
 			int64(2),
 		},
 		{
 			"with expr and else branch 2",
 			f1,
-			sql.Row{int64(3)},
+			sql.UntypedSqlRow{int64(3)},
 			int64(4),
 		},
 		{
 			"with expr and else branch 3",
 			f1,
-			sql.Row{int64(5)},
+			sql.UntypedSqlRow{int64(5)},
 			int64(6),
 		},
 		{
 			"with expr and else, else branch",
 			f1,
-			sql.Row{int64(9)},
+			sql.UntypedSqlRow{int64(9)},
 			int64(7),
 		},
 		{
 			"without expr and else branch 1",
 			f2,
-			sql.Row{int64(1)},
+			sql.UntypedSqlRow{int64(1)},
 			int64(2),
 		},
 		{
 			"without expr and else branch 2",
 			f2,
-			sql.Row{int64(3)},
+			sql.UntypedSqlRow{int64(3)},
 			int64(4),
 		},
 		{
 			"without expr and else branch 3",
 			f2,
-			sql.Row{int64(5)},
+			sql.UntypedSqlRow{int64(5)},
 			int64(6),
 		},
 		{
 			"without expr and else, else branch",
 			f2,
-			sql.Row{int64(9)},
+			sql.UntypedSqlRow{int64(9)},
 			int64(7),
 		},
 		{
 			"without else, else branch",
 			f3,
-			sql.Row{int64(9)},
+			sql.UntypedSqlRow{int64(9)},
 			nil,
 		},
 	}
@@ -264,7 +264,7 @@ func TestCaseNullBranch(t *testing.T) {
 		},
 		nil,
 	)
-	result, err := f.Eval(sql.NewEmptyContext(), sql.Row{int64(1)})
+	result, err := f.Eval(sql.NewEmptyContext(), sql.UntypedSqlRow{int64(1)})
 	require.NoError(err)
 	require.Nil(result)
 }

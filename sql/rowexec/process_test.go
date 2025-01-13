@@ -70,7 +70,7 @@ func TestProcessTable(t *testing.T) {
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{int64(1)},
 		{int64(2)},
 		{int64(3)},

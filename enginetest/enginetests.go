@@ -308,7 +308,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		require.NoError(t, err)
 		p.EndQuery(ctx2)
 
-		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist ORDER BY id", []sql.Row{
+		TestQueryWithContext(t, ctx, e, h, "SELECT * FROM information_schema.processlist ORDER BY id", []sql.UntypedSqlRow{
 			{uint64(1), "root", "localhost", nil, "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"},
 			{uint64(2), "root", "otherhost", "otherdb", "Sleep", 0, "", ""},
 		}, nil, nil, nil)
@@ -346,7 +346,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 
 		TestQueryWithContext(t, ctx, e, h,
 			"SELECT id, uSeR, hOST FROM information_schema.processlist ORDER BY id",
-			[]sql.Row{
+			[]sql.UntypedSqlRow{
 				{uint64(1), "root", "localhost"},
 				{uint64(2), "root", "otherhost"},
 			},
@@ -391,7 +391,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 
 		TestQueryWithContext(t, ctx, e, h,
 			"SELECT id, uSeR, hOST FROM information_schema.processlist pl ORDER BY id",
-			[]sql.Row{
+			[]sql.UntypedSqlRow{
 				{uint64(1), "root", "localhost"},
 				{uint64(2), "root", "otherhost"},
 			},
@@ -436,7 +436,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 
 		TestQueryWithContext(t, ctx, e, h,
 			"SELECT id, uSeR, hOST FROM information_schema.processlist pl join information_schema.schemata on true ORDER BY id limit 1",
-			[]sql.Row{
+			[]sql.UntypedSqlRow{
 				{uint64(1), "root", "localhost"},
 			},
 			sql.Schema{
@@ -627,7 +627,7 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, `CREATE TABLE otherdb.a (x int, y int)`)
 		RunQueryWithContext(t, e, harness, ctx, `CREATE INDEX idx1 ON otherdb.a (y);`)
 
-		TestQueryWithContext(t, ctx, e, harness, "SHOW INDEXES FROM otherdb.a", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "SHOW INDEXES FROM otherdb.a", []sql.UntypedSqlRow{
 			{"a", 1, "idx1", 1, "y", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
 		}, nil, nil, nil)
 
@@ -801,7 +801,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			require.NoError(t, err)
 
 			var val int64
-			switch v := row[0].(type) {
+			switch v := row.GetValue(0).(type) {
 			case int64:
 				val = v
 			case int32:
@@ -810,7 +810,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
-			team := row[1].(string)
+			team := row.GetValue(1).(string)
 			switch team {
 			case "red":
 				require.True(t, val == 3 || val == 4)
@@ -837,7 +837,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			require.NoError(t, err)
 
 			var val int64
-			switch v := row[0].(type) {
+			switch v := row.GetValue(0).(type) {
 			case int64:
 				val = v
 			case int32:
@@ -846,7 +846,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
-			team := row[1].(string)
+			team := row.GetValue(1).(string)
 			switch team {
 			case "red":
 				require.True(t, val == 3 || val == 4)
@@ -941,7 +941,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	defer e.Close()
 
 	ctx := NewContext(harness)
-	expected := []sql.Row{
+	expected := []sql.UntypedSqlRow{
 		{int64(1), "pux", "foo"},
 		{int64(2), "mux", "bar"},
 		{int64(3), "qux", "baz"},
@@ -1052,7 +1052,7 @@ func TestLoadData(t *testing.T, harness Harness) {
 	require.NoError(t, setSecureFilePriv())
 	TestQueryWithEngine(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	})
 
 	for _, script := range queries.LoadDataScripts {
@@ -1067,7 +1067,7 @@ func TestLoadDataErrors(t *testing.T, harness Harness) {
 	require.NoError(t, setSecureFilePriv())
 	TestQueryWithEngine(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	})
 
 	for _, script := range queries.LoadDataErrorScripts {
@@ -1083,7 +1083,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	require.NoError(t, setSecureFilePriv())
 	TestQueryWithEngine(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	})
 
 	for _, script := range queries.LoadDataFailingScripts {
@@ -1103,21 +1103,21 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 	require.NoError(t, setSecureFilePriv())
 	TestQueryWithEngine(t, harness, e, queries.QueryTest{
 		Query:    "select @@global.secure_file_priv != '';",
-		Expected: []sql.Row{{true}},
+		Expected: []sql.UntypedSqlRow{{true}},
 	})
 
 	tests := []struct {
 		file    string
 		query   string
 		exp     string
-		expRows []sql.Row
+		expRows []sql.UntypedSqlRow
 		err     *errors.Kind
 		skip    bool
 	}{
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
@@ -1126,13 +1126,13 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "dumpfile.txt",
 			query:   "select * from mytable limit 1 into dumpfile 'dumpfile.txt';",
-			expRows: []sql.Row{{types.NewOkResult(1)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			exp:     "1first row",
 		},
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row\n" +
 				"2,second row\n" +
@@ -1141,7 +1141,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by '$$';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1$$first row\n" +
 				"2$$second row\n" +
@@ -1150,7 +1150,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' optionally enclosed by '\"';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,\"first row\"\n" +
 				"2,\"second row\"\n" +
@@ -1169,7 +1169,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"\"1\",\"first row\"\n" +
 				"\"2\",\"second row\"\n" +
@@ -1178,7 +1178,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by ';';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row;" +
 				"2,second row;" +
@@ -1187,7 +1187,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by 'r';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,fi\\rst \\rowr" +
 				"2,second \\rowr" +
@@ -1196,7 +1196,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines starting by 'r';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"r1,first row\n" +
 				"r2,second row\n" +
@@ -1205,7 +1205,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by '';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
@@ -1214,7 +1214,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from mytable into outfile 'outfile.txt' fields terminated by ',' lines terminated by '';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1,first row" +
 				"2,second row" +
@@ -1223,7 +1223,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from niltable into outfile 'outfile.txt';",
-			expRows: []sql.Row{{types.NewOkResult(6)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(6)}},
 			exp: "1\t\\N\t\\N\t\\N\n" +
 				"2\t2\t1\t\\N\n" +
 				"3\t\\N\t0\t\\N\n" +
@@ -1234,7 +1234,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' enclosed by '\"';",
-			expRows: []sql.Row{{types.NewOkResult(6)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(6)}},
 			exp: "\"1\",\\N,\\N,\\N\n" +
 				"\"2\",\"2\",\"1\",\\N\n" +
 				"\"3\",\\N,\"0\",\\N\n" +
@@ -1245,7 +1245,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '$';",
-			expRows: []sql.Row{{types.NewOkResult(6)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(6)}},
 			exp: "1,$N,$N,$N\n" +
 				"2,2,1,$N\n" +
 				"3,$N,0,$N\n" +
@@ -1256,7 +1256,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "outfile.txt",
 			query:   "select * from niltable into outfile 'outfile.txt' fields terminated by ',' escaped by '';",
-			expRows: []sql.Row{{types.NewOkResult(6)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(6)}},
 			exp: "1,NULL,NULL,NULL\n" +
 				"2,2,1,NULL\n" +
 				"3,NULL,0,NULL\n" +
@@ -1267,7 +1267,7 @@ func TestSelectIntoFile(t *testing.T, harness Harness) {
 		{
 			file:    "./subdir/outfile.txt",
 			query:   "select * from mytable into outfile './subdir/outfile.txt';",
-			expRows: []sql.Row{{types.NewOkResult(3)}},
+			expRows: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			exp: "" +
 				"1\tfirst row\n" +
 				"2\tsecond row\n" +
@@ -1473,14 +1473,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 	t.Run("Standard TRUNCATE", func(t *testing.T) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX(v1))")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1 VALUES (1,1), (2,2), (3,3)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t1", []sql.Row{{types.NewOkResult(3)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t1", []sql.UntypedSqlRow{{types.NewOkResult(3)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1 VALUES (4,4), (5,5)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1", []sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE TABLE t1", []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1", []sql.UntypedSqlRow{{int64(4), int64(4)}, {int64(5), int64(5)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE TABLE t1", []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t1 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 	})
 
 	t.Run("Foreign Key References", func(t *testing.T) {
@@ -1495,26 +1495,26 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t3i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER trig_t3 BEFORE DELETE ON t3 FOR EACH ROW INSERT INTO t3i VALUES (old.pk, old.v1)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t3 VALUES (1,1), (3,3)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t3", []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3 ORDER BY 1", []sql.Row{}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3i ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(3), int64(3)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t3", []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t3i ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 	})
 
 	t.Run("auto_increment column", func(t *testing.T) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t4 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t4(v1) VALUES (5), (6)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(5)}, {int64(2), int64(6)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t4", []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(5)}, {int64(2), int64(6)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "TRUNCATE t4", []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t4(v1) VALUES (7)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(7)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t4 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(7)}}, nil, nil, nil)
 	})
 
 	t.Run("Naked DELETE", func(t *testing.T) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t5 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t5 VALUES (1,1), (2,2)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil, nil)
 
 		deleteStr := "DELETE FROM t5"
 		parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
@@ -1535,8 +1535,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 				"Expected Truncate Node, got:\n%s", analyzed.String())
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t5 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 	})
 
 	t.Run("Naked DELETE with Foreign Key References", func(t *testing.T) {
@@ -1570,8 +1570,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TRIGGER trig_t7 BEFORE DELETE ON t7 FOR EACH ROW INSERT INTO t7i VALUES (old.pk, old.v1)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t7 VALUES (1,1), (3,3)")
 		RunQueryWithContext(t, e, harness, ctx, "DELETE FROM t7 WHERE pk = 3")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7 ORDER BY 1", []sql.Row{{int64(1), int64(1)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(3), int64(3)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.UntypedSqlRow{{int64(3), int64(3)}}, nil, nil, nil)
 
 		deleteStr := "DELETE FROM t7"
 		parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
@@ -1591,15 +1591,15 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with triggers to TRUNCATE")
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7 ORDER BY 1", []sql.Row{}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.UntypedSqlRow{{types.NewOkResult(1)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t7i ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(3), int64(3)}}, nil, nil, nil)
 	})
 
 	t.Run("Naked DELETE with auto_increment column", func(t *testing.T) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t8 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t8(v1) VALUES (4), (5)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(4)}, {int64(2), int64(5)}}, nil, nil, nil)
 
 		deleteStr := "DELETE FROM t8"
 		parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
@@ -1619,16 +1619,16 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with auto_increment cols to TRUNCATE")
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t8(v1) VALUES (6)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(3), int64(6)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t8 ORDER BY 1", []sql.UntypedSqlRow{{int64(3), int64(6)}}, nil, nil, nil)
 	})
 
 	t.Run("DELETE with WHERE clause", func(t *testing.T) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t9 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t9 VALUES (7,7), (8,8)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.UntypedSqlRow{{int64(7), int64(7)}, {int64(8), int64(8)}}, nil, nil, nil)
 
 		deleteStr := "DELETE FROM t9 WHERE pk > 0"
 		parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
@@ -1648,14 +1648,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with WHERE clause to TRUNCATE")
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t9 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 	})
 
 	t.Run("DELETE with LIMIT clause", func(t *testing.T) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t10 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t10 VALUES (8,8), (9,9)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.UntypedSqlRow{{int64(8), int64(8)}, {int64(9), int64(9)}}, nil, nil, nil)
 
 		deleteStr := "DELETE FROM t10 LIMIT 1000"
 		parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
@@ -1675,14 +1675,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with LIMIT clause to TRUNCATE")
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t10 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 	})
 
 	t.Run("DELETE with ORDER BY clause", func(t *testing.T) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t11 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t11 VALUES (1,1), (9,9)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(9), int64(9)}}, nil, nil, nil)
 
 		deleteStr := "DELETE FROM t11 ORDER BY 1"
 		parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
@@ -1702,8 +1702,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with ORDER BY clause to TRUNCATE")
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.UntypedSqlRow{{types.NewOkResult(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t11 ORDER BY 1", []sql.UntypedSqlRow{}, nil, nil, nil)
 	})
 
 	t.Run("Multi-table DELETE", func(t *testing.T) {
@@ -1712,8 +1712,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t12b (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t12a VALUES (1,1), (2,2)")
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t12b VALUES (1,1), (2,2)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12a ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12a ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.UntypedSqlRow{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil, nil)
 
 		deleteStr := "DELETE t12a, t12b FROM t12a INNER JOIN t12b WHERE t12a.pk=t12b.pk"
 		parsed, qFlags, err := planbuilder.Parse(ctx, e.EngineAnalyzer().Catalog, deleteStr)
@@ -1733,9 +1733,9 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with WHERE clause to TRUNCATE")
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.Row{{types.NewOkResult(4)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12a ORDER BY 1", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, deleteStr, []sql.UntypedSqlRow{{types.NewOkResult(4)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12a ORDER BY 1", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t12b ORDER BY 1", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 	})
 }
 
@@ -1744,7 +1744,7 @@ func TestConvert(t *testing.T, harness Harness) {
 	for _, tt := range queries.ConvertTests {
 		query := fmt.Sprintf("select count(*) from typestable where %s %s %s", tt.Field, tt.Op, tt.Operand)
 		t.Run(query, func(t *testing.T) {
-			TestQuery(t, harness, query, []sql.Row{{tt.ExpCnt}}, nil, nil)
+			TestQuery(t, harness, query, []sql.UntypedSqlRow{{tt.ExpCnt}}, nil, nil)
 		})
 	}
 
@@ -1755,7 +1755,7 @@ func TestConvertPrepared(t *testing.T, harness Harness) {
 	for _, tt := range queries.ConvertTests {
 		query := fmt.Sprintf("select count(*) from typestable where %s %s %s", tt.Field, tt.Op, tt.Operand)
 		t.Run(query, func(t *testing.T) {
-			TestPreparedQuery(t, harness, query, []sql.Row{{tt.ExpCnt}}, nil)
+			TestPreparedQuery(t, harness, query, []sql.UntypedSqlRow{{tt.ExpCnt}}, nil)
 		})
 	}
 }
@@ -2078,7 +2078,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
 					// nil in script.Expected as matching "any" non-error result.
 					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
-						CheckResults(t, harness, script.Expected, nil, sch, rows, lastQuery, engine)
+						CheckResults(t, harness, script.Expected, nil, sch, sql.RowsToUntyped(rows), lastQuery, engine)
 					}
 				})
 			}
@@ -2225,15 +2225,15 @@ func TestTriggers(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "create table mydb.a (i int primary key, j int)")
 		RunQueryWithContext(t, e, harness, ctx, "create table mydb.b (x int primary key)")
 
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TRIGGER mydb.trig BEFORE INSERT ON mydb.a FOR EACH ROW BEGIN SET NEW.j = (SELECT COALESCE(MAX(x),1) FROM mydb.b); UPDATE mydb.b SET x = x + 1; END", []sql.Row{{types.OkResult{}}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE TRIGGER mydb.trig BEFORE INSERT ON mydb.a FOR EACH ROW BEGIN SET NEW.j = (SELECT COALESCE(MAX(x),1) FROM mydb.b); UPDATE mydb.b SET x = x + 1; END", []sql.UntypedSqlRow{{types.OkResult{}}}, nil, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "insert into mydb.b values (1)")
 		RunQueryWithContext(t, e, harness, ctx, "insert into mydb.a values (1,0), (2,0), (3,0)")
 
-		TestQueryWithContext(t, ctx, e, harness, "select * from mydb.a order by i", []sql.Row{{1, 1}, {2, 2}, {3, 3}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select * from mydb.a order by i", []sql.UntypedSqlRow{{1, 1}, {2, 2}, {3, 3}}, nil, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "DROP TRIGGER mydb.trig", []sql.Row{{types.OkResult{}}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW TRIGGERS FROM mydb", []sql.Row{}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TRIGGER mydb.trig", []sql.UntypedSqlRow{{types.OkResult{}}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW TRIGGERS FROM mydb", []sql.UntypedSqlRow{}, nil, nil, nil)
 	})
 }
 
@@ -2255,19 +2255,19 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 	var ctx *sql.Context
 	setupTriggers := []struct {
 		Query    string
-		Expected []sql.Row
+		Expected []sql.UntypedSqlRow
 	}{
-		{"create table a (x int primary key)", []sql.Row{{types.NewOkResult(0)}}},
-		{"create table b (y int primary key)", []sql.Row{{types.NewOkResult(0)}}},
-		{"create trigger a1 before insert on a for each row set new.x = New.x + 1", []sql.Row{{types.NewOkResult(0)}}},
-		{"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2", []sql.Row{{types.NewOkResult(0)}}},
-		{"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5", []sql.Row{{types.NewOkResult(0)}}},
-		{"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3", []sql.Row{{types.NewOkResult(0)}}},
+		{"create table a (x int primary key)", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create table b (y int primary key)", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create trigger a1 before insert on a for each row set new.x = New.x + 1", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
 		// order of execution should be: a3, a2, a4, a1
-		{"create trigger a5 after insert on a for each row update b set y = y + 1 order by y asc", []sql.Row{{types.NewOkResult(0)}}},
-		{"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2 order by y asc", []sql.Row{{types.NewOkResult(0)}}},
-		{"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5 order by y asc", []sql.Row{{types.NewOkResult(0)}}},
-		{"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3 order by y asc", []sql.Row{{types.NewOkResult(0)}}},
+		{"create trigger a5 after insert on a for each row update b set y = y + 1 order by y asc", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2 order by y asc", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5 order by y asc", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
+		{"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3 order by y asc", []sql.UntypedSqlRow{{types.NewOkResult(0)}}},
 		// order of execution should be: a7, a6, a8, a5
 	}
 	for _, tt := range setupTriggers {
@@ -2283,11 +2283,11 @@ func TestShowTriggers(t *testing.T, harness Harness) {
 	// Test selecting these queries
 	expectedResults := []struct {
 		Query    string
-		Expected []sql.Row
+		Expected []sql.UntypedSqlRow
 	}{
 		{
 			Query: "select * from information_schema.triggers",
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{
 					"def",                   // trigger_catalog
 					"mydb",                  // trigger_schema
@@ -2543,10 +2543,10 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 			})
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.Row{{types.OkResult{}}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p2() SELECT 6", []sql.Row{{types.OkResult{}}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.UntypedSqlRow{{types.OkResult{}}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE PROCEDURE mydb.p2() SELECT 6", []sql.UntypedSqlRow{{types.OkResult{}}}, nil, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "SHOW PROCEDURE STATUS", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "SHOW PROCEDURE STATUS", []sql.UntypedSqlRow{
 			{"mydb", "p1", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
@@ -2555,9 +2555,9 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 		}, nil, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "DROP PROCEDURE mydb.p1", []sql.Row{{types.OkResult{}}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DROP PROCEDURE mydb.p1", []sql.UntypedSqlRow{{types.OkResult{}}}, nil, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "SHOW PROCEDURE STATUS", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "SHOW PROCEDURE STATUS", []sql.UntypedSqlRow{
 			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
 				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 			{"mydb", "p5", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
@@ -2613,21 +2613,21 @@ func TestViews(t *testing.T, harness Harness) {
 	// Views with non-standard select statements
 	RunQueryWithContext(t, e, harness, ctx, "create view unionView as (select * from myTable order by i limit 1) union all (select * from mytable order by i limit 1)")
 	t.Run("select * from unionview order by i", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "select * from unionview order by i", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "select * from unionview order by i", []sql.UntypedSqlRow{
 			{1, "first row"},
 			{1, "first row"},
 		}, nil, nil, nil)
 	})
 
 	t.Run("create view with algorithm, definer, security defined", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW newview AS SELECT * FROM myview WHERE i = 1", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM newview ORDER BY i", []sql.Row{
-			sql.NewRow(int64(1), "first row"),
+		TestQueryWithContext(t, ctx, e, harness, "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW newview AS SELECT * FROM myview WHERE i = 1", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM newview ORDER BY i", []sql.UntypedSqlRow{
+			{int64(1), "first row"},
 		}, nil, nil, nil)
 
-		TestQueryWithContext(t, ctx, e, harness, "CREATE OR REPLACE ALGORITHM=MERGE DEFINER=doltUser SQL SECURITY INVOKER VIEW newview AS SELECT * FROM myview WHERE i = 2", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM newview ORDER BY i", []sql.Row{
-			sql.NewRow(int64(2), "second row"),
+		TestQueryWithContext(t, ctx, e, harness, "CREATE OR REPLACE ALGORITHM=MERGE DEFINER=doltUser SQL SECURITY INVOKER VIEW newview AS SELECT * FROM myview WHERE i = 2", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM newview ORDER BY i", []sql.UntypedSqlRow{
+			{int64(2), "second row"},
 		}, nil, nil, nil)
 	})
 
@@ -2761,7 +2761,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("")
 
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE mydb.t11 (a INTEGER NOT NULL PRIMARY KEY, "+
-			"b VARCHAR(10) NOT NULL)", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+			"b VARCHAR(10) NOT NULL)", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 		require.NoError(t, err)
@@ -2783,7 +2783,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("")
 
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE mydb.t12 (a INTEGER NOT NULL PRIMARY KEY, "+
-			"b VARCHAR(10) UNIQUE, c varchar(10) UNIQUE)", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+			"b VARCHAR(10) UNIQUE, c varchar(10) UNIQUE)", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		db, err := e.EngineAnalyzer().Catalog.Database(ctx, "mydb")
 		require.NoError(t, err)
@@ -2816,10 +2816,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	t.Run("create table with blob column with null default", func(t *testing.T) {
 		ctx := NewContext(harness)
 		RunQueryWithContext(t, e, harness, ctx, "USE mydb")
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t_blob_default_null(c BLOB DEFAULT NULL)", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t_blob_default_null VALUES ()")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t_blob_default_null", []sql.Row{{nil}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t_blob_default_null", []sql.UntypedSqlRow{{nil}}, nil, nil, nil)
 	})
 
 	t.Run("create table like works and can have keys removed", func(t *testing.T) {
@@ -2830,12 +2830,12 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE test2 like test")
 
 		RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test2 modify pk int")
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "PRI", nil, ""},
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.UntypedSqlRow{{"pk", "int", "NO", "PRI", nil, ""},
 			{"val", "int", "YES", "", nil, ""}}, nil, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "ALTER TABLE test2 drop primary key")
 
-		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.Row{{"pk", "int", "NO", "", nil, ""},
+		TestQueryWithContext(t, ctx, e, harness, "DESCRIBE test2", []sql.UntypedSqlRow{{"pk", "int", "NO", "", nil, ""},
 			{"val", "int", "YES", "", nil, ""}}, nil, nil, nil)
 	})
 
@@ -2860,7 +2860,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		_, ok, err := db.GetTableInsensitive(ctx, "mytable")
 		require.True(ok)
 
-		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS mytable, not_exist", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS mytable, not_exist", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		_, ok, err = db.GetTableInsensitive(ctx, "mytable")
 		require.NoError(err)
@@ -2874,7 +2874,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.True(ok)
 
-		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS othertable, tabletest", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE IF EXISTS othertable, tabletest", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		_, ok, err = db.GetTableInsensitive(ctx, "othertable")
 		require.NoError(err)
@@ -2904,7 +2904,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		RunQueryWithContext(t, e, harness, ctx, "CREATE DATABASE otherdb")
 		otherdb, err := e.EngineAnalyzer().Catalog.Database(ctx, "otherdb")
 
-		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE mydb.one_pk", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "DROP TABLE mydb.one_pk", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		_, ok, err := db.GetTableInsensitive(ctx, "mydb.one_pk")
 		require.NoError(err)
@@ -3013,12 +3013,12 @@ func TestRenameTable(t *testing.T, harness Harness) {
 		if se, ok := e.(*ServerQueryEngine); ok {
 			se.NewConnection(ctx)
 		}
-		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.UntypedSqlRow{{nil}}, nil, nil, nil)
 
 		t.Skip("broken")
-		TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 		AssertErrWithCtx(t, e, harness, ctx, "SELECT COUNT(*) FROM mydb.emptytable", nil, sql.ErrTableNotFound)
-		TestQueryWithContext(t, ctx, e, harness, "SELECT COUNT(*) FROM mydb.emptytable2", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT COUNT(*) FROM mydb.emptytable2", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 		AssertErrWithCtx(t, e, harness, ctx, "RENAME TABLE mydb.emptytable2 TO emptytable3", nil, sql.ErrNoDatabaseSelected)
 	})
 }
@@ -3038,9 +3038,9 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		if se, ok := e.(*ServerQueryEngine); ok {
 			se.NewConnection(ctx)
 		}
-		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest RENAME COLUMN s TO i1", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.UntypedSqlRow{{nil}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest RENAME COLUMN s TO i1", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.UntypedSqlRow{
 			{"i", "int", nil, "NO", "PRI", nil, "", "", ""},
 			{"i1", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
 		}, nil, nil, nil)
@@ -3062,9 +3062,9 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		if se, ok := e.(*ServerQueryEngine); ok {
 			se.NewConnection(ctx)
 		}
-		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.UntypedSqlRow{{nil}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.UntypedSqlRow{
 			{"s3", "varchar(25)", "utf8mb4_0900_bin", "YES", "", "'yay'", "", "", "hello"},
 			{"s4", "varchar(1)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
 			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
@@ -3093,9 +3093,9 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		if se, ok := e.(*ServerQueryEngine); ok {
 			se.NewConnection(ctx)
 		}
-		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.UntypedSqlRow{{nil}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.UntypedSqlRow{
 			{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
 			{"s", "varchar(21)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed again"},
 			{"i2", "bigint", nil, "YES", "", nil, "", "", ""},
@@ -3119,9 +3119,9 @@ func TestDropColumn(t *testing.T, harness Harness) {
 			se.NewConnection(ctx)
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", nil, "", "", ""}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.UntypedSqlRow{{nil}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.UntypedSqlRow{{"i", "int", nil, "NO", "PRI", nil, "", "", ""}}, nil, nil, nil)
 	})
 }
 
@@ -3141,9 +3141,9 @@ func TestDropColumnKeylessTables(t *testing.T, harness Harness) {
 			se.NewConnection(ctx)
 		}
 
-		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{{"i", "int", nil, "NO", "PRI", nil, "", "", ""}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.UntypedSqlRow{{nil}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.UntypedSqlRow{{"i", "int", nil, "NO", "PRI", nil, "", "", ""}}, nil, nil, nil)
 	})
 }
 
@@ -3174,133 +3174,133 @@ func TestPkOrdinalsDML(t *testing.T, harness Harness) {
 		insert string
 		mutate string
 		sel    string
-		exp    []sql.Row
+		exp    []sql.UntypedSqlRow
 	}{
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,0,0,0), (1,1,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE x = 0",
 			sel:    "select * from a",
-			exp:    []sql.Row{{1, 1, 1, 1}, {2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{1, 1, 1, 1}, {2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x,w))",
 			insert: "INSERT INTO a values (0,0,0,0), (1,1,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE x = 0 and z = 0",
 			sel:    "select * from a",
-			exp:    []sql.Row{{1, 1, 1, 1}, {2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{1, 1, 1, 1}, {2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y = 2",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y in (2)",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y not in (NULL)",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y IS NOT NULL",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y IS NULL",
 			sel:    "select * from a",
-			exp:    []sql.Row{{2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y = NULL",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y = NULL or y in (2,4)",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y IS NULL or y in (2,4)",
 			sel:    "select * from a",
-			exp:    []sql.Row{},
+			exp:    []sql.UntypedSqlRow{},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y IS NULL AND z != 0",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y != NULL",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x,w))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE x in (0,2) and z in (0,4)",
 			sel:    "select * from a",
-			exp:    []sql.Row{{1, nil, 1, 1}, {2, 2, 2, 2}},
+			exp:    []sql.UntypedSqlRow{{1, nil, 1, 1}, {2, 2, 2, 2}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y in (2,-1)",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y < 3",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y > 0 and z = 2",
 			sel:    "select * from a",
-			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+			exp:    []sql.UntypedSqlRow{{0, nil, 0, 0}, {1, nil, 1, 1}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
 			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
 			mutate: "DELETE FROM a WHERE y = 2",
 			sel:    "select y from a",
-			exp:    []sql.Row{{nil}, {nil}},
+			exp:    []sql.UntypedSqlRow{{nil}, {nil}},
 		},
 		{
 			create: "CREATE TABLE a (x int, y int, z int, w int, index idx1 (y))",
 			insert: "INSERT INTO a values (0,0,0,0), (1,1,1,1), (2,2,2,2)",
 			mutate: "",
 			sel:    "select * from a where y = 3",
-			exp:    []sql.Row{},
+			exp:    []sql.UntypedSqlRow{},
 		},
 	}
 
@@ -3444,14 +3444,14 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE empty_tbl (a int, b int)")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM empty_tbl order by a`, []sql.Row{}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM empty_tbl order by a`, []sql.UntypedSqlRow{}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM empty_tbl order by a`, []sql.UntypedSqlRow{}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM empty_tbl order by a`, []sql.UntypedSqlRow{}, nil, nil, nil)
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE results (name varchar(20), subject varchar(20), mark int)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO results VALUES ('Pratibha', 'Maths', 100),('Ankita','Science',80),('Swarna','English',100),('Ankita','Maths',65),('Pratibha','Science',80),('Swarna','Science',50),('Pratibha','English',70),('Swarna','Maths',85),('Ankita','English',90)")
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.UntypedSqlRow{
 		{"English", "Swarna", 100, uint64(1)},
 		{"English", "Ankita", 90, uint64(2)},
 		{"English", "Pratibha", 70, uint64(3)},
@@ -3463,7 +3463,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{"Science", "Swarna", 50, uint64(3)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, dense_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, dense_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.UntypedSqlRow{
 		{"English", "Swarna", 100, uint64(1)},
 		{"English", "Ankita", 90, uint64(2)},
 		{"English", "Pratibha", 70, uint64(3)},
@@ -3475,7 +3475,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{"Science", "Swarna", 50, uint64(2)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, percent_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT subject, name, mark, percent_rank() OVER (partition by subject order by mark desc ) FROM results order by subject, mark desc, name`, []sql.UntypedSqlRow{
 		{"English", "Swarna", 100, float64(0)},
 		{"English", "Ankita", 90, float64(0.5)},
 		{"English", "Pratibha", 70, float64(1)},
@@ -3490,7 +3490,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t1 VALUES (0,0,0), (1,1,1), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0.0},
 		{1, 0.4},
 		{2, 0.8},
@@ -3499,7 +3499,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(3)},
 		{2, uint64(5)},
@@ -3508,7 +3508,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(6)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(2)},
 		{2, uint64(3)},
@@ -3517,7 +3517,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(4)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (order by b desc) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0.8},
 		{1, 0.4},
 		{2, 0.2},
@@ -3526,7 +3526,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 0.0},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (order by b desc) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(5)},
 		{1, uint64(3)},
 		{2, uint64(2)},
@@ -3535,7 +3535,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(1)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (order by b desc) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(4)},
 		{1, uint64(3)},
 		{2, uint64(2)},
@@ -3544,7 +3544,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(1)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by c order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0.0},
 		{1, 0.0},
 		{2, 0.75},
@@ -3553,7 +3553,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 1.0},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by c order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(1)},
 		{2, uint64(4)},
@@ -3562,7 +3562,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(5)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by c order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(1)},
 		{2, uint64(3)},
@@ -3571,7 +3571,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(4)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by b order by c) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0.0},
 		{1, 1.0},
 		{2, 0.0},
@@ -3580,7 +3580,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 0.0},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b order by c) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(2)},
 		{2, uint64(1)},
@@ -3589,7 +3589,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(1)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b order by c) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(2)},
 		{2, uint64(1)},
@@ -3599,7 +3599,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	}, nil, nil, nil)
 
 	// no order by clause -> all rows are peers
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, percent_rank() over (partition by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0.0},
 		{1, 0.0},
 		{2, 0.0},
@@ -3609,7 +3609,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	}, nil, nil, nil)
 
 	// no order by clause -> all rows are peers
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, rank() over (partition by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(1)},
 		{2, uint64(1)},
@@ -3619,7 +3619,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 	}, nil, nil, nil)
 
 	// no order by clause -> all rows are peers
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, dense_rank() over (partition by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, uint64(1)},
 		{1, uint64(1)},
 		{2, uint64(1)},
@@ -3628,7 +3628,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, uint64(1)},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{1, 1},
 		{2, 0},
@@ -3637,7 +3637,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 0},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(a) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(a) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{1, 1},
 		{2, 2},
@@ -3646,7 +3646,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 5},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(a-1) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(a-1) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, -1},
 		{1, 0},
 		{2, 1},
@@ -3655,7 +3655,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(c) over (partition by b order by a) FROM t1 order by a*b,a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, first_value(c) over (partition by b order by a) FROM t1 order by a*b,a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{3, 0},
 		{1, 1},
@@ -3664,7 +3664,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 0},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 2},
 		{1, nil},
 		{2, 3},
@@ -3673,7 +3673,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, nil},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 2},
 		{1, nil},
 		{2, 3},
@@ -3682,7 +3682,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, nil},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 4},
 		{1, nil},
 		{2, 5},
@@ -3691,7 +3691,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, nil},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 2},
 		{1, 0},
 		{2, 3},
@@ -3700,7 +3700,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{1, 1},
 		{2, 2},
@@ -3709,7 +3709,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 5},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 2},
 		{1, -1},
 		{2, 3},
@@ -3718,7 +3718,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, -1},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 4},
 		{1, -1},
 		{2, 5},
@@ -3727,7 +3727,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, -1},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lead('s') over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, "s"},
 		{1, nil},
 		{2, "s"},
@@ -3736,7 +3736,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, nil},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(b) over (partition by c order by b) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{1, 1},
 		{2, 2},
@@ -3745,7 +3745,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 3},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{1, 1},
 		{2, 2},
@@ -3754,7 +3754,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 5},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a-1) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(a-1) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, -1},
 		{1, 0},
 		{2, 1},
@@ -3763,7 +3763,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(c) over (partition by b order by c) FROM t1 order by a*b,a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, last_value(c) over (partition by b order by c) FROM t1 order by a*b,a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{3, 0},
 		{1, 1},
@@ -3772,7 +3772,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 0},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, nil},
 		{1, nil},
 		{2, 0},
@@ -3781,7 +3781,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, nil},
 		{1, nil},
 		{2, 0},
@@ -3790,7 +3790,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, nil},
 		{1, nil},
 		{2, 2},
@@ -3799,7 +3799,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 6},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, -1},
 		{1, 0},
 		{2, 0},
@@ -3808,7 +3808,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, 0},
 		{1, 1},
 		{2, 2},
@@ -3817,7 +3817,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 5},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, -1},
 		{1, -1},
 		{2, 0},
@@ -3826,7 +3826,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 4},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, -1},
 		{1, -1},
 		{2, -1},
@@ -3835,7 +3835,7 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 2},
 	}, nil, nil, nil)
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, lag('s') over (partition by c order by a) FROM t1 order by a`, []sql.UntypedSqlRow{
 		{0, nil},
 		{1, nil},
 		{2, "s"},
@@ -3849,37 +3849,37 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t2 (a int, b int, c int)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t2 VALUES (1,1,1), (3,2,2), (7,4,5)")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(a), bit_or(b), bit_xor(c) FROM t2`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(a), bit_or(b), bit_xor(c) FROM t2`, []sql.UntypedSqlRow{
 		{uint64(1), uint64(7), uint64(6)},
 	}, nil, nil, nil)
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t3 (x varchar(100))")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t3 VALUES ('these'), ('are'), ('strings')")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t3`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t3`, []sql.UntypedSqlRow{
 		{uint64(0)},
 	}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t3`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t3`, []sql.UntypedSqlRow{
 		{uint64(0)},
 	}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t3`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t3`, []sql.UntypedSqlRow{
 		{uint64(0)},
 	}, nil, nil, nil)
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t4 (x int)")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t4`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_and(x) from t4`, []sql.UntypedSqlRow{
 		{^uint64(0)},
 	}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t4`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_or(x) from t4`, []sql.UntypedSqlRow{
 		{uint64(0)},
 	}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t4`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT bit_xor(x) from t4`, []sql.UntypedSqlRow{
 		{uint64(0)},
 	}, nil, nil, nil)
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE t5 (a INTEGER, b INTEGER)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t5 VALUES (0,0), (0,1), (1,0), (1,1)")
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT a, b, row_number() over (partition by a, b) FROM t5 order by a, b`, []sql.Row{
+	TestQueryWithContext(t, ctx, e, harness, `SELECT a, b, row_number() over (partition by a, b) FROM t5 order by a, b`, []sql.UntypedSqlRow{
 		{0, 0, 1},
 		{0, 1, 1},
 		{1, 0, 1},
@@ -3895,18 +3895,18 @@ func TestWindowRowFrames(t *testing.T, harness Harness) {
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows unbounded preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows 2 preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and 1 following) FROM a order by x`, []sql.Row{{float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 1 preceding and current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and 2 following) FROM a order by x`, []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 1 preceding and 1 following) FROM a order by x`, []sql.Row{{float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 1 preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between unbounded preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 2 preceding and 1 preceding) FROM a order by x`, []sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows unbounded preceding) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows 2 preceding) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and 1 following) FROM a order by x`, []sql.UntypedSqlRow{{float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 1 preceding and current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and 2 following) FROM a order by x`, []sql.UntypedSqlRow{{float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between current row and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 1 preceding and 1 following) FROM a order by x`, []sql.UntypedSqlRow{{float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 1 preceding and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between unbounded preceding and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x rows between 2 preceding and 1 preceding) FROM a order by x`, []sql.UntypedSqlRow{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}}, nil, nil, nil)
 }
 
 func TestWindowRangeFrames(t *testing.T, harness Harness) {
@@ -3917,46 +3917,46 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range unbounded preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range 2 preceding) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and 1 following) FROM a order by x`, []sql.Row{{float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and 2 following) FROM a order by x`, []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and 1 following) FROM a order by x`, []sql.Row{{float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`, []sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range unbounded preceding) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range 2 preceding) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and 1 following) FROM a order by x`, []sql.UntypedSqlRow{{float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and 2 following) FROM a order by x`, []sql.UntypedSqlRow{{float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between current row and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and 1 following) FROM a order by x`, []sql.UntypedSqlRow{{float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 1 preceding and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`, []sql.UntypedSqlRow{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}}, nil, nil, nil)
 
 	// range framing without an order by clause
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and unbounded following) FROM a order by x`, []sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and unbounded following) FROM a order by x`, []sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and current row) FROM a order by x`, []sql.Row{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between unbounded preceding and current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and unbounded following) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by y range between current row and current row) FROM a order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(2)}, {float64(2)}, {float64(0)}, {float64(2)}, {float64(3)}}, nil, nil, nil)
 
 	// fixed frame size, 3 days
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO b VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-27'), (2,0,0, '2022-01-28'), (3,1,0,'2022-01-29'), (4,1,0,'2022-01-30'), (5,3,0,'2022-01-31')")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 2 DAY preceding and interval 1 DAY preceding) FROM b order by x`, []sql.Row{{nil}, {float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and interval 1 DAY following) FROM b order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY following and interval 2 DAY following) FROM b order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}, {float64(3)}, {nil}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range interval 1 DAY preceding) FROM b order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and current row) FROM b order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and unbounded following) FROM b order by x`, []sql.Row{{float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval 1 DAY following) FROM b order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(5)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 2 DAY preceding and interval 1 DAY preceding) FROM b order by x`, []sql.UntypedSqlRow{{nil}, {float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and interval 1 DAY following) FROM b order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY following and interval 2 DAY following) FROM b order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}, {float64(3)}, {nil}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range interval 1 DAY preceding) FROM b order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and current row) FROM b order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and unbounded following) FROM b order by x`, []sql.UntypedSqlRow{{float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval 1 DAY following) FROM b order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(5)}}, nil, nil, nil)
 
 	// variable range size, 1 or many days
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE c (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO c VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-26'), (2,0,0, '2022-01-26'), (3,1,0,'2022-01-27'), (4,1,0,'2022-01-29'), (5,3,0,'2022-01-30'), (6,0,0, '2022-02-03'), (7,1,0,'2022-02-03'), (8,1,0,'2022-02-04'), (9,3,0,'2022-02-04')")
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '2' DAY preceding and interval '1' DAY preceding) FROM c order by x`, []sql.Row{{nil}, {nil}, {nil}, {float64(0)}, {float64(1)}, {float64(1)}, {nil}, {nil}, {float64(1)}, {float64(1)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and interval '1' DAY following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and current row) FROM c order by x`, []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT avg(y) over (partition by z order by date range between interval '1' DAY preceding and unbounded following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(3) / float64(2)}, {float64(3) / float64(2)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval '1' DAY following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}, {float64(10)}, {float64(10)}, {float64(10)}, {float64(10)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`, []sql.Row{{1}, {1}, {1}, {1}, {1}, {0}, {2}, {2}, {0}, {0}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY preceding and interval '2' DAY following) FROM c order by x`, []sql.Row{{4}, {4}, {4}, {5}, {2}, {2}, {4}, {4}, {4}, {4}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '2' DAY preceding and interval '1' DAY preceding) FROM c order by x`, []sql.UntypedSqlRow{{nil}, {nil}, {nil}, {float64(0)}, {float64(1)}, {float64(1)}, {nil}, {nil}, {float64(1)}, {float64(1)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and interval '1' DAY following) FROM c order by x`, []sql.UntypedSqlRow{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and current row) FROM c order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT avg(y) over (partition by z order by date range between interval '1' DAY preceding and unbounded following) FROM c order by x`, []sql.UntypedSqlRow{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(3) / float64(2)}, {float64(3) / float64(2)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval '1' DAY following) FROM c order by x`, []sql.UntypedSqlRow{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}, {float64(10)}, {float64(10)}, {float64(10)}, {float64(10)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`, []sql.UntypedSqlRow{{1}, {1}, {1}, {1}, {1}, {0}, {2}, {2}, {0}, {0}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY preceding and interval '2' DAY following) FROM c order by x`, []sql.UntypedSqlRow{{4}, {4}, {4}, {5}, {2}, {2}, {4}, {4}, {4}, {4}}, nil, nil, nil)
 
 	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", nil, aggregation.ErrRangeInvalidOrderBy)
 	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", nil, sql.ErrInvalidValue)
@@ -3971,12 +3971,12 @@ func TestNamedWindows(t *testing.T, harness Harness) {
 	RunQueryWithContext(t, e, harness, ctx, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
 	RunQueryWithContext(t, e, harness, ctx, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows unbounded preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows current row) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w) FROM a WINDOW w as (partition by z order by x rows 2 preceding) order by x`, []sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil, nil)
-	TestQueryWithContext(t, ctx, e, harness, `SELECT row_number() over (w3) FROM a WINDOW w3 as (w2), w2 as (w1), w1 as (partition by z order by x) order by x`, []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}, {int64(5)}, {int64(6)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (order by z) order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w1) FROM a WINDOW w1 as (partition by z) order by x`, []sql.UntypedSqlRow{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows unbounded preceding) order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over w FROM a WINDOW w as (partition by z order by x rows current row) order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (w) FROM a WINDOW w as (partition by z order by x rows 2 preceding) order by x`, []sql.UntypedSqlRow{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, `SELECT row_number() over (w3) FROM a WINDOW w3 as (w2), w2 as (w1), w1 as (partition by z order by x) order by x`, []sql.UntypedSqlRow{{int64(1)}, {int64(2)}, {int64(3)}, {int64(4)}, {int64(5)}, {int64(6)}}, nil, nil, nil)
 
 	// errors
 	AssertErr(t, e, harness, "SELECT sum(y) over (w1 partition by x) FROM a WINDOW w1 as (partition by z) order by x", nil, sql.ErrInvalidWindowInheritance)
@@ -4000,7 +4000,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	TestQuery(t, harness, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
+	TestQuery(t, harness, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.UntypedSqlRow{
 		{"a_1", "b_1", "c_1", "d_1"},
 		{"a_2", "b_2", "c_2", "d_2"},
 		{"a_3", "b_3", "c_3", "d_3"},
@@ -4018,7 +4018,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	}})
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	TestQuery(t, harness, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
+	TestQuery(t, harness, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.UntypedSqlRow{
 		{"a_1", "b_1", "c_1"},
 		{"a_2", "b_2", "c_2"},
 		{"a_3", "b_3", "c_3"},
@@ -4036,7 +4036,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	}})
 	e := mustNewEngine(t, harness)
 	defer e.Close()
-	TestQuery(t, harness, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
+	TestQuery(t, harness, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.UntypedSqlRow{
 		{"a1", "b1"},
 		{"a1", "b2"},
 		{"a1", "b3"},
@@ -4063,7 +4063,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	TestQuery(t, harness, `SELECT table1.i, t, i2, t2, t3 FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`, []sql.Row{
+	TestQuery(t, harness, `SELECT table1.i, t, i2, t2, t3 FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`, []sql.UntypedSqlRow{
 		{int32(1), "table1", int32(1), "table2", "table3"},
 		{int32(1), "table1", int32(1), "table2", "table3"},
 	}, nil, nil)
@@ -4088,61 +4088,61 @@ func TestVariables(t *testing.T, harness Harness) {
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@binlog_row_metadata",
-			Expected: []sql.Row{{"MINIMAL"}},
+			Expected: []sql.UntypedSqlRow{{"MINIMAL"}},
 		},
 		{
 			Query:    "SELECT @@binlog_row_image",
-			Expected: []sql.Row{{"FULL"}},
+			Expected: []sql.UntypedSqlRow{{"FULL"}},
 		},
 		{
 			Query:    "SELECT @@binlog_expire_logs_seconds",
-			Expected: []sql.Row{{2592000}},
+			Expected: []sql.UntypedSqlRow{{2592000}},
 		},
 		{
 			Query:    "SELECT @@select_into_buffer_size",
-			Expected: []sql.Row{{131072}},
+			Expected: []sql.UntypedSqlRow{{131072}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
-			Expected: []sql.Row{{131072}},
+			Expected: []sql.UntypedSqlRow{{131072}},
 		},
 		{
 			Query:    "SET GLOBAL select_into_buffer_size = 9001",
-			Expected: []sql.Row{{}},
+			Expected: []sql.UntypedSqlRow{{}},
 		},
 		{
 			Query:    "SELECT @@SESSION.select_into_buffer_size",
-			Expected: []sql.Row{{131072}},
+			Expected: []sql.UntypedSqlRow{{131072}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
-			Expected: []sql.Row{{9001}},
+			Expected: []sql.UntypedSqlRow{{9001}},
 		},
 		{
 			Query:    "SET @@GLOBAL.select_into_buffer_size = 9002",
-			Expected: []sql.Row{{}},
+			Expected: []sql.UntypedSqlRow{{}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
-			Expected: []sql.Row{{9002}},
+			Expected: []sql.UntypedSqlRow{{9002}},
 		},
 		{
 			// For boolean types, OFF/ON is converted
 			Query:    "SET @@GLOBAL.activate_all_roles_on_login = 'ON'",
-			Expected: []sql.Row{{}},
+			Expected: []sql.UntypedSqlRow{{}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.activate_all_roles_on_login",
-			Expected: []sql.Row{{1}},
+			Expected: []sql.UntypedSqlRow{{1}},
 		},
 		{
 			// For non-boolean types, OFF/ON is not converted
 			Query:    "SET @@GLOBAL.delay_key_write = 'OFF'",
-			Expected: []sql.Row{{}},
+			Expected: []sql.UntypedSqlRow{{}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.delay_key_write",
-			Expected: []sql.Row{{"OFF"}},
+			Expected: []sql.UntypedSqlRow{{"OFF"}},
 		},
 	} {
 		t.Run(assertion.Query, func(t *testing.T) {
@@ -4156,15 +4156,15 @@ func TestVariables(t *testing.T, harness Harness) {
 	for _, assertion := range []queries.ScriptTestAssertion{
 		{
 			Query:    "SELECT @@select_into_buffer_size",
-			Expected: []sql.Row{{9002}},
+			Expected: []sql.UntypedSqlRow{{9002}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
-			Expected: []sql.Row{{9002}},
+			Expected: []sql.UntypedSqlRow{{9002}},
 		},
 		{
 			Query:    "SET GLOBAL select_into_buffer_size = 131072",
-			Expected: []sql.Row{{}},
+			Expected: []sql.UntypedSqlRow{{}},
 		},
 	} {
 		t.Run(assertion.Query, func(t *testing.T) {
@@ -4192,7 +4192,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v1": mustBuildBindVariable(1),
 						"v2": mustBuildBindVariable(1),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
@@ -4211,7 +4211,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v2": mustBuildBindVariable([]byte("10.5")),
 						"v3": mustBuildBindVariable(20.40),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1, InsertID: 1}},
 					},
 				},
@@ -4244,7 +4244,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v5": mustBuildBindVariable("milo"),
 						"v6": mustBuildBindVariable("on"),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 2}},
 					},
 				},
@@ -4258,13 +4258,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v5": mustBuildBindVariable("milo"),
 						"v6": mustBuildBindVariable("on"),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
 				{
 					Query: "select * from nodes",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"id1", "milo", "on", 1},
 						{"id2", "dabe", "off", 3},
 					},
@@ -4296,7 +4296,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v3": mustBuildBindVariable("on"),
 						"v4": mustBuildBindVariable(2),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 2}},
 					},
 				},
@@ -4308,13 +4308,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v3": mustBuildBindVariable("off"),
 						"v4": mustBuildBindVariable(3),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
 				{
 					Query: "select * from nodes",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"id1", "milo", "on", 1},
 						{"id2", "dabe", "off", 3},
 					},
@@ -4347,7 +4347,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v3": mustBuildBindVariable("dabe"),
 						"v4": mustBuildBindVariable("id1"),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 2}},
 					},
 				},
@@ -4359,13 +4359,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v3": mustBuildBindVariable("dabe"),
 						"v4": mustBuildBindVariable("id2"),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
 				{
 					Query: "select * from nodes",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"id1", "dabe", "off", "green", 1},
 						{"id2", "dabe", nil, "blue", 3},
 					},
@@ -4399,7 +4399,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v4": mustBuildBindVariable("green"),
 						"v5": mustBuildBindVariable(2),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 2}},
 					},
 				},
@@ -4412,13 +4412,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v4": mustBuildBindVariable("blue"),
 						"v5": mustBuildBindVariable(3),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
 				{
 					Query: "select * from nodes",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"id1", "dabe", "on", "green", 1},
 						{"id2", "dabe", "off", "blue", 3},
 					},
@@ -4453,7 +4453,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v4": mustBuildBindVariable("dabe"),
 						"v5": mustBuildBindVariable("id1"),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 2}},
 					},
 				},
@@ -4466,13 +4466,13 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 						"v4": mustBuildBindVariable("dabe"),
 						"v5": mustBuildBindVariable("id2"),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
 				{
 					Query: "select * from nodes",
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{"id1", "dabe", "off", "green", "medium", 1},
 						{"id2", "dabe", nil, "blue", "small", 3},
 					},
@@ -4505,7 +4505,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
@@ -4514,7 +4514,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable(string([]byte{0x99, 0x98, 0x97})),
 					},
-					Expected: []sql.Row{
+					Expected: []sql.UntypedSqlRow{
 						{types.OkResult{RowsAffected: 1}},
 					},
 				},
@@ -4591,7 +4591,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Query: `
 			SHOW WARNINGS
 			`,
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"Note", 1051, "Unknown table 'table3'"},
 				{"Note", 1051, "Unknown table 'table2'"},
 				{"Note", 1051, "Unknown table 'table1'"},
@@ -4601,7 +4601,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Query: `
 			SHOW WARNINGS LIMIT 1
 			`,
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"Note", 1051, "Unknown table 'table3'"},
 			},
 		},
@@ -4609,7 +4609,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Query: `
 			SHOW WARNINGS LIMIT 1,2
 			`,
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"Note", 1051, "Unknown table 'table2'"},
 				{"Note", 1051, "Unknown table 'table1'"},
 			},
@@ -4624,7 +4624,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Query: `
 			SHOW WARNINGS LIMIT 2,1
 			`,
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"Note", 1051, "Unknown table 'table1'"},
 			},
 		},
@@ -4632,7 +4632,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Query: `
 			SHOW WARNINGS LIMIT 10
 			`,
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"Note", 1051, "Unknown table 'table3'"},
 				{"Note", 1051, "Unknown table 'table2'"},
 				{"Note", 1051, "Unknown table 'table1'"},
@@ -4718,7 +4718,7 @@ func TestUse(t *testing.T, harness Harness) {
 		Assertions: []queries.ScriptTestAssertion{
 			{
 				Query:    "SELECT DATABASE();",
-				Expected: []sql.Row{{"mydb"}},
+				Expected: []sql.UntypedSqlRow{{"mydb"}},
 			},
 			{
 				Query:          "USE bar;",
@@ -4726,23 +4726,23 @@ func TestUse(t *testing.T, harness Harness) {
 			},
 			{
 				Query:    "SELECT DATABASE();",
-				Expected: []sql.Row{{"mydb"}},
+				Expected: []sql.UntypedSqlRow{{"mydb"}},
 			},
 			{
 				Query:    "USE foo;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT DATABASE();",
-				Expected: []sql.Row{{"foo"}},
+				Expected: []sql.UntypedSqlRow{{"foo"}},
 			},
 			{
 				Query:    "USE MYDB;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT DATABASE();",
-				Expected: []sql.Row{{"mydb"}},
+				Expected: []sql.UntypedSqlRow{{"mydb"}},
 			},
 		},
 	}
@@ -4886,43 +4886,43 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	q := []queries.QueryTest{
 		{
 			Query:    "SELECT i FROM mytable ORDER BY i",
-			Expected: []sql.Row{{1}, {2}},
+			Expected: []sql.UntypedSqlRow{{1}, {2}},
 		},
 		{
 			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 3) t",
-			Expected: []sql.Row{{1}, {2}},
+			Expected: []sql.UntypedSqlRow{{1}, {2}},
 		},
 		{
 			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
-			Expected: []sql.Row{{1}, {2}, {3}},
+			Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 		},
 		{
 			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i DESC) t ORDER BY i LIMIT 3",
-			Expected: []sql.Row{{1}, {2}, {3}},
+			Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 		},
 		{
 			Query:    "select count(*), y from a group by y;",
-			Expected: []sql.Row{{2, 1}, {3, 2}},
+			Expected: []sql.UntypedSqlRow{{2, 1}, {3, 2}},
 		},
 		{
 			Query:    "select count(*), y from (select y from a) b group by y;",
-			Expected: []sql.Row{{2, 1}, {3, 2}},
+			Expected: []sql.UntypedSqlRow{{2, 1}, {3, 2}},
 		},
 		{
 			Query:    "select count(*), y from (select y from a) b group by y;",
-			Expected: []sql.Row{{2, 1}, {3, 2}},
+			Expected: []sql.UntypedSqlRow{{2, 1}, {3, 2}},
 		},
 		{
 			Query:    "with b as (select y from a order by x) select * from b",
-			Expected: []sql.Row{{1}, {1}},
+			Expected: []sql.UntypedSqlRow{{1}, {1}},
 		},
 		{
 			Query:    "select x, row_number() over (partition by y) from a order by x;",
-			Expected: []sql.Row{{0, 1}, {1, 2}},
+			Expected: []sql.UntypedSqlRow{{0, 1}, {1, 2}},
 		},
 		{
 			Query:    "select y from a where x < 1 union select y from a where x > 1",
-			Expected: []sql.Row{{1}, {2}},
+			Expected: []sql.UntypedSqlRow{{1}, {2}},
 		},
 	}
 
@@ -5011,31 +5011,31 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 	testCases := []queries.QueryTest{
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(0)`,
-			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 0, time.UTC)}},
+			Expected: []sql.UntypedSqlRow{{time.Date(2000, time.December, 12, 10, 15, 45, 0, time.UTC)}},
 		},
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(1)`,
-			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 900000000, time.UTC)}},
+			Expected: []sql.UntypedSqlRow{{time.Date(2000, time.December, 12, 10, 15, 45, 900000000, time.UTC)}},
 		},
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(2)`,
-			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 980000000, time.UTC)}},
+			Expected: []sql.UntypedSqlRow{{time.Date(2000, time.December, 12, 10, 15, 45, 980000000, time.UTC)}},
 		},
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(3)`,
-			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987000000, time.UTC)}},
+			Expected: []sql.UntypedSqlRow{{time.Date(2000, time.December, 12, 10, 15, 45, 987000000, time.UTC)}},
 		},
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(4)`,
-			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987600000, time.UTC)}},
+			Expected: []sql.UntypedSqlRow{{time.Date(2000, time.December, 12, 10, 15, 45, 987600000, time.UTC)}},
 		},
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(5)`,
-			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987650000, time.UTC)}},
+			Expected: []sql.UntypedSqlRow{{time.Date(2000, time.December, 12, 10, 15, 45, 987650000, time.UTC)}},
 		},
 		{
 			Query:    `SELECT CURRENT_TIMESTAMP(6)`,
-			Expected: []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987654000, time.UTC)}},
+			Expected: []sql.UntypedSqlRow{{time.Date(2000, time.December, 12, 10, 15, 45, 987654000, time.UTC)}},
 		},
 	}
 
@@ -5197,7 +5197,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		// ctx = NewContext(harness)
 		// e.Query(ctx, "set @@session.time_zone='SYSTEM';")
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME(6) DEFAULT NOW(6), v2 DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),"+
-			"v3 TIMESTAMP(6) DEFAULT NOW(6), v4 TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6))", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+			"v3 TIMESTAMP(6) DEFAULT NOW(6), v4 TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6))", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		// truncating time to microseconds for compatibility with integrators who may store more precision (go gives nanos)
 		now := time.Now().Truncate(time.Microsecond).UTC()
@@ -5207,7 +5207,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			RunQueryWithContext(t, e, harness, nil, "insert into t10(pk) values (1)")
 			return nil
 		})
-		TestQueryWithContext(t, ctx, e, harness, "select * from t10 order by 1", []sql.Row{
+		TestQueryWithContext(t, ctx, e, harness, "select * from t10 order by 1", []sql.UntypedSqlRow{
 			{1, now, now, now, now},
 		}, nil, nil, nil)
 	})
@@ -5219,30 +5219,30 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			t.Skip("TODO: fix result formatting for server engine tests")
 		}
 		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
-			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "insert into t10zero(pk) values (1)")
 
 		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
-		TestQueryWithContext(t, ctx, e, harness, "select * from t10zero order by 1", []sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Timestamp.Zero()}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select * from t10zero order by 1", []sql.UntypedSqlRow{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), types.Timestamp.Zero()}}, nil, nil, nil)
 	})
 
 	t.Run("Non-DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP expression", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		now := time.Now()
 		expectedDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 		expectedDatetimeString := now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)
 		ctx.SetQueryTime(now)
 		RunQueryWithContext(t, e, harness, ctx, "insert into t11(pk) values (1)")
-		TestQueryWithContext(t, ctx, e, harness, "select * from t11 order by 1", []sql.Row{{1, expectedDate, expectedDatetimeString}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "select * from t11 order by 1", []sql.UntypedSqlRow{{1, expectedDate, expectedDatetimeString}}, nil, nil, nil)
 	})
 
 	t.Run("Table referenced with column", func(t *testing.T) {
-		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.UntypedSqlRow{{types.NewOkResult(0)}}, nil, nil, nil)
 
 		RunQueryWithContext(t, e, harness, ctx, "INSERT INTO t28 (pk) VALUES (1), (2)")
-		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28 order by 1", []sql.Row{{1, 1}, {2, 2}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "SELECT * FROM t28 order by 1", []sql.UntypedSqlRow{{1, 1}, {2, 2}}, nil, nil, nil)
 
 		ctx := NewContext(harness)
 		t28, _, err := e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
@@ -5258,23 +5258,23 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	q := []struct {
 		Name            string
 		Query           string
-		Expected        []sql.Row
+		Expected        []sql.UntypedSqlRow
 		ExpectedGlobal  interface{}
 		ExpectedPersist interface{}
 	}{
 		{
 			Query:           "SET PERSIST max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.UntypedSqlRow{{}},
 			ExpectedGlobal:  int64(1000),
 			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET @@PERSIST.max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.UntypedSqlRow{{}},
 			ExpectedGlobal:  int64(1000),
 			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET PERSIST_ONLY max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.UntypedSqlRow{{}},
 			ExpectedGlobal:  int64(151),
 			ExpectedPersist: int64(1000),
 		},
@@ -5297,7 +5297,7 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 				require.Equal(t, tt.ExpectedGlobal, res)
 
 				showGlobalVarsQuery := "SHOW GLOBAL VARIABLES LIKE 'max_connections'"
-				TestQueryWithContext(t, ctx, e, harness, showGlobalVarsQuery, []sql.Row{{"max_connections", tt.ExpectedGlobal}}, nil, nil, nil)
+				TestQueryWithContext(t, ctx, e, harness, showGlobalVarsQuery, []sql.UntypedSqlRow{{"max_connections", tt.ExpectedGlobal}}, nil, nil, nil)
 			}
 
 			if tt.ExpectedPersist != nil {
@@ -5332,7 +5332,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 	qtests := []queries.QueryTest{
 		{
 			Query:    "select 1,2 limit ?,?",
-			Expected: []sql.Row{{1, 2}},
+			Expected: []sql.UntypedSqlRow{{1, 2}},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(0.0),
 				"v2": mustBuildBindVariable(1.0),
@@ -5340,7 +5340,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{2, 1, 2}},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(2)),
@@ -5348,7 +5348,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a HAVING bar = ? ORDER BY foo, i",
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{2, 1, 2}},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(2)),
@@ -5357,14 +5357,14 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? ORDER BY foo, i;",
-			Expected: []sql.Row{},
+			Expected: []sql.UntypedSqlRow{},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(1)),
 			},
 		},
 		{
 			Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable HAVING bar = ? AND foo = ? ORDER BY foo, i;",
-			Expected: []sql.Row{},
+			Expected: []sql.UntypedSqlRow{},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(1)),
 				"v2": mustBuildBindVariable(int64(1)),
@@ -5372,7 +5372,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query: "SELECT ? * 2",
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{2},
 			},
 			Bindings: map[string]sqlparser.Expr{
@@ -5381,7 +5381,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query: "SELECT i from mytable where i in (?, ?) order by 1",
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{1},
 				{2},
 			},
@@ -5392,7 +5392,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query: "SELECT i from mytable where i = ? * 2",
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{2},
 			},
 			Bindings: map[string]sqlparser.Expr{
@@ -5401,7 +5401,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		},
 		{
 			Query: "SELECT i from mytable where 4 = ? * 2 order by 1",
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{1},
 				{2},
 				{3},
@@ -5415,14 +5415,14 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(1),
 			},
-			Expected: []sql.Row{{int64(1)}},
+			Expected: []sql.UntypedSqlRow{{int64(1)}},
 		},
 		{
 			Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(1),
 			},
-			Expected: []sql.Row{{int64(3)}},
+			Expected: []sql.UntypedSqlRow{{int64(3)}},
 		},
 		// todo(max): sort function expressions w/ bindvars are aliased incorrectly
 		// {
@@ -5431,7 +5431,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 		//		"v1": querypb.&query{Val: 1, Type: sql.Int8},
 		//		"v2": {Value: mustConvertToValue().Val1, Type: sql.Int8},
 		//	},
-		//	Expected: []sql.Row{{float64(3)}},
+		//	Expected: []sql.UntypedSqlRow{{float64(3)}},
 		// },
 		{
 			Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
@@ -5439,7 +5439,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 				"v1": mustBuildBindVariable(1),
 				"v2": mustBuildBindVariable(1),
 			},
-			Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
+			Expected: []sql.UntypedSqlRow{{float64(3)}, {float64(3)}, {float64(3)}},
 		},
 		{
 			Query: "With x as (select sum(?) from mytable) select sum(?) from x ORDER BY (select sum(?) from mytable)",
@@ -5448,7 +5448,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 				"v2": mustBuildBindVariable(1),
 				"v3": mustBuildBindVariable(1),
 			},
-			Expected: []sql.Row{{float64(1)}},
+			Expected: []sql.UntypedSqlRow{{float64(1)}},
 		},
 		{
 			Query: "SELECT CAST(? as CHAR) UNION SELECT CAST(? as CHAR)",
@@ -5456,64 +5456,64 @@ func TestPrepared(t *testing.T, harness Harness) {
 				"v1": mustBuildBindVariable(1),
 				"v2": mustBuildBindVariable("1"),
 			},
-			Expected: []sql.Row{{"1"}},
+			Expected: []sql.UntypedSqlRow{{"1"}},
 		},
 		{
 			Query: "SELECT GET_LOCK(?, 10)",
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("10"),
 			},
-			Expected: []sql.Row{{1}},
+			Expected: []sql.UntypedSqlRow{{1}},
 		},
 		{
 			Query: "Select IS_FREE_LOCK(?)",
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("10"),
 			},
-			Expected: []sql.Row{{0}},
+			Expected: []sql.UntypedSqlRow{{0}},
 		},
 		{
 			Query: "Select IS_USED_LOCK(?)",
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("10"),
 			},
-			Expected: []sql.Row{{uint64(1)}},
+			Expected: []sql.UntypedSqlRow{{uint64(1)}},
 		},
 		{
 			Query: "Select RELEASE_LOCK(?)",
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("10"),
 			},
-			Expected: []sql.Row{{1}},
+			Expected: []sql.UntypedSqlRow{{1}},
 		},
 		{
 			Query:    "Select RELEASE_ALL_LOCKS()",
-			Expected: []sql.Row{{0}},
+			Expected: []sql.UntypedSqlRow{{0}},
 		},
 		{
 			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
-			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Expected: []sql.UntypedSqlRow{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(TIMESTAMP(?), INTERVAL 1 DAY);",
-			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Expected: []sql.UntypedSqlRow{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
-			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Expected: []sql.UntypedSqlRow{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(time.Date(2022, time.October, 26, 13, 14, 15, 0, time.UTC)),
 			},
 		},
 		{
 			Query:    "SELECT DATE_ADD(?, INTERVAL 1 DAY);",
-			Expected: []sql.Row{{"2022-10-27 13:14:15"}},
+			Expected: []sql.UntypedSqlRow{{"2022-10-27 13:14:15"}},
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable("2022-10-26 13:14:15"),
 			},
@@ -5561,7 +5561,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(2)),
 			},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{2, float64(4)},
 			},
 		},
@@ -5569,7 +5569,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(2)),
 			},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{2, float64(4)},
 			},
 		},
@@ -5577,7 +5577,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(0)),
 			},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{1, float64(2)},
 				{2, float64(4)},
 			},
@@ -5586,7 +5586,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(3)),
 			},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{2, float64(2)},
 			},
 		},
@@ -5594,7 +5594,7 @@ func TestPrepared(t *testing.T, harness Harness) {
 			Bindings: map[string]sqlparser.Expr{
 				"v1": mustBuildBindVariable(int64(1)),
 			},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{1, float64(1)},
 				{2, float64(4)},
 			},
@@ -5654,7 +5654,7 @@ func TestCharsetCollationEngine(t *testing.T, harness Harness) {
 						require.NoError(t, err)
 						rows, err := sql.RowIterToRows(ctx, iter)
 						require.NoError(t, err)
-						require.Equal(t, query.Expected, rows)
+						require.Equal(t, query.Expected, sql.RowsToUntyped(rows))
 					}
 				})
 			}
@@ -5738,7 +5738,7 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 							}
 							err = r.Scan(interfaceRow...)
 							require.NoError(t, err)
-							outRow := make(sql.Row, len(connRow))
+							outRow := make(sql.UntypedSqlRow, len(connRow))
 							for i, str := range connRow {
 								if str == nil {
 									outRow[i] = nil
@@ -5840,7 +5840,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 						}
 						expectedRow := expectedRowSet[expectedRowIdx]
 						expectedRowIdx++
-						connRow := make([]*string, len(engineRow))
+						connRow := make([]*string, engineRow.Len())
 						interfaceRow := make([]any, len(connRow))
 						for i := range connRow {
 							interfaceRow[i] = &connRow[i]
@@ -5849,7 +5849,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 						if !assert.NoError(t, err) {
 							break
 						}
-						expectedEngineRow := make([]*string, len(engineRow))
+						expectedEngineRow := make([]*string, engineRow.Len())
 						row, err := server.RowToSQL(ctx, sch, engineRow, nil, buf)
 						if !assert.NoError(t, err) {
 							break
@@ -6063,18 +6063,6 @@ func TestBlobs(t *testing.T, h Harness) {
 
 func TestIndexes(t *testing.T, h Harness) {
 	for _, tt := range queries.IndexQueries {
-		TestScript(t, h, tt)
-	}
-}
-
-func TestVectorIndexes(t *testing.T, h Harness) {
-	for _, tt := range queries.VectorIndexQueries {
-		TestScript(t, h, tt)
-	}
-}
-
-func TestVectorFunctions(t *testing.T, h Harness) {
-	for _, tt := range queries.VectorFunctionQueries {
 		TestScript(t, h, tt)
 	}
 }

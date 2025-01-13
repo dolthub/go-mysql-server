@@ -255,11 +255,11 @@ func TestWindowRangeFramers(t *testing.T) {
 		},
 	}
 
-	buffer := []sql.Row{
+	buffer := ConvertDefaultSqlSliceToInterface([]sql.UntypedSqlRow{
 		{0, 1}, {0, 1}, {0, 2}, {0, 4}, {0, 6}, {0, 6}, {0, 7}, {0, 8}, {0, 8}, {0, 9},
 		{1, 1}, {1, 1}, {1, 2}, {1, 4}, {1, 6}, {1, 6},
 		{2, 1}, {2, 2}, {2, 3},
-	}
+	})
 	partitions := []sql.WindowInterval{
 		{}, // nil rows creates one empty partition
 		{Start: 0, End: 10},
@@ -296,6 +296,14 @@ func TestWindowRangeFramers(t *testing.T) {
 			require.Equal(t, tt.Expected, res)
 		})
 	}
+}
+
+func ConvertDefaultSqlSliceToInterface(in []sql.UntypedSqlRow) []sql.Row {
+	out := make([]sql.Row, len(in))
+	for i, r := range in {
+		out[i] = r
+	}
+	return out
 }
 
 type dummyFrame struct{}

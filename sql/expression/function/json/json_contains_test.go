@@ -73,66 +73,66 @@ func TestJSONContains(t *testing.T) {
 		err      error
 	}{
 		// JSON Array Tests
-		{f2, sql.Row{`[1, [1, 2, 3], 10]`, `[1, 10]`}, true, nil},
-		{f2, sql.Row{`[1, [1, 2, 3, 10]]`, `[1, 10]`}, true, nil},
-		{f2, sql.Row{`[1, [1, 2, 3], [10]]`, `[1, [10]]`}, true, nil},
-		{f2, sql.Row{`[1, [1, 2, 3], [10]]`, `1`}, true, nil},
-		{f2, sql.Row{`[1, [1, 2, 3], [10], {"e": 1, "f": 2}]`, `{"e": 1}`}, true, nil},
-		{f2, sql.Row{`[1, [1, 2, 3], [10], {"e": [6, 7], "f": 2}]`, `[6, 7]`}, false, nil},
+		{f2, sql.UntypedSqlRow{`[1, [1, 2, 3], 10]`, `[1, 10]`}, true, nil},
+		{f2, sql.UntypedSqlRow{`[1, [1, 2, 3, 10]]`, `[1, 10]`}, true, nil},
+		{f2, sql.UntypedSqlRow{`[1, [1, 2, 3], [10]]`, `[1, [10]]`}, true, nil},
+		{f2, sql.UntypedSqlRow{`[1, [1, 2, 3], [10]]`, `1`}, true, nil},
+		{f2, sql.UntypedSqlRow{`[1, [1, 2, 3], [10], {"e": 1, "f": 2}]`, `{"e": 1}`}, true, nil},
+		{f2, sql.UntypedSqlRow{`[1, [1, 2, 3], [10], {"e": [6, 7], "f": 2}]`, `[6, 7]`}, false, nil},
 
 		// JSON Object Tests
-		{f2, sql.Row{`{"b": {"a": [1, 2, 3]}}`, `{"a": [1]}`}, false, nil},
-		{f2, sql.Row{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": [1]}`}, true, nil},
-		{f2, sql.Row{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": []}`}, true, nil},
-		{f2, sql.Row{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": {}}`}, false, nil},
-		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `{"a": [2, 4]}`}, true, nil},
-		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `[2]`}, false, nil},
-		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `2`}, false, nil},
-		{f2, sql.Row{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `"foo"`}, false, nil},
-		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"a\": {\"foo\": [1]}}"}, true, nil},
-		{f2, sql.Row{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"foo\": [1]}"}, false, nil},
-		{f2, sql.Row{`null`, `null`}, true, nil},
-		{f2, sql.Row{`null`, `1`}, false, nil},
+		{f2, sql.UntypedSqlRow{`{"b": {"a": [1, 2, 3]}}`, `{"a": [1]}`}, false, nil},
+		{f2, sql.UntypedSqlRow{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": [1]}`}, true, nil},
+		{f2, sql.UntypedSqlRow{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": []}`}, true, nil},
+		{f2, sql.UntypedSqlRow{`{"a": [1, 2, 3, 4], "b": {"c": "foo", "d": true}}`, `{"a": {}}`}, false, nil},
+		{f2, sql.UntypedSqlRow{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `{"a": [2, 4]}`}, true, nil},
+		{f2, sql.UntypedSqlRow{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `[2]`}, false, nil},
+		{f2, sql.UntypedSqlRow{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `2`}, false, nil},
+		{f2, sql.UntypedSqlRow{`{"a": [1, [2, 3], 4], "b": {"c": "foo", "d": true}}`, `"foo"`}, false, nil},
+		{f2, sql.UntypedSqlRow{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"a\": {\"foo\": [1]}}"}, true, nil},
+		{f2, sql.UntypedSqlRow{"{\"a\": {\"foo\": [1, 2, 3]}}", "{\"foo\": [1]}"}, false, nil},
+		{f2, sql.UntypedSqlRow{`null`, `null`}, true, nil},
+		{f2, sql.UntypedSqlRow{`null`, `1`}, false, nil},
 
 		// Path Tests
-		{f, sql.Row{json, json, "FOO"}, nil, errors.New("Invalid JSON path expression. Path must start with '$', but received: 'FOO'")},
-		{f, sql.Row{1, nil, "$.a"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_contains")},
-		{f, sql.Row{`{"a"`, nil, "$.a"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", `{"a"`)},
-		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, sql.ErrInvalidJSONArgument.New(2, "json_contains")},
-		{f, sql.Row{json, `}"a"`, "$.e[0][*]"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", `}"a"`)},
-		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
-		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
-		{f, sql.Row{json, json, "$.foo"}, nil, nil},
-		{f, sql.Row{json, `"foo"`, "$.b.c"}, true, nil},
-		{f, sql.Row{json, `1`, "$.e[0][0]"}, true, nil},
-		{f, sql.Row{json, `1`, "$.e[0][*]"}, true, nil},
-		{f, sql.Row{json, `1`, "$.e[0][0]"}, true, nil},
-		{f, sql.Row{json, `[1, 2]`, "$.e[0][*]"}, true, nil},
-		{f, sql.Row{json, `[1, 2]`, "$.e[0]"}, true, nil},
-		{f, sql.Row{json, json, "$"}, true, nil},       // reflexivity
-		{f, sql.Row{json, goodMap, "$.e"}, false, nil}, // The path statement selects an array, which does not contain goodMap
-		{f, sql.Row{json, badMap, "$"}, false, nil},    // false due to key name difference
-		{f, sql.Row{json, goodMap, "$"}, true, nil},
+		{f, sql.UntypedSqlRow{json, json, "FOO"}, nil, errors.New("Invalid JSON path expression. Path must start with '$', but received: 'FOO'")},
+		{f, sql.UntypedSqlRow{1, nil, "$.a"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_contains")},
+		{f, sql.UntypedSqlRow{`{"a"`, nil, "$.a"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", `{"a"`)},
+		{f, sql.UntypedSqlRow{json, 2, "$.e[0][*]"}, nil, sql.ErrInvalidJSONArgument.New(2, "json_contains")},
+		{f, sql.UntypedSqlRow{json, `}"a"`, "$.e[0][*]"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", `}"a"`)},
+		{f, sql.UntypedSqlRow{nil, json, "$.b.c"}, nil, nil},
+		{f, sql.UntypedSqlRow{json, nil, "$.b.c"}, nil, nil},
+		{f, sql.UntypedSqlRow{json, json, "$.foo"}, nil, nil},
+		{f, sql.UntypedSqlRow{json, `"foo"`, "$.b.c"}, true, nil},
+		{f, sql.UntypedSqlRow{json, `1`, "$.e[0][0]"}, true, nil},
+		{f, sql.UntypedSqlRow{json, `1`, "$.e[0][*]"}, true, nil},
+		{f, sql.UntypedSqlRow{json, `1`, "$.e[0][0]"}, true, nil},
+		{f, sql.UntypedSqlRow{json, `[1, 2]`, "$.e[0][*]"}, true, nil},
+		{f, sql.UntypedSqlRow{json, `[1, 2]`, "$.e[0]"}, true, nil},
+		{f, sql.UntypedSqlRow{json, json, "$"}, true, nil},       // reflexivity
+		{f, sql.UntypedSqlRow{json, goodMap, "$.e"}, false, nil}, // The path statement selects an array, which does not contain goodMap
+		{f, sql.UntypedSqlRow{json, badMap, "$"}, false, nil},    // false due to key name difference
+		{f, sql.UntypedSqlRow{json, goodMap, "$"}, true, nil},
 		// The only allowed path for a scalar document is "$"
-		{f, sql.Row{`null`, `10`, "$"}, false, nil},
-		{f, sql.Row{`null`, `null`, "$"}, true, nil},
-		{f, sql.Row{`10`, `10`, "$"}, true, nil},
-		{f, sql.Row{`10`, `null`, "$"}, false, nil},
-		{f, sql.Row{`null`, `10`, "$.b"}, nil, nil},
-		{f, sql.Row{`10`, `null`, "$.b"}, nil, nil},
+		{f, sql.UntypedSqlRow{`null`, `10`, "$"}, false, nil},
+		{f, sql.UntypedSqlRow{`null`, `null`, "$"}, true, nil},
+		{f, sql.UntypedSqlRow{`10`, `10`, "$"}, true, nil},
+		{f, sql.UntypedSqlRow{`10`, `null`, "$"}, false, nil},
+		{f, sql.UntypedSqlRow{`null`, `10`, "$.b"}, nil, nil},
+		{f, sql.UntypedSqlRow{`10`, `null`, "$.b"}, nil, nil},
 		// JSON_CONTAINS can successfully look up JSON NULL with a path
-		{f, sql.Row{`{"a": null}`, `null`, "$.a"}, true, nil},
+		{f, sql.UntypedSqlRow{`{"a": null}`, `null`, "$.a"}, true, nil},
 
 		// Miscellaneous Tests
-		{f2, sql.Row{json, `[1, 2]`}, false, nil}, // When testing containment against a map, scalars and arrays always return false
-		{f2, sql.Row{"[1,2,3,4]", `[1, 2]`}, true, nil},
-		{f2, sql.Row{"[1,2,3,4]", `1`}, true, nil},
-		{f2, sql.Row{`["apple", "orange", "banana"]`, `"orange"`}, true, nil},
-		{f2, sql.Row{`"hello"`, `"hello"`}, true, nil},
-		{f2, sql.Row{"{}", "{}"}, true, nil},
-		{f2, sql.Row{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "hello")},
-		{f2, sql.Row{"[1,2", "[1]"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "[1,2")},
-		{f2, sql.Row{"[1,2]", "[1"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", "[1")},
+		{f2, sql.UntypedSqlRow{json, `[1, 2]`}, false, nil}, // When testing containment against a map, scalars and arrays always return false
+		{f2, sql.UntypedSqlRow{"[1,2,3,4]", `[1, 2]`}, true, nil},
+		{f2, sql.UntypedSqlRow{"[1,2,3,4]", `1`}, true, nil},
+		{f2, sql.UntypedSqlRow{`["apple", "orange", "banana"]`, `"orange"`}, true, nil},
+		{f2, sql.UntypedSqlRow{`"hello"`, `"hello"`}, true, nil},
+		{f2, sql.UntypedSqlRow{"{}", "{}"}, true, nil},
+		{f2, sql.UntypedSqlRow{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "hello")},
+		{f2, sql.UntypedSqlRow{"[1,2", "[1]"}, nil, sql.ErrInvalidJSONText.New(1, "json_contains", "[1,2")},
+		{f2, sql.UntypedSqlRow{"[1,2]", "[1"}, nil, sql.ErrInvalidJSONText.New(2, "json_contains", "[1")},
 	}
 
 	for _, tt := range testCases {

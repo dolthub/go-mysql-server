@@ -82,7 +82,7 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if err != nil {
 		return nil, err
 	}
-	return sql.RowsToRowIter(sql.Row{v}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{v}), nil
 }
 
 func (t *TableFunctionWrapper) Resolved() bool {

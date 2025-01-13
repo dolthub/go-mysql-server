@@ -27,76 +27,76 @@ import (
 var InsertQueries = []WriteQueryTest{
 	{
 		WriteQuery:          "INSERT INTO keyless VALUES ();",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
-		ExpectedSelect:      []sql.Row{{nil, nil}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{nil, nil}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO keyless () VALUES ();",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
-		ExpectedSelect:      []sql.Row{{nil, nil}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{nil, nil}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '10.0');",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(10)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(10)}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '64.6');",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(65)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(65)}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', 999);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 	},
 	{
 		WriteQuery:          "INSERT INTO niltable (i, f) VALUES (10, 10.0), (12, 12.0);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT i,f FROM niltable WHERE f IN (10.0, 12.0) ORDER BY f;",
-		ExpectedSelect:      []sql.Row{{int64(10), 10.0}, {int64(12), 12.0}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(10), 10.0}, {int64(12), 12.0}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET s = 'x', i = 999;",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (999, 'x');",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET i = 999, s = 'x';",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
-		ExpectedSelect:      []sql.Row{{int64(999)}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999)}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable VALUES (999, _binary 'x');",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
-		ExpectedSelect:      []sql.Row{{"x"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{"x"}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SET i = 999, s = _binary 'x';",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
-		ExpectedSelect:      []sql.Row{{"x"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{"x"}},
 		Dialect:             "mysql",
 	},
 	{
@@ -107,9 +107,9 @@ var InsertQueries = []WriteQueryTest{
 			'2037-04-05 12:51:36', '2231-11-07',
 			'random text', true, '{"key":"value"}', 'blobdata', 'v1', 'v2'
 			);`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
@@ -125,9 +125,9 @@ var InsertQueries = []WriteQueryTest{
 			ti = '2037-04-05 12:51:36', da = '2231-11-07',
 			te = 'random text', bo = true, js = '{"key":"value"}', bl = 'blobdata', e1 = 'v1', s1 = 'v2'
 			;`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
@@ -144,9 +144,9 @@ var InsertQueries = []WriteQueryTest{
 			'0000-00-00 00:00:00', '0000-00-00',
 			'', false, '""', '', '', ''
 			);`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
@@ -163,9 +163,9 @@ var InsertQueries = []WriteQueryTest{
 			ti = '0000-00-00 00:00:00', da = '0000-00-00',
 			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
@@ -182,9 +182,9 @@ var InsertQueries = []WriteQueryTest{
 			ti = '2037-04-05 12:51:36 -0000 UTC', da = '0000-00-00',
 			te = '', bo = false, js = '""', bl = '', e1 = 'v1', s1 = 'v2'
 			;`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect: []sql.Row{{
+		ExpectedSelect: []sql.UntypedSqlRow{{
 			int64(999), int8(-math.MaxInt8 - 1), int16(-math.MaxInt16 - 1), int32(-math.MaxInt32 - 1), int64(-math.MaxInt64 - 1),
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
@@ -194,35 +194,35 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `INSERT INTO mytable (i,s) VALUES (10, 'NULL')`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 10;",
-		ExpectedSelect:      []sql.Row{{int64(10), "NULL"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(10), "NULL"}},
 	},
 	{
 		WriteQuery: `INSERT INTO typestable VALUES (999, null, null, null, null, null, null, null, null,
 			null, null, null, null, null, null, null, null, null, null);`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 	},
 	{
 		WriteQuery:          `INSERT INTO typestable (id, ti, da) VALUES (999, '2021-09-1', '2021-9-01');`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT id, ti, da FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), sql.MustConvert(types.Timestamp.Convert("2021-09-01")), sql.MustConvert(types.Date.Convert("2021-09-01"))}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999), sql.MustConvert(types.Timestamp.Convert("2021-09-01")), sql.MustConvert(types.Date.Convert("2021-09-01"))}},
 	},
 	{
 		WriteQuery: `INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
 			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null, e1=null, s1=null;`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
-		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SELECT i+100,s FROM mytable",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -233,9 +233,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable SELECT * FROM mytable",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -243,25 +243,25 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable SELECT * FROM mytable where mytable.i > 2",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(3), "third row"},
 		},
 	},
 	{
 		WriteQuery:          "INSERT INTO niltable (i,f) SELECT i+10, NULL FROM mytable where mytable.i > 2",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM niltable where i > 10 ORDER BY i",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{13, nil, nil, nil},
 		},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT i+10, 'new' FROM mytable",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -272,9 +272,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable SELECT i2+100, s2 FROM othertable",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i,s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -285,9 +285,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable (s,i) SELECT * FROM othertable",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "third"},
 			{int64(2), "second"},
 			{int64(3), "first"},
@@ -295,9 +295,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable (s,i) SELECT concat(m.s, o.s2), m.i FROM othertable o JOIN mytable m ON m.i=o.i2",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first rowthird"},
 			{int64(2), "second rowsecond"},
 			{int64(3), "third rowfirst"},
@@ -306,9 +306,9 @@ var InsertQueries = []WriteQueryTest{
 	{
 		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1
 			union select s,i from mytable where i = 3`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(3), "third row"},
 		},
@@ -317,9 +317,9 @@ var InsertQueries = []WriteQueryTest{
 		WriteQuery: `INSERT INTO emptytable (s,i) SELECT s,i from mytable where i = 1
 			union select s,i from mytable where i = 3
 			union select s,i from mytable where i > 2`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(3), "third row"},
 		},
@@ -329,9 +329,9 @@ var InsertQueries = []WriteQueryTest{
 			SELECT s,i from mytable where i = 1
 			union all select s,i+1 from mytable where i < 2
 			union all select s,i+2 from mytable where i in (1)`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "first row"},
 			{int64(3), "first row"},
@@ -339,9 +339,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO emptytable (s,i) SELECT distinct s,i from mytable",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM emptytable ORDER BY i,s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -349,9 +349,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT (i + 10.0) / 10.0 + 10 + i, concat(s, ' new') FROM mytable",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i, s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
@@ -362,9 +362,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT CHAR_LENGTH(s), concat('numrows: ', count(*)) from mytable group by 1",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i, s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -374,9 +374,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT CHAR_LENGTH(s) as len, concat('numrows: ', count(*)) from mytable group by 1 HAVING len > 9",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i, s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -385,9 +385,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT i * 2, concat(s,s) from mytable order by 1 desc limit 1",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i, s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -396,9 +396,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) SELECT i + 3, concat(s,s) from mytable order by 1 desc",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY i, s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -412,9 +412,9 @@ var InsertQueries = []WriteQueryTest{
 				FROM othertable ot INNER JOIN
 					(SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
 				ON sub.i = ot.i2 order by 1`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable where i > 10 ORDER BY i, s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{11, "third"},
 			{12, "second"},
 			{13, "first"},
@@ -424,9 +424,9 @@ var InsertQueries = []WriteQueryTest{
 		WriteQuery: `INSERT INTO mytable (i,s) SELECT sub.i + 10, ot.s2
 				FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub
 				INNER JOIN othertable ot ON sub.i = ot.i2 order by 1`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(3)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable where i > 10 ORDER BY i, s",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{11, "third"},
 			{12, "second"},
 			{13, "first"},
@@ -434,33 +434,33 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
-		ExpectedSelect:      []sql.Row{{int64(1), "hello"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "hello"}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
-		ExpectedSelect:      []sql.Row{{int64(1), "hello3"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "hello3"}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello') ON DUPLICATE KEY UPDATE i=10",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 10",
-		ExpectedSelect:      []sql.Row{{int64(10), "first row"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(10), "first row"}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello2') ON DUPLICATE KEY UPDATE s='hello3'",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
-		ExpectedSelect:      []sql.Row{{int64(1), "hello3"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "hello3"}},
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hello2'), (2, 'hello3'), (4, 'no conflict') ON DUPLICATE KEY UPDATE s='hello4'",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(5)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(5)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY 1",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, "hello4"},
 			{2, "hello4"},
 			{3, "third row"},
@@ -469,9 +469,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (10, 'hello') ON DUPLICATE KEY UPDATE s='hello'",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM mytable ORDER BY 1",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
@@ -480,51 +480,51 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'hi') ON DUPLICATE KEY UPDATE s=VALUES(s)",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
-		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "hi"}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt(new_i,new_s) ON DUPLICATE KEY UPDATE s=new_s",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
-		ExpectedSelect:      []sql.Row{{int64(1), "hi"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "hi"}},
 		Skip:                true, // https://github.com/dolthub/dolt/issues/7638
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1, 'hi') AS dt ON DUPLICATE KEY UPDATE mytable.s=dt.s",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
-		ExpectedSelect:      []sql.Row{{int64(1), "hir"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "hir"}},
 		Skip:                true, // https://github.com/dolthub/dolt/issues/7638
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (s,i) values ('dup',1) ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'licate')",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 1",
-		ExpectedSelect:      []sql.Row{{int64(1), "duplicate"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "duplicate"}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'mar'), (2,'par') ON DUPLICATE KEY UPDATE s=CONCAT(VALUES(s), 'tial')",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(4)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i IN (1,2) ORDER BY i",
-		ExpectedSelect:      []sql.Row{{int64(1), "martial"}, {int64(2), "partial"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(1), "martial"}, {int64(2), "partial"}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO mytable (i,s) values (1,'maybe') ON DUPLICATE KEY UPDATE i=VALUES(i)+8000, s=VALUES(s)",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable WHERE i = 8001",
-		ExpectedSelect:      []sql.Row{{int64(8001), "maybe"}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{int64(8001), "maybe"}},
 		Dialect:             "mysql",
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 11},
 			{2, 22},
 			{3, 33},
@@ -533,9 +533,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44),(55)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 4}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 11},
 			{2, 22},
 			{3, 33},
@@ -545,9 +545,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (NULL, 44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 11},
 			{2, 22},
 			{3, 33},
@@ -557,9 +557,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (0, 44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 11},
 			{2, 22},
 			{3, 33},
@@ -569,9 +569,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (5, 44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 11},
 			{2, 22},
 			{3, 33},
@@ -581,9 +581,9 @@ var InsertQueries = []WriteQueryTest{
 	{
 		WriteQuery: "INSERT INTO auto_increment_tbl values " +
 			"(NULL, 44), (NULL, 55), (9, 99), (NULL, 110), (NULL, 121)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 5, InsertID: 4}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 5, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 11},
 			{2, 22},
 			{3, 33},
@@ -597,9 +597,9 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `INSERT INTO auto_increment_tbl (c0) SELECT 44 FROM dual`,
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 11},
 			{2, 22},
 			{3, 33},
@@ -609,44 +609,44 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `INSERT INTO othertable VALUES ("fourth", 1) ON DUPLICATE KEY UPDATE s2="fourth"`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM othertable",
-		ExpectedSelect: []sql.Row{
-			sql.NewRow("first", int64(3)),
-			sql.NewRow("second", int64(2)),
-			sql.NewRow("fourth", int64(1)),
+		ExpectedSelect: []sql.UntypedSqlRow{
+			{"first", int64(3)},
+			{"second", int64(2)},
+			{"fourth", int64(1)},
 		},
 	},
 	{
 		WriteQuery:          `INSERT INTO othertable(S2,I2) values ('fourth',0)`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         `SELECT * FROM othertable where s2='fourth'`,
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{"fourth", 0},
 		},
 	},
 	{
 		WriteQuery:          `INSERT INTO auto_increment_tbl VALUES ('4', 44)`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         `SELECT * from auto_increment_tbl where pk=4`,
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{4, 44},
 		},
 	},
 	{
 		WriteQuery:          `INSERT INTO keyless (c0, c1) SELECT * from keyless where c0=0 and c1=0`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         `SELECT * from keyless where c0=0`,
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{0, 0},
 			{0, 0},
 		},
 	},
 	{
 		WriteQuery:          `insert into keyless (c0, c1) select a.c0, a.c1 from (select 1, 1) as a(c0, c1) join keyless on a.c0 = keyless.c0`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 		SelectQuery:         `SELECT * from keyless where c0=1`,
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, 1},
 			{1, 1},
 			{1, 1},
@@ -655,25 +655,25 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "with t (i,f) as (select 4,'fourth row' from dual) insert into mytable select i,f from t",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 		SelectQuery:         "select * from mytable order by i",
-		ExpectedSelect: []sql.Row{
-			sql.NewRow(1, "first row"),
-			sql.NewRow(2, "second row"),
-			sql.NewRow(3, "third row"),
-			sql.NewRow(4, "fourth row"),
+		ExpectedSelect: []sql.UntypedSqlRow{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{4, "fourth row"},
 		},
 	},
 	{
 		WriteQuery:          "with recursive t (i,f) as (select 4,4 from dual union all select i + 1, i + 1 from t where i < 5) insert into mytable select i,f from t",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 		SelectQuery:         "select * from mytable order by i",
-		ExpectedSelect: []sql.Row{
-			sql.NewRow(1, "first row"),
-			sql.NewRow(2, "second row"),
-			sql.NewRow(3, "third row"),
-			sql.NewRow(4, "4"),
-			sql.NewRow(5, "5"),
+		ExpectedSelect: []sql.UntypedSqlRow{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{4, "4"},
+			{5, "5"},
 		},
 	},
 }
@@ -681,33 +681,33 @@ var InsertQueries = []WriteQueryTest{
 var SpatialInsertQueries = []WriteQueryTest{
 	{
 		WriteQuery:          "INSERT INTO point_table VALUES (1, POINT(1,1));",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
-		ExpectedSelect:      []sql.Row{{5, types.Point{X: 1, Y: 2}}, {1, types.Point{X: 1, Y: 1}}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{5, types.Point{X: 1, Y: 2}}, {1, types.Point{X: 1, Y: 1}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO point_table VALUES (1, 0x000000000101000000000000000000F03F0000000000000040);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
-		ExpectedSelect:      []sql.Row{{5, types.Point{X: 1, Y: 2}}, {1, types.Point{X: 1, Y: 2}}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{5, types.Point{X: 1, Y: 2}}, {1, types.Point{X: 1, Y: 2}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,2),POINT(3,4)));",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{0, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{0, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, 0x00000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{0, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
+		ExpectedSelect:      []sql.UntypedSqlRow{{0, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}, {1, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}}, {2, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO polygon_table VALUES (2, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{0, types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{1, types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{2, types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
@@ -715,18 +715,18 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO polygon_table VALUES (2, 0x0000000001030000000100000005000000000000000000F03F000000000000F03F000000000000F03F000000000000F0BF000000000000F0BF000000000000F0BF000000000000F0BF000000000000F03F000000000000F03F000000000000F03F);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{0, types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{1, types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 			{2, types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO geometry_table VALUES (100, POINT(123.456,7.89));",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, types.Point{X: 1, Y: 2}},
 			{2, types.Point{SRID: 4326, X: 1, Y: 2}},
 			{3, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
@@ -746,9 +746,9 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO geometry_table VALUES (100, 0x00000000010100000077BE9F1A2FDD5E408FC2F5285C8F1F40);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, types.Point{X: 1, Y: 2}},
 			{2, types.Point{SRID: 4326, X: 1, Y: 2}},
 			{3, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
@@ -768,9 +768,9 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO geometry_table VALUES (100, LINESTRING(POINT(1,2),POINT(3,4)));",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, types.Point{X: 1, Y: 2}},
 			{2, types.Point{SRID: 4326, X: 1, Y: 2}},
 			{3, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
@@ -790,9 +790,9 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO geometry_table VALUES (100, 0x00000000010200000002000000000000000000F03F000000000000004000000000000008400000000000001040);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, types.Point{X: 1, Y: 2}},
 			{2, types.Point{SRID: 4326, X: 1, Y: 2}},
 			{3, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
@@ -812,9 +812,9 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO geometry_table VALUES (100, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, types.Point{X: 1, Y: 2}},
 			{2, types.Point{SRID: 4326, X: 1, Y: 2}},
 			{3, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
@@ -834,9 +834,9 @@ var SpatialInsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO geometry_table VALUES (100, 0x0000000001030000000100000005000000000000000000F03F000000000000F03F000000000000F03F000000000000F0BF000000000000F0BF000000000000F0BF000000000000F0BF000000000000F03F000000000000F03F000000000000F03F);",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM geometry_table;",
-		ExpectedSelect: []sql.Row{
+		ExpectedSelect: []sql.UntypedSqlRow{
 			{1, types.Point{X: 1, Y: 2}},
 			{2, types.Point{SRID: 4326, X: 1, Y: 2}},
 			{3, types.LineString{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
@@ -868,7 +868,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO uv(v, x_id) VALUES ('test', (SELECT x FROM xy WHERE y = 'admin'));",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:       "INSERT INTO uv(v, x_id) VALUES ('test', (SELECT x FROM xy WHERE x > 0));",
@@ -876,7 +876,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "select * from uv",
-				Expected: []sql.Row{{1, "test", 1}},
+				Expected: []sql.UntypedSqlRow{{1, "test", 1}},
 			},
 		},
 	},
@@ -890,11 +890,11 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO xy (y,x) select * from (select cast('2019-12-31T12:00:00Z' as date), 0) dt(a,b) ON DUPLICATE KEY UPDATE x=dt.b+1, y=dt.a",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "select * from xy",
-				Expected: []sql.Row{{1, time.Date(2019, time.December, 31, 0, 0, 0, 0, time.UTC)}},
+				Expected: []sql.UntypedSqlRow{{1, time.Date(2019, time.December, 31, 0, 0, 0, 0, time.UTC)}},
 			},
 		},
 	},
@@ -913,7 +913,7 @@ var InsertScripts = []ScriptTest{
   )
   Select * from b d
 ) insert into xy (x,y) select x+9,y+9 from a;`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 			},
 		},
 	},
@@ -925,7 +925,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO t1 (dt) VALUES ('0001-01-01 00:00:00');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -942,7 +942,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10}, {20}, {30}, {31}, {40}, {41},
 				},
 			},
@@ -961,7 +961,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{-3}, {-2}, {-1}, {10}, {20}, {30}, {31}, {32}, {33}, {34},
 				},
 			},
@@ -976,7 +976,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10, 1}, {20, 2}, {30, 3},
 				},
 			},
@@ -991,7 +991,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{10, 1, nil}, {20, 2, nil}, {30, 3, nil},
 				},
 			},
@@ -1007,7 +1007,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto_no_primary order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {2}, {3},
 				},
 			},
@@ -1023,7 +1023,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto_no_primary order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, nil}, {2, nil}, {3, nil},
 				},
 			},
@@ -1041,7 +1041,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{11},
 				},
 			},
@@ -1061,7 +1061,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10}, {2, 20}, {3, 30},
 				},
 			},
@@ -1082,18 +1082,18 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT AUTO_INCREMENT FROM information_schema.tables WHERE table_name = 'auto' AND table_schema = DATABASE()",
-				Expected: []sql.Row{{uint64(9)}},
+				Expected: []sql.UntypedSqlRow{{uint64(9)}},
 			},
 			{
 				Query: "insert into auto values (NULL,90)",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     9,
 				}}},
 			},
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10}, {2, 20}, {3, 30}, {9, 90},
 				},
 			},
@@ -1115,7 +1115,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 10}, {2, 20}, {3, 30}, {19, 190},
 				},
 			},
@@ -1131,7 +1131,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {10}, {11},
 				},
 			},
@@ -1147,7 +1147,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {10}, {11},
 				},
 			},
@@ -1163,7 +1163,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {10}, {11},
 				},
 			},
@@ -1179,7 +1179,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {10}, {11},
 				},
 			},
@@ -1195,7 +1195,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1}, {10}, {11},
 				},
 			},
@@ -1211,7 +1211,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(1)}, {uint64(10)}, {uint64(11)},
 				},
 			},
@@ -1227,7 +1227,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(1)}, {uint64(10)}, {uint64(11)},
 				},
 			},
@@ -1243,7 +1243,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(1)}, {uint64(10)}, {uint64(11)},
 				},
 			},
@@ -1259,7 +1259,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(1)}, {uint64(10)}, {uint64(11)},
 				},
 			},
@@ -1275,7 +1275,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(1)}, {uint64(10)}, {uint64(11)},
 				},
 			},
@@ -1291,7 +1291,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{float64(1)}, {float64(10)}, {float64(11)},
 				},
 			},
@@ -1307,7 +1307,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{float64(1)}, {float64(10)}, {float64(11)},
 				},
 			},
@@ -1325,19 +1325,19 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 				},
 			},
 			{
 				Query: "insert into auto values (0), (0), (1-1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 3, InsertID: 0}},
 				},
 			},
 			{
 				Query: "select * from auto order by i",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{0},
 					{0},
@@ -1345,38 +1345,38 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 				},
 			},
 			{
 				Query: "insert into auto values (1)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, InsertID: 0}},
 				},
 			},
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto' and table_schema=database()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(2)},
 				},
 			},
 
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{nil},
 				},
 			},
 			{
 				Query: "insert into auto_pk values (0), (1), (NULL), ()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 4, InsertID: 2}},
 				},
 			},
 			{
 				Query: "select * from auto_pk",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0},
 					{1},
 					{2},
@@ -1385,7 +1385,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "select auto_increment from information_schema.tables where table_name='auto_pk' and table_schema=database()",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{uint64(4)},
 				},
 			},
@@ -1414,84 +1414,84 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO T1 values (DEFAULT, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "INSERT INTO t1 (id, dt) values (DEFAULT, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "INSERT INTO t1 (dt, ID) values (DEFAULT, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "INSERT INTO t1 (ID) values (DEFAULT), (3)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "INSERT INTO t1 (dt) values (DEFAULT), ('1981-02-16 00:00:00')",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "INSERT INTO t1 values (100, '2000-01-01 12:34:56'), (DEFAULT, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "INSERT INTO t1 (id, dt) values (100, '2022-01-01 01:01:01'), (DEFAULT, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "INSERT INTO t1 (id) values (10), (DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "INSERT INTO t1 (DT) values ('2022-02-02 02:02:02'), (DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "INSERT INTO t2 values ('10'), (DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
 				Query:    "INSERT INTO t2 (id) values (DEFAULT), ('11'), (DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 3}}},
 			},
 			{
 				Query:    "select count(distinct id) from t2",
-				Expected: []sql.Row{{5}},
+				Expected: []sql.UntypedSqlRow{{5}},
 			},
 			{
 				Query:    "INSERT INTO t3 (a) values (DEFAULT), ('2'), (DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 3}}},
 			},
 			{
 				Query:    "SELECT b from t3 order by b asc",
-				Expected: []sql.Row{{2}, {2}, {4}},
+				Expected: []sql.UntypedSqlRow{{2}, {2}, {4}},
 			},
 			{
 				Query:    "INSERT INTO T4 (c1, c0) values (DEFAULT, NULL)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select * from t4",
-				Expected: []sql.Row{{nil, "c1"}},
+				Expected: []sql.UntypedSqlRow{{nil, "c1"}},
 			},
 			{
 				Query:    "INSERT INTO T5 values (DEFAULT, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "INSERT INTO T5 (c0, c1) values (DEFAULT, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "INSERT INTO T5 (c1) values (DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				// Custom column order should use the correct column defaults
 				Query:    "insert into T6(createdAt, color) values (DEFAULT, DEFAULT);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 		},
 	},
@@ -1504,27 +1504,27 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO t1 (a,b) values (1, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select * from t1 order by a",
-				Expected: []sql.Row{{1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}},
 			},
 			{
 				Query:    "INSERT INTO t1 values (2, DEFAULT)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select * from t1 where a = 2 order by a",
-				Expected: []sql.Row{{2, 3}},
+				Expected: []sql.UntypedSqlRow{{2, 3}},
 			},
 			{
 				Query:    "INSERT INTO t1 (b,a) values (DEFAULT, 3)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query:    "select * from t1 where a = 3 order by a",
-				Expected: []sql.Row{{3, 4}},
+				Expected: []sql.UntypedSqlRow{{3, 4}},
 			},
 		},
 	},
@@ -1538,13 +1538,13 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM y",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1}, {2, 2}, {3, 3},
 				},
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (1, 2), (4,4)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -1552,7 +1552,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (5, NULL)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -1560,7 +1560,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk+10 FROM y WHERE pk > 1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
 				ExpectedWarningsCount: 5,
@@ -1568,7 +1568,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 10, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
 				ExpectedWarningsCount: 1,
@@ -1576,7 +1576,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 11, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual) UNION SELECT 12, 0 FROM dual;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -1584,7 +1584,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "INSERT IGNORE INTO y SELECT 13, 0 FROM dual UNION SELECT 14, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -1592,7 +1592,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (3, 8)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
 				ExpectedWarningsCount: 1,
@@ -1613,11 +1613,11 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    `DELETE FROM test where pk = 1;`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1}}},
 			},
 			{
 				Query: `INSERT INTO test VALUES (1,1)`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
@@ -1631,7 +1631,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into test(pk) values (1)",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -1643,7 +1643,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO city VALUES (1,'San Pedro de Macorís');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -1666,19 +1666,19 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into nodes(id,owner,status,timestamp) values('id1','dabe','off',2) on duplicate key update owner='milo',status='on'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "insert into nodes(id,owner,status,timestamp) values('id2','dabe','off',3) on duplicate key update owner='milo',status='on'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "select * from nodes",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"id1", "milo", "on", 1},
 					{"id2", "dabe", "off", 3},
 				},
@@ -1696,13 +1696,13 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into a (select * from b) on duplicate key update a.i = b.j + 100`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
 				Query: "select * from a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{101},
 					{2},
 					{3},
@@ -1725,13 +1725,13 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: `insert into a (select * from b as t) on duplicate key update a.i = t.j + 100`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
 				Query: "select * from a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{101},
 					{2},
 					{3},
@@ -1769,13 +1769,13 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into a (select * from b join c where b.x = c.y) on duplicate key update a.j = b.x + c.y + 100`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
 				Query: "select * from a",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 102},
 					{2, 2},
 					{3, 3},
@@ -1796,14 +1796,14 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: `insert into a (select t.i from b as t, b where t.i = b.i) on duplicate key update i = b.i;`,
 				Skip:  true,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
 				Query: "select * from a",
 				Skip:  true,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -1822,14 +1822,14 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into a with cte as (select * from b) select * from cte on duplicate key update a.i = cte.j + 100`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
 				Query: "select * from a",
 				Skip:  true,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{101},
 					{2},
 					{3},
@@ -1858,7 +1858,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO t VALUES (1), (2);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:       "INSERT into t VALUES (1);",
@@ -1866,11 +1866,11 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t;",
-				Expected: []sql.Row{{1}, {2}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}},
 			},
 			{
 				Query:    "INSERT into t2 VALUES (1, 1), (2, 2);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:       "INSERT into t2 VALUES (1, 1);",
@@ -1878,7 +1878,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t2;",
-				Expected: []sql.Row{{1, 1}, {2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {2, 2}},
 			},
 		},
 	},
@@ -1897,7 +1897,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:       "INSERT INTO t2 VALUES (2, 2, 2), (3, 1, 1), (4, 4, 4);",
@@ -1905,7 +1905,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t2;",
-				Expected: []sql.Row{{1, 1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}},
 			},
 			{
 				Query:       "INSERT INTO t VALUES (5, 2), (6, 2);",
@@ -1913,7 +1913,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:       "INSERT INTO t2 VALUES (5, 2, 2), (6, 2, 2);",
@@ -1921,15 +1921,15 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t2;",
-				Expected: []sql.Row{{1, 1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}},
 			},
 			{
 				Query:    "INSERT into t2 VALUES (5, NULL, 1), (6, NULL, 1), (7, 1, NULL), (8, 1, NULL), (9, NULL, NULL), (10, NULL, NULL)",
-				Expected: []sql.Row{{types.NewOkResult(6)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(6)}},
 			},
 			{
 				Query:    "SELECT * from t2;",
-				Expected: []sql.Row{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
 			},
 		},
 	},
@@ -1948,7 +1948,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:       "INSERT INTO t2 VALUES (2, 2, 2), (3, 1, 1), (4, 4, 4);",
@@ -1956,7 +1956,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t2;",
-				Expected: []sql.Row{{1, 1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}},
 			},
 			{
 				Query:       "INSERT INTO t VALUES (5, 2), (6, 2);",
@@ -1964,7 +1964,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:       "INSERT INTO t2 VALUES (5, 2, 2), (6, 2, 2);",
@@ -1972,15 +1972,15 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * from t2;",
-				Expected: []sql.Row{{1, 1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}},
 			},
 			{
 				Query:    "INSERT into t2 VALUES (5, NULL, 1), (6, NULL, 1), (7, 1, NULL), (8, 1, NULL), (9, NULL, NULL), (10, NULL, NULL)",
-				Expected: []sql.Row{{types.NewOkResult(6)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(6)}},
 			},
 			{
 				Query:    "SELECT * from t2;",
-				Expected: []sql.Row{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {5, nil, 1}, {6, nil, 1}, {7, 1, nil}, {8, 1, nil}, {9, nil, nil}, {10, nil, nil}},
 			},
 		},
 	},
@@ -2010,11 +2010,11 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk, v1) VALUES (1, 'a');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test (pk, v1) SELECT 2 as pk, 'a' as v1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -2027,11 +2027,11 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk, v1) VALUES (1, 'a');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test (pk, v1) SELECT 2 as pk, 'a' as v1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -2045,7 +2045,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t2(d) select t from t1 where false;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
@@ -2059,13 +2059,13 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query: "insert into t2(d) select t from t1 where i = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "select * from t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{time.Date(2001, time.January, 1, 0, 0, 0, 0, time.UTC)},
 				},
 			},
@@ -2092,31 +2092,31 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT t1 from escpe",
-				Expected: []sql.Row{{"foo's baz"}},
+				Expected: []sql.UntypedSqlRow{{"foo's baz"}},
 			},
 			{
 				Query:    "SELECT t2 from escpe",
-				Expected: []sql.Row{{"who's dat"}},
+				Expected: []sql.UntypedSqlRow{{"who's dat"}},
 			},
 			{
 				Query:    "SELECT t3 from escpe",
-				Expected: []sql.Row{{"joe's bar"}},
+				Expected: []sql.UntypedSqlRow{{"joe's bar"}},
 			},
 			{
 				Query:    "SELECT t4 from escpe",
-				Expected: []sql.Row{{"quote\"bazzar"}},
+				Expected: []sql.UntypedSqlRow{{"quote\"bazzar"}},
 			},
 			{
 				Query:    "SELECT t5 from escpe",
-				Expected: []sql.Row{{"back\\'slash"}},
+				Expected: []sql.UntypedSqlRow{{"back\\'slash"}},
 			},
 			{
 				Query:    "SELECT t6 from escpe",
-				Expected: []sql.Row{{"tab\ttab"}},
+				Expected: []sql.UntypedSqlRow{{"tab\ttab"}},
 			},
 			{
 				Query:    "SELECT t7 from escpe",
-				Expected: []sql.Row{{"new\nline"}},
+				Expected: []sql.UntypedSqlRow{{"new\nline"}},
 			},
 		},
 	},
@@ -2142,7 +2142,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT val from quoted order by id",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"joe's"},
 					{"jan's"},
 					{"mia\\'s"},
@@ -2161,7 +2161,7 @@ var InsertScripts = []ScriptTest{
 			{
 				// dolt table import with -u option generates a duplicate key update with values(col)
 				Query: "insert into alphabet values ('a') on duplicate key update letter = values(letter)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -2182,7 +2182,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "INSERT IGNORE INTO t2 VALUES (1,2);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2199,7 +2199,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from t1 order by pk",
-				Expected: []sql.Row{{1, "abc"}},
+				Expected: []sql.UntypedSqlRow{{1, "abc"}},
 			},
 			{
 				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
@@ -2207,11 +2207,11 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO t1 VALUES (2, 'def');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from t1 order by pk",
-				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
+				Expected: []sql.UntypedSqlRow{{1, "abc"}, {2, "def"}},
 			},
 		},
 	},
@@ -2225,7 +2225,7 @@ var InsertScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from t1 order by pk",
-				Expected: []sql.Row{{1, "abc"}},
+				Expected: []sql.UntypedSqlRow{{1, "abc"}},
 			},
 			{
 				Query:       "INSERT INTO t1 VALUES (1, 'abc');",
@@ -2233,7 +2233,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO t1 VALUES (2, 'def');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:            "commit",
@@ -2241,7 +2241,7 @@ var InsertScripts = []ScriptTest{
 			},
 			{
 				Query:    "select * from t1 order by pk",
-				Expected: []sql.Row{{1, "abc"}, {2, "def"}},
+				Expected: []sql.UntypedSqlRow{{1, "abc"}, {2, "def"}},
 			},
 		},
 	},
@@ -2256,19 +2256,19 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into t values (0, "first")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: `insert into t values (0, "second") on duplicate key update j = "third"`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: `select i, j from t order by i`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, "third"},
 				},
 			},
@@ -2282,37 +2282,37 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 0},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 0},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 1},
 				},
 			},
@@ -2326,38 +2326,38 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into t(c1, c2, c3) values (0, null, 0) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, nil, 0},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, null, 1) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, nil, 0},
 					{0, nil, 1},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, null, 0) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, nil, 0},
 					{0, nil, 0},
 					{0, nil, 1},
@@ -2365,13 +2365,13 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = null`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, nil, 0},
 					{0, nil, 0},
 					{0, nil, 1},
@@ -2380,13 +2380,13 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = null`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, nil, 0},
 					{0, nil, 0},
 					{0, nil, 1},
@@ -2403,37 +2403,37 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 0},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 1) on duplicate key update c3 = 0`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 0},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 0) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 1},
 				},
 			},
@@ -2447,37 +2447,37 @@ var InsertDuplicateKeyKeyless = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, 1) on duplicate key update c3 = 1`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 1},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 0, 2), (0, 0, 3), (0, 0, 4) on duplicate key update c3 = 100`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(2)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 100},
 				},
 			},
 			{
 				Query: `insert into t(c1, c2, c3) values (0, 0, 1), (0, 1, 1), (0, 2, 2), (0, 3, 3) on duplicate key update c3 = 200`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(5)},
 				},
 			},
 			{
 				Query: `select c1, c2, c3 from t order by c1, c2, c3`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0, 200},
 					{0, 1, 1},
 					{0, 2, 2},
@@ -2617,19 +2617,19 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, ""},
 				},
 			},
 			{
 				Query: "SELECT * FROM y",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 				},
 			},
 			{
 				Query: "INSERT IGNORE INTO y VALUES (2, NULL)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2646,7 +2646,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "INSERT IGNORE INTO t1 VALUES (1, 'dasd')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2654,13 +2654,13 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 				},
 			},
 			{
 				Query: "INSERT IGNORE INTO t2 values (1, 'adsda')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2668,7 +2668,7 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a"},
 				},
 			},
@@ -2685,7 +2685,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "INSERT IGNORE INTO t1 VALUES (1,2) ON DUPLICATE KEY UPDATE v='dsd';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 2}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2693,13 +2693,13 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM t1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 0},
 				},
 			},
 			{
 				Query: "INSERT IGNORE INTO t2 values (1, 'adsda')",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2707,17 +2707,17 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * FROM t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a"},
 				},
 			},
 			{
 				Query:    "INSERT IGNORE INTO t2 VALUES (1, 's') ON DUPLICATE KEY UPDATE pk = 1000", // violates constraint
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query: "SELECT * FROM t2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "a"},
 				},
 			},
@@ -2734,7 +2734,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 3}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2742,13 +2742,13 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * from one_uniq;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1}, {3, 2}, {4, nil}, {5, nil},
 				},
 			},
 			{
 				Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 8}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2756,7 +2756,7 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * from two_uniq;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
 				},
 			},
@@ -2775,12 +2775,12 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 3}}},
 				//ExpectedWarning: mysql.ERWarnDataTruncated, // TODO: incorrect code
 			},
 			{
 				Query:    "select * from test_table",
-				Expected: []sql.Row{{1, ""}, {2, "bye"}, {3, nil}},
+				Expected: []sql.UntypedSqlRow{{1, ""}, {2, "bye"}, {3, nil}},
 			},
 		},
 	},
@@ -2798,7 +2798,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "INSERT IGNORE INTO one_uniq VALUES (3, 2), (2, 1), (4, null), (5, null)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 3}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2806,13 +2806,13 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * from one_uniq;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1}, {3, 2}, {4, nil}, {5, nil},
 				},
 			},
 			{
 				Query: "INSERT IGNORE INTO two_uniq VALUES (4, 1, 2), (5, 2, 1), (6, null, 1), (7, null, 1), (12, 1, 1), (8, 1, null), (9, 1, null), (10, null, null), (11, null, null)",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 8}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2820,7 +2820,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 			{
 				Query: "SELECT * from two_uniq;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, nil, 1}, {7, nil, 1}, {8, 1, nil}, {9, 1, nil}, {10, nil, nil}, {11, nil, nil},
 				},
 			},
@@ -2835,7 +2835,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT IGNORE INTO keyless VALUES (1, 2);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
@@ -2843,15 +2843,15 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM keyless where pk = 1 and val = 2",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:                 "INSERT IGNORE INTO keyless VALUES (1, 3)",
-				Expected:              []sql.Row{{types.NewOkResult(0)}},
+				Expected:              []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
@@ -2866,11 +2866,11 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
-				Expected: []sql.Row{{1, 2}, {2, 2}, {3, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {2, 2}, {3, 3}},
 			},
 			{
 				Query:       "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
@@ -2878,31 +2878,31 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE IGNORE keyless SET val = 1 where pk = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.UntypedSqlRow{{newUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:                 "UPDATE IGNORE keyless SET val = 3 where pk = 1",
-				Expected:              []sql.Row{{newUpdateResult(1, 0)}},
+				Expected:              []sql.UntypedSqlRow{{newUpdateResult(1, 0)}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
 				Query:                 "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
-				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				Expected:              []sql.UntypedSqlRow{{newUpdateResult(3, 1)}},
 				ExpectedWarningsCount: 2,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 4}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {2, 2}, {3, 4}},
 			},
 		},
 	},
@@ -2922,19 +2922,19 @@ var InsertBrokenScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM x",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, "one"}, {2, 1}, {3, "three"},
 				},
 			},
 			{
 				Query: "SELECT * FROM y",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1}, {2, 0}, {3, 3},
 				},
 			},
 			{
 				Query: `INSERT IGNORE INTO y VALUES (4, "four")`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarningsCount: 1,
@@ -2954,7 +2954,7 @@ var InsertBrokenScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table auto1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"auto1", "CREATE TABLE `auto1` (\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`pk`)\n" +
@@ -2967,7 +2967,7 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query: "show create table auto1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"auto1", "CREATE TABLE `auto1` (\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`pk`)\n" +
@@ -2976,13 +2976,13 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query: "insert into auto1 values (null);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, InsertID: 2}},
 				},
 			},
 			{
 				Query: "show create table auto1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"auto1", "CREATE TABLE `auto1` (\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`pk`)\n" +
@@ -2991,7 +2991,7 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query: "select * from auto1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 				},
@@ -2999,7 +2999,7 @@ var InsertBrokenScripts = []ScriptTest{
 
 			{
 				Query: "show create table auto2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"auto2", "CREATE TABLE `auto2` (\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  `c` int NOT NULL,\n" +
@@ -3013,7 +3013,7 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query: "show create table auto2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"auto2", "CREATE TABLE `auto2` (\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  `c` int NOT NULL,\n" +
@@ -3023,13 +3023,13 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query: "insert into auto2 values (null, 2);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, InsertID: 2}},
 				},
 			},
 			{
 				Query: "show create table auto2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"auto2", "CREATE TABLE `auto2` (\n" +
 						"  `pk` int NOT NULL AUTO_INCREMENT,\n" +
 						"  `c` int NOT NULL,\n" +
@@ -3039,7 +3039,7 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query: "select * from auto2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 1},
 					{2, 2},
 				},
@@ -3055,11 +3055,11 @@ var InsertBrokenScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select * from t2;",
-				Expected: []sql.Row{{1, "a"}},
+				Expected: []sql.UntypedSqlRow{{1, "a"}},
 			},
 		},
 	},

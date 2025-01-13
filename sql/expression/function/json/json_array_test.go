@@ -60,14 +60,14 @@ func TestJSONArray(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f0, sql.Row{}, types.JSONDocument{Val: []interface{}{}}, nil},
-		{f1, sql.Row{[]interface{}{1, 2}}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}}}, nil},
-		{f2, sql.Row{[]interface{}{1, 2}, "second item"}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, "second item"}}, nil},
-		{f2, sql.Row{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}}, nil},
-		{f2, sql.Row{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}, types.JSONDocument{Val: []interface{}{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}}, nil},
-		{f3, sql.Row{"foo", -44, "b"}, types.JSONDocument{Val: []interface{}{"foo", -44, "b"}}, nil},
-		{f4, sql.Row{100, true, nil, "four"}, types.JSONDocument{Val: []interface{}{100, true, nil, "four"}}, nil},
-		{f4, sql.Row{100.44, `{"name":null,"id":{"number":998,"type":"A"}}`, nil, `four`},
+		{f0, sql.UntypedSqlRow{}, types.JSONDocument{Val: []interface{}{}}, nil},
+		{f1, sql.UntypedSqlRow{[]interface{}{1, 2}}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}}}, nil},
+		{f2, sql.UntypedSqlRow{[]interface{}{1, 2}, "second item"}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, "second item"}}, nil},
+		{f2, sql.UntypedSqlRow{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}, types.JSONDocument{Val: []interface{}{[]interface{}{1, 2}, map[string]interface{}{"name": "x"}}}, nil},
+		{f2, sql.UntypedSqlRow{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}, types.JSONDocument{Val: []interface{}{map[string]interface{}{"name": "x"}, map[string]interface{}{"id": 47}}}, nil},
+		{f3, sql.UntypedSqlRow{"foo", -44, "b"}, types.JSONDocument{Val: []interface{}{"foo", -44, "b"}}, nil},
+		{f4, sql.UntypedSqlRow{100, true, nil, "four"}, types.JSONDocument{Val: []interface{}{100, true, nil, "four"}}, nil},
+		{f4, sql.UntypedSqlRow{100.44, `{"name":null,"id":{"number":998,"type":"A"}}`, nil, `four`},
 			types.JSONDocument{Val: []interface{}{100.44, "{\"name\":null,\"id\":{\"number\":998,\"type\":\"A\"}}", nil, "four"}}, nil},
 	}
 

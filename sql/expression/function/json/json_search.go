@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// JSONSearch (json_doc, one_or_all, search_str[, escape_char[, path] ...])
+// JSONSearch (json_doc, one_or_all, search_str.GetValue(, escape_char[, path] ...))
 //
 // JSONSearch Returns the path to the given string within a JSON document. Returns NULL if any of the json_doc,
 // search_str, or path arguments are NULL; no path exists within the document; or search_str is not found. An error

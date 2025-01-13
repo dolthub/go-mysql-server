@@ -30,12 +30,12 @@ func TestIf(t *testing.T) {
 		row      sql.Row
 		expected interface{}
 	}{
-		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.Row{"a", "b"}, "a"},
-		{eq(lit(1, types.Int64), lit(0, types.Int64)), sql.Row{"a", "b"}, "b"},
-		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.Row{1, 2}, 1},
-		{eq(lit(1, types.Int64), lit(0, types.Int64)), sql.Row{1, 2}, 2},
-		{eq(lit(nil, types.Int64), lit(1, types.Int64)), sql.Row{"a", "b"}, "b"},
-		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.Row{nil, "b"}, nil},
+		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.UntypedSqlRow{"a", "b"}, "a"},
+		{eq(lit(1, types.Int64), lit(0, types.Int64)), sql.UntypedSqlRow{"a", "b"}, "b"},
+		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.UntypedSqlRow{1, 2}, 1},
+		{eq(lit(1, types.Int64), lit(0, types.Int64)), sql.UntypedSqlRow{1, 2}, 2},
+		{eq(lit(nil, types.Int64), lit(1, types.Int64)), sql.UntypedSqlRow{"a", "b"}, "b"},
+		{eq(lit(1, types.Int64), lit(1, types.Int64)), sql.UntypedSqlRow{nil, "b"}, nil},
 	}
 
 	for _, tc := range testCases {

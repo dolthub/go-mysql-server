@@ -74,7 +74,7 @@ func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (
 	} else if err != nil {
 		return nil, err
 	}
-	if len(row) != len(n.ToSet) {
+	if row.Len() != len(n.ToSet) {
 		return nil, sql.ErrFetchIncorrectCount.New()
 	}
 	if len(n.ToSet) == 0 {

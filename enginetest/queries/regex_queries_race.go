@@ -28,7 +28,7 @@ import (
 
 type RegexTest struct {
 	Query       string
-	Expected    []sql.Row
+	Expected    []sql.UntypedSqlRow
 	ExpectedErr *errors.Kind
 }
 

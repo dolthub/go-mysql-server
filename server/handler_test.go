@@ -448,7 +448,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 		prepare  *mysql.PrepareData
 		execute  map[string]*query.BindVariable
 		schema   []*query.Field
-		expected []sql.Row
+		expected []sql.UntypedSqlRow
 	}
 
 	for _, test := range []testcase{
@@ -467,7 +467,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 			schema: []*query.Field{
 				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Database: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
-			expected: []sql.Row{
+			expected: []sql.UntypedSqlRow{
 				{0}, {1}, {2}, {3}, {4},
 			},
 		},
@@ -495,7 +495,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 			}
 			err = handler.ComStmtExecute(context.Background(), dummyConn, test.prepare, callback)
 			require.NoError(t, err)
-			require.Equal(t, test.expected, res)
+			require.Equal(t, test.expected, sql.RowsToUntyped(res))
 		})
 	}
 }
@@ -526,7 +526,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 		prepare  *mysql.PrepareData
 		execute  map[string]*query.BindVariable
 		schema   []*query.Field
-		expected []sql.Row
+		expected []sql.UntypedSqlRow
 	}
 
 	for _, test := range []testcase{
@@ -545,7 +545,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 			schema: []*query.Field{
 				{Name: "c1", OrgName: "c1", Table: "test", OrgTable: "test", Database: "test", Type: query.Type_INT32, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 11, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
-			expected: []sql.Row{
+			expected: []sql.UntypedSqlRow{
 				{0}, {1}, {2}, {3}, {4},
 			},
 		},
@@ -573,7 +573,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 			}
 			err = handler.ComStmtExecute(context.Background(), dummyConn, test.prepare, callback)
 			require.NoError(t, err)
-			require.Equal(t, test.expected, res)
+			require.Equal(t, test.expected, sql.RowsToUntyped(res))
 		})
 	}
 }

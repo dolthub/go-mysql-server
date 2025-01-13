@@ -113,22 +113,22 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 
 	sch := table.Schema()
 	for key, ordinals := range keys {
-		keyVals := make([]sql.Row, len(sample))
+		keyVals := make([]sql.UntypedSqlRow, len(sample))
 		for i, row := range sample {
 			for _, ord := range ordinals {
-				keyVals[i] = append(keyVals[i], row[ord])
+				keyVals[i] = keyVals[i].Append(sql.NewUntypedRow(row.GetValue(ord))).(sql.UntypedSqlRow)
 			}
 		}
 		sort.Slice(keyVals, func(i, j int) bool {
 			k := 0
-			for k < len(ordinals) && keyVals[i][k] == keyVals[j][k] {
+			for k < len(ordinals) && keyVals[i].GetValue(k) == keyVals[j].GetValue(k) {
 				k++
 			}
 			if k == len(ordinals) {
 				return true
 			}
 			col := sch[ordinals[k]]
-			cmp, _ := col.Type.Compare(keyVals[i][k], keyVals[j][k])
+			cmp, _ := col.Type.Compare(keyVals[i].GetValue(k), keyVals[j].GetValue(k))
 			return cmp <= 0
 		})
 
@@ -141,9 +141,9 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		perBucket := int(rowCount) / bucketCnt
 		buckets := make([]sql.HistogramBucket, bucketCnt)
 		for i := range buckets {
-			var upperBound []interface{}
-			for _, v := range keyVals[i*offset] {
-				upperBound = append(upperBound, v)
+			upperBound := sql.NewSqlRowWithLen(keyVals[i*offset].Len())
+			for j, v := range keyVals[i*offset].Values() {
+				upperBound.SetValue(j, v)
 			}
 			buckets[i] = stats.NewHistogramBucket(uint64(perBucket), uint64(perBucket), 0, 1, upperBound, nil, nil)
 		}

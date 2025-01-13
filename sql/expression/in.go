@@ -222,7 +222,7 @@ func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Exp
 			hasNull = true
 			continue
 		}
-		i, err := el.Eval(ctx, sql.Row{})
+		i, err := el.Eval(ctx, sql.UntypedSqlRow{})
 		if err != nil {
 			return nil, hasNull, err
 		}

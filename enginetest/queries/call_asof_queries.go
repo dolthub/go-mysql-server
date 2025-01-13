@@ -29,7 +29,7 @@ var CallAsofScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CALL p1();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 3", "1"},
 					{int64(2), "second row, 3", "2"},
 					{int64(3), "third row, 3", "3"},
@@ -37,7 +37,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p1a();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 1"},
 					{int64(2), "second row, 1"},
 					{int64(3), "third row, 1"},
@@ -45,7 +45,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p1b();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 2"},
 					{int64(2), "second row, 2"},
 					{int64(3), "third row, 2"},
@@ -53,7 +53,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p2();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 3", "1"},
 					{int64(2), "second row, 3", "2"},
 					{int64(3), "third row, 3", "3"},
@@ -61,7 +61,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p2a();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 2"},
 					{int64(2), "second row, 2"},
 					{int64(3), "third row, 2"},
@@ -69,7 +69,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p1() AS OF '2019-01-01';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 1"},
 					{int64(2), "second row, 1"},
 					{int64(3), "third row, 1"},
@@ -77,7 +77,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p1a() AS OF '2019-01-03';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 1"},
 					{int64(2), "second row, 1"},
 					{int64(3), "third row, 1"},
@@ -85,7 +85,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p1b() AS OF '2019-01-03';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 2"},
 					{int64(2), "second row, 2"},
 					{int64(3), "third row, 2"},
@@ -93,7 +93,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p2() AS OF '2019-01-01';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 1"},
 					{int64(2), "second row, 1"},
 					{int64(3), "third row, 1"},
@@ -101,7 +101,7 @@ var CallAsofScripts = []ScriptTest{
 			},
 			{
 				Query: "CALL p2a() AS OF '2019-01-03';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{int64(1), "first row, 2"},
 					{int64(2), "second row, 2"},
 					{int64(3), "third row, 2"},

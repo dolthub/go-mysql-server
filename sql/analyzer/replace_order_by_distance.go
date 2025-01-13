@@ -3,7 +3,6 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -13,9 +12,9 @@ func replaceIdxOrderByDistance(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	return replaceIdxOrderByDistanceHelper(ctx, scope, n, nil)
 }
 
-func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.TopN) (sql.Node, transform.TreeIdentity, error) {
+func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode plan.Sortable) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
-	case *plan.TopN:
+	case plan.Sortable:
 		sortNode = n // lowest parent sort node
 	case *plan.ResolvedTable:
 		if sortNode == nil {
@@ -41,11 +40,6 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
-		// Column references have not been assigned their final indexes yet, so do that for the ORDER BY expression now.
-		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
-		sortNode = offsetAssignIndexes(sortNode).(*plan.TopN)
-
 		sfExprs := normalizeExpressions(tableAliases, sortNode.GetSortFields().ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 
@@ -55,21 +49,18 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		if len(sfExprs) != 1 {
 			return n, transform.SameTree, nil
 		}
-		distance, isDistance := sfExprs[0].(*vector.Distance)
+		distance, isDistance := sfExprs[0].(*expression.Distance)
 		if !isDistance {
 			return n, transform.SameTree, nil
 		}
 		var column sql.Expression
-		var literal sql.Expression
 		_, leftIsLiteral := distance.LeftChild.(*expression.Literal)
 		if leftIsLiteral {
 			column = distance.RightChild
-			literal = distance.LeftChild
 		} else {
 			_, rightIsLiteral := distance.RightChild.(*expression.Literal)
 			if rightIsLiteral {
 				column = distance.LeftChild
-				literal = distance.RightChild
 			} else {
 				return n, transform.SameTree, nil
 			}
@@ -91,7 +82,10 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			return n, transform.SameTree, nil
 		}
 
-		limit := sortNode.Limit
+		var limit sql.Expression
+		if topn, ok := sortNode.(*plan.TopN); ok {
+			limit = topn.Limit
+		}
 
 		lookup := sql.IndexLookup{
 			Index:  idx,
@@ -99,7 +93,6 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			VectorOrderAndLimit: sql.OrderAndLimit{
 				OrderBy: distance,
 				Limit:   limit,
-				Literal: literal,
 			},
 		}
 		nn, err := plan.NewStaticIndexedAccessForTableNode(n, lookup)
@@ -115,7 +108,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		var err error
 		same := transform.SameTree
 		switch c := child.(type) {
-		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.TopN, *plan.Offset, *plan.Sort, *plan.IndexedTableAccess:
+		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Sort, *plan.IndexedTableAccess:
 			newChildren[i], same, err = replaceIdxOrderByDistanceHelper(ctx, scope, child, sortNode)
 		default:
 			newChildren[i] = c

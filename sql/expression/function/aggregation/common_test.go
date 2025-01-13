@@ -40,7 +40,7 @@ func evalBuffer(t *testing.T, buf sql.AggregationBuffer) interface{} {
 	return v
 }
 
-func aggregate(t *testing.T, agg sql.Aggregation, rows ...sql.Row) interface{} {
+func aggregate(t *testing.T, agg sql.Aggregation, rows ...sql.UntypedSqlRow) interface{} {
 	t.Helper()
 
 	ctx := sql.NewEmptyContext()

@@ -68,7 +68,7 @@ func newMySQLIter(rows *dsql.Rows) mysqlIter {
 // Next implements the interface sql.RowIter.
 func (m mysqlIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if m.rows.Next() {
-		output := make(sql.Row, len(m.types))
+		output := make(sql.UntypedSqlRow, len(m.types))
 		for i, typ := range m.types {
 			output[i] = reflect.New(typ).Interface()
 		}

@@ -170,7 +170,7 @@ func (s *idxScope) addSchema(sch sql.Schema) {
 		if c.Source == "" {
 			s.columns = append(s.columns, c.Name)
 		} else {
-			s.columns = append(s.columns, c.Source+"."+c.Name)
+			s.columns = append(s.columns, fmt.Sprintf("%s.%s", c.Source, c.Name))
 		}
 	}
 }

@@ -36,104 +36,104 @@ func TestJSONKeys(t *testing.T) {
 
 	testCases := []struct {
 		f   sql.Expression
-		row sql.Row
+		row sql.UntypedSqlRow
 		exp interface{}
 		err error
 	}{
 		{
 			f:   f1,
-			row: sql.Row{nil},
+			row: sql.UntypedSqlRow{nil},
 			exp: nil,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`null`},
+			row: sql.UntypedSqlRow{`null`},
 			exp: nil,
 		},
 		{
 			f:   f1,
-			row: sql.Row{1},
+			row: sql.UntypedSqlRow{1},
 			err: sql.ErrInvalidJSONArgument.New(1, "json_keys"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`1`},
+			row: sql.UntypedSqlRow{`1`},
 			exp: nil,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`[1]`},
+			row: sql.UntypedSqlRow{`[1]`},
 			exp: nil,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{}`},
+			row: sql.UntypedSqlRow{`{}`},
 			exp: types.MustJSON(`[]`),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`badjson`},
+			row: sql.UntypedSqlRow{`badjson`},
 			err: sql.ErrInvalidJSONText.New(1, "json_keys", "badjson"),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`"doublestringisvalidjson"`},
+			row: sql.UntypedSqlRow{`"doublestringisvalidjson"`},
 			exp: nil,
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{"a": 1}`},
+			row: sql.UntypedSqlRow{`{"a": 1}`},
 			exp: types.MustJSON(`["a"]`),
 		},
 		{
 			f:   f1,
-			row: sql.Row{`{"aa": 1, "bb": 2, "c": 3}`},
+			row: sql.UntypedSqlRow{`{"aa": 1, "bb": 2, "c": 3}`},
 			exp: types.MustJSON(`["c", "aa", "bb"]`),
 		},
 
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, false]}`, nil},
+			row: sql.UntypedSqlRow{`{"a": [1, false]}`, nil},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, false]}`, 123},
+			row: sql.UntypedSqlRow{`{"a": [1, false]}`, 123},
 			err: fmt.Errorf("Invalid JSON path expression"),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": [1, false]}`, "$"},
+			row: sql.UntypedSqlRow{`{"a": [1, false]}`, "$"},
 			exp: types.MustJSON(`["a"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": {"z": 1}}`, "$.a"},
+			row: sql.UntypedSqlRow{`{"a": {"z": 1}}`, "$.a"},
 			exp: types.MustJSON(`["z"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[1, 2, {"a": 1, "b": {"c": 30}}]`, "$[2]"},
+			row: sql.UntypedSqlRow{`[1, 2, {"a": 1, "b": {"c": 30}}]`, "$[2]"},
 			exp: types.MustJSON(`["a", "b"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`[1, 2, {"a": 1, "b": {"c": {"d": 100}}}]`, "$[2].b.c"},
+			row: sql.UntypedSqlRow{`[1, 2, {"a": 1, "b": {"c": {"d": 100}}}]`, "$[2].b.c"},
 			exp: types.MustJSON(`["d"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": {"c": {"d": "foo"}}}`, "$.b.c"},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": {"c": {"d": "foo"}}}`, "$.b.c"},
 			exp: types.MustJSON(`["d"]`),
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$.d"},
 			exp: nil,
 		},
 		{
 			f:   f2,
-			row: sql.Row{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$["},
+			row: sql.UntypedSqlRow{`{"a": 1, "b": [2, 3], "c": {"d": "foo"}}`, "$["},
 			err: fmt.Errorf("Invalid JSON path expression. Missing ']'"),
 		},
 	}

@@ -49,7 +49,7 @@ func TestWindowIter(t *testing.T) {
 		Name           string
 		PartitionIters []*WindowPartitionIter
 		OutputOrdinals [][]int
-		Expected       []sql.Row
+		Expected       []sql.UntypedSqlRow
 	}{
 		{
 			Name: "unbounded preceding to current row",
@@ -73,7 +73,7 @@ func TestWindowIter(t *testing.T) {
 					}),
 			},
 			OutputOrdinals: [][]int{{0, 1}, {2}},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"forest", float64(4), "wildflower"},
 				{"forest", float64(8), "wildflower"},
 				{"forest", float64(14), "wildflower"},
@@ -96,7 +96,7 @@ func TestWindowIter(t *testing.T) {
 			i := NewWindowIter(tt.PartitionIters, tt.OutputOrdinals, mustNewRowIter(t, db, ctx))
 			res, err := sql.RowIterToRows(ctx, i)
 			require.NoError(t, err)
-			require.Equal(t, tt.Expected, res)
+			require.Equal(t, tt.Expected, sql.RowsToUntyped(res))
 		})
 	}
 }

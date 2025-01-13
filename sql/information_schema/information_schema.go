@@ -754,7 +754,7 @@ var viewTableUsageSchema = Schema{
 func characterSetsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedCharsets {
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			c.String(),                  // character_set_name
 			c.DefaultCollation().Name(), // default_collation_name
 			c.Description(),             // description
@@ -793,7 +793,7 @@ func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				for _, checkDefinition := range checkDefinitions {
-					rows = append(rows, Row{
+					rows = append(rows, UntypedSqlRow{
 						db.CatalogName,                  // constraint_catalog
 						db.SchemaName,                   // constraint_schema
 						checkDefinition.Name,            // constraint_name
@@ -812,7 +812,7 @@ func collationCharacterSetApplicabilityRowIter(ctx *Context, c Catalog) (RowIter
 	var rows []Row
 	collIter := NewCollationsIterator()
 	for c, ok := collIter.Next(); ok; c, ok = collIter.Next() {
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			c.Name,                  // collation_name
 			c.CharacterSet.String(), // character_set_name
 		})
@@ -825,7 +825,7 @@ func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	collIter := NewCollationsIterator()
 	for c, ok := collIter.Next(); ok; c, ok = collIter.Next() {
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			c.Name,                // collation_name
 			c.CharacterSet.Name(), // character_set_name
 			uint64(c.ID),          // id
@@ -870,7 +870,7 @@ func columnStatisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						continue
 					}
 				}
-				rows = append(rows, Row{
+				rows = append(rows, UntypedSqlRow{
 					db.SchemaName,                      // table_schema
 					t.Name(),                           // table_name
 					strings.Join(stats.Columns(), ","), // column_name
@@ -900,7 +900,7 @@ func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db.Database, func(t Table) (cont bool, err error) {
 			tblName := t.Name()
 			for _, col := range t.Schema() {
-				rows = append(rows, Row{
+				rows = append(rows, UntypedSqlRow{
 					db.CatalogName, // table_catalog
 					db.SchemaName,  // table_schema
 					tblName,        // table_name
@@ -922,7 +922,7 @@ func columnsExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 func enginesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			c.String(),       // engine
 			c.Support(),      // support
 			c.Comment(),      // comment
@@ -1005,7 +1005,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				lastExecuted := ed.LastExecuted.Format(EventDateSpaceTimeFormat)
 				// TODO: timezone should use e.TimezoneOffset, but is always 'SYSTEM' for now.
 
-				rows = append(rows, Row{
+				rows = append(rows, UntypedSqlRow{
 					db.CatalogName,       // event_catalog
 					db.SchemaName,        // event_schema
 					ed.Name,              // event_name
@@ -1080,7 +1080,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					for i, colName := range colNames {
 						ordinalPosition := i + 1 // Ordinal Positions starts at one
 
-						rows = append(rows, Row{
+						rows = append(rows, UntypedSqlRow{
 							db.CatalogName,  // constraint_catalog
 							db.SchemaName,   // constraint_schema
 							index.ID(),      // constraint_name
@@ -1114,7 +1114,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						referencedTableName := fk.ParentTable
 						referencedColumnName := strings.Replace(fk.ParentColumns[j], "`", "", -1) // get rid of backticks
 
-						rows = append(rows, Row{
+						rows = append(rows, UntypedSqlRow{
 							db.CatalogName,       // constraint_catalog
 							db.SchemaName,        // constraint_schema
 							fk.Name,              // constraint_name
@@ -1141,7 +1141,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 func keywordsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, spRef := range keywordsArray {
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			spRef.Word,     // word
 			spRef.Reserved, // reserved
 		})
@@ -1170,7 +1170,7 @@ func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			db = proc.Database
 		}
 
-		rows[i] = Row{
+		rows[i] = UntypedSqlRow{
 			uint64(proc.Connection),    // id
 			proc.User,                  // user
 			proc.Host,                  // host
@@ -1261,7 +1261,7 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						return nil, refErr
 					}
 
-					rows = append(rows, Row{
+					rows = append(rows, UntypedSqlRow{
 						db.CatalogName,      // constraint_catalog
 						db.SchemaName,       // constraint_schema
 						fk.Name,             // constraint_name
@@ -1309,8 +1309,8 @@ func schemaPrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		err = iterRows(ctx, dbTbl, func(r Row) error {
 			// mysql.db table will have 'Host', 'Db', 'User' as first 3 columns in string format.
 			keys = append(keys, mysql_db.UserPrimaryKey{
-				Host: r[0].(string),
-				User: r[2].(string),
+				Host: r.GetValue(0).(string),
+				User: r.GetValue(2).(string),
 			})
 			return nil
 		})
@@ -1367,7 +1367,7 @@ func schemataExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				readOnly = "READ ONLY=1"
 			}
 		}
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			db.CatalogName, // catalog_name
 			db.SchemaName,  // schema_name
 			readOnly,       // options
@@ -1407,7 +1407,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					srsId = srid
 				}
 
-				rows = append(rows, Row{
+				rows = append(rows, UntypedSqlRow{
 					db.CatalogName, // table_catalog
 					db.SchemaName,  // table_schema
 					tblName,        // table_name
@@ -1431,7 +1431,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 func stSpatialReferenceSystemsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, spRef := range types.SupportedSRIDs {
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			spRef.Name,          // srs_name
 			spRef.ID,            // srs_id
 			spRef.Organization,  // organization
@@ -1448,7 +1448,7 @@ func stSpatialReferenceSystemsRowIter(ctx *Context, cat Catalog) (RowIter, error
 func stUnitsOfMeasureRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, spRef := range unitsOfMeasureArray {
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			spRef.Name,             // unit_name
 			spRef.Type,             // unit_type
 			spRef.ConversionFactor, // conversion_factor
@@ -1540,7 +1540,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 							// TODO: we currently don't support expression index such as ((i * 20))
 
-							rows = append(rows, Row{
+							rows = append(rows, UntypedSqlRow{
 								db.CatalogName, // table_catalog
 								db.SchemaName,  // table_schema
 								tbl.Name(),     // table_name
@@ -1604,7 +1604,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					if !checkDefinition.Enforced {
 						enforced = "NO"
 					}
-					rows = append(rows, Row{
+					rows = append(rows, UntypedSqlRow{
 						db.CatalogName,       // constraint_catalog
 						db.SchemaName,        // constraint_schema
 						checkDefinition.Name, // constraint_name
@@ -1637,7 +1637,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 					}
 
-					rows = append(rows, Row{
+					rows = append(rows, UntypedSqlRow{
 						db.CatalogName, // constraint_catalog
 						db.SchemaName,  // constraint_schema
 						index.ID(),     // constraint_name
@@ -1658,7 +1658,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				for _, fk := range fks {
-					rows = append(rows, Row{
+					rows = append(rows, UntypedSqlRow{
 						db.CatalogName, // constraint_catalog
 						db.SchemaName,  // constraint_schema
 						fk.Name,        // constraint_name
@@ -1707,7 +1707,7 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 				}
 
 				for _, index := range indexes {
-					rows = append(rows, Row{
+					rows = append(rows, UntypedSqlRow{
 						db.CatalogName, // constraint_catalog
 						db.SchemaName,  // constraint_schema
 						index.ID(),     // constraint_name
@@ -1796,8 +1796,8 @@ func tablePrivilegesRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		var keys []mysql_db.UserPrimaryKey
 		err = iterRows(ctx, tblsPriv, func(r Row) error {
 			keys = append(keys, mysql_db.UserPrimaryKey{
-				Host: r[0].(string),
-				User: r[2].(string),
+				Host: r.GetValue(0).(string),
+				User: r.GetValue(2).(string),
 			})
 			return nil
 		})
@@ -1882,7 +1882,7 @@ func tablesExtensionsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 	for _, db := range databases {
 		err := DBTableIter(ctx, db.Database, func(t Table) (cont bool, err error) {
-			rows = append(rows, Row{
+			rows = append(rows, UntypedSqlRow{
 				db.CatalogName, // table_catalog
 				db.SchemaName,  // table_schema
 				t.Name(),       // table_name
@@ -1995,7 +1995,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 					// To see information about a table's triggers, you must have the TRIGGER privilege for the table.
 					if hasGlobalTriggerPriv || hasDbTriggerPriv || privTblSet.Has(PrivilegeType_Trigger) {
-						rows = append(rows, Row{
+						rows = append(rows, UntypedSqlRow{
 							db.CatalogName,          // trigger_catalog
 							db.SchemaName,           // trigger_schema
 							triggerPlan.TriggerName, // trigger_name
@@ -2059,7 +2059,7 @@ func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			if user.Attributes != nil {
 				attributes = *user.Attributes
 			}
-			rows = append(rows, Row{
+			rows = append(rows, UntypedSqlRow{
 				user.User,  // user
 				user.Host,  // host
 				attributes, // attributes
@@ -2068,7 +2068,7 @@ func userAttributesRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	} else {
 		// TODO: current user needs to be exposed to access user attribute from mysql_db
 		currClient := ctx.Session.Client()
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			currClient.User,    // user
 			currClient.Address, // host
 			nil,                // attributes
@@ -2709,7 +2709,7 @@ func getGlobalPrivsRowsFromPrivSet(privSet PrivilegeSet, grantee string) []Row {
 		if hasGrantOpt {
 			isGrantable = "YES"
 		}
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			grantee,       // grantee
 			"def",         // table_catalog
 			priv.String(), // privilege_type
@@ -2731,7 +2731,7 @@ func getSchemaPrivsRowsFromPrivDbSet(privSetDb PrivilegeSetDatabase, grantee str
 		if hasGrantOpt {
 			isGrantable = "YES"
 		}
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			grantee,           // grantee
 			"def",             // table_catalog
 			privSetDb.Name(),  // table_schema
@@ -2754,7 +2754,7 @@ func getTablePrivsRowsFromPrivTblSet(privSetTbl PrivilegeSetTable, grantee, dbNa
 		if hasGrantOpt {
 			isGrantable = "YES"
 		}
-		rows = append(rows, Row{
+		rows = append(rows, UntypedSqlRow{
 			grantee,           // grantee
 			"def",             // table_catalog
 			dbName,            // table_schema

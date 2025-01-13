@@ -303,7 +303,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName,
 	sort.Strings(curColPrivStr)
 	privileges := strings.Join(curColPrivStr, ",")
 
-	return sql.Row{
+	return sql.UntypedSqlRow{
 		catName,           // table_catalog
 		schName,           // table_schema
 		tblName,           // table_name

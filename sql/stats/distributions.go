@@ -44,7 +44,7 @@ func (d *normDistIter) Next(*sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 	d.i++
-	var ret sql.Row
+	var ret sql.UntypedSqlRow
 	ret = append(ret, d.i)
 	for i := 0; i < d.cols; i++ {
 		val := rand.NormFloat64()*d.std + d.mean
@@ -74,7 +74,7 @@ func (d *expDistIter) Next(*sql.Context) (sql.Row, error) {
 		return nil, io.EOF
 	}
 	d.i++
-	var ret sql.Row
+	var ret sql.UntypedSqlRow
 	ret = append(ret, d.i)
 	for i := 0; i < d.cols; i++ {
 		val := -math.Log2(rand.NormFloat64()) / d.lambda

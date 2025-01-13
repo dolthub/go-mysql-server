@@ -43,27 +43,27 @@ func TestArrayAppend(t *testing.T) {
 		err      error
 	}{
 
-		{f1, sql.Row{jsonInput, "$.b[0]", 4.1}, `{"a": 1, "b": [[2,4.1], 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{jsonInput, "$.a", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{jsonInput, "$.e", "new"}, jsonInput, nil},
-		{f1, sql.Row{jsonInput, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": ["foo", "test"]}}`, nil},
-		{f2, sql.Row{jsonInput, "$.b[0]", 4.1, "$.c.d", "test"}, `{"a": 1, "b": [[2, 4.1], 3], "c": {"d": ["foo", "test"]}}`, nil},
-		{f1, sql.Row{jsonInput, "$.b[5]", 4.1}, jsonInput, nil},
-		{f1, sql.Row{jsonInput, "$.b.c", 4}, jsonInput, nil},
-		{f1, sql.Row{jsonInput, "$.a[51]", 4.1}, jsonInput, nil},
-		{f1, sql.Row{jsonInput, "$.a[last-1]", 4.1}, jsonInput, nil},
-		{f1, sql.Row{jsonInput, "$.a[0]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{jsonInput, "$.a[last]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
-		{f1, sql.Row{jsonInput, "$[0]", 4.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 4.1]`, nil},
-		{f1, sql.Row{jsonInput, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 2 of $.[0]")},
-		{f1, sql.Row{jsonInput, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")},
-		{f1, sql.Row{jsonInput, "$.c.*", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.*")},
-		{f1, sql.Row{jsonInput, "$.c.**", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.**")},
-		{f1, sql.Row{1, "$", "test"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_array_append")},
-		{f1, sql.Row{`}`, "$", "test"}, nil, sql.ErrInvalidJSONText.New(1, "json_array_append", `}`)},
-		{f1, sql.Row{jsonInput, "$", 10.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 10.1]`, nil},
-		{f1, sql.Row{nil, "$", 42.7}, nil, nil},
-		{f1, sql.Row{jsonInput, nil, 10}, nil, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.b[0]", 4.1}, `{"a": 1, "b": [[2,4.1], 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.a", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.e", "new"}, jsonInput, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.c.d", "test"}, `{"a": 1, "b": [2, 3], "c": {"d": ["foo", "test"]}}`, nil},
+		{f2, sql.UntypedSqlRow{jsonInput, "$.b[0]", 4.1, "$.c.d", "test"}, `{"a": 1, "b": [[2, 4.1], 3], "c": {"d": ["foo", "test"]}}`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.b[5]", 4.1}, jsonInput, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.b.c", 4}, jsonInput, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.a[51]", 4.1}, jsonInput, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.a[last-1]", 4.1}, jsonInput, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.a[0]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.a[last]", 4.1}, `{"a": [1, 4.1], "b": [2, 3], "c": {"d": "foo"}}`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$[0]", 4.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 4.1]`, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.[0]", 4.1}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 2 of $.[0]")},
+		{f1, sql.UntypedSqlRow{jsonInput, "foo", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Path must start with '$'")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.c.*", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.*")},
+		{f1, sql.UntypedSqlRow{jsonInput, "$.c.**", "test"}, nil, fmt.Errorf("Invalid JSON path expression. Expected field name after '.' at character 4 of $.c.**")},
+		{f1, sql.UntypedSqlRow{1, "$", "test"}, nil, sql.ErrInvalidJSONArgument.New(1, "json_array_append")},
+		{f1, sql.UntypedSqlRow{`}`, "$", "test"}, nil, sql.ErrInvalidJSONText.New(1, "json_array_append", `}`)},
+		{f1, sql.UntypedSqlRow{jsonInput, "$", 10.1}, `[{"a": 1, "b": [2, 3], "c": {"d": "foo"}}, 10.1]`, nil},
+		{f1, sql.UntypedSqlRow{nil, "$", 42.7}, nil, nil},
+		{f1, sql.UntypedSqlRow{jsonInput, nil, 10}, nil, nil},
 
 		// mysql> select JSON_ARRAY_APPEND(JSON_ARRAY(1,2,3), "$[1]", 51, "$[1]", 52, "$[1]", 53);
 		// +--------------------------------------------------------------------------+
@@ -72,7 +72,7 @@ func TestArrayAppend(t *testing.T) {
 		// | [1, [2, 51, 52, 53], 3]                                                  |
 		// +--------------------------------------------------------------------------+
 		{buildGetFieldExpressions(t, json.NewJSONArrayAppend, 7),
-			sql.Row{`[1.0,2.0,3.0]`,
+			sql.UntypedSqlRow{`[1.0,2.0,3.0]`,
 				"$[1]", 51.0, // [1, 2, 3] -> [1, [2, 51], 3]
 				"$[1]", 52.0, // [1, [2, 51], 2, 3] -> [1, [2, 51, 52] 3]
 				"$[1]", 53.0, // [1, [2, 51, 52], 3] -> [1, [2, 51, 52, 53], 3]
@@ -82,7 +82,7 @@ func TestArrayAppend(t *testing.T) {
 
 	for _, tstC := range testCases {
 		var paths []string
-		for _, path := range tstC.row[1:] {
+		for _, path := range tstC.row.Values()[1:] {
 			if _, ok := path.(string); ok {
 				paths = append(paths, path.(string))
 			}

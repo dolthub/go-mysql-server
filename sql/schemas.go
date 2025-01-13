@@ -35,13 +35,13 @@ type Schema []*Column
 // CheckRow checks the row conforms to the schema.
 func (s Schema) CheckRow(row Row) error {
 	expected := len(s)
-	got := len(row)
+	got := row.Len()
 	if expected != got {
 		return ErrUnexpectedRowLength.New(expected, got)
 	}
 
 	for idx, f := range s {
-		v := row[idx]
+		v := row.GetValue(idx)
 		if f.Check(v) {
 			continue
 		}

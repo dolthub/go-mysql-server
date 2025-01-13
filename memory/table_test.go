@@ -116,22 +116,22 @@ var tests = []struct {
 	name          string
 	schema        sql.PrimaryKeySchema
 	numPartitions int
-	rows          []sql.Row
+	rows          []sql.UntypedSqlRow
 
 	filters          []sql.Expression
-	expectedFiltered []sql.Row
+	expectedFiltered []sql.UntypedSqlRow
 
 	columns           []string
-	expectedProjected []sql.Row
+	expectedProjected []sql.UntypedSqlRow
 
-	expectedFiltersAndProjections []sql.Row
+	expectedFiltersAndProjections []sql.UntypedSqlRow
 
 	indexColumns      []string
 	expectedKeyValues []*indexKeyValue
 
 	lookup          *dummyLookup
 	partition       *memory.Partition
-	expectedIndexed []sql.Row
+	expectedIndexed []sql.UntypedSqlRow
 }{
 	{
 		name: "test",
@@ -141,13 +141,13 @@ var tests = []struct {
 			&sql.Column{Name: "col3", Source: "test", Type: types.Int64, Nullable: false, Default: planbuilder.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", types.Int64, false)},
 		}),
 		numPartitions: 2,
-		rows: []sql.Row{
-			sql.NewRow("a", int32(10), int64(100)),
-			sql.NewRow("b", int32(10), int64(100)),
-			sql.NewRow("c", int32(20), int64(100)),
-			sql.NewRow("d", int32(20), int64(200)),
-			sql.NewRow("e", int32(10), int64(200)),
-			sql.NewRow("f", int32(20), int64(200)),
+		rows: []sql.UntypedSqlRow{
+			{"a", int32(10), int64(100)},
+			{"b", int32(10), int64(100)},
+			{"c", int32(20), int64(100)},
+			{"d", int32(20), int64(200)},
+			{"e", int32(10), int64(200)},
+			{"f", int32(20), int64(200)},
 		},
 		filters: []sql.Expression{
 			expression.NewEquals(
@@ -155,33 +155,33 @@ var tests = []struct {
 				expression.NewLiteral(int32(10), types.Int32),
 			),
 		},
-		expectedFiltered: []sql.Row{
-			sql.NewRow("a", int32(10), int64(100)),
-			sql.NewRow("b", int32(10), int64(100)),
-			sql.NewRow("e", int32(10), int64(200)),
+		expectedFiltered: []sql.UntypedSqlRow{
+			{"a", int32(10), int64(100)},
+			{"b", int32(10), int64(100)},
+			{"e", int32(10), int64(200)},
 		},
 		columns: []string{"col1", "col3"},
-		expectedProjected: []sql.Row{
-			sql.NewRow("a", int64(100)),
-			sql.NewRow("b", int64(100)),
-			sql.NewRow("c", int64(100)),
-			sql.NewRow("d", int64(200)),
-			sql.NewRow("e", int64(200)),
-			sql.NewRow("f", int64(200)),
+		expectedProjected: []sql.UntypedSqlRow{
+			{"a", int64(100)},
+			{"b", int64(100)},
+			{"c", int64(100)},
+			{"d", int64(200)},
+			{"e", int64(200)},
+			{"f", int64(200)},
 		},
-		expectedFiltersAndProjections: []sql.Row{
-			sql.NewRow("a", int64(100)),
-			sql.NewRow("b", int64(100)),
-			sql.NewRow("e", int64(200)),
+		expectedFiltersAndProjections: []sql.UntypedSqlRow{
+			{"a", int64(100)},
+			{"b", int64(100)},
+			{"e", int64(200)},
 		},
 		indexColumns: []string{"col1", "col3"},
 		expectedKeyValues: []*indexKeyValue{
-			{sql.NewRow("a", int64(100)), &memory.IndexValue{Key: "0", Pos: 0}},
-			{sql.NewRow("c", int64(100)), &memory.IndexValue{Key: "0", Pos: 1}},
-			{sql.NewRow("e", int64(200)), &memory.IndexValue{Key: "0", Pos: 2}},
-			{sql.NewRow("b", int64(100)), &memory.IndexValue{Key: "1", Pos: 0}},
-			{sql.NewRow("d", int64(200)), &memory.IndexValue{Key: "1", Pos: 1}},
-			{sql.NewRow("f", int64(200)), &memory.IndexValue{Key: "1", Pos: 2}},
+			{sql.UntypedSqlRow{"a", int64(100)}, &memory.IndexValue{Key: "0", Pos: 0}},
+			{sql.UntypedSqlRow{"c", int64(100)}, &memory.IndexValue{Key: "0", Pos: 1}},
+			{sql.UntypedSqlRow{"e", int64(200)}, &memory.IndexValue{Key: "0", Pos: 2}},
+			{sql.UntypedSqlRow{"b", int64(100)}, &memory.IndexValue{Key: "1", Pos: 0}},
+			{sql.UntypedSqlRow{"d", int64(200)}, &memory.IndexValue{Key: "1", Pos: 1}},
+			{sql.UntypedSqlRow{"f", int64(200)}, &memory.IndexValue{Key: "1", Pos: 2}},
 		},
 		lookup: &dummyLookup{
 			values: map[string][]*memory.IndexValue{
@@ -198,7 +198,7 @@ var tests = []struct {
 			},
 		},
 		partition: memory.NewPartition([]byte("0")),
-		expectedIndexed: []sql.Row{
+		expectedIndexed: []sql.UntypedSqlRow{
 			{"a", int64(100)},
 			{"c", int64(100)},
 			{"e", int64(200)},
@@ -239,7 +239,7 @@ func TestTable(t *testing.T) {
 				require.Len(rows, len(expected))
 
 				for i, row := range rows {
-					require.ElementsMatch(expected[i], row)
+					require.ElementsMatch(expected[i], row.Values())
 				}
 			}
 
@@ -351,12 +351,12 @@ func TestFilterAndProject(t *testing.T) {
 // 	}
 // }
 
-func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.Row {
+func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.UntypedSqlRow {
 	var require = require.New(t)
 
 	pIter, err := table.Partitions(ctx)
 	require.NoError(err)
-	allRows := []sql.Row{}
+	allRows := []sql.UntypedSqlRow{}
 	for {
 		p, err := pIter.Next(ctx)
 		if err != nil {
@@ -373,7 +373,7 @@ func getAllRows(t *testing.T, ctx *sql.Context, table sql.Table) []sql.Row {
 		rows, err := sql.RowIterToRows(ctx, iter)
 		require.NoError(err)
 
-		allRows = append(allRows, rows...)
+		allRows = append(allRows, sql.RowsToUntyped(rows)...)
 	}
 
 	return allRows

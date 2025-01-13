@@ -181,13 +181,13 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	idx := t.ea.TableData().autoColIdx
 	if idx >= 0 {
 		autoCol := t.ea.TableData().schema.Schema[idx]
-		cmp, err := autoCol.Type.Compare(row[idx], t.ea.TableData().autoIncVal)
+		cmp, err := autoCol.Type.Compare(row.GetValue(idx), t.ea.TableData().autoIncVal)
 		if err != nil {
 			return err
 		}
 		if cmp > 0 {
 			// Provided value larger than autoIncVal, set autoIncVal to that value
-			v, _, err := types.Uint64.Convert(row[idx])
+			v, _, err := types.Uint64.Convert(row.GetValue(idx))
 			if err != nil {
 				return err
 			}
@@ -240,7 +240,7 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 			pkColIdxes := t.pkColumnIndexes()
 			vals := make([]interface{}, len(pkColIdxes))
 			for i := range pkColIdxes {
-				vals[i] = newRow[pkColIdxes[i]]
+				vals[i] = newRow.GetValue(pkColIdxes[i])
 			}
 			return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
 		}
@@ -325,8 +325,8 @@ func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sq
 		if schema[idx].Virtual {
 			return false
 		}
-		v1 := row[idx]
-		v2 := row2[idx]
+		v1 := row.GetValue(idx)
+		v2 := row2.GetValue(idx)
 		if len(prefixLengths) > i && prefixLengths[i] > 0 {
 			prefixLength := prefixLengths[i]
 			switch v := v1.(type) {
@@ -524,7 +524,7 @@ func (pke *pkTableEditAccumulator) pkColumnIndexes() []int {
 func (pke *pkTableEditAccumulator) getRowKey(r sql.Row) string {
 	var rowKey strings.Builder
 	for _, i := range pke.tableData.schema.PkOrdinals {
-		rowKey.WriteString(fmt.Sprintf("%v", r[i]))
+		rowKey.WriteString(fmt.Sprintf("%v", r.GetValue(i)))
 	}
 	return rowKey.String()
 }
@@ -587,12 +587,12 @@ func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 		// through the loop
 		for i := len(idxStorage) - 1; i >= 0; i-- {
 			idxRow := idxStorage[i]
-			rowLoc := idxRow[len(idxRow)-1].(primaryRowLocation)
+			rowLoc := idxRow.GetValue(idxRow.Len() - 1).(primaryRowLocation)
 			if rowLoc.partition == partKey && rowLoc.idx == rowIdx {
 				idxStorage = append(idxStorage[:i], idxStorage[i+1:]...)
 			} else if rowLoc.partition == partKey && rowLoc.idx > rowIdx {
 				// For rows after the one we deleted, offset the row index by -1
-				idxRow[len(idxRow)-1] = primaryRowLocation{rowLoc.partition, rowLoc.idx - 1}
+				idxRow.SetValue(idxRow.Len()-1, primaryRowLocation{rowLoc.partition, rowLoc.idx - 1})
 			}
 		}
 		table.secondaryIndexStorage[indexName(memIdx.ID())] = idxStorage
@@ -686,7 +686,7 @@ func (k *keylessTableEditAccumulator) Insert(value sql.Row) error {
 		}
 	}
 
-	k.adds = append(k.adds, value)
+	k.adds = append(k.adds, value.Copy())
 	return nil
 }
 
@@ -705,7 +705,7 @@ func (k *keylessTableEditAccumulator) Delete(value sql.Row) error {
 
 	}
 
-	k.deletes = append(k.deletes, value)
+	k.deletes = append(k.deletes, value.Copy())
 	return nil
 }
 
@@ -840,14 +840,14 @@ func formatRow(r sql.Row, idxs []int) string {
 		if seenOne {
 			_, _ = fmt.Fprintf(b, ",")
 		}
-		_, _ = fmt.Fprintf(b, "%v", r[idx])
+		_, _ = fmt.Fprintf(b, "%v", r.GetValue(idx))
 	}
 	b.WriteString("]")
 	return b.String()
 }
 
 func checkRow(schema sql.Schema, row sql.Row) error {
-	for i, value := range row {
+	for i, value := range row.Values() {
 		c := schema[i]
 		if !c.Check(value) {
 			return sql.ErrInvalidType.New(value)
@@ -858,10 +858,10 @@ func checkRow(schema sql.Schema, row sql.Row) error {
 }
 
 func verifyRowTypes(row sql.Row, schema sql.Schema) error {
-	if len(row) == len(schema) {
+	if row.Len() == len(schema) {
 		for i := range schema {
 			col := schema[i]
-			rowVal := row[i]
+			rowVal := row.GetValue(i)
 			valType := reflect.TypeOf(rowVal)
 			expectedType := col.Type.ValueType()
 			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {

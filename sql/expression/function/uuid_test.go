@@ -32,7 +32,7 @@ func TestUUID(t *testing.T) {
 	// Generate a UUID and validate that is a legitimate uuid
 	uuidE := NewUUIDFunc()
 
-	result, err := uuidE.Eval(ctx, sql.Row{nil})
+	result, err := uuidE.Eval(ctx, sql.UntypedSqlRow{nil})
 	require.NoError(t, err)
 
 	myUUID := result.(string)
@@ -41,7 +41,7 @@ func TestUUID(t *testing.T) {
 
 	// validate that generated uuid is legitimate for IsUUID
 	val := NewIsUUID(uuidE)
-	require.Equal(t, true, eval(t, val, sql.Row{nil}))
+	require.Equal(t, true, eval(t, val, sql.UntypedSqlRow{nil}))
 
 	// Use a UUID regex as a sanity check
 	re2 := regexp.MustCompile(`\b[0-9a-f]{8}\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\b[0-9a-f]{12}\b`)
@@ -69,7 +69,7 @@ func TestIsUUID(t *testing.T) {
 		f := NewIsUUID(expression.NewLiteral(tt.value, tt.rowType))
 
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, eval(t, f, sql.Row{nil}))
+			require.Equal(t, tt.expected, eval(t, f, sql.UntypedSqlRow{nil}))
 		})
 
 		req := require.New(t)
@@ -110,7 +110,7 @@ func TestUUIDToBinValid(t *testing.T) {
 		h := NewHex(f)
 
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, eval(t, h, sql.Row{nil}))
+			require.Equal(t, tt.expected, eval(t, h, sql.UntypedSqlRow{nil}))
 		})
 
 		req := require.New(t)
@@ -137,7 +137,7 @@ func TestUUIDToBinFailing(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
-			_, err := f.Eval(ctx, sql.Row{nil})
+			_, err := f.Eval(ctx, sql.UntypedSqlRow{nil})
 			require.Error(t, err)
 		})
 	}
@@ -145,7 +145,7 @@ func TestUUIDToBinFailing(t *testing.T) {
 
 func TestBinToUUID(t *testing.T) {
 	// Test that UUID_TO_BIN to BIN_TO_UUID is reflexive
-	uuidE := eval(t, NewUUIDFunc(), sql.Row{nil})
+	uuidE := eval(t, NewUUIDFunc(), sql.UntypedSqlRow{nil})
 
 	f, err := NewUUIDToBin(expression.NewLiteral(uuidE, types.LongText))
 	require.NoError(t, err)
@@ -153,7 +153,7 @@ func TestBinToUUID(t *testing.T) {
 	retUUID, err := NewBinToUUID(f)
 	require.NoError(t, err)
 
-	require.Equal(t, uuidE, eval(t, retUUID, sql.Row{nil}))
+	require.Equal(t, uuidE, eval(t, retUUID, sql.UntypedSqlRow{nil}))
 
 	// Run UUID_TO_BIN through a series of test cases.
 	validTestCases := []struct {
@@ -183,7 +183,7 @@ func TestBinToUUID(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, eval(t, f, sql.Row{nil}))
+			require.Equal(t, tt.expected, eval(t, f, sql.UntypedSqlRow{nil}))
 		})
 
 		req := require.New(t)
@@ -210,7 +210,7 @@ func TestBinToUUIDFailing(t *testing.T) {
 
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
-			_, err := f.Eval(ctx, sql.Row{nil})
+			_, err := f.Eval(ctx, sql.UntypedSqlRow{nil})
 			require.Error(t, err)
 		})
 	}

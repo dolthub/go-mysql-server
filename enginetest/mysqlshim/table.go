@@ -144,7 +144,7 @@ func (t Table) Truncate(ctx *sql.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, _, err := types.Int64.Convert(rows[0][0])
+	rowCount, _, err := types.Int64.Convert(rows[0].GetValue(0))
 	if err != nil {
 		return 0, err
 	}
@@ -345,7 +345,7 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, _, err := types.Uint64.Convert(rows[0][0])
+	rowCount, _, err := types.Uint64.Convert(rows[0].GetValue(0))
 	if err != nil {
 		return 0, err
 	}
@@ -377,11 +377,11 @@ func (t Table) getCreateTable() (*plan.CreateTable, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(rows) == 0 || len(rows[0]) == 0 {
+	if len(rows) == 0 || rows[0].Len() == 0 {
 		return nil, sql.ErrTableNotFound.New(t.name)
 	}
 	// TODO add catalog
-	createTableNode, _, err := planbuilder.Parse(sql.NewEmptyContext(), sql.MapCatalog{Tables: map[string]sql.Table{t.name: t}}, rows[0][1].(string))
+	createTableNode, _, err := planbuilder.Parse(sql.NewEmptyContext(), sql.MapCatalog{Tables: map[string]sql.Table{t.name: t}}, rows[0].GetValue(1).(string))
 	if err != nil {
 		return nil, err
 	}

@@ -30,11 +30,11 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select team as f from members order by id, f",
-				Expected: []sql.Row{{"red"}, {"red"}, {"orange"}, {"orange"}, {"orange"}, {"purple"}},
+				Expected: []sql.UntypedSqlRow{{"red"}, {"red"}, {"orange"}, {"orange"}, {"orange"}, {"purple"}},
 			},
 			{
 				Query: "SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY 2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"purple", int64(1)},
 					{"red", int64(2)},
 					{"orange", int64(3)},
@@ -42,7 +42,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 			{
 				Query: "SELECT team, COUNT(*) FROM members GROUP BY 1 ORDER BY 2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"purple", int64(1)},
 					{"red", int64(2)},
 					{"orange", int64(3)},
@@ -54,34 +54,34 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT DISTINCT BINARY t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t1.id > 0 ORDER BY BINARY t1.id",
-				Expected: []sql.Row{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
+				Expected: []sql.UntypedSqlRow{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
 			},
 			{
 				Query:    "SELECT DISTINCT BINARY t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t1.id > 0 ORDER BY t1.id",
-				Expected: []sql.Row{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
+				Expected: []sql.UntypedSqlRow{{[]uint8{0x33}}, {[]uint8{0x34}}, {[]uint8{0x35}}, {[]uint8{0x36}}, {[]uint8{0x37}}, {[]uint8{0x38}}},
 			},
 			{
 				Query:    "SELECT DISTINCT t1.id as id FROM members AS t1 JOIN members AS t2 ON t1.id = t2.id WHERE t2.id > 0 ORDER BY t1.id",
-				Expected: []sql.Row{{3}, {4}, {5}, {6}, {7}, {8}},
+				Expected: []sql.UntypedSqlRow{{3}, {4}, {5}, {6}, {7}, {8}},
 			},
 			{
 				// aliases from outer scopes can be used in a subquery's having clause.
 				// https://github.com/dolthub/dolt/issues/4723
 				Query:    "SELECT id as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM members where id < 6;",
-				Expected: []sql.Row{{3, 4}, {4, 5}, {5, 6}},
+				Expected: []sql.UntypedSqlRow{{3, 4}, {4, 5}, {5, 6}},
 			},
 			{
 				// columns from outer scopes can be used in a subquery's having clause.
 				// https://github.com/dolthub/dolt/issues/4723
 				Query:    "SELECT id, (SELECT UPPER(team) having id > 3) as upper_team FROM members where id < 6;",
-				Expected: []sql.Row{{3, nil}, {4, "RED"}, {5, "ORANGE"}},
+				Expected: []sql.UntypedSqlRow{{3, nil}, {4, "RED"}, {5, "ORANGE"}},
 			},
 			{
 				// When there is ambiguity between a reference in an outer scope and a reference in the current
 				// scope, the reference in the innermost scope will be used.
 				// https://github.com/dolthub/dolt/issues/4723
 				Query:    "SELECT id, (SELECT -1 as id having id < 10) as upper_team FROM members where id < 6;",
-				Expected: []sql.Row{{3, -1}, {4, -1}, {5, -1}},
+				Expected: []sql.UntypedSqlRow{{3, -1}, {4, -1}, {5, -1}},
 			},
 		},
 	},
@@ -96,21 +96,21 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select binary s from t group by binary s order by binary s",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{[]uint8("abc")},
 					{[]uint8("def")},
 				},
 			},
 			{
 				Query: "select count(b), b from t1 group by b order by b",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3, []uint8("abc")},
 					{2, []uint8("def")},
 				},
 			},
 			{
 				Query: "select binary s from t group by binary s order by s",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{[]uint8("abc")},
 					{[]uint8("def")},
 				},
@@ -133,39 +133,39 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT t1.username, COUNT(t1.id) FROM ((SELECT t2.id, t2.content, t3.username FROM tweet AS t2 INNER JOIN users AS t3 ON (-t2.user_id = -t3.id) WHERE (t3.username = 'u3')) UNION (SELECT t4.id, t4.content, `t5`.`username` FROM `tweet` AS t4 INNER JOIN users AS t5 ON (-t4.user_id = -t5.id) WHERE (t5.username IN ('u2', 'u4')))) AS t1 GROUP BY `t1`.`username` ORDER BY 1,2 DESC;",
-				Expected: []sql.Row{{"u2", 2}, {"u3", 1}, {"u4", 1}},
+				Expected: []sql.UntypedSqlRow{{"u2", 2}, {"u3", 1}, {"u4", 1}},
 			},
 			{
 				Query:    "SELECT t1.username, COUNT(t1.id) AS ct FROM ((SELECT t2.id, t2.content, t3.username FROM tweet AS t2 INNER JOIN users AS t3 ON (-t2.user_id = -t3.id) WHERE (t3.username = 'u3')) UNION (SELECT t4.id, t4.content, `t5`.`username` FROM `tweet` AS t4 INNER JOIN users AS t5 ON (-t4.user_id = -t5.id) WHERE (t5.username IN ('u2', 'u4')))) AS t1 GROUP BY `t1`.`username` ORDER BY 1,2 DESC;",
-				Expected: []sql.Row{{"u2", 2}, {"u3", 1}, {"u4", 1}},
+				Expected: []sql.UntypedSqlRow{{"u2", 2}, {"u3", 1}, {"u4", 1}},
 			},
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(id), user_id;",
-				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {1, 3}, {2, 1}},
 			},
 			{
 				Query:    "SELECT COUNT(tweet.id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(id), user_id;",
-				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {1, 3}, {2, 1}},
 			},
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id ORDER BY COUNT(tweet.id), user_id;",
-				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {1, 3}, {2, 1}},
 			},
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id;",
-				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {1, 3}, {2, 1}},
 			},
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id ORDER BY COUNT(tweet.id), user_id;",
-				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {1, 3}, {2, 1}},
 			},
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id;",
-				Expected: []sql.Row{{1, 2}, {1, 3}, {2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {1, 3}, {2, 1}},
 			},
 			{
 				Query:    "SELECT COUNT(id) as ct, user_id as uid FROM tweet WHERE tweet.id is NOT NULL GROUP BY tweet.user_id HAVING COUNT(tweet.id) > 0 ORDER BY COUNT(tweet.id), user_id LIMIT 1;",
-				Expected: []sql.Row{{1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}},
 			},
 		},
 	},
@@ -174,7 +174,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT column_0, sum(column_1) FROM (values row(1.00,1), row(1.00,3), row(2,2), row(2,5), row(3,9)) a group by 1 order by 1;",
-				Expected: []sql.Row{{"1.00", float64(4)}, {"2.00", float64(7)}, {"3.00", float64(9)}},
+				Expected: []sql.UntypedSqlRow{{"1.00", float64(4)}, {"2.00", float64(7)}, {"3.00", float64(9)}},
 			},
 		},
 	},
@@ -232,19 +232,19 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select @@global.sql_mode",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query: "select @@session.sql_mode",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query: "select any_value(id), any_value(team) from members order by id",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3, "red"},
 					{4, "red"},
 					{5, "orange"},
@@ -265,13 +265,13 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select @@global.sql_mode",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query: "select @@session.sql_mode",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
@@ -291,14 +291,14 @@ var OrderByGroupByScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select c1, count(pk) from t group by c1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"foo", 2},
 					{nil, 1},
 				},
 			},
 			{
 				Query: "select c1, count(c1) from t group by c1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"foo", 2},
 					{nil, 0},
 				},

@@ -68,7 +68,7 @@ func (d Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 	var tableNames []string
 	var row sql.Row
 	for row, err = rows.Next(ctx); err == nil; row, err = rows.Next(ctx) {
-		tableNames = append(tableNames, row[0].(string))
+		tableNames = append(tableNames, row.GetValue(0).(string))
 	}
 	if err != io.EOF {
 		return nil, err
@@ -129,9 +129,9 @@ func (d Database) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error)
 	for row, err = rows.Next(ctx); err == nil; row, err = rows.Next(ctx) {
 		// Trigger, Event, Table, Statement, Timing, Created, sql_mode, ...
 		triggers = append(triggers, sql.TriggerDefinition{
-			Name: row[0].(string),
+			Name: row.GetValue(0).(string),
 			CreateStatement: fmt.Sprintf("CREATE TRIGGER `%s` %s %s ON `%s` FOR EACH ROW %s;",
-				row[0].(string), row[4].(string), row[1].(string), row[2].(string), row[3].(string)),
+				row.GetValue(0).(string), row.GetValue(4).(string), row.GetValue(1).(string), row.GetValue(2).(string), row.GetValue(3).(string)),
 			CreatedAt: time.Time{}, // TODO: time works in with doltharness
 		})
 	}
@@ -175,14 +175,14 @@ func (d Database) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDe
 	storedProcedureDetails := make([]sql.StoredProcedureDetails, len(procedures))
 	for i, procedure := range procedures {
 		// Db, Name, Type, Definer, Modified, Created, Security_type, Comment, ...
-		procedureStatement, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE PROCEDURE `%s`.`%s`;", d.name, procedure[1]))
+		procedureStatement, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE PROCEDURE `%s`.`%s`;", d.name, procedure.GetValue(1)))
 		if err != nil {
 			return nil, err
 		}
 		// Procedure, sql_mode, Create Procedure, ...
 		storedProcedureDetails[i] = sql.StoredProcedureDetails{
-			Name:            procedureStatement[0][0].(string),
-			CreateStatement: procedureStatement[0][2].(string),
+			Name:            procedureStatement[0].GetValue(0).(string),
+			CreateStatement: procedureStatement[0].GetValue(2).(string),
 			CreatedAt:       time.Time{}, // these should be added someday
 			ModifiedAt:      time.Time{},
 		}
@@ -224,13 +224,13 @@ func (d Database) GetEvents(_ *sql.Context) ([]sql.EventDefinition, interface{},
 	eventDefinition := make([]sql.EventDefinition, len(events))
 	for i, event := range events {
 		// Db, Name, Definer, Time Zone, Type, ...
-		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event[1]))
+		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event.GetValue(1)))
 		if err != nil {
 			return nil, nil, err
 		}
 		// Event, sql_mode, time_zone, Create Event, ...
 		eventDefinition[i] = sql.EventDefinition{
-			Name: eventStmt[0][0].(string),
+			Name: eventStmt[0].GetValue(0).(string),
 			// TODO: other fields should be added such as Created, LastAltered
 		}
 	}
@@ -301,12 +301,12 @@ func (d Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	}
 	viewDefinitions := make([]sql.ViewDefinition, len(views))
 	for i, view := range views {
-		viewName := view[2].(string)
+		viewName := view.GetValue(2).(string)
 		viewStatementRow, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE VIEW `%s`.`%s`;", d.name, viewName))
 		if err != nil {
 			return nil, err
 		}
-		createViewStatement := viewStatementRow[0][1].(string)
+		createViewStatement := viewStatementRow[0].GetValue(1).(string)
 		viewStatement := createViewStatement[strings.Index(createViewStatement, " AS ")+4:] // not the best but works for now
 		viewDefinitions[i] = sql.ViewDefinition{
 			Name:                viewName,

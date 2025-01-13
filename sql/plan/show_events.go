@@ -131,7 +131,7 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 
 		// TODO: Time zone and Originator are set to default for now.
-		rows = append(rows, sql.Row{
+		rows = append(rows, sql.UntypedSqlRow{
 			dbName,              // Db
 			e.Name,              // Name
 			e.Definer,           // Definer

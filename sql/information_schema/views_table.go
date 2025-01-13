@@ -112,7 +112,7 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 				securityType = "DEFINER"
 			}
 
-			rows = append(rows, Row{
+			rows = append(rows, UntypedSqlRow{
 				db.CatalogName, // table_catalog
 				db.SchemaName,  // table_schema
 				view.Name,      // table_name

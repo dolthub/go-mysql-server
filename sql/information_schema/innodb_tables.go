@@ -449,7 +449,7 @@ func innoDBTempTableRowIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 
 		for i, table := range tables {
-			rows = append(rows, Row{i, table.String(), len(table.Schema()), 0})
+			rows = append(rows, UntypedSqlRow{i, table.String(), len(table.Schema()), 0})
 		}
 	}
 

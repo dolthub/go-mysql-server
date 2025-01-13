@@ -64,7 +64,7 @@ func (dv *SingleDropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 // Schema implements the Node interface. It always returns nil.
 func (dv *SingleDropView) Schema() sql.Schema { return nil }
 
-// String implements the fmt.Stringer interface, using sql.TreePrinter to
+// String implements the fmt.Stringer interface{}, using sql.TreePrinter to
 // generate the string.
 func (dv *SingleDropView) String() string {
 	pr := sql.NewTreePrinter()
@@ -93,7 +93,7 @@ func (dv *SingleDropView) Database() sql.Database {
 	return dv.database
 }
 
-// WithDatabase implements the sql.Databaser interface, and it returns a copy of this
+// WithDatabase implements the sql.Databaser interface{}, and it returns a copy of this
 // node with the specified database.
 func (dv *SingleDropView) WithDatabase(database sql.Database) (sql.Node, error) {
 	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
@@ -141,7 +141,7 @@ func (dvs *DropView) Resolved() bool {
 // Schema implements the Node interface. It always returns nil.
 func (dvs *DropView) Schema() sql.Schema { return nil }
 
-// String implements the fmt.Stringer interface, using sql.TreePrinter to
+// String implements the fmt.Stringer interface{}, using sql.TreePrinter to
 // generate the string.
 func (dvs *DropView) String() string {
 	childrenStrings := make([]string, len(dvs.children))

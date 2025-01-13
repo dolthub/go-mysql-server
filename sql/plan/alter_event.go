@@ -450,7 +450,7 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				if err != nil {
 					return nil, err
 				}
-				return sql.Row{types.NewOkResult(0)}, nil
+				return sql.UntypedSqlRow{types.NewOkResult(0)}, nil
 			}
 		}
 	}
@@ -465,7 +465,7 @@ func (a *alterEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		a.scheduler.UpdateEvent(ctx, a.eventDb, a.originalName, a.event)
 	}
 
-	return sql.Row{types.NewOkResult(0)}, nil
+	return sql.UntypedSqlRow{types.NewOkResult(0)}, nil
 }
 
 // Close implements the sql.RowIter interface.

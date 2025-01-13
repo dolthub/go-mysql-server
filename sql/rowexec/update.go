@@ -37,7 +37,8 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
+	oldRow := oldAndNewRow.Subslice(0, oldAndNewRow.Len()/2)
+	newRow := oldAndNewRow.Subslice(oldAndNewRow.Len()/2, oldAndNewRow.Len())
 	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
 		if !equals {
 			// apply check constraints
@@ -96,7 +97,7 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 			}
 
 			cpy := row.Copy()
-			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
+			cpy.SetValue(wtce.OffendingIdx, wtce.OffendingVal) // Needed for strings
 			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
 		}
 		var ok bool
@@ -123,12 +124,12 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 }
 
 func (u *updateIter) validateNullability(ctx *sql.Context, row sql.Row, schema sql.Schema) error {
-	for idx := 0; idx < len(row); idx++ {
+	for idx := 0; idx < row.Len(); idx++ {
 		col := schema[idx]
-		if !col.Nullable && row[idx] == nil {
+		if !col.Nullable && row.GetValue(idx) == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if u.ignore {
-				row[idx] = col.Type.Zero()
+				row.SetValue(idx, col.Type.Zero())
 				_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 			} else {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
@@ -204,7 +205,8 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		oldJoinRow, newJoinRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
+		oldJoinRow := oldAndNewRow.Subslice(0, oldAndNewRow.Len()/2)
+		newJoinRow := oldAndNewRow.Subslice(oldAndNewRow.Len()/2, oldAndNewRow.Len())
 
 		tableToOldRowMap := plan.SplitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 		tableToNewRowMap := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
@@ -256,7 +258,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if !equals {
-			return append(oldJoinRow, newJoinRow...), nil
+			return oldJoinRow.Append(newJoinRow), nil
 		}
 	}
 }
@@ -329,7 +331,7 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 		return true, nil
 	}
 
-	for _, v := range tableRow {
+	for _, v := range tableRow.Values() {
 		if v != nil {
 			return true, nil
 		}
@@ -362,20 +364,20 @@ func (u *updateJoinIter) getOrCreateCache(ctx *sql.Context, tableName string) sq
 
 // recreateRowFromMap takes a join schema and row map and recreates the original join row.
 func recreateRowFromMap(rowMap map[string]sql.Row, joinSchema sql.Schema) sql.Row {
-	var ret sql.Row
+	var ret sql.Row = sql.UntypedSqlRow{}
 
 	if len(joinSchema) == 0 {
 		return ret
 	}
 
 	currentTable := joinSchema[0].Source
-	ret = append(ret, rowMap[currentTable]...)
+	ret = ret.Append(rowMap[currentTable])
 
 	for i := 1; i < len(joinSchema); i++ {
 		c := joinSchema[i]
 
 		if c.Source != currentTable {
-			ret = append(ret, rowMap[c.Source]...)
+			ret = ret.Append(rowMap[c.Source])
 			currentTable = c.Source
 		}
 	}

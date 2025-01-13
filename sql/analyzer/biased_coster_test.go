@@ -48,11 +48,11 @@ func TestBiasedCoster(t *testing.T) {
 	xy.EnablePrimaryKeyIndexes()
 	ab.EnablePrimaryKeyIndexes()
 
-	ab.Insert(ctx, sql.Row{int64(0), int64(0)})
-	ab.Insert(ctx, sql.Row{int64(1), int64(1)})
-	ab.Insert(ctx, sql.Row{int64(2), int64(2)})
-	xy.Insert(ctx, sql.Row{int64(0), int64(0)})
-	xy.Insert(ctx, sql.Row{int64(1), int64(1)})
+	ab.Insert(ctx, sql.UntypedSqlRow{int64(0), int64(0)})
+	ab.Insert(ctx, sql.UntypedSqlRow{int64(1), int64(1)})
+	ab.Insert(ctx, sql.UntypedSqlRow{int64(2), int64(2)})
+	xy.Insert(ctx, sql.UntypedSqlRow{int64(0), int64(0)})
+	xy.Insert(ctx, sql.UntypedSqlRow{int64(1), int64(1)})
 
 	db.AddTable("xy", xy)
 	db.AddTable("ab", ab)

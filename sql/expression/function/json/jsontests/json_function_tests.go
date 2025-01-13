@@ -87,7 +87,7 @@ func buildGetFieldExpressions(t *testing.T, construct func(...sql.Expression) (s
 func RunJsonTests(t *testing.T, testCases []testCase) {
 	for _, tstC := range testCases {
 		var paths []string
-		for _, path := range tstC.row[1:] {
+		for _, path := range tstC.row.Values()[1:] {
 			if _, ok := path.(string); ok {
 				paths = append(paths, path.(string))
 			}

@@ -107,10 +107,6 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if idxCandidate.IsSpatial() {
 				continue
 			}
-			if idxCandidate.IsVector() {
-				// TODO: It's possible that we may be able to use vector indexes for point lookups, but not range lookups
-				continue
-			}
 			if isSortFieldsValidPrefix(sfExprs, sfAliases, idxCandidate.Expressions()) {
 				idx = idxCandidate
 				break

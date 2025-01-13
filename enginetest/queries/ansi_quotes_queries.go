@@ -32,33 +32,33 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// When ANSI_QUOTES mode is enabled, double quotes become identifier quotes.
 				Query:    `select "data" from auctions order by "ai" desc;`,
-				Expected: []sql.Row{{"forty-two"}},
+				Expected: []sql.UntypedSqlRow{{"forty-two"}},
 			},
 			{
 				// Backtick quotes are always valid as identifier characters, even if
 				// ANSI_QUOTES mode is enabled.
 				Query:    "select `data` from auctions order by `ai` desc;",
-				Expected: []sql.Row{{"forty-two"}},
+				Expected: []sql.UntypedSqlRow{{"forty-two"}},
 			},
 			{
 				Query:    `PREPARE prep1 FROM 'select "data" from auctions order by "ai" desc;'`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0x0, InsertID: 0x0, Info: plan.PrepareInfo{}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0x0, InsertID: 0x0, Info: plan.PrepareInfo{}}}},
 			},
 			{
 				Query:    `PREPARE prep2 FROM 'INSERT INTO auctions (id, "data") VALUES (?, ?);';`,
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0x0, InsertID: 0x0, Info: plan.PrepareInfo{}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0x0, InsertID: 0x0, Info: plan.PrepareInfo{}}}},
 			},
 			{
 				Query:    `select "data", '"' from auctions order by "ai";`,
-				Expected: []sql.Row{{"forty-two", "\""}},
+				Expected: []sql.UntypedSqlRow{{"forty-two", "\""}},
 			},
 			{
 				Query:    `select "data", '\"' from auctions order by "ai";`,
-				Expected: []sql.Row{{"forty-two", "\""}},
+				Expected: []sql.UntypedSqlRow{{"forty-two", "\""}},
 			},
 			{
 				Query:    `select '''foo''';`,
-				Expected: []sql.Row{{`'foo'`}},
+				Expected: []sql.UntypedSqlRow{{`'foo'`}},
 			},
 			{
 				Query:          `select """""foo""""";`,
@@ -71,15 +71,15 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES and make sure we can still run queries
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    `select "data" from auctions order by "ai" desc;`,
-				Expected: []sql.Row{{"data"}},
+				Expected: []sql.UntypedSqlRow{{"data"}},
 			},
 			{
 				Query:    `show tables;`,
-				Expected: []sql.Row{{"auctions"}},
+				Expected: []sql.UntypedSqlRow{{"auctions"}},
 			},
 		},
 	},
@@ -94,15 +94,15 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Assert that we can create a table using ANSI style quotes
 				Query:    `create table "t" ("pk" int primary key, "data" varchar(100));`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `insert into t ("pk", "data") values (1, 'one');`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    `select "pk", "data" from "t" order by "pk" asc;`,
-				Expected: []sql.Row{{1, "one"}},
+				Expected: []sql.UntypedSqlRow{{1, "one"}},
 			},
 		},
 	},
@@ -115,23 +115,23 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// https://github.com/dolthub/dolt/issues/6305
 				Query:    `CREATE TABLE public_keys (item INTEGER, type CHAR(4), hash INTEGER, "count" INTEGER, "public" VARCHAR(8000))`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `insert into public_keys("item", "type", "hash", "count", "public") values (42, 'type', 1010, 1, 'public');`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    `create view view1 as select public_keys."public", public_keys."count" from public_keys;`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `show tables;`,
-				Expected: []sql.Row{{"public_keys"}, {"view1"}},
+				Expected: []sql.UntypedSqlRow{{"public_keys"}, {"view1"}},
 			},
 			{
 				Query:    `show create table view1;`,
-				Expected: []sql.Row{{"view1", "CREATE VIEW `view1` AS select public_keys.\"public\", public_keys.\"count\" from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"view1", "CREATE VIEW `view1` AS select public_keys.\"public\", public_keys.\"count\" from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
 			},
 			{
 				// TODO: MySQL returns view definitions according to the session's current
@@ -140,38 +140,38 @@ var AnsiQuotesTests = []ScriptTest{
 				//       fix that, remove the test above, and unskip this test.
 				Skip:     true,
 				Query:    `show create table view1;`,
-				Expected: []sql.Row{{"view1", "CREATE VIEW `view1` AS select public_keys.`public`, public_keys.`count` from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"view1", "CREATE VIEW `view1` AS select public_keys.`public`, public_keys.`count` from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    `select "public", "count" from view1;`,
-				Expected: []sql.Row{{"public", 1}},
+				Expected: []sql.UntypedSqlRow{{"public", 1}},
 			},
 			{
 				// Assert that we can load and parse views for information_schema when ANSI_QUOTES mode is enabled
 				Query:    `select table_name, view_definition from information_schema.views where table_name='view1';`,
-				Expected: []sql.Row{{"view1", `select public_keys."public", public_keys."count" from public_keys`}},
+				Expected: []sql.UntypedSqlRow{{"view1", `select public_keys."public", public_keys."count" from public_keys`}},
 			},
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    `show create table view1;`,
-				Expected: []sql.Row{{"view1", "CREATE VIEW `view1` AS select public_keys.\"public\", public_keys.\"count\" from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"view1", "CREATE VIEW `view1` AS select public_keys.\"public\", public_keys.\"count\" from public_keys", "utf8mb4", "utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    `show create table public_keys;`,
-				Expected: []sql.Row{{"public_keys", "CREATE TABLE `public_keys` (\n  `item` int,\n  `type` char(4),\n  `hash` int,\n  `count` int,\n  `public` varchar(8000)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"public_keys", "CREATE TABLE `public_keys` (\n  `item` int,\n  `type` char(4),\n  `hash` int,\n  `count` int,\n  `public` varchar(8000)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "select public, `count` from view1;",
-				Expected: []sql.Row{{"public", 1}},
+				Expected: []sql.UntypedSqlRow{{"public", 1}},
 			},
 			{
 				// Assert that we can still load and parse views for information_schema when ANSI_QUOTES mode is disabled
 				Query:    `select table_name, view_definition from information_schema.views where table_name='view1';`,
-				Expected: []sql.Row{{"view1", `select public_keys."public", public_keys."count" from public_keys`}},
+				Expected: []sql.UntypedSqlRow{{"view1", `select public_keys."public", public_keys."count" from public_keys`}},
 			},
 		},
 	},
@@ -187,31 +187,31 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Assert the trigger ran correctly with ANSI_QUOTES mode enabled
 				Query:    `select "name", "data" from t order by "pk";`,
-				Expected: []sql.Row{{"John", "triggered!"}},
+				Expected: []sql.UntypedSqlRow{{"John", "triggered!"}},
 			},
 			{
 				// Assert that we can read and parse the trigger definition from information_schema
 				Query:    `select action_statement from information_schema.triggers where trigger_name='ansi_quotes_trigger';`,
-				Expected: []sql.Row{{`SET new."data" = 'triggered!'`}},
+				Expected: []sql.UntypedSqlRow{{`SET new."data" = 'triggered!'`}},
 			},
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    `insert into t values (2, 'George', 'SomethingElse');`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				// Assert the trigger still runs correctly after disabling ANSI_QUOTES mode
 				Query:    `select name, data from t where pk=2;`,
-				Expected: []sql.Row{{"George", "triggered!"}},
+				Expected: []sql.UntypedSqlRow{{"George", "triggered!"}},
 			},
 			{
 				// Assert that we can still read and parse the trigger definition from information_schema
 				Query:    `select action_statement from information_schema.triggers where trigger_name='ansi_quotes_trigger';`,
-				Expected: []sql.Row{{`SET new."data" = 'triggered!'`}},
+				Expected: []sql.UntypedSqlRow{{`SET new."data" = 'triggered!'`}},
 			},
 		},
 	},
@@ -227,29 +227,29 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Assert the procedure runs correctly with ANSI_QUOTES mode enabled
 				Query:    `call AnsiProcedure();`,
-				Expected: []sql.Row{{"John"}},
+				Expected: []sql.UntypedSqlRow{{"John"}},
 			},
 			{
 				// Assert that we can read and parse the procedure definition from information_schema
 				Query:    `select routine_definition from information_schema.routines where routine_name='AnsiProcedure';`,
-				Expected: []sql.Row{{`BEGIN SELECT "name" from "t" where "pk" = 1; END`}},
+				Expected: []sql.UntypedSqlRow{{`BEGIN SELECT "name" from "t" where "pk" = 1; END`}},
 			},
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// Assert the procedure runs correctly with ANSI_QUOTES mode disabled
 				Query:    `call AnsiProcedure();`,
-				Expected: []sql.Row{{"John"}},
+				Expected: []sql.UntypedSqlRow{{"John"}},
 			},
 			{
 				// Assert that we can read and parse the procedure definition from information_schema
 				// TODO: This one doesn't work yet, until we fix information_schema ROUTINES table support for parsing ANSI_QUOTES
 				Skip:     true,
 				Query:    `select routine_definition from information_schema.routines where routine_name='AnsiProcedure';`,
-				Expected: []sql.Row{{`BEGIN SELECT "name" from "t" where "pk" = 1; END`}},
+				Expected: []sql.UntypedSqlRow{{`BEGIN SELECT "name" from "t" where "pk" = 1; END`}},
 			},
 		},
 	},
@@ -264,22 +264,22 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Assert the column default is applied correctly when ANSI_QUOTES mode is enabled
 				Query:    `select "name", "data" from t where "pk"=1;`,
-				Expected: []sql.Row{{"John", "John!"}},
+				Expected: []sql.UntypedSqlRow{{"John", "John!"}},
 			},
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// Insert a row with ANSI_QUOTES mode disabled
 				Query:    `insert into t (pk, name) values (2, 'Jill');`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				// Assert the column default was applied correctly when ANSI_QUOTES mode is disabled
 				Query:    `select name, data from t where pk=2;`,
-				Expected: []sql.Row{{"Jill", "Jill!"}},
+				Expected: []sql.UntypedSqlRow{{"Jill", "Jill!"}},
 			},
 		},
 	},
@@ -298,7 +298,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				// Assert the check constraint runs correctly when ANSI_QUOTES mode is disabled
@@ -319,20 +319,20 @@ var AnsiQuotesTests = []ScriptTest{
 				Query: `CREATE EVENT myevent 
 							ON SCHEDULE EVERY 1 SECOND STARTS '2037-10-16 23:59:00' DO
       						UPDATE "t" SET "count"="count"+1;`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `SHOW EVENTS;`,
-				Expected: []sql.Row{{"mydb", "myevent", "`root`@`localhost`", "SYSTEM", "RECURRING", nil, "1", "SECOND", "2037-10-16 23:59:00", nil, "ENABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"mydb", "myevent", "`root`@`localhost`", "SYSTEM", "RECURRING", nil, "1", "SECOND", "2037-10-16 23:59:00", nil, "ENABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 			{
 				// Disable ANSI_QUOTES mode and make sure we can still list and run events
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    `SHOW EVENTS;`,
-				Expected: []sql.Row{{"mydb", "myevent", "`root`@`localhost`", "SYSTEM", "RECURRING", nil, "1", "SECOND", "2037-10-16 23:59:00", nil, "ENABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"mydb", "myevent", "`root`@`localhost`", "SYSTEM", "RECURRING", nil, "1", "SECOND", "2037-10-16 23:59:00", nil, "ENABLED", 0, "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
 			},
 		},
 	},

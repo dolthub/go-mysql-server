@@ -27,7 +27,7 @@ func ToRows[V any](ctx *sql.Context, ops *ValueOps[V], is IndexedSet[V]) ([]sql.
 		if err != nil {
 			return
 		}
-		var r sql.Row
+		var r sql.Row = sql.UntypedSqlRow{}
 		r, err = ops.ToRow(ctx, v)
 		if err == nil {
 			res = append(res, r)

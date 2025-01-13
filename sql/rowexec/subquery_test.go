@@ -33,7 +33,7 @@ func TestSubquery(t *testing.T) {
 	ctx := newContext(pro)
 
 	table := memory.NewTable(db, "", sql.PrimaryKeySchema{}, nil)
-	require.NoError(table.Insert(ctx, nil))
+	require.NoError(table.Insert(ctx, sql.NewUntypedRow()))
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
@@ -42,7 +42,7 @@ func TestSubquery(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	), "select 'one'").WithExecBuilder(DefaultBuilder)
 
-	value, err := subquery.Eval(ctx, nil)
+	value, err := subquery.Eval(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(value, "one")
 }
@@ -54,8 +54,8 @@ func TestSubqueryTooManyRows(t *testing.T) {
 	ctx := newContext(pro)
 
 	table := memory.NewTable(db, "", sql.PrimaryKeySchema{}, nil)
-	require.NoError(table.Insert(ctx, nil))
-	require.NoError(table.Insert(ctx, nil))
+	require.NoError(table.Insert(ctx, sql.UntypedSqlRow{}))
+	require.NoError(table.Insert(ctx, sql.UntypedSqlRow{}))
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
@@ -64,7 +64,7 @@ func TestSubqueryTooManyRows(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	), "select 'one'").WithExecBuilder(DefaultBuilder)
 
-	_, err := subquery.Eval(ctx, nil)
+	_, err := subquery.Eval(ctx, sql.UntypedSqlRow{})
 	require.Error(err)
 }
 
@@ -79,9 +79,9 @@ func TestSubqueryMultipleRows(t *testing.T) {
 		{Name: "t", Source: "foo", Type: types.Text},
 	}), nil)
 
-	require.NoError(table.Insert(ctx, sql.Row{"one"}))
-	require.NoError(table.Insert(ctx, sql.Row{"two"}))
-	require.NoError(table.Insert(ctx, sql.Row{"three"}))
+	require.NoError(table.Insert(ctx, sql.UntypedSqlRow{"one"}))
+	require.NoError(table.Insert(ctx, sql.UntypedSqlRow{"two"}))
+	require.NoError(table.Insert(ctx, sql.UntypedSqlRow{"three"}))
 
 	subquery := plan.NewSubquery(plan.NewProject(
 		[]sql.Expression{
@@ -90,7 +90,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	), "select t from foo").WithExecBuilder(DefaultBuilder)
 
-	values, err := subquery.EvalMultiple(ctx, nil)
+	values, err := subquery.EvalMultiple(ctx, sql.UntypedSqlRow{})
 	require.NoError(err)
 	require.Equal(values, []interface{}{"one", "two", "three"})
 }

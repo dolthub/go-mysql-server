@@ -40,7 +40,7 @@ type UserPrivilegeTestAssertion struct {
 	User           string
 	Host           string
 	Query          string
-	Expected       []sql.Row
+	Expected       []sql.UntypedSqlRow
 	ExpectedErr    *errors.Kind
 	ExpectedErrStr string
 }
@@ -78,7 +78,7 @@ type UserPrivilegeTestAssertion struct {
 // INSERT INTO otherdb.test2 VALUES (1, 1), (2, 2);
 type QuickPrivilegeTest struct {
 	Queries      []string
-	Expected     []sql.Row
+	Expected     []sql.UntypedSqlRow
 	ExpectedErr  *errors.Kind
 	ExpectingErr bool
 }
@@ -258,7 +258,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "replica-client",
 				Host:     "localhost",
 				Query:    "SHOW REPLICA STATUS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				User:        "replica-reload",
@@ -270,7 +270,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SHOW REPLICA STATUS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			// SHOW BINARY LOGS
@@ -290,7 +290,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "replica-client",
 				Host:     "localhost",
 				Query:    "SHOW BINARY LOGS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				User:        "replica-reload",
@@ -302,7 +302,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SHOW BINARY LOGS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			// SHOW BINARY LOG STATUS
@@ -322,7 +322,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "replica-client",
 				Host:     "localhost",
 				Query:    "SHOW BINARY LOG STATUS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				User:        "replica-reload",
@@ -334,7 +334,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SHOW BINARY LOG STATUS;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 
 			// CHANGE REPLICATION SOURCE
@@ -437,13 +437,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mydb.test;/*2*/",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:        "tester",
@@ -455,7 +455,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON *.* FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{ // Ensure we've reverted to initial state (all SELECTs after REVOKEs are doing this)
 				User:        "tester",
@@ -473,13 +473,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mydb.test;/*4*/",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:        "tester",
@@ -491,7 +491,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON mydb.* FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -509,19 +509,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mydb.test;/*6*/",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte;/*6*/",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:        "tester",
@@ -533,7 +533,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte JOIN mydb.test t2 WHERE cte.pk = t2.pk;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				User:        "tester",
@@ -545,7 +545,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON mydb.test FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -563,7 +563,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.test2 TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -581,7 +581,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON mydb.test2 FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -599,13 +599,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT test_role TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mydb.test;/*10*/",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:        "tester",
@@ -627,15 +627,15 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 			{
 				Query:    "CREATE USER IF NOT EXISTS testuser@`127.0.0.1`;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'testuser2');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "SELECT * FROM mysql.user WHERE User = 'root';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{
 						"localhost",             // Host
 						"root",                  // User
@@ -694,7 +694,7 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 			{
 				Query: "SELECT Host, User, Plugin, length(authentication_string) > 0 FROM mysql.user order by User;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"localhost", "root", "mysql_native_password", false},
 					{"127.0.0.1", "testuser", "mysql_native_password", false},
 					// testuser2 was inserted directly into the table, so it uses the column default
@@ -713,11 +713,11 @@ var UserPrivTests = []UserPrivilegeTest{
 		Assertions: []UserPrivilegeTestAssertion{
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
 			},
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
-				Expected: []sql.Row{{"testuser2", "127.0.0.1", "mysql_native_password", ""}},
+				Expected: []sql.UntypedSqlRow{{"testuser2", "127.0.0.1", "mysql_native_password", ""}},
 			},
 		},
 	},
@@ -733,11 +733,11 @@ var UserPrivTests = []UserPrivilegeTest{
 				// string. Since it's not a consistent value during each test run, we just sanity
 				// check the first bytes of metadata (digest type, iterations) in the auth string.
 				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
 			},
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
-				Expected: []sql.Row{{"testuser2", "127.0.0.1", "caching_sha2_password", ""}},
+				Expected: []sql.UntypedSqlRow{{"testuser2", "127.0.0.1", "caching_sha2_password", ""}},
 			},
 		},
 	},
@@ -749,26 +749,26 @@ var UserPrivTests = []UserPrivilegeTest{
 		Assertions: []UserPrivilegeTestAssertion{
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
 			},
 			{
 				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password BY 'pass1';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				// caching_sha2_password auth uses a random salt to create the authentication
 				// string. Since it's not a consistent value during each test run, we just sanity
 				// check the first bytes of metadata (digest type, iterations) in the auth string.
 				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
 			},
 			{
 				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
-				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", ""}},
+				Expected: []sql.UntypedSqlRow{{"testuser1", "127.0.0.1", "caching_sha2_password", ""}},
 			},
 		},
 	},
@@ -782,7 +782,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		Assertions: []UserPrivilegeTestAssertion{
 			{
 				Query: "SELECT user, host from mysql.user",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"root", "localhost"},
 					{"testuser", "localhost"},
 				},
@@ -791,7 +791,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR testuser@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT USAGE ON *.* TO `testuser`@`localhost`"},
 					{"GRANT CLONE_ADMIN, REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
 				},
@@ -834,7 +834,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		Assertions: []UserPrivilegeTestAssertion{
 			{
 				Query: "SELECT user, host from mysql.user",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"root", "localhost"},
 					{"testuser", "%"},
 				},
@@ -854,7 +854,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT ON *.* TO `tester`@`%`"},
 					{"GRANT SELECT ON `db`.* TO `tester`@`%`"},
 					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`%`"},
@@ -879,13 +879,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "granted",
 				Host:     "localhost",
 				Query:    "CALL mydb.memory_admin_only(1,2)",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				User:     "denied",
 				Host:     "localhost",
 				Query:    "CALL mydb.memory_variadic_add(3,2)", // Verify this user _can_ access non-admin proc
-				Expected: []sql.Row{{5}},
+				Expected: []sql.UntypedSqlRow{{5}},
 			},
 			{
 				User:           "denied",
@@ -903,7 +903,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "targeted",
 				Host:     "localhost",
 				Query:    "CALL mydb.memory_admin_only(7,2)",
-				Expected: []sql.Row{{9}},
+				Expected: []sql.UntypedSqlRow{{9}},
 			},
 			{
 				User:           "noaccess",
@@ -929,7 +929,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT 1+2;",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 			{
 				User:           "noexist",
@@ -957,13 +957,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "INSERT INTO test VALUES (4);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				User:        "tester",
@@ -975,19 +975,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 		},
 	},
@@ -1001,31 +1001,31 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT, UPDATE, EXECUTE ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+				Expected: []sql.UntypedSqlRow{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE UPDATE ON mydb.* FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+				Expected: []sql.UntypedSqlRow{{"localhost", "mydb", "tester", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 			{
 				User:  "root",
 				Host:  "localhost",
 				Query: "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'tester';",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -1039,7 +1039,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+				Expected: []sql.UntypedSqlRow{{"localhost", "mydb", "tester", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 		},
 	},
@@ -1054,31 +1054,31 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT, DELETE, DROP ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Delete,Drop", ""}},
+				Expected: []sql.UntypedSqlRow{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Delete,Drop", ""}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE DELETE ON mydb.test FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Drop", ""}},
+				Expected: []sql.UntypedSqlRow{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Drop", ""}},
 			},
 			{
 				User:  "root",
 				Host:  "localhost",
 				Query: "UPDATE mysql.tables_priv SET table_priv = 'References,Index' WHERE User = 'tester';",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -1092,7 +1092,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "References,Index", ""}},
+				Expected: []sql.UntypedSqlRow{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "References,Index", ""}},
 			},
 		},
 	},
@@ -1111,7 +1111,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester1'",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"proc1", "PROCEDURE", "Grant,Execute"},
 					{"proc2", "PROCEDURE", "Alter Routine"},
 				},
@@ -1120,13 +1120,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester2'",
-				Expected: []sql.Row{{"proc1", "PROCEDURE", "Grant"}},
+				Expected: []sql.UntypedSqlRow{{"proc1", "PROCEDURE", "Grant"}},
 			},
 			{
 				User:     "tester1",
 				Host:     "localhost",
 				Query:    "GRANT Execute ON PROCEDURE mydb.proc1 TO tester2@localhost",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:           "tester2",
@@ -1155,13 +1155,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester1'",
-				Expected: []sql.Row{{"proc1", "PROCEDURE", "Grant"}},
+				Expected: []sql.UntypedSqlRow{{"proc1", "PROCEDURE", "Grant"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester2'",
-				Expected: []sql.Row{sql.Row{"proc2", "PROCEDURE", "Grant,Execute"}},
+				Expected: []sql.UntypedSqlRow{{"proc2", "PROCEDURE", "Grant,Execute"}},
 			},
 		},
 	},
@@ -1204,19 +1204,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "Y"}},
+				Expected: []sql.UntypedSqlRow{{"tester", "localhost", "Y"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE SELECT ON *.* FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -1228,7 +1228,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "N"}},
+				Expected: []sql.UntypedSqlRow{{"tester", "localhost", "N"}},
 			},
 		},
 	},
@@ -1245,25 +1245,25 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "INSERT INTO test VALUES (4);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}, {4}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv, Insert_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "Y", "Y"}},
+				Expected: []sql.UntypedSqlRow{{"tester", "localhost", "Y", "Y"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE ALL ON *.* FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -1281,7 +1281,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv, Insert_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "N", "N"}},
+				Expected: []sql.UntypedSqlRow{{"tester", "localhost", "N", "N"}},
 			},
 		},
 	},
@@ -1295,7 +1295,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, account_locked FROM mysql.user WHERE User = 'test_role';",
-				Expected: []sql.Row{{"test_role", "%", "Y"}},
+				Expected: []sql.UntypedSqlRow{{"test_role", "%", "Y"}},
 			},
 		},
 	},
@@ -1320,31 +1320,31 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.role_edges;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT test_role TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.UntypedSqlRow{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", "N"}},
+				Expected: []sql.UntypedSqlRow{{"tester", "localhost", "N"}},
 			},
 		},
 	},
@@ -1364,19 +1364,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.UntypedSqlRow{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "REVOKE test_role FROM tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -1388,19 +1388,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.role_edges;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'test_role';",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 		},
 	},
@@ -1420,19 +1420,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1}, {2}, {3}},
+				Expected: []sql.UntypedSqlRow{{1}, {2}, {3}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.UntypedSqlRow{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP ROLE test_role;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:        "tester",
@@ -1444,19 +1444,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.role_edges;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'test_role';",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{ // Ensure nothing wonky happened like the user was deleted as well
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:        "root",
@@ -1468,7 +1468,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP ROLE IF EXISTS test_role;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -1488,31 +1488,31 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
+				Expected: []sql.UntypedSqlRow{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP USER tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.role_edges;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{ // Ensure nothing wonky happened like the role was deleted as well
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'test_role';",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:        "root",
@@ -1524,7 +1524,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP USER IF EXISTS tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -1535,7 +1535,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS;",
-				Expected: []sql.Row{{"GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, " +
+				Expected: []sql.UntypedSqlRow{{"GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, " +
 					"FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, " +
 					"EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, " +
 					"ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE, CREATE ROLE, DROP ROLE ON *.* TO " +
@@ -1560,7 +1560,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT ON *.* TO `tester`@`localhost`"},
 					{"GRANT `test_role1`@`%`, `test_role2`@`%` TO `tester`@`localhost`"},
 				},
@@ -1569,13 +1569,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE ON *.* TO tester@localhost WITH GRANT OPTION;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT, UPDATE ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
 					{"GRANT `test_role1`@`%`, `test_role2`@`%` TO `tester`@`localhost`"},
 				},
@@ -1584,7 +1584,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "tester",
 				Host:  "localhost",
 				Query: "SHOW GRANTS;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT, UPDATE ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
 					{"GRANT `test_role1`@`%`, `test_role2`@`%` TO `tester`@`localhost`"},
 				},
@@ -1601,7 +1601,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT USAGE ON *.* TO `tester`@`localhost`"},
 				},
 			},
@@ -1619,7 +1619,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT, INSERT ON *.* TO `tester`@`localhost`"},
 				},
 			},
@@ -1638,7 +1638,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT ON *.* TO `tester`@`localhost`"},
 					{"GRANT SELECT ON `db`.* TO `tester`@`localhost`"},
 					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`localhost`"},
@@ -1658,7 +1658,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT ON *.* TO `tester`@`localhost`"},
 					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`localhost`"},
 				},
@@ -1680,7 +1680,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT USAGE ON *.* TO `tester`@`localhost`"},
 					{"GRANT SELECT ON `db`.* TO `tester`@`localhost`"},
 					{"GRANT INSERT ON `db1`.* TO `tester`@`localhost`"},
@@ -1703,7 +1703,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
 					{"GRANT SELECT ON `db`.* TO `tester`@`localhost` WITH GRANT OPTION"},
 					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`localhost` WITH GRANT OPTION"},
@@ -1727,7 +1727,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW GRANTS FOR tester@localhost;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"GRANT SELECT, INSERT ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
 					{"GRANT SELECT, INSERT ON `db`.* TO `tester`@`localhost` WITH GRANT OPTION"},
 					{"GRANT SELECT, INSERT ON `db`.`tbl` TO `tester`@`localhost` WITH GRANT OPTION"},
@@ -1745,7 +1745,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SELECT user FROM mysql.user;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"root"},
 					{"testuser"},
 				},
@@ -1754,7 +1754,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SELECT USER();",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"root@localhost"},
 				},
 			},
@@ -1762,7 +1762,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SHOW DATABASES",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"information_schema"},
 					{"mydb"},
 					{"mysql"},
@@ -1787,7 +1787,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "rand_user",
 				Host:  "localhost",
 				Query: "SELECT * FROM mydb.test;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0},
 					{1, 1},
 				},
@@ -1808,7 +1808,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "rand_user",
 				Host:  "non_existent_host",
 				Query: "SELECT * FROM mydb.test2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 1},
 					{1, 2},
 				},
@@ -1823,7 +1823,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "non_existent_user",
 				Host:  "non_existent_host",
 				Query: "SELECT * FROM mydb.test2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 1},
 					{1, 2},
 				},
@@ -1838,7 +1838,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "",
 				Host:  "%",
 				Query: "SELECT * FROM mydb.test2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 1},
 					{1, 2},
 				},
@@ -1862,7 +1862,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "rand_user1",
 				Host:  "localhost",
 				Query: "SELECT * FROM mydb.test;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0},
 					{1, 1},
 				},
@@ -1871,7 +1871,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "rand_user1",
 				Host:  "127.0.0.1",
 				Query: "SELECT * FROM mydb.test;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 0},
 					{1, 1},
 				},
@@ -1886,7 +1886,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "rand_user2",
 				Host:  "localhost",
 				Query: "SELECT * FROM mydb.test2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 1},
 					{1, 2},
 				},
@@ -1895,7 +1895,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "rand_user2",
 				Host:  "127.0.0.1",
 				Query: "SELECT * FROM mydb.test2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{0, 1},
 					{1, 2},
 				},
@@ -1918,7 +1918,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SELECT user FROM mysql.user",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"root"},
 					{"admin"},
 				},
@@ -1927,13 +1927,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "DROP USER admin;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:  "root",
 				Host:  "localhost",
 				Query: "SELECT user FROM mysql.user",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"root"},
 				},
 			},
@@ -1951,55 +1951,55 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT count(*) FROM inFORmation_ScHeMa.columns where table_schema = 'mydb' and table_name = 'test';",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT column_name, privileges FROM information_schema.columns where table_schema = 'mydb' and table_name = 'test'",
-				Expected: []sql.Row{{"pk", "insert"}, {"c", "insert"}, {"p", "insert"}},
+				Expected: []sql.UntypedSqlRow{{"pk", "insert"}, {"c", "insert"}, {"p", "insert"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT column_name, privileges FROM information_schema.columns where table_schema = 'mydb' and table_name = 'test'",
-				Expected: []sql.Row{{"pk", "insert,select"}, {"c", "insert,select"}, {"p", "insert,select"}},
+				Expected: []sql.UntypedSqlRow{{"pk", "insert,select"}, {"c", "insert,select"}, {"p", "insert,select"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE ON mydb.checks TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select table_name, column_name, privileges from information_schema.columns where table_schema = 'mydb' and table_name = 'checks';",
-				Expected: []sql.Row{{"checks", "a", "select,update"}, {"checks", "b", "select,update"}, {"checks", "c", "select,update"}},
+				Expected: []sql.UntypedSqlRow{{"checks", "a", "select,update"}, {"checks", "b", "select,update"}, {"checks", "c", "select,update"}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT count(*) FROM information_schema.columns where table_schema = 'information_schema' and table_name = 'columns'",
-				Expected: []sql.Row{{22}},
+				Expected: []sql.UntypedSqlRow{{22}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "select table_name, column_name, privileges from information_schema.columns where table_schema = 'mydb' and table_name = 'checks';",
-				Expected: []sql.Row{{"checks", "a", "insert,references,select,update"}, {"checks", "b", "insert,references,select,update"}, {"checks", "c", "insert,references,select,update"}},
+				Expected: []sql.UntypedSqlRow{{"checks", "a", "insert,references,select,update"}, {"checks", "b", "insert,references,select,update"}, {"checks", "c", "insert,references,select,update"}},
 			},
 		},
 	},
@@ -2019,13 +2019,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.one TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:  "tester",
 				Host:  "localhost",
 				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"one", "f"},
 				},
 			},
@@ -2033,13 +2033,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mydb.two TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:  "tester",
 				Host:  "localhost",
 				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"one", "f"},
 					{"two", "i"},
 					{"two", "j"},
@@ -2059,19 +2059,19 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "SELECT count(*) FROM information_schema.statistics where table_schema = 'mydb';",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON mydb.checks TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select table_name, column_name, index_name from information_schema.statistics where table_schema = 'mydb';",
-				Expected: []sql.Row{{"checks", "a", "PRIMARY"}},
+				Expected: []sql.UntypedSqlRow{{"checks", "a", "PRIMARY"}},
 			},
 		},
 	},
@@ -2087,49 +2087,49 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "select * from information_schema.schema_privileges;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT, REFERENCES ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE, GRANT OPTION ON mydb.* TO admin@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}, {"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}, {"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}},
 			},
 			{
 				User:     "admin",
 				Host:     "localhost",
 				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
-				Expected: []sql.Row{{"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mysql.* TO admin@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "admin",
 				Host:     "localhost",
 				Query:    "select * from information_schema.schema_privileges order by privilege_type, is_grantable;",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}, {"'admin'@'localhost'", "def", "mysql", "SELECT", "NO"}, {"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "mydb", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "REFERENCES", "NO"}, {"'admin'@'localhost'", "def", "mysql", "SELECT", "NO"}, {"'admin'@'localhost'", "def", "mydb", "UPDATE", "YES"}},
 			},
 		},
 	},
@@ -2146,49 +2146,49 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "select * from information_schema.table_privileges;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON mydb.checks TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE, GRANT OPTION ON mydb.test TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*root*/",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*tester*/",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
 			},
 			{
 				User:     "admin",
 				Host:     "localhost",
 				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*admin1*/",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT SELECT ON mysql.* TO admin@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "admin",
 				Host:     "localhost",
 				Query:    "select * from information_schema.table_privileges order by privilege_type, is_grantable;/*admin2*/",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "mydb", "checks", "INSERT", "NO"}, {"'tester'@'localhost'", "def", "mydb", "test", "UPDATE", "YES"}},
 			},
 		},
 	},
@@ -2205,7 +2205,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "select * from information_schema.user_privileges order by privilege_type LIMIT 4;/*root*/",
-				Expected: []sql.Row{{"'root'@'localhost'", "def", "ALTER", "YES"},
+				Expected: []sql.UntypedSqlRow{{"'root'@'localhost'", "def", "ALTER", "YES"},
 					{"'root'@'localhost'", "def", "ALTER ROUTINE", "YES"},
 					{"'root'@'localhost'", "def", "CREATE", "YES"},
 					{"'root'@'localhost'", "def", "CREATE ROLE", "YES"}},
@@ -2214,31 +2214,31 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT INSERT ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select * from information_schema.user_privileges order by privilege_type, is_grantable;/*tester1*/",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "INSERT", "NO"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "INSERT", "NO"}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT UPDATE, GRANT OPTION ON *.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select * from information_schema.user_privileges order by privilege_type, is_grantable;/*tester2*/",
-				Expected: []sql.Row{{"'tester'@'localhost'", "def", "INSERT", "YES"}, {"'tester'@'localhost'", "def", "UPDATE", "YES"}},
+				Expected: []sql.UntypedSqlRow{{"'tester'@'localhost'", "def", "INSERT", "YES"}, {"'tester'@'localhost'", "def", "UPDATE", "YES"}},
 			},
 			{
 				User:     "admin",
 				Host:     "localhost",
 				Query:    "select * from information_schema.user_privileges order by privilege_type, is_grantable;/*admin*/",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -2255,7 +2255,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "root",
 				Host:  "localhost",
 				Query: "select * from information_schema.user_attributes order by user;/*root*/",
-				Expected: []sql.Row{{"admin", "localhost", nil},
+				Expected: []sql.UntypedSqlRow{{"admin", "localhost", nil},
 					{"root", "localhost", nil},
 					{"tester", "localhost", nil}},
 			},
@@ -2263,7 +2263,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:  "admin",
 				Host:  "localhost",
 				Query: "select * from information_schema.user_attributes order by user;/*admin*/",
-				Expected: []sql.Row{{"admin", "localhost", nil},
+				Expected: []sql.UntypedSqlRow{{"admin", "localhost", nil},
 					{"root", "localhost", nil},
 					{"tester", "localhost", nil}},
 			},
@@ -2271,7 +2271,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select * from information_schema.user_attributes order by user;/*tester*/",
-				Expected: []sql.Row{{"tester", "localhost", nil}},
+				Expected: []sql.UntypedSqlRow{{"tester", "localhost", nil}},
 			},
 		},
 	},
@@ -2286,31 +2286,31 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select count(*) from information_schema.routines where routine_name = 'testabc'/*tester1*/;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select count(*) from information_schema.parameters where specific_name = 'testabc'/*tester1*/;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.UntypedSqlRow{{0}},
 			},
 			{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "GRANT CREATE ROUTINE ON mydb.* TO tester@localhost;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select count(*) from information_schema.routines where routine_name = 'testabc';",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:     "tester",
 				Host:     "localhost",
 				Query:    "select count(*) from information_schema.parameters where specific_name = 'testabc';",
-				Expected: []sql.Row{{3}},
+				Expected: []sql.UntypedSqlRow{{3}},
 			},
 		},
 	},
@@ -2326,25 +2326,25 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "testadmin",
 				Host:     "%",
 				Query:    "USE testdb;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				User:     "testadmin",
 				Host:     "%",
 				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events)) as all_found;`,
-				Expected: []sql.Row{{1.0}},
+				Expected: []sql.UntypedSqlRow{{1.0}},
 			},
 			{
 				User:     "testadmin",
 				Host:     "%",
 				Query:    `(SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events);`,
-				Expected: []sql.Row{{1}},
+				Expected: []sql.UntypedSqlRow{{1}},
 			},
 			{
 				User:     "testadmin",
 				Host:     "%",
 				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM dual) UNION (SELECT 1 as found FROM dual)) as all_found;`,
-				Expected: []sql.Row{{1.0}},
+				Expected: []sql.UntypedSqlRow{{1.0}},
 			},
 			{
 				User: "testadmin",
@@ -2361,25 +2361,7 @@ FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'te
       (SELECT 1 as found FROM information_schema.routines WHERE routine_schema = 'testdb' LIMIT 1)
       UNION ALL
       (SELECT 1 as found FROM information_schema.events WHERE event_schema = 'testdb' LIMIT 1)) as all_found;`,
-				Expected: []sql.Row{{nil}},
-			},
-		},
-	},
-	{
-		Name: "Test user creation with hashed password",
-		SetUpScript: []string{
-			"CREATE USER 'lol'@'%' IDENTIFIED WITH mysql_native_password AS '*91D9861DFC07DD967611B8C96953474EF270AD5E';",
-		},
-		Assertions: []UserPrivilegeTestAssertion{
-			{
-				Query: "SELECT User, plugin, authentication_string FROM mysql.user WHERE User = 'lol';",
-				Expected: []sql.Row{
-					{
-						"lol",                   // User
-						"mysql_native_password", // plugin
-						"*91D9861DFC07DD967611B8C96953474EF270AD5E", // authentication_string
-					},
-				},
+				Expected: []sql.UntypedSqlRow{{nil}},
 			},
 		},
 	},
@@ -2852,28 +2834,28 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"GRANT SELECT ON *.* TO tester@localhost",
 			"SELECT * FROM mydb.test",
 		},
-		Expected: []sql.Row{{0, 0}, {1, 1}},
+		Expected: []sql.UntypedSqlRow{{0, 0}, {1, 1}},
 	},
 	{
 		Queries: []string{
 			"GRANT SELECT ON mydb.* TO tester@localhost",
 			"SELECT * FROM mydb.test",
 		},
-		Expected: []sql.Row{{0, 0}, {1, 1}},
+		Expected: []sql.UntypedSqlRow{{0, 0}, {1, 1}},
 	},
 	{
 		Queries: []string{
 			"GRANT SELECT ON mydb.* TO tester@localhost",
 			"SELECT * FROM mydb.test2",
 		},
-		Expected: []sql.Row{{0, 1}, {1, 2}},
+		Expected: []sql.UntypedSqlRow{{0, 1}, {1, 2}},
 	},
 	{
 		Queries: []string{
 			"GRANT SELECT ON mydb.test TO tester@localhost",
 			"SELECT * FROM mydb.test",
 		},
-		Expected: []sql.Row{{0, 0}, {1, 1}},
+		Expected: []sql.UntypedSqlRow{{0, 0}, {1, 1}},
 	},
 	{
 		Queries: []string{
@@ -2909,7 +2891,7 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"USE mydb;",
 			"SHOW TABLES;",
 		},
-		Expected: []sql.Row{{"test"}, {"test2"}},
+		Expected: []sql.UntypedSqlRow{{"test"}, {"test2"}},
 	},
 	{
 		Queries: []string{
@@ -2917,7 +2899,7 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"USE mydb;",
 			"SHOW TABLES;",
 		},
-		Expected: []sql.Row{{"test"}, {"test2"}},
+		Expected: []sql.UntypedSqlRow{{"test"}, {"test2"}},
 	},
 	{
 		Queries: []string{
@@ -2925,7 +2907,7 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"USE mydb;",
 			"SHOW TABLES;",
 		},
-		Expected: []sql.Row{{"test"}},
+		Expected: []sql.UntypedSqlRow{{"test"}},
 	},
 	{
 		Queries: []string{
@@ -2933,7 +2915,7 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"USE mydb;",
 			"SHOW TABLES;",
 		},
-		Expected: []sql.Row{},
+		Expected: []sql.UntypedSqlRow{},
 	},
 	{
 		Queries: []string{

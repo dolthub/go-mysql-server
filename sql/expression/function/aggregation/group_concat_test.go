@@ -52,7 +52,7 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	for i := 0; i < 2000; i++ {
-		rows = append(rows, sql.Row{int64(i)})
+		rows = append(rows, sql.UntypedSqlRow{int64(i)})
 	}
 
 	maxLenInt, err := ctx.GetSessionVariable(ctx, "group_concat_max_len")
@@ -83,10 +83,10 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 		returnType sql.Type
 		row        sql.Row
 	}{
-		{[]sql.Expression{expression.NewGetField(0, types.LongText, "test", true)}, 200, types.MustCreateString(query.Type_VARCHAR, 512, sql.Collation_Default), sql.Row{int64(1)}},
-		{[]sql.Expression{expression.NewGetField(0, types.Text, "text", true)}, 1020, types.Text, sql.Row{int64(1)}},
-		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 200, types.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary), sql.Row{"hi"}},
-		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 1020, types.Blob, sql.Row{"hi"}},
+		{[]sql.Expression{expression.NewGetField(0, types.LongText, "test", true)}, 200, types.MustCreateString(query.Type_VARCHAR, 512, sql.Collation_Default), sql.UntypedSqlRow{int64(1)}},
+		{[]sql.Expression{expression.NewGetField(0, types.Text, "text", true)}, 1020, types.Text, sql.UntypedSqlRow{int64(1)}},
+		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 200, types.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary), sql.UntypedSqlRow{"hi"}},
+		{[]sql.Expression{expression.NewGetField(0, types.Blob, "myblob", true)}, 1020, types.Blob, sql.UntypedSqlRow{"hi"}},
 	}
 
 	for _, tt := range testCases {

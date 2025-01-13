@@ -138,10 +138,10 @@ var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in 
 
 // Eval implements the Expression interface.
 func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
-		return nil, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
+	if p.fieldIndex < 0 || p.fieldIndex >= row.Len() {
+		return nil, ErrIndexOutOfBounds.New(p.fieldIndex, row.Len())
 	}
-	return row[p.fieldIndex], nil
+	return row.GetValue(p.fieldIndex), nil
 }
 
 func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
@@ -163,11 +163,11 @@ func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, err
 func (p *GetField) String() string {
 	if p.table == "" {
 		if p.backTickNames {
-			return "`" + p.name + "`"
+			return fmt.Sprintf("`%s`", p.name)
 		}
 		return p.name
 	}
-	return p.table + "." + p.name
+	return fmt.Sprintf("%s.%s", p.table, p.name)
 }
 
 func (p *GetField) DebugString() string {

@@ -30,7 +30,7 @@ type SpatialIndexPlanTestAssertion struct {
 	skip     bool
 	skipPrep bool
 	noIdx    bool
-	exp      []sql.Row
+	exp      []sql.UntypedSqlRow
 }
 
 type SpatialIndexPlanTest struct {
@@ -49,7 +49,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select p from point_tbl where st_intersects(p, point(0,0))",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{types.Point{}},
 				},
 			},
@@ -65,14 +65,14 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: true, // this should take advantage of indexes
 				q:     "select p from point_tbl where st_intersects(p, point(0,0)) = true",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{types.Point{}},
 				},
 			},
 			{
 				noIdx: true,
 				q:     "select st_aswkt(p) from point_tbl where st_intersects(p, point(0,0)) = false order by st_x(p), st_y(p)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(1 1)"},
 					{"POINT(2 2)"},
 				},
@@ -91,12 +91,12 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: true,
 				q:     "select p from point_tbl where st_intersects(p, point(0,0)) and st_intersects(p, point(1,1))",
-				exp:   []sql.Row{},
+				exp:   []sql.UntypedSqlRow{},
 			},
 			{
 				noIdx: true,
 				q:     "select st_aswkt(p) from point_tbl where st_intersects(p, point(0,0)) or st_intersects(p, point(1,1)) order by st_x(p), st_y(p)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(0 0)"},
 					{"POINT(1 1)"},
 				},
@@ -104,14 +104,14 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: false, // still expect index access using primary key
 				q:     "select pk, st_aswkt(p) from point_tbl_pk where pk = 0 and st_intersects(p, point(0,0)) order by pk",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{0, "POINT(0 0)"},
 				},
 			},
 			{
 				noIdx: false, // still expect index access using primary key
 				q:     "select pk, st_aswkt(p) from point_tbl_pk where pk = 0 or st_intersects(p, point(1,1)) order by pk",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{0, "POINT(0 0)"},
 					{1, "POINT(1 1)"},
 				},
@@ -127,7 +127,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select st_aswkt(p) from (select * from point_tbl) t where st_intersects(p, point(0,0))",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(0 0)"},
 				},
 			},
@@ -144,14 +144,14 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(0 0)"},
 					{"LINESTRING(-1 -1,1 1)"},
 				},
 			},
 			{
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by g",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(0 0)"},
 					{"LINESTRING(-1 -1,1 1)"},
 					{"POLYGON((2 2,2 -2,-2 -2,-2 2,2 2),(1 1,1 -1,-1 -1,-1 1,1 1))"},
@@ -197,13 +197,13 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, point(0,0)) order by g",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(0 0)"},
 				},
 			},
 			{
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, linestring(point(-1,1), point(1,-1))) order by st_x(g), st_y(g)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(-1 1)"},
 					{"POINT(0 0)"},
 					{"POINT(1 -1)"},
@@ -211,7 +211,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('polygon((1 1,1 -1,-1 -1,-1 1,1 1))')) order by st_x(g), st_y(g)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(-1 -1)"},
 					{"POINT(-1 0)"},
 					{"POINT(-1 1)"},
@@ -225,7 +225,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('linestring(-2 -2,2 2)')) order by st_x(g), st_y(g)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(-2 -2)"},
 					{"POINT(-1 -1)"},
 					{"POINT(0 0)"},
@@ -235,7 +235,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			},
 			{
 				q: "select st_aswkt(g) from geom_tbl where st_intersects(g, st_geomfromtext('multipoint(-2 -2,0 0,2 2)')) order by st_x(g), st_y(g)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(-2 -2)"},
 					{"POINT(0 0)"},
 					{"POINT(2 2)"},
@@ -244,7 +244,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: true,
 				q:     "select st_aswkt(g) from geom_tbl where not st_intersects(g, st_geomfromtext('multipoint(0 0)')) order by st_x(g), st_y(g)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(-2 -2)"},
 					{"POINT(-2 -1)"},
 					{"POINT(-2 0)"},
@@ -283,7 +283,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: true,
 				q:     "select st_aswkt(p) from point_tbl where not st_intersects(p, point(0,0)) order by p",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(2 2)"},
 					{"POINT(1 1)"},
 				},
@@ -301,7 +301,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(0 0)", "POINT(0 0)"},
 					{"POINT(0 0)", "POINT(1 1)"},
 				},
@@ -309,7 +309,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 			{
 				noIdx: true, // TODO: this should be able to take advantage of indexes
 				q:     "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{"POINT(0 0)", "POINT(0 0)"},
 					{"POINT(1 1)", "POINT(1 1)"},
 				},
@@ -327,25 +327,25 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select p from point_tbl where st_within(p, point(0,0))",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{types.Point{X: 0, Y: 0}},
 				},
 			},
 			{
 				noIdx: true,
 				q:     "select p from point_tbl where st_within(p, null)",
-				exp:   []sql.Row{},
+				exp:   []sql.UntypedSqlRow{},
 			},
 			{
 				q: "select i, p from point_pk_tbl where st_within(p, point(0,0))",
-				exp: []sql.Row{
+				exp: []sql.UntypedSqlRow{
 					{0, types.Point{X: 0, Y: 0}},
 				},
 			},
 			{
 				noIdx: true,
 				q:     "select i, p from point_pk_tbl where st_within(p, null)",
-				exp:   []sql.Row{},
+				exp:   []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -411,7 +411,7 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, quer
 	})
 }
 
-func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skip bool) {
+func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.UntypedSqlRow, skip bool) {
 	t.Run(name, func(t *testing.T) {
 		if skip {
 			t.Skip()
@@ -427,7 +427,7 @@ func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e QueryEngin
 		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
 
 		if exp != nil {
-			CheckResults(t, harness, exp, nil, sch, rows, q, e)
+			CheckResults(t, harness, exp, nil, sch, sql.RowsToUntyped(rows), q, e)
 		}
 
 		require.Equal(t, 0, ctx.Memory.NumCaches())

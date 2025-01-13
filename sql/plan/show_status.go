@@ -101,7 +101,7 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 
 	rows := make([]sql.Row, len(names))
 	for i, name := range names {
-		rows[i] = sql.Row{name, vars[name].Value()}
+		rows[i] = sql.UntypedSqlRow{name, vars[name].Value()}
 	}
 	return sql.RowsToRowIter(rows...), nil
 }

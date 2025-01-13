@@ -32,7 +32,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_named` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_named` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -44,7 +44,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE sibling;",
-				Expected: []sql.Row{{"sibling", "CREATE TABLE `sibling` (\n  `id` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_named` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"sibling", "CREATE TABLE `sibling` (\n  `id` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_named` (`v1`),\n  CONSTRAINT `fk_named` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -57,7 +57,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk_id FOREIGN KEY (v1) REFERENCES parent(id);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -105,18 +105,18 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE child1 (pk BIGINT PRIMARY KEY, v1 CHAR(30), CONSTRAINT fk_child1 FOREIGN KEY (v1) REFERENCES parent1 (v1));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 VARCHAR(30), CONSTRAINT fk_child2 FOREIGN KEY (v1) REFERENCES parent2 (v1));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE child3 (pk BIGINT PRIMARY KEY, v1 BINARY(30), CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3 (v1));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			}, {
 				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, v1 VARBINARY(30), CONSTRAINT fk_child4 FOREIGN KEY (v1) REFERENCES parent4 (v1));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -233,15 +233,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:       "ALTER TABLE child DROP FOREIGN KEY fk_name;",
@@ -291,15 +291,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "RENAME TABLE child TO new_child;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE new_child;",
-				Expected: []sql.Row{{"new_child", "CREATE TABLE `new_child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"new_child", "CREATE TABLE `new_child` (\n  `id` int NOT NULL,\n  `v1` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk_name` (`v1`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`v1`) REFERENCES `new_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -316,11 +316,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "RENAME TABLE b_test TO c_test;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SHOW CREATE TABLE c_test;",
-				Expected: []sql.Row{{"c_test", "CREATE TABLE `c_test` (\n  `a_id` int,\n  KEY `a_id` (`a_id`),\n  " +
+				Expected: []sql.UntypedSqlRow{{"c_test", "CREATE TABLE `c_test` (\n  `a_id` int,\n  KEY `a_id` (`a_id`),\n  " +
 					"CONSTRAINT `c_test_ibfk_1` FOREIGN KEY (`a_id`) REFERENCES `a_test` (`id`)\n) " +
 					"ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
@@ -336,15 +336,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child1;",
-				Expected: []sql.Row{{"child1", "CREATE TABLE `child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"child1", "CREATE TABLE `child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "RENAME TABLE child1 TO new_child1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SHOW CREATE TABLE new_child1;",
-				Expected: []sql.Row{{"new_child1", "CREATE TABLE `new_child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"new_child1", "CREATE TABLE `new_child1` (\n  `pk` bigint NOT NULL,\n  PRIMARY KEY (`pk`),\n  CONSTRAINT `fk` FOREIGN KEY (`pk`) REFERENCES `new_parent1` (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -360,11 +360,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DROP TABLE child;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "DROP TABLE parent;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -376,7 +376,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DROP TABLE t;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -397,15 +397,15 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child DROP INDEX v1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent DROP INDEX v1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -419,7 +419,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE child;",
-				Expected: []sql.Row{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1_new` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk1` (`v1_new`),\n  CONSTRAINT `fk1` FOREIGN KEY (`v1_new`) REFERENCES `parent` (`v1_new`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"child", "CREATE TABLE `child` (\n  `id` int NOT NULL,\n  `v1_new` int,\n  `v2` int,\n  PRIMARY KEY (`id`),\n  KEY `fk1` (`v1_new`),\n  CONSTRAINT `fk1` FOREIGN KEY (`v1_new`) REFERENCES `parent` (`v1_new`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -488,39 +488,39 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE parent1 MODIFY v1 CHAR(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child1 MODIFY v1 CHAR(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent2 MODIFY v1 VARCHAR(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child2 MODIFY v1 VARCHAR(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent3 MODIFY v1 BINARY(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child3 MODIFY v1 BINARY(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent4 MODIFY v1 VARBINARY(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child4 MODIFY v1 VARBINARY(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{ // Make sure the type change didn't cause INSERTs to break or some other strange behavior
 				Query:    "INSERT INTO child2 VALUES (2, 'bb');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "INSERT INTO child2 VALUES (3, 'cc');",
@@ -547,11 +547,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE parent1 MODIFY v2 BIGINT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child1 MODIFY v2 BIGINT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -567,11 +567,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent DROP COLUMN v1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -587,11 +587,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child DROP FOREIGN KEY fk_name;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child DROP COLUMN v1;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -635,15 +635,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM one;",
-				Expected: []sql.Row{{1, 5, 4}, {2, 7, 5}, {4, 9, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 5, 4}, {2, 7, 5}, {4, 9, 5}},
 			},
 			{
 				Query:    "SELECT * FROM two;",
-				Expected: []sql.Row{{2, 5, 3}, {3, 7, 5}},
+				Expected: []sql.UntypedSqlRow{{2, 5, 3}, {3, 7, 5}},
 			},
 			{
 				Query:    "SELECT * FROM three;",
-				Expected: []sql.Row{{3, 5, 3}, {4, 7, 5}},
+				Expected: []sql.UntypedSqlRow{{3, 5, 3}, {4, 7, 5}},
 			},
 		},
 	},
@@ -662,19 +662,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM one;",
-				Expected: []sql.Row{{1, 1, 1}, {2, 4, 8}, {3, 9, 27}, {4, 4, 16}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, 4, 8}, {3, 9, 27}, {4, 4, 16}},
 			},
 			{
 				Query:    "SELECT * FROM two;",
-				Expected: []sql.Row{{1, 1, 1}, {2, nil, 2}, {3, nil, 3}, {4, 4, 4}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, nil, 2}, {3, nil, 3}, {4, 4, 4}},
 			},
 			{
 				Query:    "DELETE one FROM one inner join two on one.pk=two.pk;",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 			},
 			{
 				Query:    "select * from two;",
-				Expected: []sql.Row{{1, nil, 1}, {2, nil, 2}, {3, nil, 3}, {4, nil, 4}},
+				Expected: []sql.UntypedSqlRow{{1, nil, 1}, {2, nil, 2}, {3, nil, 3}, {4, nil, 4}},
 			},
 		},
 	},
@@ -693,7 +693,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE one SET v1 = v1;",
-				Expected: []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 3}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{Info: plan.UpdateInfo{Matched: 3}}}},
 			},
 			{
 				Query:       "DELETE FROM one;",
@@ -725,7 +725,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * from three union all select * from four;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -745,11 +745,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * from three;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "select * from four;",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
 	},
@@ -768,7 +768,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE one SET v1 = v1;",
-				Expected: []sql.Row{{types.OkResult{Info: plan.UpdateInfo{Matched: 3}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{Info: plan.UpdateInfo{Matched: 3}}}},
 			},
 			{
 				Query:       "DELETE FROM one;",
@@ -795,7 +795,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO two VALUES (4, NULL, NULL);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -811,11 +811,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE parent ADD CONSTRAINT fk_name1 FOREIGN KEY (v1) REFERENCES parent(v1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE parent ADD CONSTRAINT fk_name2 FOREIGN KEY (v1, v2) REFERENCES parent(v1, v2);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -831,7 +831,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{1, 1, 1}, {2, 2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, 2, 1}},
 			},
 			{
 				Query:       "DELETE FROM parent WHERE v1 = 1;",
@@ -863,11 +863,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "REPLACE INTO parent VALUES (1, 1, 1), (2, 2, 2);",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(3)}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, 2, 2}},
 			},
 			{
 				Query:       "UPDATE parent SET v1 = 2;",
@@ -875,7 +875,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM parent order by v1;",
-				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, 2, 2}},
 			},
 			{
 				Query:       "UPDATE parent SET v1 = 2 WHERE id = 1;",
@@ -883,7 +883,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM parent order by v1;",
-				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, 2, 2}},
 			},
 			{
 				Query:       "REPLACE INTO parent VALUES (1, 1, 2), (2, 2, 1);",
@@ -891,19 +891,19 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM parent order by v1;",
-				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, 2, 2}},
 			},
 			{
 				Query:    "UPDATE parent SET v2 = 2 WHERE id = 1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "UPDATE parent SET v2 = 1 WHERE id = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT * FROM parent order by v1;",
-				Expected: []sql.Row{{1, 1, 2}, {2, 2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 2}, {2, 2, 1}},
 			},
 			{
 				Query:       "UPDATE parent SET v1 = 2;",
@@ -915,11 +915,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM parent WHERE v1 = 1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -939,11 +939,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "REPLACE INTO parent VALUES (1, 1, 1), (2, 2, 2);",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{1, 1, 1}, {2, 2, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 1}, {2, 2, 2}},
 			},
 			{
 				Query:       "UPDATE parent SET v1 = 2;",
@@ -955,23 +955,23 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "REPLACE INTO parent VALUES (1,1,2), (2,2,1);",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(4)}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{1, 1, nil}, {2, 2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, nil}, {2, 2, 1}},
 			},
 			{
 				Query:    "UPDATE parent SET v2 = 2 WHERE id = 1;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "UPDATE parent SET v2 = 1 WHERE id = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1}}}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{1, 1, 2}, {2, 2, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 2}, {2, 2, 1}},
 			},
 			{
 				Query:       "UPDATE parent SET v1 = 2;",
@@ -983,11 +983,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM parent WHERE v1 = 1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{2, 2, nil}},
+				Expected: []sql.UntypedSqlRow{{2, 2, nil}},
 			},
 		},
 	},
@@ -1009,7 +1009,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `UPDATE test SET v1 = NULL, v2 = NULL WHERE test.pk = 0;`,
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 0,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -1034,7 +1034,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE FROM under_limit WHERE pk = 1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "DELETE FROM over_limit WHERE pk = 1;",
@@ -1042,11 +1042,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM over_limit WHERE pk = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "UPDATE over_limit SET pk = 1 WHERE pk = 1;",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 0,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -1081,7 +1081,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE FROM under_cycle1 WHERE pk = 1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "DELETE FROM over_cycle1 WHERE pk = 1;",
@@ -1114,7 +1114,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE FROM under_cycle1 WHERE pk = 1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "DELETE FROM over_cycle1 WHERE pk = 1;",
@@ -1165,11 +1165,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM t16;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "DELETE FROM t1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -1216,11 +1216,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM t16;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "UPDATE t1 SET pk = 2;",
-				Expected: []sql.Row{{types.OkResult{
+				Expected: []sql.UntypedSqlRow{{types.OkResult{
 					RowsAffected: 1,
 					InsertID:     0,
 					Info: plan.UpdateInfo{
@@ -1247,7 +1247,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SELECT * FROM colors;",
-				Expected: []sql.Row{{1, "red"}, {2, "green"}, {3, "blue"}, {4, "purple"}},
+				Expected: []sql.UntypedSqlRow{{1, "red"}, {2, "green"}, {3, "blue"}, {4, "purple"}},
 			},
 		},
 	},
@@ -1262,11 +1262,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT IGNORE INTO objects (id, name, color) VALUES (5, 'hi', 'yellow');",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT * FROM objects;",
-				Expected: []sql.Row{{1, "truck", "red"}, {2, "ball", "green"}, {3, "shoe", "blue"}},
+				Expected: []sql.UntypedSqlRow{{1, "truck", "red"}, {2, "ball", "green"}, {3, "shoe", "blue"}},
 			},
 		},
 	},
@@ -1285,28 +1285,28 @@ var ForeignKeyTests = []ScriptTest{
 				// No-op update bad to bad should not cause constraint violation
 				Skip:  true,
 				Query: "update delayed_child set pk=1 where pk=1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}},
 				},
 			},
 			{
 				// Update on non-existent row should not cause constraint violation
 				Query: "update delayed_child set pk=3 where pk=3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 0, Updated: 0}}},
 				},
 			},
 			{
 				// No-op update good to good should not cause constraint violation
 				Query: "update delayed_child set pk=20 where pk=20;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}},
 				},
 			},
 			{
 				// Updating bad value to good value still fails
 				Query: "update delayed_child set pk=10 where pk=1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
@@ -1326,19 +1326,19 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				// No-op update good to good should not cause constraint violation
 				Query: "delete from delayed_child where false;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 0}},
 				},
 			},
 			{
 				Query: "delete from delayed_child where pk = 20;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "delete from delayed_child where pk = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
@@ -1356,15 +1356,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE delayed_child;",
-				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `fk_delayed` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `fk_delayed` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_parent;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT * FROM delayed_child;",
-				Expected: []sql.Row{{1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}},
 			},
 			{
 				Query:       "INSERT INTO delayed_child VALUES (2, 3);",
@@ -1372,15 +1372,15 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO delayed_parent VALUES (1, 2), (2, 3);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO delayed_child VALUES (2, 3);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_child;",
-				Expected: []sql.Row{{1, 2}, {2, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {2, 3}},
 			},
 		},
 	},
@@ -1424,11 +1424,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE delayed_child;",
-				Expected: []sql.Row{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `fk_delayed` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"delayed_child", "CREATE TABLE `delayed_child` (\n  `pk` int NOT NULL,\n  `v1` int,\n  PRIMARY KEY (`pk`),\n  KEY `fk_delayed` (`v1`),\n  CONSTRAINT `fk_delayed` FOREIGN KEY (`v1`) REFERENCES `delayed_parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_child;",
-				Expected: []sql.Row{{1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}},
 			},
 			{
 				Query:       "INSERT INTO delayed_child VALUES (2, 3);",
@@ -1436,19 +1436,19 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE delayed_parent (pk INT PRIMARY KEY, v1 INT, INDEX (v1));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO delayed_parent VALUES (1, 2), (2, 3);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "INSERT INTO delayed_child VALUES (2, 3);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM delayed_child;",
-				Expected: []sql.Row{{1, 2}, {2, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 2}, {2, 3}},
 			},
 		},
 	},
@@ -1468,19 +1468,19 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=0;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "TRUNCATE parent;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "DROP TABLE parent;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=1;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:       "INSERT INTO child VALUES (4, 5, 6);",
@@ -1488,23 +1488,23 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE TABLE parent (pk INT PRIMARY KEY, v1 INT, INDEX (v1));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "INSERT INTO parent VALUES (1, 5);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO child VALUES (4, 5, 6);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{1, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 5}},
 			},
 			{
 				Query:    "SELECT * FROM child;",
-				Expected: []sql.Row{{4, 5, 6}},
+				Expected: []sql.UntypedSqlRow{{4, 5, 6}},
 			},
 		},
 	},
@@ -1522,11 +1522,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "CREATE INDEX foreign_key1 ON public.states(state);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE public.cities ADD CONSTRAINT foreign_key1 FOREIGN KEY (state) REFERENCES public.states(state);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -1539,7 +1539,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SHOW CREATE TABLE hours;",
-				Expected: []sql.Row{{"hours", "CREATE TABLE `hours` (\n  `restaurant_id` int NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`restaurant_id`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Expected: []sql.UntypedSqlRow{{"hours", "CREATE TABLE `hours` (\n  `restaurant_id` int NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`restaurant_id`),\n  CONSTRAINT `fk_name` FOREIGN KEY (`restaurant_id`) REFERENCES `restaurants` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -1554,11 +1554,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk1 FOREIGN KEY (b) REFERENCES parent (b);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk2 FOREIGN KEY (a) REFERENCES parent (b);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "ALTER TABLE child ADD CONSTRAINT fk3 FOREIGN KEY (a, b) REFERENCES parent (a, b);",
@@ -1566,7 +1566,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (b, a) REFERENCES parent (b, a);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -1580,11 +1580,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE child(id int unique, fk1 int, fk2 int, primary key(fk2, fk1, id), constraint `fk` foreign key(fk1, fk2) references parent (fk1, fk2));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "Show create table child;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child", "CREATE TABLE `child` (\n" +
 						"  `id` int NOT NULL,\n" +
 						"  `fk1` int NOT NULL,\n" +
@@ -1642,7 +1642,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "DELETE FROM self WHERE v1 = 2;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 		},
 	},
@@ -1655,11 +1655,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE FROM self WHERE v1 = 1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}}, // Cascading deletions do not count
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}}, // Cascading deletions do not count
 			},
 			{
 				Query:    "SELECT * FROM self;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1674,7 +1674,7 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				// Casing is preserved in show create table statements
 				Query: "show create table t1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `i` int NOT NULL,\n  `J` int,\n" +
 						"  PRIMARY KEY (`i`),\n" +
@@ -1685,7 +1685,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "insert into t1 values (1, 1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -1696,7 +1696,7 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				// Casing is preserved in show create table statements
 				Query: "show create table t2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t2", "CREATE TABLE `t2` (\n" +
 						"  `I` int NOT NULL,\n" +
 						"  `j` int,\n" +
@@ -1708,7 +1708,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "insert into t2 values (1, 1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -1718,7 +1718,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "show create table t3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"t3", "CREATE TABLE `t3` (\n" +
 						"  `i` int NOT NULL,\n  `j` int,\n" +
 						"  PRIMARY KEY (`i`),\n" +
@@ -1729,7 +1729,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "insert into t3 values (1, 1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -1773,19 +1773,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE FROM parent WHERE pk = 1;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM parent;",
-				Expected: []sql.Row{{2, 2, 2}, {3, 3, 3}},
+				Expected: []sql.UntypedSqlRow{{2, 2, 2}, {3, 3, 3}},
 			},
 			{
 				Query:    "SELECT * FROM child;",
-				Expected: []sql.Row{{1, nil, nil}, {2, 2, 2}, {3, 3, 3}},
+				Expected: []sql.UntypedSqlRow{{1, nil, nil}, {2, 2, 2}, {3, 3, 3}},
 			},
 			{
 				Query:    "SELECT * FROM child2;",
-				Expected: []sql.Row{{1, nil, nil}, {2, 2, 2}, {3, 3, 3}},
+				Expected: []sql.UntypedSqlRow{{1, nil, nil}, {2, 2, 2}, {3, 3, 3}},
 			},
 		},
 	},
@@ -1807,11 +1807,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "INSERT INTO one VALUES (1, 2, 4) on duplicate key update v1 = VALUES(v1)",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "SELECT * FROM two where pk = 2",
-				Expected: []sql.Row{{2, 2, 1}},
+				Expected: []sql.UntypedSqlRow{{2, 2, 1}},
 			},
 		},
 	},
@@ -1825,19 +1825,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO child1 VALUES (1, 1);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * FROM child1;",
-				Expected: []sql.Row{{1, 1}},
+				Expected: []sql.UntypedSqlRow{{1, 1}},
 			},
 			{
 				Query:    "UPDATE parent1 SET pk = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT * FROM child1;",
-				Expected: []sql.Row{{1, 2}},
+				Expected: []sql.UntypedSqlRow{{1, 2}},
 			},
 		},
 	},
@@ -1851,19 +1851,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT INTO child1 VALUES (1, 1, 2), (2, 4, 5);",
-				Expected: []sql.Row{{types.NewOkResult(2)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "SELECT * FROM child1;",
-				Expected: []sql.Row{{1, 1, 2}, {2, 4, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 2}, {2, 4, 5}},
 			},
 			{
 				Query:    "UPDATE parent1 SET pk2 = pk1 + pk2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}}},
 			},
 			{
 				Query:    "SELECT * FROM child1;",
-				Expected: []sql.Row{{1, 1, 3}, {2, 4, 9}},
+				Expected: []sql.UntypedSqlRow{{1, 1, 3}, {2, 4, 9}},
 			},
 		},
 	},
@@ -1880,11 +1880,11 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM one;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT * FROM two;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -1906,15 +1906,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM one;",
-				Expected: []sql.Row{{1, 5, 4}, {2, 7, 5}, {4, 9, 5}},
+				Expected: []sql.UntypedSqlRow{{1, 5, 4}, {2, 7, 5}, {4, 9, 5}},
 			},
 			{
 				Query:    "SELECT * FROM two;",
-				Expected: []sql.Row{{2, 5, 3}, {3, 7, 5}},
+				Expected: []sql.UntypedSqlRow{{2, 5, 3}, {3, 7, 5}},
 			},
 			{
 				Query:    "SELECT * FROM three;",
-				Expected: []sql.Row{{3, 5, 3}, {4, 7, 5}},
+				Expected: []sql.UntypedSqlRow{{3, 5, 3}, {4, 7, 5}},
 			},
 		},
 	},
@@ -1927,19 +1927,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT into a (x, y) VALUES (1, 3);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT into b (x, y) VALUES (2, 3);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT x, y from a;",
-				Expected: []sql.Row{{1, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 3}},
 			},
 			{
 				Query:    "SELECT x, y  from b;",
-				Expected: []sql.Row{{2, 3}},
+				Expected: []sql.UntypedSqlRow{{2, 3}},
 			},
 			{
 				Query:       "INSERT into b (x, y) VALUES (3, 5);",
@@ -1956,19 +1956,19 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "INSERT into a (x, y) VALUES (1, 3);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT into b (x, y) VALUES (2, 3);",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT x, y from a;",
-				Expected: []sql.Row{{1, 3}},
+				Expected: []sql.UntypedSqlRow{{1, 3}},
 			},
 			{
 				Query:    "SELECT x, y from b;",
-				Expected: []sql.Row{{2, 3}},
+				Expected: []sql.UntypedSqlRow{{2, 3}},
 			},
 			{
 				Query:       "INSERT into b (x, y) VALUES (3, 5);",
@@ -1987,15 +1987,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE a SET y = 4 where y = 3;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT x, y from a;",
-				Expected: []sql.Row{{1, 4}},
+				Expected: []sql.UntypedSqlRow{{1, 4}},
 			},
 			{
 				Query:    "SELECT x, y from b;",
-				Expected: []sql.Row{{2, 4}},
+				Expected: []sql.UntypedSqlRow{{2, 4}},
 			},
 		},
 	},
@@ -2010,15 +2010,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE a SET y = 4 where y = 3;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Expected: []sql.UntypedSqlRow{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
 				Query:    "SELECT x, y from a;",
-				Expected: []sql.Row{{1, 4}},
+				Expected: []sql.UntypedSqlRow{{1, 4}},
 			},
 			{
 				Query:    "SELECT x, y from b;",
-				Expected: []sql.Row{{2, 4}},
+				Expected: []sql.UntypedSqlRow{{2, 4}},
 			},
 		},
 	},
@@ -2033,15 +2033,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE from a where x = 1 AND y = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * from a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT * from b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -2056,15 +2056,15 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "DELETE from a where x = 1 AND y = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "SELECT * from a;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 			{
 				Query:    "SELECT * from b;",
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},
@@ -2076,7 +2076,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "CREATE TABLE t2 (pk char(32) COLLATE utf8mb4_0900_bin PRIMARY KEY, CONSTRAINT fk_1 FOREIGN KEY (pk) REFERENCES t1 (pk));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -2106,13 +2106,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "alter table child1 add constraint fk1 foreign key (fk1, pk2) references parent1 (fk1, pk2);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table child1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child1", "CREATE TABLE `child1` (\n" +
 						"  `fk1` int,\n" +
 						"  `pk1` int NOT NULL,\n" +
@@ -2126,13 +2126,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "insert into child1 values (0, 1, 2, 3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "insert into child1 values (0, 99, 2, 99);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -2142,13 +2142,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "alter table child2 add constraint fk2 foreign key (fk1, pk2, pk1) references parent1 (fk1, pk2, pk1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table child2",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child2", "CREATE TABLE `child2` (\n" +
 						"  `fk1` int,\n" +
 						"  `pk1` int NOT NULL,\n" +
@@ -2162,13 +2162,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "insert into child2 values (0, 1, 2, 3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "insert into child2 values (0, 1, 2, 99);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
@@ -2178,19 +2178,19 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "alter table child3 add constraint fk3 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "insert into child3 values (0, 1, 2, 3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
 				Query: "show create table child3",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child3", "CREATE TABLE `child3` (\n" +
 						"  `fk1` int,\n" +
 						"  `pk1` int NOT NULL,\n" +
@@ -2208,13 +2208,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{ // although idx4 would be a valid index, it is not used for the foreign key fk4
 				Query: "alter table child4 add constraint fk4 foreign key (fk1, pk2, pk1, pk3) references parent1 (fk1, pk2, pk1, pk3);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table child4",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child4", "CREATE TABLE `child4` (\n" +
 						"  `fk1` int,\n" +
 						"  `pk1` int NOT NULL,\n" +
@@ -2229,13 +2229,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{ // idx4 satisfies the foreign key fk5
 				Query: "alter table child4 add constraint fk5 foreign key (fk1) references parent1 (fk1);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table child4",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child4", "CREATE TABLE `child4` (\n" +
 						"  `fk1` int,\n" +
 						"  `pk1` int NOT NULL,\n" +
@@ -2261,7 +2261,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table mychild;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mychild", "CREATE TABLE `mychild` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2271,13 +2271,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "alter table mychild rename constraint foreign key myfk to newfk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table mychild;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mychild", "CREATE TABLE `mychild` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2288,13 +2288,13 @@ var ForeignKeyTests = []ScriptTest{
 			// case insensitive rename
 			{
 				Query: "alter table mychild rename constraint foreign key NeWfK to NewNewFk;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table mychild;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"mychild", "CREATE TABLE `mychild` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2335,25 +2335,25 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "alter table child1 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "alter table child1 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "alter table child1 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table child1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child1", "CREATE TABLE `child1` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2366,20 +2366,20 @@ var ForeignKeyTests = []ScriptTest{
 
 			{
 				Query: "alter table child2 add constraint `child2_ibfk_1` foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				// If generated name collides with existing, then a new name will be generated
 				Query: "alter table child2 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table child2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child2", "CREATE TABLE `child2` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2397,19 +2397,19 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				// unlike secondary index naming, constraints will find highest existing index and increment from there
 				Query: "alter table child3 add constraint `child3_ibfk_100` foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "alter table child3 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "show create table child3;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child3", "CREATE TABLE `child3` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2422,7 +2422,7 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				// Name generation is case-sensitive
 				Query: "alter table child4 add constraint `CHILD4_IBFK_1` foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
@@ -2433,7 +2433,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "show create table child4;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child4", "CREATE TABLE `child4` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2444,21 +2444,21 @@ var ForeignKeyTests = []ScriptTest{
 
 			{
 				Query: "alter table child5 add constraint `child5_ibfk_-2` foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				// This adds -1, which is interpreted as 4294967295
 				Query: "alter table child5 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				// This adds 4294967296, which overflows back to 0
 				Query: "alter table child5 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
@@ -2470,7 +2470,7 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				// foreign keys are sorted by name
 				Query: "show create table child5;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child5", "CREATE TABLE `child5` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2484,20 +2484,20 @@ var ForeignKeyTests = []ScriptTest{
 			// empty string constraint names are allowed if specified explicitly
 			{
 				Query: "alter table child6 add constraint `` foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Query: "alter table child6 add foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
 				Skip:  true, // we need parser changes to tell the difference between an empty string and a NULL
 				Query: "show create table child6;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"child6", "CREATE TABLE `child6` (\n" +
 						"  `j` int NOT NULL,\n" +
 						"  PRIMARY KEY (`j`),\n" +
@@ -2509,7 +2509,7 @@ var ForeignKeyTests = []ScriptTest{
 
 			{
 				Query: "alter table child1 add constraint `child7_ibfk_1` foreign key (j) references theparent (i);",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.NewOkResult(0)},
 				},
 			},
@@ -2553,7 +2553,7 @@ var ForeignKeyTests = []ScriptTest{
 			{
 				// When an explicit name is provided for a foreign key, the same name is used for the generated index
 				Query: "SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_NAME='parent1' ORDER BY INDEX_NAME, SEQ_IN_INDEX;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"parent1", "fk_b_a", "a_id2", 1},
 					{"parent1", "fk_b_a", "a_id3", 2},
 				},
@@ -2568,11 +2568,11 @@ var ForeignKeyTests = []ScriptTest{
 				// When no name is provided for a foreign key, the index created automaticaly will be named after the
 				// first column in the key. If that name is already in use, MySQL appends a number to the name.
 				Query:    "ALTER TABLE parent2 ADD FOREIGN KEY (v2) REFERENCES child1(v1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_NAME='parent2' ORDER BY INDEX_NAME, SEQ_IN_INDEX;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"parent2", "fk1", "v4", 1},
 					{"parent2", "PRIMARY", "v1", 1},
 					{"parent2", "v2", "v5", 1},
@@ -2603,13 +2603,13 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "update child1 set j = 1 where i = 101;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
 			{
 				Query: "select * from child1",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{100, 1, 1},
 					{101, 1, 2},
 				},
@@ -2627,7 +2627,7 @@ var ForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from parent1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{2},
 					{3},
@@ -2635,7 +2635,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "select * from child1 order by j, k;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 2},
 					{2, 3},
 					{3, 1},
@@ -2643,13 +2643,13 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "update parent1 set i = 20 where i = 2;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
 			{
 				Query: "select * from parent1 order by i;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1},
 					{3},
 					{20},
@@ -2657,7 +2657,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "select * from child1 order by j, k;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{1, 20},
 					{3, 1},
 					{20, 3},
@@ -2665,20 +2665,20 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query: "delete from parent1 where i = 1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
 			{
 				Query: "select * from parent1;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{3},
 					{20},
 				},
 			},
 			{
 				Query: "select * from child1 order by j, k;",
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{20, 3},
 				},
 			},
@@ -2707,7 +2707,7 @@ var CreateForeignKeyTests = []ScriptTest{
 						FROM information_schema.REFERENTIAL_CONSTRAINTS RC, information_schema.KEY_COLUMN_USAGE KCU 
 						WHERE RC.TABLE_NAME = 'child' AND RC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME AND
 						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"fk1", "mydb", "child", "d", "mydb", "parent", "b", "NO ACTION", "CASCADE"},
 					{"fk4", "mydb", "child", "d", "mydb", "child", "c", "NO ACTION", "NO ACTION"},
 				},
@@ -2718,7 +2718,7 @@ var CreateForeignKeyTests = []ScriptTest{
 						FROM information_schema.REFERENTIAL_CONSTRAINTS RC, information_schema.KEY_COLUMN_USAGE KCU 
 						WHERE RC.TABLE_NAME = 'child2' AND RC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME AND
 						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"fk2", "mydb", "child2", "f", "mydb", "parent", "b", "NO ACTION", "RESTRICT"},
 					{"fk3", "mydb", "child2", "f", "mydb", "child", "d", "SET NULL", "NO ACTION"},
 				},
@@ -2751,7 +2751,7 @@ var CreateForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE child3 ADD COLUMN v1 BIGINT NULL, ADD CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3(v1);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -2760,15 +2760,15 @@ var CreateForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=0;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.UntypedSqlRow{{}},
 			},
 			{
 				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_child4 FOREIGN KEY (pk) REFERENCES delayed_parent4 (pk))",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE delayed_parent4 (pk BIGINT PRIMARY KEY)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -2790,7 +2790,7 @@ var DropForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE child2 DROP CONSTRAINT fk2",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: `SELECT RC.CONSTRAINT_NAME, RC.CONSTRAINT_SCHEMA, RC.TABLE_NAME, KCU.COLUMN_NAME, 
@@ -2798,13 +2798,13 @@ var DropForeignKeyTests = []ScriptTest{
 						FROM information_schema.REFERENTIAL_CONSTRAINTS RC, information_schema.KEY_COLUMN_USAGE KCU 
 						WHERE RC.TABLE_NAME = 'child2' AND RC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME AND
 						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
-				Expected: []sql.Row{
+				Expected: []sql.UntypedSqlRow{
 					{"fk3", "mydb", "child2", "f", "mydb", "child", "d", "SET NULL", "NO ACTION"},
 				},
 			},
 			{
 				Query:    "ALTER TABLE child2 DROP CONSTRAINT fk3",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.UntypedSqlRow{{types.NewOkResult(0)}},
 			},
 			{
 				Query: `SELECT RC.CONSTRAINT_NAME, RC.CONSTRAINT_SCHEMA, RC.TABLE_NAME, KCU.COLUMN_NAME, 
@@ -2812,7 +2812,7 @@ var DropForeignKeyTests = []ScriptTest{
 						FROM information_schema.REFERENTIAL_CONSTRAINTS RC, information_schema.KEY_COLUMN_USAGE KCU 
 						WHERE RC.TABLE_NAME = 'child2' AND RC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME AND
 						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
-				Expected: []sql.Row{},
+				Expected: []sql.UntypedSqlRow{},
 			},
 		},
 	},

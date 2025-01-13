@@ -395,7 +395,7 @@ func ConvertToBytes(v interface{}, t sql.StringType, dest []byte) ([]byte, error
 		return nil, sql.ErrConvertToSQL.New(s, t)
 	}
 
-	// TODO: add this checking to the interface, rather than relying on the StringType implementation
+	// TODO: add this checking to the interface{}, rather than relying on the StringType implementation
 	st, isStringType := t.(StringType)
 	if isStringType {
 		if st.baseType == sqltypes.Text {

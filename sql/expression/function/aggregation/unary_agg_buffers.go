@@ -402,7 +402,7 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	if _, ok := c.exprs[0].(*expression.Star); ok {
 		value = row
 	} else {
-		val := make(sql.Row, len(c.exprs))
+		val := sql.NewSqlRowWithLen(len(c.exprs))
 		for i, expr := range c.exprs {
 			v, err := expr.Eval(ctx, row)
 			if err != nil {
@@ -412,13 +412,13 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 			if v == nil {
 				return nil
 			}
-			val[i] = v
+			val.SetValue(i, v)
 		}
 		value = val
 	}
 
 	var str string
-	for _, val := range value.(sql.Row) {
+	for _, val := range value.(sql.Row).Values() {
 		// skip nil values
 		if val == nil {
 			return nil

@@ -373,7 +373,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 				Code:    1537,
 				Message: fmt.Sprintf(err.Error()),
 			})
-			return sql.Row{types.NewOkResult(0)}, nil
+			return sql.UntypedSqlRow{types.NewOkResult(0)}, nil
 		}
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 					Message: "Event execution time is in the past and ON COMPLETION NOT PRESERVE is set. The event was dropped immediately after creation.",
 				})
 			}
-			return sql.Row{types.NewOkResult(0)}, nil
+			return sql.UntypedSqlRow{types.NewOkResult(0)}, nil
 		}
 	}
 
@@ -414,7 +414,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 		c.eventScheduler.AddEvent(ctx, c.eventDb, c.event)
 	}
 
-	return sql.Row{types.NewOkResult(0)}, nil
+	return sql.UntypedSqlRow{types.NewOkResult(0)}, nil
 }
 
 // Close implements the sql.RowIter interface.
@@ -631,7 +631,7 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+	return sql.RowsToRowIter(sql.UntypedSqlRow{types.NewOkResult(0)}), nil
 }
 
 // WithChildren implements the sql.Node interface.

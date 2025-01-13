@@ -56,8 +56,8 @@ func TestMultiToRows(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, rows, 3)
 		require.Len(t, rows[0], 3)
-		require.Contains(t, rows, sql.Row{"aaron", "aaron@dolthub.com", "dog"})
-		require.Contains(t, rows, sql.Row{"aaron", "aaron@dolthub.com", "cat"})
-		require.Contains(t, rows, sql.Row{"brian", "brian@dolthub.com", "dog"})
+		require.Contains(t, rows, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "dog"})
+		require.Contains(t, rows, sql.UntypedSqlRow{"aaron", "aaron@dolthub.com", "cat"})
+		require.Contains(t, rows, sql.UntypedSqlRow{"brian", "brian@dolthub.com", "dog"})
 	})
 }

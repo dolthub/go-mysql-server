@@ -31,7 +31,7 @@ func TestWindowPartitionIter(t *testing.T) {
 	tests := []struct {
 		Name     string
 		Iter     *WindowPartitionIter
-		Expected []sql.Row
+		Expected []sql.UntypedSqlRow
 	}{
 		{
 			Name: "group by",
@@ -46,7 +46,7 @@ func TestWindowPartitionIter(t *testing.T) {
 					},
 				},
 			),
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"forest", "leaf", float64(27)},
 				{"desert", "sand", float64(23)},
 			},
@@ -63,7 +63,7 @@ func TestWindowPartitionIter(t *testing.T) {
 						NewAggregation(sumZ, NewPartitionFramer()),
 					},
 				}),
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{"forest", "wildflower", float64(27)},
 				{"forest", "wildflower", float64(27)},
 				{"forest", "wildflower", float64(27)},
@@ -86,7 +86,7 @@ func TestWindowPartitionIter(t *testing.T) {
 			tt.Iter.child = mustNewRowIter(t, db, ctx)
 			res, err := sql.RowIterToRows(ctx, tt.Iter)
 			require.NoError(t, err)
-			require.Equal(t, tt.Expected, res)
+			require.Equal(t, tt.Expected, sql.RowsToUntyped(res))
 		})
 	}
 }
@@ -100,7 +100,7 @@ func mustNewRowIter(t *testing.T, db *memory.Database, ctx *sql.Context) sql.Row
 	})
 	table := memory.NewTable(db, "test", childSchema, nil)
 
-	rows := []sql.Row{
+	rows := []sql.UntypedSqlRow{
 		{int64(1), "forest", "leaf", int32(4)},
 		{int64(2), "forest", "bark", int32(4)},
 		{int64(3), "forest", "canopy", int32(6)},
@@ -142,7 +142,7 @@ func TestWindowPartition_MaterializeInput(t *testing.T) {
 
 	buf, ordering, err := i.materializeInput(ctx)
 	require.NoError(t, err)
-	expBuf := []sql.Row{
+	expBuf := []sql.UntypedSqlRow{
 		{int64(1), "forest", "leaf", int32(4)},
 		{int64(2), "forest", "bark", int32(4)},
 		{int64(3), "forest", "canopy", int32(6)},
@@ -164,7 +164,7 @@ func TestWindowPartition_InitializePartitions(t *testing.T) {
 		&WindowPartition{
 			PartitionBy: partitionByX,
 		})
-	i.input = []sql.Row{
+	i.input = ConvertDefaultSqlSliceToInterface([]sql.UntypedSqlRow{
 		{int64(1), "forest", "leaf", int32(4)},
 		{int64(2), "forest", "bark", int32(4)},
 		{int64(3), "forest", "canopy", int32(6)},
@@ -174,7 +174,7 @@ func TestWindowPartition_InitializePartitions(t *testing.T) {
 		{int64(7), "desert", "cactus", int32(6)},
 		{int64(8), "desert", "scorpion", int32(8)},
 		{int64(9), "desert", "mummy", int32(5)},
-	}
+	})
 	partitions, err := i.initializePartitions(ctx)
 	require.NoError(t, err)
 	expPartitions := []sql.WindowInterval{
@@ -194,7 +194,7 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 					NewAggregation(sumZ, NewGroupByFramer()),
 				},
 			})
-		i.input = []sql.Row{
+		i.input = ConvertDefaultSqlSliceToInterface([]sql.UntypedSqlRow{
 			{int64(1), "forest", "leaf", 4},
 			{int64(2), "forest", "bark", 4},
 			{int64(3), "forest", "canopy", 6},
@@ -204,12 +204,12 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 			{int64(7), "desert", "cactus", 6},
 			{int64(8), "desert", "scorpion", 8},
 			{int64(9), "desert", "mummy", 5},
-		}
+		})
 		i.partitions = []sql.WindowInterval{{0, 5}, {5, 9}}
 		i.outputOrdering = []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
 		output, err := i.materializeOutput(ctx)
 		require.NoError(t, err)
-		expOutput := []sql.Row{
+		expOutput := []sql.UntypedSqlRow{
 			{float64(27), 0},
 			{float64(23), 5},
 		}
@@ -247,7 +247,7 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 		i.outputOrdering = nil
 		output, err := i.materializeOutput(ctx)
 		require.NoError(t, err)
-		expOutput := []sql.Row{{int64(0), nil}}
+		expOutput := []sql.UntypedSqlRow{{int64(0), nil}}
 		require.ElementsMatch(t, expOutput, output)
 	})
 }
@@ -255,18 +255,18 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 func TestWindowPartition_SortAndFilterOutput(t *testing.T) {
 	tests := []struct {
 		Name     string
-		Output   []sql.Row
-		Expected []sql.Row
+		Output   []sql.UntypedSqlRow
+		Expected []sql.UntypedSqlRow
 	}{
 		{
 			Name: "no input rows filtered before output, contiguous output indexes",
-			Output: []sql.Row{
+			Output: []sql.UntypedSqlRow{
 				{0, 0},
 				{3, 3},
 				{2, 2},
 				{1, 1},
 			},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{0},
 				{1},
 				{2},
@@ -275,13 +275,13 @@ func TestWindowPartition_SortAndFilterOutput(t *testing.T) {
 		},
 		{
 			Name: "input rows filtered before output, non contiguous output indexes",
-			Output: []sql.Row{
+			Output: []sql.UntypedSqlRow{
 				{0, 0},
 				{3, 3},
 				{2, 7},
 				{1, 1},
 			},
-			Expected: []sql.Row{
+			Expected: []sql.UntypedSqlRow{
 				{0},
 				{1},
 				{3},
@@ -290,7 +290,7 @@ func TestWindowPartition_SortAndFilterOutput(t *testing.T) {
 		},
 		{
 			Name:     "empty output",
-			Output:   []sql.Row{},
+			Output:   []sql.UntypedSqlRow{},
 			Expected: nil,
 		},
 	}
@@ -298,7 +298,7 @@ func TestWindowPartition_SortAndFilterOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			i := NewWindowPartitionIter(&WindowPartition{})
-			i.output = tt.Output
+			i.output = ConvertDefaultSqlSliceToInterface(tt.Output)
 			err := i.sortAndFilterOutput()
 			require.NoError(t, err)
 			require.ElementsMatch(t, tt.Expected, i.output)
