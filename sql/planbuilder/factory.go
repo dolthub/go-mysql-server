@@ -235,7 +235,7 @@ func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColS
 					aliases = append(aliases, p)
 				}
 			}
-			aliasCols := plan.ExprDeps(aliases)
+			aliasCols := plan.ExprDeps(aliases...)
 			if !aliasCols.Intersects(deps) {
 				newP := plan.NewProject(p.Projections, plan.NewSort(exprs, p.Child))
 				return f.buildProject(newP, subquery)
