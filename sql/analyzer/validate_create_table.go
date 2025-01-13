@@ -693,7 +693,7 @@ func validatePrefixLength(ctx *sql.Context, colName string, colLen int64, colTyp
 	}
 
 	// Prefix length is required for BLOB and TEXT columns.
-	if colLen == 0 && types.IsTextBlob(colType) {
+	if _, isExtendedType := colType.(types.ExtendedType); !isExtendedType && colLen == 0 && types.IsTextBlob(colType) {
 		// MariaDB extends this behavior so that unique indexes don't require a prefix length.
 		if strictMySQLCompat || !isUnique {
 			return sql.ErrInvalidBlobTextKey.New(colName)
@@ -857,7 +857,7 @@ func validateIndexes(ctx *sql.Context, sch sql.Schema, idxDefs sql.IndexDefs, st
 	// otherwise, then it would've been validated before this
 	if !hasPkIndexDef {
 		for _, col := range sch {
-			if col.PrimaryKey && types.IsTextBlob(col.Type) {
+			if _, isExtendedType := col.Type.(types.ExtendedType); !isExtendedType && col.PrimaryKey && types.IsTextBlob(col.Type) {
 				return sql.ErrInvalidBlobTextKey.New(col.Name)
 			}
 		}

@@ -177,8 +177,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
 				return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
 			}
-			sqlParserType := col.Type.Type()
-			if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
+			if _, isExtendedType := col.Type.(types.ExtendedType); !isExtendedType && types.IsTextBlob(col.Type) {
 				return sql.ErrForeignKeyTextBlob.New()
 			}
 		}
