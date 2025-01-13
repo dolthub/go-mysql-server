@@ -53,6 +53,73 @@ func TestPlanBuilder(t *testing.T) {
 
 	var tests = []planTest{
 		{
+			Query: "WITH cte AS (SELECT * FROM xy) SELECT *, (SELECT SUM(x) FROM cte) AS xy FROM cte",
+			ExpectedPlan: `
+Project
+ ├─ columns: [cte.x:7!null, cte.y:8!null, cte.z:9!null, Subquery
+ │   ├─ cacheable: true
+ │   ├─ alias-string: select SUM(x) from cte
+ │   └─ Project
+ │       ├─ columns: [sum(cte.x):13!null as SUM(x)]
+ │       └─ GroupBy
+ │           ├─ select: SUM(cte.x:10!null)
+ │           ├─ group: 
+ │           └─ SubqueryAlias
+ │               ├─ name: cte
+ │               ├─ outerVisibility: false
+ │               ├─ isLateral: false
+ │               ├─ cacheable: true
+ │               ├─ colSet: (10-12)
+ │               ├─ tableId: 4
+ │               └─ Project
+ │                   ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
+ │                   └─ Table
+ │                       ├─ name: xy
+ │                       ├─ columns: [x y z]
+ │                       ├─ colSet: (1-3)
+ │                       └─ tableId: 1
+ │   as xy]
+ └─ Project
+     ├─ columns: [cte.x:7!null, cte.y:8!null, cte.z:9!null, Subquery
+     │   ├─ cacheable: true
+     │   ├─ alias-string: select SUM(x) from cte
+     │   └─ Project
+     │       ├─ columns: [sum(cte.x):13!null as SUM(x)]
+     │       └─ GroupBy
+     │           ├─ select: SUM(cte.x:10!null)
+     │           ├─ group: 
+     │           └─ SubqueryAlias
+     │               ├─ name: cte
+     │               ├─ outerVisibility: false
+     │               ├─ isLateral: false
+     │               ├─ cacheable: true
+     │               ├─ colSet: (10-12)
+     │               ├─ tableId: 4
+     │               └─ Project
+     │                   ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
+     │                   └─ Table
+     │                       ├─ name: xy
+     │                       ├─ columns: [x y z]
+     │                       ├─ colSet: (1-3)
+     │                       └─ tableId: 1
+     │   as xy]
+     └─ SubqueryAlias
+         ├─ name: cte
+         ├─ outerVisibility: false
+         ├─ isLateral: false
+         ├─ cacheable: true
+         ├─ colSet: (7-9)
+         ├─ tableId: 3
+         └─ Project
+             ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null]
+             └─ Table
+                 ├─ name: xy
+                 ├─ columns: [x y z]
+                 ├─ colSet: (1-3)
+                 └─ tableId: 1
+`,
+		},
+		{
 			Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
 			ExpectedPlan: `
 Project
@@ -80,20 +147,20 @@ Project
  ├─ columns: [1 (tinyint) as x]
  └─ Having
      ├─ GreaterThan
-     │   ├─ avg(cte.x):4
+     │   ├─ avg(cte.x):5
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(cte.x):4, cte.x:2!null, 1 (tinyint) as x]
+         ├─ columns: [avg(cte.x):5, cte.x:3!null, 1 (tinyint) as x]
          └─ GroupBy
-             ├─ select: AVG(cte.x:2!null), cte.x:2!null
+             ├─ select: AVG(cte.x:3!null), cte.x:3!null
              ├─ group: 
              └─ SubqueryAlias
                  ├─ name: cte
                  ├─ outerVisibility: false
                  ├─ isLateral: false
                  ├─ cacheable: true
-                 ├─ colSet: (2)
-                 ├─ tableId: 1
+                 ├─ colSet: (3)
+                 ├─ tableId: 2
                  └─ Project
                      ├─ columns: [1 (tinyint) as x]
                      └─ Table
@@ -249,8 +316,8 @@ SubqueryAlias
  ├─ outerVisibility: false
  ├─ isLateral: false
  ├─ cacheable: true
- ├─ colSet: (4,5)
- ├─ tableId: 2
+ ├─ colSet: (6,7)
+ ├─ tableId: 3
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null]
      └─ Table
@@ -462,8 +529,8 @@ SubqueryAlias
  ├─ outerVisibility: false
  ├─ isLateral: false
  ├─ cacheable: true
- ├─ colSet: (2)
- ├─ tableId: 1
+ ├─ colSet: (3)
+ ├─ tableId: 2
  └─ Project
      ├─ columns: [1 (tinyint)]
      └─ Table
@@ -481,8 +548,8 @@ SubqueryAlias
  ├─ outerVisibility: false
  ├─ isLateral: false
  ├─ cacheable: true
- ├─ colSet: (4)
- ├─ tableId: 2
+ ├─ colSet: (9)
+ ├─ tableId: 4
  └─ RecursiveCTE
      └─ Union distinct
          ├─ Project
@@ -493,16 +560,16 @@ SubqueryAlias
          │       ├─ colSet: (1-3)
          │       └─ tableId: 1
          └─ Project
-             ├─ columns: [cte.s:4!null]
+             ├─ columns: [cte.s:5!null]
              └─ InnerJoin
                  ├─ Eq
-                 │   ├─ xy.y:6!null
-                 │   └─ cte.s:4!null
+                 │   ├─ xy.y:7!null
+                 │   └─ cte.s:5!null
                  ├─ RecursiveTable(cte)
                  └─ Table
                      ├─ name: xy
                      ├─ columns: [x y z]
-                     ├─ colSet: (5-7)
+                     ├─ colSet: (6-8)
                      └─ tableId: 4
 `,
 		},
@@ -1587,8 +1654,8 @@ SubqueryAlias
  ├─ outerVisibility: false
  ├─ isLateral: false
  ├─ cacheable: true
- ├─ colSet: (6,7)
- ├─ tableId: 4
+ ├─ colSet: (14,15)
+ ├─ tableId: 6
  └─ RecursiveCTE
      └─ Union all
          ├─ Project
@@ -1598,8 +1665,8 @@ SubqueryAlias
          │       ├─ outerVisibility: false
          │       ├─ isLateral: false
          │       ├─ cacheable: true
-         │       ├─ colSet: (2)
-         │       ├─ tableId: 1
+         │       ├─ colSet: (5)
+         │       ├─ tableId: 3
          │       └─ RecursiveCTE
          │           └─ Union all
          │               ├─ Project
@@ -1610,18 +1677,18 @@ SubqueryAlias
          │               │       ├─ colSet: ()
          │               │       └─ tableId: 0
          │               └─ Project
-         │                   ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
+         │                   ├─ columns: [(rt.foo:3!null + 1 (tinyint)) as foo]
          │                   └─ Filter
          │                       ├─ LessThan
-         │                       │   ├─ rt.foo:2!null
+         │                       │   ├─ rt.foo:3!null
          │                       │   └─ 5 (bigint)
          │                       └─ RecursiveTable(rt)
          └─ Project
-             ├─ columns: [(ladder.depth:6!null + 1 (tinyint)) as depth, rt.foo:2!null]
+             ├─ columns: [(ladder.depth:10!null + 1 (tinyint)) as depth, rt.foo:12!null]
              └─ Filter
                  ├─ Eq
-                 │   ├─ ladder.foo:7
-                 │   └─ rt.foo:2!null
+                 │   ├─ ladder.foo:11
+                 │   └─ rt.foo:12!null
                  └─ CrossJoin
                      ├─ RecursiveTable(ladder)
                      └─ SubqueryAlias
@@ -1629,8 +1696,8 @@ SubqueryAlias
                          ├─ outerVisibility: false
                          ├─ isLateral: false
                          ├─ cacheable: true
-                         ├─ colSet: (2)
-                         ├─ tableId: 1
+                         ├─ colSet: (12)
+                         ├─ tableId: 4
                          └─ RecursiveCTE
                              └─ Union all
                                  ├─ Project
@@ -1641,10 +1708,10 @@ SubqueryAlias
                                  │       ├─ colSet: ()
                                  │       └─ tableId: 0
                                  └─ Project
-                                     ├─ columns: [(rt.foo:2!null + 1 (tinyint)) as foo]
+                                     ├─ columns: [(rt.foo:3!null + 1 (tinyint)) as foo]
                                      └─ Filter
                                          ├─ LessThan
-                                         │   ├─ rt.foo:2!null
+                                         │   ├─ rt.foo:3!null
                                          │   └─ 5 (bigint)
                                          └─ RecursiveTable(rt)
 `,

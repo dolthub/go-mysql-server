@@ -360,13 +360,19 @@ func (s *scope) aliasCte(alias string) *scope {
 		return nil
 	}
 	outScope := s.copy()
-	if _, ok := s.tables[alias]; ok || alias == "" {
-		return outScope
-	}
 
 	sq, _ := outScope.node.(*plan.SubqueryAlias)
 
-	tabId := outScope.addTable(alias)
+	name := strings.ToLower(outScope.node.(sql.NameableNode).Name())
+
+	var tabId sql.TableId
+	if alias != "" {
+		tabId = outScope.addTable(alias)
+	} else {
+		alias = name
+		tabId = s.tables[strings.ToLower(name)]
+	}
+
 	outScope.cols = nil
 	var colSet sql.ColSet
 	scopeMapping := make(map[sql.ColumnId]sql.Expression)
@@ -462,6 +468,7 @@ func (s *scope) getCte(name string) *scope {
 		if checkScope.ctes != nil {
 			cte, ok := checkScope.ctes[strings.ToLower(name)]
 			if ok {
+				cte.tables[name] += 1
 				return cte
 			}
 		}
@@ -612,10 +619,12 @@ func (c scopeColumn) unwrapGetFieldAliasId() columnId {
 	return c.id
 }
 
-func (c scopeColumn) withOriginal(col string) scopeColumn {
+func (c scopeColumn) withOriginal(origTbl, col string) scopeColumn {
 	// info schema columns always presented as uppercase, except for processlist
 	// can't reference information_schema.ProcessListTableName because of import cycles
-	if !strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) || (strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(c.table, "processlist")) {
+	if !strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) ||
+		(strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(c.table, "processlist")) ||
+		(strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(origTbl, "processlist")) {
 		c.originalCol = col
 	}
 	return c
