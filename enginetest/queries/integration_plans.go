@@ -7167,7 +7167,7 @@ WHERE
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (214-218)\n" +
+			"         ├─ colSet: (221-225)\n" +
 			"         ├─ tableId: 25\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ:1!null as T4IBQ, nrfj3.ECUWU:2!null as ECUWU, nrfj3.GSTQA:3!null as GSTQA, nrfj3.B5OUF:4 as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null as SP4SI]\n" +
@@ -7186,7 +7186,7 @@ WHERE
 			"                     ├─ outerVisibility: false\n" +
 			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (201-207)\n" +
+			"                     ├─ colSet: (208-214)\n" +
 			"                     ├─ tableId: 24\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
@@ -7196,8 +7196,8 @@ WHERE
 			"                                 ├─ outerVisibility: false\n" +
 			"                                 ├─ isLateral: false\n" +
 			"                                 ├─ cacheable: true\n" +
-			"                                 ├─ colSet: (194-200)\n" +
-			"                                 ├─ tableId: 22\n" +
+			"                                 ├─ colSet: (201-207)\n" +
+			"                                 ├─ tableId: 23\n" +
 			"                                 └─ Project\n" +
 			"                                     ├─ columns: [bs.T4IBQ:1!null as T4IBQ, pa.DZLIM:6!null as ECUWU, pga.DZLIM:12!null as GSTQA, pog.B5OUF:10, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:16!null as TW55N]\n" +
 			"                                     └─ Filter\n" +
@@ -8042,7 +8042,7 @@ WHERE
 			"         ├─ outerVisibility: false\n" +
 			"         ├─ isLateral: false\n" +
 			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (214-218)\n" +
+			"         ├─ colSet: (221-225)\n" +
 			"         ├─ tableId: 25\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ:1!null as T4IBQ, nrfj3.ECUWU:2!null as ECUWU, nrfj3.GSTQA:3!null as GSTQA, nrfj3.B5OUF:4 as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null as SP4SI]\n" +
@@ -8061,7 +8061,7 @@ WHERE
 			"                     ├─ outerVisibility: false\n" +
 			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (201-207)\n" +
+			"                     ├─ colSet: (208-214)\n" +
 			"                     ├─ tableId: 24\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
@@ -8071,8 +8071,8 @@ WHERE
 			"                                 ├─ outerVisibility: false\n" +
 			"                                 ├─ isLateral: false\n" +
 			"                                 ├─ cacheable: true\n" +
-			"                                 ├─ colSet: (194-200)\n" +
-			"                                 ├─ tableId: 22\n" +
+			"                                 ├─ colSet: (201-207)\n" +
+			"                                 ├─ tableId: 23\n" +
 			"                                 └─ Project\n" +
 			"                                     ├─ columns: [bs.T4IBQ:1!null as T4IBQ, pa.DZLIM:6!null as ECUWU, pga.DZLIM:12!null as GSTQA, pog.B5OUF:10, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:16!null as TW55N]\n" +
 			"                                     └─ Filter\n" +
@@ -10482,7 +10482,7 @@ WHERE
 			" │               ├─ outerVisibility: true\n" +
 			" │               ├─ isLateral: false\n" +
 			" │               ├─ cacheable: true\n" +
-			" │               ├─ colSet: (223,224)\n" +
+			" │               ├─ colSet: (256,257)\n" +
 			" │               ├─ tableId: 27\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
@@ -10510,7 +10510,7 @@ WHERE
 			" │               ├─ outerVisibility: true\n" +
 			" │               ├─ isLateral: false\n" +
 			" │               ├─ cacheable: true\n" +
-			" │               ├─ colSet: (225,226)\n" +
+			" │               ├─ colSet: (258,259)\n" +
 			" │               ├─ tableId: 28\n" +
 			" │               └─ Project\n" +
 			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
@@ -10540,7 +10540,7 @@ WHERE
 			"     │               ├─ outerVisibility: true\n" +
 			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
-			"     │               ├─ colSet: (223,224)\n" +
+			"     │               ├─ colSet: (256,257)\n" +
 			"     │               ├─ tableId: 27\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
@@ -10568,7 +10568,7 @@ WHERE
 			"     │               ├─ outerVisibility: true\n" +
 			"     │               ├─ isLateral: false\n" +
 			"     │               ├─ cacheable: true\n" +
-			"     │               ├─ colSet: (225,226)\n" +
+			"     │               ├─ colSet: (258,259)\n" +
 			"     │               ├─ tableId: 28\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
@@ -10626,7 +10626,7 @@ WHERE
 			"         │   │   │   │   │                           └─ IndexedTableAccess(NOXN3)\n" +
 			"         │   │   │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │   │   │                               ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"         │   │   │   │   │                               ├─ colSet: (132-141)\n" +
+			"         │   │   │   │   │                               ├─ colSet: (165-174)\n" +
 			"         │   │   │   │   │                               ├─ tableId: 18\n" +
 			"         │   │   │   │   │                               └─ Table\n" +
 			"         │   │   │   │   │                                   ├─ name: NOXN3\n" +
@@ -10651,7 +10651,7 @@ WHERE
 			"         │   │   │   │                           └─ IndexedTableAccess(NOXN3)\n" +
 			"         │   │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │   │                               ├─ keys: [mjr3d.FJDP5:0!null]\n" +
-			"         │   │   │   │                               ├─ colSet: (142-151)\n" +
+			"         │   │   │   │                               ├─ colSet: (175-184)\n" +
 			"         │   │   │   │                               ├─ tableId: 19\n" +
 			"         │   │   │   │                               └─ Table\n" +
 			"         │   │   │   │                                   ├─ name: NOXN3\n" +
@@ -10677,7 +10677,7 @@ WHERE
 			"         │   │   │                           └─ IndexedTableAccess(NOXN3)\n" +
 			"         │   │   │                               ├─ index: [NOXN3.BRQP2]\n" +
 			"         │   │   │                               ├─ keys: [mjr3d.BJUF2:1!null]\n" +
-			"         │   │   │                               ├─ colSet: (152-161)\n" +
+			"         │   │   │                               ├─ colSet: (185-194)\n" +
 			"         │   │   │                               ├─ tableId: 20\n" +
 			"         │   │   │                               └─ Table\n" +
 			"         │   │   │                                   ├─ name: NOXN3\n" +
@@ -10687,7 +10687,7 @@ WHERE
 			"         │   │   │   ├─ outerVisibility: false\n" +
 			"         │   │   │   ├─ isLateral: false\n" +
 			"         │   │   │   ├─ cacheable: true\n" +
-			"         │   │   │   ├─ colSet: (111-121)\n" +
+			"         │   │   │   ├─ colSet: (144-154)\n" +
 			"         │   │   │   ├─ tableId: 16\n" +
 			"         │   │   │   └─ Union distinct\n" +
 			"         │   │   │       ├─ Project\n" +
@@ -10706,8 +10706,8 @@ WHERE
 			"         │   │   │       │       │       ├─ outerVisibility: false\n" +
 			"         │   │   │       │       │       ├─ isLateral: false\n" +
 			"         │   │   │       │       │       ├─ cacheable: true\n" +
-			"         │   │   │       │       │       ├─ colSet: (87-97)\n" +
-			"         │   │   │       │       │       ├─ tableId: 10\n" +
+			"         │   │   │       │       │       ├─ colSet: (98-108)\n" +
+			"         │   │   │       │       │       ├─ tableId: 11\n" +
 			"         │   │   │       │       │       └─ Filter\n" +
 			"         │   │   │       │       │           ├─ Or\n" +
 			"         │   │   │       │       │           │   ├─ AND\n" +
@@ -10825,8 +10825,8 @@ WHERE
 			"         │   │   │       │                   ├─ outerVisibility: false\n" +
 			"         │   │   │       │                   ├─ isLateral: false\n" +
 			"         │   │   │       │                   ├─ cacheable: true\n" +
-			"         │   │   │       │                   ├─ colSet: (87-97)\n" +
-			"         │   │   │       │                   ├─ tableId: 10\n" +
+			"         │   │   │       │                   ├─ colSet: (109-119)\n" +
+			"         │   │   │       │                   ├─ tableId: 12\n" +
 			"         │   │   │       │                   └─ Filter\n" +
 			"         │   │   │       │                       ├─ AND\n" +
 			"         │   │   │       │                       │   ├─ NOT\n" +
@@ -10943,8 +10943,8 @@ WHERE
 			"         │   │   │                   ├─ outerVisibility: false\n" +
 			"         │   │   │                   ├─ isLateral: false\n" +
 			"         │   │   │                   ├─ cacheable: true\n" +
-			"         │   │   │                   ├─ colSet: (87-97)\n" +
-			"         │   │   │                   ├─ tableId: 10\n" +
+			"         │   │   │                   ├─ colSet: (121-131)\n" +
+			"         │   │   │                   ├─ tableId: 13\n" +
 			"         │   │   │                   └─ Filter\n" +
 			"         │   │   │                       ├─ AND\n" +
 			"         │   │   │                       │   ├─ NOT\n" +
@@ -11059,7 +11059,7 @@ WHERE
 			"         │           ├─ outerVisibility: false\n" +
 			"         │           ├─ isLateral: false\n" +
 			"         │           ├─ cacheable: true\n" +
-			"         │           ├─ colSet: (213-215)\n" +
+			"         │           ├─ colSet: (246-248)\n" +
 			"         │           ├─ tableId: 24\n" +
 			"         │           └─ Project\n" +
 			"         │               ├─ columns: [cla.FTQLQ:4!null, mf.LUEVY:1!null, mf.M22QN:2!null]\n" +
@@ -11071,7 +11071,7 @@ WHERE
 			"         │                   │   └─ Table\n" +
 			"         │                   │       ├─ name: HGMQ6\n" +
 			"         │                   │       ├─ columns: [gxlub luevy m22qn]\n" +
-			"         │                   │       ├─ colSet: (196-212)\n" +
+			"         │                   │       ├─ colSet: (229-245)\n" +
 			"         │                   │       └─ tableId: 23\n" +
 			"         │                   └─ HashLookup\n" +
 			"         │                       ├─ left-key: TUPLE(mf.GXLUB:0!null)\n" +
@@ -11088,7 +11088,7 @@ WHERE
 			"         │                           │       └─ IndexedTableAccess(YK2GW)\n" +
 			"         │                           │           ├─ index: [YK2GW.id]\n" +
 			"         │                           │           ├─ static: [{[NULL, ∞)}]\n" +
-			"         │                           │           ├─ colSet: (162-191)\n" +
+			"         │                           │           ├─ colSet: (195-224)\n" +
 			"         │                           │           ├─ tableId: 21\n" +
 			"         │                           │           └─ Table\n" +
 			"         │                           │               ├─ name: YK2GW\n" +
@@ -11097,7 +11097,7 @@ WHERE
 			"         │                               └─ IndexedTableAccess(THNTS)\n" +
 			"         │                                   ├─ index: [THNTS.IXUXU]\n" +
 			"         │                                   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │                                   ├─ colSet: (192-195)\n" +
+			"         │                                   ├─ colSet: (225-228)\n" +
 			"         │                                   ├─ tableId: 22\n" +
 			"         │                                   └─ Table\n" +
 			"         │                                       ├─ name: THNTS\n" +
@@ -11110,12 +11110,12 @@ WHERE
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (219-221)\n" +
+			"                 ├─ colSet: (252-254)\n" +
 			"                 ├─ tableId: 26\n" +
 			"                 └─ Table\n" +
 			"                     ├─ name: TPXBU\n" +
 			"                     ├─ columns: [id btxc5 fhcyt]\n" +
-			"                     ├─ colSet: (216-218)\n" +
+			"                     ├─ colSet: (249-251)\n" +
 			"                     └─ tableId: 25\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -11979,7 +11979,7 @@ WHERE
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (252-255)\n" +
+			"             │   ├─ colSet: (260-263)\n" +
 			"             │   ├─ tableId: 36\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [rsa3y.T4IBQ:3!null as T4IBQ, jmhie.M6T2N:0 as M6T2N, jmhie.BTXC5:1 as BTXC5, jmhie.TUV25:2 as TUV25]\n" +
@@ -11989,7 +11989,7 @@ WHERE
 			"             │           │   ├─ outerVisibility: false\n" +
 			"             │           │   ├─ isLateral: false\n" +
 			"             │           │   ├─ cacheable: true\n" +
-			"             │           │   ├─ colSet: (224-226)\n" +
+			"             │           │   ├─ colSet: (229-231)\n" +
 			"             │           │   ├─ tableId: 28\n" +
 			"             │           │   └─ Distinct\n" +
 			"             │           │       └─ Project\n" +
@@ -11999,8 +11999,8 @@ WHERE
 			"             │           │               ├─ outerVisibility: false\n" +
 			"             │           │               ├─ isLateral: false\n" +
 			"             │           │               ├─ cacheable: true\n" +
-			"             │           │               ├─ colSet: (219-223)\n" +
-			"             │           │               ├─ tableId: 26\n" +
+			"             │           │               ├─ colSet: (224-228)\n" +
+			"             │           │               ├─ tableId: 27\n" +
 			"             │           │               └─ Project\n" +
 			"             │           │                   ├─ columns: [CASE  WHEN NOT\n" +
 			"             │           │                   │   └─ mjr3d.QNI57:5!null IS NULL\n" +
@@ -12324,7 +12324,7 @@ WHERE
 			"             │                   ├─ outerVisibility: false\n" +
 			"             │                   ├─ isLateral: false\n" +
 			"             │                   ├─ cacheable: true\n" +
-			"             │                   ├─ colSet: (227)\n" +
+			"             │                   ├─ colSet: (235)\n" +
 			"             │                   ├─ tableId: 29\n" +
 			"             │                   └─ Distinct\n" +
 			"             │                       └─ Project\n" +
@@ -12334,8 +12334,8 @@ WHERE
 			"             │                               ├─ outerVisibility: false\n" +
 			"             │                               ├─ isLateral: false\n" +
 			"             │                               ├─ cacheable: true\n" +
-			"             │                               ├─ colSet: (157-159)\n" +
-			"             │                               ├─ tableId: 16\n" +
+			"             │                               ├─ colSet: (232-234)\n" +
+			"             │                               ├─ tableId: 17\n" +
 			"             │                               └─ Project\n" +
 			"             │                                   ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:7!null as BDNYB, mf.M22QN:6!null as M22QN]\n" +
 			"             │                                   └─ HashJoin\n" +
@@ -12401,8 +12401,8 @@ WHERE
 			"                     ├─ outerVisibility: false\n" +
 			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (248-251)\n" +
-			"                     ├─ tableId: 34\n" +
+			"                     ├─ colSet: (264-267)\n" +
+			"                     ├─ tableId: 35\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [cld.T4IBQ:0!null as T4IBQ, p4pjz.M6T2N:3 as M6T2N, p4pjz.BTXC5:4 as BTXC5, p4pjz.TUV25:7 as TUV25]\n" +
@@ -12422,7 +12422,7 @@ WHERE
 			"                                     │   ├─ outerVisibility: false\n" +
 			"                                     │   ├─ isLateral: false\n" +
 			"                                     │   ├─ cacheable: true\n" +
-			"                                     │   ├─ colSet: (236-238)\n" +
+			"                                     │   ├─ colSet: (244-246)\n" +
 			"                                     │   ├─ tableId: 32\n" +
 			"                                     │   └─ Project\n" +
 			"                                     │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:7!null as BDNYB, mf.M22QN:6!null as M22QN]\n" +
@@ -12489,7 +12489,7 @@ WHERE
 			"                                             ├─ outerVisibility: false\n" +
 			"                                             ├─ isLateral: false\n" +
 			"                                             ├─ cacheable: true\n" +
-			"                                             ├─ colSet: (239-243)\n" +
+			"                                             ├─ colSet: (247-251)\n" +
 			"                                             ├─ tableId: 33\n" +
 			"                                             └─ Project\n" +
 			"                                                 ├─ columns: [CASE  WHEN NOT\n" +
@@ -13963,7 +13963,7 @@ WHERE
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (252-255)\n" +
+			"             │   ├─ colSet: (260-263)\n" +
 			"             │   ├─ tableId: 36\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [rsa3y.T4IBQ:3!null as T4IBQ, jmhie.M6T2N:0 as M6T2N, jmhie.BTXC5:1 as BTXC5, jmhie.TUV25:2 as TUV25]\n" +
@@ -13973,7 +13973,7 @@ WHERE
 			"             │           │   ├─ outerVisibility: false\n" +
 			"             │           │   ├─ isLateral: false\n" +
 			"             │           │   ├─ cacheable: true\n" +
-			"             │           │   ├─ colSet: (224-226)\n" +
+			"             │           │   ├─ colSet: (229-231)\n" +
 			"             │           │   ├─ tableId: 28\n" +
 			"             │           │   └─ Distinct\n" +
 			"             │           │       └─ Project\n" +
@@ -13983,8 +13983,8 @@ WHERE
 			"             │           │               ├─ outerVisibility: false\n" +
 			"             │           │               ├─ isLateral: false\n" +
 			"             │           │               ├─ cacheable: true\n" +
-			"             │           │               ├─ colSet: (219-223)\n" +
-			"             │           │               ├─ tableId: 26\n" +
+			"             │           │               ├─ colSet: (224-228)\n" +
+			"             │           │               ├─ tableId: 27\n" +
 			"             │           │               └─ Project\n" +
 			"             │           │                   ├─ columns: [CASE  WHEN NOT\n" +
 			"             │           │                   │   └─ mjr3d.QNI57:5!null IS NULL\n" +
@@ -14308,7 +14308,7 @@ WHERE
 			"             │                   ├─ outerVisibility: false\n" +
 			"             │                   ├─ isLateral: false\n" +
 			"             │                   ├─ cacheable: true\n" +
-			"             │                   ├─ colSet: (227)\n" +
+			"             │                   ├─ colSet: (235)\n" +
 			"             │                   ├─ tableId: 29\n" +
 			"             │                   └─ Distinct\n" +
 			"             │                       └─ Project\n" +
@@ -14318,8 +14318,8 @@ WHERE
 			"             │                               ├─ outerVisibility: false\n" +
 			"             │                               ├─ isLateral: false\n" +
 			"             │                               ├─ cacheable: true\n" +
-			"             │                               ├─ colSet: (157-159)\n" +
-			"             │                               ├─ tableId: 16\n" +
+			"             │                               ├─ colSet: (232-234)\n" +
+			"             │                               ├─ tableId: 17\n" +
 			"             │                               └─ Project\n" +
 			"             │                                   ├─ columns: [cla.FTQLQ:8!null as T4IBQ, sn.id:0!null as BDNYB, mf.M22QN:4!null as M22QN]\n" +
 			"             │                                   └─ HashJoin\n" +
@@ -14379,8 +14379,8 @@ WHERE
 			"                     ├─ outerVisibility: false\n" +
 			"                     ├─ isLateral: false\n" +
 			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (248-251)\n" +
-			"                     ├─ tableId: 34\n" +
+			"                     ├─ colSet: (264-267)\n" +
+			"                     ├─ tableId: 35\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [cld.T4IBQ:0!null as T4IBQ, p4pjz.M6T2N:3 as M6T2N, p4pjz.BTXC5:4 as BTXC5, p4pjz.TUV25:7 as TUV25]\n" +
@@ -14400,7 +14400,7 @@ WHERE
 			"                                     │   ├─ outerVisibility: false\n" +
 			"                                     │   ├─ isLateral: false\n" +
 			"                                     │   ├─ cacheable: true\n" +
-			"                                     │   ├─ colSet: (236-238)\n" +
+			"                                     │   ├─ colSet: (244-246)\n" +
 			"                                     │   ├─ tableId: 32\n" +
 			"                                     │   └─ Project\n" +
 			"                                     │       ├─ columns: [cla.FTQLQ:8!null as T4IBQ, sn.id:0!null as BDNYB, mf.M22QN:4!null as M22QN]\n" +
@@ -14461,7 +14461,7 @@ WHERE
 			"                                             ├─ outerVisibility: false\n" +
 			"                                             ├─ isLateral: false\n" +
 			"                                             ├─ cacheable: true\n" +
-			"                                             ├─ colSet: (239-243)\n" +
+			"                                             ├─ colSet: (247-251)\n" +
 			"                                             ├─ tableId: 33\n" +
 			"                                             └─ Project\n" +
 			"                                                 ├─ columns: [CASE  WHEN NOT\n" +

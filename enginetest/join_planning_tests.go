@@ -731,7 +731,7 @@ with recursive rec(x) as (
 )
 select * from uv
 where u in (select * from rec);`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeHash},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeInner},
 				exp:   []sql.Row{{1, 1}},
 			},
 			{

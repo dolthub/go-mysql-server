@@ -779,6 +779,12 @@ var SpatialQueryTests = []QueryTest{
 
 var QueryTests = []QueryTest{
 	{
+		Query: "WITH cte AS (SELECT * FROM xy) SELECT *, (SELECT SUM(x) FROM cte) AS xy FROM cte",
+		Expected: []sql.Row{
+			{0, 2, float64(6)}, {1, 0, float64(6)}, {2, 1, float64(6)}, {3, 3, float64(6)},
+		},
+	},
+	{
 		Query: "select 0 as col1, 1 as col2, 2 as col2 group by col2 having col2 = 1",
 		Expected: []sql.Row{
 			{0, 1, 2},

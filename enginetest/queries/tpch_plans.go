@@ -2353,15 +2353,15 @@ order by
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [max(revenue0.total_revenue):9!null as max(total_revenue)]\n" +
 			"         │           └─ GroupBy\n" +
-			"         │               ├─ select: MAX(revenue0.total_revenue:1!null)\n" +
+			"         │               ├─ select: MAX(revenue0.total_revenue:10!null)\n" +
 			"         │               ├─ group: \n" +
 			"         │               └─ SubqueryAlias\n" +
 			"         │                   ├─ name: revenue0\n" +
 			"         │                   ├─ outerVisibility: true\n" +
 			"         │                   ├─ isLateral: false\n" +
 			"         │                   ├─ cacheable: true\n" +
-			"         │                   ├─ colSet: (18,19)\n" +
-			"         │                   ├─ tableId: 2\n" +
+			"         │                   ├─ colSet: (29,30)\n" +
+			"         │                   ├─ tableId: 4\n" +
 			"         │                   └─ Project\n" +
 			"         │                       ├─ columns: [lineitem.l_suppkey:10!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):9!null as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"         │                       └─ GroupBy\n" +
@@ -2386,8 +2386,8 @@ order by
 			"             │   ├─ outerVisibility: false\n" +
 			"             │   ├─ isLateral: false\n" +
 			"             │   ├─ cacheable: true\n" +
-			"             │   ├─ colSet: (18,19)\n" +
-			"             │   ├─ tableId: 2\n" +
+			"             │   ├─ colSet: (27,28)\n" +
+			"             │   ├─ tableId: 3\n" +
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"             │       └─ GroupBy\n" +
