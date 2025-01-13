@@ -226,7 +226,10 @@ func (p *relProps) populateFds() {
 			// strict if primary key or all nonNull and unique
 			columns := idxExprsColumns(idx)
 			strict := true
-			normIdx := &Index{idx: idx, order: make([]sql.ColumnId, len(columns))}
+			normIdx := &Index{idx: idx, cols: make([]sql.ColumnId, len(columns)), order: sql.IndexOrderNone}
+			if oidx, ok := idx.(sql.OrderedIndex); ok {
+				normIdx.order = oidx.Order()
+			}
 			for i, c := range columns {
 				ord := sch.IndexOfColName(strings.ToLower(c))
 				idOffset := firstCol + sql.ColumnId(ord)
@@ -236,7 +239,7 @@ func (p *relProps) populateFds() {
 					p.grp.m.HandleErr(err)
 				}
 				normIdx.set.Add(colId)
-				normIdx.order[i] = colId
+				normIdx.cols[i] = colId
 				if !notNull.Contains(colId) {
 					strict = false
 				}

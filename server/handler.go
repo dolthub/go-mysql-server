@@ -634,6 +634,12 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
+	// Wrap the callback to include a BytesBuffer.Reset() to clean out rows that have already been spooled
+	resetCallback := func(r *sqltypes.Result, more bool) error {
+		defer buf.Reset()
+		return callback(r, more)
+	}
+
 	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
@@ -645,7 +651,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				r = &sqltypes.Result{Fields: resultFields}
 			}
 			if r.RowsAffected == rowsBatch {
-				if err := callback(r, more); err != nil {
+				if err := resetCallback(r, more); err != nil {
 					return err
 				}
 				r = nil

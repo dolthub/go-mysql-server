@@ -144,6 +144,17 @@ CREATE TABLE teams (
 		},
 	},
 	{
+		Name: "keyless reverse index",
+		SetUpScript: []string{
+			"create table x (x int, key(x));",
+			"insert into x values (0),(1)",
+		},
+		Query: "select * from x order by x desc limit 1",
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
 		Name: "filter pushdown through join uppercase name",
 		SetUpScript: []string{
 			"create table A (A int primary key);",
