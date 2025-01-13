@@ -223,11 +223,16 @@ func (f *factory) buildDistinct(child sql.Node) sql.Node {
 
 func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
 	{
-		// if Sort->Projection with no alias dependency, hoist projection
-		// for opportunity to squash with top-level projection
-		// sort -> proj -> child
+		// The default binder behavior adds a projection before and after
+		// sort nodes for alias dependency correctness. In many cases the sort
+		// does not reference an alias, and it is beneficial to hoist the inner
+		// projection which lets the optimizer (1) remove redundant projcetions
+		// and usually (2) more aggressively prune table columns.
+		// (proj ->) sort -> proj -> child
 		// =>
-		// proj -> sort -> child
+		// (proj ->) proj -> sort -> child
+		// =>
+		// (proj ->) sort -> child
 		if p, ok := child.(*plan.Project); ok {
 			var aliases []sql.Expression
 			for _, p := range p.Projections {
