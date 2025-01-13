@@ -22,7 +22,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -199,6 +198,7 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 		return
 	}
 	var sortFields sql.SortFields
+	var deps sql.ColSet
 	for _, c := range orderByScope.cols {
 		so := sql.Ascending
 		if c.descending {
@@ -213,8 +213,12 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 			Order:  so,
 		}
 		sortFields = append(sortFields, sf)
+		deps.Add(sql.ColumnId(c.id))
 	}
-	sort := plan.NewSort(sortFields, inScope.node)
+	sort, err := b.f.buildSort(inScope.node, sortFields, deps, inScope.refsSubquery)
+	if err != nil {
+		b.handleErr(err)
+	}
 	inScope.node = sort
 	return
 }

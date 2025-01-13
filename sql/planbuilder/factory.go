@@ -220,3 +220,28 @@ func (f *factory) buildDistinct(child sql.Node) sql.Node {
 	}
 	return plan.NewDistinct(child)
 }
+
+func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
+	{
+		// if Sort->Projection with no alias dependency, hoist projection
+		// for opportunity to squash with top-level projection
+		// sort -> proj -> child
+		// =>
+		// proj -> sort -> child
+		if p, ok := child.(*plan.Project); ok {
+			var aliases []sql.Expression
+			for _, p := range p.Projections {
+				if _, ok := p.(*expression.Alias); ok {
+					aliases = append(aliases, p)
+				}
+			}
+			aliasCols := plan.ExprDeps(aliases)
+			if !aliasCols.Intersects(deps) {
+				newP := plan.NewProject(p.Projections, plan.NewSort(exprs, p.Child))
+				return f.buildProject(newP, subquery)
+			}
+		}
+	}
+
+	return plan.NewSort(exprs, child), nil
+}

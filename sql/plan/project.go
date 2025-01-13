@@ -28,6 +28,7 @@ type Project struct {
 	UnaryNode
 	Projections []sql.Expression
 	CanDefer    bool
+	deps        sql.ColSet
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -92,6 +93,23 @@ func unwrapGetField(expr sql.Expression) *expression.GetField {
 	default:
 		return nil
 	}
+}
+
+func ExprDeps(exprs []sql.Expression) sql.ColSet {
+	var deps sql.ColSet
+	for _, e := range exprs {
+		sql.Inspect(e, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case sql.IdExpression:
+				deps.Add(e.Id())
+			case *Subquery:
+				deps.Union(e.Correlated())
+			default:
+			}
+			return true
+		})
+	}
+	return deps
 }
 
 // Schema implements the Node interface.
