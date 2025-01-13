@@ -115,6 +115,35 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "outer join finish unmatched right side",
+		SetUpScript: []string{
+			`
+CREATE TABLE teams (
+  team VARCHAR(100),
+  namespace VARCHAR(100)
+);`,
+			"INSERT INTO teams(team, namespace) VALUES ('sam', 'sam1');",
+			"INSERT INTO teams(team, namespace) VALUES ('sam', 'sam2');",
+			"INSERT INTO teams(team, namespace) VALUES ('janos', 'janos1');",
+			`CREATE TABLE traces (
+  namespace VARCHAR(100),
+  value INT
+);`,
+			"INSERT INTO traces(namespace, value) VALUES ('janos1', '400');",
+			"INSERT INTO traces(namespace, value) VALUES ('0', '500');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT  team,  sum(value) FROM traces FULL OUTER JOIN teams ON teams.namespace = traces.namespace GROUP BY team;",
+				Expected: []sql.Row{{"sam", nil}, {"janos", float64(400)}, {nil, float64(500)}},
+			},
+			{
+				Query:    "SELECT  team,  sum(value) FROM teams FULL OUTER JOIN traces ON teams.namespace = traces.namespace GROUP BY team;",
+				Expected: []sql.Row{{"sam", nil}, {"janos", float64(400)}, {nil, float64(500)}},
+			},
+		},
+	},
+	{
 		Name: "filter pushdown through join uppercase name",
 		SetUpScript: []string{
 			"create table A (A int primary key);",
