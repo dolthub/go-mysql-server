@@ -3372,30 +3372,30 @@ Select * from (
 			" │                   ├─ name: uv\n" +
 			" │                   └─ columns: [u]\n" +
 			" │   as is_one]\n" +
-			" └─ Sort(xy.y:1 ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1, Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   ├─ alias-string: select 1 from uv where y = 1 and u = x\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [1 (tinyint)]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ AND\n" +
-			"         │           │   ├─ Eq\n" +
-			"         │           │   │   ├─ xy.y:3\n" +
-			"         │           │   │   └─ 1 (int)\n" +
-			"         │           │   └─ Eq\n" +
-			"         │           │       ├─ uv.u:4!null\n" +
-			"         │           │       └─ xy.x:2!null\n" +
-			"         │           └─ IndexedTableAccess(uv)\n" +
-			"         │               ├─ index: [uv.u]\n" +
-			"         │               ├─ keys: [xy.x:2!null]\n" +
-			"         │               ├─ colSet: (5,6)\n" +
-			"         │               ├─ tableId: 3\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: uv\n" +
-			"         │                   └─ columns: [u]\n" +
-			"         │   as is_one]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x:2!null, xy.y:3, uv.u:0!null, uv.v:1, Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   ├─ alias-string: select 1 from uv where y = 1 and u = x\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [1 (tinyint)]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ AND\n" +
+			"     │           │   ├─ Eq\n" +
+			"     │           │   │   ├─ xy.y:3\n" +
+			"     │           │   │   └─ 1 (int)\n" +
+			"     │           │   └─ Eq\n" +
+			"     │           │       ├─ uv.u:4!null\n" +
+			"     │           │       └─ xy.x:2!null\n" +
+			"     │           └─ IndexedTableAccess(uv)\n" +
+			"     │               ├─ index: [uv.u]\n" +
+			"     │               ├─ keys: [xy.x:2!null]\n" +
+			"     │               ├─ colSet: (5,6)\n" +
+			"     │               ├─ tableId: 3\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: uv\n" +
+			"     │                   └─ columns: [u]\n" +
+			"     │   as is_one]\n" +
+			"     └─ Sort(xy.y:3 ASC nullsFirst)\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
@@ -3422,19 +3422,19 @@ Select * from (
 			" │               ├─ columns: [u]\n" +
 			" │               └─ keys: xy.x\n" +
 			" │   as is_one]\n" +
-			" └─ Sort(xy.y ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x, xy.y, uv.u, uv.v, Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [1]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ ((xy.y = 1) AND (uv.u = xy.x))\n" +
-			"         │           └─ IndexedTableAccess(uv)\n" +
-			"         │               ├─ index: [uv.u]\n" +
-			"         │               ├─ columns: [u]\n" +
-			"         │               └─ keys: xy.x\n" +
-			"         │   as is_one]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x, xy.y, uv.u, uv.v, Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [1]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ ((xy.y = 1) AND (uv.u = xy.x))\n" +
+			"     │           └─ IndexedTableAccess(uv)\n" +
+			"     │               ├─ index: [uv.u]\n" +
+			"     │               ├─ columns: [u]\n" +
+			"     │               └─ keys: xy.x\n" +
+			"     │   as is_one]\n" +
+			"     └─ Sort(xy.y ASC)\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: uv\n" +
@@ -3454,19 +3454,19 @@ Select * from (
 			" │               ├─ columns: [u]\n" +
 			" │               └─ keys: xy.x\n" +
 			" │   as is_one]\n" +
-			" └─ Sort(xy.y ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [xy.x, xy.y, uv.u, uv.v, Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [1]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ ((xy.y = 1) AND (uv.u = xy.x))\n" +
-			"         │           └─ IndexedTableAccess(uv)\n" +
-			"         │               ├─ index: [uv.u]\n" +
-			"         │               ├─ columns: [u]\n" +
-			"         │               └─ keys: xy.x\n" +
-			"         │   as is_one]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x, xy.y, uv.u, uv.v, Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [1]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ ((xy.y = 1) AND (uv.u = xy.x))\n" +
+			"     │           └─ IndexedTableAccess(uv)\n" +
+			"     │               ├─ index: [uv.u]\n" +
+			"     │               ├─ columns: [u]\n" +
+			"     │               └─ keys: xy.x\n" +
+			"     │   as is_one]\n" +
+			"     └─ Sort(xy.y ASC)\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: uv\n" +
@@ -6546,65 +6546,59 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc):0!null as row_number() over (order by i desc), mytable.i:1!null as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc):0!null as row_number() over (order by i desc) ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by mytable.i desc):0!null, mytable.i:1!null, mytable.i:1!null as i2]\n" +
-			"         └─ Window\n" +
-			"             ├─ row_number() over ( order by mytable.i DESC)\n" +
-			"             ├─ mytable.i:0!null\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ mytable.i:0!null\n" +
-			"                 │   └─ othertable.i2:1!null\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
-			"                 │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   ├─ colSet: (1,2)\n" +
-			"                 │   ├─ tableId: 1\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (3,4)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [i2]\n" +
+			"     └─ Window\n" +
+			"         ├─ row_number() over ( order by mytable.i DESC)\n" +
+			"         ├─ mytable.i:0!null\n" +
+			"         └─ MergeJoin\n" +
+			"             ├─ cmp: Eq\n" +
+			"             │   ├─ mytable.i:0!null\n" +
+			"             │   └─ othertable.i2:1!null\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i,mytable.s]\n" +
+			"             │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: mytable\n" +
+			"             │       └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ static: [{[NULL, ∞)}]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc) as row_number() over (order by i desc) ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by mytable.i desc), mytable.i, mytable.i as i2]\n" +
-			"         └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
-			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i2]\n" +
+			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
+			"         └─ MergeJoin\n" +
+			"             ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i,mytable.s]\n" +
+			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc) as row_number() over (order by i desc) ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by mytable.i desc), mytable.i, mytable.i as i2]\n" +
-			"         └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (mytable.i = othertable.i2)\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i,mytable.s]\n" +
-			"                 │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [i2]\n" +
+			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
+			"         └─ MergeJoin\n" +
+			"             ├─ cmp: (mytable.i = othertable.i2)\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i,mytable.s]\n" +
+			"             │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 └─ columns: [i2]\n" +
 			"",
 	},
 	{
@@ -6718,60 +6712,54 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc):0!null as row_number() over (order by i desc), mytable.i:1!null as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc):0!null as row_number() over (order by i desc) ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by mytable.i desc):0!null, mytable.i:1!null, mytable.i:1!null as i2]\n" +
-			"         └─ Window\n" +
-			"             ├─ row_number() over ( order by mytable.i DESC)\n" +
-			"             ├─ mytable.i:0!null\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i]\n" +
-			"                 │   ├─ static: [{[2, 2]}]\n" +
-			"                 │   ├─ colSet: (1,2)\n" +
-			"                 │   ├─ tableId: 1\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ keys: [mytable.i:0!null]\n" +
-			"                     ├─ colSet: (3,4)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [i2]\n" +
+			"     └─ Window\n" +
+			"         ├─ row_number() over ( order by mytable.i DESC)\n" +
+			"         ├─ mytable.i:0!null\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i]\n" +
+			"             │   ├─ static: [{[2, 2]}]\n" +
+			"             │   ├─ colSet: (1,2)\n" +
+			"             │   ├─ tableId: 1\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: mytable\n" +
+			"             │       └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ keys: [mytable.i:0!null]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc) as row_number() over (order by i desc) ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by mytable.i desc), mytable.i, mytable.i as i2]\n" +
-			"         └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i]\n" +
-			"                 │   ├─ filters: [{[2, 2]}]\n" +
-			"                 │   └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ columns: [i2]\n" +
-			"                     └─ keys: mytable.i\n" +
+			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i]\n" +
+			"             │   ├─ filters: [{[2, 2]}]\n" +
+			"             │   └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ columns: [i2]\n" +
+			"                 └─ keys: mytable.i\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by mytable.i desc) as row_number() over (order by i desc), mytable.i as i2]\n" +
 			" └─ Sort(row_number() over ( order by mytable.i desc) as row_number() over (order by i desc) ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by mytable.i desc), mytable.i, mytable.i as i2]\n" +
-			"         └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ IndexedTableAccess(mytable)\n" +
-			"                 │   ├─ index: [mytable.i]\n" +
-			"                 │   ├─ filters: [{[2, 2]}]\n" +
-			"                 │   └─ columns: [i]\n" +
-			"                 └─ IndexedTableAccess(othertable)\n" +
-			"                     ├─ index: [othertable.i2]\n" +
-			"                     ├─ columns: [i2]\n" +
-			"                     └─ keys: mytable.i\n" +
+			"     └─ Window(row_number() over ( order by mytable.i DESC), mytable.i)\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ IndexedTableAccess(mytable)\n" +
+			"             │   ├─ index: [mytable.i]\n" +
+			"             │   ├─ filters: [{[2, 2]}]\n" +
+			"             │   └─ columns: [i]\n" +
+			"             └─ IndexedTableAccess(othertable)\n" +
+			"                 ├─ index: [othertable.i2]\n" +
+			"                 ├─ columns: [i2]\n" +
+			"                 └─ keys: mytable.i\n" +
 			"",
 	},
 	{
@@ -16204,59 +16192,53 @@ inner join pq on true
 	{
 		Query: `SELECT pk,pk1,pk2,one_pk.c1 AS foo, two_pk.c1 AS bar FROM one_pk JOIN two_pk ON one_pk.c1=two_pk.c1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [one_pk.pk:0!null, two_pk.pk1:6!null, two_pk.pk2:7!null, one_pk.c1:1 as foo, two_pk.c1:8!null as bar]\n" +
-			" └─ Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:6!null ASC nullsFirst, two_pk.pk2:7!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk:0!null, one_pk.c1:1, one_pk.c2:2, one_pk.c3:3, one_pk.c4:4, one_pk.c5:5, two_pk.pk1:6!null, two_pk.pk2:7!null, two_pk.c1:8!null, two_pk.c2:9!null, two_pk.c3:10!null, two_pk.c4:11!null, two_pk.c5:12!null, one_pk.c1:1 as foo, two_pk.c1:8!null as bar]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ one_pk.c1:1\n" +
-			"             │   └─ two_pk.c1:8!null\n" +
-			"             ├─ ProcessTable\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE(one_pk.c1:1)\n" +
-			"                 ├─ right-key: TUPLE(two_pk.c1:2!null)\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: two_pk\n" +
-			"                         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" ├─ columns: [one_pk.pk:0!null, two_pk.pk1:2!null, two_pk.pk2:3!null, one_pk.c1:1 as foo, two_pk.c1:4!null as bar]\n" +
+			" └─ Sort(one_pk.pk:0!null ASC nullsFirst, two_pk.pk1:2!null ASC nullsFirst, two_pk.pk2:3!null ASC nullsFirst)\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ one_pk.c1:1\n" +
+			"         │   └─ two_pk.c1:4!null\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: one_pk\n" +
+			"         │       └─ columns: [pk c1]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(one_pk.c1:1)\n" +
+			"             ├─ right-key: TUPLE(two_pk.c1:2!null)\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ (one_pk.c1 = two_pk.c1)\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: one_pk\n" +
-			"             │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (one_pk.c1)\n" +
-			"                 ├─ right-key: (two_pk.c1)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (one_pk.c1 = two_pk.c1)\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: one_pk\n" +
+			"         │   └─ columns: [pk c1]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (one_pk.c1)\n" +
+			"             ├─ right-key: (two_pk.c1)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, two_pk.pk1, two_pk.pk2, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
 			" └─ Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5, one_pk.c1 as foo, two_pk.c1 as bar]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ (one_pk.c1 = two_pk.c1)\n" +
-			"             ├─ Table\n" +
-			"             │   ├─ name: one_pk\n" +
-			"             │   └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (one_pk.c1)\n" +
-			"                 ├─ right-key: (two_pk.c1)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (one_pk.c1 = two_pk.c1)\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: one_pk\n" +
+			"         │   └─ columns: [pk c1]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (one_pk.c1)\n" +
+			"             ├─ right-key: (two_pk.c1)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: two_pk\n" +
+			"                 └─ columns: [pk1 pk2 c1]\n" +
 			"",
 	},
 	{
@@ -16713,42 +16695,36 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
 			" └─ Sort(othertable.i2:1!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null, othertable.i2:1!null, othertable.s2:2!null, row_number() over ( order by othertable.s2 asc):0!null as idx]\n" +
-			"         └─ Window\n" +
-			"             ├─ row_number() over ( order by othertable.s2 ASC)\n" +
-			"             ├─ othertable.i2:1!null\n" +
-			"             ├─ othertable.s2:0!null\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.s2]\n" +
-			"                 ├─ static: [{(NULL, second)}, {(second, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: othertable\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"     └─ Window\n" +
+			"         ├─ row_number() over ( order by othertable.s2 ASC)\n" +
+			"         ├─ othertable.i2:1!null\n" +
+			"         ├─ othertable.s2:0!null\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
+			"             ├─ static: [{(NULL, second)}, {(second, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			" └─ Sort(othertable.i2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"         └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.s2]\n" +
-			"                 ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
+			"             ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			" └─ Sort(othertable.i2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"         └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.s2]\n" +
-			"                 ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.s2]\n" +
+			"             ├─ filters: [{(NULL, second)}, {(second, ∞)}]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -16768,17 +16744,15 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
 			"         └─ Sort(othertable.i2:1!null ASC nullsFirst)\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null, othertable.i2:1!null, othertable.s2:2!null, row_number() over ( order by othertable.s2 asc):0!null as idx]\n" +
-			"                 └─ Window\n" +
-			"                     ├─ row_number() over ( order by othertable.s2 ASC)\n" +
-			"                     ├─ othertable.i2:1!null\n" +
-			"                     ├─ othertable.s2:0!null\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         ├─ columns: [s2 i2]\n" +
-			"                         ├─ colSet: (1,2)\n" +
-			"                         └─ tableId: 1\n" +
+			"             └─ Window\n" +
+			"                 ├─ row_number() over ( order by othertable.s2 ASC)\n" +
+			"                 ├─ othertable.i2:1!null\n" +
+			"                 ├─ othertable.s2:0!null\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     ├─ columns: [s2 i2]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: a\n" +
@@ -16790,12 +16764,10 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			"         └─ Sort(othertable.i2 ASC)\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"                 └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [s2 i2]\n" +
+			"             └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: a\n" +
@@ -16807,12 +16779,10 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			"         └─ Sort(othertable.i2 ASC)\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"                 └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [s2 i2]\n" +
+			"             └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -16820,42 +16790,36 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
 			" └─ Sort(othertable.i2:1!null ASC nullsFirst)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null, othertable.i2:1!null, othertable.s2:2!null, row_number() over ( order by othertable.s2 asc):0!null as idx]\n" +
-			"         └─ Window\n" +
-			"             ├─ row_number() over ( order by othertable.s2 ASC)\n" +
-			"             ├─ othertable.i2:1!null\n" +
-			"             ├─ othertable.s2:0!null\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 ├─ static: [{(NULL, 2)}, {(2, ∞)}]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: othertable\n" +
-			"                     └─ columns: [s2 i2]\n" +
+			"     └─ Window\n" +
+			"         ├─ row_number() over ( order by othertable.s2 ASC)\n" +
+			"         ├─ othertable.i2:1!null\n" +
+			"         ├─ othertable.s2:0!null\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ static: [{(NULL, 2)}, {(2, ∞)}]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			" └─ Sort(othertable.i2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"         └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 ├─ filters: [{(NULL, 2)}, {(2, ∞)}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ filters: [{(NULL, 2)}, {(2, ∞)}]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			" └─ Sort(othertable.i2 ASC)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"         └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"             └─ IndexedTableAccess(othertable)\n" +
-			"                 ├─ index: [othertable.i2]\n" +
-			"                 ├─ filters: [{(NULL, 2)}, {(2, ∞)}]\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"     └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"         └─ IndexedTableAccess(othertable)\n" +
+			"             ├─ index: [othertable.i2]\n" +
+			"             ├─ filters: [{(NULL, 2)}, {(2, ∞)}]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -16878,17 +16842,15 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null as idx, othertable.i2:1!null, othertable.s2:2!null]\n" +
 			"         └─ Sort(othertable.i2:1!null ASC nullsFirst)\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [row_number() over ( order by othertable.s2 asc):0!null, othertable.i2:1!null, othertable.s2:2!null, row_number() over ( order by othertable.s2 asc):0!null as idx]\n" +
-			"                 └─ Window\n" +
-			"                     ├─ row_number() over ( order by othertable.s2 ASC)\n" +
-			"                     ├─ othertable.i2:1!null\n" +
-			"                     ├─ othertable.s2:0!null\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         ├─ columns: [s2 i2]\n" +
-			"                         ├─ colSet: (1,2)\n" +
-			"                         └─ tableId: 1\n" +
+			"             └─ Window\n" +
+			"                 ├─ row_number() over ( order by othertable.s2 ASC)\n" +
+			"                 ├─ othertable.i2:1!null\n" +
+			"                 ├─ othertable.s2:0!null\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     ├─ columns: [s2 i2]\n" +
+			"                     ├─ colSet: (1,2)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: a\n" +
@@ -16900,12 +16862,10 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			"         └─ Sort(othertable.i2 ASC)\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"                 └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [s2 i2]\n" +
+			"             └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: a\n" +
@@ -16917,12 +16877,10 @@ inner join pq on true
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by othertable.s2 asc) as idx, othertable.i2, othertable.s2]\n" +
 			"         └─ Sort(othertable.i2 ASC)\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [row_number() over ( order by othertable.s2 asc), othertable.i2, othertable.s2, row_number() over ( order by othertable.s2 asc) as idx]\n" +
-			"                 └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: othertable\n" +
-			"                         └─ columns: [s2 i2]\n" +
+			"             └─ Window(row_number() over ( order by othertable.s2 ASC), othertable.i2, othertable.s2)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{

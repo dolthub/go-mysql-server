@@ -220,3 +220,33 @@ func (f *factory) buildDistinct(child sql.Node) sql.Node {
 	}
 	return plan.NewDistinct(child)
 }
+
+func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
+	{
+		// The default binder behavior adds a projection before and after
+		// sort nodes for alias dependency correctness. In many cases the sort
+		// does not reference an alias, and it is beneficial to hoist the inner
+		// projection which lets the optimizer (1) remove redundant projcetions
+		// and usually (2) more aggressively prune table columns.
+		// (proj ->) sort -> proj -> child
+		// =>
+		// (proj ->) proj -> sort -> child
+		// =>
+		// (proj ->) sort -> child
+		if p, ok := child.(*plan.Project); ok {
+			var aliases []sql.Expression
+			for _, p := range p.Projections {
+				if _, ok := p.(*expression.Alias); ok {
+					aliases = append(aliases, p)
+				}
+			}
+			aliasCols := plan.ExprDeps(aliases...)
+			if !aliasCols.Intersects(deps) {
+				newP := plan.NewProject(p.Projections, plan.NewSort(exprs, p.Child))
+				return f.buildProject(newP, subquery)
+			}
+		}
+	}
+
+	return plan.NewSort(exprs, child), nil
+}
