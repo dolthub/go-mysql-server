@@ -45,6 +45,17 @@ var VectorIndexQueries = []ScriptTest{
 				ExpectedIndexes: []string{"v_idx"},
 			},
 			{
+				// Use the index even when there's a projection involved.
+				Query: "select `id`+1 from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 4",
+				Expected: []sql.Row{
+					{3},
+					{4},
+					{5},
+					{2},
+				},
+				ExpectedIndexes: []string{"v_idx"},
+			},
+			{
 				// Only queries with a limit can use a vector index.
 				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
 				Expected: []sql.Row{
