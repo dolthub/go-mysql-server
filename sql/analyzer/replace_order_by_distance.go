@@ -60,6 +60,8 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 			return n, transform.SameTree, nil
 		}
 
+		// We currently require that the query vector to the distance function is a constant value that does not
+		// depend on the row. Right now that can be a Literal or a UserVar.
 		isLiteral := func(expr sql.Expression) bool {
 			switch expr.(type) {
 			case *expression.Literal, *expression.UserVar:
