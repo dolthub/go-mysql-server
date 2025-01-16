@@ -335,6 +335,19 @@ func (t EnumType) IndexOf(v string) int {
 	return -1
 }
 
+// IsSubsetOf implements the sql.EnumType interface.
+func (t EnumType) IsSubsetOf(otherType sql.EnumType) bool {
+	if ot, ok := otherType.(EnumType); ok && t.collation.Equals(ot.collation) && len(t.idxToVal) <= len(ot.idxToVal) {
+		for i, val := range t.idxToVal {
+			if ot.idxToVal[i] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // NumberOfElements implements EnumType interface.
 func (t EnumType) NumberOfElements() uint16 {
 	return uint16(len(t.idxToVal))

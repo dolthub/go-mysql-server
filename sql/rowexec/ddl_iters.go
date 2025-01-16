@@ -525,7 +525,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 
 	oldEnum, isOldEnum := oldCol.Type.(sql.EnumType)
 	newEnum, isNewEnum := newCol.Type.(sql.EnumType)
-	if isOldEnum && isNewEnum && !oldEnum.Equals(newEnum) {
+	if isOldEnum && isNewEnum && !oldEnum.IsSubsetOf(newEnum) {
 		rewriteRequired = true
 	}
 
