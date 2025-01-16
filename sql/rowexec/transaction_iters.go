@@ -72,14 +72,25 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 type TransactionCommittingIter struct {
 	childIter           sql.RowIter
 	transactionDatabase string
+	shouldCommit        bool
 }
 
-func AddTransactionCommittingIter(qFlags *sql.QueryFlags, iter sql.RowIter) sql.RowIter {
+func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings) {
-		return iter
+		return iter, nil
 	}
-	return &TransactionCommittingIter{childIter: iter}
+
+	// TODO: In the future we should ensure that analyzer supports implicit commits instead of directly
+	// accessing autocommit here.
+	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
+	autocommit, err := plan.IsSessionAutocommit(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	shouldCommit := autocommit || (qFlags != nil && qFlags.IsSet(sql.QFlagDDL))
+	return &TransactionCommittingIter{childIter: iter, shouldCommit: shouldCommit}, nil
 }
 
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -96,15 +107,7 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	tx := ctx.GetTransaction()
-	// TODO: In the future we should ensure that analyzer supports implicit commits instead of directly
-	// accessing autocommit here.
-	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
-	autocommit, err := plan.IsSessionAutocommit(ctx)
-	if err != nil {
-		return err
-	}
-
-	commitTransaction := ((tx != nil) && !ctx.GetIgnoreAutoCommit()) && autocommit
+	commitTransaction := ((tx != nil) && !ctx.GetIgnoreAutoCommit()) && t.shouldCommit
 	if commitTransaction {
 		ts, ok := ctx.Session.(sql.TransactionSession)
 		if !ok {

@@ -45,12 +45,16 @@ func NewOverrideBuilder(override sql.NodeExecBuilder) sql.NodeExecBuilder {
 }
 
 // FinalizeIters applies the final transformations on sql.RowIter before execution.
-func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, sql.Schema) {
+func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, sql.Schema, error) {
 	var sch sql.Schema
+	var err error
 	iter, sch = AddAccumulatorIter(ctx, iter)
 	iter = AddTriggerRollbackIter(ctx, qFlags, iter)
-	iter = AddTransactionCommittingIter(qFlags, iter)
+	iter, err = AddTransactionCommittingIter(ctx, qFlags, iter)
+	if err != nil {
+		return nil, nil, err
+	}
 	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
 	iter = AddExpressionCloser(analyzed, iter)
-	return iter, sch
+	return iter, sch, nil
 }

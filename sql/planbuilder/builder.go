@@ -232,6 +232,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 	case *ast.Show:
 		return b.buildShow(inScope, n)
 	case *ast.DDL:
+		b.qFlags.Set(sql.QFlagDDL)
 		return b.buildDDL(inScope, subQuery, fullQuery, n)
 	case *ast.AlterTable:
 		b.qFlags.Set(sql.QFlagAlterTable)

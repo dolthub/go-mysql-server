@@ -447,7 +447,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	}
 
 	var schema sql.Schema
-	iter, schema = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
+	iter, schema, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
@@ -493,7 +493,7 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 	}
 
 	var schema sql.Schema
-	iter, schema = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
+	iter, schema, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
 	if err != nil {
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
@@ -855,7 +855,14 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 		return err
 	}
 
-	iter, _ = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
+	iter, _, err = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
+	if err != nil {
+		clearAutocommitErr := clearAutocommitTransaction(ctx)
+		if clearAutocommitErr != nil {
+			return clearAutocommitErr
+		}
+		return err
+	}
 
 	// Drain the iterate to execute the event body/definition
 	// NOTE: No row data is returned for an event; we just need to execute the statements
