@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // ErrEventSchedulerDisabled is returned when user tries to set `event_scheduler_notifier` global system variable to ON or OFF
@@ -40,6 +41,10 @@ const (
 	SchedulerOff      SchedulerStatus = "OFF"
 	SchedulerDisabled SchedulerStatus = "DISABLED"
 )
+
+// eventSchedulerSuperUserName is the name of the locked superuser that the event scheduler
+// creates and uses to ensure it has access to read events from all databases.
+const eventSchedulerSuperUserName = "event_scheduler"
 
 var _ sql.EventScheduler = (*EventScheduler)(nil)
 
@@ -69,10 +74,20 @@ func InitEventScheduler(
 		ctxGetterFunc: getSqlCtxFunc,
 	}
 
+	// Ensure the event_scheduler superuser exists so that the event scheduler can read
+	// events from all databases.
+	initializeEventSchedulerSuperUser(a.Catalog.MySQLDb)
+
 	// If the EventSchedulerStatus is ON, then load enabled
 	// events and start executing events on schedule.
 	if es.status == SchedulerOn {
 		ctx, commit, err := getSqlCtxFunc()
+		ctx.Session.SetClient(sql.Client{
+			User:         eventSchedulerSuperUserName,
+			Address:      "localhost",
+			Capabilities: 0,
+		})
+
 		if err != nil {
 			return nil, err
 		}
@@ -87,6 +102,25 @@ func InitEventScheduler(
 	}
 
 	return es, nil
+}
+
+// initializeEventSchedulerSuperUser ensures the event_scheduler superuser exists (as a locked
+// account that cannot be directly used to log in) so that the event scheduler can read events
+// from all databases.
+func initializeEventSchedulerSuperUser(mySQLDb *mysql_db.MySQLDb) {
+	// TODO: Creating a superuser for the event_scheduler causes the mysqldb to be marked as
+	//       enabled, which enables privileges checking for all resources. We want privileges
+	//       enabled only when running in a sql-server context, but currently creating any
+	//       engine starts up the event system, so we reset the mysqldb enabled status after
+	//       we create the event scheduler super user. To clean this up, we can look into
+	//       moving the event system initialization, or possibly just switch to enabling the
+	//       privilege system as part of server startup.
+	wasEnabled := mySQLDb.Enabled()
+	defer mySQLDb.SetEnabled(wasEnabled)
+
+	ed := mySQLDb.Editor()
+	defer ed.Close()
+	mySQLDb.AddLockedSuperUser(ed, eventSchedulerSuperUserName, "localhost", "")
 }
 
 // Close closes the EventScheduler.

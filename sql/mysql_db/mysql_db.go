@@ -413,6 +413,15 @@ func (db *MySQLDb) LoadData(ctx *sql.Context, buf []byte) (err error) {
 		ed.PutReplicaSourceInfo(replicaSourceInfo)
 	}
 
+	// Load superusers
+	for i := 0; i < serialMySQLDb.SuperUserLength(); i++ {
+		serialUser := new(serial.User)
+		if !serialMySQLDb.SuperUser(serialUser, i) {
+			continue
+		}
+		ed.PutUser(LoadUser(serialUser))
+	}
+
 	// TODO: fill in other tables when they exist
 	return
 }
@@ -508,11 +517,12 @@ func (db *MySQLDb) AddRootAccount() {
 	db.AddSuperUser(ed, "root", "localhost", "")
 }
 
-// AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
-// meant to replace the "auth.New..." functions while the remaining functions are added.
-func (db *MySQLDb) AddSuperUser(ed *Editor, username string, host string, password string) {
-	//TODO: remove this function and the called function
+// AddEphemeralSuperUser adds a new temporary superuser account for the specified username, host,
+// and password. The superuser account will only exist for the lifetime of the server process; once
+// the server is restarted, this superuser account will not be present.
+func (db *MySQLDb) AddEphemeralSuperUser(ed *Editor, username string, host string, password string) {
 	db.SetEnabled(true)
+
 	if len(password) > 0 {
 		hash := sha1.New()
 		hash.Write([]byte(password))
@@ -527,7 +537,57 @@ func (db *MySQLDb) AddSuperUser(ed *Editor, username string, host string, passwo
 		Host: host,
 		User: username,
 	}); !ok {
-		addSuperUser(ed, username, host, password)
+		addSuperUser(ed, username, host, password, true)
+	}
+}
+
+// AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
+// meant to replace the "auth.New..." functions while the remaining functions are added.
+func (db *MySQLDb) AddSuperUser(ed *Editor, username string, host string, password string) {
+	//TODO: remove this function and the called function
+	db.SetEnabled(true)
+
+	if len(password) > 0 {
+		hash := sha1.New()
+		hash.Write([]byte(password))
+		s1 := hash.Sum(nil)
+		hash.Reset()
+		hash.Write(s1)
+		s2 := hash.Sum(nil)
+		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
+	}
+
+	if _, ok := ed.GetUser(UserPrimaryKey{
+		Host: host,
+		User: username,
+	}); !ok {
+		addSuperUser(ed, username, host, password, false)
+	}
+}
+
+// AddLockedSuperUser adds a new superuser with the specified |username|, |host|, and |password|
+// and sets the account to be locked so that it cannot be used to log in.
+func (db *MySQLDb) AddLockedSuperUser(ed *Editor, username string, host string, password string) {
+	user := db.GetUser(ed, username, host, false)
+
+	// If the user doesn't exist yet, create it and lock it
+	if user == nil {
+		db.AddSuperUser(ed, username, host, password)
+		user = db.GetUser(ed, username, host, false)
+		if user == nil {
+			panic("unable to load newly created superuser: " + username)
+		}
+
+		// Lock the account to prevent it being used to log in
+		user.Locked = true
+		ed.PutUser(user)
+	}
+
+	// If the user exists, but isn't a superuser or locked, fix it
+	if user.IsSuperUser == false || user.Locked == false {
+		user.IsSuperUser = true
+		user.Locked = true
+		ed.PutUser(user)
 	}
 }
 
@@ -803,10 +863,12 @@ func (db *MySQLDb) Persist(ctx *sql.Context, ed *Editor) error {
 	var users []*User
 	var superUsers []*User
 	ed.VisitUsers(func(u *User) {
-		if !u.IsSuperUser {
-			users = append(users, u)
-		} else {
-			superUsers = append(superUsers, u)
+		if !u.IsEphemeral {
+			if !u.IsSuperUser {
+				users = append(users, u)
+			} else {
+				superUsers = append(superUsers, u)
+			}
 		}
 	})
 	sort.Slice(users, func(i, j int) bool {
