@@ -57,6 +57,17 @@ var VectorIndexQueries = []ScriptTest{
 				ExpectedIndexes: []string{"v_idx"},
 			},
 			{
+				// Use the index even when there's a projection involved.
+				Query: "select `id`+1 from vectors order by VEC_DISTANCE('[0.0,0.0]', v) limit 4",
+				Expected: []sql.Row{
+					{3},
+					{4},
+					{5},
+					{2},
+				},
+				ExpectedIndexes: []string{"v_idx"},
+			},
+			{
 				// Only queries with a limit can use a vector index.
 				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
 				Expected: []sql.Row{
@@ -84,6 +95,21 @@ var VectorIndexQueries = []ScriptTest{
 					{3, types.MustJSON(`[-1.0, 1.0]`)},
 					{4, types.MustJSON(`[0.0, -2.0]`)},
 					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{1, types.MustJSON(`[4.0, 3.0]`)},
+				},
+				ExpectedIndexes: []string{},
+			},
+			{
+				// Modify the index after creation.
+				Query: "insert into vectors values (5, '[1.0,0.0]')",
+			},
+			{
+				Query: "select * from vectors order by VEC_DISTANCE('[0.0,0.0]', v)",
+				Expected: []sql.Row{
+					{2, types.MustJSON(`[0.0, 0.0]`)},
+					{5, types.MustJSON(`[1.0, 0.0]`)},
+					{3, types.MustJSON(`[-1.0, 1.0]`)},
+					{4, types.MustJSON(`[0.0, -2.0]`)},
 					{1, types.MustJSON(`[4.0, 3.0]`)},
 				},
 				ExpectedIndexes: []string{},
