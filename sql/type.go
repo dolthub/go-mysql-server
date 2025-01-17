@@ -186,6 +186,9 @@ type EnumType interface {
 	Collation() CollationID
 	// IndexOf returns the index of the given string. If the string was not found, then this returns -1.
 	IndexOf(v string) int
+	// IsSubsetOf returns whether every element in this is also in |otherType|, with the same indexes.
+	// |otherType| may contain additional elements not in this.
+	IsSubsetOf(otherType EnumType) bool
 	// NumberOfElements returns the number of enumerations.
 	NumberOfElements() uint16
 	// Values returns the elements, in order, of every enumeration.

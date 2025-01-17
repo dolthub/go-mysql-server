@@ -7621,6 +7621,20 @@ where
 				},
 			},
 			{
+				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c', 'd');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(4)},
+				},
+			},
+			{
 				Query:       "alter table t modify column e enum('abc');",
 				ExpectedErr: types.ErrConvertingToEnum,
 			},
