@@ -1064,4 +1064,56 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		Name: "ddl queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client a */ commit;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t values (1), (2), (3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t2 (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
 }

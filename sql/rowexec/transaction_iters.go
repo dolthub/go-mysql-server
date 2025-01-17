@@ -84,12 +84,15 @@ func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter
 	// TODO: In the future we should ensure that analyzer supports implicit commits instead of directly
 	// accessing autocommit here.
 	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
-	autocommit, err := plan.IsSessionAutocommit(ctx)
+	shouldCommit, err := plan.IsSessionAutocommit(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	shouldCommit := autocommit || (qFlags != nil && qFlags.IsSet(sql.QFlagDDL))
+	if qFlags != nil && qFlags.IsSet(sql.QFlagDDL) {
+		shouldCommit = true
+		ctx.SetIgnoreAutoCommit(false)
+	}
 	return &TransactionCommittingIter{childIter: iter, shouldCommit: shouldCommit}, nil
 }
 
