@@ -28,6 +28,7 @@ const (
 	QFlgNotExpr
 	QFlagCount
 	QFlagCountStar
+	QFlagDDL
 	QFlagAlterTable
 	QFlagCrossJoin
 	QFlagSort
