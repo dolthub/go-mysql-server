@@ -72,7 +72,8 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 type TransactionCommittingIter struct {
 	childIter           sql.RowIter
 	transactionDatabase string
-	shouldCommit        bool
+	autoCommit          bool
+	implicitCommit      bool
 }
 
 func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
@@ -81,19 +82,17 @@ func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter
 		return iter, nil
 	}
 
-	// TODO: In the future we should ensure that analyzer supports implicit commits instead of directly
-	// accessing autocommit here.
-	// cc. https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
-	shouldCommit, err := plan.IsSessionAutocommit(ctx)
+	autoCommit, err := plan.IsSessionAutocommit(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if qFlags != nil && qFlags.IsSet(sql.QFlagDDL) {
-		shouldCommit = true
-		ctx.SetIgnoreAutoCommit(false)
-	}
-	return &TransactionCommittingIter{childIter: iter, shouldCommit: shouldCommit}, nil
+	implicitCommit := qFlags != nil && qFlags.IsSet(sql.QFlagDDL)
+	return &TransactionCommittingIter{
+		childIter:      iter,
+		autoCommit:     autoCommit,
+		implicitCommit: implicitCommit,
+	}, nil
 }
 
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -110,21 +109,30 @@ func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	}
 
 	tx := ctx.GetTransaction()
-	commitTransaction := ((tx != nil) && !ctx.GetIgnoreAutoCommit()) && t.shouldCommit
-	if commitTransaction {
-		ts, ok := ctx.Session.(sql.TransactionSession)
-		if !ok {
-			return nil
-		}
-
-		ctx.GetLogger().Tracef("committing transaction %s", tx)
-		if err := ts.CommitTransaction(ctx, tx); err != nil {
-			return err
-		}
-
-		// Clearing out the current transaction will tell us to start a new one the next time this session queries
-		ctx.SetTransaction(nil)
+	if tx == nil {
+		return nil
 	}
+
+	if !t.implicitCommit && ctx.GetIgnoreAutoCommit() {
+		return nil
+	}
+
+	if !t.implicitCommit && !t.autoCommit {
+		return nil
+	}
+
+	ts, ok := ctx.Session.(sql.TransactionSession)
+	if !ok {
+		return nil
+	}
+
+	ctx.GetLogger().Tracef("committing transaction %s", tx)
+	if err := ts.CommitTransaction(ctx, tx); err != nil {
+		return err
+	}
+
+	// Clearing out the current transaction will tell us to start a new one the next time this session queries
+	ctx.SetTransaction(nil)
 
 	return nil
 }
