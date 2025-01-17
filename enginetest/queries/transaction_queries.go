@@ -1107,7 +1107,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query:    "/* client b */ select * from t;",
+				Query: "/* client b */ select * from t;",
 				Expected: []sql.Row{
 					{1},
 					{2},
