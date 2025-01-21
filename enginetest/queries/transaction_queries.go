@@ -1134,7 +1134,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query:    "/* client b */ show create table t;",
+				Query: "/* client b */ show create table t;",
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 					"  `pk` int NOT NULL,\n" +
 					"  PRIMARY KEY (`pk`)\n" +
@@ -1150,7 +1150,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
-				Query:    "/* client b */ show create table t;",
+				Query: "/* client b */ show create table t;",
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 					"  `pk` int NOT NULL,\n" +
 					"  `i` int,\n" +
@@ -1176,7 +1176,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
-				Query:    "/* client b */ show create table t;",
+				Query: "/* client b */ show create table t;",
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 					"  `i` int NOT NULL,\n" +
 					"  PRIMARY KEY (`i`)\n" +
@@ -1192,7 +1192,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
-				Query:    "/* client b */ show create table t;",
+				Query: "/* client b */ show create table t;",
 				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
 					"  `i` int NOT NULL,\n" +
 					"  PRIMARY KEY (`i`),\n" +
