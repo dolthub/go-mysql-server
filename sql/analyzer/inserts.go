@@ -184,7 +184,10 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 							break
 						}
 						if lit, isLit := expr.(*expression.Literal); isLit {
-							if types.Null.Equals(lit.Type()) {
+							// If a literal NULL or if 0 is specified and the NO_AUTO_VALUE_ON_ZERO SQL mode is
+							// not active, then MySQL will fill in an auto_increment value.
+							if types.Null.Equals(lit.Type()) ||
+								(!sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) && isZero(lit)) {
 								firstGeneratedAutoIncRowIdx = ii
 								break
 							}
@@ -220,6 +223,21 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 	}
 
 	return plan.NewProject(projExprs, insertSource), firstGeneratedAutoIncRowIdx, nil
+}
+
+// isZero returns true if the specified literal value |lit| has a value equal to 0.
+func isZero(lit *expression.Literal) bool {
+	if !types.IsNumber(lit.Type()) {
+		return false
+	}
+
+	convert, inRange, err := types.Int8.Convert(lit.Value())
+	if err != nil {
+		// Ignore any conversion errors, since that means the value isn't 0
+		// and the values are validated in other parts of the analyzer anyway.
+		return false
+	}
+	return bool(inRange) && convert == int8(0)
 }
 
 // insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid

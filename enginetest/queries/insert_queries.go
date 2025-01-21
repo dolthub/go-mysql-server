@@ -556,8 +556,10 @@ var InsertQueries = []WriteQueryTest{
 		Dialect: "mysql",
 	},
 	{
+		// When 0 is specified for the auto_increment column (and SQL_MODE does not include
+		// NO_AUTO_VALUE_ON_ZERO), then an auto_increment value will be filled in.
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (0, 44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
