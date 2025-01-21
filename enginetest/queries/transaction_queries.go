@@ -993,6 +993,11 @@ var TransactionTests = []TransactionTest{
 				Query:    "/* client a */ select * from t2",
 				Expected: []sql.Row{{0, 0, nil}},
 			},
+
+			{
+				Query:    "/* client a */  START TRANSACTION READ ONLY",
+				Expected: []sql.Row{},
+			},
 			{
 				Query:       "/* client a */ create temporary table tmp2(pk int primary key)",
 				ExpectedErr: sql.ErrReadOnlyTransaction,
@@ -1065,7 +1070,7 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
-		Name: "ddl queries are implicitly committed",
+		Name: "create table queries are implicitly committed",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
@@ -1079,10 +1084,6 @@ var TransactionTests = []TransactionTest{
 				// This implicitly commits the transaction
 				Query:    "/* client a */ create table t (pk int primary key);",
 				Expected: []sql.Row{{types.OkResult{}}},
-			},
-			{
-				Query:    "/* client a */ commit;",
-				Expected: []sql.Row{},
 			},
 			{
 				Query:    "/* client b */ select * from t;",
@@ -1113,6 +1114,90 @@ var TransactionTests = []TransactionTest{
 					{2},
 					{3},
 				},
+			},
+		},
+	},
+	{
+		Name: "alter table queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  PRIMARY KEY (`pk`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ alter table t add column i int;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  `i` int,\n" +
+					"  PRIMARY KEY (`pk`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create index queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t (i int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int NOT NULL,\n" +
+					"  PRIMARY KEY (`i`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ create unique index idx on t (i);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int NOT NULL,\n" +
+					"  PRIMARY KEY (`i`),\n" +
+					"  UNIQUE KEY `idx` (`i`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},

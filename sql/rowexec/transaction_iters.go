@@ -87,7 +87,7 @@ func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter
 		return nil, err
 	}
 
-	implicitCommit := qFlags != nil && qFlags.IsSet(sql.QFlagDDL)
+	implicitCommit := qFlags != nil && (qFlags.IsSet(sql.QFlagDDL) || qFlags.IsSet(sql.QFlagAlterTable))
 	return &TransactionCommittingIter{
 		childIter:      iter,
 		autoCommit:     autoCommit,
