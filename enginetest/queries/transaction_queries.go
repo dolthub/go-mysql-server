@@ -993,6 +993,11 @@ var TransactionTests = []TransactionTest{
 				Query:    "/* client a */ select * from t2",
 				Expected: []sql.Row{{0, 0, nil}},
 			},
+
+			{
+				Query:    "/* client a */  START TRANSACTION READ ONLY",
+				Expected: []sql.Row{},
+			},
 			{
 				Query:       "/* client a */ create temporary table tmp2(pk int primary key)",
 				ExpectedErr: sql.ErrReadOnlyTransaction,
@@ -1061,6 +1066,263 @@ var TransactionTests = []TransactionTest{
 			{
 				Query:    "/* client a */ select * from t1 order by pk",
 				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}},
+			},
+		},
+	},
+	{
+		Name: "create table queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t values (1), (2), (3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t2 (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "/* client b */ select * from t;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
+		Name: "alter table queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  PRIMARY KEY (`pk`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ alter table t add column i int;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query: "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `pk` int NOT NULL,\n" +
+					"  `i` int,\n" +
+					"  PRIMARY KEY (`pk`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create index queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t (i int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int NOT NULL,\n" +
+					"  PRIMARY KEY (`i`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ create unique index idx on t (i);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query: "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int NOT NULL,\n" +
+					"  PRIMARY KEY (`i`),\n" +
+					"  UNIQUE KEY `idx` (`i`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create trigger queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create table t (i int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "/* client b */ show create table t;",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int NOT NULL,\n" +
+					"  PRIMARY KEY (`i`)\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ create trigger trig before insert on t for each row set i = 0;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "/* client b */ select trigger_schema, trigger_name from information_schema.triggers where trigger_name = 'trig';",
+				Expected: []sql.Row{{"mydb", "trig"}},
+			},
+		},
+	},
+	{
+		Name: "create view queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ create view v as select 1;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "/* client b */ show create view v;",
+				Expected: []sql.Row{{"v", "CREATE VIEW `v` AS select 1", "utf8mb4", "utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create procedure queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create procedure p() begin select 1; end;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ show create procedure p;",
+				Expected: []sql.Row{{"p", "", "/* client a */ create procedure p() begin select 1; end", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create procedure queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create event e on schedule every 1 second starts '2025-01-01' do begin select 1; end;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ show create event e;",
+				Expected: []sql.Row{{"e", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "SYSTEM", "CREATE DEFINER = `root`@`localhost` EVENT `e` ON SCHEDULE EVERY 1 SECOND STARTS '2025-01-01 00:00:00' ON COMPLETION NOT PRESERVE ENABLE DO begin select 1; end", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "create database queries are implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This implicitly commits the transaction
+				Query:    "/* client a */ create database otherdb;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "/* client b */ show create database otherdb;",
+				Expected: []sql.Row{{"otherdb", "CREATE DATABASE `otherdb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */"}},
 			},
 		},
 	},
