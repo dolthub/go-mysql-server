@@ -121,6 +121,12 @@ func (h *Handler) ComPrepare(ctx context.Context, c *mysql.Conn, query string, p
 	if err != nil {
 		return nil, err
 	}
+	err = sql.SessionCommandBegin(sqlCtx.Session)
+	if err != nil {
+		return nil, err
+	}
+	defer sql.SessionCommandEnd(sqlCtx.Session)
+
 	var analyzed sql.Node
 	if analyzer.PreparedStmtDisabled {
 		analyzed, err = h.e.AnalyzeQuery(sqlCtx, query)
@@ -161,6 +167,12 @@ func (h *Handler) ComPrepareParsed(ctx context.Context, c *mysql.Conn, query str
 		return nil, nil, err
 	}
 
+	err = sql.SessionCommandBegin(sqlCtx.Session)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sql.SessionCommandEnd(sqlCtx.Session)
+
 	analyzed, err := h.e.PrepareParsedQuery(sqlCtx, query, query, parsed)
 	if err != nil {
 		logrus.WithField("query", query).Errorf("unable to prepare query: %s", err.Error())
@@ -189,6 +201,11 @@ func (h *Handler) ComBind(ctx context.Context, c *mysql.Conn, query string, pars
 	if err != nil {
 		return nil, nil, err
 	}
+	err = sql.SessionCommandBegin(sqlCtx.Session)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sql.SessionCommandEnd(sqlCtx.Session)
 
 	stmt, ok := parsedQuery.(sqlparser.Statement)
 	if !ok {
@@ -378,6 +395,11 @@ func (h *Handler) doQuery(
 	if err != nil {
 		return "", err
 	}
+	err = sql.SessionCommandBegin(sqlCtx.Session)
+	if err != nil {
+		return "", err
+	}
+	defer sql.SessionCommandEnd(sqlCtx.Session)
 
 	start := time.Now()
 
