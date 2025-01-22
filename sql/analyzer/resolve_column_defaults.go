@@ -445,7 +445,7 @@ func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql
 	if err != nil {
 		return colDefault, transform.SameTree, nil
 	}
-	
+
 	newDefault, err := colDefault.WithChildren(expression.NewLiteral(val, typ))
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -453,7 +453,7 @@ func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql
 	return newDefault, transform.NewTree, nil
 }
 
-// skipDefaultNormalizationForType returns true if the default value for the given type should not be normalized for 
+// skipDefaultNormalizationForType returns true if the default value for the given type should not be normalized for
 // serialization before being passed to the integrator for table creation
 func skipDefaultNormalizationForType(typ sql.Type) bool {
 	// Extended types handle their own serialization concerns
