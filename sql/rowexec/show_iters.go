@@ -498,7 +498,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 	}
 
-	return sql.GenerateCreateTableStatement(table.Name(), colStmts, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
+	temp := ""
+	if _, ok := table.(sql.TemporaryTable); ok {
+		temp = " TEMPORARY"
+	}
+
+	return sql.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {

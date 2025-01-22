@@ -253,6 +253,11 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 
 		tableScope, ok := b.buildResolvedTableForTablename(inScope, t, nil)
 		if ok {
+			// attempting to drop a non-temporary table with DROP TEMPORARY, results in Unknown table
+			if _, isTmpTbl := tableScope.node.(sql.TemporaryTable); !isTmpTbl && c.Temporary {
+				err := sql.ErrUnknownTable.New(tableName)
+				b.handleErr(err)
+			}
 			dropTables = append(dropTables, tableScope.node)
 		} else if !c.IfExists {
 			err := sql.ErrTableNotFound.New(tableName)
