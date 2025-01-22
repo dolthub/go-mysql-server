@@ -103,6 +103,10 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 
 	session.SetConnectionId(conn.ConnectionID)
 
+	if cur, ok := s.sessions[conn.ConnectionID]; ok {
+		sql.SessionEnd(cur)
+	}
+
 	s.sessions[conn.ConnectionID] = session
 
 	logger := session.GetLogger()
@@ -126,6 +130,13 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, dbName string) error {
 	if err != nil {
 		return err
 	}
+
+	err = sql.SessionCommandBegin(sess)
+	if err != nil {
+		sql.SessionEnd(sess)
+		return err
+	}
+	defer sql.SessionCommandEnd(sess)
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	var db sql.Database
@@ -257,6 +268,9 @@ func (s *SessionManager) KillConnection(connID uint32) error {
 func (s *SessionManager) RemoveConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if cur, ok := s.sessions[conn.ConnectionID]; ok {
+		sql.SessionEnd(cur)
+	}
 	delete(s.sessions, conn.ConnectionID)
 	delete(s.connections, conn.ConnectionID)
 	s.processlist.RemoveConnection(conn.ConnectionID)
