@@ -498,7 +498,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 	}
 
-	return sql.GenerateCreateTableStatement(table.Name(), colStmts, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
+	temp := ""
+	if tbl := getTempTable(table); tbl != nil && tbl.IsTemporary() {
+		temp = " TEMPORARY"
+	}
+
+	return sql.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {
@@ -534,6 +539,19 @@ func getAutoIncrementTable(t sql.Table) sql.AutoIncrementTable {
 		return getAutoIncrementTable(t.Underlying())
 	case *plan.ResolvedTable:
 		return getAutoIncrementTable(t.Table)
+	default:
+		return nil
+	}
+}
+
+func getTempTable(t sql.Table) sql.TemporaryTable {
+	switch t := t.(type) {
+	case sql.TemporaryTable:
+		return t
+	case sql.TableWrapper:
+		return getTempTable(t.Underlying())
+	case *plan.ResolvedTable:
+		return getTempTable(t.Table)
 	default:
 		return nil
 	}

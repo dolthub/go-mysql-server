@@ -253,6 +253,13 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 
 		tableScope, ok := b.buildResolvedTableForTablename(inScope, t, nil)
 		if ok {
+			// attempting to drop a non-temporary table with DROP TEMPORARY, results in Unknown table
+			if tbl, ok := tableScope.node.(sql.Table); ok {
+				if tmpTbl := getTempTable(tbl); tmpTbl != nil && !tmpTbl.IsTemporary() && c.Temporary {
+					err := sql.ErrUnknownTable.New(tableName)
+					b.handleErr(err)
+				}
+			}
 			dropTables = append(dropTables, tableScope.node)
 		} else if !c.IfExists {
 			err := sql.ErrTableNotFound.New(tableName)
@@ -262,6 +269,19 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 
 	outScope.node = plan.NewDropTable(dropTables, c.IfExists)
 	return
+}
+
+func getTempTable(t sql.Table) sql.TemporaryTable {
+	switch t := t.(type) {
+	case sql.TemporaryTable:
+		return t
+	case sql.TableWrapper:
+		return getTempTable(t.Underlying())
+	case *plan.ResolvedTable:
+		return getTempTable(t.Table)
+	default:
+		return nil
+	}
 }
 
 func (b *Builder) buildTruncateTable(inScope *scope, c *ast.DDL) (outScope *scope) {

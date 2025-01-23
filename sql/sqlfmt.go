@@ -26,7 +26,7 @@ import (
 
 // GenerateCreateTableStatement returns 'CREATE TABLE' statement with given table names
 // and column definition statements in order and the collation and character set names for the table
-func GenerateCreateTableStatement(tblName string, colStmts []string, autoInc, tblCharsetName, tblCollName, comment string) string {
+func GenerateCreateTableStatement(tblName string, colStmts []string, temp, autoInc, tblCharsetName, tblCollName, comment string) string {
 	if comment != "" {
 		// Escape any single quotes in the comment and add the COMMENT keyword
 		comment = strings.ReplaceAll(comment, "'", "''")
@@ -38,7 +38,8 @@ func GenerateCreateTableStatement(tblName string, colStmts []string, autoInc, tb
 	}
 
 	return fmt.Sprintf(
-		"CREATE TABLE %s (\n%s\n) ENGINE=InnoDB%s DEFAULT CHARSET=%s COLLATE=%s%s",
+		"CREATE%s TABLE %s (\n%s\n) ENGINE=InnoDB%s DEFAULT CHARSET=%s COLLATE=%s%s",
+		temp,
 		QuoteIdentifier(tblName),
 		strings.Join(colStmts, ",\n"),
 		autoInc,
