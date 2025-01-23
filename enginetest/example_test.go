@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
+	"time"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -34,10 +36,13 @@ func Example() {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
 	ctx.SetCurrentDatabase("mydb")
 
+	fmt.Println("starting query")
+	start := time.Now()
 	_, r, _, err := e.Query(ctx, `SELECT name, count(*) FROM mytable
 	WHERE name = 'John Doe'
 	GROUP BY name`)
 	checkIfError(err)
+	fmt.Println("query took", time.Since(start))
 
 	// Iterate results and print them.
 	for {
@@ -81,9 +86,18 @@ func createTestDatabase() *memory.DbProvider {
 		sql.NewRow("Evil Bob", "evilbob@gmail.com"),
 	}
 
+	// add 10000 more rows
+	for i := 0; i < 40000; i++ {
+		rows = append(rows, sql.NewRow("John Doe", "foo"+strconv.Itoa(i)))
+	}
+
+	fmt.Println("starting insert")
+	start := time.Now()
 	for _, row := range rows {
 		table.Insert(ctx, row)
 	}
+
+	fmt.Println("Inserting rows took", time.Since(start))
 
 	return pro
 }
