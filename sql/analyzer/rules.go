@@ -37,7 +37,6 @@ var OnceBeforeDefault = []Rule{
 	{validateCreateTableId, validateCreateTable},
 	{validateAlterTableId, validateAlterTable},
 	{validateExprSemId, validateExprSem},
-	{validateCreateProcedureId, validateCreateProcedure},
 	{resolveDropConstraintId, resolveDropConstraint},
 	{resolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},

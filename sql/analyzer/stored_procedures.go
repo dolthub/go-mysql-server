@@ -81,11 +81,8 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 
 // analyzeCreateProcedure checks the plan.CreateProcedure and returns a valid plan.Procedure or an error
 func analyzeCreateProcedure(ctx *sql.Context, a *Analyzer, cp *plan.CreateProcedure, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (*plan.Procedure, error) {
-	err := validateStoredProcedure(ctx, cp.Procedure)
-	if err != nil {
-		return nil, err
-	}
 	var analyzedNode sql.Node
+	var err error
 	analyzedNode, _, err = analyzeProcedureBodies(ctx, a, cp.Procedure, false, scope, sel, qFlags)
 	if err != nil {
 		return nil, err
@@ -159,30 +156,6 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		return nil, transform.SameTree, err
 	}
 	return node, transform.NewTree, nil
-}
-
-// validateCreateProcedure handles CreateProcedure nodes, ensuring that all nodes in Procedure are supported.
-func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	cp, ok := node.(*plan.CreateProcedure)
-	if !ok {
-		return node, transform.SameTree, nil
-	}
-
-	err := validateStoredProcedure(ctx, cp.Procedure)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return node, transform.SameTree, nil
-}
-
-// validateStoredProcedure handles Procedure nodes, resolving references to the parameters, along with ensuring
-// that all logic contained within the stored procedure body is valid.
-func validateStoredProcedure(_ *sql.Context, proc *plan.Procedure) error {
-	// For now, we don't support creating any of the following within stored procedures.
-	// These will be removed in the future, but cause issues with the current execution plan.
-
-	return nil
 }
 
 // applyProcedures applies the relevant stored procedures to the node given (if necessary).
