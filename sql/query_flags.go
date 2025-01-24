@@ -51,6 +51,7 @@ const (
 	// QFlagUndeferrableExprs indicates that the query has expressions that cannot be deferred
 	QFlagUndeferrableExprs
 	QFlagTrigger
+	QFlagCreateProcedure
 )
 
 type QueryFlags struct {

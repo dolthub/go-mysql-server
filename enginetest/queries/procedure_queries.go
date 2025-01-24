@@ -2823,6 +2823,64 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "procedure must not contain CREATE TABLE",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create procedure p() create table t (pk int);",
+				ExpectedErrStr: "creating tables in stored procedures is currently unsupported and will be added in a future release",
+			},
+			{
+				Query: "create procedure p() begin create table t (pk int); end;",
+				ExpectedErrStr: "creating tables in stored procedures is currently unsupported and will be added in a future release",
+			},
+		},
+	},
+	{
+		Name: "procedure must not contain CREATE TRIGGER",
+		SetUpScript: []string{
+			"create table t (i int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create procedure p() create trigger trig before insert on t for each row begin select 1; end;",
+				ExpectedErrStr: "creating triggers in stored procedures is currently unsupported and will be added in a future release",
+			},
+			{
+				Query: "create procedure p() begin create trigger trig before insert on t for each row begin select 1; end; end;",
+				ExpectedErrStr: "creating triggers in stored procedures is currently unsupported and will be added in a future release",
+			},
+		},
+	},
+	{
+		Name: "procedure must not contain CREATE DB",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create procedure p() create database procdb;",
+				ExpectedErrStr: "creating databases in stored procedures is currently unsupported and will be added in a future release",
+			},
+			{
+				Query: "create procedure p() begin create database procdb; end;",
+				ExpectedErrStr: "creating databases in stored procedures is currently unsupported and will be added in a future release",
+			},
+		},
+	},
+	{
+		Name: "procedure must not contain CREATE VIEW",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create procedure p() create view v as select 1;",
+				ExpectedErrStr: "creating views in stored procedures is currently unsupported and will be added in a future release",
+			},
+			{
+				Query: "create procedure p() begin create view v as select 1; end;",
+				ExpectedErrStr: "creating views in stored procedures is currently unsupported and will be added in a future release",
+			},
+		},
+	},
+
 }
 
 var NoDbProcedureTests = []ScriptTestAssertion{
