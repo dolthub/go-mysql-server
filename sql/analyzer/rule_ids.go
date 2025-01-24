@@ -21,7 +21,6 @@ const (
 	resolveUnionsId                             // resolveUnions
 	ValidateColumnDefaultsId                    // validateColumnDefaults
 	validateCreateTriggerId                     // validateCreateTrigger
-	validateCreateProcedureId                   // validateCreateProcedure
 	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
 	validateReadOnlyTransactionId               // validateReadOnlyTransaction
 	validateDatabaseSetId                       // validateDatabaseSet

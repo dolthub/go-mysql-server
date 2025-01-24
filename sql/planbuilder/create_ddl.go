@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -132,6 +133,9 @@ func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
 }
 
 func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	b.qFlags.Set(sql.QFlagCreateProcedure)
+	defer func() { b.qFlags.Unset(sql.QFlagCreateProcedure) }()
+
 	var params []plan.ProcedureParam
 	for _, param := range c.ProcedureSpec.Params {
 		var direction plan.ProcedureParamDirection
@@ -200,6 +204,20 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
 	bodyScope := b.buildSubquery(inScope, c.ProcedureSpec.Body, bodyStr, fullQuery)
+	b.validateStoredProcedure(bodyScope.node)
+
+	// Check for recursive calls to same procedure
+	transform.Inspect(bodyScope.node, func(node sql.Node) bool {
+		switch n := node.(type) {
+		case *plan.Call:
+			if strings.EqualFold(procName, n.Name) {
+				b.handleErr(sql.ErrProcedureRecursiveCall.New(procName))
+			}
+			return false
+		default:
+			return true
+		}
+	})
 
 	var db sql.Database = nil
 	dbName := c.ProcedureSpec.ProcName.Qualifier.String()
