@@ -91,6 +91,9 @@ func InitEventScheduler(
 		if err != nil {
 			return nil, err
 		}
+		sql.SessionCommandBegin(ctx.Session)
+		defer sql.SessionCommandEnd(ctx.Session)
+		defer sql.SessionEnd(ctx.Session)
 		err = es.loadEventsAndStartEventExecutor(ctx, a)
 		if err != nil {
 			return nil, err
