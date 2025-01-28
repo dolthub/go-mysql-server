@@ -16,8 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
-"strings"
+	"strings"
 	"time"
 	"unicode"
 
@@ -26,7 +25,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-		)
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
 
 func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
@@ -204,11 +204,11 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 
 	now := time.Now()
 	spd := sql.StoredProcedureDetails{
-		Name: strings.ToLower(c.ProcedureSpec.ProcName.Name.String()),
+		Name:            strings.ToLower(c.ProcedureSpec.ProcName.Name.String()),
 		CreateStatement: subQuery,
-		CreatedAt: now,
-		ModifiedAt: now,
-		SqlMode: sql.LoadSqlMode(b.ctx).String(),
+		CreatedAt:       now,
+		ModifiedAt:      now,
+		SqlMode:         sql.LoadSqlMode(b.ctx).String(),
 	}
 
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])

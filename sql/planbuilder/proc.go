@@ -313,7 +313,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 
 	newProc := BuildProcedureHelper(b.ctx, b.cat, db, asOf, proc)
-	outScope.node = plan.NewCall( db, procName, params, newProc, asOf, b.cat)
+	outScope.node = plan.NewCall(db, procName, params, newProc, asOf, b.cat)
 	return outScope
 }
 

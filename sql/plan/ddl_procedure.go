@@ -15,16 +15,16 @@
 package plan
 
 import (
-		"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type CreateProcedure struct {
-	ddlNode  ddlNode
+	ddlNode ddlNode
 
-	StoredProcDetails  sql.StoredProcedureDetails
-	BodyString         string
+	StoredProcDetails sql.StoredProcedureDetails
+	BodyString        string
 }
 
 var _ sql.Node = (*CreateProcedure)(nil)
@@ -39,9 +39,9 @@ func NewCreateProcedure(
 	bodyString string,
 ) *CreateProcedure {
 	return &CreateProcedure{
-		ddlNode:            ddlNode{db},
-		StoredProcDetails:  storedProcDetails,
-		BodyString:         bodyString,
+		ddlNode:           ddlNode{db},
+		StoredProcDetails: storedProcDetails,
+		BodyString:        bodyString,
 	}
 }
 

@@ -42,7 +42,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 
 	allDatabases := a.Catalog.AllDatabases(ctx)
 	for _, database := range allDatabases {
-		pdb, ok := database.(sql.StoredProcedureDatabase);
+		pdb, ok := database.(sql.StoredProcedureDatabase)
 		if !ok {
 			continue
 		}
