@@ -16,7 +16,8 @@ package planbuilder
 
 import (
 	"fmt"
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql/types"
+"strings"
 	"time"
 	"unicode"
 
@@ -25,9 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
-)
+		)
 
 func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	outScope = inScope.push()
@@ -132,12 +131,9 @@ func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
 	return definer
 }
 
-func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
-	b.qFlags.Set(sql.QFlagCreateProcedure)
-	defer func() { b.qFlags.Unset(sql.QFlagCreateProcedure) }()
-
+func (b *Builder) buildProcedureParams(procParams []ast.ProcedureParam) []plan.ProcedureParam {
 	var params []plan.ProcedureParam
-	for _, param := range c.ProcedureSpec.Params {
+	for _, param := range procParams {
 		var direction plan.ProcedureParamDirection
 		switch param.Direction {
 		case ast.ProcedureParamDirection_In:
@@ -161,11 +157,14 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 			Variadic:  false,
 		})
 	}
+	return params
+}
 
+func (b *Builder) buildProcedureCharacteristics(procCharacteristics []ast.Characteristic) ([]plan.Characteristic, plan.ProcedureSecurityContext, string) {
 	var characteristics []plan.Characteristic
 	securityType := plan.ProcedureSecurityContext_Definer // Default Security Context
 	comment := ""
-	for _, characteristic := range c.ProcedureSpec.Characteristics {
+	for _, characteristic := range procCharacteristics {
 		switch characteristic.Type {
 		case ast.CharacteristicValue_Comment:
 			comment = characteristic.Comment
@@ -192,56 +191,30 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 			b.handleErr(err)
 		}
 	}
+	return characteristics, securityType, comment
+}
 
-	inScope.initProc()
-	procName := strings.ToLower(c.ProcedureSpec.ProcName.Name.String())
-	for _, p := range params {
-		// populate inScope with the procedure parameters. this will be
-		// subject maybe a bug where an inner procedure has access to
-		// outer procedure parameters.
-		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
-	}
-	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-
-	bodyScope := b.buildSubquery(inScope, c.ProcedureSpec.Body, bodyStr, fullQuery)
-	b.validateStoredProcedure(bodyScope.node)
-
-	// Check for recursive calls to same procedure
-	transform.Inspect(bodyScope.node, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case *plan.Call:
-			if strings.EqualFold(procName, n.Name) {
-				b.handleErr(sql.ErrProcedureRecursiveCall.New(procName))
-			}
-			return false
-		default:
-			return true
-		}
-	})
-
+func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
 	var db sql.Database = nil
-	dbName := c.ProcedureSpec.ProcName.Qualifier.String()
-	if dbName != "" {
+	if dbName := c.ProcedureSpec.ProcName.Qualifier.String(); dbName != "" {
 		db = b.resolveDb(dbName)
 	} else {
 		db = b.currentDb()
 	}
 
+	now := time.Now()
+	spd := sql.StoredProcedureDetails{
+		Name: strings.ToLower(c.ProcedureSpec.ProcName.Name.String()),
+		CreateStatement: subQuery,
+		CreatedAt: now,
+		ModifiedAt: now,
+		SqlMode: sql.LoadSqlMode(b.ctx).String(),
+	}
+
+	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+
 	outScope = inScope.push()
-	outScope.node = plan.NewCreateProcedure(
-		db,
-		procName,
-		c.ProcedureSpec.Definer,
-		params,
-		time.Now(),
-		time.Now(),
-		securityType,
-		characteristics,
-		bodyScope.node,
-		comment,
-		subQuery,
-		bodyStr,
-	)
+	outScope.node = plan.NewCreateProcedure(db, spd, bodyStr)
 	return outScope
 }
 

@@ -226,6 +226,43 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 	return outScope
 }
 
+func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, db sql.Database, asOf sql.Expression, proc sql.StoredProcedureDetails) *plan.Procedure {
+	// TODO: new builder necessary?
+	b := New(ctx, cat, nil, nil)
+	b.DisableAuth()
+	b.SetParserOptions(sql.NewSqlModeFromString(proc.SqlMode).ParserOptions())
+	if asOf != nil {
+		asOf, err := asOf.Eval(b.ctx, nil)
+		if err != nil {
+			b.handleErr(err)
+		}
+		b.ProcCtx().AsOf = asOf
+	}
+	b.ProcCtx().DbName = db.Name()
+	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, proc.CreateStatement, ';', false, b.parserOpts)
+	procStmt := stmt.(*ast.DDL)
+	bodyStr := strings.TrimSpace(proc.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
+	bodyScope := b.buildSubquery(nil, procStmt.ProcedureSpec.Body, bodyStr, proc.CreateStatement) // TODO: scope?
+
+	// TODO: validate
+
+	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
+	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
+
+	return plan.NewProcedure(
+		proc.Name,
+		procStmt.ProcedureSpec.Definer,
+		procParams,
+		securityType,
+		comment,
+		characteristics,
+		proc.CreateStatement,
+		bodyScope.node,
+		proc.CreatedAt,
+		proc.ModifiedAt,
+	)
+}
+
 func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
@@ -255,14 +292,28 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		db = b.resolveDb(dbName)
 	} else if b.ctx.GetCurrentDatabase() != "" {
 		db = b.currentDb()
+	} else {
+		b.handleErr(sql.ErrDatabaseNotFound.New(c.ProcName.Qualifier.String()))
 	}
 
-	outScope.node = plan.NewCall(
-		db,
-		c.ProcName.Name.String(),
-		params,
-		asOf,
-		b.cat)
+	// TODO: external stored procedures?
+	spdb, ok := db.(sql.StoredProcedureDatabase)
+	if !ok {
+		err := sql.ErrStoredProceduresNotSupported.New(db.Name())
+		b.handleErr(err)
+	}
+
+	procName := c.ProcName.Name.String()
+	proc, ok, err := spdb.GetStoredProcedure(b.ctx, procName)
+	if err != nil {
+		b.handleErr(err)
+	}
+	if !ok {
+		b.handleErr(sql.ErrStoredProcedureDoesNotExist.New(procName))
+	}
+
+	newProc := BuildProcedureHelper(b.ctx, b.cat, db, asOf, proc)
+	outScope.node = plan.NewCall( db, procName, params, newProc, asOf, b.cat)
 	return outScope
 }
 
