@@ -226,7 +226,7 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 	return outScope
 }
 
-func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, inScope *scope, db sql.Database, asOf sql.Expression, proc sql.StoredProcedureDetails) *plan.Procedure {
+func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, inScope *scope, db sql.Database, asOf sql.Expression, proc sql.StoredProcedureDetails) (*plan.Procedure, *sql.QueryFlags) {
 	// TODO: new builder necessary?
 	b := New(ctx, cat, nil, nil)
 	b.DisableAuth()
@@ -272,7 +272,7 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, inScope *scope, db 
 		bodyScope.node,
 		proc.CreatedAt,
 		proc.ModifiedAt,
-	)
+	), b.qFlags
 }
 
 func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
@@ -303,6 +303,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 
 	var proc *plan.Procedure
+	var innerQFlags *sql.QueryFlags
 	procName := c.ProcName.Name.String()
 	esp, err := b.cat.ExternalStoredProcedure(b.ctx, procName, len(c.Params))
 	if err != nil {
@@ -315,7 +316,13 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
 		if err == nil {
 			if ok {
-				proc = BuildProcedureHelper(b.ctx, b.cat, inScope, db, asOf, procDetails)
+				proc, innerQFlags = BuildProcedureHelper(b.ctx, b.cat, inScope, db, asOf, procDetails)
+				// TODO: somewhat hacky way of preserving this flag
+				// This is necessary so that the resolveSubqueries analyzer rule
+				// will apply NodeExecBuilder to Subqueries in procedure body
+				if innerQFlags.IsSet(sql.QFlagScalarSubquery) {
+					b.qFlags.Set(sql.QFlagScalarSubquery)
+				}
 			} else {
 				err = sql.ErrStoredProcedureDoesNotExist.New(procName)
 			}
