@@ -16,11 +16,11 @@ package planbuilder
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -296,14 +296,28 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		b.handleErr(sql.ErrDatabaseNotFound.New(c.ProcName.Qualifier.String()))
 	}
 
-	// TODO: external stored procedures?
+	procName := c.ProcName.Name.String()
+
+	esp, err := b.cat.ExternalStoredProcedure(b.ctx, procName, len(params))
+	if err != nil {
+		b.handleErr(err)
+	}
+	if esp != nil {
+		externalProcedure, err := resolveExternalStoredProcedure(*esp)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		outScope.node = plan.NewCall(db, procName, params, externalProcedure, asOf, b.cat)
+		return outScope
+	}
+
 	spdb, ok := db.(sql.StoredProcedureDatabase)
 	if !ok {
 		err := sql.ErrStoredProceduresNotSupported.New(db.Name())
 		b.handleErr(err)
 	}
 
-	procName := c.ProcName.Name.String()
 	proc, ok, err := spdb.GetStoredProcedure(b.ctx, procName)
 	if err != nil {
 		b.handleErr(err)

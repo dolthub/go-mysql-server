@@ -150,18 +150,6 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}()
 		}
 
-		esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if esp != nil {
-			externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return call.WithProcedure(externalProcedure), transform.NewTree, nil
-		}
-
 		if _, isStoredProcDb := call.Database().(sql.StoredProcedureDatabase); !isStoredProcDb {
 			return nil, transform.SameTree, sql.ErrStoredProceduresNotSupported.New(call.Database().Name())
 		}
@@ -204,43 +192,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 // applyProceduresCall applies the relevant stored procedure to the given *plan.Call.
 func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	var procedure *plan.Procedure
-	if call.Procedure == nil {
-		dbName := ctx.GetCurrentDatabase()
-		if call.Database() != nil {
-			dbName = call.Database().Name()
-		}
-
-		esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		if esp != nil {
-			externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
-			if err != nil {
-				return nil, false, err
-			}
-			procedure = externalProcedure
-		} else {
-			procedure = scope.Procedures.Get(dbName, call.Name, len(call.Params))
-		}
-
-		if procedure == nil {
-			err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
-			if dbName == "" {
-				return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
-			}
-			return nil, transform.SameTree, err
-		}
-
-		if procedure.ValidationError != nil {
-			return nil, transform.SameTree, procedure.ValidationError
-		}
-	} else {
-		procedure = call.Procedure
-	}
-
+	procedure := call.Procedure
 	if procedure.HasVariadicParameter() {
 		procedure = procedure.ExtendVariadic(ctx, len(call.Params))
 	}
