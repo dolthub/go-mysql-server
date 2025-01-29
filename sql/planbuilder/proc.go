@@ -267,12 +267,6 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
-	outScope = inScope.push()
-	params := make([]sql.Expression, len(c.Params))
-	for i, param := range c.Params {
-		expr := b.buildScalar(inScope, param)
-		params[i] = expr
-	}
 
 	var asOf sql.Expression = nil
 	if c.AsOf != nil {
@@ -296,38 +290,47 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		b.handleErr(sql.ErrDatabaseNotFound.New(c.ProcName.Qualifier.String()))
 	}
 
+	var proc *plan.Procedure
 	procName := c.ProcName.Name.String()
-
-	esp, err := b.cat.ExternalStoredProcedure(b.ctx, procName, len(params))
+	esp, err := b.cat.ExternalStoredProcedure(b.ctx, procName, len(c.Params))
 	if err != nil {
 		b.handleErr(err)
 	}
 	if esp != nil {
-		externalProcedure, err := resolveExternalStoredProcedure(*esp)
-		if err != nil {
-			b.handleErr(err)
+		proc, err = resolveExternalStoredProcedure(*esp)
+	} else if spdb, ok := db.(sql.StoredProcedureDatabase); ok {
+		var procDetails sql.StoredProcedureDetails
+		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
+		if err == nil {
+			if ok {
+				proc = BuildProcedureHelper(b.ctx, b.cat, db, asOf, procDetails)
+			} else {
+				err = sql.ErrStoredProcedureDoesNotExist.New(procName)
+			}
 		}
-
-		outScope.node = plan.NewCall(db, procName, params, externalProcedure, asOf, b.cat)
-		return outScope
+	} else {
+		err = sql.ErrStoredProceduresNotSupported.New(db.Name())
 	}
-
-	spdb, ok := db.(sql.StoredProcedureDatabase)
-	if !ok {
-		err := sql.ErrStoredProceduresNotSupported.New(db.Name())
-		b.handleErr(err)
-	}
-
-	proc, ok, err := spdb.GetStoredProcedure(b.ctx, procName)
 	if err != nil {
 		b.handleErr(err)
 	}
-	if !ok {
-		b.handleErr(sql.ErrStoredProcedureDoesNotExist.New(procName))
+
+	// populate inScope with the procedure parameters. this will be
+	// subject maybe a bug where an inner procedure has access to
+	// outer procedure parameters.
+	inScope.initProc()
+	for _, p := range proc.Params {
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
 	}
 
-	newProc := BuildProcedureHelper(b.ctx, b.cat, db, asOf, proc)
-	outScope.node = plan.NewCall(db, procName, params, newProc, asOf, b.cat)
+	params := make([]sql.Expression, len(c.Params))
+	for i, param := range c.Params {
+		expr := b.buildScalar(inScope, param)
+		params[i] = expr
+	}
+
+	outScope = inScope.push()
+	outScope.node = plan.NewCall(db, procName, params, proc, asOf, b.cat)
 	return outScope
 }
 
