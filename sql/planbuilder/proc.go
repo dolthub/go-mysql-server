@@ -16,11 +16,11 @@ package planbuilder
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
