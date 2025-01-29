@@ -27,6 +27,7 @@ import (
 
 // loadStoredProcedures loads non-built-in stored procedures for all databases on relevant calls.
 func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (*plan.Scope, error) {
+	// TODO: possible that we can just delete this entire rule
 	if scope.ProceduresPopulating() {
 		return scope, nil
 	}
@@ -51,7 +52,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			return nil, err
 		}
 		for _, procedure := range procedures {
-			proc := planbuilder.BuildProcedureHelper(ctx, a.Catalog, database, nil, procedure)
+			proc := planbuilder.BuildProcedureHelper(ctx, a.Catalog, nil, database, nil, procedure)
 			err = scope.Procedures.Register(database.Name(), proc)
 			if err != nil {
 				return nil, err

@@ -226,7 +226,7 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 	return outScope
 }
 
-func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, db sql.Database, asOf sql.Expression, proc sql.StoredProcedureDetails) *plan.Procedure {
+func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, inScope *scope, db sql.Database, asOf sql.Expression, proc sql.StoredProcedureDetails) *plan.Procedure {
 	// TODO: new builder necessary?
 	b := New(ctx, cat, nil, nil)
 	b.DisableAuth()
@@ -241,13 +241,25 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, db sql.Database, as
 	b.ProcCtx().DbName = db.Name()
 	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, proc.CreateStatement, ';', false, b.parserOpts)
 	procStmt := stmt.(*ast.DDL)
-	bodyStr := strings.TrimSpace(proc.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
-	bodyScope := b.buildSubquery(nil, procStmt.ProcedureSpec.Body, bodyStr, proc.CreateStatement) // TODO: scope?
-
-	// TODO: validate
 
 	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
 	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
+
+	// populate inScope with the procedure parameters. this will be
+	// subject maybe a bug where an inner procedure has access to
+	// outer procedure parameters.
+	if inScope == nil {
+		inScope = b.newScope()
+	}
+	inScope.initProc()
+	for _, p := range procParams {
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
+	}
+
+	bodyStr := strings.TrimSpace(proc.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
+	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, proc.CreateStatement)
+
+	// TODO: validate
 
 	return plan.NewProcedure(
 		proc.Name,
@@ -303,7 +315,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
 		if err == nil {
 			if ok {
-				proc = BuildProcedureHelper(b.ctx, b.cat, db, asOf, procDetails)
+				proc = BuildProcedureHelper(b.ctx, b.cat, inScope, db, asOf, procDetails)
 			} else {
 				err = sql.ErrStoredProcedureDoesNotExist.New(procName)
 			}
@@ -313,14 +325,6 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 	if err != nil {
 		b.handleErr(err)
-	}
-
-	// populate inScope with the procedure parameters. this will be
-	// subject maybe a bug where an inner procedure has access to
-	// outer procedure parameters.
-	inScope.initProc()
-	for _, p := range proc.Params {
-		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
 	}
 
 	params := make([]sql.Expression, len(c.Params))
