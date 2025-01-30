@@ -150,6 +150,8 @@ type Engine struct {
 	Parser            sql.Parser
 }
 
+var _ analyzer.StatementRunner = (*Engine)(nil)
+
 type ColumnWithRawDefault struct {
 	SqlColumn *sql.Column
 	Default   string
@@ -195,6 +197,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		Parser:            sql.GlobalParser,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
+	a.Runner = ret
 	return ret
 }
 
