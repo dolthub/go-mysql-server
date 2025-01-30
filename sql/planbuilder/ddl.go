@@ -1650,7 +1650,7 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 
 	parsed, err := b.parser.ParseSimple(fmt.Sprintf("SELECT %s", def))
 	if err != nil {
-		err := fmt.Errorf("%w: %s", sql.ErrInvalidColumnDefaultValue.New(def), err)
+		err := sql.ErrInvalidColumnDefaultValue.Wrap(err, def)
 		b.handleErr(err)
 	}
 
