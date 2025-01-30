@@ -226,11 +226,11 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 	return outScope
 }
 
-func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, inScope *scope, db sql.Database, asOf sql.Expression, proc sql.StoredProcedureDetails) (*plan.Procedure, *sql.QueryFlags) {
+func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, inScope *scope, db sql.Database, asOf sql.Expression, procDetails sql.StoredProcedureDetails) (*plan.Procedure, *sql.QueryFlags) {
 	// TODO: new builder necessary?
 	b := New(ctx, cat, nil, nil)
 	b.DisableAuth()
-	b.SetParserOptions(sql.NewSqlModeFromString(proc.SqlMode).ParserOptions())
+	b.SetParserOptions(sql.NewSqlModeFromString(procDetails.SqlMode).ParserOptions())
 	if asOf != nil {
 		asOf, err := asOf.Eval(b.ctx, nil)
 		if err != nil {
@@ -239,7 +239,11 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, inScope *scope, db 
 		b.ProcCtx().AsOf = asOf
 	}
 	b.ProcCtx().DbName = db.Name()
-	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, proc.CreateStatement, ';', false, b.parserOpts)
+	if isCreateProc {
+		// TODO: we want to skip certain validations for CREATE PROCEDURE
+		b.qFlags.Set(sql.QFlagCreateProcedure)
+	}
+	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, procDetails.CreateStatement, ';', false, b.parserOpts)
 	procStmt := stmt.(*ast.DDL)
 
 	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
@@ -256,22 +260,22 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, inScope *scope, db 
 		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
 	}
 
-	bodyStr := strings.TrimSpace(proc.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
-	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, proc.CreateStatement)
+	bodyStr := strings.TrimSpace(procDetails.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
+	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, procDetails.CreateStatement)
 
-	// TODO: validate
+	// TODO: validate?
 
 	return plan.NewProcedure(
-		proc.Name,
+		procDetails.Name,
 		procStmt.ProcedureSpec.Definer,
 		procParams,
 		securityType,
 		comment,
 		characteristics,
-		proc.CreateStatement,
+		procDetails.CreateStatement,
 		bodyScope.node,
-		proc.CreatedAt,
-		proc.ModifiedAt,
+		procDetails.CreatedAt,
+		procDetails.ModifiedAt,
 	), b.qFlags
 }
 
@@ -316,7 +320,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
 		if err == nil {
 			if ok {
-				proc, innerQFlags = BuildProcedureHelper(b.ctx, b.cat, inScope, db, asOf, procDetails)
+				proc, innerQFlags = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
 				// TODO: somewhat hacky way of preserving this flag
 				// This is necessary so that the resolveSubqueries analyzer rule
 				// will apply NodeExecBuilder to Subqueries in procedure body
@@ -485,9 +489,6 @@ func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements, fu
 			}
 		}
 		stmtScope := b.buildSubquery(inScope, s, ast.String(s), fullQuery)
-		if b.qFlags.IsSet(sql.QFlagCreateProcedure) {
-			b.validateStoredProcedure(stmtScope.node)
-		}
 		statements = append(statements, stmtScope.node)
 	}
 

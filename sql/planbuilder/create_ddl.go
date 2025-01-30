@@ -213,6 +213,12 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
+	// TODO: need to validate limit clauses for non-integers???
+	// TODO only return some errors??? somehow
+	BuildProcedureHelper(b.ctx, b.cat, true, inScope.push(), db, nil, spd)
+
+	// TODO: validate for recursion and other ddl here
+
 	outScope = inScope.push()
 	outScope.node = plan.NewCreateProcedure(db, spd, bodyStr)
 	return outScope

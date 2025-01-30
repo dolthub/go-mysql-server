@@ -52,7 +52,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			return nil, err
 		}
 		for _, procedure := range procedures {
-			proc, _ := planbuilder.BuildProcedureHelper(ctx, a.Catalog, nil, database, nil, procedure)
+			proc, _ := planbuilder.BuildProcedureHelper(ctx, a.Catalog, false, nil, database, nil, procedure)
 			err = scope.Procedures.Register(database.Name(), proc)
 			if err != nil {
 				return nil, err
