@@ -226,8 +226,18 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 	return outScope
 }
 
-func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, inScope *scope, db sql.Database, asOf sql.Expression, procDetails sql.StoredProcedureDetails) (*plan.Procedure, *sql.QueryFlags) {
+func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, inScope *scope, db sql.Database, asOf sql.Expression, procDetails sql.StoredProcedureDetails) (proc *plan.Procedure, qFlags *sql.QueryFlags, err error) {
 	// TODO: new builder necessary?
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case parseErr:
+				err = r.err
+			default:
+				panic(r)
+			}
+		}
+	}()
 	b := New(ctx, cat, nil, nil)
 	b.DisableAuth()
 	b.SetParserOptions(sql.NewSqlModeFromString(procDetails.SqlMode).ParserOptions())
@@ -264,8 +274,7 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, procDetails.CreateStatement)
 
 	// TODO: validate?
-
-	return plan.NewProcedure(
+	proc = plan.NewProcedure(
 		procDetails.Name,
 		procStmt.ProcedureSpec.Definer,
 		procParams,
@@ -276,7 +285,9 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 		bodyScope.node,
 		procDetails.CreatedAt,
 		procDetails.ModifiedAt,
-	), b.qFlags
+	)
+	qFlags = b.qFlags
+	return
 }
 
 func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
@@ -320,7 +331,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
 		if err == nil {
 			if ok {
-				proc, innerQFlags = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
+				proc, innerQFlags, err = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
 				// TODO: somewhat hacky way of preserving this flag
 				// This is necessary so that the resolveSubqueries analyzer rule
 				// will apply NodeExecBuilder to Subqueries in procedure body

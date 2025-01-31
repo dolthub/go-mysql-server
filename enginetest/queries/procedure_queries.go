@@ -1897,22 +1897,22 @@ END;`,
 			"CREATE PROCEDURE stable() select pk from t;",
 		},
 		Assertions: []ScriptTestAssertion{
-			//{
-			//	Query:    "CALL stable();",
-			//	Expected: []sql.Row{{1}, {2}, {3}},
-			//},
-			//{
-			//	Query:    "CALL fragile();",
-			//	Expected: []sql.Row{{1}, {2}, {3}},
-			//},
-			//{
-			//	Query:            "SHOW PROCEDURE STATUS LIKE 'stable'",
-			//	SkipResultsCheck: true, // ensure that there's no error
-			//},
-			//{
-			//	Query:            "SHOW PROCEDURE STATUS LIKE 'fragile'",
-			//	SkipResultsCheck: true, // ensure that there's no error
-			//},
+			{
+				Query:    "CALL stable();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "CALL fragile();",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'stable'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
+			{
+				Query:            "SHOW PROCEDURE STATUS LIKE 'fragile'",
+				SkipResultsCheck: true, // ensure that there's no error
+			},
 			{
 				Query:    "alter table t drop other;",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
