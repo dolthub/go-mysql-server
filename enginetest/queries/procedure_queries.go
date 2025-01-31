@@ -2445,7 +2445,7 @@ var ProcedureCallTests = []ScriptTest{
 		Name: "creating invalid procedure doesn't error until it is called",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
+				Query:    `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
@@ -2453,7 +2453,6 @@ var ProcedureCallTests = []ScriptTest{
 				ExpectedErr: sql.ErrFunctionNotFound,
 			},
 		},
-
 	},
 }
 
