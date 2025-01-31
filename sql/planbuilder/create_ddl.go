@@ -30,6 +30,14 @@ import (
 )
 
 func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	b.qFlags.Set(sql.QFlagCreateTrigger)
+	defer func() {
+		b.qFlags.Unset(sql.QFlagCreateTrigger)
+	}()
+	if b.qFlags.IsSet(sql.QFlagCreateEvent) || b.qFlags.IsSet(sql.QFlagCreateProcedure) {
+		b.handleErr(fmt.Errorf("can't create a TRIGGER from within another stored routine"))
+	}
+
 	outScope = inScope.push()
 	var triggerOrder *plan.TriggerOrder
 	if c.TriggerSpec.Order != nil {
@@ -196,14 +204,22 @@ func (b *Builder) buildProcedureCharacteristics(procCharacteristics []ast.Charac
 }
 
 func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	b.qFlags.Set(sql.QFlagCreateProcedure)
+	defer func() {
+		b.qFlags.Unset(sql.QFlagCreateProcedure)
+	}()
+	if b.qFlags.IsSet(sql.QFlagCreateEvent) || b.qFlags.IsSet(sql.QFlagCreateTrigger) {
+		b.handleErr(fmt.Errorf("can't create a PROCEDURE from within another stored routine"))
+	}
+
+	b.validateCreateProcedure(inScope, subQuery)
+
 	var db sql.Database = nil
 	if dbName := c.ProcedureSpec.ProcName.Qualifier.String(); dbName != "" {
 		db = b.resolveDb(dbName)
 	} else {
 		db = b.currentDb()
 	}
-
-	b.validateCreateProcedure(inScope, subQuery)
 
 	now := time.Now()
 	spd := sql.StoredProcedureDetails{
@@ -243,9 +259,19 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 	case *ast.DDL:
 		switch s.Action {
 		case ast.TruncateStr:
+		case ast.CreateStr:
+			if s.ProcedureSpec != nil {
+				b.handleErr(fmt.Errorf("can't create a PROCEDURE from within another stored routine"))
+			}
+			if s.TriggerSpec != nil {
+				b.handleErr(fmt.Errorf("can't create a TRIGGER from within another stored routine"))
+			}
+			b.handleErr(fmt.Errorf("CREATE statements in CREATE PROCEDURE not yet supported"))
 		default:
 			b.handleErr(fmt.Errorf("DDL in CREATE PROCEDURE not yet supported"))
 		}
+	case *ast.DBDDL:
+		b.handleErr(fmt.Errorf("DBDDL in CREATE PROCEDURE not yet supported"))
 	case *ast.Declare:
 		if s.Condition != nil {
 			dc := s.Condition
@@ -334,7 +360,18 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 				b.handleErr(err)
 			}
 		}
-
+	case *ast.FetchCursor:
+		if !inScope.proc.HasCursor(s.Name) {
+			b.handleErr(sql.ErrCursorNotFound.New(s.Name))
+		}
+	case *ast.OpenCursor:
+		if !inScope.proc.HasCursor(s.Name) {
+			b.handleErr(sql.ErrCursorNotFound.New(s.Name))
+		}
+	case *ast.CloseCursor:
+		if !inScope.proc.HasCursor(s.Name) {
+			b.handleErr(sql.ErrCursorNotFound.New(s.Name))
+		}
 
 	// limit validation
 	case *ast.Select:
@@ -381,6 +418,14 @@ func (b *Builder) validateCreateProcedure(inScope *scope, createStmt string) {
 }
 
 func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	b.qFlags.Set(sql.QFlagCreateEvent)
+	defer func() {
+		b.qFlags.Unset(sql.QFlagCreateEvent)
+	}()
+	if b.qFlags.IsSet(sql.QFlagCreateTrigger) || b.qFlags.IsSet(sql.QFlagCreateProcedure) {
+		b.handleErr(fmt.Errorf("can't create an EVENT from within another stored routine"))
+	}
+
 	outScope = inScope.push()
 	eventSpec := c.EventSpec
 	dbName := strings.ToLower(eventSpec.EventName.Qualifier.String())
