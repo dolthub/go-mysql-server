@@ -202,6 +202,8 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 		db = b.currentDb()
 	}
 
+	b.validateCreateProcedure(inScope, subQuery)
+
 	now := time.Now()
 	spd := sql.StoredProcedureDetails{
 		Name:            strings.ToLower(c.ProcedureSpec.ProcName.Name.String()),
@@ -213,15 +215,121 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
-	// TODO: need to validate limit clauses for non-integers???
-	// TODO only return some errors??? somehow
-	BuildProcedureHelper(b.ctx, b.cat, true, inScope.push(), db, nil, spd)
-
+	// TODO: need to validate limit clauses for non-integers, but not other bugs
 	// TODO: validate for recursion and other ddl here
 
 	outScope = inScope.push()
 	outScope.node = plan.NewCreateProcedure(db, spd, bodyStr)
 	return outScope
+}
+
+func (b *Builder) validateBlock(inScope *scope, stmts ast.Statements) {
+	for _, s := range stmts {
+		switch s.(type) {
+		case *ast.Declare:
+		default:
+			if inScope.procActive() {
+				inScope.proc.NewState(dsBody)
+			}
+		}
+		b.validateStatement(inScope, s)
+	}
+}
+
+func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
+	switch s := stmt.(type) {
+	case *ast.DDL:
+		b.handleErr(fmt.Errorf("DDL in CREATE PROCEDURE not yet supported"))
+	case *ast.Declare:
+		if s.Condition != nil {
+			inScope.proc.AddCondition(plan.NewDeclareCondition(s.Condition.Name, 0, ""))
+		} else if s.Variables != nil {
+			typ, err := types.ColumnTypeToType(&s.Variables.VarType)
+			if err != nil {
+				b.handleErr(err)
+			}
+			for _, v := range s.Variables.Names {
+				varName := strings.ToLower(v.String())
+				param := expression.NewProcedureParam(varName, typ)
+				inScope.proc.AddVar(param)
+				inScope.newColumn(scopeColumn{col: varName, typ: typ, scalar: param})
+			}
+		} else if s.Cursor != nil {
+			inScope.proc.AddCursor(s.Cursor.Name)
+		} else if s.Handler != nil {
+			switch s.Handler.ConditionValues[0].ValueType {
+			case ast.DeclareHandlerCondition_NotFound:
+			case ast.DeclareHandlerCondition_SqlException:
+			default:
+				err := sql.ErrUnsupportedSyntax.New(ast.String(s))
+				b.handleErr(err)
+			}
+			inScope.proc.AddHandler(nil)
+		}
+	case *ast.BeginEndBlock:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, false)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.Loop:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, true)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.Repeat:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, true)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.While:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, true)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.IfStatement:
+		for _, cond := range s.Conditions {
+			b.validateBlock(inScope, cond.Statements)
+		}
+		if s.Else != nil {
+			b.validateBlock(inScope, s.Else)
+		}
+	case *ast.Iterate:
+		if exists, isLoop := inScope.proc.HasLabel(s.Label); !exists || !isLoop {
+			err := sql.ErrLoopLabelNotFound.New("ITERATE", s.Label)
+			b.handleErr(err)
+		}
+	case *ast.Signal:
+		if s.ConditionName != "" {
+			signalName := strings.ToLower(s.ConditionName)
+			condition := inScope.proc.GetCondition(signalName)
+			if condition == nil {
+				err := sql.ErrDeclareConditionNotFound.New(signalName)
+				b.handleErr(err)
+			}
+		}
+	}
+}
+
+func (b *Builder) validateCreateProcedure(inScope *scope, createStmt string) {
+	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, createStmt, ';', false, b.parserOpts)
+	procStmt := stmt.(*ast.DDL)
+
+	// validate parameters
+	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
+	paramNames := make(map[string]struct{})
+	for _, param := range procParams {
+		paramName := strings.ToLower(param.Name)
+		if _, ok := paramNames[paramName]; ok {
+			b.handleErr(sql.ErrDeclareVariableDuplicate.New(paramName))
+		}
+		paramNames[param.Name] = struct{}{}
+	}
+	// TODO: add params to tmpScope?
+
+	bodyStmt := procStmt.ProcedureSpec.Body
+	b.validateStatement(inScope, bodyStmt)
+
+	// TODO: check for limit clauses that are not integers
 }
 
 func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
