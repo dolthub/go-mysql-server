@@ -56,7 +56,14 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			// TODO: no need to build a procedure just for a show statement??
 			proc, _, err := planbuilder.BuildProcedureHelper(ctx, a.Catalog, false, nil, database, nil, procedure)
 			if err != nil {
-				continue
+				// TODO: alternatively just have BuildProcedureHelper always return a procedure with validation error
+				proc = &plan.Procedure{
+					Name:                  procedure.Name,
+					CreateProcedureString: procedure.CreateStatement,
+					CreatedAt:             procedure.CreatedAt,
+					ModifiedAt:            procedure.ModifiedAt,
+					ValidationError:       err,
+				}
 			}
 			err = scope.Procedures.Register(database.Name(), proc)
 			if err != nil {
