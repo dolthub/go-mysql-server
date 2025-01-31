@@ -340,6 +340,13 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 				}
 			} else {
 				err = sql.ErrStoredProcedureDoesNotExist.New(procName)
+				if b.qFlags.IsSet(sql.QFlagCreateTrigger) {
+					proc = &plan.Procedure{
+						Name:            procName,
+						ValidationError: err,
+					}
+					err = nil
+				}
 			}
 		}
 	} else {

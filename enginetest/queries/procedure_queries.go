@@ -2808,24 +2808,12 @@ var ProcedureShowCreate = []ScriptTest{
 }
 
 var ProcedureCreateInSubroutineTests = []ScriptTest{
-	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
-	{
-		Name: "procedure must not contain CREATE PROCEDURE",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "CREATE PROCEDURE foo() CREATE PROCEDURE bar() SELECT 0;",
-				ExpectedErrStr: "can't create a PROCEDURE from within another stored routine",
-			},
-		},
-	},
 	{
 		Name: "event must not contain CREATE PROCEDURE",
 		Assertions: []ScriptTestAssertion{
 			{
-				// Skipped because MySQL errors here but we don't.
 				Query:          "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE PROCEDURE bar() SELECT 1;",
-				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
-				Skip:           true,
+				ExpectedErrStr: "can't create a PROCEDURE from within another stored routine",
 			},
 		},
 	},
@@ -2864,11 +2852,11 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "create procedure p() create trigger trig before insert on t for each row begin select 1; end;",
-				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
+				ExpectedErrStr: "can't create a TRIGGER from within another stored routine",
 			},
 			{
 				Query:          "create procedure p() begin create trigger trig before insert on t for each row begin select 1; end; end;",
-				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
+				ExpectedErrStr: "can't create a TRIGGER from within another stored routine",
 			},
 		},
 	},
