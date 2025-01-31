@@ -52,6 +52,8 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 			return nil, err
 		}
 		for _, procedure := range procedures {
+			if procedure.Name != "" {}
+			// TODO: no need to build a procedure just for a show statement??
 			proc, _ := planbuilder.BuildProcedureHelper(ctx, a.Catalog, false, nil, database, nil, procedure)
 			err = scope.Procedures.Register(database.Name(), proc)
 			if err != nil {

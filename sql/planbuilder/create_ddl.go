@@ -16,7 +16,8 @@ package planbuilder
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
+"strings"
 	"time"
 	"unicode"
 
@@ -237,12 +238,38 @@ func (b *Builder) validateBlock(inScope *scope, stmts ast.Statements) {
 }
 
 func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
+	// TODO: a ton of this code is repeated from their build counterparts, consider refactoring into helper methods
 	switch s := stmt.(type) {
 	case *ast.DDL:
-		b.handleErr(fmt.Errorf("DDL in CREATE PROCEDURE not yet supported"))
+		switch s.Action {
+		case ast.TruncateStr:
+		default:
+			b.handleErr(fmt.Errorf("DDL in CREATE PROCEDURE not yet supported"))
+		}
 	case *ast.Declare:
 		if s.Condition != nil {
-			inScope.proc.AddCondition(plan.NewDeclareCondition(s.Condition.Name, 0, ""))
+			dc := s.Condition
+			if dc.SqlStateValue != "" {
+				if len(dc.SqlStateValue) != 5 {
+					err := fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+					b.handleErr(err)
+				}
+				if dc.SqlStateValue[0:2] == "00" {
+					err := fmt.Errorf("invalid SQLSTATE VALUE: '%s'", dc.SqlStateValue)
+					b.handleErr(err)
+				}
+			} else {
+				number, err := strconv.ParseUint(string(dc.MysqlErrorCode.Val), 10, 64)
+				if err != nil || number == 0 {
+					// We use our own error instead
+					err := fmt.Errorf("invalid value '%s' for MySQL error code", string(dc.MysqlErrorCode.Val))
+					b.handleErr(err)
+				}
+				//TODO: implement MySQL error code support
+				err = sql.ErrUnsupportedSyntax.New(ast.String(s))
+				b.handleErr(err)
+			}
+			inScope.proc.AddCondition(plan.NewDeclareCondition(dc.Name, 0, ""))
 		} else if s.Variables != nil {
 			typ, err := types.ColumnTypeToType(&s.Variables.VarType)
 			if err != nil {
@@ -307,6 +334,23 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 				b.handleErr(err)
 			}
 		}
+
+
+	// limit validation
+	case *ast.Select:
+		if s.Limit != nil {
+			if expr, ok := s.Limit.Rowcount.(*ast.ColName); ok && inScope.procActive() {
+				if col, ok := inScope.proc.GetVar(expr.String()); ok {
+					// proc param is OK
+					if pp, ok := col.scalarGf().(*expression.ProcedureParam); ok {
+						if !pp.Type().Promote().Equals(types.Int64) && !pp.Type().Promote().Equals(types.Uint64) {
+							err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type().String())
+							b.handleErr(err)
+						}
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -324,7 +368,11 @@ func (b *Builder) validateCreateProcedure(inScope *scope, createStmt string) {
 		}
 		paramNames[param.Name] = struct{}{}
 	}
-	// TODO: add params to tmpScope?
+
+	inScope.initProc()
+	for _, p := range procParams {
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
+	}
 
 	bodyStmt := procStmt.ProcedureSpec.Body
 	b.validateStatement(inScope, bodyStmt)
