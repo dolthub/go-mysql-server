@@ -123,6 +123,18 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			} else {
 				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
 			}
+		case *plan.InsertInto:
+			qFlags.Set(sql.QFlagInsert)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
+			qFlags.Unset(sql.QFlagInsert)
+		case *plan.Update:
+			qFlags.Set(sql.QFlagUpdate)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
+			qFlags.Unset(sql.QFlagUpdate)
+		case *plan.DeleteFrom:
+			qFlags.Set(sql.QFlagDelete)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
+			qFlags.Unset(sql.QFlagDelete)
 		default:
 			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
 		}
