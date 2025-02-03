@@ -198,17 +198,38 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
+		//{
+		//	Name: "test script",
+		//	Assertions: []queries.ScriptTestAssertion{
+		//		{
+		//			Query:    "create procedure p() begin select 1; select 2; end;",
+		//			Expected: []sql.Row{},
+		//		},
+		//		{
+		//			Query:    "call p();",
+		//			Expected: []sql.Row{},
+		//		},
+		//	},
+		//},
 		{
-			Name: "test script",
+			Name: "non-existent procedure in trigger body",
 			SetUpScript: []string{
-				"create table t (i int);",
+				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
+				"CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
+				"CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF; INSERT INTO t0 (v1, v2) VALUES (i, s); END;",
+				"CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (v1, v2) VALUES (num*2, msg);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select 1 into @a",
-					Expected: []sql.Row{},
+					Query:    "CALL add_entry(4, 'aaa');",
+					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				},
+				{
+					Query:    "SELECT * FROM t1;",
+					Expected: []sql.Row{{1, 8, "aaa"}},
 				},
 			},
 		},
