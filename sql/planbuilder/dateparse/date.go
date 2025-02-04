@@ -323,7 +323,7 @@ func monthAbbrev(abbrev string) (time.Month, bool) {
 }
 
 // TODO: allow this to match partial months
-// janu should match janurary
+// janu should match january
 func monthName(name string) (month time.Month, charCount int, ok bool) {
 	for i := 1; i < 13; i++ {
 		m := time.Month(i)

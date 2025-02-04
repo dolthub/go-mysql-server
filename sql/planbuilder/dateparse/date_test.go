@@ -125,10 +125,10 @@ func TestParseErr(t *testing.T) {
 			Specifier: 'e', Tokens: "abc", err: fmt.Errorf("strconv.ParseUint: parsing \"\": invalid syntax")},
 		},
 		{"bad_month", "1 Jen, 2000", "%e %b, %Y", ParseSpecifierErr{
-			Specifier: 'b', Tokens: "jen, 2000", err: fmt.Errorf(`invalid month abbreviation "jen"`)},
+			Specifier: 'b', Tokens: "Jen, 2000", err: fmt.Errorf(`invalid month abbreviation "Jen"`)},
 		},
 		{"bad_weekday", "Ten 1 Jan, 2000", "%a %e %b, %Y", ParseSpecifierErr{
-			Specifier: 'a', Tokens: "ten 1 jan, 2000", err: fmt.Errorf(`invalid week abbreviation "ten"`)},
+			Specifier: 'a', Tokens: "Ten 1 Jan, 2000", err: fmt.Errorf(`invalid week abbreviation "Ten"`)},
 		},
 	}
 
