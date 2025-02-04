@@ -51,7 +51,7 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	date = strings.TrimSpace(date)
 
 	// convert to all lowercase
-	date = strings.ToLower(date)
+	//date = strings.ToLower(date)
 
 	var dt datetime
 	target := date
@@ -272,7 +272,7 @@ func boolPtr(a bool) *bool { return &a }
 
 // Convert a week abbreviation to a defined weekday.
 func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
-	switch abbrev {
+	switch strings.ToLower(abbrev) {
 	case "sun":
 		return time.Sunday, true
 	case "mon":
@@ -293,7 +293,7 @@ func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
 
 // Convert a month abbreviation to a defined month.
 func monthAbbrev(abbrev string) (time.Month, bool) {
-	switch abbrev {
+	switch strings.ToLower(abbrev) {
 	case "jan":
 		return time.January, true
 	case "feb":
@@ -327,7 +327,7 @@ func monthAbbrev(abbrev string) (time.Month, bool) {
 func monthName(name string) (month time.Month, charCount int, ok bool) {
 	for i := 1; i < 13; i++ {
 		m := time.Month(i)
-		if strings.HasPrefix(name, strings.ToLower(m.String())) {
+		if strings.HasPrefix(strings.ToLower(name), strings.ToLower(m.String())) {
 			return m, len(m.String()), true
 		}
 	}

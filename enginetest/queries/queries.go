@@ -10521,7 +10521,15 @@ var DateParseQueries = []QueryTest{
 		Expected: []sql.Row{{"09:30:17"}},
 	},
 	{
+		Query:    "SELECT STR_TO_DATE('A09:30:17','A%h:%i:%s')",
+		Expected: []sql.Row{{"09:30:17"}},
+	},
+	{
 		Query:    "SELECT STR_TO_DATE('a09:30:17','%h:%i:%s')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('A09:30:17','a%h:%i:%s')",
 		Expected: []sql.Row{{nil}},
 	},
 	{
