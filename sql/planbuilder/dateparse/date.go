@@ -36,7 +36,6 @@ func HasDateOrTime(format string) (bool, bool, error) {
 	return hasDate, hasTime, nil
 }
 
-
 // ParseDateWithFormat parses the date string according to the given
 // format string, as defined in the MySQL specification.
 //
