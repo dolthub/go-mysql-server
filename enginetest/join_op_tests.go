@@ -230,6 +230,28 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
+		name: "left join null-filter",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int, z int, index y_idx(y));",
+				"CREATE table ab (a int primary key, b int, c int);",
+				"insert into xy values (1,0,0), (2,null,1), (3,2,2),(4,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ x from xy left join ab on x = a and z = 5 where a is null order by x ",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ x from xy left join ab on x = a and z = 5 where a is null order by x ",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+		},
+	},
+	{
 		name: "partial key null lookup join indexes",
 		setup: [][]string{
 			setup.MydbData[0],
