@@ -249,6 +249,15 @@ var DefaultJoinOpTests = []joinOpTest{
 				Query:    "select /*+ JOIN_ORDER(xy,ab) */ x from xy left join ab on x = a and z = 5 where a is null order by x ",
 				Expected: []sql.Row{{1}, {2}, {3}, {4}},
 			},
+			// partial return
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ x from xy left join ab on x = a and z = 1 where a is null order by x ",
+				Expected: []sql.Row{{1}, {3}, {4}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ x from xy left join ab on x = a and z in (1,2) where a is null order by x ",
+				Expected: []sql.Row{{1}, {4}},
+			},
 		},
 	},
 	{
@@ -264,6 +273,7 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 		tests: []JoinOpTests{
 			{
+				// the literal z should be internally cast to the appropriate string type
 				Query:    "select /*+ JOIN_ORDER(ab,xy) */ count(*) from xy join ab on y = a and z = 0",
 				Expected: []sql.Row{{1}},
 			},
