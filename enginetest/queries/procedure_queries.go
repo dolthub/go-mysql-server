@@ -2453,8 +2453,8 @@ var ProcedureCallTests = []ScriptTest{
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
-				Query:       "CREATE TABLE mytable (i int, s varchar(128));",
-				Expected:    []sql.Row{{types.NewOkResult(0)}},
+				Query:    "CREATE TABLE mytable (i int, s varchar(128));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "CALL proc1(@out_count);",
