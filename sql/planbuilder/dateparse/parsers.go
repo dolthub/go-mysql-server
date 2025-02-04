@@ -3,7 +3,7 @@ package dateparse
 import (
 	"fmt"
 	"strings"
-"time"
+	"time"
 )
 
 // parser defines a function that processes a string and returns the
