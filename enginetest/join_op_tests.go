@@ -252,6 +252,24 @@ var DefaultJoinOpTests = []joinOpTest{
 		},
 	},
 	{
+		name: "type conversion panic bug",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xy (x int primary key, y int, z varchar(10), key (y,z));",
+				"insert into xy values (0,0,'0'), (1,1,'1');",
+				"create table ab (a int primary key, b int);",
+				"insert into ab values (0,0), (1,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ count(*) from xy join ab on y = a and z = 0",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		name: "partial key null lookup join indexes",
 		setup: [][]string{
 			setup.MydbData[0],
