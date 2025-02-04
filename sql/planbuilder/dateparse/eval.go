@@ -5,7 +5,9 @@ import (
 	"time"
 )
 
-func evaluateDate(dt datetime) string {
+// TODO: delete file
+
+func evaluateDate(dt datetime) time.Time {
 	var year, month, day int
 
 	if dt.year != nil {
@@ -27,10 +29,10 @@ func evaluateDate(dt datetime) string {
 		day = dayOffsetted.Day()
 	}
 
-	return fillWithZero(year, 4) + "-" + fillWithZero(month, 2) + "-" + fillWithZero(day, 2)
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
 }
 
-func evaluateTime(dt datetime) string {
+func evaluateTime(dt datetime) time.Time {
 	var hours, minutes, seconds, milliseconds, microseconds, nanoseconds int
 
 	if dt.hours != nil {
@@ -68,7 +70,7 @@ func evaluateTime(dt datetime) string {
 		t = t + "." + fillWithZero(int(nanosecondDuration), 6)
 	}
 
-	return t
+	return time.Date(0, 0, 0, hours, minutes, seconds, int(nanosecondDuration), time.Local)
 }
 
 func fillWithZero(n int, length int) string {
