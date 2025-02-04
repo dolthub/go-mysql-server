@@ -11,7 +11,6 @@ import (
 )
 
 func TestSQLErrorCast(t *testing.T) {
-
 	tests := []struct {
 		err  error
 		code int
@@ -31,6 +30,39 @@ func TestSQLErrorCast(t *testing.T) {
 				assert.Equal(t, err.Number(), test.code)
 			} else {
 				assert.Equal(t, err, nilErr)
+			}
+		})
+	}
+}
+
+func TestWrappedInsertError(t *testing.T) {
+	tests := []struct {
+		err             error
+		expectedErrStrs []string
+	}{
+		{
+			err: ErrInvalidType.New("unhandled mysql error"),
+			expectedErrStrs: []string{
+				"TestWrappedInsertError",              // contains stack trace from this method
+				"invalid type: unhandled mysql error", // contains the wrapped error
+			},
+		},
+		{
+			err: fmt.Errorf("generic error"),
+			expectedErrStrs: []string{
+				"generic error", // contains the wrapped error
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.err), func(t *testing.T) {
+			r := Row{"a", "b"}
+			err := NewWrappedInsertError(r, test.err)
+			require.Error(t, err)
+			extendedOutput := fmt.Sprintf("%+v", err)
+			for _, expectedErrStr := range test.expectedErrStrs {
+				assert.Contains(t, extendedOutput, expectedErrStr)
 			}
 		})
 	}

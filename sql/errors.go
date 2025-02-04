@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -1066,6 +1067,15 @@ func NewWrappedInsertError(r Row, err error) WrappedInsertError {
 
 func (w WrappedInsertError) Error() string {
 	return w.Cause.Error()
+}
+
+// Format implements fmt.Formatter
+func (w WrappedInsertError) Format(s fmt.State, verb rune) {
+	if fmtErr, ok := w.Cause.(fmt.Formatter); ok {
+		fmtErr.Format(s, verb)
+		return
+	}
+	_, _ = io.WriteString(s, w.Error())
 }
 
 // IgnorableError is used propagate information about an error that needs to be ignored and does not interfere with
