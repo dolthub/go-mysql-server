@@ -15,48 +15,48 @@ func TestParseDate(t *testing.T) {
 		name     string
 		date     string
 		format   string
-		expected string
+		expected interface{}
 	}{
-		{"simple", "Jan 3, 2000", "%b %e, %Y", "2000-01-03"},
-		{"simple_with_spaces", "Nov  03 ,   2000", "%b %e, %Y", "2000-11-03"},
-		{"simple_with_spaces_2", "Dec  15 ,   2000", "%b %e, %Y", "2000-12-15"},
-		{"reverse", "2023/Feb/ 1", "%Y/%b/%e", "2023-02-01"},
-		{"reverse_with_spaces", " 2023 /Apr/ 01  ", "%Y/%b/%e", "2023-04-01"},
-		{"weekday", "Thu, Aug 5, 2021", "%a, %b %e, %Y", "2021-08-05"},
-		{"weekday", "Fri, Aug 6, 2021", "%a, %b %e, %Y", "2021-08-06"},
-		{"weekday", "Sat, Aug 7, 2021", "%a, %b %e, %Y", "2021-08-07"},
-		{"weekday", "Sun, Aug 8, 2021", "%a, %b %e, %Y", "2021-08-08"},
-		{"weekday", "Mon, Aug 9, 2021", "%a, %b %e, %Y", "2021-08-09"},
-		{"weekday", "Tue, Aug 10, 2021", "%a, %b %e, %Y", "2021-08-10"},
-		{"weekday", "Wed, Aug 11, 2021", "%a, %b %e, %Y", "2021-08-11"},
+		{"simple", "Jan 3, 2000", "%b %e, %Y", time.Date(2000, time.January, 3, 0, 0, 0, 0, time.UTC)},
+		{"simple_with_spaces", "Nov  03 ,   2000", "%b %e, %Y", time.Date(2000, time.November, 3, 0, 0, 0, 0, time.UTC)},
+		{"simple_with_spaces_2", "Dec  15 ,   2000", "%b %e, %Y", time.Date(2000, time.December, 15, 0, 0, 0, 0, time.UTC)},
+		{"reverse", "2023/Feb/ 1", "%Y/%b/%e", time.Date(2023, time.February, 1, 0, 0, 0, 0, time.UTC)},
+		{"reverse_with_spaces", " 2023 /Apr/ 01  ", "%Y/%b/%e", time.Date(2023, time.April, 1, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Thu, Aug 5, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 5, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Fri, Aug 6, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 6, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Sat, Aug 7, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 7, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Sun, Aug 8, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 8, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Mon, Aug 9, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 9, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Tue, Aug 10, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 10, 0, 0, 0, 0, time.UTC)},
+		{"weekday", "Wed, Aug 11, 2021", "%a, %b %e, %Y", time.Date(2021, time.August, 11, 0, 0, 0, 0, time.UTC)},
 
-		{"time_only", "22:23:00", "%H:%i:%s", "22:23:00"},
-		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", "2000-09-03 22:23:00"},
-		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", "2000-05-03 22:23:00"},
-		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", "2000-07-03 22:23:00"},
-		{"with_am", "Mar 3, 10:23:00 am 2000", "%b %e, %h:%i:%s %p %Y", "2000-03-03 10:23:00"},
+		{"time_only", "22:23:00", "%H:%i:%s", time.Date(-1, time.November, 30, 22, 23, 0, 0, time.UTC)},
+		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", time.Date(2000, time.September, 3, 22, 23, 0, 0, time.UTC)},
+		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.May, 3, 10, 23, 0, 0, time.UTC)},
+		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.July, 3, 10, 23, 0, 0, time.UTC)},
+		{"with_am", "Mar 3, 10:23:00 am 2000", "%b %e, %h:%i:%s %p %Y", time.Date(2000, time.March, 3, 10, 23, 0, 0, time.UTC)},
 
-		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", "2000-01-03 22:23:00"},
+		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %h:%i:%s %p %Y", time.Date(2000, time.January, 3, 10, 23, 0, 0, time.UTC)},
 
-		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", "2000-06-03 22:23:00"},
-		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", "2000-10-21 22:23:00"},
-		{"with_timestamp", "01/02/2003, 12:13:14", "%c/%d/%Y, %T", "2003-01-02 12:13:14"},
+		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.June, 3, 10, 23, 0, 0, time.UTC)},
+		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %h:%i:%s %p %Y", time.Date(2000, time.October, 21, 10, 23, 0, 0, time.UTC)},
+		{"with_timestamp", "01/02/2003, 12:13:14", "%c/%d/%Y, %T", time.Date(2003, time.January, 2, 12, 13, 14, 0, time.UTC)},
 
-		{"month_number", "03: 3, 20", "%m: %e, %y", "2020-03-03"},
-		{"month_name", "march: 3, 20", "%M: %e, %y", "2020-03-03"},
-		{"two_digit_date", "january: 3, 20", "%M: %e, %y", "2020-01-03"},
-		{"two_digit_date_2000", "september: 3, 70", "%M: %e, %y", "1970-09-03"},
-		{"two_digit_date_1900", "may: 3, 69", "%M: %e, %y", "2069-05-03"},
+		{"month_number", "03: 3, 20", "%m: %e, %y", time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC)},
+		{"month_name", "march: 3, 20", "%M: %e, %y", time.Date(2020, time.March, 3, 0, 0, 0, 0, time.UTC)},
+		{"two_digit_date", "january: 3, 20", "%M: %e, %y", time.Date(2020, time.January, 3, 0, 0, 0, 0, time.UTC)},
+		{"two_digit_date_2000", "september: 3, 70", "%M: %e, %y", time.Date(1970, time.September, 3, 0, 0, 0, 0, time.UTC)},
+		{"two_digit_date_1900", "may: 3, 69", "%M: %e, %y", time.Date(2069, time.May, 3, 0, 0, 0, 0, time.UTC)},
 
-		{"microseconds", "01/02/99 314", "%m/%e/%y %f", "1999-01-02 00:00:00.314000"},
-		{"hour_number", "01/02/99 5:14", "%m/%e/%y %h:%i", "1999-01-02 05:14:00"},
-		{"hour_number_2", "01/02/99 5:14", "%m/%e/%y %I:%i", "1999-01-02 05:14:00"},
+		{"microseconds", "01/02/99 314", "%m/%e/%y %f", time.Date(1999, time.January, 2, 0, 0, 0, 314000, time.UTC)},
+		{"hour_number", "01/02/99 5:14", "%m/%e/%y %h:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
+		{"hour_number_2", "01/02/99 5:14", "%m/%e/%y %I:%i", time.Date(1999, time.January, 2, 5, 14, 0, 0, time.UTC)},
 
-		{"timestamp", "01/02/99 05:14:12 PM", "%m/%e/%y %r", "1999-01-02 17:14:12"},
-		{"date_with_seconds", "01/02/99 57", "%m/%e/%y %S", "1999-01-02 00:00:57"},
+		{"timestamp", "01/02/99 05:14:12 PM", "%m/%e/%y %r", time.Date(1999, time.January, 2, 5, 14, 12, 0, time.UTC)},
+		{"date_with_seconds", "01/02/99 57", "%m/%e/%y %S", time.Date(1999, time.January, 2, 0, 0, 57, 0, time.UTC)},
 
-		{"date_by_year_offset", "100 20", "%j %y", "2020-04-09"},
-		{"date_by_year_offset_singledigit_year", "100 5", "%j %y", "2005-04-10"},
+		{"date_by_year_offset", "100 20", "%j %y", time.Date(2020, time.April, 9, 0, 0, 0, 0, time.UTC)},
+		{"date_by_year_offset_singledigit_year", "100 5", "%j %y", time.Date(2005, time.April, 10, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, tt := range tests {
@@ -87,9 +87,9 @@ func TestConversionFailure(t *testing.T) {
 		expectedError string
 	}{
 		// with strict mode with NO_ZERO_IN_DATE,NO_ZERO_DATE enabled, these tests result NULL
-		{"no_year", "Jan 3", "%b %e", "0000-01-03", ""},
-		{"no_day", "Jan 2000", "%b %y", "2020-01-00", ""},
-		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %y", "2020-04-09", ""},
+		{"no_year", "Jan 3", "%b %e", time.Date(0, time.January, 3, 0, 0, 0, 0, time.UTC), ""},
+		{"no_day", "Jan 2000", "%b %y", time.Date(2019, time.December, 31, 0, 0, 0, 0, time.UTC), ""},
+		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %y", time.Date(2020, time.April, 9, 0, 0, 0, 0, time.UTC), ""},
 
 		{"24hour_time_with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
 		{"specifier_end_of_line", "Jan 3", "%b %e %", nil, `"%" found at end of format string`},
