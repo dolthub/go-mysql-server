@@ -9,7 +9,7 @@ const (
 	applyDefaultSelectLimitId     RuleId = iota // applyDefaultSelectLimit
 	validateOffsetAndLimitId                    // validateOffsetAndLimit
 	validateStarExpressionsId                   // validateStarExpressions
-	validateCreateTableId                       // validateCreateTable
+	ValidateCreateTableId                       // validateCreateTable
 	validateAlterTableId                        // validateAlterTable
 	validateExprSemId                           // validateExprSem
 	loadStoredProceduresId                      // loadStoredProcedures
