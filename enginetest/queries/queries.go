@@ -10133,6 +10133,13 @@ from typestable`,
 			{2},
 		},
 	},
+
+	{
+		Query: "select @@sql_mode = 1",
+		Expected: []sql.Row{
+			{false},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
