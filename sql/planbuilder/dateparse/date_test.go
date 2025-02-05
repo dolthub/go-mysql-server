@@ -88,8 +88,8 @@ func TestConversionFailure(t *testing.T) {
 	}{
 		// with strict mode with NO_ZERO_IN_DATE,NO_ZERO_DATE enabled, these tests result NULL
 		{"no_year", "Jan 3", "%b %e", time.Date(0, time.January, 3, 0, 0, 0, 0, time.UTC), ""},
-		{"no_day", "Jan 2000", "%b %y", time.Date(2019, time.December, 31, 0, 0, 0, 0, time.UTC), ""},
-		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %y", time.Date(2020, time.April, 9, 0, 0, 0, 0, time.UTC), ""},
+		{"no_day", "Jan 2000", "%b %Y", time.Date(2000, time.January, 0, 0, 0, 0, 0, time.UTC), ""},
+		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %Y", time.Date(2000, time.April, 9, 0, 0, 0, 0, time.UTC), ""},
 
 		{"24hour_time_with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", nil, "cannot use 24 hour time (H) with AM/PM (p)"},
 		{"specifier_end_of_line", "Jan 3", "%b %e %", nil, `"%" found at end of format string`},
