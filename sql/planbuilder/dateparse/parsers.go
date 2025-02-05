@@ -2,6 +2,7 @@ package dateparse
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func parseAmPm(result *datetime, chars string) (rest string, _ error) {
 	if len(chars) < 2 {
 		return "", fmt.Errorf("expected > 2 chars, found %d", len(chars))
 	}
-	switch chars[:2] {
+	switch strings.ToLower(chars[:2]) {
 	case "am":
 		result.am = boolPtr(true)
 	case "pm":
