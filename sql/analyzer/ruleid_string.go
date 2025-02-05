@@ -11,7 +11,7 @@ func _() {
 	_ = x[applyDefaultSelectLimitId-0]
 	_ = x[validateOffsetAndLimitId-1]
 	_ = x[validateStarExpressionsId-2]
-	_ = x[validateCreateTableId-3]
+	_ = x[ValidateCreateTableId-3]
 	_ = x[validateAlterTableId-4]
 	_ = x[validateExprSemId-5]
 	_ = x[loadStoredProceduresId-6]

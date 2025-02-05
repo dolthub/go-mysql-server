@@ -34,7 +34,7 @@ var OnceBeforeDefault = []Rule{
 	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
 	{replaceCountStarId, replaceCountStar},
 	{validateOffsetAndLimitId, validateOffsetAndLimit},
-	{validateCreateTableId, validateCreateTable},
+	{ValidateCreateTableId, validateCreateTable},
 	{validateAlterTableId, validateAlterTable},
 	{validateExprSemId, validateExprSem},
 	{resolveDropConstraintId, resolveDropConstraint},
