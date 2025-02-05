@@ -168,11 +168,8 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 			return 0, err
 		}
 	}
-	if types.IsTextOnly(compareType) {
+	if _, isSet := compareType.(sql.SetType); !isSet && types.IsTextOnly(compareType) {
 		collationPreference, _ = c.CollationCoercibility(ctx)
-		if err != nil {
-			return 0, err
-		}
 		stringCompareType := compareType.(sql.StringType)
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
