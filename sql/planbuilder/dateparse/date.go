@@ -11,6 +11,30 @@ var (
 	timeSpecifiers = []uint8{'f', 'H', 'h', 'I', 'i', 'k', 'l', 'p', 'r', 'S', 's', 'T'}
 )
 
+// HasDateOrTime returns whether the format string contains date or time specifiers.
+func HasDateOrTime(format string) (hasDate bool, hasTime bool, err error) {
+	_, specifiers, err := parsersFromFormatString(format)
+	if err != nil {
+		return false, false, err
+	}
+
+	for _, s := range dateSpecifiers {
+		if _, ok := specifiers[s]; ok {
+			hasDate = true
+			break
+		}
+	}
+
+	for _, s := range timeSpecifiers {
+		if _, ok := specifiers[s]; ok {
+			hasTime = true
+			break
+		}
+	}
+
+	return hasDate, hasTime, nil
+}
+
 // ParseDateWithFormat parses the date string according to the given
 // format string, as defined in the MySQL specification.
 //
@@ -26,15 +50,11 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 		return nil, err
 	}
 
-	hasDate := false
 	for _, s := range dateSpecifiers {
 		if _, ok := specifiers[s]; ok {
-			hasDate = true
 			break
 		}
 	}
-
-	hasTime := false
 	_, hasAmPm := specifiers['p']
 	for _, s := range timeSpecifiers {
 		if _, ok := specifiers[s]; ok {
@@ -42,16 +62,12 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 			if (s == 'H' || s == 'k' || s == 'T') && hasAmPm {
 				return nil, fmt.Errorf("cannot use 24 hour time (H) with AM/PM (p)")
 			}
-			hasTime = true
 			break
 		}
 	}
 
 	// trim all leading and trailing whitespace
 	date = strings.TrimSpace(date)
-
-	// convert to all lowercase
-	date = strings.ToLower(date)
 
 	var dt datetime
 	target := date
@@ -64,18 +80,52 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 		target = rest
 	}
 
-	var result string
-	if hasDate && hasTime {
-		result = fmt.Sprintf("%s %s", evaluateDate(dt), evaluateTime(dt))
-	} else if hasTime {
-		result = fmt.Sprintf("%s", evaluateTime(dt))
-	} else if hasDate {
-		result = fmt.Sprintf("%s", evaluateDate(dt))
-	} else {
-		return nil, fmt.Errorf("no value to evaluate")
+	if dt.isEmpty() {
+		return nil, nil
 	}
 
-	return result, nil
+	// TODO: depending on if it's a date or time we should return a different type
+	var year, month, day, hours, minutes, seconds, milliseconds, microseconds, nanoseconds int
+	if dt.year != nil {
+		year = int(*dt.year)
+	}
+	if dt.month != nil {
+		month = int(*dt.month)
+	}
+	if dt.day != nil {
+		day = int(*dt.day)
+	}
+	if dt.dayOfYear != nil {
+		// offset from Jan 1st by the specified number of days
+		dayOffsetted := time.Date(year, time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
+		month = int(dayOffsetted.Month())
+		day = dayOffsetted.Day()
+	}
+
+	if dt.hours != nil {
+		hours = int(*dt.hours)
+	}
+	if dt.minutes != nil {
+		minutes = int(*dt.minutes)
+	}
+	if dt.seconds != nil {
+		seconds = int(*dt.seconds)
+	}
+	if dt.milliseconds != nil {
+		milliseconds = int(*dt.milliseconds)
+	}
+	if dt.microseconds != nil {
+		microseconds = int(*dt.microseconds)
+	}
+	if dt.nanoseconds != nil {
+		nanoseconds = int(*dt.nanoseconds)
+	}
+	// convert partial seconds to nanoseconds
+	nanosecondDuration := time.Microsecond*time.Duration(microseconds) +
+		time.Millisecond*time.Duration(milliseconds) +
+		time.Nanosecond*time.Duration(nanoseconds)
+
+	return time.Date(year, time.Month(month), day, hours, minutes, seconds, int(nanosecondDuration), time.UTC), nil
 }
 
 // Convert the user-defined format string into a slice of parser functions
@@ -272,7 +322,7 @@ func boolPtr(a bool) *bool { return &a }
 
 // Convert a week abbreviation to a defined weekday.
 func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
-	switch abbrev {
+	switch strings.ToLower(abbrev) {
 	case "sun":
 		return time.Sunday, true
 	case "mon":
@@ -293,7 +343,7 @@ func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
 
 // Convert a month abbreviation to a defined month.
 func monthAbbrev(abbrev string) (time.Month, bool) {
-	switch abbrev {
+	switch strings.ToLower(abbrev) {
 	case "jan":
 		return time.January, true
 	case "feb":
@@ -323,11 +373,11 @@ func monthAbbrev(abbrev string) (time.Month, bool) {
 }
 
 // TODO: allow this to match partial months
-// janu should match janurary
+// janu should match january
 func monthName(name string) (month time.Month, charCount int, ok bool) {
 	for i := 1; i < 13; i++ {
 		m := time.Month(i)
-		if strings.HasPrefix(name, strings.ToLower(m.String())) {
+		if strings.HasPrefix(strings.ToLower(name), strings.ToLower(m.String())) {
 			return m, len(m.String()), true
 		}
 	}
