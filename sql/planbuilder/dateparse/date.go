@@ -11,13 +11,13 @@ var (
 	timeSpecifiers = []uint8{'f', 'H', 'h', 'I', 'i', 'k', 'l', 'p', 'r', 'S', 's', 'T'}
 )
 
-func HasDateOrTime(format string) (bool, bool, error) {
+// HasDateOrTime returns whether the format string contains date or time specifiers.
+func HasDateOrTime(format string) (hasDate bool, hasTime bool, err error) {
 	_, specifiers, err := parsersFromFormatString(format)
 	if err != nil {
 		return false, false, err
 	}
 
-	hasDate := false
 	for _, s := range dateSpecifiers {
 		if _, ok := specifiers[s]; ok {
 			hasDate = true
@@ -25,7 +25,6 @@ func HasDateOrTime(format string) (bool, bool, error) {
 		}
 	}
 
-	hasTime := false
 	for _, s := range timeSpecifiers {
 		if _, ok := specifiers[s]; ok {
 			hasTime = true
