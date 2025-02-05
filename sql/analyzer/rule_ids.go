@@ -6,25 +6,25 @@ type RuleId int
 
 const (
 	// once before
-	applyDefaultSelectLimitId RuleId = iota // applyDefaultSelectLimit
-	validateOffsetAndLimitId                // validateOffsetAndLimit
-	validateStarExpressionsId               // validateStarExpressions
-	ValidateCreateTableId                   // validateCreateTable
-	validateAlterTableId                    // validateAlterTable
-	validateExprSemId                       // validateExprSem
-	loadStoredProceduresId                  // loadStoredProcedures
-	validateDropTablesId                    // validateDropTables
-	resolveDropConstraintId                 // resolveDropConstraint
-	validateDropConstraintId                // validateDropConstraint
-	resolveCreateSelectId                   // resolveCreateSelect
-	resolveSubqueriesId                     // resolveSubqueries
-	resolveUnionsId                         // resolveUnions
-	ValidateColumnDefaultsId                // validateColumnDefaults
-	validateCreateTriggerId                 // validateCreateTrigger
-	validateReadOnlyDatabaseId              // validateReadOnlyDatabase
-	validateReadOnlyTransactionId           // validateReadOnlyTransaction
-	validateDatabaseSetId                   // validateDatabaseSet
-	validatePrivilegesId                    // validatePrivileges
+	applyDefaultSelectLimitId     RuleId = iota // applyDefaultSelectLimit
+	validateOffsetAndLimitId                    // validateOffsetAndLimit
+	validateStarExpressionsId                   // validateStarExpressions
+	ValidateCreateTableId                       // validateCreateTable
+	validateAlterTableId                        // validateAlterTable
+	validateExprSemId                           // validateExprSem
+	loadStoredProceduresId                      // loadStoredProcedures
+	validateDropTablesId                        // validateDropTables
+	resolveDropConstraintId                     // resolveDropConstraint
+	validateDropConstraintId                    // validateDropConstraint
+	resolveCreateSelectId                       // resolveCreateSelect
+	resolveSubqueriesId                         // resolveSubqueries
+	resolveUnionsId                             // resolveUnions
+	ValidateColumnDefaultsId                    // validateColumnDefaults
+	validateCreateTriggerId                     // validateCreateTrigger
+	validateReadOnlyDatabaseId                  // validateReadOnlyDatabase
+	validateReadOnlyTransactionId               // validateReadOnlyTransaction
+	validateDatabaseSetId                       // validateDatabaseSet
+	validatePrivilegesId                        // validatePrivileges
 
 	// default
 	flattenTableAliasesId          // flattenTableAliases
