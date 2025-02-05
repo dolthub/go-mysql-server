@@ -65,6 +65,7 @@ const (
 	assignRoutinesId             // assignRoutines
 	modifyUpdateExprsForJoinId   // modifyUpdateExprsForJoin
 	applyForeignKeysId           // applyForeignKeys
+	interpreterId                // interpreter
 
 	// validate
 	validateResolvedId          // validateResolved

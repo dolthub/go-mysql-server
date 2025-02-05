@@ -91,6 +91,7 @@ func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseP
 	if idh, ok := harness.(IndexDriverHarness); ok {
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(NewContext(harness)))
 	}
+	analyzer.Runner = engine
 
 	return engine
 }

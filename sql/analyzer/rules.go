@@ -92,6 +92,7 @@ var OnceAfterDefault = []Rule{
 	{assignRoutinesId, assignRoutines},
 	{modifyUpdateExprsForJoinId, modifyUpdateExprsForJoin},
 	{applyForeignKeysId, applyForeignKeys},
+	{interpreterId, interpreter},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.
