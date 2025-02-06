@@ -291,10 +291,6 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	qFlags.Set(sql.QFlagRelSubquery)
 
-	if trigger.TriggerName == "trig" {
-		print()
-	}
-
 	triggerLogic, err := getTriggerLogic(ctx, a, originalNode, scope, trigger, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, err

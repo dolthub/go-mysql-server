@@ -31,6 +31,7 @@ type Call struct {
 	Procedure *Procedure
 	Pref      *expression.ProcedureReference
 	cat       sql.Catalog
+	Analyzed  bool
 }
 
 var _ sql.Node = (*Call)(nil)

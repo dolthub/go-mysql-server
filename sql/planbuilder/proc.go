@@ -19,14 +19,12 @@ import (
 	"strconv"
 	"strings"
 
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
+"github.com/dolthub/go-mysql-server/sql"
+"github.com/dolthub/go-mysql-server/sql/expression"
+"github.com/dolthub/go-mysql-server/sql/plan"
+"github.com/dolthub/go-mysql-server/sql/types"
+ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 type declareState uint8
@@ -273,7 +271,6 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 	bodyStr := strings.TrimSpace(procDetails.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
 	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, procDetails.CreateStatement)
 
-	// TODO: validate?
 	proc = plan.NewProcedure(
 		procDetails.Name,
 		procStmt.ProcedureSpec.Definer,
@@ -511,46 +508,6 @@ func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements, fu
 	}
 
 	return plan.NewBlock(statements)
-}
-
-func (b *Builder) validateStoredProcedure(node sql.Node) {
-	// For now, we don't support creating any of the following within stored procedures.
-	// These will be removed in the future, but cause issues with the current execution plan.
-	var err error
-	spUnsupportedErr := errors.NewKind("creating %s in stored procedures is currently unsupported " +
-		"and will be added in a future release")
-	transform.Inspect(node, func(n sql.Node) bool {
-		switch n.(type) {
-		case *plan.CreateTable:
-			err = spUnsupportedErr.New("tables")
-		case *plan.CreateTrigger:
-			err = spUnsupportedErr.New("triggers")
-		case *plan.CreateProcedure:
-			err = spUnsupportedErr.New("procedures")
-		case *plan.CreateDB:
-			err = spUnsupportedErr.New("databases")
-		case *plan.CreateForeignKey:
-			err = spUnsupportedErr.New("foreign keys")
-		case *plan.CreateIndex:
-			err = spUnsupportedErr.New("indexes")
-		case *plan.CreateView:
-			err = spUnsupportedErr.New("views")
-		case *plan.LockTables: // Blocked in vitess, but this is for safety
-			err = sql.ErrProcedureInvalidBodyStatement.New("LOCK TABLES")
-		case *plan.UnlockTables: // Blocked in vitess, but this is for safety
-			err = sql.ErrProcedureInvalidBodyStatement.New("UNLOCK TABLES")
-		case *plan.Use: // Blocked in vitess, but this is for safety
-			err = sql.ErrProcedureInvalidBodyStatement.New("USE")
-		case *plan.LoadData:
-			err = sql.ErrProcedureInvalidBodyStatement.New("LOAD DATA")
-		default:
-			return true
-		}
-		return false
-	})
-	if err != nil {
-		b.handleErr(err)
-	}
 }
 
 func (b *Builder) buildFetchCursor(inScope *scope, fetchCursor *ast.FetchCursor) (outScope *scope) {

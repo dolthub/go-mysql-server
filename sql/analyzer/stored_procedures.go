@@ -27,7 +27,6 @@ import (
 
 // loadStoredProcedures loads non-built-in stored procedures for all databases on relevant calls.
 func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector) (*plan.Scope, error) {
-	// TODO: possible that we can just delete this entire rule
 	if scope.ProceduresPopulating() {
 		return scope, nil
 	}
@@ -54,7 +53,6 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 		for _, procedure := range procedures {
 			if procedure.Name != "" {
 			}
-			// TODO: no need to build a procedure just for a show statement??
 			proc, _, err := planbuilder.BuildProcedureHelper(ctx, a.Catalog, false, nil, database, nil, procedure)
 			if err != nil {
 				// TODO: alternatively just have BuildProcedureHelper always return a procedure with validation error
@@ -166,11 +164,8 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		if call.Procedure.Name == "add_entry" {
-			print()
-		}
-		if call.Procedure.Name == "back_up" {
-			print()
+		if call.Analyzed {
+			return n, transform.SameTree, nil
 		}
 		if scope.IsEmpty() {
 			scope = scope.WithProcedureCache(plan.NewProcedureCache())
@@ -194,7 +189,10 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		if !ok {
 			return nil, transform.SameTree, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
 		}
-		return call.WithProcedure(analyzedProc), transform.NewTree, nil
+		// stored procedures nested within triggers may attempt to analyze this twice, causing problems like double projections
+		newCall := call.WithProcedure(analyzedProc)
+		newCall.Analyzed = true
+		return newCall, transform.NewTree, nil
 	})
 	if err != nil {
 		return nil, transform.SameTree, err

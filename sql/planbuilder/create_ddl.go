@@ -232,9 +232,6 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
-	// TODO: need to validate limit clauses for non-integers, but not other bugs
-	// TODO: validate for recursion and other ddl here
-
 	outScope = inScope.push()
 	outScope.node = plan.NewCreateProcedure(db, spd, bodyStr)
 	return outScope

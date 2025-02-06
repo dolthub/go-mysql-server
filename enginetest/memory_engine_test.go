@@ -198,56 +198,17 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
-		//{
-		//	Name: "test script",
-		//	Assertions: []queries.ScriptTestAssertion{
-		//		{
-		//			Query:    "create procedure p() begin select 1; select 2; end;",
-		//			Expected: []sql.Row{},
-		//		},
-		//		{
-		//			Query:    "call p();",
-		//			Expected: []sql.Row{},
-		//		},
-		//	},
-		//},
-		//{
-		//	Name: "test",
-		//	SetUpScript: []string{
-		//		"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-		//		"CREATE PROCEDURE add_entry(i INT, s TEXT) INSERT INTO t0 (v1, v2) VALUES (2 * i, s);",
-		//	},
-		//	Assertions: []queries.ScriptTestAssertion{
-		//		{
-		//			Query:    "CALL add_entry(4, 'aaa');",
-		//			Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
-		//		},
-		//		{
-		//			Query:    "SELECT * FROM t0;",
-		//			Expected: []sql.Row{{1, 8, "aaa"}},
-		//		},
-		//	},
-		//},
 		{
-			Name: "non-existent procedure in trigger body",
+			Name: "test script",
 			SetUpScript: []string{
-				"CREATE TABLE t0 (id INT PRIMARY KEY AUTO_INCREMENT, v1 INT, v2 TEXT);",
-				"CREATE TABLE t1 (id INT PRIMARY KEY AUTO_INCREMENT, vv1 INT, vv2 TEXT);",
-				"CREATE TRIGGER trig AFTER INSERT ON t0 FOR EACH ROW BEGIN CALL back_up(NEW.v1, NEW.v2); END;",
-				"CREATE PROCEDURE add_entry(i INT, s TEXT) INSERT INTO t0 (v1, v2) VALUES (i, s);",
-				//"CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF; INSERT INTO t0 (v1, v2) VALUES (i, s); END;",
-				"CREATE PROCEDURE back_up(num INT, msg TEXT) INSERT INTO t1 (vv1, vv2) VALUES (num, msg);",
+				"create table t (i int);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "CALL add_entry(4, 'aaa');",
-					Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
-				},
-				{
-					Query:    "SELECT * FROM t1;",
-					Expected: []sql.Row{{1, 8, "aaa"}},
+					Query:    "select 1 into @a",
+					Expected: []sql.Row{},
 				},
 			},
 		},

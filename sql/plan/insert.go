@@ -82,9 +82,6 @@ var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
-	if d, ok := dst.(*InsertDestination); ok && d.DestinationName == "t1" {
-		print()
-	}
 	return &InsertInto{
 		db:          db,
 		Destination: dst,
