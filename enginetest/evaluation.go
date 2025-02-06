@@ -300,7 +300,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 			if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
 				t.Skip()
 			}
-			
+
 			if assertion.Skip {
 				t.Skip()
 			}
