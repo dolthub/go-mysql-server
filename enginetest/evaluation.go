@@ -301,6 +301,10 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 				t.Skip()
 			}
 
+			if assertion.Skip {
+				t.Skip()
+			}
+
 			if assertion.ExpectedErr != nil {
 				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
 			} else if assertion.ExpectedErrStr != "" {
