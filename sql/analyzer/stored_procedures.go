@@ -166,6 +166,12 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		if !ok {
 			return n, transform.SameTree, nil
 		}
+		if call.Procedure.Name == "add_entry" {
+			print()
+		}
+		if call.Procedure.Name == "back_up" {
+			print()
+		}
 		if scope.IsEmpty() {
 			scope = scope.WithProcedureCache(plan.NewProcedureCache())
 		}
