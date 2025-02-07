@@ -15,15 +15,15 @@
 package main
 
 import (
+	"cmp"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 	"unsafe"
-
-	"golang.org/x/exp/constraints"
 )
 
 var Header = `// Copyright 2023 Dolthub, Inc.
@@ -89,7 +89,7 @@ func main() {
 				weightKeys = append(weightKeys[:j], weightKeys[j+1:]...)
 			}
 		}
-		sort.Strings(duplicateKeyNames)
+		slices.Sort(duplicateKeyNames)
 		// Find the common prefix of all names if they exist, else concatenate all names
 		if len(duplicateKeyNames) > 0 {
 			// Grab the duplicated map and delete the first key
@@ -337,13 +337,8 @@ var WeightMaps = map[string]map[rune]int32{
 
 var FileContentHashes = map[string]uint64{}
 
-func SortedMapKeys[K constraints.Ordered, V any](m map[K]V) []K {
-	keys := make([]K, 0, len(m))
-	for key := range m {
-		keys = append(keys, key)
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-	return keys
+func SortedMapKeys[K cmp.Ordered, V any](m map[K]V) []K {
+	return slices.Sorted(maps.Keys(m))
 }
 
 func CommonPrefix(str1 string, str2 string) string {

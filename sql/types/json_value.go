@@ -21,15 +21,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/dolthub/jsonpath"
 	"github.com/shopspring/decimal"
-	"golang.org/x/exp/maps"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -728,7 +728,7 @@ func jsonObjectKeyIntersection(a, b JsonObject) (ks []string) {
 			ks = append(ks, key)
 		}
 	}
-	sort.Strings(ks)
+	slices.Sort(ks)
 	return
 }
 
@@ -1196,10 +1196,7 @@ type JSONIter struct {
 
 func NewJSONIter(json JsonObject) JSONIter {
 	json = maps.Clone(json)
-	keys := maps.Keys(json)
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
+	keys := slices.Sorted(maps.Keys(json))
 	return JSONIter{
 		doc:  &json,
 		keys: keys,
