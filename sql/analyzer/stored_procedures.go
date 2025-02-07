@@ -177,6 +177,14 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}()
 		}
 
+		esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if esp != nil {
+			return call, transform.SameTree, nil
+		}
+
 		if _, isStoredProcDb := call.Database().(sql.StoredProcedureDatabase); !isStoredProcDb {
 			return nil, transform.SameTree, sql.ErrStoredProceduresNotSupported.New(call.Database().Name())
 		}

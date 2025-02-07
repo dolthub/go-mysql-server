@@ -310,8 +310,6 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		db = b.resolveDb(dbName)
 	} else if b.ctx.GetCurrentDatabase() != "" {
 		db = b.currentDb()
-	} else {
-		b.handleErr(sql.ErrDatabaseNotFound.New(c.ProcName.Qualifier.String()))
 	}
 
 	var proc *plan.Procedure
