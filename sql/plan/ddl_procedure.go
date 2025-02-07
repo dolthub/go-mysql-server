@@ -91,54 +91,10 @@ func (*CreateProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.C
 
 // String implements the sql.Node interface.
 func (c *CreateProcedure) String() string {
-	// move this logic elsewhere
-	return "TODO"
-	//definer := ""
-	//if c.Procedure.Definer != "" {
-	//	definer = fmt.Sprintf(" DEFINER = %s", c.Procedure.Definer)
-	//}
-	//params := ""
-	//for i, param := range c.Procedure.Params {
-	//	if i > 0 {
-	//		params += ", "
-	//	}
-	//	params += param.String()
-	//}
-	//comment := ""
-	//if c.Procedure.Comment != "" {
-	//	comment = fmt.Sprintf(" COMMENT '%s'", c.Procedure.Comment)
-	//}
-	//characteristics := ""
-	//for _, characteristic := range c.Procedure.Characteristics {
-	//	characteristics += fmt.Sprintf(" %s", characteristic.String())
-	//}
-	//return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
-	//	definer, c.Procedure.Name, params, c.Procedure.SecurityContext.String(), comment, characteristics, c.Procedure.String())
+	return c.StoredProcDetails.CreateStatement
 }
 
 // DebugString implements the sql.DebugStringer interface.
 func (c *CreateProcedure) DebugString() string {
-	// move this logic elsewhere
-	return "TODO"
-	//definer := ""
-	//if c.Procedure.Definer != "" {
-	//	definer = fmt.Sprintf(" DEFINER = %s", c.Procedure.Definer)
-	//}
-	//params := ""
-	//for i, param := range c.Procedure.Params {
-	//	if i > 0 {
-	//		params += ", "
-	//	}
-	//	params += param.String()
-	//}
-	//comment := ""
-	//if c.Procedure.Comment != "" {
-	//	comment = fmt.Sprintf(" COMMENT '%s'", c.Procedure.Comment)
-	//}
-	//characteristics := ""
-	//for _, characteristic := range c.Procedure.Characteristics {
-	//	characteristics += fmt.Sprintf(" %s", characteristic.String())
-	//}
-	//return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
-	//	definer, c.Procedure.Name, params, c.Procedure.SecurityContext.String(), comment, characteristics, sql.DebugString(c.Procedure))
+	return c.StoredProcDetails.CreateStatement
 }
