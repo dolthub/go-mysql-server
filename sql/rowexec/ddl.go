@@ -1128,16 +1128,9 @@ func createIndexesForCreateTable(ctx *sql.Context, db sql.Database, tableNode sq
 }
 
 func (b *BaseBuilder) buildCreateProcedure(ctx *sql.Context, n *plan.CreateProcedure, row sql.Row) (sql.RowIter, error) {
-	sqlMode := sql.LoadSqlMode(ctx)
 	return &createProcedureIter{
-		spd: sql.StoredProcedureDetails{
-			Name:            n.Name,
-			CreateStatement: n.CreateProcedureString,
-			CreatedAt:       n.CreatedAt,
-			ModifiedAt:      n.ModifiedAt,
-			SqlMode:         sqlMode.String(),
-		},
-		db: n.Database(),
+		spd: n.StoredProcDetails,
+		db:  n.Database(),
 	}, nil
 }
 

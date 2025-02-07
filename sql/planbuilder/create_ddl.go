@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -25,11 +26,18 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	b.qFlags.Set(sql.QFlagCreateTrigger)
+	defer func() {
+		b.qFlags.Unset(sql.QFlagCreateTrigger)
+	}()
+	if b.qFlags.IsSet(sql.QFlagCreateEvent) || b.qFlags.IsSet(sql.QFlagCreateProcedure) {
+		b.handleErr(fmt.Errorf("can't create a TRIGGER from within another stored routine"))
+	}
+
 	outScope = inScope.push()
 	var triggerOrder *plan.TriggerOrder
 	if c.TriggerSpec.Order != nil {
@@ -132,12 +140,9 @@ func getCurrentUserForDefiner(ctx *sql.Context, definer string) string {
 	return definer
 }
 
-func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
-	b.qFlags.Set(sql.QFlagCreateProcedure)
-	defer func() { b.qFlags.Unset(sql.QFlagCreateProcedure) }()
-
+func (b *Builder) buildProcedureParams(procParams []ast.ProcedureParam) []plan.ProcedureParam {
 	var params []plan.ProcedureParam
-	for _, param := range c.ProcedureSpec.Params {
+	for _, param := range procParams {
 		var direction plan.ProcedureParamDirection
 		switch param.Direction {
 		case ast.ProcedureParamDirection_In:
@@ -161,11 +166,14 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 			Variadic:  false,
 		})
 	}
+	return params
+}
 
+func (b *Builder) buildProcedureCharacteristics(procCharacteristics []ast.Characteristic) ([]plan.Characteristic, plan.ProcedureSecurityContext, string) {
 	var characteristics []plan.Characteristic
 	securityType := plan.ProcedureSecurityContext_Definer // Default Security Context
 	comment := ""
-	for _, characteristic := range c.ProcedureSpec.Characteristics {
+	for _, characteristic := range procCharacteristics {
 		switch characteristic.Type {
 		case ast.CharacteristicValue_Comment:
 			comment = characteristic.Comment
@@ -192,60 +200,229 @@ func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuer
 			b.handleErr(err)
 		}
 	}
+	return characteristics, securityType, comment
+}
 
-	inScope.initProc()
-	procName := strings.ToLower(c.ProcedureSpec.ProcName.Name.String())
-	for _, p := range params {
-		// populate inScope with the procedure parameters. this will be
-		// subject maybe a bug where an inner procedure has access to
-		// outer procedure parameters.
-		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
+func (b *Builder) buildCreateProcedure(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	b.qFlags.Set(sql.QFlagCreateProcedure)
+	defer func() {
+		b.qFlags.Unset(sql.QFlagCreateProcedure)
+	}()
+	if b.qFlags.IsSet(sql.QFlagCreateEvent) || b.qFlags.IsSet(sql.QFlagCreateTrigger) {
+		b.handleErr(fmt.Errorf("can't create a PROCEDURE from within another stored routine"))
 	}
-	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 
-	bodyScope := b.buildSubquery(inScope, c.ProcedureSpec.Body, bodyStr, fullQuery)
-	b.validateStoredProcedure(bodyScope.node)
-
-	// Check for recursive calls to same procedure
-	transform.Inspect(bodyScope.node, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case *plan.Call:
-			if strings.EqualFold(procName, n.Name) {
-				b.handleErr(sql.ErrProcedureRecursiveCall.New(procName))
-			}
-			return false
-		default:
-			return true
-		}
-	})
+	b.validateCreateProcedure(inScope, subQuery)
 
 	var db sql.Database = nil
-	dbName := c.ProcedureSpec.ProcName.Qualifier.String()
-	if dbName != "" {
+	if dbName := c.ProcedureSpec.ProcName.Qualifier.String(); dbName != "" {
 		db = b.resolveDb(dbName)
 	} else {
 		db = b.currentDb()
 	}
 
+	now := time.Now()
+	spd := sql.StoredProcedureDetails{
+		Name:            strings.ToLower(c.ProcedureSpec.ProcName.Name.String()),
+		CreateStatement: subQuery,
+		CreatedAt:       now,
+		ModifiedAt:      now,
+		SqlMode:         sql.LoadSqlMode(b.ctx).String(),
+	}
+
+	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+
 	outScope = inScope.push()
-	outScope.node = plan.NewCreateProcedure(
-		db,
-		procName,
-		c.ProcedureSpec.Definer,
-		params,
-		time.Now(),
-		time.Now(),
-		securityType,
-		characteristics,
-		bodyScope.node,
-		comment,
-		subQuery,
-		bodyStr,
-	)
+	outScope.node = plan.NewCreateProcedure(db, spd, bodyStr)
 	return outScope
 }
 
+func (b *Builder) validateBlock(inScope *scope, stmts ast.Statements) {
+	for _, s := range stmts {
+		switch s.(type) {
+		case *ast.Declare:
+		default:
+			if inScope.procActive() {
+				inScope.proc.NewState(dsBody)
+			}
+		}
+		b.validateStatement(inScope, s)
+	}
+}
+
+func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
+	// TODO: a ton of this code is repeated from their build counterparts, consider refactoring into helper methods
+	switch s := stmt.(type) {
+	case *ast.DDL:
+		switch s.Action {
+		case ast.TruncateStr:
+		case ast.CreateStr:
+			if s.ProcedureSpec != nil {
+				b.handleErr(fmt.Errorf("can't create a PROCEDURE from within another stored routine"))
+			}
+			if s.TriggerSpec != nil {
+				b.handleErr(fmt.Errorf("can't create a TRIGGER from within another stored routine"))
+			}
+			b.handleErr(fmt.Errorf("CREATE statements in CREATE PROCEDURE not yet supported"))
+		default:
+			b.handleErr(fmt.Errorf("DDL in CREATE PROCEDURE not yet supported"))
+		}
+	case *ast.DBDDL:
+		b.handleErr(fmt.Errorf("DBDDL in CREATE PROCEDURE not yet supported"))
+	case *ast.Declare:
+		if s.Condition != nil {
+			dc := s.Condition
+			if dc.SqlStateValue != "" {
+				if len(dc.SqlStateValue) != 5 {
+					err := fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+					b.handleErr(err)
+				}
+				if dc.SqlStateValue[0:2] == "00" {
+					err := fmt.Errorf("invalid SQLSTATE VALUE: '%s'", dc.SqlStateValue)
+					b.handleErr(err)
+				}
+			} else {
+				number, err := strconv.ParseUint(string(dc.MysqlErrorCode.Val), 10, 64)
+				if err != nil || number == 0 {
+					// We use our own error instead
+					err := fmt.Errorf("invalid value '%s' for MySQL error code", string(dc.MysqlErrorCode.Val))
+					b.handleErr(err)
+				}
+				//TODO: implement MySQL error code support
+				err = sql.ErrUnsupportedSyntax.New(ast.String(s))
+				b.handleErr(err)
+			}
+			inScope.proc.AddCondition(plan.NewDeclareCondition(dc.Name, 0, ""))
+		} else if s.Variables != nil {
+			typ, err := types.ColumnTypeToType(&s.Variables.VarType)
+			if err != nil {
+				b.handleErr(err)
+			}
+			for _, v := range s.Variables.Names {
+				varName := strings.ToLower(v.String())
+				param := expression.NewProcedureParam(varName, typ)
+				inScope.proc.AddVar(param)
+				inScope.newColumn(scopeColumn{col: varName, typ: typ, scalar: param})
+			}
+		} else if s.Cursor != nil {
+			inScope.proc.AddCursor(s.Cursor.Name)
+		} else if s.Handler != nil {
+			switch s.Handler.ConditionValues[0].ValueType {
+			case ast.DeclareHandlerCondition_NotFound:
+			case ast.DeclareHandlerCondition_SqlException:
+			default:
+				err := sql.ErrUnsupportedSyntax.New(ast.String(s))
+				b.handleErr(err)
+			}
+			inScope.proc.AddHandler(nil)
+		}
+	case *ast.BeginEndBlock:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, false)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.Loop:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, true)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.Repeat:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, true)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.While:
+		blockScope := inScope.push()
+		blockScope.initProc()
+		blockScope.proc.AddLabel(s.Label, true)
+		b.validateBlock(blockScope, s.Statements)
+	case *ast.IfStatement:
+		for _, cond := range s.Conditions {
+			b.validateBlock(inScope, cond.Statements)
+		}
+		if s.Else != nil {
+			b.validateBlock(inScope, s.Else)
+		}
+	case *ast.Iterate:
+		if exists, isLoop := inScope.proc.HasLabel(s.Label); !exists || !isLoop {
+			err := sql.ErrLoopLabelNotFound.New("ITERATE", s.Label)
+			b.handleErr(err)
+		}
+	case *ast.Signal:
+		if s.ConditionName != "" {
+			signalName := strings.ToLower(s.ConditionName)
+			condition := inScope.proc.GetCondition(signalName)
+			if condition == nil {
+				err := sql.ErrDeclareConditionNotFound.New(signalName)
+				b.handleErr(err)
+			}
+		}
+	case *ast.FetchCursor:
+		if !inScope.proc.HasCursor(s.Name) {
+			b.handleErr(sql.ErrCursorNotFound.New(s.Name))
+		}
+	case *ast.OpenCursor:
+		if !inScope.proc.HasCursor(s.Name) {
+			b.handleErr(sql.ErrCursorNotFound.New(s.Name))
+		}
+	case *ast.CloseCursor:
+		if !inScope.proc.HasCursor(s.Name) {
+			b.handleErr(sql.ErrCursorNotFound.New(s.Name))
+		}
+
+	// limit validation
+	case *ast.Select:
+		if s.Limit != nil {
+			if expr, ok := s.Limit.Rowcount.(*ast.ColName); ok && inScope.procActive() {
+				if col, ok := inScope.proc.GetVar(expr.String()); ok {
+					// proc param is OK
+					if pp, ok := col.scalarGf().(*expression.ProcedureParam); ok {
+						if !pp.Type().Promote().Equals(types.Int64) && !pp.Type().Promote().Equals(types.Uint64) {
+							err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type().String())
+							b.handleErr(err)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func (b *Builder) validateCreateProcedure(inScope *scope, createStmt string) {
+	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, createStmt, ';', false, b.parserOpts)
+	procStmt := stmt.(*ast.DDL)
+
+	// validate parameters
+	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
+	paramNames := make(map[string]struct{})
+	for _, param := range procParams {
+		paramName := strings.ToLower(param.Name)
+		if _, ok := paramNames[paramName]; ok {
+			b.handleErr(sql.ErrDeclareVariableDuplicate.New(paramName))
+		}
+		paramNames[param.Name] = struct{}{}
+	}
+
+	inScope.initProc()
+	for _, p := range procParams {
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
+	}
+
+	bodyStmt := procStmt.ProcedureSpec.Body
+	b.validateStatement(inScope, bodyStmt)
+
+	// TODO: check for limit clauses that are not integers
+}
+
 func (b *Builder) buildCreateEvent(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	b.qFlags.Set(sql.QFlagCreateEvent)
+	defer func() {
+		b.qFlags.Unset(sql.QFlagCreateEvent)
+	}()
+	if b.qFlags.IsSet(sql.QFlagCreateTrigger) || b.qFlags.IsSet(sql.QFlagCreateProcedure) {
+		b.handleErr(fmt.Errorf("can't create an EVENT from within another stored routine"))
+	}
+
 	outScope = inScope.push()
 	eventSpec := c.EventSpec
 	dbName := strings.ToLower(eventSpec.EventName.Qualifier.String())

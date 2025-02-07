@@ -2441,6 +2441,27 @@ var ProcedureCallTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "creating invalid procedure doesn't error until it is called",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "CALL proc1(@out_count);",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "CREATE TABLE mytable (i int, s varchar(128));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "CALL proc1(@out_count);",
+				ExpectedErr: sql.ErrFunctionNotFound,
+			},
+		},
+	},
 }
 
 var ProcedureDropTests = []ScriptTest{
@@ -2787,25 +2808,12 @@ var ProcedureShowCreate = []ScriptTest{
 }
 
 var ProcedureCreateInSubroutineTests = []ScriptTest{
-	//TODO: Match MySQL behavior (https://github.com/dolthub/dolt/issues/8053)
-	{
-		Name: "procedure must not contain CREATE PROCEDURE",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "CREATE PROCEDURE foo() CREATE PROCEDURE bar() SELECT 0;",
-				// MySQL output: "Can't create a PROCEDURE from within another stored routine",
-				ExpectedErrStr: "creating procedures in stored procedures is currently unsupported and will be added in a future release",
-			},
-		},
-	},
 	{
 		Name: "event must not contain CREATE PROCEDURE",
 		Assertions: []ScriptTestAssertion{
 			{
-				// Skipped because MySQL errors here but we don't.
 				Query:          "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE PROCEDURE bar() SELECT 1;",
-				ExpectedErrStr: "Can't create a PROCEDURE from within another stored routine",
-				Skip:           true,
+				ExpectedErrStr: "can't create a PROCEDURE from within another stored routine",
 			},
 		},
 	},
@@ -2828,11 +2836,11 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "create procedure p() create table t (pk int);",
-				ExpectedErrStr: "creating tables in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
 			},
 			{
 				Query:          "create procedure p() begin create table t (pk int); end;",
-				ExpectedErrStr: "creating tables in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
 			},
 		},
 	},
@@ -2844,11 +2852,11 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "create procedure p() create trigger trig before insert on t for each row begin select 1; end;",
-				ExpectedErrStr: "creating triggers in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "can't create a TRIGGER from within another stored routine",
 			},
 			{
 				Query:          "create procedure p() begin create trigger trig before insert on t for each row begin select 1; end; end;",
-				ExpectedErrStr: "creating triggers in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "can't create a TRIGGER from within another stored routine",
 			},
 		},
 	},
@@ -2858,11 +2866,11 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "create procedure p() create database procdb;",
-				ExpectedErrStr: "creating databases in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "DBDDL in CREATE PROCEDURE not yet supported",
 			},
 			{
 				Query:          "create procedure p() begin create database procdb; end;",
-				ExpectedErrStr: "creating databases in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "DBDDL in CREATE PROCEDURE not yet supported",
 			},
 		},
 	},
@@ -2872,11 +2880,11 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "create procedure p() create view v as select 1;",
-				ExpectedErrStr: "creating views in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
 			},
 			{
 				Query:          "create procedure p() begin create view v as select 1; end;",
-				ExpectedErrStr: "creating views in stored procedures is currently unsupported and will be added in a future release",
+				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
 			},
 		},
 	},

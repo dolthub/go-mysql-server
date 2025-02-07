@@ -31,6 +31,7 @@ type Call struct {
 	Procedure *Procedure
 	Pref      *expression.ProcedureReference
 	cat       sql.Catalog
+	Analyzed  bool
 }
 
 var _ sql.Node = (*Call)(nil)
@@ -39,13 +40,14 @@ var _ sql.Expressioner = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
 // NewCall returns a *Call node.
-func NewCall(db sql.Database, name string, params []sql.Expression, asOf sql.Expression, catalog sql.Catalog) *Call {
+func NewCall(db sql.Database, name string, params []sql.Expression, proc *Procedure, asOf sql.Expression, catalog sql.Catalog) *Call {
 	return &Call{
-		db:     db,
-		Name:   name,
-		Params: params,
-		asOf:   asOf,
-		cat:    catalog,
+		db:        db,
+		Name:      name,
+		Params:    params,
+		Procedure: proc,
+		asOf:      asOf,
+		cat:       catalog,
 	}
 }
 

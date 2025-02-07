@@ -42,56 +42,35 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 
 	allDatabases := a.Catalog.AllDatabases(ctx)
 	for _, database := range allDatabases {
-		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
-			procedures, err := pdb.GetStoredProcedures(ctx)
+		pdb, ok := database.(sql.StoredProcedureDatabase)
+		if !ok {
+			continue
+		}
+		procedures, err := pdb.GetStoredProcedures(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, procedure := range procedures {
+			if procedure.Name != "" {
+			}
+			proc, _, err := planbuilder.BuildProcedureHelper(ctx, a.Catalog, false, nil, database, nil, procedure)
+			if err != nil {
+				// TODO: alternatively just have BuildProcedureHelper always return a procedure with validation error
+				proc = &plan.Procedure{
+					Name:                  procedure.Name,
+					CreateProcedureString: procedure.CreateStatement,
+					CreatedAt:             procedure.CreatedAt,
+					ModifiedAt:            procedure.ModifiedAt,
+					ValidationError:       err,
+				}
+			}
+			err = scope.Procedures.Register(database.Name(), proc)
 			if err != nil {
 				return nil, err
-			}
-
-			for _, procedure := range procedures {
-				var procToRegister *plan.Procedure
-				var parsedProcedure sql.Node
-				b := planbuilder.New(ctx, a.Catalog, nil, nil)
-				b.DisableAuth()
-				b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
-				parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
-				if err != nil {
-					procToRegister = &plan.Procedure{
-						CreateProcedureString: procedure.CreateStatement,
-					}
-					procToRegister.ValidationError = err
-				} else if cp, ok := parsedProcedure.(*plan.CreateProcedure); !ok {
-					return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
-				} else {
-					procToRegister = cp.Procedure
-				}
-
-				procToRegister.CreatedAt = procedure.CreatedAt
-				procToRegister.ModifiedAt = procedure.ModifiedAt
-
-				err = scope.Procedures.Register(database.Name(), procToRegister)
-				if err != nil {
-					return nil, err
-				}
 			}
 		}
 	}
 	return scope, nil
-}
-
-// analyzeCreateProcedure checks the plan.CreateProcedure and returns a valid plan.Procedure or an error
-func analyzeCreateProcedure(ctx *sql.Context, a *Analyzer, cp *plan.CreateProcedure, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (*plan.Procedure, error) {
-	var analyzedNode sql.Node
-	var err error
-	analyzedNode, _, err = analyzeProcedureBodies(ctx, a, cp.Procedure, false, scope, sel, qFlags)
-	if err != nil {
-		return nil, err
-	}
-	analyzedProc, ok := analyzedNode.(*plan.Procedure)
-	if !ok {
-		return nil, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
-	}
-	return analyzedProc, nil
 }
 
 func hasProcedureCall(n sql.Node) bool {
@@ -143,6 +122,18 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 			} else {
 				newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
 			}
+		case *plan.InsertInto:
+			qFlags.Set(sql.QFlagInsert)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
+			qFlags.Unset(sql.QFlagInsert)
+		case *plan.Update:
+			qFlags.Set(sql.QFlagUpdate)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
+			qFlags.Unset(sql.QFlagUpdate)
+		case *plan.DeleteFrom:
+			qFlags.Set(sql.QFlagDelete)
+			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
+			qFlags.Unset(sql.QFlagDelete)
 		default:
 			newChild, _, err = a.analyzeWithSelector(ctx, child, scope, SelectAllBatches, procSel, qFlags)
 		}
@@ -164,15 +155,16 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		return n, transform.SameTree, nil
 	}
 
-	hasProcedureCall := hasProcedureCall(n)
-	_, isShowCreateProcedure := n.(*plan.ShowCreateProcedure)
-	if !hasProcedureCall && !isShowCreateProcedure {
+	if _, isShowCreateProcedure := n.(*plan.ShowCreateProcedure); !hasProcedureCall(n) && !isShowCreateProcedure {
 		return n, transform.SameTree, nil
 	}
 
 	call, newIdentity, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		call, ok := n.(*plan.Call)
 		if !ok {
+			return n, transform.SameTree, nil
+		}
+		if call.Analyzed {
 			return n, transform.SameTree, nil
 		}
 		if scope.IsEmpty() {
@@ -190,53 +182,27 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			return nil, transform.SameTree, err
 		}
 		if esp != nil {
-			externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return call.WithProcedure(externalProcedure), transform.NewTree, nil
+			return call, transform.SameTree, nil
 		}
 
-		if spdb, ok := call.Database().(sql.StoredProcedureDatabase); ok {
-			procedure, ok, err := spdb.GetStoredProcedure(ctx, call.Name)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			if !ok {
-				err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
-				if call.Database().Name() == "" {
-					return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
-				}
-				return nil, transform.SameTree, err
-			}
-			var parsedProcedure sql.Node
-			b := planbuilder.New(ctx, a.Catalog, nil, nil)
-			b.DisableAuth()
-			b.SetParserOptions(sql.NewSqlModeFromString(procedure.SqlMode).ParserOptions())
-			if call.AsOf() != nil {
-				asOf, err := call.AsOf().Eval(ctx, nil)
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-				b.ProcCtx().AsOf = asOf
-			}
-			b.ProcCtx().DbName = call.Database().Name()
-			parsedProcedure, _, _, _, err = b.Parse(procedure.CreateStatement, nil, false)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			cp, ok := parsedProcedure.(*plan.CreateProcedure)
-			if !ok {
-				return nil, transform.SameTree, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
-			}
-			analyzedProc, err := analyzeCreateProcedure(ctx, a, cp, scope, sel, nil)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return call.WithProcedure(analyzedProc), transform.NewTree, nil
-		} else {
+		if _, isStoredProcDb := call.Database().(sql.StoredProcedureDatabase); !isStoredProcDb {
 			return nil, transform.SameTree, sql.ErrStoredProceduresNotSupported.New(call.Database().Name())
 		}
+
+		qFlags.Set(sql.QFlagAnalyzeProcedure)
+		analyzedNode, _, err := analyzeProcedureBodies(ctx, a, call.Procedure, false, scope, sel, qFlags)
+		qFlags.Unset(sql.QFlagAnalyzeProcedure)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		analyzedProc, ok := analyzedNode.(*plan.Procedure)
+		if !ok {
+			return nil, transform.SameTree, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
+		}
+		// stored procedures nested within triggers may attempt to analyze this twice, causing problems like double projections
+		newCall := call.WithProcedure(analyzedProc)
+		newCall.Analyzed = true
+		return newCall, transform.NewTree, nil
 	})
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -266,43 +232,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 // applyProceduresCall applies the relevant stored procedure to the given *plan.Call.
 func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	var procedure *plan.Procedure
-	if call.Procedure == nil {
-		dbName := ctx.GetCurrentDatabase()
-		if call.Database() != nil {
-			dbName = call.Database().Name()
-		}
-
-		esp, err := a.Catalog.ExternalStoredProcedure(ctx, call.Name, len(call.Params))
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		if esp != nil {
-			externalProcedure, err := resolveExternalStoredProcedure(ctx, *esp)
-			if err != nil {
-				return nil, false, err
-			}
-			procedure = externalProcedure
-		} else {
-			procedure = scope.Procedures.Get(dbName, call.Name, len(call.Params))
-		}
-
-		if procedure == nil {
-			err := sql.ErrStoredProcedureDoesNotExist.New(call.Name)
-			if dbName == "" {
-				return nil, transform.SameTree, fmt.Errorf("%w; this might be because no database is selected", err)
-			}
-			return nil, transform.SameTree, err
-		}
-
-		if procedure.ValidationError != nil {
-			return nil, transform.SameTree, procedure.ValidationError
-		}
-	} else {
-		procedure = call.Procedure
-	}
-
+	procedure := call.Procedure
 	if procedure.HasVariadicParameter() {
 		procedure = procedure.ExtendVariadic(ctx, len(call.Params))
 	}

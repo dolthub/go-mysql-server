@@ -394,6 +394,9 @@ func DebugString(nodeOrExpression interface{}) string {
 	if s, ok := nodeOrExpression.(fmt.Stringer); ok {
 		return s.String()
 	}
+	if nodeOrExpression == nil {
+		return ""
+	}
 	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
 }
 

@@ -10971,11 +10971,6 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
 		ExpectedErr: types.ErrConvertingToTime,
 	},
-	// this query was panicing, but should be allowed and should return error when this query is called
-	{
-		Query:       `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
-		ExpectedErr: sql.ErrFunctionNotFound,
-	},
 	{
 		Query:       "CREATE TABLE table_test (id int PRIMARY KEY, c float DEFAULT rand())",
 		ExpectedErr: sql.ErrSyntaxError,

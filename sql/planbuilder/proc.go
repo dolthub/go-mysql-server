@@ -20,12 +20,10 @@ import (
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -226,15 +224,72 @@ func (b *Builder) buildIfConditional(inScope *scope, n ast.IfStatementCondition,
 	return outScope
 }
 
+func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, inScope *scope, db sql.Database, asOf sql.Expression, procDetails sql.StoredProcedureDetails) (proc *plan.Procedure, qFlags *sql.QueryFlags, err error) {
+	// TODO: new builder necessary?
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case parseErr:
+				err = r.err
+			default:
+				panic(r)
+			}
+		}
+	}()
+	b := New(ctx, cat, nil, nil)
+	b.DisableAuth()
+	b.SetParserOptions(sql.NewSqlModeFromString(procDetails.SqlMode).ParserOptions())
+	if asOf != nil {
+		asOf, err := asOf.Eval(b.ctx, nil)
+		if err != nil {
+			b.handleErr(err)
+		}
+		b.ProcCtx().AsOf = asOf
+	}
+	b.ProcCtx().DbName = db.Name()
+	if isCreateProc {
+		// TODO: we want to skip certain validations for CREATE PROCEDURE
+		b.qFlags.Set(sql.QFlagCreateProcedure)
+	}
+	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, procDetails.CreateStatement, ';', false, b.parserOpts)
+	procStmt := stmt.(*ast.DDL)
+
+	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
+	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
+
+	// populate inScope with the procedure parameters. this will be
+	// subject maybe a bug where an inner procedure has access to
+	// outer procedure parameters.
+	if inScope == nil {
+		inScope = b.newScope()
+	}
+	inScope.initProc()
+	for _, p := range procParams {
+		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
+	}
+
+	bodyStr := strings.TrimSpace(procDetails.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
+	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, procDetails.CreateStatement)
+
+	proc = plan.NewProcedure(
+		procDetails.Name,
+		procStmt.ProcedureSpec.Definer,
+		procParams,
+		securityType,
+		comment,
+		characteristics,
+		procDetails.CreateStatement,
+		bodyScope.node,
+		procDetails.CreatedAt,
+		procDetails.ModifiedAt,
+	)
+	qFlags = b.qFlags
+	return
+}
+
 func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
-	}
-	outScope = inScope.push()
-	params := make([]sql.Expression, len(c.Params))
-	for i, param := range c.Params {
-		expr := b.buildScalar(inScope, param)
-		params[i] = expr
 	}
 
 	var asOf sql.Expression = nil
@@ -257,12 +312,53 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		db = b.currentDb()
 	}
 
-	outScope.node = plan.NewCall(
-		db,
-		c.ProcName.Name.String(),
-		params,
-		asOf,
-		b.cat)
+	var proc *plan.Procedure
+	var innerQFlags *sql.QueryFlags
+	procName := c.ProcName.Name.String()
+	esp, err := b.cat.ExternalStoredProcedure(b.ctx, procName, len(c.Params))
+	if err != nil {
+		b.handleErr(err)
+	}
+	if esp != nil {
+		proc, err = resolveExternalStoredProcedure(*esp)
+	} else if spdb, ok := db.(sql.StoredProcedureDatabase); ok {
+		var procDetails sql.StoredProcedureDetails
+		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
+		if err == nil {
+			if ok {
+				proc, innerQFlags, err = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
+				// TODO: somewhat hacky way of preserving this flag
+				// This is necessary so that the resolveSubqueries analyzer rule
+				// will apply NodeExecBuilder to Subqueries in procedure body
+				if innerQFlags.IsSet(sql.QFlagScalarSubquery) {
+					b.qFlags.Set(sql.QFlagScalarSubquery)
+				}
+			} else {
+				err = sql.ErrStoredProcedureDoesNotExist.New(procName)
+				if b.qFlags.IsSet(sql.QFlagCreateTrigger) {
+					proc = &plan.Procedure{
+						Name:            procName,
+						ValidationError: err,
+					}
+					err = nil
+				}
+			}
+		}
+	} else {
+		err = sql.ErrStoredProceduresNotSupported.New(db.Name())
+	}
+	if err != nil {
+		b.handleErr(err)
+	}
+
+	params := make([]sql.Expression, len(c.Params))
+	for i, param := range c.Params {
+		expr := b.buildScalar(inScope, param)
+		params[i] = expr
+	}
+
+	outScope = inScope.push()
+	outScope.node = plan.NewCall(db, procName, params, proc, asOf, b.cat)
 	return outScope
 }
 
@@ -406,53 +502,10 @@ func (b *Builder) buildBlock(inScope *scope, parserStatements ast.Statements, fu
 			}
 		}
 		stmtScope := b.buildSubquery(inScope, s, ast.String(s), fullQuery)
-		if b.qFlags.IsSet(sql.QFlagCreateProcedure) {
-			b.validateStoredProcedure(stmtScope.node)
-		}
 		statements = append(statements, stmtScope.node)
 	}
 
 	return plan.NewBlock(statements)
-}
-
-func (b *Builder) validateStoredProcedure(node sql.Node) {
-	// For now, we don't support creating any of the following within stored procedures.
-	// These will be removed in the future, but cause issues with the current execution plan.
-	var err error
-	spUnsupportedErr := errors.NewKind("creating %s in stored procedures is currently unsupported " +
-		"and will be added in a future release")
-	transform.Inspect(node, func(n sql.Node) bool {
-		switch n.(type) {
-		case *plan.CreateTable:
-			err = spUnsupportedErr.New("tables")
-		case *plan.CreateTrigger:
-			err = spUnsupportedErr.New("triggers")
-		case *plan.CreateProcedure:
-			err = spUnsupportedErr.New("procedures")
-		case *plan.CreateDB:
-			err = spUnsupportedErr.New("databases")
-		case *plan.CreateForeignKey:
-			err = spUnsupportedErr.New("foreign keys")
-		case *plan.CreateIndex:
-			err = spUnsupportedErr.New("indexes")
-		case *plan.CreateView:
-			err = spUnsupportedErr.New("views")
-		case *plan.LockTables: // Blocked in vitess, but this is for safety
-			err = sql.ErrProcedureInvalidBodyStatement.New("LOCK TABLES")
-		case *plan.UnlockTables: // Blocked in vitess, but this is for safety
-			err = sql.ErrProcedureInvalidBodyStatement.New("UNLOCK TABLES")
-		case *plan.Use: // Blocked in vitess, but this is for safety
-			err = sql.ErrProcedureInvalidBodyStatement.New("USE")
-		case *plan.LoadData:
-			err = sql.ErrProcedureInvalidBodyStatement.New("LOAD DATA")
-		default:
-			return true
-		}
-		return false
-	})
-	if err != nil {
-		b.handleErr(err)
-	}
 }
 
 func (b *Builder) buildFetchCursor(inScope *scope, fetchCursor *ast.FetchCursor) (outScope *scope) {
