@@ -181,7 +181,9 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			return nil, transform.SameTree, sql.ErrStoredProceduresNotSupported.New(call.Database().Name())
 		}
 
+		qFlags.Set(sql.QFlagAnalyzeProcedure)
 		analyzedNode, _, err := analyzeProcedureBodies(ctx, a, call.Procedure, false, scope, sel, qFlags)
+		qFlags.Unset(sql.QFlagAnalyzeProcedure)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

@@ -55,6 +55,7 @@ const (
 	QFlagCreateEvent
 	QFlagCreateTrigger
 	QFlagCreateProcedure
+	QFlagAnalyzeProcedure
 )
 
 type QueryFlags struct {
