@@ -139,7 +139,8 @@ func ParseRow(rowStr string, types []sql.Type) (sql.Row, error) {
 func StringifyKey(r sql.Row, typs []sql.Type) string {
 	b := strings.Builder{}
 	sep := ""
-	for i, v := range r {
+	for i := range typs {
+		v := r[i]
 		typ := typs[i]
 		if _, ok := typ.(sql.StringType); ok {
 			typ = types.LongText
