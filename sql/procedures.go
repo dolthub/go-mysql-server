@@ -17,7 +17,38 @@ package sql
 import (
 	"fmt"
 	"time"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
+
+// Interpreter is an interface that implements an interpreter. These are typically used for functions (which may be
+// implemented as a set of operations that are interpreted during runtime).
+type Interpreter interface {
+	SetStatementRunner(ctx *Context, runner StatementRunner) Expression
+}
+
+// TODO: InterpreterNode interface
+// TODO: alternatively have plan.Call just have an interpreter expression
+
+// InterpreterNode is an interface that implements an interpreter. These are typically used for functions (which may be
+// implemented as a set of operations that are interpreted during runtime).
+type InterpreterNode interface {
+	SetStatementRunner(ctx *Context, runner StatementRunner) Node
+}
+
+// StatementRunner is essentially an interface that the engine will implement. We cannot directly reference the engine
+// here as it will cause an import cycle, so this may be updated to suit any function changes that the engine
+// experiences.
+type StatementRunner interface {
+	QueryWithBindings(ctx *Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *QueryFlags) (Schema, RowIter, *QueryFlags, error)
+}
+
+
+
+
+
+
+
 
 // StoredProcedureDetails are the details of the stored procedure. Integrators only need to store and retrieve the given
 // details for a stored procedure, as the engine handles all parsing and processing.

@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -254,6 +255,10 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, procDetails.CreateStatement, ';', false, b.parserOpts)
 	procStmt := stmt.(*ast.DDL)
 
+	// TODO: convert ast to operations
+
+	procedures.Parse(procStmt.ProcedureSpec.Body)
+
 	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
 	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
 
@@ -321,6 +326,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 	if esp != nil {
 		proc, err = resolveExternalStoredProcedure(*esp)
+		// TODO: return plan.NewExternalCall here
 	} else if spdb, ok := db.(sql.StoredProcedureDatabase); ok {
 		var procDetails sql.StoredProcedureDetails
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)

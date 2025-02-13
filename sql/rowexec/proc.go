@@ -197,10 +197,17 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 	n.Pref.PushScope()
 	defer n.Pref.PopScope(ctx)
 
+	// TODO: mirror plpgsql interpreter_logic.go Call()
+	// TODO: instead of building, run the actual operations
+	// This means call the runner.QueryWithBindings
 	innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: save any select ast rowIters to be returned later
+
+
 	return &callIter{
 		call:      n,
 		innerIter: innerIter,

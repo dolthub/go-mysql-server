@@ -23,6 +23,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+
+// TODO: we need different types of calls: one for extrenal procedures one for stored procedures
+
+
 type Call struct {
 	db        sql.Database
 	Name      string
@@ -32,11 +36,15 @@ type Call struct {
 	Pref      *expression.ProcedureReference
 	cat       sql.Catalog
 	Analyzed  bool
+
+	// this will have list of parsed operations to run
+	runner sql.StatementRunner
 }
 
 var _ sql.Node = (*Call)(nil)
 var _ sql.CollationCoercible = (*Call)(nil)
 var _ sql.Expressioner = (*Call)(nil)
+var _ sql.InterpreterNode = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
 // NewCall returns a *Call node.
@@ -196,4 +204,11 @@ func (c *Call) Dispose() {
 	if c.Procedure != nil {
 		disposeNode(c.Procedure)
 	}
+}
+
+// SetStatementRunner implements the sql.InterpreterNode interface.
+func (c *Call) SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node {
+	nc := *c
+	nc.runner = runner
+	return &nc
 }
