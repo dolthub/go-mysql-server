@@ -18,15 +18,70 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
-
-	pgtypes "github.com/dolthub/doltgresql/server/types"
-	"github.com/dolthub/doltgresql/utils"
 )
+
+// Stack is a generic stack.
+type Stack[T any] struct {
+	values []T
+}
+
+// NewStack creates a new, empty stack.
+func NewStack[T any]() *Stack[T] {
+	return &Stack[T]{}
+}
+
+// Len returns the size of the stack.
+func (s *Stack[T]) Len() int {
+	return len(s.values)
+}
+
+// Peek returns the top value on the stack without removing it.
+func (s *Stack[T]) Peek() (value T) {
+	if len(s.values) == 0 {
+		return
+	}
+	return s.values[len(s.values)-1]
+}
+
+// PeekDepth returns the n-th value from the top. PeekDepth(0) is equivalent to the standard Peek().
+func (s *Stack[T]) PeekDepth(depth int) (value T) {
+	if len(s.values) <= depth {
+		return
+	}
+	return s.values[len(s.values)-(1+depth)]
+}
+
+// PeekReference returns a reference to the top value on the stack without removing it.
+func (s *Stack[T]) PeekReference() *T {
+	if len(s.values) == 0 {
+		return nil
+	}
+	return &s.values[len(s.values)-1]
+}
+
+// Pop returns the top value on the stack while also removing it from the stack.
+func (s *Stack[T]) Pop() (value T) {
+	if len(s.values) == 0 {
+		return
+	}
+	value = s.values[len(s.values)-1]
+	s.values = s.values[:len(s.values)-1]
+	return
+}
+
+// Push adds the given value to the stack.
+func (s *Stack[T]) Push(value T) {
+	s.values = append(s.values, value)
+}
+
+// Empty returns whether the stack is empty.
+func (s *Stack[T]) Empty() bool {
+	return len(s.values) == 0
+}
 
 // InterpreterVariable is a variable that lives on the stack.
 type InterpreterVariable struct {
-	Type  *pgtypes.DoltgresType
+	Type  sql.Type
 	Value any
 }
 
@@ -39,12 +94,12 @@ type InterpreterScopeDetails struct {
 // the same as a stack in the traditional programming sense, but rather is a loose abstraction that serves the same
 // general purpose.
 type InterpreterStack struct {
-	stack  *utils.Stack[*InterpreterScopeDetails]
+	stack  *Stack[*InterpreterScopeDetails]
 }
 
 // NewInterpreterStack creates a new InterpreterStack.
 func NewInterpreterStack() InterpreterStack {
-	stack := utils.NewStack[*InterpreterScopeDetails]()
+	stack := NewStack[*InterpreterScopeDetails]()
 	// This first push represents the function base, including parameters
 	stack.Push(&InterpreterScopeDetails{
 		variables: make(map[string]*InterpreterVariable),
@@ -57,11 +112,6 @@ func NewInterpreterStack() InterpreterStack {
 // Details returns the details for the current scope.
 func (is *InterpreterStack) Details() *InterpreterScopeDetails {
 	return is.stack.Peek()
-}
-
-// Runner returns the runner that is being used for the function's execution.
-func (is *InterpreterStack) Runner() sql.StatementRunner {
-	return is.runner
 }
 
 // GetVariable traverses the stack (starting from the top) to find a variable with a matching name. Returns nil if no
@@ -88,12 +138,12 @@ func (is *InterpreterStack) ListVariables() map[string]struct{} {
 
 // NewVariable creates a new variable in the current scope. If a variable with the same name exists in a previous scope,
 // then that variable will be shadowed until the current scope exits.
-func (is *InterpreterStack) NewVariable(name string, typ *pgtypes.DoltgresType) {
+func (is *InterpreterStack) NewVariable(name string, typ sql.Type) {
 	is.NewVariableWithValue(name, typ, typ.Zero())
 }
 
 // NewVariableWithValue creates a new variable in the current scope, setting its initial value to the one given.
-func (is *InterpreterStack) NewVariableWithValue(name string, typ *pgtypes.DoltgresType, val any) {
+func (is *InterpreterStack) NewVariableWithValue(name string, typ sql.Type, val any) {
 	is.stack.Peek().variables[name] = &InterpreterVariable{
 		Type:  typ,
 		Value: val,

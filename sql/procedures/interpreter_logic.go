@@ -16,9 +16,10 @@ package procedures
 
 import (
 	"fmt"
-	"github.com/dolthub/doltgresql/core"
-"github.com/dolthub/doltgresql/core/id"
-"github.com/dolthub/go-mysql-server/sql"
+	"io"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // InterpreterNode is an interface that implements an interpreter. These are typically used for functions (which may be
@@ -32,13 +33,13 @@ type InterpreterNode interface {
 }
 
 // Call runs the contained operations on the given runner.
-func Call(ctx *sql.Context, call sql.InterpreterNode, runner sql.StatementRunner) (any, error) {
+func Call(ctx *sql.Context, iNode sql.InterpreterNode, runner sql.StatementRunner, vals []any) (any, error) {
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()
 	// Add the parameters
-	parameterTypes := call.GetParameters()
-	parameterNames := call.GetParameterNames()
+	parameterTypes := iNode.GetParameters()
+	parameterNames := iNode.GetParameterNames()
 	if len(vals) != len(parameterTypes) {
 		return nil, fmt.Errorf("parameter count mismatch: expected %d got %d", len(parameterTypes), len(vals))
 	}
@@ -46,7 +47,7 @@ func Call(ctx *sql.Context, call sql.InterpreterNode, runner sql.StatementRunner
 		stack.NewVariableWithValue(parameterNames[i], parameterTypes[i], vals[i])
 	}
 	// Run the statements
-	statements := call.Ops
+	statements := iNode.GetStatements()
 	for {
 		counter++
 		if counter >= len(statements) {
@@ -58,43 +59,28 @@ func Call(ctx *sql.Context, call sql.InterpreterNode, runner sql.StatementRunner
 		operation := statements[counter]
 		switch operation.OpCode {
 		case OpCode_Select:
-
+			// TODO
 		case OpCode_Declare:
-			typeCollection, err := core.GetTypesCollectionFromContext(ctx)
-			if err != nil {
-				return nil, err
-			}
-			resolvedType, exists := typeCollection.GetType(id.NewType("pg_catalog", operation.PrimaryData))
-			if !exists {
-				return nil, pgtypes.ErrTypeDoesNotExist.New(operation.PrimaryData)
-			}
+			resolvedType := types.Uint32 // TODO: figure out actual type from operation
 			stack.NewVariable(operation.Target, resolvedType)
 		case OpCode_Exception:
 			// TODO: implement
 		case OpCode_Execute:
-			if len(operation.Target) > 0 {
-				target := stack.GetVariable(operation.Target)
-				if target == nil {
-					return nil, fmt.Errorf("variable `%s` could not be found", operation.Target)
-				}
-				retVal, err := iFunc.QuerySingleReturn(ctx, stack, operation.PrimaryData, target.Type, operation.SecondaryData)
-				if err != nil {
-					return nil, err
-				}
-				err = stack.SetVariable(ctx, operation.Target, retVal)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				rowIter, err := iFunc.QueryMultiReturn(ctx, stack, operation.PrimaryData, operation.SecondaryData)
-				if err != nil {
-					return nil, err
-				}
-				if _, err = sql.RowIterToRows(ctx, rowIter); err != nil {
+			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", operation.PrimaryData, nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			for {
+				if _, rErr := rowIter.Next(ctx); rErr != nil {
+					if rErr == io.EOF {
+						break
+					}
 					return nil, err
 				}
 			}
-
+			if err = rowIter.Close(ctx); err != nil {
+				return nil, err
+			}
 		case OpCode_Goto:
 			// We must compare to the index - 1, so that the increment hits our target
 			if counter <= operation.Index {
@@ -104,6 +90,8 @@ func Call(ctx *sql.Context, call sql.InterpreterNode, runner sql.StatementRunner
 						stack.PushScope()
 					case OpCode_ScopeEnd:
 						stack.PopScope()
+					default:
+						// No-op
 					}
 				}
 			} else {
@@ -113,24 +101,33 @@ func Call(ctx *sql.Context, call sql.InterpreterNode, runner sql.StatementRunner
 						stack.PopScope()
 					case OpCode_ScopeEnd:
 						stack.PushScope()
+					default:
+						// No-op
 					}
 				}
 			}
 		case OpCode_If:
-			sch, rowIter, _, err := runner.QueryWithBindings(ctx, "", operation.PrimaryData, nil, nil)
+			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", operation.PrimaryData, nil, nil)
 			if err != nil {
 				return nil, err
 			}
-			row, err := rowIter.Next(ctx)
-			if err != nil {
+			for {
+				if _, rErr := rowIter.Next(ctx); rErr != nil {
+					if rErr == io.EOF {
+						break
+					}
+					return nil, err
+				}
+			}
+			if err = rowIter.Close(ctx); err != nil {
 				return nil, err
 			}
-			rowIter.Close(ctx)
-			if retVal.(bool) {
-				// We're never changing the scope, so we can just assign it directly.
-				// Also, we must assign to index-1, so that the increment hits our target.
-				counter = operation.Index - 1
-			}
+			// TODO: ensure there is exactly one result that is a bool
+			//if retVal.(bool) {
+			//	// We're never changing the scope, so we can just assign it directly.
+			//	// Also, we must assign to index-1, so that the increment hits our target.
+			//	counter = operation.Index - 1
+			//}
 
 		case OpCode_ScopeBegin:
 			stack.PushScope()
