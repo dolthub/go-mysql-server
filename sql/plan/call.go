@@ -17,15 +17,14 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 
-// TODO: we need different types of calls: one for extrenal procedures one for stored procedures
-
+// TODO: we need different types of calls: one for external procedures one for stored procedures
 
 type Call struct {
 	db        sql.Database
@@ -38,17 +37,18 @@ type Call struct {
 	Analyzed  bool
 
 	// this will have list of parsed operations to run
-	runner sql.StatementRunner
+	Runner sql.StatementRunner
+	Ops    []procedures.InterpreterOperation
 }
 
 var _ sql.Node = (*Call)(nil)
 var _ sql.CollationCoercible = (*Call)(nil)
 var _ sql.Expressioner = (*Call)(nil)
-var _ sql.InterpreterNode = (*Call)(nil)
+var _ procedures.InterpreterNode = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
 // NewCall returns a *Call node.
-func NewCall(db sql.Database, name string, params []sql.Expression, proc *Procedure, asOf sql.Expression, catalog sql.Catalog) *Call {
+func NewCall(db sql.Database, name string, params []sql.Expression, proc *Procedure, asOf sql.Expression, catalog sql.Catalog, ops []procedures.InterpreterOperation) *Call {
 	return &Call{
 		db:        db,
 		Name:      name,
@@ -56,6 +56,7 @@ func NewCall(db sql.Database, name string, params []sql.Expression, proc *Proced
 		Procedure: proc,
 		asOf:      asOf,
 		cat:       catalog,
+		Ops:       ops,
 	}
 }
 
@@ -178,9 +179,6 @@ func (c *Call) DebugString() string {
 	} else {
 		tp.WriteNode("CALL %s.%s(%s)", c.db.Name(), c.Name, paramStr)
 	}
-	if c.Procedure != nil {
-		tp.WriteChildren(sql.DebugString(c.Procedure.Body))
-	}
 
 	return tp.String()
 }
@@ -209,6 +207,35 @@ func (c *Call) Dispose() {
 // SetStatementRunner implements the sql.InterpreterNode interface.
 func (c *Call) SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node {
 	nc := *c
-	nc.runner = runner
+	nc.Runner = runner
 	return &nc
 }
+
+// GetRunner implements the sql.InterpreterNode interface.
+func (c *Call) GetRunner() sql.StatementRunner {
+	return c.Runner
+}
+
+// GetParameters implements the sql.InterpreterNode interface.
+func (c *Call) GetParameters() []sql.Type {
+	return nil
+}
+
+// GetParameterNames implements the sql.InterpreterNode interface.
+func (c *Call) GetParameterNames() []string {
+	return nil
+}
+
+// GetStatements implements the sql.InterpreterNode interface.
+func (c *Call) GetStatements() []procedures.InterpreterOperation {
+	return c.Ops
+}
+
+// GetReturn implements the sql.InterpreterNode interface.
+func (c *Call) GetReturn() sql.Type {
+	return nil
+}
+
+
+
+

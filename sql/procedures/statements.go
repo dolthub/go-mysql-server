@@ -14,11 +14,6 @@
 
 package procedures
 
-import (
-	"fmt"pg_query "github.com/pganalyze/pg_query_go/v6"
-
-)
-
 // Statement represents a PL/pgSQL statement.
 type Statement interface {
 	// OperationSize reports the number of operations that the statement will convert to.
@@ -43,15 +38,8 @@ func (Assignment) OperationSize() int32 {
 
 // AppendOperations implements the interface Statement.
 func (stmt Assignment) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
-	expression, referencedVariables, err := substituteVariableReferences(stmt.Expression, stack)
-	if err != nil {
-		return err
-	}
-
 	*ops = append(*ops, InterpreterOperation{
 		OpCode:        OpCode_Assign,
-		PrimaryData:   "SELECT " + expression + ";",
-		SecondaryData: referencedVariables,
 		Target:        stmt.VariableName,
 	})
 	return nil
@@ -123,14 +111,8 @@ func (ExecuteSQL) OperationSize() int32 {
 
 // AppendOperations implements the interface Statement.
 func (stmt ExecuteSQL) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
-	statementStr, referencedVariables, err := substituteVariableReferences(stmt.Statement, stack)
-	if err != nil {
-		return err
-	}
 	*ops = append(*ops, InterpreterOperation{
 		OpCode:        OpCode_Execute,
-		PrimaryData:   statementStr,
-		SecondaryData: referencedVariables,
 		Target:        stmt.Target,
 	})
 	return nil
@@ -172,15 +154,10 @@ func (If) OperationSize() int32 {
 
 // AppendOperations implements the interface Statement.
 func (stmt If) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
-	condition, referencedVariables, err := substituteVariableReferences(stmt.Condition, stack)
-	if err != nil {
-		return err
-	}
 
 	*ops = append(*ops, InterpreterOperation{
 		OpCode:        OpCode_If,
-		PrimaryData:   "SELECT " + condition + ";",
-		SecondaryData: referencedVariables,
+		PrimaryData:   "SELECT ;",
 		Index:         len(*ops) + int(stmt.GotoOffset),
 	})
 	return nil
@@ -200,15 +177,9 @@ func (Perform) OperationSize() int32 {
 
 // AppendOperations implements the interface Statement.
 func (stmt Perform) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
-	statementStr, referencedVariables, err := substituteVariableReferences(stmt.Statement, stack)
-	if err != nil {
-		return err
-	}
 
 	*ops = append(*ops, InterpreterOperation{
 		OpCode:        OpCode_Perform,
-		PrimaryData:   statementStr,
-		SecondaryData: referencedVariables,
 	})
 	return nil
 }
@@ -227,17 +198,8 @@ func (Return) OperationSize() int32 {
 
 // AppendOperations implements the interface Statement.
 func (stmt Return) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
-	expression, referencedVariables, err := substituteVariableReferences(stmt.Expression, stack)
-	if err != nil {
-		return err
-	}
-	if len(expression) > 0 {
-		expression = "SELECT " + expression + ";"
-	}
 	*ops = append(*ops, InterpreterOperation{
 		OpCode:        OpCode_Return,
-		PrimaryData:   expression,
-		SecondaryData: referencedVariables,
 	})
 	return nil
 }
@@ -256,27 +218,4 @@ func OperationSizeForStatements(stmts []Statement) int32 {
 		total += stmt.OperationSize()
 	}
 	return total
-}
-
-// substituteVariableReferences parses the specified |expression| and replaces
-// any token that matches a variable name in the |stack| with "$N", where N
-// indicates which variable in the returned |referenceVars| slice is used.
-func substituteVariableReferences(expression string, stack *InterpreterStack) (newExpression string, referencedVars []string, err error) {
-	scanResult, err := pg_query.Scan(expression)
-	if err != nil {
-		return "", nil, err
-	}
-
-	varMap := stack.ListVariables()
-	for _, token := range scanResult.Tokens {
-		substring := expression[token.Start:token.End]
-		if _, ok := varMap[substring]; ok {
-			referencedVars = append(referencedVars, substring)
-			newExpression += fmt.Sprintf("$%d ", len(referencedVars))
-		} else {
-			newExpression += substring + " "
-		}
-	}
-
-	return newExpression, referencedVars, nil
 }

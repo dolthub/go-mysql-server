@@ -40,11 +40,10 @@ type InterpreterScopeDetails struct {
 // general purpose.
 type InterpreterStack struct {
 	stack  *utils.Stack[*InterpreterScopeDetails]
-	runner analyzer.StatementRunner
 }
 
 // NewInterpreterStack creates a new InterpreterStack.
-func NewInterpreterStack(runner analyzer.StatementRunner) InterpreterStack {
+func NewInterpreterStack() InterpreterStack {
 	stack := utils.NewStack[*InterpreterScopeDetails]()
 	// This first push represents the function base, including parameters
 	stack.Push(&InterpreterScopeDetails{
@@ -52,7 +51,6 @@ func NewInterpreterStack(runner analyzer.StatementRunner) InterpreterStack {
 	})
 	return InterpreterStack{
 		stack:  stack,
-		runner: runner,
 	}
 }
 
@@ -62,7 +60,7 @@ func (is *InterpreterStack) Details() *InterpreterScopeDetails {
 }
 
 // Runner returns the runner that is being used for the function's execution.
-func (is *InterpreterStack) Runner() analyzer.StatementRunner {
+func (is *InterpreterStack) Runner() sql.StatementRunner {
 	return is.runner
 }
 

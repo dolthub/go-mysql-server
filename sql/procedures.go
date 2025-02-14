@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
@@ -34,6 +36,10 @@ type Interpreter interface {
 // implemented as a set of operations that are interpreted during runtime).
 type InterpreterNode interface {
 	SetStatementRunner(ctx *Context, runner StatementRunner) Node
+	GetParameters() []Type
+	GetParameterNames() []string
+	GetReturn() Type
+	GetStatements() []procedures.InterpreterOperation
 }
 
 // StatementRunner is essentially an interface that the engine will implement. We cannot directly reference the engine

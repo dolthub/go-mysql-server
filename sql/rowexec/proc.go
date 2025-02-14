@@ -17,7 +17,8 @@ package rowexec
 import (
 	"errors"
 	"fmt"
-	"io"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -196,6 +197,24 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 
 	n.Pref.PushScope()
 	defer n.Pref.PopScope(ctx)
+
+	procedures.Call(ctx, n, n.Runner)
+
+	for _, stmt := range n.Ops {
+		_, rowIter, _, err := n.Runner.QueryWithBindings(ctx, "", stmt.PrimaryData, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			if _, err = rowIter.Next(ctx); err != nil {
+				if err == io.EOF {
+					break
+				}
+				return nil, err
+			}
+		}
+	}
+
 
 	// TODO: mirror plpgsql interpreter_logic.go Call()
 	// TODO: instead of building, run the actual operations

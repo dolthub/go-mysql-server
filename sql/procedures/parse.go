@@ -18,29 +18,56 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-func ConvertStmt(stmt *ast.Statement) (Block, error) {
-	block := Block{}
+func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.Statement) error {
 	switch s := stmt.(type) {
 	case *ast.BeginEndBlock:
-		// TODO: convert this into what? operations?
+		stack.PushScope()
+		startOP := InterpreterOperation{
+			OpCode: OpCode_ScopeBegin,
+		}
+		*ops = append(*ops, startOP)
 
+		// TODO: add declares
+		for _, ss := range s.Statements {
+			if err := ConvertStmt(ops, stack, ss); err != nil {
+				return err
+			}
+		}
+		endOp := InterpreterOperation{
+			OpCode: OpCode_ScopeEnd,
+		}
+		*ops = append(*ops, endOp)
+		stack.PopScope()
+	case *ast.Select:
+		selectOp := InterpreterOperation{
+			OpCode: OpCode_Select,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, selectOp)
+
+	case *ast.Declare:
+		// TODO:
+		//declareOp := InterpreterOperation{}
+		//stack.NewVariable
+
+	default:
+		execOp := InterpreterOperation{
+			OpCode: OpCode_Execute,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, execOp)
 	}
 
-
-	return block, nil
+	return nil
 }
 
 // Parse parses the given CREATE FUNCTION string (which must be the entire string, not just the body) into a Block
 // containing the contents of the body.
-func Parse(stmt *ast.Statement) ([]InterpreterOperation, error) {
-	block, err := ConvertStmt(stmt)
+func Parse(stmt ast.Statement) ([]InterpreterOperation, error) {
+	ops := make([]InterpreterOperation, 0, 64)
+	stack := NewInterpreterStack()
+	err := ConvertStmt(&ops, &stack, stmt)
 	if err != nil {
-		return nil, err
-	}
-
-	ops := make([]InterpreterOperation, 0, len(block.Body)+len(block.Variable))
-	stack := NewInterpreterStack(nil)
-	if err := block.AppendOperations(&ops, &stack); err != nil {
 		return nil, err
 	}
 	return ops, nil

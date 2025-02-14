@@ -20,9 +20,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ProcedureSecurityContext determines whether the stored procedure is executed using the privileges of the definer or
@@ -80,7 +81,8 @@ type Procedure struct {
 	Comment               string
 	Characteristics       []Characteristic
 	CreateProcedureString string
-	Body                  sql.Node
+	Ops                   []procedures.InterpreterOperation
+	ExternalProc          sql.Node
 	CreatedAt             time.Time
 	ModifiedAt            time.Time
 	ValidationError       error
@@ -100,7 +102,7 @@ func NewProcedure(
 	comment string,
 	characteristics []Characteristic,
 	createProcedureString string,
-	body sql.Node,
+	ops []procedures.InterpreterOperation,
 	createdAt time.Time,
 	modifiedAt time.Time,
 ) *Procedure {
@@ -121,7 +123,7 @@ func NewProcedure(
 		Comment:               comment,
 		Characteristics:       characteristics,
 		CreateProcedureString: createProcedureString,
-		Body:                  body,
+		Ops:                   ops,
 		CreatedAt:             createdAt,
 		ModifiedAt:            modifiedAt,
 	}
@@ -129,47 +131,41 @@ func NewProcedure(
 
 // Resolved implements the sql.Node interface.
 func (p *Procedure) Resolved() bool {
-	return p.Body.Resolved()
+	return true
 }
 
 func (p *Procedure) IsReadOnly() bool {
-	return p.Body.IsReadOnly()
+	return false
 }
 
 // String implements the sql.Node interface.
 func (p *Procedure) String() string {
-	return p.Body.String()
+	return ""
 }
 
 // DebugString implements the sql.DebugStringer interface.
 func (p *Procedure) DebugString() string {
-	return sql.DebugString(p.Body)
+	return sql.DebugString(p.Ops)
 }
 
 // Schema implements the sql.Node interface.
 func (p *Procedure) Schema() sql.Schema {
-	return p.Body.Schema()
+	return types.OkResultSchema
 }
 
 // Children implements the sql.Node interface.
 func (p *Procedure) Children() []sql.Node {
-	return []sql.Node{p.Body}
+	return nil
 }
 
 // WithChildren implements the sql.Node interface.
 func (p *Procedure) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
-	}
-
-	np := *p
-	np.Body = children[0]
-	return &np, nil
+	return p, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (p *Procedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.GetCoercibility(ctx, p.Body)
+	return sql.GetCoercibility(ctx, p.Ops)
 }
 
 // implementsRepresentsBlock implements the RepresentsBlock interface.
@@ -181,9 +177,9 @@ func (p *Procedure) ExtendVariadic(ctx *sql.Context, length int) *Procedure {
 		return p
 	}
 	np := *p
-	body := p.Body.(*ExternalProcedure)
+	body := p.ExternalProc.(*ExternalProcedure)
 	newBody := *body
-	np.Body = &newBody
+	np.ExternalProc = &newBody
 
 	newParamDefinitions := make([]ProcedureParam, length)
 	newParams := make([]*expression.ProcedureParam, length)
@@ -226,7 +222,7 @@ func (p *Procedure) HasVariadicParameter() bool {
 
 // IsExternal returns whether the stored procedure is external.
 func (p *Procedure) IsExternal() bool {
-	if _, ok := p.Body.(*ExternalProcedure); ok {
+	if _, ok := p.ExternalProc.(*ExternalProcedure); ok {
 		return true
 	}
 	return false

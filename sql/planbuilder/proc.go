@@ -257,24 +257,14 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 
 	// TODO: convert ast to operations
 
-	procedures.Parse(procStmt.ProcedureSpec.Body)
+	ops, err := procedures.Parse(procStmt.ProcedureSpec.Body)
+	if err != nil {
+		b.handleErr(err)
+	}
 
 	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
 	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
 
-	// populate inScope with the procedure parameters. this will be
-	// subject maybe a bug where an inner procedure has access to
-	// outer procedure parameters.
-	if inScope == nil {
-		inScope = b.newScope()
-	}
-	inScope.initProc()
-	for _, p := range procParams {
-		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
-	}
-
-	bodyStr := strings.TrimSpace(procDetails.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
-	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, procDetails.CreateStatement)
 
 	proc = plan.NewProcedure(
 		procDetails.Name,
@@ -284,12 +274,12 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 		comment,
 		characteristics,
 		procDetails.CreateStatement,
-		bodyScope.node,
+		ops,
 		procDetails.CreatedAt,
 		procDetails.ModifiedAt,
 	)
-	qFlags = b.qFlags
-	return
+
+	return proc, qFlags, nil
 }
 
 func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
@@ -332,7 +322,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
 		if err == nil {
 			if ok {
-				proc, innerQFlags, err = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
+				ops, innerQFlags, err = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
 				// TODO: somewhat hacky way of preserving this flag
 				// This is necessary so that the resolveSubqueries analyzer rule
 				// will apply NodeExecBuilder to Subqueries in procedure body
