@@ -15,16 +15,16 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // interpreter hands the engine to any interpreter expressions.
 func interpreter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	newNode, sameNode, err := transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if interp, ok := node.(sql.InterpreterNode); ok {
+		if interp, ok := node.(procedures.InterpreterNode); ok {
 			return interp.SetStatementRunner(ctx, a.Runner), transform.NewTree, nil
 		}
 		return node, transform.SameTree, nil

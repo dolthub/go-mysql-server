@@ -30,6 +30,8 @@ type InterpreterNode interface {
 	GetParameterNames() []string
 	GetReturn() sql.Type
 	GetStatements() []InterpreterOperation
+
+	SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node
 }
 
 // Call runs the contained operations on the given runner.

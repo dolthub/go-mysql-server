@@ -145,7 +145,7 @@ func resolveExternalStoredProcedure(externalProcedure sql.ExternalStoredProcedur
 		}
 	}
 
-	procedure := plan.NewProcedure(
+	proc := plan.NewProcedure(
 		externalProcedure.Name,
 		"root",
 		paramDefinitions,
@@ -153,13 +153,14 @@ func resolveExternalStoredProcedure(externalProcedure sql.ExternalStoredProcedur
 		"External stored procedure",
 		nil,
 		externalProcedure.FakeCreateProcedureStmt(),
-		&plan.ExternalProcedure{
-			ExternalStoredProcedureDetails: externalProcedure,
-			ParamDefinitions:               paramDefinitions,
-			Params:                         paramReferences,
-		},
 		time.Unix(1, 0),
 		time.Unix(1, 0),
+		nil,
 	)
-	return procedure, nil
+	proc.ExternalProc = &plan.ExternalProcedure{
+		ExternalStoredProcedureDetails: externalProcedure,
+		ParamDefinitions:               paramDefinitions,
+		Params:                         paramReferences,
+	}
+	return proc, nil
 }

@@ -102,9 +102,9 @@ func NewProcedure(
 	comment string,
 	characteristics []Characteristic,
 	createProcedureString string,
-	ops []procedures.InterpreterOperation,
 	createdAt time.Time,
 	modifiedAt time.Time,
+	ops []procedures.InterpreterOperation,
 ) *Procedure {
 	lowercasedParams := make([]ProcedureParam, len(params))
 	for i, param := range params {
@@ -123,9 +123,10 @@ func NewProcedure(
 		Comment:               comment,
 		Characteristics:       characteristics,
 		CreateProcedureString: createProcedureString,
-		Ops:                   ops,
 		CreatedAt:             createdAt,
 		ModifiedAt:            modifiedAt,
+
+		Ops:                   ops,
 	}
 }
 

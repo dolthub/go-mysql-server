@@ -106,7 +106,7 @@ func NodeRepresentsSelect(s sql.Node) bool {
 	case *Call:
 		return NodeRepresentsSelect(node.Procedure)
 	case *Procedure:
-		return NodeRepresentsSelect(node.Body)
+		return NodeRepresentsSelect(node.ExternalProc)
 	case *Block:
 		for _, stmt := range node.statements {
 			if NodeRepresentsSelect(stmt) {

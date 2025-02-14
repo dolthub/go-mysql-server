@@ -150,7 +150,7 @@ type Engine struct {
 	Parser            sql.Parser
 }
 
-var _ analyzer.StatementRunner = (*Engine)(nil)
+var _ sql.StatementRunner = (*Engine)(nil)
 
 type ColumnWithRawDefault struct {
 	SqlColumn *sql.Column

@@ -255,8 +255,6 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, procDetails.CreateStatement, ';', false, b.parserOpts)
 	procStmt := stmt.(*ast.DDL)
 
-	// TODO: convert ast to operations
-
 	ops, err := procedures.Parse(procStmt.ProcedureSpec.Body)
 	if err != nil {
 		b.handleErr(err)
@@ -273,9 +271,9 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 		comment,
 		characteristics,
 		procDetails.CreateStatement,
-		ops,
 		procDetails.CreatedAt,
 		procDetails.ModifiedAt,
+		ops,
 	)
 
 	return proc, qFlags, nil
@@ -321,7 +319,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
 		if err == nil {
 			if ok {
-				ops, innerQFlags, err = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
+				proc, innerQFlags, err = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
 				// TODO: somewhat hacky way of preserving this flag
 				// This is necessary so that the resolveSubqueries analyzer rule
 				// will apply NodeExecBuilder to Subqueries in procedure body
@@ -353,7 +351,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 
 	outScope = inScope.push()
-	outScope.node = plan.NewCall(db, procName, params, proc, asOf, b.cat)
+	outScope.node = plan.NewCall(db, procName, params, proc, asOf, b.cat, nil)
 	return outScope
 }
 
