@@ -102,6 +102,7 @@ func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
+	// SetDB itself handles session and processlist operation lifecycle callbacks.
 	err := h.sm.SetDB(c, schemaName)
 	if err != nil {
 		logrus.WithField("database", schemaName).Errorf("unable to process ComInitDB: %s", err.Error())
@@ -121,6 +122,11 @@ func (h *Handler) ComPrepare(ctx context.Context, c *mysql.Conn, query string, p
 	if err != nil {
 		return nil, err
 	}
+	sqlCtx, err = sqlCtx.ProcessList.BeginOperation(sqlCtx)
+	if err != nil {
+		return nil, err
+	}
+	defer sqlCtx.ProcessList.EndOperation(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return nil, err
@@ -166,7 +172,11 @@ func (h *Handler) ComPrepareParsed(ctx context.Context, c *mysql.Conn, query str
 	if err != nil {
 		return nil, nil, err
 	}
-
+	sqlCtx, err = sqlCtx.ProcessList.BeginOperation(sqlCtx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sqlCtx.ProcessList.EndOperation(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return nil, nil, err
@@ -201,6 +211,11 @@ func (h *Handler) ComBind(ctx context.Context, c *mysql.Conn, query string, pars
 	if err != nil {
 		return nil, nil, err
 	}
+	sqlCtx, err = sqlCtx.ProcessList.BeginOperation(sqlCtx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sqlCtx.ProcessList.EndOperation(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return nil, nil, err
@@ -395,6 +410,13 @@ func (h *Handler) doQuery(
 	if err != nil {
 		return "", err
 	}
+	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
+	//  marked done until we're done spooling rows over the wire
+	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
+	if err != nil {
+		return remainder, err
+	}
+	defer sqlCtx.ProcessList.EndQuery(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return "", err
@@ -438,14 +460,6 @@ func (h *Handler) doQuery(
 	}()
 
 	sqlCtx.GetLogger().Tracef("beginning execution")
-
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
-	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
-	if err != nil {
-		return remainder, err
-	}
-	defer sqlCtx.ProcessList.EndQuery(sqlCtx)
 
 	var schema sql.Schema
 	var rowIter sql.RowIter

@@ -678,6 +678,7 @@ func TestServerEventListener(t *testing.T) {
 	require.Equal(listener.Disconnects, 2)
 
 	conn3 := newConn(3)
+	handler.NewConnection(conn3)
 	query := "SELECT ?"
 	_, err = handler.ComPrepare(context.Background(), conn3, query, samplePrepareData)
 	require.NoError(err)
@@ -1164,6 +1165,8 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			"foo",
 		),
 	}
+
+	handler.NewConnection(dummyConn)
 
 	tests := []struct {
 		name                 string

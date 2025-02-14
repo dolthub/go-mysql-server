@@ -139,6 +139,11 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, dbName string) error {
 	defer sql.SessionCommandEnd(sess)
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx, err = s.processlist.BeginOperation(ctx)
+	if err != nil {
+		return err
+	}
+	defer s.processlist.EndOperation(ctx)
 	var db sql.Database
 	if dbName != "" {
 		db, err = s.getDbFunc(ctx, dbName)

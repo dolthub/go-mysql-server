@@ -169,6 +169,40 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 	}
 }
 
+// Registers the process and session associated with |ctx| as performing
+// a long-running operation that should be able to be canceled with Kill.
+//
+// This is not used for Query processing --- the process is still in
+// CommandSleep, it does not have a QueryPid, etc. Must always be
+// bracketed with EndOperation(). Should certainly be used for any
+// Handler callbacks which may access the database, like Prepare.
+func (pl *ProcessList) BeginOperation(ctx *sql.Context) (*sql.Context, error) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	id := ctx.Session.ID()
+	p := pl.procs[id]
+	if p == nil {
+		return nil, errors.New("internal error: connection not registered with process list")
+	}
+	if p.Kill != nil {
+		return nil, errors.New("internal error: attempt to begin operation on connection which was already running one")
+	}
+	newCtx, cancel := ctx.NewSubContext()
+	p.Kill = cancel
+	return newCtx, nil
+}
+
+func (pl *ProcessList) EndOperation(ctx *sql.Context) {
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	id := ctx.Session.ID()
+	p := pl.procs[id]
+	if p != nil && p.Kill != nil {
+		p.Kill()
+		p.Kill = nil
+	}
+}
+
 // UpdateTableProgress updates the progress of the table with the given name for the
 // process with the given pid.
 func (pl *ProcessList) UpdateTableProgress(pid uint64, name string, delta int64) {
@@ -322,7 +356,11 @@ func (pl *ProcessList) Kill(connID uint32) {
 
 	p := pl.procs[connID]
 	if p != nil && p.Kill != nil {
-		logrus.Infof("kill query: pid %d", p.QueryPid)
+		if p.QueryPid != 0 {
+			logrus.Infof("kill query: pid %d", p.QueryPid)
+		} else {
+			logrus.Infof("canceling context: connID %d", connID)
+		}
 		p.Kill()
 	}
 }
