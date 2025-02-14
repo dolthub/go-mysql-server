@@ -40,7 +40,7 @@ func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.
 		stack.PopScope()
 	case *ast.Select:
 		selectOp := InterpreterOperation{
-			OpCode: OpCode_Select,
+			OpCode:      OpCode_Select,
 			PrimaryData: s,
 		}
 		*ops = append(*ops, selectOp)
@@ -52,7 +52,7 @@ func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.
 
 	default:
 		execOp := InterpreterOperation{
-			OpCode: OpCode_Execute,
+			OpCode:      OpCode_Execute,
 			PrimaryData: s,
 		}
 		*ops = append(*ops, execOp)

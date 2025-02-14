@@ -17,9 +17,10 @@ package rowexec
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/procedures"
-"io"
+	"io"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -215,7 +216,6 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}
 	}
 
-
 	// TODO: mirror plpgsql interpreter_logic.go Call()
 	// TODO: instead of building, run the actual operations
 	// This means call the runner.QueryWithBindings
@@ -225,7 +225,6 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 	}
 
 	// TODO: save any select ast rowIters to be returned later
-
 
 	return &callIter{
 		call:      n,

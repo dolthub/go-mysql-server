@@ -23,7 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-
 // TODO: we need different types of calls: one for external procedures one for stored procedures
 
 type Call struct {
@@ -235,7 +234,3 @@ func (c *Call) GetStatements() []procedures.InterpreterOperation {
 func (c *Call) GetReturn() sql.Type {
 	return nil
 }
-
-
-
-

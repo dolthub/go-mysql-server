@@ -49,13 +49,6 @@ type StatementRunner interface {
 	QueryWithBindings(ctx *Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *QueryFlags) (Schema, RowIter, *QueryFlags, error)
 }
 
-
-
-
-
-
-
-
 // StoredProcedureDetails are the details of the stored procedure. Integrators only need to store and retrieve the given
 // details for a stored procedure, as the engine handles all parsing and processing.
 type StoredProcedureDetails struct {
