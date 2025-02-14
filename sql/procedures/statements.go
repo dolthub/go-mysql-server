@@ -39,8 +39,8 @@ func (Assignment) OperationSize() int32 {
 // AppendOperations implements the interface Statement.
 func (stmt Assignment) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	//*ops = append(*ops, InterpreterOperation{
-	//	OpCode:        OpCode_Assign,
-	//	Target:        stmt.VariableName,
+	//	OpCode: OpCode_Assign,
+	//	Target: stmt.VariableName,
 	//})
 	return nil
 }
@@ -112,8 +112,8 @@ func (ExecuteSQL) OperationSize() int32 {
 // AppendOperations implements the interface Statement.
 func (stmt ExecuteSQL) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	*ops = append(*ops, InterpreterOperation{
-		OpCode:        OpCode_Execute,
-		Target:        stmt.Target,
+		OpCode: OpCode_Execute,
+		Target: stmt.Target,
 	})
 	return nil
 }
@@ -155,9 +155,9 @@ func (If) OperationSize() int32 {
 // AppendOperations implements the interface Statement.
 func (stmt If) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	//*ops = append(*ops, InterpreterOperation{
-	//	OpCode:        OpCode_If,
-	//	PrimaryData:   "SELECT ;",
-	//	Index:         len(*ops) + int(stmt.GotoOffset),
+	//	OpCode:      OpCode_If,
+	//	PrimaryData: "SELECT ;",
+	//	Index:       len(*ops) + int(stmt.GotoOffset),
 	//})
 	return nil
 }
@@ -177,7 +177,7 @@ func (Perform) OperationSize() int32 {
 // AppendOperations implements the interface Statement.
 func (stmt Perform) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	//*ops = append(*ops, InterpreterOperation{
-	//	OpCode:        OpCode_Perform,
+	//	OpCode: OpCode_Perform,
 	//})
 	return nil
 }
@@ -197,7 +197,7 @@ func (Return) OperationSize() int32 {
 // AppendOperations implements the interface Statement.
 func (stmt Return) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	*ops = append(*ops, InterpreterOperation{
-		OpCode:        OpCode_Return,
+		OpCode: OpCode_Return,
 	})
 	return nil
 }

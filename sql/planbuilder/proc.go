@@ -265,7 +265,6 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
 	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
 
-
 	proc = plan.NewProcedure(
 		procDetails.Name,
 		procStmt.ProcedureSpec.Definer,
