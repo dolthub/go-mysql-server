@@ -70,6 +70,10 @@ type InsertInto struct {
 	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
 
+	// Returning is a list of expressions to return after the insert operation. This feature is not supported
+	// in MySQL's syntax, but is exposed through PostgreSQL's syntax.
+	Returning []sql.Expression
+
 	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
 	FirstGeneratedAutoIncRowIdx int
 }
@@ -119,6 +123,31 @@ func (ii *InsertInto) Schema() sql.Schema {
 	if ii.IsReplace {
 		return append(ii.Destination.Schema(), ii.Destination.Schema()...)
 	}
+
+	// Postgres allows the returned values of the insert statement to be controlled, so if returning expressions
+	// were specified, then we return a different schema.
+	// TODO: does anything else depend on the schema returned by insert statements? triggers?
+	// TODO: Do we need to check for the expressions being fully resolved? (probably!)
+	if ii.Returning != nil {
+		// TODO: If we don't return the destination schema anymore... does that mess up other things, like trigger processing?
+		// TODO: we need to look at the expressions in the returning clause
+
+		// TODO: We need to make sure the Returning expressions get resolved by the analyzer! Will need to be special cased... :-/
+		returningExprsResovled := true
+		returningSchema := sql.Schema{}
+		for _, expr := range ii.Returning {
+			if !expr.Resolved() {
+				returningExprsResovled = false
+				break
+			}
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+		}
+
+		if returningExprsResovled {
+			return returningSchema
+		}
+	}
+
 	return ii.Destination.Schema()
 }
 
@@ -227,23 +256,28 @@ func (ii *InsertInto) DebugString() string {
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	return append(ii.OnDupExprs, ii.checks.ToExpressions()...)
+	exprs := append(ii.OnDupExprs, ii.checks.ToExpressions()...)
+	exprs = append(exprs, ii.Returning...)
+	return exprs
 }
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks))
+	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks)+len(ii.Returning) {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks)+len(ii.Returning))
 	}
 
 	nii := *ii
 	nii.OnDupExprs = newExprs[:len(nii.OnDupExprs)]
+	newExprs = newExprs[len(nii.OnDupExprs):]
 
 	var err error
-	nii.checks, err = nii.checks.FromExpressions(newExprs[len(nii.OnDupExprs):])
+	nii.checks, err = nii.checks.FromExpressions(newExprs[:len(nii.checks)])
 	if err != nil {
 		return nil, err
 	}
+	newExprs = newExprs[len(nii.checks):]
+	nii.Returning = newExprs
 
 	return &nii, nil
 }
@@ -263,6 +297,15 @@ func (ii *InsertInto) Resolved() bool {
 			return false
 		}
 	}
+
+	if ii.Returning != nil {
+		for _, expr := range ii.Returning {
+			if !expr.Resolved() {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 

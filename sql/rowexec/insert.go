@@ -30,19 +30,21 @@ import (
 )
 
 type insertIter struct {
-	schema      sql.Schema
-	inserter    sql.RowInserter
-	replacer    sql.RowReplacer
-	updater     sql.RowUpdater
-	rowSource   sql.RowIter
-	unlocker    func()
-	ctx         *sql.Context
-	insertExprs []sql.Expression
-	updateExprs []sql.Expression
-	checks      sql.CheckConstraints
-	tableNode   sql.Node
-	closed      bool
-	ignore      bool
+	schema       sql.Schema
+	inserter     sql.RowInserter
+	replacer     sql.RowReplacer
+	updater      sql.RowUpdater
+	rowSource    sql.RowIter
+	unlocker     func()
+	ctx          *sql.Context
+	insertExprs  []sql.Expression
+	updateExprs  []sql.Expression
+	checks       sql.CheckConstraints
+	tableNode    sql.Node
+	closed       bool
+	ignore       bool
+	returnExprs  []sql.Expression
+	returnSchema sql.Schema
 
 	firstGeneratedAutoIncRowIdx int
 }
@@ -172,6 +174,21 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	i.updateLastInsertId(ctx, row)
+
+	if i.returnExprs != nil {
+		var retExprRow sql.Row
+		// TODO: Why does the GetField expression pull field 1 instead of field 0?
+		emptyOne := []interface{}{nil}
+		row = append(emptyOne, row...)
+		for _, returnExpr := range i.returnExprs {
+			result, err := returnExpr.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			retExprRow = append(retExprRow, result)
+		}
+		return retExprRow, nil
+	}
 
 	return row, nil
 }
