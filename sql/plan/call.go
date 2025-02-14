@@ -228,7 +228,7 @@ func (c *Call) GetParameterNames() []string {
 
 // GetStatements implements the sql.InterpreterNode interface.
 func (c *Call) GetStatements() []procedures.InterpreterOperation {
-	return c.Ops
+	return c.Procedure.Ops
 }
 
 // GetReturn implements the sql.InterpreterNode interface.

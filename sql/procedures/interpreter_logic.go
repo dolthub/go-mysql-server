@@ -33,7 +33,7 @@ type InterpreterNode interface {
 }
 
 // Call runs the contained operations on the given runner.
-func Call(ctx *sql.Context, iNode sql.InterpreterNode, runner sql.StatementRunner, vals []any) (any, error) {
+func Call(ctx *sql.Context, iNode InterpreterNode, runner sql.StatementRunner, vals []any) (any, error) {
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()
@@ -59,7 +59,11 @@ func Call(ctx *sql.Context, iNode sql.InterpreterNode, runner sql.StatementRunne
 		operation := statements[counter]
 		switch operation.OpCode {
 		case OpCode_Select:
-			// TODO
+			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", operation.PrimaryData, nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			return rowIter, nil
 		case OpCode_Declare:
 			resolvedType := types.Uint32 // TODO: figure out actual type from operation
 			stack.NewVariable(operation.Target, resolvedType)

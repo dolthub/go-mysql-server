@@ -198,22 +198,16 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 	n.Pref.PushScope()
 	defer n.Pref.PopScope(ctx)
 
-	procedures.Call(ctx, n, n.Runner)
-
-	for _, stmt := range n.Ops {
-		_, rowIter, _, err := n.Runner.QueryWithBindings(ctx, "", stmt.PrimaryData, nil, nil)
-		if err != nil {
-			return nil, err
-		}
-		for {
-			if _, err = rowIter.Next(ctx); err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, err
-			}
-		}
+	rowIter, err := procedures.Call(ctx, n, n.Runner, nil)
+	if err != nil {
+		return nil, err
 	}
+
+	return &callIter{
+		call:      n,
+		innerIter: rowIter.(sql.RowIter),
+	}, nil
+
 
 
 	// TODO: mirror plpgsql interpreter_logic.go Call()
