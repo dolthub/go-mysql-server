@@ -149,7 +149,7 @@ func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 }
 
 // buildLimitVal resolves a literal numeric type or a numeric
-// prodecure parameter
+// procedure parameter
 func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 	switch e := e.(type) {
 	case *ast.ColName:
@@ -165,7 +165,7 @@ func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 				}
 			}
 		}
-		err := fmt.Errorf("limit expression expected to be numeric or prodecure parameter, found invalid column: %s", e.String())
+		err := fmt.Errorf("limit expression expected to be numeric or procedure parameter, found invalid column: %s", e.String())
 		b.handleErr(err)
 	default:
 		l := b.buildScalar(inScope, e)
