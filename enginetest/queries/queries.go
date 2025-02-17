@@ -843,6 +843,26 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	},
 	{
+		Query:    "select coalesce(1, 0.0);",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
+		Query:    "select coalesce(1, '0');",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
+		Query:    "select coalesce(1, 'x');",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
+		Query:    "select coalesce(1, 1);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select coalesce(1, CAST('2017-08-29' AS DATE))",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
 		Query:    "SELECT count(*) from mytable WHERE ((i IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{3}},
 	},
