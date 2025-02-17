@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -75,17 +76,13 @@ var ProcedureLogicTests = []ScriptTest{
 			{
 				Query: "CALL testabc(2, 3)",
 				Expected: []sql.Row{
-					{
-						6.0,
-					},
+					{6.0},
 				},
 			},
 			{
 				Query: "CALL testabc(9, 9.5)",
 				Expected: []sql.Row{
-					{
-						85.5,
-					},
+					{85.5},
 				},
 			},
 		},
@@ -2831,19 +2828,112 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 		},
 	},
+
 	{
-		Name: "procedure must not contain CREATE TABLE",
+		Name: "table ddl statements in stored procedures",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:          "create procedure p() create table t (pk int);",
-				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
+				Query:    "create procedure create_proc() create table t (i int primary key, j int);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
 			},
 			{
-				Query:          "create procedure p() begin create table t (pk int); end;",
-				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
+				Query:    "call create_proc()",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `j` int,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "call create_proc()",
+				ExpectedErrStr: "table with name t already exists",
+			},
+
+			{
+				Query:    "create procedure insert_proc() insert into t values (1, 1), (2, 2), (3, 3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "call insert_proc()",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query:    "call insert_proc()",
+				ExpectedErrStr: "duplicate primary key given: [1]",
+			},
+
+			{
+				Query:    "create procedure update_proc() update t set j = 999 where i > 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "call update_proc()",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
+				},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 999},
+					{3, 999},
+				},
+			},
+			{
+				Query:    "call update_proc()",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 2}}},
+				},
+			},
+
+			{
+				Query:    "create procedure drop_proc() drop table t;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "call drop_proc()",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "show tables like 't'",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "call drop_proc()",
+				ExpectedErrStr: "Unknown table 't'",
 			},
 		},
 	},
+
 	{
 		Name: "procedure must not contain CREATE TRIGGER",
 		SetUpScript: []string{

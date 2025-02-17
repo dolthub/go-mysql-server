@@ -48,14 +48,18 @@ func Call(ctx *sql.Context, iNode InterpreterNode, runner sql.StatementRunner, v
 	for i := range vals {
 		stack.NewVariableWithValue(parameterNames[i], parameterTypes[i], vals[i])
 	}
+	// TODO: eventually return multiple sql.RowIters
+	var resultRowIter sql.RowIter
+
 	// Run the statements
 	statements := iNode.GetStatements()
 	for {
 		counter++
+		if counter < 0 {
+			panic("negative function counter")
+		}
 		if counter >= len(statements) {
 			break
-		} else if counter < 0 {
-			panic("negative function counter")
 		}
 
 		operation := statements[counter]
@@ -65,7 +69,21 @@ func Call(ctx *sql.Context, iNode InterpreterNode, runner sql.StatementRunner, v
 			if err != nil {
 				return nil, err
 			}
-			return rowIter, nil
+			var rows []sql.Row
+			for {
+				row, rErr := rowIter.Next(ctx)
+				if rErr != nil {
+					if rErr == io.EOF {
+						break
+					}
+					return nil, rErr
+				}
+				rows = append(rows, row)
+			}
+			if err = rowIter.Close(ctx); err != nil {
+				return nil, err
+			}
+			resultRowIter = sql.RowsToRowIter(rows...)
 		case OpCode_Declare:
 			resolvedType := types.Uint32 // TODO: figure out actual type from operation
 			stack.NewVariable(operation.Target, resolvedType)
@@ -76,17 +94,21 @@ func Call(ctx *sql.Context, iNode InterpreterNode, runner sql.StatementRunner, v
 			if err != nil {
 				return nil, err
 			}
+			var rows []sql.Row
 			for {
-				if _, rErr := rowIter.Next(ctx); rErr != nil {
+				row, rErr := rowIter.Next(ctx)
+				if rErr != nil {
 					if rErr == io.EOF {
 						break
 					}
-					return nil, err
+					return nil, rErr
 				}
+				rows = append(rows, row)
 			}
 			if err = rowIter.Close(ctx); err != nil {
 				return nil, err
 			}
+			resultRowIter = sql.RowsToRowIter(rows...)
 		case OpCode_Goto:
 			// We must compare to the index - 1, so that the increment hits our target
 			if counter <= operation.Index {
@@ -122,7 +144,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, runner sql.StatementRunner, v
 					if rErr == io.EOF {
 						break
 					}
-					return nil, err
+					return nil, rErr
 				}
 			}
 			if err = rowIter.Close(ctx); err != nil {
@@ -143,5 +165,5 @@ func Call(ctx *sql.Context, iNode InterpreterNode, runner sql.StatementRunner, v
 			panic("unimplemented opcode")
 		}
 	}
-	return nil, nil
+	return resultRowIter, nil
 }

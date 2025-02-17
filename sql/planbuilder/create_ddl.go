@@ -263,9 +263,6 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 			if s.TriggerSpec != nil {
 				b.handleErr(fmt.Errorf("can't create a TRIGGER from within another stored routine"))
 			}
-			//b.handleErr(fmt.Errorf("CREATE statements in CREATE PROCEDURE not yet supported"))
-		default:
-			b.handleErr(fmt.Errorf("DDL in CREATE PROCEDURE not yet supported"))
 		}
 	case *ast.DBDDL:
 		b.handleErr(fmt.Errorf("DBDDL in CREATE PROCEDURE not yet supported"))
