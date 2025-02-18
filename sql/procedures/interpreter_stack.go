@@ -16,8 +16,12 @@ package procedures
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // Stack is a generic stack.
@@ -83,6 +87,26 @@ func (s *Stack[T]) Empty() bool {
 type InterpreterVariable struct {
 	Type  sql.Type
 	Value any
+}
+
+func (iv *InterpreterVariable) ToAST() *ast.SQLVal {
+	var astType ast.ValType
+	var astVal  []byte
+	if types.IsInteger(iv.Type) {
+		intStr := fmt.Sprintf("%d", iv.Value)
+		return ast.NewIntVal([]byte(intStr))
+	} else if types.IsFloat(iv.Type) {
+		floatStr := strconv.FormatFloat(iv.Value.(float64), 'f', -1, 64)
+		return ast.NewFloatVal([]byte(floatStr))
+	} else {
+		astType = ast.StrVal
+		astVal = []byte(fmt.Sprintf("%s", iv.Value))
+	}
+
+	return &ast.SQLVal{
+		Type: astType,
+		Val:  astVal,
+	}
 }
 
 // InterpreterScopeDetails contains all of the details that are relevant to a particular scope.

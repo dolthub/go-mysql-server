@@ -46,9 +46,11 @@ func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.
 		*ops = append(*ops, selectOp)
 
 	case *ast.Declare:
-		// TODO:
-		//declareOp := InterpreterOperation{}
-		//stack.NewVariable
+		declareOp := InterpreterOperation{
+			OpCode:      OpCode_Declare,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, declareOp)
 
 	default:
 		execOp := InterpreterOperation{

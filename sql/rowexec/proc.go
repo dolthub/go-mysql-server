@@ -182,23 +182,26 @@ func (b *BaseBuilder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.Proc
 }
 
 func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.RowIter, error) {
+	procParams := make([]*procedures.Parameter, len(n.Params))
 	for i, paramExpr := range n.Params {
-		val, err := paramExpr.Eval(ctx, row)
+		paramName := strings.ToLower(n.Procedure.Params[i].Name)
+		paramType := n.Procedure.Params[i].Type
+		paramVal, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		paramName := n.Procedure.Params[i].Name
-		paramType := n.Procedure.Params[i].Type
-		err = n.Pref.InitializeVariable(paramName, paramType, val)
+		paramVal, _, err = paramType.Convert(paramVal)
 		if err != nil {
 			return nil, err
+		}
+		procParams[i] = &procedures.Parameter{
+			Name:  paramName,
+			Value: paramVal,
+			Type:  paramType,
 		}
 	}
 
-	n.Pref.PushScope()
-	defer n.Pref.PopScope(ctx)
-
-	rowIter, err := procedures.Call(ctx, n, n.Runner, nil)
+	rowIter, err := procedures.Call(ctx, n, procParams)
 	if err != nil {
 		return nil, err
 	}
