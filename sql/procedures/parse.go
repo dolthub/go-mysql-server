@@ -57,7 +57,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		// TODO: assume exactly one condition for now
 		ifCond := s.Conditions[0]
 		// TODO: convert condition into a select query
-		selectIfCond := &ast.Select{
+		selectCond := &ast.Select{
 			SelectExprs: ast.SelectExprs{
 				&ast.AliasedExpr{
 					Expr: ifCond.Expr,
@@ -66,7 +66,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		ifOp := &InterpreterOperation{
 			OpCode:      OpCode_If,
-			PrimaryData: selectIfCond,
+			PrimaryData: selectCond,
 		}
 		*ops = append(*ops, ifOp)
 
@@ -89,8 +89,35 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 
 		gotoOp.Index = len(*ops)
 
-		// TODO: update the indexes, now that we know where the goto should go
+	case *ast.While:
+		loopStart := len(*ops)
 
+		whileCond := s.Condition
+		selectCond := &ast.Select{
+			SelectExprs: ast.SelectExprs{
+				&ast.AliasedExpr{
+					Expr: whileCond,
+				},
+			},
+		}
+		whileOp := &InterpreterOperation{
+			OpCode:      OpCode_If,
+			PrimaryData: selectCond,
+		}
+		*ops = append(*ops, whileOp)
+
+		for _, whileStmt := range s.Statements {
+			if err := ConvertStmt(ops, stack, whileStmt); err != nil {
+				return err
+			}
+		}
+		gotoOp := &InterpreterOperation{
+			OpCode: OpCode_Goto,
+			Index: loopStart,
+		}
+		*ops = append(*ops, gotoOp)
+
+		whileOp.Index = len(*ops)
 	default:
 		execOp := &InterpreterOperation{
 			OpCode:      OpCode_Execute,
