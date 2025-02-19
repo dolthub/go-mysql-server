@@ -38,6 +38,7 @@ func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.
 		}
 		*ops = append(*ops, endOp)
 		stack.PopScope()
+
 	case *ast.Select:
 		selectOp := InterpreterOperation{
 			OpCode:      OpCode_Select,

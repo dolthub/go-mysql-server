@@ -16,6 +16,7 @@ package procedures
 
 import (
 	"io"
+	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -132,8 +133,22 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 			}
 			rowIters = append(rowIters, rowIter)
 		case OpCode_Declare:
-			resolvedType := types.Uint32 // TODO: figure out actual type from operation
-			stack.NewVariable(operation.Target, resolvedType)
+			declareStmt := operation.PrimaryData.(*ast.Declare)
+			for _, decl := range declareStmt.Variables.Names {
+				var varType sql.Type
+				switch declareStmt.Variables.VarType.Type {
+				case "int":
+					varType = types.Int32
+				default:
+					panic("unimplemented type")
+				}
+				varName := strings.ToLower(decl.String())
+				if declareStmt.Variables.VarType.Default != nil {
+					stack.NewVariableWithValue(varName, varType, declareStmt.Variables.VarType.Default)
+				} else {
+					stack.NewVariable(varName, varType)
+				}
+			}
 		case OpCode_Exception:
 			// TODO: implement
 		case OpCode_Execute:

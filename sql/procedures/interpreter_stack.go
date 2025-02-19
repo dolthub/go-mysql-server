@@ -90,6 +90,10 @@ type InterpreterVariable struct {
 }
 
 func (iv *InterpreterVariable) ToAST() *ast.SQLVal {
+	if sqlVal, isSQLVal := iv.Value.(*ast.SQLVal); isSQLVal {
+		return sqlVal
+	}
+
 	var astType ast.ValType
 	var astVal  []byte
 	if types.IsInteger(iv.Type) {
