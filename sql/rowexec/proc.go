@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 )
 
 func (b *BaseBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement, row sql.Row) (sql.RowIter, error) {
@@ -181,26 +182,45 @@ func (b *BaseBuilder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.Proc
 }
 
 func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.RowIter, error) {
+	procParams := make([]*procedures.Parameter, len(n.Params))
 	for i, paramExpr := range n.Params {
-		val, err := paramExpr.Eval(ctx, row)
+		paramName := strings.ToLower(n.Procedure.Params[i].Name)
+		paramType := n.Procedure.Params[i].Type
+		paramVal, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		paramName := n.Procedure.Params[i].Name
-		paramType := n.Procedure.Params[i].Type
-		err = n.Pref.InitializeVariable(paramName, paramType, val)
+		paramVal, _, err = paramType.Convert(paramVal)
 		if err != nil {
 			return nil, err
+		}
+		procParams[i] = &procedures.Parameter{
+			Name:  paramName,
+			Value: paramVal,
+			Type:  paramType,
 		}
 	}
 
-	n.Pref.PushScope()
-	defer n.Pref.PopScope(ctx)
+	rowIter, err := procedures.Call(ctx, n, procParams)
+	if err != nil {
+		return nil, err
+	}
 
+	return &callIter{
+		call:      n,
+		innerIter: rowIter.(sql.RowIter),
+	}, nil
+
+	// TODO: mirror plpgsql interpreter_logic.go Call()
+	// TODO: instead of building, run the actual operations
+	// This means call the runner.QueryWithBindings
 	innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: save any select ast rowIters to be returned later
+
 	return &callIter{
 		call:      n,
 		innerIter: innerIter,
