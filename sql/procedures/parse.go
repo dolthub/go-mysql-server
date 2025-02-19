@@ -18,11 +18,11 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.Statement) error {
+func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast.Statement) error {
 	switch s := stmt.(type) {
 	case *ast.BeginEndBlock:
 		stack.PushScope()
-		startOP := InterpreterOperation{
+		startOP := &InterpreterOperation{
 			OpCode: OpCode_ScopeBegin,
 		}
 		*ops = append(*ops, startOP)
@@ -33,28 +33,66 @@ func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.
 				return err
 			}
 		}
-		endOp := InterpreterOperation{
+		endOp := &InterpreterOperation{
 			OpCode: OpCode_ScopeEnd,
 		}
 		*ops = append(*ops, endOp)
 		stack.PopScope()
 
 	case *ast.Select:
-		selectOp := InterpreterOperation{
+		selectOp := &InterpreterOperation{
 			OpCode:      OpCode_Select,
 			PrimaryData: s,
 		}
 		*ops = append(*ops, selectOp)
 
 	case *ast.Declare:
-		declareOp := InterpreterOperation{
+		declareOp := &InterpreterOperation{
 			OpCode:      OpCode_Declare,
 			PrimaryData: s,
 		}
 		*ops = append(*ops, declareOp)
 
+	case *ast.IfStatement:
+		// TODO: assume exactly one condition for now
+		ifCond := s.Conditions[0]
+		// TODO: convert condition into a select query
+		selectIfCond := &ast.Select{
+			SelectExprs: ast.SelectExprs{
+				&ast.AliasedExpr{
+					Expr: ifCond.Expr,
+				},
+			},
+		}
+		ifOp := &InterpreterOperation{
+			OpCode:      OpCode_If,
+			PrimaryData: selectIfCond,
+		}
+		*ops = append(*ops, ifOp)
+
+		for _, ifStmt := range ifCond.Statements {
+			if err := ConvertStmt(ops, stack, ifStmt); err != nil {
+				return err
+			}
+		}
+		gotoOp := &InterpreterOperation{
+			OpCode: OpCode_Goto,
+		}
+		*ops = append(*ops, gotoOp)
+
+		ifOp.Index = len(*ops)
+		for _, elseStmt := range s.Else {
+			if err := ConvertStmt(ops, stack, elseStmt); err != nil {
+				return err
+			}
+		}
+
+		gotoOp.Index = len(*ops)
+
+		// TODO: update the indexes, now that we know where the goto should go
+
 	default:
-		execOp := InterpreterOperation{
+		execOp := &InterpreterOperation{
 			OpCode:      OpCode_Execute,
 			PrimaryData: s,
 		}
@@ -66,8 +104,8 @@ func ConvertStmt(ops *[]InterpreterOperation, stack *InterpreterStack, stmt ast.
 
 // Parse parses the given CREATE FUNCTION string (which must be the entire string, not just the body) into a Block
 // containing the contents of the body.
-func Parse(stmt ast.Statement) ([]InterpreterOperation, error) {
-	ops := make([]InterpreterOperation, 0, 64)
+func Parse(stmt ast.Statement) ([]*InterpreterOperation, error) {
+	ops := make([]*InterpreterOperation, 0, 64)
 	stack := NewInterpreterStack()
 	err := ConvertStmt(&ops, &stack, stmt)
 	if err != nil {

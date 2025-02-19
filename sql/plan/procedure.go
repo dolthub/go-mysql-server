@@ -81,7 +81,7 @@ type Procedure struct {
 	Comment               string
 	Characteristics       []Characteristic
 	CreateProcedureString string
-	Ops                   []procedures.InterpreterOperation
+	Ops                   []*procedures.InterpreterOperation
 	ExternalProc          sql.Node
 	CreatedAt             time.Time
 	ModifiedAt            time.Time
@@ -104,7 +104,7 @@ func NewProcedure(
 	createProcedureString string,
 	createdAt time.Time,
 	modifiedAt time.Time,
-	ops []procedures.InterpreterOperation,
+	ops []*procedures.InterpreterOperation,
 ) *Procedure {
 	lowercasedParams := make([]ProcedureParam, len(params))
 	for i, param := range params {

@@ -29,7 +29,7 @@ import (
 type InterpreterNode interface {
 	GetRunner() sql.StatementRunner
 	GetReturn() sql.Type
-	GetStatements() []InterpreterOperation
+	GetStatements() []*InterpreterOperation
 	SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node
 }
 
@@ -48,6 +48,17 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 		}
 		e.Expr = newExpr.(ast.Expr)
 	case *ast.BinaryExpr:
+		newLeftExpr, err := replaceVariablesInExpr(stack, e.Left)
+		if err != nil {
+			return nil, err
+		}
+		newRightExpr, err := replaceVariablesInExpr(stack, e.Right)
+		if err != nil {
+			return nil, err
+		}
+		e.Left = newLeftExpr.(ast.Expr)
+		e.Right = newRightExpr.(ast.Expr)
+	case *ast.ComparisonExpr:
 		newLeftExpr, err := replaceVariablesInExpr(stack, e.Left)
 		if err != nil {
 			return nil, err
@@ -184,28 +195,38 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 				}
 			}
 		case OpCode_If:
-			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", operation.PrimaryData, nil, nil)
+			selectStmt := operation.PrimaryData.(*ast.Select)
+			if selectStmt.SelectExprs == nil {
+				panic("select stmt with no select exprs")
+			}
+			for i := range selectStmt.SelectExprs {
+				newNode, err := replaceVariablesInExpr(&stack, selectStmt.SelectExprs[i])
+				if err != nil {
+					return nil, err
+				}
+				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
+			}
+			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
 			if err != nil {
 				return nil, err
 			}
-			for {
-				if _, rErr := rowIter.Next(ctx); rErr != nil {
-					if rErr == io.EOF {
-						break
-					}
-					return nil, rErr
-				}
+			// TODO: exactly one result that is a bool for now
+			row, err := rowIter.Next(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if _, err = rowIter.Next(ctx); err != io.EOF {
+				return nil, err
 			}
 			if err = rowIter.Close(ctx); err != nil {
 				return nil, err
 			}
-			// TODO: ensure there is exactly one result that is a bool
-			//if retVal.(bool) {
-			//	// We're never changing the scope, so we can just assign it directly.
-			//	// Also, we must assign to index-1, so that the increment hits our target.
-			//	counter = operation.Index - 1
-			//}
 
+			// go to the appropriate block
+			cond := row[0].(bool)
+			if !cond {
+				counter = operation.Index - 1 // index of the else block, offset by 1
+			}
 		case OpCode_ScopeBegin:
 			stack.PushScope()
 		case OpCode_ScopeEnd:
@@ -214,5 +235,8 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 			panic("unimplemented opcode")
 		}
 	}
-	return rowIters[0], nil
+	if len(rowIters) == 0 {
+		panic("no rowIters")
+	}
+	return rowIters[len(rowIters)-1], nil
 }
