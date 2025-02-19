@@ -126,7 +126,7 @@ func NewProcedure(
 		CreatedAt:             createdAt,
 		ModifiedAt:            modifiedAt,
 
-		Ops:                   ops,
+		Ops: ops,
 	}
 }
 

@@ -2833,13 +2833,13 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		Name: "table ddl statements in stored procedures",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create procedure create_proc() create table t (i int primary key, j int);",
+				Query: "create procedure create_proc() create table t (i int primary key, j int);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query:    "call create_proc()",
+				Query: "call create_proc()",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
@@ -2855,24 +2855,24 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "call create_proc()",
+				Query:          "call create_proc()",
 				ExpectedErrStr: "table with name t already exists",
 			},
 
 			{
-				Query:    "create procedure insert_proc() insert into t values (1, 1), (2, 2), (3, 3);",
+				Query: "create procedure insert_proc() insert into t values (1, 1), (2, 2), (3, 3);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query:    "call insert_proc()",
+				Query: "call insert_proc()",
 				Expected: []sql.Row{
 					{types.NewOkResult(3)},
 				},
 			},
 			{
-				Query:    "select * from t",
+				Query: "select * from t",
 				Expected: []sql.Row{
 					{1, 1},
 					{2, 2},
@@ -2880,24 +2880,24 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "call insert_proc()",
+				Query:          "call insert_proc()",
 				ExpectedErrStr: "duplicate primary key given: [1]",
 			},
 
 			{
-				Query:    "create procedure update_proc() update t set j = 999 where i > 1;",
+				Query: "create procedure update_proc() update t set j = 999 where i > 1;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query:    "call update_proc()",
+				Query: "call update_proc()",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
 				},
 			},
 			{
-				Query:    "select * from t",
+				Query: "select * from t",
 				Expected: []sql.Row{
 					{1, 1},
 					{2, 999},
@@ -2905,20 +2905,20 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 				},
 			},
 			{
-				Query:    "call update_proc()",
+				Query: "call update_proc()",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 2}}},
 				},
 			},
 
 			{
-				Query:    "create procedure drop_proc() drop table t;",
+				Query: "create procedure drop_proc() drop table t;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query:    "call drop_proc()",
+				Query: "call drop_proc()",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
@@ -2928,7 +2928,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "call drop_proc()",
+				Query:          "call drop_proc()",
 				ExpectedErrStr: "Unknown table 't'",
 			},
 		},
