@@ -198,17 +198,32 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "test script",
+			Name: "Simple SELECT",
 			SetUpScript: []string{
-				"create table t (i int);",
+				`create procedure proc()
+begin
+	set @x = 0;
+	while @x < 10 do
+		set @x = @x + 1;
+	end while;
+end;`,
+				//"create procedure proc(x int) select x > 1;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select 1 into @a",
-					Expected: []sql.Row{},
+					Query: "call proc();",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
+				},
+				{
+					Query: "select @x;",
+					Expected: []sql.Row{
+						{10},
+					},
 				},
 			},
 		},
@@ -216,6 +231,8 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		// TODO: fix this
+		//harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
