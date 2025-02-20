@@ -10162,14 +10162,14 @@ from typestable`,
 	},
 
 	{
-		Query: "explain select 1",
+		Query:            "explain select 1",
 		SkipServerEngine: true,
 		Expected: []sql.Row{
 			{1, "SELECT", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", ""},
 		},
 	},
 	{
-		Query: "explain plan select 1",
+		Query:            "explain plan select 1",
 		SkipServerEngine: true,
 		Expected: []sql.Row{
 			{"Project"},
@@ -10179,7 +10179,7 @@ from typestable`,
 		},
 	},
 	{
-		Query: "explain format=tree select 1",
+		Query:            "explain format=tree select 1",
 		SkipServerEngine: true,
 		Expected: []sql.Row{
 			{"Project"},
