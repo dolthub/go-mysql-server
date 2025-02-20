@@ -211,7 +211,6 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		innerIter: rowIter.(sql.RowIter),
 	}, nil
 
-
 	// TODO: mirror plpgsql interpreter_logic.go Call()
 	// TODO: instead of building, run the actual operations
 	// This means call the runner.QueryWithBindings

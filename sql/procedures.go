@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-		"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // Interpreter is an interface that implements an interpreter. These are typically used for functions (which may be

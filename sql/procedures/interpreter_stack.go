@@ -95,7 +95,7 @@ func (iv *InterpreterVariable) ToAST() *ast.SQLVal {
 	}
 
 	var astType ast.ValType
-	var astVal  []byte
+	var astVal []byte
 	if types.IsInteger(iv.Type) {
 		intStr := fmt.Sprintf("%d", iv.Value)
 		return ast.NewIntVal([]byte(intStr))
