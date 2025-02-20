@@ -40,8 +40,10 @@ func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *
 		case sqlparser.TreeStr:
 			describeOptions.Plan = true
 		case "debug":
+			describeOptions.Plan = true
 			describeOptions.Debug = true
 		case "estimates":
+			describeOptions.Plan = true
 			describeOptions.Estimates = true
 		default:
 			err := errInvalidDescribeFormat.New(n.ExplainFormat, "tree")
