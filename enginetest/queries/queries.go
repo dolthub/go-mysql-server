@@ -10160,6 +10160,32 @@ from typestable`,
 			{false},
 		},
 	},
+
+	{
+		Query: "explain select 1",
+		Expected: []sql.Row{
+			{1, "SELECT", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", ""},
+		},
+	},
+	{
+		Query: "explain plan select 1",
+		Expected: []sql.Row{
+			{"Project"},
+			{" ├─ columns: [1]"},
+			{" └─ Table"},
+			{"     └─ name: "},
+		},
+	},
+	{
+		Query: "explain format=tree select 1",
+		Expected: []sql.Row{
+			{"Project"},
+			{" ├─ columns: [1]"},
+			{" └─ Table"},
+			{"     └─ name: "},
+		},
+	},
+
 }
 
 var KeylessQueries = []QueryTest{
