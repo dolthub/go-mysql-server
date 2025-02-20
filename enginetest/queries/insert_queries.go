@@ -1722,7 +1722,7 @@ var InsertScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into a select * from (select i from b) as bb on duplicate key update a.i = bb.i + 100;",
+				Query:          "insert into a select * from (select i from b) as bb on duplicate key update a.i = bb.i + 100;",
 				ExpectedErrStr: "number of values does not match number of columns provided",
 			},
 			{
