@@ -35,11 +35,15 @@ func (b *Builder) buildExplain(inScope *scope, n *sqlparser.Explain) (outScope *
 	formatFlags := strings.Split(n.ExplainFormat, "_")
 	for _, flag := range formatFlags {
 		switch strings.ToLower(flag) {
-		case "", sqlparser.TreeStr:
-		// tree format, do nothing
+		case "":
+			// no-op
+		case sqlparser.TreeStr:
+			describeOptions.Plan = true
 		case "debug":
+			describeOptions.Plan = true
 			describeOptions.Debug = true
 		case "estimates":
+			describeOptions.Plan = true
 			describeOptions.Estimates = true
 		default:
 			err := errInvalidDescribeFormat.New(n.ExplainFormat, "tree")
