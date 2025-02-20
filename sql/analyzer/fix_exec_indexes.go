@@ -454,6 +454,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 						break
 					}
 				}
+				// unable to find column, use copy with OnDupValuesPrefix or fallback
 				if newC == nil {
 					if len(destSch) != len(srcSch) {
 						newC = c.Copy()

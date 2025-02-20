@@ -120,6 +120,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		combinedScope.insertColumnAliases = inScope.insertColumnAliases
 		for i, c := range destScope.cols {
 			combinedScope.newColumn(c)
+			// if the srcScope is empty, it is a values statement
 			if len(srcScope.cols) == 0 {
 				// The to-be-inserted values can be referenced via the provided alias.
 				c.table = combinedScope.insertTableAlias
