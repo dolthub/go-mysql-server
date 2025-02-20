@@ -1713,6 +1713,33 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Insert on duplicate key references table in subquery with different schema lengths",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int, k int)",
+			"insert into a values (1, 2, 3)",
+			"create table b (i int primary key)",
+			"insert into b values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into a select * from (select i from b) as bb on duplicate key update a.i = bb.i + 100;",
+				ExpectedErrStr: "number of values does not match number of columns provided",
+			},
+			{
+				Query: "insert into a (i) select * from (select i from b) as bb on duplicate key update a.i = bb.i + 100;",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{
+					{101, 2, 3},
+				},
+			},
+		},
+	},
+	{
 		Name: "Insert on duplicate key references table in aliased subquery",
 		SetUpScript: []string{
 			`create table a (i int primary key)`,
