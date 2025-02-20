@@ -82,7 +82,7 @@ func (s *statsIter) updateIndexMeta() {
 	}
 	s.types = dStat.Types()
 	s.typesStr = typesB.String()
-	if dStat.LowerBound() != nil {
+	if len(dStat.LowerBound()) > 0 {
 		s.lowerBoundStr = StringifyKey(dStat.LowerBound(), dStat.Types())
 	}
 	s.colsStr = strings.Join(dStat.Columns(), ",")
