@@ -118,6 +118,38 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		*ops = append(*ops, gotoOp)
 
 		whileOp.Index = len(*ops)
+
+	case *ast.Repeat:
+		loopStart := len(*ops)
+
+		repeatCond := &ast.NotExpr{Expr: s.Condition}
+		selectCond := &ast.Select{
+			SelectExprs: ast.SelectExprs{
+				&ast.AliasedExpr{
+					Expr: repeatCond,
+				},
+			},
+		}
+		repeatOp := &InterpreterOperation{
+			OpCode:      OpCode_If,
+			PrimaryData: selectCond,
+		}
+		*ops = append(*ops, repeatOp)
+
+		for _, repeatStmt := range s.Statements {
+			if err := ConvertStmt(ops, stack, repeatStmt); err != nil {
+				return err
+			}
+		}
+
+		gotoOp := &InterpreterOperation{
+			OpCode: OpCode_Goto,
+			Index: loopStart,
+		}
+		*ops = append(*ops, gotoOp)
+
+		repeatOp.Index = len(*ops)
+
 	default:
 		execOp := &InterpreterOperation{
 			OpCode:      OpCode_Execute,

@@ -69,6 +69,12 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 		}
 		e.Left = newLeftExpr.(ast.Expr)
 		e.Right = newRightExpr.(ast.Expr)
+	case *ast.NotExpr:
+		newExpr, err := replaceVariablesInExpr(stack, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		e.Expr = newExpr.(ast.Expr)
 	case *ast.ColName:
 		iv := stack.GetVariable(e.Name.String())
 		if iv == nil {
