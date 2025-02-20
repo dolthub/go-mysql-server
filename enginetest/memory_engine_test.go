@@ -203,18 +203,19 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "Simple SELECT",
 			SetUpScript: []string{
-				`create procedure proc()
+				`
+create procedure proc(i int)
 begin
 	set @x = 0;
-	while @x < 10 do
-		set @x = @x + 1;
-	end while;
-end;`,
+    repeat set @x = @x + 1; 
+	until @x > i
+	end repeat;
+end`,
 				//"create procedure proc(x int) select x > 1;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "call proc();",
+					Query: "call proc(10);",
 					Expected: []sql.Row{
 						{types.NewOkResult(0)},
 					},
@@ -222,7 +223,7 @@ end;`,
 				{
 					Query: "select @x;",
 					Expected: []sql.Row{
-						{10},
+						{11},
 					},
 				},
 			},
