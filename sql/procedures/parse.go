@@ -53,6 +53,33 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		*ops = append(*ops, declareOp)
 
+	case *ast.Set:
+		if len(s.Exprs) != 1 {
+			panic("unexpected number of set expressions")
+		}
+		setExpr := s.Exprs[0]
+		var setOp *InterpreterOperation
+		if len(setExpr.Scope) != 0 {
+			setOp = &InterpreterOperation{
+				OpCode: OpCode_Execute,
+				PrimaryData: s,
+			}
+		} else {
+			selectStmt := &ast.Select{
+				SelectExprs: ast.SelectExprs{
+					&ast.AliasedExpr{
+						Expr: setExpr.Expr,
+					},
+				},
+			}
+			setOp = &InterpreterOperation{
+				OpCode:      OpCode_Set,
+				PrimaryData: selectStmt,
+				Target:      setExpr.Name.String(),
+			}
+		}
+		*ops = append(*ops, setOp)
+
 	case *ast.IfStatement:
 		// TODO: assume exactly one condition for now
 		ifCond := s.Conditions[0]
@@ -80,14 +107,63 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		*ops = append(*ops, gotoOp)
 
-		ifOp.Index = len(*ops)
+		ifOp.Index = len(*ops) // start of else block
 		for _, elseStmt := range s.Else {
 			if err := ConvertStmt(ops, stack, elseStmt); err != nil {
 				return err
 			}
 		}
 
-		gotoOp.Index = len(*ops)
+		gotoOp.Index = len(*ops) // end of if statement
+
+	case *ast.CaseStatement:
+		var caseGotoOps []*InterpreterOperation
+		for _, caseStmt := range s.Cases {
+			caseExpr := caseStmt.Case
+			if s.Expr != nil {
+				caseExpr = &ast.ComparisonExpr{
+					Operator: ast.EqualStr,
+					Left:     s.Expr,
+					Right:    caseExpr,
+				}
+			}
+			caseCond := &ast.Select{
+				SelectExprs: ast.SelectExprs{
+					&ast.AliasedExpr{
+						Expr: caseExpr,
+					},
+				},
+			}
+			caseOp := &InterpreterOperation{
+				OpCode:      OpCode_If,
+				PrimaryData: caseCond,
+			}
+			*ops = append(*ops, caseOp)
+
+			for _, ifStmt := range caseStmt.Statements {
+				if err := ConvertStmt(ops, stack, ifStmt); err != nil {
+					return err
+				}
+			}
+			gotoOp := &InterpreterOperation{
+				OpCode: OpCode_Goto,
+			}
+			caseGotoOps = append(caseGotoOps, gotoOp)
+			*ops = append(*ops, gotoOp)
+
+			caseOp.Index = len(*ops) // start of next case
+		}
+		if s.Else != nil {
+			for _, elseStmt := range s.Else {
+				if err := ConvertStmt(ops, stack, elseStmt); err != nil {
+					return err
+				}
+			}
+		}
+
+		for _, gotoOp := range caseGotoOps {
+			gotoOp.Index = len(*ops) // end of case block
+		}
 
 	case *ast.While:
 		loopStart := len(*ops)
@@ -117,7 +193,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		*ops = append(*ops, gotoOp)
 
-		whileOp.Index = len(*ops)
+		whileOp.Index = len(*ops) // end of while block
 
 	case *ast.Repeat:
 		loopStart := len(*ops)
@@ -148,8 +224,40 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		*ops = append(*ops, gotoOp)
 
-		repeatOp.Index = len(*ops)
+		repeatOp.Index = len(*ops) // end of repeat block
 
+	case *ast.Loop:
+		loopStart := len(*ops)
+		for _, loopStmt := range s.Statements {
+			if err := ConvertStmt(ops, stack, loopStmt); err != nil {
+				return err
+			}
+		}
+		gotoOp := &InterpreterOperation{
+			OpCode: OpCode_Goto,
+			Index: loopStart,
+		}
+		*ops = append(*ops, gotoOp)
+
+		// perform second pass over loop statements to add labels
+		for idx := loopStart; idx < len(*ops); idx++ {
+			op := (*ops)[idx]
+			switch op.OpCode {
+			case OpCode_Goto:
+				if op.Target == s.Label {
+					(*ops)[idx].Index = len(*ops)
+				}
+			default:
+				continue
+			}
+		}
+
+	case *ast.Leave:
+		leaveOp := &InterpreterOperation{
+			OpCode: OpCode_Goto,
+			Target: s.Label, // hacky? way to signal a leave
+		}
+		*ops = append(*ops, leaveOp)
 	default:
 		execOp := &InterpreterOperation{
 			OpCode:      OpCode_Execute,

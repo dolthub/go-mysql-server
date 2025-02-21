@@ -19,6 +19,7 @@ type OpCode uint16
 const (
 	OpCode_Select     OpCode = iota
 	OpCode_Declare           // https://www.postgresql.org/docs/15/plpgsql-declarations.html
+	OpCode_Set
 	OpCode_Exception         // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-ERROR-TRAPPING
 	OpCode_Execute           // Everything that's not a SELECT
 	OpCode_Goto              // All control-flow structures can be represented using Goto
