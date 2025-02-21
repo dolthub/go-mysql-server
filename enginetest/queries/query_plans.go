@@ -18,6 +18,96 @@ package queries
 
 var PlanTests = []QueryPlanTest{
 	{
+		Query: `
+Select x
+from (select * from xy) sq1
+union all
+select u
+from (select * from uv) sq2
+limit 1
+offset 1;`,
+		ExpectedPlan: "Union all\n" +
+			" ├─ limit: 1\n" +
+			" ├─ offset: 1\n" +
+			" ├─ Project\n" +
+			" │   ├─ columns: [sq1.x:0!null]\n" +
+			" │   └─ SubqueryAlias\n" +
+			" │       ├─ name: sq1\n" +
+			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       ├─ colSet: (3,4)\n" +
+			" │       ├─ tableId: 2\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: xy\n" +
+			" │           ├─ columns: [x y]\n" +
+			" │           ├─ colSet: (1,2)\n" +
+			" │           └─ tableId: 1\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [sq2.u:0!null]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: sq2\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (7,8)\n" +
+			"         ├─ tableId: 4\n" +
+			"         └─ Table\n" +
+			"             ├─ name: uv\n" +
+			"             ├─ columns: [u v]\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             └─ tableId: 3\n" +
+			"",
+		ExpectedEstimates: "Union all\n" +
+			" ├─ limit: 1\n" +
+			" ├─ offset: 1\n" +
+			" ├─ Project\n" +
+			" │   ├─ columns: [sq1.x]\n" +
+			" │   └─ SubqueryAlias\n" +
+			" │       ├─ name: sq1\n" +
+			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: xy\n" +
+			" │           └─ columns: [x y]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [sq2.u]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: sq2\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: uv\n" +
+			"             └─ columns: [u v]\n" +
+			"",
+		ExpectedAnalysis: "Union all\n" +
+			" ├─ limit: 1\n" +
+			" ├─ offset: 1\n" +
+			" ├─ Project\n" +
+			" │   ├─ columns: [sq1.x]\n" +
+			" │   └─ SubqueryAlias\n" +
+			" │       ├─ name: sq1\n" +
+			" │       ├─ outerVisibility: false\n" +
+			" │       ├─ isLateral: false\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: xy\n" +
+			" │           └─ columns: [x y]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [sq2.u]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: sq2\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         └─ Table\n" +
+			"             ├─ name: uv\n" +
+			"             └─ columns: [u v]\n" +
+			"",
+	},
+	{
 		Query: `WITH cte AS (SELECT * FROM xy) SELECT *, (SELECT SUM(x) FROM cte) AS xy FROM cte`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [cte.x:0!null, cte.y:1, Subquery\n" +
