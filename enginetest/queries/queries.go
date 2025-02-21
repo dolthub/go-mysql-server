@@ -1073,6 +1073,16 @@ Select * from (
 		Expected: []sql.Row{{1}},
 	},
 	{
+		Query: `
+WITH RECURSIVE cte(d) AS (
+  SELECT 0
+  UNION ALL
+  SELECT cte.d + 1 FROM cte limit 3
+)
+SELECT * FROM cte WHERE  d = 2;`,
+		Expected: []sql.Row{{2}},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/5642
 		Query:    "SELECT count(*) FROM mytable WHERE i = 3720481604718463778705849469618542795;",
 		Expected: []sql.Row{{0}},
