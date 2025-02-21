@@ -122,7 +122,7 @@ type InterpreterScopeDetails struct {
 // the same as a stack in the traditional programming sense, but rather is a loose abstraction that serves the same
 // general purpose.
 type InterpreterStack struct {
-	stack *Stack[*InterpreterScopeDetails]
+	stack      *Stack[*InterpreterScopeDetails]
 	replaceMap map[ast.SQLNode]ast.SQLNode
 }
 
@@ -134,7 +134,7 @@ func NewInterpreterStack() InterpreterStack {
 		variables: make(map[string]*InterpreterVariable),
 	})
 	return InterpreterStack{
-		stack: stack,
+		stack:      stack,
 		replaceMap: map[ast.SQLNode]ast.SQLNode{},
 	}
 }
