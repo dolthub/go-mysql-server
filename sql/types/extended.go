@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 
@@ -26,11 +27,11 @@ type ExtendedType interface {
 	sql.Type
 	// SerializedCompare compares two byte slices that each represent a serialized value, without first deserializing
 	// the value. This should return the same result as the Compare function.
-	SerializedCompare(v1 []byte, v2 []byte) (int, error)
+	SerializedCompare(ctx context.Context, v1 []byte, v2 []byte) (int, error)
 	// SerializeValue converts the given value into a binary representation.
-	SerializeValue(val any) ([]byte, error)
+	SerializeValue(ctx context.Context, val any) ([]byte, error)
 	// DeserializeValue converts a binary representation of a value into its canonical type.
-	DeserializeValue(val []byte) (any, error)
+	DeserializeValue(ctx context.Context, val []byte) (any, error)
 	// FormatValue returns a string version of the value. Primarily intended for display.
 	FormatValue(val any) (string, error)
 	// MaxSerializedWidth returns the maximum size that the serialized value may represent.
