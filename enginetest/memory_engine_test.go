@@ -201,31 +201,184 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Simple SELECT",
+			Name: "CASE statements",
 			SetUpScript: []string{
 				`
-create procedure proc(i int)
+create procedure proc()
 begin
-	set @x = 0;
-    repeat set @x = @x + 1; 
-	until @x > i
-	end repeat;
-end`,
-				//"create procedure proc(x int) select x > 1;",
+	declare x int default 0;
+	tloop: loop
+		case
+			when x = 0 then
+				set x = 1;
+			else
+				leave tloop;
+		end case;
+	end loop;
+	select x;
+end;`,
+
+
+//				`CREATE PROCEDURE p1(IN a BIGINT)
+//BEGIN
+//	DECLARE b VARCHAR(200) DEFAULT "";
+//	tloop: LOOP
+//		CASE
+//			WHEN a < 4 THEN
+//				SET b = CONCAT(b, "a");
+//				SET a = a + 1;
+//			WHEN a < 8 THEN
+//				SET b = CONCAT(b, "b");
+//				SET a = a + 1;
+//			ELSE
+//				LEAVE tloop;
+//		END CASE;
+//	END LOOP;
+//	SELECT b;
+//END;`,
+//				`CREATE PROCEDURE p2(IN a BIGINT)
+//BEGIN
+//	DECLARE b VARCHAR(200) DEFAULT "";
+//	tloop: LOOP
+//		CASE a
+//			WHEN 1 THEN
+//				SET b = CONCAT(b, "a");
+//				SET a = a + 1;
+//			WHEN 2 THEN
+//				SET b = CONCAT(b, "b");
+//				SET a = a + 1;
+//			WHEN 3 THEN
+//				SET b = CONCAT(b, "c");
+//				SET a = a + 1;
+//			ELSE
+//				LEAVE tloop;
+//		END CASE;
+//	END LOOP;
+//	SELECT b;
+//END;`,
+//				`CREATE PROCEDURE p3(IN a BIGINT)
+//BEGIN
+//	DECLARE b VARCHAR(200) DEFAULT "";
+//	tloop: LOOP
+//		CASE a
+//			WHEN 1 THEN
+//				SET b = CONCAT(b, "a");
+//				SET a = a + 1;
+//		END CASE;
+//	END LOOP;
+//	SELECT b;
+//END;`,
+//				`CREATE PROCEDURE p4(IN a BIGINT)
+//BEGIN
+//	DECLARE b VARCHAR(200) DEFAULT "";
+//	tloop: LOOP
+//		CASE
+//			WHEN a = 1 THEN
+//				SET b = CONCAT(b, "a");
+//				SET a = a + 1;
+//		END CASE;
+//	END LOOP;
+//	SELECT b;
+//END;`,
+//				`CREATE PROCEDURE p5(IN a BIGINT)
+//BEGIN
+//	DECLARE b VARCHAR(200) DEFAULT "";
+//	REPEAT
+//		CASE
+//			WHEN a <= 1 THEN
+//				SET b = CONCAT(b, "a");
+//				SET a = a + 1;
+//		END CASE;
+//	UNTIL a > 1
+//	END REPEAT;
+//	SELECT b;
+//END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "call proc(10);",
+					Query: "CALL proc",
 					Expected: []sql.Row{
-						{types.NewOkResult(0)},
+						{1},
 					},
 				},
-				{
-					Query: "select @x;",
-					Expected: []sql.Row{
-						{11},
-					},
-				},
+
+				//{
+				//	Query: "CALL p1(0)",
+				//	Expected: []sql.Row{
+				//		{"aaaabbbb"},
+				//	},
+				//},
+
+				//{
+				//	Query: "CALL p1(3)",
+				//	Expected: []sql.Row{
+				//		{"abbbb"},
+				//	},
+				//},
+				//{
+				//	Query: "CALL p1(6)",
+				//	Expected: []sql.Row{
+				//		{"bb"},
+				//	},
+				//},
+				//{
+				//	Query: "CALL p1(9)",
+				//	Expected: []sql.Row{
+				//		{""},
+				//	},
+				//},
+				//{
+				//	Query: "CALL p2(1)",
+				//	Expected: []sql.Row{
+				//		{"abc"},
+				//	},
+				//},
+				//{
+				//	Query: "CALL p2(2)",
+				//	Expected: []sql.Row{
+				//		{"bc"},
+				//	},
+				//},
+				//{
+				//	Query: "CALL p2(3)",
+				//	Expected: []sql.Row{
+				//		{"c"},
+				//	},
+				//},
+				//{
+				//	Query: "CALL p2(4)",
+				//	Expected: []sql.Row{
+				//		{""},
+				//	},
+				//},
+				//{
+				//	Query:          "CALL p3(1)",
+				//	ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+				//},
+				//{
+				//	Query:          "CALL p3(2)",
+				//	ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+				//},
+				//{
+				//	Query:          "CALL p4(1)",
+				//	ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+				//},
+				//{
+				//	Query:          "CALL p4(-1)",
+				//	ExpectedErrStr: "Case not found for CASE statement (errno 1339) (sqlstate 20000)",
+				//},
+				//{
+				//	Query: "CALL p5(0)",
+				//	Expected: []sql.Row{
+				//		{"aa"},
+				//	},
+				//},
+				//{
+				//	Query: "CALL p5(1)",
+				//	Expected: []sql.Row{
+				//		{"a"},
+				//	},
+				//},
 			},
 		},
 	}
