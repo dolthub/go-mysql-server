@@ -287,7 +287,7 @@ type Analyzer struct {
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
 	ExecBuilder sql.NodeExecBuilder
 	// Runner represents the engine, which is represented as a separate interface to work around circular dependencies
-	Runner StatementRunner
+	Runner sql.StatementRunner
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
