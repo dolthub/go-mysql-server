@@ -357,4 +357,3 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 	}
 	return nil, false
 }
-

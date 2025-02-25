@@ -3268,7 +3268,7 @@ for each row
 				},
 			},
 			{
-				Query: "insert into t values (1, 200);",
+				Query:          "insert into t values (1, 200);",
 				ExpectedErrStr: "duplicate primary key given: [1]",
 			},
 			{
@@ -3335,11 +3335,11 @@ for each row
 		},
 	},
 	{
-			Name: "update trigger with subquery projections",
-			SetUpScript: []string{
-				"create table t (i int primary key, j int);",
-				"insert into t values (1, 2), (3, 4);",
-				`
+		Name: "update trigger with subquery projections",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int);",
+			"insert into t values (1, 2), (3, 4);",
+			`
 create trigger trig1 before update on t
 for each row
   begin
@@ -3347,7 +3347,7 @@ for each row
     set @b = (select 20 * old.j + new.j);
   end;
 `,
-				`
+			`
 create trigger trig2 after update on t
 for each row
   begin
@@ -3355,40 +3355,40 @@ for each row
     set @d = (select 40 * old.j + new.j);
   end;
 `,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{nil, nil, nil, nil},
+				},
 			},
-			Assertions: []ScriptTestAssertion{
-				{
-					Query: "select @a, @b, @c, @d;",
-					Expected: []sql.Row{
-						{nil, nil, nil, nil},
-					},
+			{
+				Query: "update t set i = i * 10 where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
-				{
-					Query: "update t set i = i * 10 where i = 1;",
-					Expected: []sql.Row{
-						{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
-					},
+			},
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{20, 42, 40, 82},
 				},
-				{
-					Query: "select @a, @b, @c, @d;",
-					Expected: []sql.Row{
-						{20, 42, 40, 82},
-					},
+			},
+			{
+				Query: "update t set j = i * 10 where j = 4;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
-				{
-					Query: "update t set j = i * 10 where j = 4;",
-					Expected: []sql.Row{
-						{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
-					},
-				},
-				{
-					Query: "select @a, @b, @c, @d;",
-					Expected: []sql.Row{
-						{33, 110, 93, 190},
-					},
+			},
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{33, 110, 93, 190},
 				},
 			},
 		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{
