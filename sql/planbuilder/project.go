@@ -78,10 +78,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		switch e := pe.(type) {
 		case *expression.GetField:
 			exprs = append(exprs, e)
-			tmp := e.String()
-			if tmp == "new.i" {
-				print()
-			}
 			id, ok := inScope.getExpr(e.String(), true)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.String())
