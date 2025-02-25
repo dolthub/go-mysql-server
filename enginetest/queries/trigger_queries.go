@@ -2868,6 +2868,7 @@ end;
 		},
 	},
 
+	// Nested Triggers
 	{
 		Name: "double nested triggers referencing multiple tables",
 		SetUpScript: []string{
@@ -2941,7 +2942,6 @@ for each row
 			},
 		},
 	},
-
 	{
 		Name: "triple nested delete triggers referencing multiple tables",
 		SetUpScript: []string{
@@ -3024,7 +3024,6 @@ for each row
 			},
 		},
 	},
-
 	{
 		Name: "triple nested insert triggers referencing multiple tables",
 		SetUpScript: []string{
@@ -3117,7 +3116,6 @@ for each row
 			},
 		},
 	},
-
 	{
 		Name: "triple nested update triggers referencing multiple tables",
 		SetUpScript: []string{
@@ -3227,6 +3225,170 @@ for each row
 			},
 		},
 	},
+
+	// Triggers with subqueries
+	{
+		Name: "insert trigger with subquery projections",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int);",
+			`
+create trigger trig1 before insert on t
+for each row
+  begin
+	set @a = (select 10 * new.i);
+    set @b = (select 20 * new.j);
+  end;
+`,
+			`
+create trigger trig2 after insert on t
+for each row
+  begin
+	set @c = (select 30 * new.i);
+    set @d = (select 40 * new.j);
+  end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{nil, nil, nil, nil},
+				},
+			},
+			{
+				Query: "insert into t values (1, 2);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{10, 40, 30, 80},
+				},
+			},
+			{
+				Query: "insert into t values (1, 200);",
+				ExpectedErrStr: "duplicate primary key given: [1]",
+			},
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{10, 4000, 30, 80},
+				},
+			},
+		},
+	},
+	{
+		Name: "delete trigger with subquery projections",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int);",
+			"insert into t values (1, 2), (3, 4);",
+			`
+create trigger trig1 before delete on t
+for each row
+  begin
+	set @a = (select 10 * old.i);
+    set @b = (select 20 * old.j);
+  end;
+`,
+			`
+create trigger trig2 after delete on t
+for each row
+  begin
+	set @c = (select 30 * old.i);
+    set @d = (select 40 * old.j);
+  end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{nil, nil, nil, nil},
+				},
+			},
+			{
+				Query: "delete from t where i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{10, 40, 30, 80},
+				},
+			},
+			{
+				Query: "delete from t where j = 4;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select @a, @b, @c, @d;",
+				Expected: []sql.Row{
+					{30, 80, 90, 160},
+				},
+			},
+		},
+	},
+	{
+			Name: "update trigger with subquery projections",
+			SetUpScript: []string{
+				"create table t (i int primary key, j int);",
+				"insert into t values (1, 2), (3, 4);",
+				`
+create trigger trig1 before update on t
+for each row
+  begin
+	set @a = (select 10 * old.i + new.i);
+    set @b = (select 20 * old.j + new.j);
+  end;
+`,
+				`
+create trigger trig2 after update on t
+for each row
+  begin
+	set @c = (select 30 * old.i + new.i);
+    set @d = (select 40 * old.j + new.j);
+  end;
+`,
+			},
+			Assertions: []ScriptTestAssertion{
+				{
+					Query: "select @a, @b, @c, @d;",
+					Expected: []sql.Row{
+						{nil, nil, nil, nil},
+					},
+				},
+				{
+					Query: "update t set i = i * 10 where i = 1;",
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+					},
+				},
+				{
+					Query: "select @a, @b, @c, @d;",
+					Expected: []sql.Row{
+						{20, 42, 40, 82},
+					},
+				},
+				{
+					Query: "update t set j = i * 10 where j = 4;",
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+					},
+				},
+				{
+					Query: "select @a, @b, @c, @d;",
+					Expected: []sql.Row{
+						{33, 110, 93, 190},
+					},
+				},
+			},
+		},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{

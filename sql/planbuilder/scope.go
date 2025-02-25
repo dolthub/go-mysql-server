@@ -541,6 +541,15 @@ func (s *scope) addColumns(cols []scopeColumn) {
 	s.cols = append(s.cols, cols...)
 }
 
+func (s *scope) addExpressions(newExprs map[string]columnId) {
+	if s.exprs == nil {
+		s.exprs = make(map[string]columnId)
+	}
+	for k, v := range newExprs {
+		s.exprs[k] = v
+	}
+}
+
 // appendColumnsFromScope merges column definitions for
 // multi-relational expressions.
 func (s *scope) appendColumnsFromScope(src *scope) {
