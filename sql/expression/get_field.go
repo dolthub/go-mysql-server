@@ -38,7 +38,11 @@ type GetField struct {
 	fieldType2 sql.Type2
 	nullable   bool
 
-	backTickNames bool
+	// parser is the parser used to parse the expression and print it
+	parser sql.Parser
+
+	// quoteName indicates whether the field name should be quoted when printed with String()
+	quoteName bool
 }
 
 var _ sql.Expression = (*GetField)(nil)
@@ -161,10 +165,14 @@ func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 func (p *GetField) String() string {
-	if p.table == "" {
-		if p.backTickNames {
-			return "`" + p.name + "`"
+	if p.quoteName {
+		if p.table == "" {
+			return p.parser.QuoteIdentifier(p.name)
 		}
+		return p.parser.QuoteIdentifier(p.table) + "." + p.parser.QuoteIdentifier(p.name)
+	}
+
+	if p.table == "" {
 		return p.name
 	}
 	return p.table + "." + p.name
@@ -188,16 +196,17 @@ func (p *GetField) WithIndex(n int) sql.Expression {
 	return &p2
 }
 
-// WithBackTickNames returns a copy of this expression with the backtick names flag set to the given value.
-func (p *GetField) WithBackTickNames(backtick bool) *GetField {
+// WithQuotedNames returns a copy of this expression with the backtick names flag set to the given value.
+func (p *GetField) WithQuotedNames(parser sql.Parser, quoteNames bool) *GetField {
 	p2 := *p
-	p2.backTickNames = backtick
+	p2.quoteName = quoteNames
+	p2.parser = parser
 	return &p2
 }
 
-// IsBackTickNames returns whether the field name should be quoted with backticks.
-func (p *GetField) IsBackTickNames() bool {
-	return p.backTickNames
+// IsQuotedIdentifier returns whether the field name should be quoted.
+func (p *GetField) IsQuotedIdentifier() bool {
+	return p.quoteName
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -307,7 +307,7 @@ func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transfor
 	return expression.WrapExpression(&nd), transform.NewTree, nil
 }
 
-func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func backtickDefaultColumnValueNames(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("backtickDefaultColumnValueNames")
 	defer span.End()
 
@@ -315,7 +315,7 @@ func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, 
 		switch node := n.(type) {
 		case *plan.AlterDefaultSet:
 			eWrapper := expression.WrapExpression(node.Default)
-			newExpr, same, err := backtickDefault(eWrapper)
+			newExpr, same, err := quoteIdentifiers(a.Parser, eWrapper)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
@@ -335,7 +335,7 @@ func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, 
 					return e, transform.SameTree, nil
 				}
 
-				return backtickDefault(eWrapper)
+				return quoteIdentifiers(a.Parser, eWrapper)
 			})
 		case *plan.ResolvedTable:
 			ct, ok := node.Table.(*information_schema.ColumnsTable)
@@ -354,7 +354,7 @@ func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, 
 					return e, transform.SameTree, nil
 				}
 
-				return backtickDefault(eWrapper)
+				return quoteIdentifiers(a.Parser, eWrapper)
 			})
 
 			if err != nil {
@@ -376,7 +376,7 @@ func backtickDefaultColumnValueNames(ctx *sql.Context, _ *Analyzer, n sql.Node, 
 	})
 }
 
-func backtickDefault(wrap *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+func quoteIdentifiers(parser sql.Parser, wrap *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := wrap.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
 		return wrap, transform.SameTree, nil
@@ -388,7 +388,7 @@ func backtickDefault(wrap *expression.Wrapper) (sql.Expression, transform.TreeId
 
 	newExpr, same, err := transform.Expr(newDefault.Expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if e, isGf := expr.(*expression.GetField); isGf {
-			return e.WithBackTickNames(true), transform.NewTree, nil
+			return e.WithQuotedNames(parser,true), transform.NewTree, nil
 		}
 		return expr, transform.SameTree, nil
 	})

@@ -16,6 +16,7 @@ package sql
 
 import (
 	"context"
+	"fmt"
 	trace2 "runtime/trace"
 	"strings"
 	"unicode"
@@ -44,6 +45,10 @@ type Parser interface {
 	// the index of the start of the next query. If |query| represents a no-op statement, such as ";" or "-- comment",
 	// then implementations must return Vitess' ErrEmpty error.
 	ParseOneWithOptions(context.Context, string, ast.ParserOptions) (ast.Statement, int, error)
+	// QuoteIdentifier returns the identifier given quoted according to this parser's dialect. This is used to 
+	// standardize identifiers that cannot be parsed without quoting, because they break the normal identifier naming 
+	// rules (such as containing spaces)
+	QuoteIdentifier(identifier string) string
 }
 
 var _ Parser = &MysqlParser{}
@@ -98,4 +103,8 @@ func RemoveSpaceAndDelimiter(query string, d rune) string {
 	return strings.TrimRightFunc(query, func(r rune) bool {
 		return r == d || unicode.IsSpace(r)
 	})
+}
+
+func (m *MysqlParser) QuoteIdentifier(identifier string) string {
+	return fmt.Sprintf("`%s`", strings.ReplaceAll(identifier, "`", "``"))
 }
