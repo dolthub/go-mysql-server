@@ -344,7 +344,6 @@ func Now() time.Time {
 	return ctxNowFunc()
 }
 
-
 type ContextFactory func(context.Context, ...ContextOption) *Context
 
 // NewContext creates a new query context. Options can be passed to configure
