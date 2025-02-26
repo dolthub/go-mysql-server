@@ -816,7 +816,7 @@ func (e *Engine) EngineEventScheduler() sql.EventScheduler {
 // getter function, |ctxGetterFunc, the EventScheduler |status|, and the |period| for the event scheduler
 // to check for events to execute. If |period| is less than 1, then it is ignored and the default period
 // (30s currently) is used. This function also initializes the EventScheduler of the analyzer of this engine.
-func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, func() error, error), status eventscheduler.SchedulerStatus, period int) error {
+func (e *Engine) InitializeEventScheduler(ctxGetterFunc func() (*sql.Context, error), status eventscheduler.SchedulerStatus, period int) error {
 	var err error
 	e.EventScheduler, err = eventscheduler.InitEventScheduler(e.Analyzer, e.BackgroundThreads, ctxGetterFunc, status, e.executeEvent, period)
 	if err != nil {
