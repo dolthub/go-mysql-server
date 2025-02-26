@@ -1037,7 +1037,7 @@ func newDatabase() (*sql2.DB, func()) {
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("localhost:%d", port),
 	}
-	srv, err := server.NewServer(cfg, engine, harness.SessionBuilder(), nil)
+	srv, err := server.NewServer(cfg, engine, sql.NewContext, harness.SessionBuilder(), nil)
 	if err != nil {
 		panic(err)
 	}

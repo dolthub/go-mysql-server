@@ -80,7 +80,6 @@ type Handler struct {
 var _ mysql.Handler = (*Handler)(nil)
 var _ mysql.ExtendedHandler = (*Handler)(nil)
 var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
-var _ sql.ContextProvider = (*Handler)(nil)
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
@@ -103,7 +102,7 @@ func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 	// SetDB itself handles session and processlist operation lifecycle callbacks.
-	err := h.sm.SetDB(c, schemaName)
+	err := h.sm.SetDB(context.Background(), c, schemaName)
 	if err != nil {
 		logrus.WithField("database", schemaName).Errorf("unable to process ComInitDB: %s", err.Error())
 		err = sql.CastSQLError(err)
@@ -202,10 +201,6 @@ func (h *Handler) ComPrepareParsed(ctx context.Context, c *mysql.Conn, query str
 	return analyzed, fields, nil
 }
 
-func (h *Handler) NewContext(ctx context.Context, c *mysql.Conn, query string) (*sql.Context, error) {
-	return h.sm.NewContext(ctx, c, query)
-}
-
 func (h *Handler) ComBind(ctx context.Context, c *mysql.Conn, query string, parsedQuery mysql.ParsedQuery, prepare *mysql.PrepareData) (mysql.BoundQuery, []*querypb.Field, error) {
 	sqlCtx, err := h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
@@ -273,17 +268,19 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 	h.maybeReleaseAllLocks(c)
 	h.e.CloseSession(c.ConnectionID)
 
+	ctx := context.Background()
+
 	// Create a new session and set the current database
-	err := h.sm.NewSession(context.Background(), c)
+	err := h.sm.NewSession(ctx, c)
 	if err != nil {
 		return err
 	}
 
-	return h.sm.SetDB(c, db)
+	return h.sm.SetDB(ctx, c, db)
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
-	ctx, err := h.sm.NewContext(context.Background(), c, "")
+	ctx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
 	if err != nil {
 		return sqlparser.ParserOptions{}, err
 	}
@@ -406,7 +403,7 @@ func (h *Handler) doQuery(
 	qFlags *sql.QueryFlags,
 ) (remainder string, err error) {
 	var sqlCtx *sql.Context
-	sqlCtx, err = h.sm.NewContext(ctx, c, query)
+	sqlCtx, err = h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
 		return "", err
 	}
