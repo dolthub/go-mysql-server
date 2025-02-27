@@ -307,8 +307,8 @@ func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transfor
 	return expression.WrapExpression(&nd), transform.NewTree, nil
 }
 
-func backtickDefaultColumnValueNames(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("backtickDefaultColumnValueNames")
+func quoteDefaultColumnValueNames(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	span, ctx := ctx.Span("quoteDefaultColumnValueNames")
 	defer span.End()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
