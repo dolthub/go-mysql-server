@@ -388,7 +388,7 @@ func quoteIdentifiers(parser sql.Parser, wrap *expression.Wrapper) (sql.Expressi
 
 	newExpr, same, err := transform.Expr(newDefault.Expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if e, isGf := expr.(*expression.GetField); isGf {
-			return e.WithQuotedNames(parser,true), transform.NewTree, nil
+			return e.WithQuotedNames(parser, true), transform.NewTree, nil
 		}
 		return expr, transform.SameTree, nil
 	})
