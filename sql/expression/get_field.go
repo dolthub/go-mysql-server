@@ -165,16 +165,16 @@ func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 func (p *GetField) String() string {
-	if p.quoteName {
-		if p.table == "" {
-			return p.parser.QuoteIdentifier(p.name)
-		}
-		return p.parser.QuoteIdentifier(p.table) + "." + p.parser.QuoteIdentifier(p.name)
-	}
-
+	// We never quote anything if the table identifier is present. Quoting the field name is a very narrow use case
+	// used only for serializing column default values and related fields, in which case the table name will always be
+	// stripped away. The output of this method is load-bearing in many places of analysis and execution.
 	if p.table == "" {
+		if p.quoteName {
+				return p.parser.QuoteIdentifier(p.name)
+		}
 		return p.name
 	}
+	
 	return p.table + "." + p.name
 }
 
