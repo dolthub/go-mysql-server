@@ -45,8 +45,8 @@ type Parser interface {
 	// the index of the start of the next query. If |query| represents a no-op statement, such as ";" or "-- comment",
 	// then implementations must return Vitess' ErrEmpty error.
 	ParseOneWithOptions(context.Context, string, ast.ParserOptions) (ast.Statement, int, error)
-	// QuoteIdentifier returns the identifier given quoted according to this parser's dialect. This is used to 
-	// standardize identifiers that cannot be parsed without quoting, because they break the normal identifier naming 
+	// QuoteIdentifier returns the identifier given quoted according to this parser's dialect. This is used to
+	// standardize identifiers that cannot be parsed without quoting, because they break the normal identifier naming
 	// rules (such as containing spaces)
 	QuoteIdentifier(identifier string) string
 }
