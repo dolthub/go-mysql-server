@@ -81,7 +81,7 @@ const (
 	validateDeleteFromId        // validateDeleteFrom
 
 	// after all
-	cacheSubqueryAliasesInJoinsId    // cacheSubqueryAliasesInJoins
-	BacktickDefaulColumnValueNamesId // backtickDefaultColumnValueNames
-	TrackProcessId                   // trackProcess
+	cacheSubqueryAliasesInJoinsId  // cacheSubqueryAliasesInJoins
+	QuoteDefaultColumnValueNamesId // quoteDefaultColumnValueNames
+	TrackProcessId                 // trackProcess
 )

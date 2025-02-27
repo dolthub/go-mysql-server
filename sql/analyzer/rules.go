@@ -23,7 +23,7 @@ func init() {
 		{applyProceduresId, applyProcedures},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-		{BacktickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
+		{QuoteDefaultColumnValueNamesId, quoteDefaultColumnValueNames},
 		{TrackProcessId, trackProcess},
 	}
 }
