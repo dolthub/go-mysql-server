@@ -170,11 +170,11 @@ func (p *GetField) String() string {
 	// stripped away. The output of this method is load-bearing in many places of analysis and execution.
 	if p.table == "" {
 		if p.quoteName {
-				return p.parser.QuoteIdentifier(p.name)
+			return p.parser.QuoteIdentifier(p.name)
 		}
 		return p.name
 	}
-	
+
 	return p.table + "." + p.name
 }
 
