@@ -17,9 +17,9 @@ package jsontests
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/stretchr/testify/assert"
@@ -33,8 +33,8 @@ func ConvertToJson(t *testing.T, val interface{}) types.MutableJSON {
 	val, inRange, err := types.JSON.Convert(val)
 	require.NoError(t, err)
 	require.True(t, bool(inRange))
-	require.Implements(t, (*sql.JSONWrapper)(nil), val)
-	val, err = val.(sql.JSONWrapper).ToInterface()
+	require.Implements(t, (*values.JSONWrapper)(nil), val)
+	val, err = val.(values.JSONWrapper).ToInterface()
 	require.NoError(t, err)
 	return types.JSONDocument{Val: val}
 }
@@ -977,7 +977,7 @@ var JsonArrayInsertTests = []JsonMutationTest{
 	},
 }
 
-type PrepareJsonMutationValue = func(t *testing.T, doc, val, result interface{}) (types.MutableJSON, sql.JSONWrapper, types.MutableJSON)
+type PrepareJsonMutationValue = func(t *testing.T, doc, val, result interface{}) (types.MutableJSON, values.JSONWrapper, types.MutableJSON)
 
 func RunJsonMutationTests(ctx context.Context, t *testing.T, tests []JsonMutationTest, prepare PrepareJsonMutationValue, op string) {
 	for _, test := range tests {

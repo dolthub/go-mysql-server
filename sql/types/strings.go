@@ -17,6 +17,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 	"strconv"
 	strings2 "strings"
@@ -379,7 +380,7 @@ func ConvertToBytes(v interface{}, t sql.StringType, dest []byte) ([]byte, error
 			return nil, nil
 		}
 		val = append(dest, s.Decimal.String()...)
-	case sql.JSONWrapper:
+	case values.JSONWrapper:
 		jsonString, err := StringifyJSON(s)
 		if err != nil {
 			return nil, err

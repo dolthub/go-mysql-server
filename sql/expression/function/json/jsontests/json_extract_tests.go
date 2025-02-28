@@ -15,6 +15,7 @@
 package jsontests
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -47,7 +48,7 @@ func JsonExtractTestCases(t *testing.T, prepare prepareJsonValue) []testCase {
 	)
 	require.NoError(t, err)
 
-	var jsonDocument sql.JSONWrapper = types.JSONDocument{Val: map[string]interface{}{
+	var jsonDocument values.JSONWrapper = types.JSONDocument{Val: map[string]interface{}{
 		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
 		"b": map[string]interface{}{
 			"c": "foo",

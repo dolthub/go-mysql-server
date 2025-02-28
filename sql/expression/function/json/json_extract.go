@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -85,12 +86,12 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	searchable, ok := js.(sql.JSONWrapper)
+	searchable, ok := js.(values.JSONWrapper)
 	if !ok {
 		return fmt.Errorf("expected types.JSONValue, found: %T", js), nil
 	}
 
-	var results = make([]sql.JSONWrapper, len(j.Paths))
+	var results = make([]values.JSONWrapper, len(j.Paths))
 	for i, p := range j.Paths {
 		path, err := p.Eval(ctx, row)
 		if err != nil {

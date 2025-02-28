@@ -252,7 +252,7 @@ func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange
 		v = ti.UTC().Unix()
 	}
 
-	if jv, ok := v.(sql.JSONWrapper); ok {
+	if jv, ok := v.(values.JSONWrapper); ok {
 		v, err = jv.ToInterface()
 		if err != nil {
 			return nil, sql.OutOfRange, err
@@ -566,7 +566,7 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 	}
 
 	var err error
-	if jv, ok := v.(sql.JSONWrapper); ok {
+	if jv, ok := v.(values.JSONWrapper); ok {
 		v, err = jv.ToInterface()
 		if err != nil {
 			return sqltypes.Value{}, err

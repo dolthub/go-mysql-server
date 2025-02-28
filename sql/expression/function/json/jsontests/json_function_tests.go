@@ -15,6 +15,7 @@
 package jsontests
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strconv"
 	"strings"
 	"testing"
@@ -47,7 +48,7 @@ var jsonFormatTests = []jsonFormatTest{
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
 			doc, _, err := types.JSON.Convert(js)
 			require.NoError(t, err)
-			val, err := doc.(sql.JSONWrapper).ToInterface()
+			val, err := doc.(values.JSONWrapper).ToInterface()
 			require.NoError(t, err)
 			return types.JSONDocument{Val: val}
 		},
@@ -57,7 +58,7 @@ var jsonFormatTests = []jsonFormatTest{
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
 			doc, _, err := types.JSON.Convert(js)
 			require.NoError(t, err)
-			bytes, err := types.MarshallJson(doc.(sql.JSONWrapper))
+			bytes, err := types.MarshallJson(doc.(values.JSONWrapper))
 			require.NoError(t, err)
 			return types.NewLazyJSONDocument(bytes)
 		},

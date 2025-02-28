@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strconv"
 	"strings"
 	"testing"
@@ -851,12 +852,12 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	return widened
 }
 
-func widenJSONValues(val interface{}) sql.JSONWrapper {
+func widenJSONValues(val interface{}) values.JSONWrapper {
 	if val == nil {
 		return nil
 	}
 
-	js, ok := val.(sql.JSONWrapper)
+	js, ok := val.(values.JSONWrapper)
 	if !ok {
 		str, ok := val.(string)
 		if !ok {

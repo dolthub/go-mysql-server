@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -112,7 +113,7 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		switch v := val.(type) {
-		case sql.JSONWrapper:
+		case values.JSONWrapper:
 			val, err = v.ToInterface()
 			if err != nil {
 				return nil, err

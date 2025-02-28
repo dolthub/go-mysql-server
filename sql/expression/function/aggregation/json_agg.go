@@ -16,6 +16,7 @@ package aggregation
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -158,7 +159,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := val.(sql.JSONWrapper); ok {
+	if js, ok := val.(values.JSONWrapper); ok {
 		val, err = js.ToInterface()
 		if err != nil {
 			return err

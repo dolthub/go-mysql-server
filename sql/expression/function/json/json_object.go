@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -108,7 +109,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			key = val.(string)
 		} else {
-			if json, ok := val.(sql.JSONWrapper); ok {
+			if json, ok := val.(values.JSONWrapper); ok {
 				val, err = json.ToInterface()
 				if err != nil {
 					return nil, err

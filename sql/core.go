@@ -17,6 +17,7 @@ package sql
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	trace2 "runtime/trace"
 	"strconv"
 	"strings"
@@ -312,7 +313,7 @@ func ConvertToVector(v interface{}) ([]float64, error) {
 			return nil, err
 		}
 		return convertJsonInterfaceToVector(val)
-	case JSONWrapper:
+	case values.JSONWrapper:
 		val, err := b.ToInterface()
 		if err != nil {
 			return nil, err

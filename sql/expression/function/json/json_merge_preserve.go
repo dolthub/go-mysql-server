@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -130,7 +131,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 	}
 	result := types.DeepCopyJson(val)
 	for i, json := range j.JSONs[1:] {
-		var doc sql.JSONWrapper
+		var doc values.JSONWrapper
 		doc, err = getJSONDocumentFromRow(ctx, row, json)
 		if err != nil {
 			return nil, getJsonFunctionError("json_merge_preserve", i+2, err)

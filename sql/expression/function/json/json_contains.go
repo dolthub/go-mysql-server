@@ -16,6 +16,7 @@ package json
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -152,7 +153,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 			return nil, err
 		}
 		var ok bool
-		target, ok = extracted.(sql.JSONWrapper)
+		target, ok = extracted.(values.JSONWrapper)
 		if !ok {
 			return nil, nil
 		}

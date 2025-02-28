@@ -16,6 +16,7 @@ package types
 
 import (
 	"encoding/json"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -26,7 +27,7 @@ import (
 )
 
 var (
-	jsonValueType = reflect.TypeOf((*sql.JSONWrapper)(nil)).Elem()
+	jsonValueType = reflect.TypeOf((*values.JSONWrapper)(nil)).Elem()
 
 	MaxJsonFieldByteLength = int64(1024) * int64(1024) * int64(1024)
 )
@@ -47,7 +48,7 @@ func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
 // Convert implements Type interface.
 func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
 	switch v := v.(type) {
-	case sql.JSONWrapper:
+	case values.JSONWrapper:
 		return v, sql.InRange, nil
 	case []byte:
 		if int64(len(v)) > MaxJsonFieldByteLength {
@@ -147,7 +148,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		if err != nil {
 			return sqltypes.NULL, err
 		}
-		js := jsVal.(sql.JSONWrapper)
+		js := jsVal.(values.JSONWrapper)
 
 		str, err := StringifyJSON(js)
 		if err != nil {

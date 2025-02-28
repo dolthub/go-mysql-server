@@ -2,6 +2,7 @@ package aggregation
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 
 	"github.com/cespare/xxhash/v2"
@@ -646,7 +647,7 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// unwrap JSON values
-	if js, ok := v.(sql.JSONWrapper); ok {
+	if js, ok := v.(values.JSONWrapper); ok {
 		v, err = js.ToInterface()
 		if err != nil {
 			return err

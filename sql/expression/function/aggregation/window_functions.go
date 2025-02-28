@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"sort"
 	"strings"
 
@@ -1049,7 +1050,7 @@ func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.Wind
 		}
 
 		// unwrap JSON values
-		if js, ok := v.(sql.JSONWrapper); ok {
+		if js, ok := v.(values.JSONWrapper); ok {
 			v, err = js.ToInterface()
 			if err != nil {
 				return nil, err
@@ -1136,7 +1137,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 		}
 
 		// unwrap JSON values
-		if js, ok := val.(sql.JSONWrapper); ok {
+		if js, ok := val.(values.JSONWrapper); ok {
 			val, err = js.ToInterface()
 			if err != nil {
 				return nil, err

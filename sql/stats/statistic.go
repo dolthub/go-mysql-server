@@ -21,6 +21,7 @@ package stats
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"regexp"
 	"time"
 
@@ -88,7 +89,7 @@ func (j *StatisticJSON) ToStatistic() *Statistic {
 	return NewStatistic(j.RowCnt, j.DistinctCnt, j.NullCnt, j.AvgRowSize, j.Created, j.Qual, j.Cols, j.Typs, hist, sql.IndexClass(j.IdxClass), j.LowerBnd)
 }
 
-var _ sql.JSONWrapper = (*Statistic)(nil)
+var _ values.JSONWrapper = (*Statistic)(nil)
 var _ sql.Statistic = (*Statistic)(nil)
 
 func (s *Statistic) FuncDeps() *sql.FuncDepSet {
@@ -222,7 +223,7 @@ func (s *Statistic) IndexClass() sql.IndexClass {
 	return sql.IndexClass(s.IdxClass)
 }
 
-func (s *Statistic) Clone(context.Context) sql.JSONWrapper {
+func (s *Statistic) Clone(context.Context) values.JSONWrapper {
 	return s
 }
 

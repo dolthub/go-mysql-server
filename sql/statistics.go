@@ -17,6 +17,7 @@ package sql
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strings"
 	"time"
 )
@@ -63,7 +64,7 @@ const (
 // Statistic is the top-level interface for accessing cardinality and
 // costing estimates for an index prefix.
 type Statistic interface {
-	JSONWrapper
+	values.JSONWrapper
 	MutableStatistic
 	RowCount() uint64
 	DistinctCount() uint64
@@ -167,7 +168,7 @@ func (h Histogram) IsEmpty() bool {
 	return len(h) == 0
 }
 
-func (h Histogram) Clone(context.Context) JSONWrapper {
+func (h Histogram) Clone(context.Context) values.JSONWrapper {
 	return h
 }
 
@@ -238,14 +239,4 @@ type HistogramBucket interface {
 	McvCounts() []uint64
 	// Mcvs are the "most common values" (keys) in the index
 	Mcvs() []Row
-}
-
-// JSONWrapper is an integrator specific implementation of a JSON field value.
-// The query engine can utilize these optimized access methods improve performance
-// by minimizing the need to unmarshall a JSONWrapper into a JSONDocument.
-type JSONWrapper interface {
-	// Clone creates a new value that can be mutated without affecting the original.
-	Clone(ctx context.Context) JSONWrapper
-	// ToInterface converts a JSONWrapper to an interface{} of simple types
-	ToInterface() (interface{}, error)
 }

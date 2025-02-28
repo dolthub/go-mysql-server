@@ -17,6 +17,7 @@ package jsontests
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 	"testing"
 
@@ -234,7 +235,7 @@ func TestJsonRoundTripping(t *testing.T) {
 	}
 }
 
-func convertStringsToJsonDocuments(t *testing.T, doc, val, result interface{}) (types.MutableJSON, sql.JSONWrapper, types.MutableJSON) {
+func convertStringsToJsonDocuments(t *testing.T, doc, val, result interface{}) (types.MutableJSON, values.JSONWrapper, types.MutableJSON) {
 	if val == "" {
 		val = nil
 	}

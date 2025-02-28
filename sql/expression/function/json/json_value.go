@@ -17,6 +17,7 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -100,7 +101,7 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	searchable, ok := js.(sql.JSONWrapper)
+	searchable, ok := js.(values.JSONWrapper)
 	if !ok {
 		return fmt.Errorf("expected types.JSONValue, found: %T", js), nil
 	}
@@ -184,7 +185,7 @@ func GetJSONFromWrapperOrCoercibleString(js interface{}, functionName string, ar
 			return nil, err
 		}
 		return jsonData, nil
-	case sql.JSONWrapper:
+	case values.JSONWrapper:
 		return jsType.ToInterface()
 	default:
 		return nil, sql.ErrInvalidJSONArgument.New(argumentPosition, functionName)
