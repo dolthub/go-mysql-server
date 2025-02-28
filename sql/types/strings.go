@@ -16,6 +16,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
@@ -390,6 +391,16 @@ func ConvertToBytes(v interface{}, t sql.StringType, dest []byte) ([]byte, error
 			return nil, err
 		}
 		val = append(dest, st...)
+	case values.AnyWrapper:
+		//TODO: Propagate context
+		unwrapped, err := s.UnwrapAny(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		val, err = ConvertToBytes(unwrapped, t, dest)
+		if err != nil {
+			return nil, err
+		}
 	case GeometryValue:
 		return s.Serialize(), nil
 	default:

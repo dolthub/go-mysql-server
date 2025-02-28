@@ -25,6 +25,43 @@ import "context"
 // Example: If a table row contains a pointer to out-of-table storage, then a wrapper allows the pointer to be copied
 // without ever needing to be dereferenced.
 
+// AnyWrapper is an interface for types that encapsulate some SQL value.
+type AnyWrapper interface {
+	// UnwrapAny "unwraps" an AnyWrapper into a simple type.
+	UnwrapAny(ctx context.Context) (interface{}, error)
+}
+
+// Wrapper is an interface for types that encapsulate a SQL value of a specific type.
+// Implementations are also required to implement AnyWrapper.
+type Wrapper[T any] interface {
+	AnyWrapper
+	Unwrap(ctx context.Context) (result T, err error)
+}
+
+// UnwrapAny takes a possibly-wrapped value and unwraps it. If the input isn't a wrapper, the input is returned unmodified.
+func UnwrapAny(ctx context.Context, v interface{}) (result interface{}, err error) {
+	switch vv := v.(type) {
+	case AnyWrapper:
+		return vv.UnwrapAny(ctx)
+	case JSONWrapper:
+		return vv.ToInterface()
+	}
+	return v, nil
+}
+
+// Unwrap takes a possibly-wrapped value and attempts to unwrap it into the requested type.
+// If the input isn't a wrapper for the specified type, |ok| is set to false.
+func Unwrap[T any](ctx context.Context, v interface{}) (result T, ok bool, err error) {
+	switch vv := v.(type) {
+	case Wrapper[T]:
+		result, err = vv.Unwrap(ctx)
+		return result, true, err
+	case T:
+		return vv, true, nil
+	}
+	return result, false, nil
+}
+
 // JSONWrapper is an integrator specific implementation of a JSON field value.
 // The query engine can utilize these optimized access methods improve performance
 // by minimizing the need to unmarshall a JSONWrapper into a JSONDocument.
