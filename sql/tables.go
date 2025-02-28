@@ -342,6 +342,13 @@ type AutoIncrementTable interface {
 	AutoIncrementSetter(*Context) AutoIncrementSetter
 }
 
+// AutoIncrementGetter provides support for reading a table's AUTO_INCREMENT value.
+// This can include tables that don't implement AutoIncrementTable if the table is a read-only snapshot
+// of an auto-incremented table.
+type AutoIncrementGetter interface {
+	PeekNextAutoIncrementValue(ctx *Context) (uint64, error)
+}
+
 // AutoIncrementSetter provides support for altering a table's
 // AUTO_INCREMENT sequence, eg 'ALTER TABLE t AUTO_INCREMENT = 10;'
 type AutoIncrementSetter interface {
