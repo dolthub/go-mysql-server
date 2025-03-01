@@ -790,6 +790,58 @@ func TestRegex(t *testing.T) {
 	runtime.GC()
 }
 
+func TestCoalesceRespectsColumnSchema(t *testing.T) {
+	harness := enginetest.NewDefaultMemoryHarness()
+	harness.Setup(setup.SimpleSetup...)
+	engine, err := harness.NewEngine(t)
+	require.NoError(t, err)
+	defer engine.Close()
+
+	for _, test := range []queries.ScriptTest{
+		{
+			Name: "Coalesce Null to `0` in a Float Column",
+			// See SQLFiddle: https://sqlfiddle.com/mysql/online-compiler?id=ee3b322f-66a7-448a-8d6a-d3bfcc19dcc6
+			SetUpScript: []string{
+				"CREATE TABLE persons (name VARCHAR(50), age FLOAT);", // FLOAT is set on the column
+				"INSERT INTO persons VALUES ('sam', 44.1), ('ben', NULL);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "SELECT name, COALESCE(age, 0) FROM persons WHERE name = 'ben';",
+					Expected: []sql.Row{
+						{"ben", float64(0)},
+					},
+				},
+			},
+		},
+		{
+			Name: "All elements in a column should share the same type",
+			// See SQLFiddle: https://sqlfiddle.com/mysql/online-compiler?id=11f3a12d-3d81-478e-aed3-363271097a3e
+			SetUpScript: []string{
+				"CREATE TABLE persons (name VARCHAR(50), age INT);",
+				"INSERT INTO persons VALUES ('sam', 44), ('ben', NULL);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					// the coalesced column should be DECIMAL (or possibly DOUBLE depending on the specific MySQL version and settings), effectively a floating-point type.
+					// Here's why:
+					// When you use COALESCE(age, 0.0), you're providing a floating-point literal (0.0) as the second argument.  MySQL's type coercion rules come into play.  It needs to determine a single data type for the result of the COALESCE function.
+					// Because one of the input types is a floating-point type (0.0), MySQL will choose a type that can accommodate both integers and floating-point values without loss of precision.  Simply using INT for the result would mean losing the fractional part of the 0.0 value if age happened to be NULL.
+					// Therefore, MySQL "upgrades" the result type to DECIMAL (or DOUBLE), which can accurately represent both integers and floating-point numbers.  This is a common behavior in SQL systems to ensure data integrity and avoid unexpected truncation.
+					// If you had used 0 instead of 0.0 (i.e. COALESCE(age, 0)), the coalesced column would have remained INT because both operands would have been integers.
+					Query: "SELECT name, COALESCE(age, 0.0) FROM persons;",
+					Expected: []sql.Row{
+						{"sam", 44.0}, {"ben", 0.0},
+					},
+				},
+			},
+		},
+	} {
+		enginetest.TestScript(t, harness, test)
+	}
+	runtime.GC()
+}
+
 var _ sql.TableFunction = (*SimpleTableFunction)(nil)
 var _ sql.CollationCoercible = (*SimpleTableFunction)(nil)
 var _ sql.ExecSourceRel = (*SimpleTableFunction)(nil)
