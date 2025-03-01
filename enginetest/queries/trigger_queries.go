@@ -3410,14 +3410,14 @@ end;
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "insert into t2 values (1, 0);",
+				Query: "insert into t2 values (1, 0);",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Query:     "select * from t2;",
-				Expected:  []sql.Row{{1, 1}},
+				Query:    "select * from t2;",
+				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},
