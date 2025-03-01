@@ -2107,4 +2107,52 @@ var RegexTests = []RegexTest{
 		Query:    `SELECT REGEXP_LIKE("abc", "^([ab]*?)(?<!(a))c");`,
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query:    "SELECT REGEXP_INSTR('dog cat dog', 'dog');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT REGEXP_INSTR('dog cat dog', 'doggo');",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "SELECT REGEXP_INSTR('dog cat dog', 'dog', 2);",
+		Expected: []sql.Row{{9}},
+	},
+	{
+		Query:    "SELECT REGEXP_INSTR('dog cat dog', 'dog', 1, 2);",
+		Expected: []sql.Row{{9}},
+	},
+	{
+		Query:    "SELECT REGEXP_INSTR('aa aaa aaaa', 'a{2}');",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT REGEXP_INSTR('aa aaa aaaa', 'a{4}');",
+		Expected: []sql.Row{{8}},
+	},
+	{
+		Query:    "SELECT REGEXP_INSTR('dog cat dog', 'dog', 1, -1, 0);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT REGEXP_INSTR('dog cat dog', 'dog', 1, 1, 1);",
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+');",
+		Expected: []sql.Row{{"abc"}},
+	},
+	{
+		Query:    "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1, 3);",
+		Expected: []sql.Row{{"ghi"}},
+	},
+	{
+		Query:    "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 2, 2);",
+		Expected: []sql.Row{{"def"}},
+	},
+	{
+		Query:    "SELECT REGEXP_SUBSTR('abc def ghi', '[j-z]+');",
+		Expected: []sql.Row{{nil}},
+	},
 }
