@@ -193,7 +193,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 		case *plan.Project:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
 			switch c.Parent.(type) {
-			case *plan.InsertInto, *plan.Into, *plan.TriggerExecutor:
+			case *plan.InsertInto, *plan.Into, *plan.TriggerExecutor, *plan.DeclareCursor:
 				return n, transform.SameTree, nil
 			default:
 				return plan.NewPrependNode(n, row), transform.NewTree, nil

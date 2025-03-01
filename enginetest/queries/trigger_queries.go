@@ -3389,6 +3389,38 @@ for each row
 			},
 		},
 	},
+
+	{
+		Name: "trigger with cursor",
+		SetUpScript: []string{
+			"create table t1 (i int, j int);",
+			"insert into t1 values (1, 2);",
+			"create table t2 (i int, j int);",
+			`
+create trigger trig before insert on t2
+for each row
+begin
+  declare v1 int;
+  declare cur cursor for select i from t1;
+  open cur;
+  fetch cur into v1;
+  set new.j = v1;
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t2 values (1, 0);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{
