@@ -116,7 +116,7 @@ func (t MapCatalog) GetTableStats(ctx *Context, db string, table Table) ([]Stati
 	panic("implement me")
 }
 
-func (t MapCatalog) RefreshTableStats(ctx *Context, table Table, db string) error {
+func (t MapCatalog) AnalyzeTable(ctx *Context, table Table, db string) error {
 	//TODO implement me
 	panic("implement me")
 }
