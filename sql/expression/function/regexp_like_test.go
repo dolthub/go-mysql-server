@@ -222,7 +222,7 @@ func TestRegexpLikeWithoutFlags(t *testing.T) {
 				expression.NewLiteral(test.pattern, types.LongText),
 			)
 			require.NoError(t, err)
-			defer f.(*RegexpLike).Close(ctx)
+			defer f.(*RegexpLike).Dispose()
 			res, err := f.Eval(ctx, nil)
 			require.Equal(t, test.expected, res)
 		})
@@ -277,7 +277,7 @@ func TestRegexpLikeWithFlags(t *testing.T) {
 				expression.NewLiteral(test.flags, types.LongText),
 			)
 			require.NoError(t, err)
-			defer f.(*RegexpLike).Close(ctx)
+			defer f.(*RegexpLike).Dispose()
 			res, err := f.Eval(ctx, nil)
 			require.Equal(t, test.expected, res)
 		})
@@ -308,7 +308,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.NoError(t, err)
 	_, err = f.Eval(ctx, nil)
 	require.True(t, sql.ErrInvalidArgument.Is(err))
-	require.NoError(t, f.(*RegexpLike).Close(ctx))
+	f.(*RegexpLike).Dispose()
 
 	f, err = NewRegexpLike(
 		expression.NewLiteral(nil, types.Null),
@@ -319,7 +319,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err := f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	require.NoError(t, f.(*RegexpLike).Close(ctx))
+	f.(*RegexpLike).Dispose()
 
 	f, err = NewRegexpLike(
 		expression.NewLiteral("foo", types.LongText),
@@ -330,7 +330,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	require.NoError(t, f.(*RegexpLike).Close(ctx))
+	f.(*RegexpLike).Dispose()
 
 	f, err = NewRegexpLike(
 		expression.NewLiteral("foo", types.LongText),
@@ -341,7 +341,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	require.NoError(t, f.(*RegexpLike).Close(ctx))
+	f.(*RegexpLike).Dispose()
 
 	f, err = NewRegexpLike(
 		expression.NewLiteral(nil, types.Null),
@@ -351,7 +351,7 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	require.NoError(t, f.(*RegexpLike).Close(ctx))
+	f.(*RegexpLike).Dispose()
 
 	f, err = NewRegexpLike(
 		expression.NewLiteral("foo", types.LongText),
@@ -361,5 +361,5 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	res, err = f.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, res)
-	require.NoError(t, f.(*RegexpLike).Close(ctx))
+	f.(*RegexpLike).Dispose()
 }

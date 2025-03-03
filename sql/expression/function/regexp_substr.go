@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	regex "github.com/dolthub/go-icu-regex"
 
@@ -36,7 +35,9 @@ type RegexpSubstr struct {
 	Occurrence sql.Expression
 	Flags      sql.Expression
 
-	cachedVal   atomic.Value
+	cachedVal   any
+	cacheRegex  bool
+	cacheVal    bool
 	re          regex.Regex
 	compileOnce sync.Once
 	compileErr  error
@@ -44,7 +45,7 @@ type RegexpSubstr struct {
 
 var _ sql.FunctionExpression = (*RegexpSubstr)(nil)
 var _ sql.CollationCoercible = (*RegexpSubstr)(nil)
-var _ sql.Closer = (*RegexpSubstr)(nil)
+var _ sql.Disposable = (*RegexpSubstr)(nil)
 
 // NewRegexpSubstr creates a new RegexpSubstr expression.
 func NewRegexpSubstr(args ...sql.Expression) (sql.Expression, error) {
@@ -145,10 +146,22 @@ func (r *RegexpSubstr) String() string {
 }
 
 // compile handles compilation of the regex.
-func (r *RegexpSubstr) compile(ctx *sql.Context) {
+func (r *RegexpSubstr) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), nil)
+		r.cacheRegex = canBeCached(r.Text, r.Pattern, r.Flags)
+		r.cacheVal = canBeCached(r.Text, r.Pattern, r.Position, r.Occurrence, r.Flags)
+		if r.cacheRegex {
+			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+		}
 	})
+	if !r.cacheRegex {
+		if r.re != nil {
+			if r.compileErr = r.re.Close(); r.compileErr != nil {
+				return
+			}
+		}
+		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+	}
 }
 
 // Eval implements the sql.Expression interface.
@@ -156,12 +169,11 @@ func (r *RegexpSubstr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	span, ctx := ctx.Span("function.RegexpSubstr")
 	defer span.End()
 
-	cached := r.cachedVal.Load()
-	if cached != nil {
-		return cached, nil
+	if r.cachedVal != nil {
+		return r.cachedVal, nil
 	}
 
-	r.compile(ctx)
+	r.compile(ctx, row)
 	if r.compileErr != nil {
 		return nil, r.compileErr
 	}
@@ -217,16 +229,15 @@ func (r *RegexpSubstr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	if canBeCached(r.Text) {
-		r.cachedVal.Store(substring)
+	if r.cacheVal {
+		r.cachedVal = substring
 	}
 	return substring, nil
 }
 
-// Close implements the sql.Closer interface.
-func (r *RegexpSubstr) Close(ctx *sql.Context) error {
+// Dispose implements the sql.Disposable interface.
+func (r *RegexpSubstr) Dispose() {
 	if r.re != nil {
-		return r.re.Close()
+		_ = r.re.Close()
 	}
-	return nil
 }
