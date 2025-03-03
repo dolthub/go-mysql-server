@@ -1227,12 +1227,17 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, bucket
 		}
 	}
 
-	if exact.Len()+conj.applied.Len() == filter.childCnt() {
-		// matched all filters
-		return conj.hist, conj.getFds(), sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
+	var conjFDs *sql.FuncDepSet
+	if idx.IsUnique() {
+		conjFDs = conj.getFds()
 	}
 
-	return conj.hist, conj.getFds(), exact.Union(conj.applied), conj.missingPrefix, nil
+	if exact.Len()+conj.applied.Len() == filter.childCnt() {
+		// matched all filters
+		return conj.hist, conjFDs, sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
+	}
+
+	return conj.hist, conjFDs, exact.Union(conj.applied), conj.missingPrefix, nil
 }
 
 func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, error) {

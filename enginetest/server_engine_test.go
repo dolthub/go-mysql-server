@@ -267,6 +267,45 @@ func TestServerPreparedStatements(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "regression test for incorrectly setting QFlagMax1Row flag",
+			setup: []string{
+				"create table test(c0 int not null, c1 int not null, pk int primary key, key (c0, c1));",
+				"insert into test values (2, 3, 1), (5, 6, 4), (2, 3, 7);",
+			},
+			assertions: []serverScriptTestAssertion{
+				{
+					query: "select * from test where c0 = 2 and c1 = 3;",
+					expectedRows: []any{
+						[]uint64{uint64(2), uint64(3), uint64(1)},
+						[]uint64{uint64(2), uint64(3), uint64(7)},
+					},
+					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var c0, c1, pk uint64
+						var rowNum int
+						for rows.Next() {
+							if err := rows.Scan(&c0, &c1, &pk); err != nil {
+								return false, err
+							}
+							if rowNum >= len(expectedRows) {
+								return false, nil
+							}
+							if c0 != expectedRows[rowNum].([]uint64)[0] {
+								return false, nil
+							}
+							if c1 != expectedRows[rowNum].([]uint64)[1] {
+								return false, nil
+							}
+							if pk != expectedRows[rowNum].([]uint64)[2] {
+								return false, nil
+							}
+							rowNum++
+						}
+						return true, nil
+					},
+				},
+			},
+		},
 	}
 
 	port, perr := findEmptyPort()
@@ -315,6 +354,8 @@ func TestServerPreparedStatements(t *testing.T) {
 					if assertion.expectErr {
 						require.Error(t, err)
 						return
+					} else {
+						require.NoError(t, err)
 					}
 					ok, err := assertion.checkRows(rows, assertion.expectedRows)
 					require.NoError(t, err)
