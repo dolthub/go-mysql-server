@@ -46,6 +46,19 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "issue 8917: exec error nested in block doesn't panic",
+		SetUpScript: []string{
+			"CREATE TABLE b(b int primary key)",
+			"CREATE TABLE a(a int primary key, b int, CONSTRAINT `fk` FOREIGN KEY (b) REFERENCES b (b))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "alter table a add column c varchar(100), modify column b varchar(100)",
+				ExpectedErr: sql.ErrForeignKeyTypeChange,
+			},
+		},
+	},
+	{
 		Name: "variety of alter column statements in a single statement",
 		SetUpScript: []string{
 			"CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int default (v1), toRename int)",
