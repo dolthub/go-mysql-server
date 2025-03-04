@@ -3448,23 +3448,22 @@ begin
   call proc(new.i);
 end;
 `,
-
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "insert into t values (1);",
+				Query: "insert into t values (1);",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Query:    "select * from t;",
+				Query: "select * from t;",
 				Expected: []sql.Row{
 					{1},
 				},
 			},
 			{
-				Query:    "select * from t1;",
+				Query: "select * from t1;",
 				Expected: []sql.Row{
 					{1},
 				},
@@ -3474,13 +3473,13 @@ end;
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "select * from t3;",
+				Query: "select * from t3;",
 				Expected: []sql.Row{
 					{10},
 				},
 			},
 			{
-				Query:    "select * from t4;",
+				Query: "select * from t4;",
 				Expected: []sql.Row{
 					{1},
 				},
@@ -3515,11 +3514,10 @@ begin
   call proc(old.i);
 end;
 `,
-
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "delete from t where i = 1;",
+				Query: "delete from t where i = 1;",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
@@ -3529,7 +3527,7 @@ end;
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "select * from t1;",
+				Query: "select * from t1;",
 				Expected: []sql.Row{
 					{1},
 				},
@@ -3539,13 +3537,13 @@ end;
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "select * from t3;",
+				Query: "select * from t3;",
 				Expected: []sql.Row{
 					{10},
 				},
 			},
 			{
-				Query:    "select * from t4;",
+				Query: "select * from t4;",
 				Expected: []sql.Row{
 					{1},
 				},
