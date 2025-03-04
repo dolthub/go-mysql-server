@@ -17,16 +17,16 @@ import ast "github.com/dolthub/vitess/go/vt/sqlparser"
 type OpCode uint16
 
 const (
-	OpCode_Select     OpCode = iota
-	OpCode_Declare           // https://www.postgresql.org/docs/15/plpgsql-declarations.html
+	OpCode_Select  OpCode = iota
+	OpCode_Declare        // https://www.postgresql.org/docs/15/plpgsql-declarations.html
 	OpCode_Set
-	OpCode_Exception         // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-ERROR-TRAPPING
-	OpCode_Execute           // Everything that's not a SELECT
-	OpCode_Goto              // All control-flow structures can be represented using Goto
-	OpCode_If                // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-CONDITIONALS
-	OpCode_Return            // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-STATEMENTS-RETURNING
-	OpCode_ScopeBegin        // This is used for scope control, specific to Doltgres
-	OpCode_ScopeEnd          // This is used for scope control, specific to Doltgres
+	OpCode_Exception  // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-ERROR-TRAPPING
+	OpCode_Execute    // Everything that's not a SELECT
+	OpCode_Goto       // All control-flow structures can be represented using Goto
+	OpCode_If         // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-CONDITIONALS
+	OpCode_Return     // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-STATEMENTS-RETURNING
+	OpCode_ScopeBegin // This is used for scope control, specific to Doltgres
+	OpCode_ScopeEnd   // This is used for scope control, specific to Doltgres
 )
 
 // InterpreterOperation is an operation that will be performed by the interpreter.

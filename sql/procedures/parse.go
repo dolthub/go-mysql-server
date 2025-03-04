@@ -61,7 +61,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		var setOp *InterpreterOperation
 		if len(setExpr.Scope) != 0 {
 			setOp = &InterpreterOperation{
-				OpCode: OpCode_Execute,
+				OpCode:      OpCode_Execute,
 				PrimaryData: s,
 			}
 		} else {
@@ -189,7 +189,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		gotoOp := &InterpreterOperation{
 			OpCode: OpCode_Goto,
-			Index: loopStart,
+			Index:  loopStart,
 		}
 		*ops = append(*ops, gotoOp)
 
@@ -220,7 +220,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 
 		gotoOp := &InterpreterOperation{
 			OpCode: OpCode_Goto,
-			Index: loopStart,
+			Index:  loopStart,
 		}
 		*ops = append(*ops, gotoOp)
 
@@ -235,7 +235,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		gotoOp := &InterpreterOperation{
 			OpCode: OpCode_Goto,
-			Index: loopStart,
+			Index:  loopStart,
 		}
 		*ops = append(*ops, gotoOp)
 
