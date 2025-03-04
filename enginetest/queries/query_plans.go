@@ -1440,15 +1440,19 @@ where
 			" ├─ columns: [style.assetId:1]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ LookupJoin\n" +
-			"     │   ├─ TableAlias(style)\n" +
-			"     │   │   └─ IndexedTableAccess(asset)\n" +
-			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │   │       ├─ static: [{[org1, org1], [style, style], [curve, curve]}]\n" +
-			"     │   │       ├─ colSet: (1-5)\n" +
-			"     │   │       ├─ tableId: 1\n" +
-			"     │   │       └─ Table\n" +
-			"     │   │           ├─ name: asset\n" +
-			"     │   │           └─ columns: [orgid assetid name val]\n" +
+			"     │   ├─ Filter\n" +
+			"     │   │   ├─ Eq\n" +
+			"     │   │   │   ├─ style.val:3\n" +
+			"     │   │   │   └─ curve (longtext)\n" +
+			"     │   │   └─ TableAlias(style)\n" +
+			"     │   │       └─ IndexedTableAccess(asset)\n" +
+			"     │   │           ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"     │   │           ├─ static: [{[org1, org1], [style, style], [NULL, ∞)}]\n" +
+			"     │   │           ├─ colSet: (1-5)\n" +
+			"     │   │           ├─ tableId: 1\n" +
+			"     │   │           └─ Table\n" +
+			"     │   │               ├─ name: asset\n" +
+			"     │   │               └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ AND\n" +
 			"     │       │   ├─ AND\n" +
@@ -1494,13 +1498,15 @@ where
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6)\n" +
-			"     │   ├─ TableAlias(style)\n" +
-			"     │   │   └─ IndexedTableAccess(asset)\n" +
-			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │   │       ├─ filters: [{[org1, org1], [style, style], [curve, curve]}]\n" +
-			"     │   │       └─ columns: [orgid assetid name val]\n" +
+			" └─ LookupJoin (estimated cost=16.500 rows=5)\n" +
+			"     ├─ LookupJoin (estimated cost=16.500 rows=5)\n" +
+			"     │   ├─ Filter\n" +
+			"     │   │   ├─ (style.val = 'curve')\n" +
+			"     │   │   └─ TableAlias(style)\n" +
+			"     │   │       └─ IndexedTableAccess(asset)\n" +
+			"     │   │           ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"     │   │           ├─ filters: [{[org1, org1], [style, style], [NULL, ∞)}]\n" +
+			"     │   │           └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
 			"     │       └─ TableAlias(dimension)\n" +
@@ -1518,13 +1524,15 @@ where
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
-			"     │   ├─ TableAlias(style)\n" +
-			"     │   │   └─ IndexedTableAccess(asset)\n" +
-			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
-			"     │   │       ├─ filters: [{[org1, org1], [style, style], [curve, curve]}]\n" +
-			"     │   │       └─ columns: [orgid assetid name val]\n" +
+			" └─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=1 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=1 loops=1)\n" +
+			"     │   ├─ Filter\n" +
+			"     │   │   ├─ (style.val = 'curve')\n" +
+			"     │   │   └─ TableAlias(style)\n" +
+			"     │   │       └─ IndexedTableAccess(asset)\n" +
+			"     │   │           ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"     │   │           ├─ filters: [{[org1, org1], [style, style], [NULL, ∞)}]\n" +
+			"     │   │           └─ columns: [orgid assetid name val]\n" +
 			"     │   └─ Filter\n" +
 			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
 			"     │       └─ TableAlias(dimension)\n" +
