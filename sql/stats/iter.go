@@ -106,7 +106,9 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 	mcvs := make([]string, mcvCnt)
 
 	for i, mcv := range bucket.Mcvs() {
-		mcvs[i] = StringifyKey(mcv, s.types)
+		if len(mcv) > 0 {
+			mcvs[i] = StringifyKey(mcv, s.types)
+		}
 	}
 
 	return sql.Row{
