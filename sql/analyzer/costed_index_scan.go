@@ -1315,7 +1315,6 @@ func indexHasContentHashedFieldForFilter(filter *iScanLeaf, idx sql.Index, ordin
 // by a statistic, returning the updated statistic, whether the filter was
 // applicable, and the maximum prefix key (0 or 1 for a leaf).
 func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, int, error) {
-	//todo use {underlyingTable}.{gf.Name}?
 	ord, ok := ordinals[strings.ToLower(filter.gf.Name())]
 	if !ok {
 		return nil, nil, false, 0, nil
