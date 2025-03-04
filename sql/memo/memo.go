@@ -322,9 +322,9 @@ func (m *Memo) memoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, al
 // as done early.
 func (m *Memo) MemoizeStaticIndexAccess(grp *ExprGroup, aliasName string, idx *Index, ita *plan.IndexedTableAccess, filters []sql.Expression, stat sql.Statistic) {
 	if m.Debug {
-		m.Ctx.GetLogger().Debug("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
-		m.Ctx.GetLogger().Debug("index stats cnt: ", stat.RowCount())
-		m.Ctx.GetLogger().Debug("index stats histogram", stat.Histogram().DebugString())
+		m.Ctx.GetLogger().Debugf("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
+		m.Ctx.GetLogger().Debugf("index stats cnt: %d: ", stat.RowCount())
+		m.Ctx.GetLogger().Debugf("index stats histogram: %s", stat.Histogram().DebugString())
 	}
 	if len(filters) > 0 {
 		// set the indexed path as best. correct for cases where

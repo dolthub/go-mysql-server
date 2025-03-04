@@ -138,8 +138,8 @@ func costedIndexLookup(ctx *sql.Context, n sql.Node, a *Analyzer, iat sql.IndexA
 	}
 
 	a.Log("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
-	a.Log("index stats cnt: ", stats.RowCount())
-	a.Log("index stats histogram", stats.Histogram().DebugString())
+	a.Log("index stats cnt: %d", stats.RowCount())
+	a.Log("index stats histogram: %s", stats.Histogram().DebugString())
 
 	// excluded from tree + not included in index scan => filter above scan
 	if len(filters) > 0 {
