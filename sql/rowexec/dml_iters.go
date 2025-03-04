@@ -200,6 +200,15 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 			}
 		case *plan.ResolvedTable, *plan.IndexedTableAccess:
 			return plan.NewPrependNode(n, row), transform.NewTree, nil
+		case *plan.Call:
+			newNode, same, err := transform.NodeWithCtx(n.Procedure, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return n.WithProcedure(newNode.(*plan.Procedure)), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
