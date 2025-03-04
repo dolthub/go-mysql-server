@@ -284,18 +284,24 @@ func TestServerPreparedStatements(t *testing.T) {
 						var c0, c1, pk uint64
 						var rowNum int
 						for rows.Next() {
-							if err := rows.Scan(&c0, &c1, &pk); err != nil {
+							err := rows.Scan(&c0, &c1, &pk)
+							require.NoError(t, err)
+							if err != nil {
 								return false, err
 							}
+							require.Less(t, rowNum, len(expectedRows))
 							if rowNum >= len(expectedRows) {
 								return false, nil
 							}
+							require.Equal(t, c0, expectedRows[rowNum].([]uint64)[0])
 							if c0 != expectedRows[rowNum].([]uint64)[0] {
 								return false, nil
 							}
+							require.Equal(t, c1, expectedRows[rowNum].([]uint64)[1])
 							if c1 != expectedRows[rowNum].([]uint64)[1] {
 								return false, nil
 							}
+							require.Equal(t, pk, expectedRows[rowNum].([]uint64)[2])
 							if pk != expectedRows[rowNum].([]uint64)[2] {
 								return false, nil
 							}
