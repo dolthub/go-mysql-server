@@ -93,6 +93,9 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 	triggerScope.addColumns(newScope.cols)
 	triggerScope.addColumns(oldScope.cols)
 
+	triggerScope.addExpressions(newScope.exprs)
+	triggerScope.addExpressions(oldScope.exprs)
+
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 	bodyScope := b.buildSubquery(triggerScope, c.TriggerSpec.Body, bodyStr, fullQuery)
 	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)

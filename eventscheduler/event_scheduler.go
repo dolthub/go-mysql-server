@@ -52,7 +52,7 @@ var _ sql.EventScheduler = (*EventScheduler)(nil)
 type EventScheduler struct {
 	status        SchedulerStatus
 	executor      *eventExecutor
-	ctxGetterFunc func() (*sql.Context, func() error, error)
+	ctxGetterFunc func() (*sql.Context, error)
 }
 
 // InitEventScheduler is called at the start of the server. This function returns EventScheduler object
@@ -63,7 +63,7 @@ type EventScheduler struct {
 func InitEventScheduler(
 	a *analyzer.Analyzer,
 	bgt *sql.BackgroundThreads,
-	getSqlCtxFunc func() (*sql.Context, func() error, error),
+	getSqlCtxFunc func() (*sql.Context, error),
 	status SchedulerStatus,
 	runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error,
 	period int,
@@ -81,27 +81,61 @@ func InitEventScheduler(
 	// If the EventSchedulerStatus is ON, then load enabled
 	// events and start executing events on schedule.
 	if es.status == SchedulerOn {
-		ctx, commit, err := getSqlCtxFunc()
+		ctx, err := getSqlCtxFunc()
+		if err != nil {
+			return nil, err
+		}
 		ctx.Session.SetClient(sql.Client{
 			User:         eventSchedulerSuperUserName,
 			Address:      "localhost",
 			Capabilities: 0,
 		})
-
+		defer sql.SessionEnd(ctx.Session)
+		sql.SessionCommandBegin(ctx.Session)
+		defer sql.SessionCommandEnd(ctx.Session)
+		err = beginTx(ctx)
 		if err != nil {
 			return nil, err
 		}
 		err = es.loadEventsAndStartEventExecutor(ctx, a)
 		if err != nil {
+			rollbackTx(ctx)
 			return nil, err
 		}
-		err = commit()
+		err = commitTx(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return es, nil
+}
+
+func beginTx(ctx *sql.Context) error {
+	if ts, ok := ctx.Session.(sql.TransactionSession); ok {
+		tr, err := ts.StartTransaction(ctx, sql.ReadWrite)
+		if err != nil {
+			return err
+		}
+		ts.SetTransaction(tr)
+	}
+	return nil
+}
+
+func commitTx(ctx *sql.Context) error {
+	if ts, ok := ctx.Session.(sql.TransactionSession); ok {
+		defer ts.SetTransaction(nil)
+		return ts.CommitTransaction(ctx, ts.GetTransaction())
+	}
+	return nil
+}
+
+func rollbackTx(ctx *sql.Context) error {
+	if ts, ok := ctx.Session.(sql.TransactionSession); ok {
+		defer ts.SetTransaction(nil)
+		return ts.Rollback(ctx, ts.GetTransaction())
+	}
+	return nil
 }
 
 // initializeEventSchedulerSuperUser ensures the event_scheduler superuser exists (as a locked
@@ -147,15 +181,23 @@ func (es *EventScheduler) TurnOnEventScheduler(a *analyzer.Analyzer) error {
 
 	es.status = SchedulerOn
 
-	ctx, commit, err := es.ctxGetterFunc()
+	ctx, err := es.ctxGetterFunc()
+	if err != nil {
+		return err
+	}
+	defer sql.SessionEnd(ctx.Session)
+	sql.SessionCommandBegin(ctx.Session)
+	defer sql.SessionCommandEnd(ctx.Session)
+	err = beginTx(ctx)
 	if err != nil {
 		return err
 	}
 	err = es.loadEventsAndStartEventExecutor(ctx, a)
 	if err != nil {
+		rollbackTx(ctx)
 		return err
 	}
-	return commit()
+	return commitTx(ctx)
 }
 
 // TurnOffEventScheduler is called when user sets --event-scheduler system variable to OFF or 0.

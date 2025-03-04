@@ -44,7 +44,7 @@ func TestSeverCustomListener(t *testing.T) {
 		client := gsql.Client{Address: host, User: user, Capabilities: c.Capabilities}
 		return memory.NewSession(gsql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), pro), nil
 	}
-	s, err := server.NewServer(cfg, engine, sessionBuilder, nil)
+	s, err := server.NewServer(cfg, engine, gsql.NewContext, sessionBuilder, nil)
 	require.NoError(t, err)
 
 	networkName := "testNetwork"

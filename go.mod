@@ -3,10 +3,10 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/dolthub/flatbuffers/v23 v23.3.3-dh.2
-	github.com/dolthub/go-icu-regex v0.0.0-20241215010122-db690dd53c90
+	github.com/dolthub/go-icu-regex v0.0.0-20250303123116-549b8d7cad00
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20250123002143-3b45b8cacbfa
+	github.com/dolthub/vitess v0.0.0-20250228011932-c4f6bba87730
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
 	github.com/gocraft/dbr/v2 v2.7.2

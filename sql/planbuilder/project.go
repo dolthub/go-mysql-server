@@ -73,7 +73,6 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 		}
 		if subqueryFound {
 			outScope.refsSubquery = true
-
 		}
 
 		switch e := pe.(type) {

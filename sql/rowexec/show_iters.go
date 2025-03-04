@@ -531,9 +531,9 @@ func getForeignKeyTable(t sql.Table) (sql.ForeignKeyTable, error) {
 	}
 }
 
-func getAutoIncrementTable(t sql.Table) sql.AutoIncrementTable {
+func getAutoIncrementTable(t sql.Table) sql.AutoIncrementGetter {
 	switch t := t.(type) {
-	case sql.AutoIncrementTable:
+	case sql.AutoIncrementGetter:
 		return t
 	case sql.TableWrapper:
 		return getAutoIncrementTable(t.Underlying())

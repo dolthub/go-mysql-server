@@ -160,6 +160,10 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 		}
 
 		handleError := func(err error) error {
+			if n.Pref == nil {
+				// alter table blocks do not have a proc reference
+				return err
+			}
 			scope := n.Pref.InnermostScope
 			for i := len(scope.Handlers) - 1; i >= 0; i-- {
 				if !scope.Handlers[i].Cond.Matches(err) {

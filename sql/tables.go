@@ -330,9 +330,7 @@ type TruncateableTable interface {
 // AUTO_INCREMENT sequence. These methods should only be used for tables with and AUTO_INCREMENT column in their schema.
 type AutoIncrementTable interface {
 	Table
-	// PeekNextAutoIncrementValue returns the next AUTO_INCREMENT value without incrementing the current
-	// auto_increment counter.
-	PeekNextAutoIncrementValue(ctx *Context) (uint64, error)
+	AutoIncrementGetter
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.
@@ -340,6 +338,15 @@ type AutoIncrementTable interface {
 	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
+}
+
+// AutoIncrementGetter provides support for reading a table's AUTO_INCREMENT value.
+// This can include tables that don't implement AutoIncrementTable if the table is a read-only snapshot
+// of an auto-incremented table.
+type AutoIncrementGetter interface {
+	// PeekNextAutoIncrementValue returns the next AUTO_INCREMENT value without incrementing the current
+	// auto_increment counter.
+	PeekNextAutoIncrementValue(ctx *Context) (uint64, error)
 }
 
 // AutoIncrementSetter provides support for altering a table's

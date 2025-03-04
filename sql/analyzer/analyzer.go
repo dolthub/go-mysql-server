@@ -266,6 +266,7 @@ func (ab *Builder) Build() *Analyzer {
 		Catalog:      NewCatalog(ab.provider),
 		Coster:       memo.NewDefaultCoster(),
 		ExecBuilder:  rowexec.DefaultBuilder,
+		Parser:       sql.GlobalParser,
 	}
 }
 
@@ -288,6 +289,8 @@ type Analyzer struct {
 	ExecBuilder sql.NodeExecBuilder
 	// Runner represents the engine, which is represented as a separate interface to work around circular dependencies
 	Runner sql.StatementRunner
+	// Parser is the parser used to parse SQL statements.
+	Parser sql.Parser
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

@@ -27,6 +27,7 @@ import (
 // Coalesce returns the first non-NULL value in the list, or NULL if there are no non-NULL values.
 type Coalesce struct {
 	args []sql.Expression
+	typ  sql.Type
 }
 
 var _ sql.FunctionExpression = (*Coalesce)(nil)
@@ -38,7 +39,7 @@ func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("COALESCE", "1 or more", 0)
 	}
 
-	return &Coalesce{args}, nil
+	return &Coalesce{args: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -54,6 +55,9 @@ func (c *Coalesce) Description() string {
 // Type implements the sql.Expression interface.
 // The return type of Type() is the aggregated type of the argument types.
 func (c *Coalesce) Type() sql.Type {
+	if c.typ != nil {
+		return c.typ
+	}
 	retType := types.Null
 	for i, arg := range c.args {
 		if arg == nil {
@@ -120,6 +124,7 @@ func (c *Coalesce) Type() sql.Type {
 		}
 	}
 
+	c.typ = retType
 	return retType
 }
 
@@ -201,6 +206,12 @@ func (c *Coalesce) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
+		if !types.IsEnum(c.Type()) && !types.IsSet(c.Type()) {
+			val, _, err = c.Type().Convert(val)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return val, nil
 	}
 
