@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"runtime/trace"
@@ -175,6 +176,10 @@ func (ab *Builder) RemoveAfterAllRule(id RuleId) *Builder {
 }
 
 var log = logrus.New()
+
+func SetOutput(w io.Writer) {
+	log.SetOutput(w)
+}
 
 func init() {
 	// TODO: give the option for debug analyzer logging format to match the global one

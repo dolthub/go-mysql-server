@@ -82,7 +82,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 			}
 		}
 		if iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable); ok {
-			return costedIndexLookup(ctx, n, a.Catalog, iat, rt, aliasName, filter.Expression, qFlags)
+			return costedIndexLookup(ctx, n, a, iat, rt, aliasName, filter.Expression, qFlags)
 		}
 		return n, transform.SameTree, nil
 	})
@@ -123,12 +123,12 @@ func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup,
 	return ret, transform.NewTree, nil
 }
 
-func costedIndexLookup(ctx *sql.Context, n sql.Node, cat sql.Catalog, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func costedIndexLookup(ctx *sql.Context, n sql.Node, a *Analyzer, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	indexes, err := iat.GetIndexes(ctx)
 	if err != nil {
 		return n, transform.SameTree, err
 	}
-	ita, _, filters, err := getCostedIndexScan(ctx, cat, rt, indexes, expression.SplitConjunction(oldFilter), qFlags)
+	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, expression.SplitConjunction(oldFilter), qFlags)
 	if err != nil || ita == nil {
 		return n, transform.SameTree, err
 	}
@@ -136,6 +136,11 @@ func costedIndexLookup(ctx *sql.Context, n sql.Node, cat sql.Catalog, iat sql.In
 	if aliasName != "" {
 		ret = plan.NewTableAlias(aliasName, ret)
 	}
+
+	a.Log("new indexed table: %s/%s/%s", ita.Index().Database(), ita.Index().Table(), ita.Index().ID())
+	a.Log("index stats cnt: %d", stats.RowCount())
+	a.Log("index stats histogram: %s", stats.Histogram().DebugString())
+
 	// excluded from tree + not included in index scan => filter above scan
 	if len(filters) > 0 {
 		ret = plan.NewFilter(expression.JoinAnd(filters...), ret)
