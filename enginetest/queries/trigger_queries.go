@@ -3421,6 +3421,137 @@ end;
 			},
 		},
 	},
+
+	{
+		Name: "insert trigger with stored procedure with deletes",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"create table t1 (j int);",
+			"insert into t1 values (1);",
+			"create table t2 (k int);",
+			"insert into t2 values (1);",
+			"create table t3 (l int);",
+			"insert into t3 values (1);",
+			"create table t4 (m int);",
+			`
+create procedure proc(x int)
+begin
+  delete from t2 where k = (select j from t1 where j = x);
+  update t3 set l = 10 where l = x;
+  insert into t4 values (x);
+end;
+`,
+			`
+create trigger trig before insert on t
+for each row
+begin
+  call proc(new.i);
+end;
+`,
+
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t1;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t3;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query:    "select * from t4;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+
+	{
+		Name: "delete trigger with stored procedure with deletes",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (1)",
+			"create table t1 (j int);",
+			"insert into t1 values (1);",
+			"create table t2 (k int);",
+			"insert into t2 values (1);",
+			"create table t3 (l int);",
+			"insert into t3 values (1);",
+			"create table t4 (m int);",
+			`
+create procedure proc(x int)
+begin
+  delete from t2 where k = (select j from t1 where j = x);
+  update t3 set l = 10 where l = x;
+  insert into t4 values (x);
+end;
+`,
+			`
+create trigger trig before delete on t
+for each row
+begin
+  call proc(old.i);
+end;
+`,
+
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "delete from t where i = 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t1;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t3;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query:    "select * from t4;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{
