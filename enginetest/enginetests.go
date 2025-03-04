@@ -2142,7 +2142,7 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 				require.FailNow(t, "harness must implement ServerHarness")
 			}
 
-			s, err := server.NewServer(serverConfig, engine, serverHarness.SessionBuilder(), nil)
+			s, err := server.NewServer(serverConfig, engine, sql.NewContext, serverHarness.SessionBuilder(), nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()
@@ -5695,7 +5695,7 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 			defer engine.Close()
 			engine.EngineAnalyzer().Catalog.MySQLDb.AddRootAccount()
 
-			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
+			s, err := server.NewServer(serverConfig, engine, sql.NewContext, sessionBuilder, nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()
@@ -5811,7 +5811,7 @@ func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder serve
 				Address:        fmt.Sprintf("localhost:%d", port),
 				MaxConnections: 1000,
 			}
-			s, err := server.NewServer(serverConfig, engine, sessionBuilder, nil)
+			s, err := server.NewServer(serverConfig, engine, sql.NewContext, sessionBuilder, nil)
 			require.NoError(t, err)
 			go func() {
 				err := s.Start()

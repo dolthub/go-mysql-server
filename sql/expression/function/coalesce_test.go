@@ -45,7 +45,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(2, types.Int32),
 				expression.NewLiteral(3, types.Int32),
 			},
-			expected: 1,
+			expected: int32(1),
 			typ:      types.Int32,
 			nullable: false,
 		},
@@ -56,7 +56,7 @@ func TestCoalesce(t *testing.T) {
 				nil,
 				expression.NewLiteral(3, types.Int32),
 			},
-			expected: 3,
+			expected: int32(3),
 			typ:      types.Int32,
 			nullable: false,
 		},
@@ -100,7 +100,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(decimal.NewFromFloat(2.0), types.MustCreateDecimalType(10, 0)),
 				expression.NewLiteral("3", types.LongText),
 			},
-			expected: 1,
+			expected: "1",
 			typ:      types.LongText,
 			nullable: false,
 		},
@@ -110,7 +110,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral(2, types.Uint32),
 			},
-			expected: 1,
+			expected: decimal.New(1, 0),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -120,7 +120,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.Int32),
 				expression.NewLiteral(2, types.Uint32),
 			},
-			expected: 1,
+			expected: decimal.New(1, 0),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -130,7 +130,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.MustCreateDecimalType(10, 0)),
 				expression.NewLiteral(2, types.Float64),
 			},
-			expected: 1,
+			expected: float64(1),
 			typ:      types.Float64,
 			nullable: false,
 		},
@@ -139,7 +139,7 @@ func TestCoalesce(t *testing.T) {
 			input: []sql.Expression{
 				expression.NewLiteral(2, types.Float64),
 			},
-			expected: 2,
+			expected: float64(2),
 			typ:      types.Float64,
 			nullable: false,
 		},
@@ -148,7 +148,7 @@ func TestCoalesce(t *testing.T) {
 			input: []sql.Expression{
 				expression.NewLiteral(1, types.Float64),
 			},
-			expected: 1,
+			expected: float64(1),
 			typ:      types.Float64,
 			nullable: false,
 		},
@@ -158,7 +158,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.NewSystemIntType("int1", 0, 10, false)),
 				expression.NewLiteral(2, types.NewSystemIntType("int2", 0, 10, false)),
 			},
-			expected: 1,
+			expected: int64(1),
 			typ:      types.Int64,
 			nullable: false,
 		},
@@ -168,7 +168,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.NewSystemIntType("int1", 0, 10, false)),
 				expression.NewLiteral(2, types.NewSystemUintType("int2", 0, 10)),
 			},
-			expected: 1,
+			expected: decimal.New(1, 0),
 			typ:      types.MustCreateDecimalType(20, 0),
 			nullable: false,
 		},
@@ -178,7 +178,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1, types.NewSystemUintType("int1", 0, 10)),
 				expression.NewLiteral(2, types.NewSystemUintType("int2", 0, 10)),
 			},
-			expected: 1,
+			expected: uint64(1),
 			typ:      types.Uint64,
 			nullable: false,
 		},
@@ -188,7 +188,7 @@ func TestCoalesce(t *testing.T) {
 				expression.NewLiteral(1.0, types.NewSystemDoubleType("dbl1", 0.0, 10.0)),
 				expression.NewLiteral(2.0, types.NewSystemDoubleType("dbl2", 0.0, 10.0)),
 			},
-			expected: 1.0,
+			expected: float64(1),
 			typ:      types.Float64,
 			nullable: false,
 		},
@@ -249,19 +249,19 @@ func TestComposeCoalasce(t *testing.T) {
 	require.Equal(t, types.Int32, c2.Type())
 	v, err = c2.Eval(ctx, nil)
 	require.NoError(t, err)
-	require.Equal(t, 1, v)
+	require.Equal(t, int32(1), v)
 
 	c3, err := NewCoalesce(nil, c1, c2)
 	require.NoError(t, err)
 	require.Equal(t, types.Int32, c3.Type())
 	v, err = c3.Eval(ctx, nil)
 	require.NoError(t, err)
-	require.Equal(t, 1, v)
+	require.Equal(t, int32(1), v)
 
 	c4, err := NewCoalesce(expression.NewLiteral(nil, types.Null), c1, c2)
 	require.NoError(t, err)
 	require.Equal(t, types.Int32, c4.Type())
 	v, err = c4.Eval(ctx, nil)
 	require.NoError(t, err)
-	require.Equal(t, 1, v)
+	require.Equal(t, int32(1), v)
 }

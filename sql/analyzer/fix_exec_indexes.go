@@ -18,11 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/planbuilder"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -429,42 +428,51 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			s.expressions = append(s.expressions, fixExprToScope(e, scopes...))
 		}
 	case *plan.InsertInto:
-		rightSchema := make(sql.Schema, len(n.Destination.Schema())*2)
 		// schema = [oldrow][newrow]
-		for oldRowIdx, c := range n.Destination.Schema() {
-			rightSchema[oldRowIdx] = c
-			newRowIdx := len(n.Destination.Schema()) + oldRowIdx
-			if values, ok := n.Source.(*plan.Values); ok {
-				// The source table is either named via VALUES(...) AS ... or has
-				// the default value planbuilder.OnDupValuesPrefix
+		destSch := n.Destination.Schema()
+		srcSch := n.Source.Schema()
+		rightSchema := make(sql.Schema, len(destSch)*2)
+		if values, isValues := n.Source.(*plan.Values); isValues {
+			for oldRowIdx, c := range destSch {
 				newC := c.Copy()
 				newC.Source = values.AliasName
 				if values.ColumnNames != nil {
 					newC.Name = values.ColumnNames[newC.Name]
 				}
+
+				newRowIdx := len(destSch) + oldRowIdx
+				rightSchema[oldRowIdx] = c
 				rightSchema[newRowIdx] = newC
-			} else if len(n.Destination.Schema()) != len(n.Source.Schema()) {
-				newC := c.Copy()
-				newC.Source = planbuilder.OnDupValuesPrefix
-				rightSchema[newRowIdx] = newC
-			} else {
+			}
+		} else {
+			for oldRowIdx, c := range destSch {
 				// find source index that aligns with dest column
-				var matched bool
+				var newC *sql.Column
 				for j, sourceCol := range n.ColumnNames {
 					if strings.EqualFold(c.Name, sourceCol) {
-						rightSchema[newRowIdx] = n.Source.Schema()[j]
-						matched = true
+						newC = srcSch[j]
 						break
 					}
 				}
-				if !matched {
-					// todo: this is only used for load data. load data errors
-					//  without a fallback, and fails to resolve defaults if I
-					//  define the columns upfront.
-					rightSchema[newRowIdx] = n.Source.Schema()[oldRowIdx]
+				// unable to find column, use copy with OnDupValuesPrefix or fallback
+				if newC == nil {
+					if len(destSch) != len(srcSch) {
+						newC = c.Copy()
+						newC.Source = planbuilder.OnDupValuesPrefix
+					} else {
+						// todo: this is only used for load data. load data errors
+						//  without a fallback, and fails to resolve defaults if I
+						//  define the columns upfront.
+						newC = srcSch[oldRowIdx]
+					}
 				}
+				newRowIdx := len(destSch) + oldRowIdx
+
+				rightSchema[oldRowIdx] = c
+				rightSchema[newRowIdx] = newC
 			}
 		}
+
 		rightScope := &idxScope{}
 		rightScope.addSchema(rightSchema)
 		dstScope := s.childScopes[0]
