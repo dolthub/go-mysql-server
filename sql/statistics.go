@@ -36,8 +36,8 @@ type StatisticsTable interface {
 type StatsProvider interface {
 	// GetTableStats returns all statistics for the table
 	GetTableStats(ctx *Context, db string, table Table) ([]Statistic, error)
-	// RefreshTableStats updates all statistics associated with a given table
-	RefreshTableStats(ctx *Context, table Table, db string) error
+	// AnalyzeTable updates all statistics associated with a given table
+	AnalyzeTable(ctx *Context, table Table, db string) error
 	// SetStats updates or overwrites a set of table statistics
 	SetStats(ctx *Context, stats Statistic) error
 	// GetStats fetches a set of statistics for a set of table columns
