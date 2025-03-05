@@ -83,7 +83,7 @@ type serverScriptTestAssertion struct {
 	expectedRows         []any
 
 	// can't avoid writing custom comparator because of how gosql.Rows.Scan() works
-	checkRows func(rows *gosql.Rows, expectedRows []any) (bool, error)
+	checkRows func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error)
 }
 
 type serverScriptTest struct {
@@ -108,7 +108,7 @@ func TestServerPreparedStatements(t *testing.T) {
 					expectedRows: []any{
 						[]float64{321.4},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i float64
 						var rowNum int
 						for rows.Next() {
@@ -133,7 +133,7 @@ func TestServerPreparedStatements(t *testing.T) {
 						[]float64{213.4},
 						[]float64{213.4},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i float64
 						var rowNum int
 						for rows.Next() {
@@ -197,7 +197,7 @@ func TestServerPreparedStatements(t *testing.T) {
 						[]uint64{uint64(math.MaxInt64 + 1)},
 						[]uint64{uint64(math.MaxUint64)},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i uint64
 						var rowNum int
 						for rows.Next() {
@@ -247,7 +247,7 @@ func TestServerPreparedStatements(t *testing.T) {
 						[]int64{int64(-1)},
 						[]int64{int64(math.MaxInt64)},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i int64
 						var rowNum int
 						for rows.Next() {
@@ -275,12 +275,12 @@ func TestServerPreparedStatements(t *testing.T) {
 			},
 			assertions: []serverScriptTestAssertion{
 				{
-					query: "select * from test where c0 = 2 and c1 = 3;",
+					query: "select * from test where c0 = 2 and c1 = 3 order by pk;",
 					expectedRows: []any{
 						[]uint64{uint64(2), uint64(3), uint64(1)},
 						[]uint64{uint64(2), uint64(3), uint64(7)},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var c0, c1, pk uint64
 						var rowNum int
 						for rows.Next() {
@@ -363,7 +363,7 @@ func TestServerPreparedStatements(t *testing.T) {
 					} else {
 						require.NoError(t, err)
 					}
-					ok, err := assertion.checkRows(rows, assertion.expectedRows)
+					ok, err := assertion.checkRows(t, rows, assertion.expectedRows)
 					require.NoError(t, err)
 					require.True(t, ok)
 				})

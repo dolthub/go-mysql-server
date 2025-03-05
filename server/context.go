@@ -49,6 +49,10 @@ type SessionManager struct {
 	connections map[uint32]*mysql.Conn
 	lastPid     uint64
 	ctxFactory  sql.ContextFactory
+	// Implements WaitForClosedConnections(), which is only used
+	// at server shutdown to allow the integrator to ensure that
+	// no connections are being handled by handlers.
+	wg sync.WaitGroup
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.
@@ -82,6 +86,13 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.lastPid
 }
 
+// Block the calling thread until all known connections are closed. It
+// is an error to call this concurrently while the server might still
+// be accepting new connections.
+func (s *SessionManager) WaitForClosedConnections() {
+	s.wg.Wait()
+}
+
 // AddConn adds a connection to be tracked by the SessionManager. Should be called as
 // soon as possible after the server has accepted the connection. Results in
 // the connection being tracked by ProcessList and being available through
@@ -93,6 +104,7 @@ func (s *SessionManager) AddConn(conn *mysql.Conn) {
 	defer s.mu.Unlock()
 	s.connections[conn.ConnectionID] = conn
 	s.processlist.AddConnection(conn.ConnectionID, conn.RemoteAddr().String())
+	s.wg.Add(1)
 }
 
 // NewSession creates a Session for the given connection and saves it to the session pool.
@@ -270,6 +282,7 @@ func (s *SessionManager) KillConnection(connID uint32) error {
 func (s *SessionManager) RemoveConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.wg.Done()
 	if cur, ok := s.sessions[conn.ConnectionID]; ok {
 		sql.SessionEnd(cur)
 	}
