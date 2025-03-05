@@ -34,6 +34,9 @@ type Server struct {
 	Engine     *gms.Engine
 }
 
+// An option to customize the server.
+type Option func(e *gms.Engine, sm *SessionManager, handler mysql.Handler) (*gms.Engine, *SessionManager, mysql.Handler)
+
 // Config for the mysql server.
 type Config struct {
 	// Protocol for the connection.
@@ -78,6 +81,11 @@ type Config struct {
 	// If true, queries will be logged as base64 encoded strings.
 	// If false (default behavior), queries will be logged as strings, but newlines and tabs will be replaced with spaces.
 	EncodeLoggedQuery bool
+	// Options gets a chance to visit and mutate the GMS *Engine,
+	// *server.SessionManager and the mysql.Handler as the server
+	// is being initialized, before the ProtocolListener is
+	// constructed.
+	Options []Option
 	// Used to get the ProtocolListener on server start.
 	// If unset, defaults to MySQLProtocolListenerFactory.
 	ProtocolListenerFactory ProtocolListenerFunc

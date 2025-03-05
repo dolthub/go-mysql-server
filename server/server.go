@@ -129,6 +129,10 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		cfg.MaxConnections = 0
 	}
 
+	for _, opt := range cfg.Options {
+		e, sm, handler = opt(e, sm, handler)
+	}
+
 	l := cfg.Listener
 	var unixSocketInUse error
 	if l == nil {
