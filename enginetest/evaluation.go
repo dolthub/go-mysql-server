@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -679,8 +680,8 @@ func checkResults(
 	q string,
 	e QueryEngine,
 ) {
-	widenedRows := WidenRows(sch, rows)
-	widenedExpected := WidenRows(sch, expected)
+	widenedRows := WidenRows(t, sch, rows)
+	widenedExpected := WidenRows(t, sch, expected)
 
 	upperQuery := strings.ToUpper(q)
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
@@ -795,60 +796,68 @@ func simplifyResultSchema(s sql.Schema) []resultSchemaCol {
 	return fields
 }
 
-// WidenRows returns a slice of rows with all values widened to their widest type.
+// WidenRows returns a slice of rows with all values widened to their widest type, and wrapper types unwrapped.
 // For a variety of reasons, the widths of various primitive types can vary when passed through different SQL queries
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
 // widest value in actual and expected results.
-func WidenRows(sch sql.Schema, rows []sql.Row) []sql.Row {
+func WidenRows(t *testing.T, sch sql.Schema, rows []sql.Row) []sql.Row {
 	widened := make([]sql.Row, len(rows))
 	for i, row := range rows {
-		widened[i] = WidenRow(sch, row)
+		widened[i] = WidenRow(t, sch, row)
 	}
 	return widened
 }
 
-// WidenRow returns a row with all values widened to their widest type
-func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
+// WidenRow returns a row with all values widened to their widest type, and wrapper types unwrapped.
+func WidenRow(t *testing.T, sch sql.Schema, row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
-
-		var vw interface{}
 		if i < len(sch) && types.IsJSON(sch[i].Type) {
 			widened[i] = widenJSONValues(v)
 			continue
 		}
 
-		switch x := v.(type) {
-		case int:
-			vw = int64(x)
-		case int8:
-			vw = int64(x)
-		case int16:
-			vw = int64(x)
-		case int32:
-			vw = int64(x)
-		case uint:
-			vw = uint64(x)
-		case uint8:
-			vw = uint64(x)
-		case uint16:
-			vw = uint64(x)
-		case uint32:
-			vw = uint64(x)
-		case float32:
-			// casting it to float64 causes approximation, which doesn't work for server engine results.
-			vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
-		case decimal.Decimal:
-			// The exact expected decimal type value cannot be defined in enginetests,
-			// so convert the result to string format, which is the value we get on sql shell.
-			vw = x.StringFixed(x.Exponent() * -1)
-		default:
-			vw = v
-		}
-		widened[i] = vw
+		widened[i] = widenValue(t, v)
 	}
 	return widened
+}
+
+// widenValue normalizes the input by widening it to its widest type and unwrapping any wrappers.
+func widenValue(t *testing.T, v interface{}) (vw interface{}) {
+	var err error
+	switch x := v.(type) {
+	case int:
+		vw = int64(x)
+	case int8:
+		vw = int64(x)
+	case int16:
+		vw = int64(x)
+	case int32:
+		vw = int64(x)
+	case uint:
+		vw = uint64(x)
+	case uint8:
+		vw = uint64(x)
+	case uint16:
+		vw = uint64(x)
+	case uint32:
+		vw = uint64(x)
+	case float32:
+		// casting it to float64 causes approximation, which doesn't work for server engine results.
+		vw, _ = strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
+	case decimal.Decimal:
+		// The exact expected decimal type value cannot be defined in enginetests,
+		// so convert the result to string format, which is the value we get on sql shell.
+		vw = x.StringFixed(x.Exponent() * -1)
+	case sql.AnyWrapper:
+		vw, err = x.UnwrapAny(context.Background())
+		vw = widenValue(t, vw)
+		require.NoError(t, err)
+	default:
+		vw = v
+	}
+	return vw
 }
 
 func widenJSONValues(val interface{}) sql.JSONWrapper {

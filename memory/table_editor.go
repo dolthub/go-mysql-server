@@ -862,6 +862,10 @@ func verifyRowTypes(row sql.Row, schema sql.Schema) error {
 		for i := range schema {
 			col := schema[i]
 			rowVal := row[i]
+			// kind of a hack, can we do better?
+			if _, isWrapper := rowVal.(sql.AnyWrapper); isWrapper {
+				continue
+			}
 			valType := reflect.TypeOf(rowVal)
 			expectedType := col.Type.ValueType()
 			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
