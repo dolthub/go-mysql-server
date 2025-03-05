@@ -506,6 +506,32 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "insert trigger with missing column default value",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.j = 10;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO t (i) VALUES (1);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{
+					{1, 10},
+				},
+			},
+		},
+	},
 
 	// UPDATE triggers
 	{
