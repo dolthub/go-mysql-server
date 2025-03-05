@@ -37,14 +37,19 @@ type ProtocolListener interface {
 }
 
 // ProtocolListenerFunc returns a ProtocolListener based on the configuration it was given.
-type ProtocolListenerFunc func(cfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error)
+type ProtocolListenerFunc func(cfg Config, listenerCfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error)
 
-// DefaultProtocolListenerFunc is the protocol listener, which defaults to Vitess' protocol listener. Changing
-// this function will change the protocol listener used when creating all servers. If multiple servers are needed
-// with different protocols, then create each server after changing this function. Servers retain the protocol that
-// they were created with.
-var DefaultProtocolListenerFunc ProtocolListenerFunc = func(cfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error) {
-	return mysql.NewListenerWithConfig(cfg)
+func MySQLProtocolListenerFactory(cfg Config, listenerCfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error) {
+	vtListener, err := mysql.NewListenerWithConfig(listenerCfg)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Version != "" {
+		vtListener.ServerVersion = cfg.Version
+	}
+	vtListener.TLSConfig = cfg.TLSConfig
+	vtListener.RequireSecureTransport = cfg.RequireSecureTransport
+	return vtListener, nil
 }
 
 type ServerEventListener interface {
@@ -114,10 +119,6 @@ func portInUse(hostPort string) bool {
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
-	for _, option := range cfg.Options {
-		option(e, sm, handler)
-	}
-
 	if cfg.ConnReadTimeout < 0 {
 		cfg.ConnReadTimeout = 0
 	}
@@ -156,17 +157,13 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		ConnReadBufferSize:       mysql.DefaultConnBufferSize,
 		AllowClearTextWithoutTLS: cfg.AllowClearTextWithoutTLS,
 	}
-	protocolListener, err := DefaultProtocolListenerFunc(listenerCfg, sel)
+	plf := cfg.ProtocolListenerFactory
+	if plf == nil {
+		plf = MySQLProtocolListenerFactory
+	}
+	protocolListener, err := plf(cfg, listenerCfg, sel)
 	if err != nil {
 		return nil, err
-	}
-
-	if vtListener, ok := protocolListener.(*mysql.Listener); ok {
-		if cfg.Version != "" {
-			vtListener.ServerVersion = cfg.Version
-		}
-		vtListener.TLSConfig = cfg.TLSConfig
-		vtListener.RequireSecureTransport = cfg.RequireSecureTransport
 	}
 
 	return &Server{
