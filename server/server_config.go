@@ -23,12 +23,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	gms "github.com/dolthub/go-mysql-server"
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 )
-
-// Option is an option to customize server.
-type Option func(e *sqle.Engine, sm *SessionManager, handler mysql.Handler)
 
 // Server is a MySQL server for SQLe engines.
 type Server struct {
@@ -37,6 +33,9 @@ type Server struct {
 	sessionMgr *SessionManager
 	Engine     *gms.Engine
 }
+
+// An option to customize the server.
+type Option func(e *gms.Engine, sm *SessionManager, handler mysql.Handler) (*gms.Engine, *SessionManager, mysql.Handler)
 
 // Config for the mysql server.
 type Config struct {
@@ -82,8 +81,14 @@ type Config struct {
 	// If true, queries will be logged as base64 encoded strings.
 	// If false (default behavior), queries will be logged as strings, but newlines and tabs will be replaced with spaces.
 	EncodeLoggedQuery bool
-	// Options add additional options to customize the server.
+	// Options gets a chance to visit and mutate the GMS *Engine,
+	// *server.SessionManager and the mysql.Handler as the server
+	// is being initialized, before the ProtocolListener is
+	// constructed.
 	Options []Option
+	// Used to get the ProtocolListener on server start.
+	// If unset, defaults to MySQLProtocolListenerFactory.
+	ProtocolListenerFactory ProtocolListenerFunc
 }
 
 func (c Config) NewConfig() (Config, error) {
