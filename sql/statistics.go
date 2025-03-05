@@ -239,13 +239,3 @@ type HistogramBucket interface {
 	// Mcvs are the "most common values" (keys) in the index
 	Mcvs() []Row
 }
-
-// JSONWrapper is an integrator specific implementation of a JSON field value.
-// The query engine can utilize these optimized access methods improve performance
-// by minimizing the need to unmarshall a JSONWrapper into a JSONDocument.
-type JSONWrapper interface {
-	// Clone creates a new value that can be mutated without affecting the original.
-	Clone(ctx context.Context) JSONWrapper
-	// ToInterface converts a JSONWrapper to an interface{} of simple types
-	ToInterface() (interface{}, error)
-}

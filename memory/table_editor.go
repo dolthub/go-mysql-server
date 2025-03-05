@@ -862,7 +862,12 @@ func verifyRowTypes(row sql.Row, schema sql.Schema) error {
 		for i := range schema {
 			col := schema[i]
 			rowVal := row[i]
-			valType := reflect.TypeOf(rowVal)
+			var valType reflect.Type
+			if wrapper, isWrapper := rowVal.(sql.AnyWrapper); isWrapper {
+				method, _ := reflect.TypeOf(wrapper).MethodByName("Unwrap")
+				valType = method.Type.Out(0)
+			}
+			valType = reflect.TypeOf(rowVal)
 			expectedType := col.Type.ValueType()
 			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
 				return fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String())
