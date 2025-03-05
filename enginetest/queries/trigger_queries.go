@@ -552,11 +552,11 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "INSERT INTO t (i) VALUES (1);",
+				Query:       "INSERT INTO t (i) VALUES (1);",
 				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 			},
 			{
-				Query: "INSERT INTO t (i, j) VALUES (1, 2);",
+				Query:       "INSERT INTO t (i, j) VALUES (1, 2);",
 				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 			},
 		},
