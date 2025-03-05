@@ -525,9 +525,69 @@ END;`,
 				},
 			},
 			{
+				Query: "INSERT INTO t (i, j) VALUES (2, null);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
 				Query: "SELECT * FROM t;",
 				Expected: []sql.Row{
 					{1, 10},
+					{2, 10},
+				},
+			},
+		},
+	},
+	{
+		Name: "not null column with trigger that sets null should error",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.j = null;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO t (i) VALUES (1);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "INSERT INTO t (i, j) VALUES (1, 2);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+		},
+	},
+	{
+		Name: "not null column with before insert trigger should error",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.i = 10 * new.i;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO t (i) VALUES (1);",
+				// TODO: should be sql.ErrInsertIntoNonNullableDefaultNullColumn
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "INSERT INTO t (i, j) VALUES (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{
+					{10, 2},
 				},
 			},
 		},
