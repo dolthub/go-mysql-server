@@ -181,15 +181,16 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 	for i, columnName := range columnNames {
 		index := destSchema.IndexOfColName(columnName)
 		if index == -1 {
+			// ignore missing columns when in trigger context
 			if !b.TriggerCtx().Call && len(b.TriggerCtx().UnresolvedTables) > 0 {
 				continue
 			}
-			err := sql.ErrUnknownColumn.New(columnName, tableName)
-			b.handleErr(err)
+			b.handleErr(sql.ErrUnknownColumn.New(columnName, tableName))
 		}
 
-		columnDefaultValues[i] = destSchema[index].Default
-		if columnDefaultValues[i] == nil && destSchema[index].Generated != nil {
+		if destSchema[index].Default != nil {
+			columnDefaultValues[i] = destSchema[index].Default
+		} else if columnDefaultValues[i] == nil {
 			columnDefaultValues[i] = destSchema[index].Generated
 		}
 	}
