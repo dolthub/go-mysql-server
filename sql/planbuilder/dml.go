@@ -190,7 +190,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 
 		if destSchema[index].Default != nil {
 			columnDefaultValues[i] = destSchema[index].Default
-		} else if columnDefaultValues[i] == nil {
+		} else if destSchema[index].Generated != nil {
 			columnDefaultValues[i] = destSchema[index].Generated
 		}
 	}
