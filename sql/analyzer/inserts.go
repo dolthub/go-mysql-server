@@ -30,7 +30,7 @@ import (
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	switch n.(type) {
-	case *plan.TriggerExecutor, *plan.CreateProcedure:
+	case *plan.CreateProcedure:
 		return n, transform.SameTree, nil
 	}
 
@@ -44,10 +44,11 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 	}
 
+	// TODO: when we encounter a plan.Call node we need to recurse onto the Procedure?
 	var ctxFunc transform.CtxFunc = func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		insert, ok := n.(*plan.InsertInto)
+		insert, ok := c.Node.(*plan.InsertInto)
 		if !ok {
-			return n, transform.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		}
 
 		source := insert.Source
