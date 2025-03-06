@@ -18091,10 +18091,10 @@ FROM
 			"                     │   ├─ cacheable: false\n" +
 			"                     │   ├─ alias-string: select FFTBJ from NOXN3 where id = NEW.WNUNU\n" +
 			"                     │   └─ Project\n" +
-			"                     │       ├─ columns: [noxn3.FFTBJ:7!null]\n" +
+			"                     │       ├─ columns: [noxn3.FFTBJ:1!null]\n" +
 			"                     │       └─ Filter\n" +
 			"                     │           ├─ Eq\n" +
-			"                     │           │   ├─ noxn3.id:6!null\n" +
+			"                     │           │   ├─ noxn3.id:0!null\n" +
 			"                     │           │   └─ new.WNUNU:1!null\n" +
 			"                     │           └─ IndexedTableAccess(NOXN3)\n" +
 			"                     │               ├─ index: [NOXN3.id]\n" +
@@ -18108,10 +18108,10 @@ FROM
 			"                         ├─ cacheable: false\n" +
 			"                         ├─ alias-string: select BRQP2 from NOXN3 where id = NEW.HHVLX\n" +
 			"                         └─ Project\n" +
-			"                             ├─ columns: [noxn3.BRQP2:7!null]\n" +
+			"                             ├─ columns: [noxn3.BRQP2:1!null]\n" +
 			"                             └─ Filter\n" +
 			"                                 ├─ Eq\n" +
-			"                                 │   ├─ noxn3.id:6!null\n" +
+			"                                 │   ├─ noxn3.id:0!null\n" +
 			"                                 │   └─ new.HHVLX:2!null\n" +
 			"                                 └─ IndexedTableAccess(NOXN3)\n" +
 			"                                     ├─ index: [NOXN3.id]\n" +
@@ -18161,7 +18161,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, QZ7E7:1!null, SSHPJ:2!null, FHCYT:3]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [tdrvg.id:0!null, tdrvg.SFJ6L:2!null, tdrvg.SSHPJ:1!null, NULL (null) as FHCYT]\n" +
+			"     │       ├─ columns: [tdrvg.id:0!null, tdrvg.SFJ6L:3!null, tdrvg.SSHPJ:2!null, NULL (null) as FHCYT]\n" +
 			"     │       └─ IndexedTableAccess(TDRVG)\n" +
 			"     │           ├─ index: [TDRVG.id]\n" +
 			"     │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
@@ -18169,7 +18169,7 @@ WHERE
 			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: TDRVG\n" +
-			"     │               └─ columns: [id sshpj sfj6l]\n" +
+			"     │               └─ columns: [id fgg57 sshpj sfj6l zh72s]\n" +
 			"     └─ BEGIN .. END\n" +
 			"         └─ IF BLOCK\n" +
 			"             └─ IF(Or\n" +
@@ -18403,10 +18403,10 @@ WHERE
 			"         │       ├─ cacheable: false\n" +
 			"         │       ├─ alias-string: select FGG57 from E2I7U where id = NEW.LUEVY\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [e2i7u.FGG57:9]\n" +
+			"         │           ├─ columns: [e2i7u.FGG57:1]\n" +
 			"         │           └─ Filter\n" +
 			"         │               ├─ Eq\n" +
-			"         │               │   ├─ e2i7u.id:8!null\n" +
+			"         │               │   ├─ e2i7u.id:0!null\n" +
 			"         │               │   └─ new.LUEVY:2!null\n" +
 			"         │               └─ IndexedTableAccess(E2I7U)\n" +
 			"         │                   ├─ index: [E2I7U.id]\n" +
@@ -18601,10 +18601,10 @@ WHERE
 			"         │           │   ├─ cacheable: false\n" +
 			"         │           │   ├─ alias-string: select DZLIM from XOAOP where id = NEW.CH3FR\n" +
 			"         │           │   └─ Project\n" +
-			"         │           │       ├─ columns: [xoaop.DZLIM:6!null]\n" +
+			"         │           │       ├─ columns: [xoaop.DZLIM:1!null]\n" +
 			"         │           │       └─ Filter\n" +
 			"         │           │           ├─ Eq\n" +
-			"         │           │           │   ├─ xoaop.id:5!null\n" +
+			"         │           │           │   ├─ xoaop.id:0!null\n" +
 			"         │           │           │   └─ new.CH3FR:2!null\n" +
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
@@ -18793,10 +18793,10 @@ WHERE
 			"         │           │   ├─ cacheable: false\n" +
 			"         │           │   ├─ alias-string: select DZLIM from XOAOP where id = NEW.CH3FR\n" +
 			"         │           │   └─ Project\n" +
-			"         │           │       ├─ columns: [xoaop.DZLIM:6!null]\n" +
+			"         │           │       ├─ columns: [xoaop.DZLIM:1!null]\n" +
 			"         │           │       └─ Filter\n" +
 			"         │           │           ├─ Eq\n" +
-			"         │           │           │   ├─ xoaop.id:5!null\n" +
+			"         │           │           │   ├─ xoaop.id:0!null\n" +
 			"         │           │           │   └─ new.CH3FR:2!null\n" +
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
@@ -18985,10 +18985,10 @@ WHERE
 			"         │           │   ├─ cacheable: false\n" +
 			"         │           │   ├─ alias-string: select DZLIM from XOAOP where id = NEW.CH3FR\n" +
 			"         │           │   └─ Project\n" +
-			"         │           │       ├─ columns: [xoaop.DZLIM:6!null]\n" +
+			"         │           │       ├─ columns: [xoaop.DZLIM:1!null]\n" +
 			"         │           │       └─ Filter\n" +
 			"         │           │           ├─ Eq\n" +
-			"         │           │           │   ├─ xoaop.id:5!null\n" +
+			"         │           │           │   ├─ xoaop.id:0!null\n" +
 			"         │           │           │   └─ new.CH3FR:2!null\n" +
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
@@ -19177,10 +19177,10 @@ WHERE
 			"         │           │   ├─ cacheable: false\n" +
 			"         │           │   ├─ alias-string: select DZLIM from XOAOP where id = NEW.CH3FR\n" +
 			"         │           │   └─ Project\n" +
-			"         │           │       ├─ columns: [xoaop.DZLIM:6!null]\n" +
+			"         │           │       ├─ columns: [xoaop.DZLIM:1!null]\n" +
 			"         │           │       └─ Filter\n" +
 			"         │           │           ├─ Eq\n" +
-			"         │           │           │   ├─ xoaop.id:5!null\n" +
+			"         │           │           │   ├─ xoaop.id:0!null\n" +
 			"         │           │           │   └─ new.CH3FR:2!null\n" +
 			"         │           │           └─ IndexedTableAccess(XOAOP)\n" +
 			"         │           │               ├─ index: [XOAOP.id]\n" +
