@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	dsql "database/sql"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/values"
 	"io"
 	"net"
 	"os"
