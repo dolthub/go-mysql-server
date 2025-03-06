@@ -51,12 +51,12 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		source := insert.Source
+		dstSchema := insert.Destination.Schema()
 		table := getResolvedTable(insert.Destination)
 		insertable, err := plan.GetInsertable(table)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		dstSchema := insertable.Schema()
 
 		// Analyze the source of the insert independently
 		if !insert.LiteralValueSource {
@@ -87,7 +87,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, source, insertable, dstSchema, columnNames)
+		project, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, source, insertable, dstSchema, columnNames, false)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -125,10 +125,10 @@ func findColIdx(colName string, colNames []string) int {
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
 // the underlying table in the same order. Also, returns an integer value that indicates when this row source will
 // result in an automatically generated value for an auto_increment column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, error) {
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string, inTrigger bool) (sql.Node, int, error) {
 	// if source is a triggerExec node, we need to wrap the child in the project not the triggerExec node itself
-	if trigExec, isTrigExec := insertSource.(*plan.TriggerExecutor); isTrigExec {
-		newLeft, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, trigExec.Left(), destTbl, schema, columnNames)
+	if trigExec, isTrigExec := insertSource.(*plan.TriggerExecutor); isTrigExec && trigExec.TriggerTime == plan.BeforeTrigger {
+		newLeft, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, trigExec.Left(), destTbl, schema, columnNames, true)
 		if err != nil {
 			return nil, -1, err
 		}
@@ -150,7 +150,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				defaultExpr = col.Generated
 			}
 
-			if !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
+			if !inTrigger && !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
 				return nil, -1, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
 			}
 
