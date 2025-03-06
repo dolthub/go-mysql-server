@@ -312,24 +312,25 @@ func (t StringType) Convert(v interface{}) (interface{}, sql.ConvertInRange, err
 	}
 
 	switch v := v.(type) {
-	case sql.Wrapper[string]:
+	case sql.StringWrapper:
 		if t.baseType == sqltypes.Text && t.maxByteLength >= v.StringType().MaxByteLength() {
 			return v, sql.InRange, nil
 		}
-	case sql.Wrapper[[]byte]:
+	case sql.BytesWrapper:
 		if t.baseType == sqltypes.Binary && t.maxByteLength >= v.StringType().MaxByteLength() {
 			return v, sql.InRange, nil
 		}
 	}
-	val, err := ConvertToString(v, t, nil)
+	val, err := ConvertToBytes(v, t, nil)
 	if err != nil {
 		return nil, sql.OutOfRange, err
 	}
 
 	if IsBinaryType(t) {
-		return []byte(val), sql.InRange, nil
+		return val, sql.InRange, nil
 	}
-	return val, sql.InRange, nil
+	return string(val), sql.InRange, nil
+
 }
 
 func ConvertToString(v interface{}, t sql.StringType, dest []byte) (string, error) {
