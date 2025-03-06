@@ -2634,9 +2634,14 @@ end;`,
 				Expected: []sql.Row{{1, 2, "abc"}, {2, 3, "def"}},
 			},
 			{
-				Query: `CREATE PROCEDURE add_entry(i INT, s TEXT) BEGIN IF i > 50 THEN 
-SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; END IF;
-INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
+				Query: `
+CREATE PROCEDURE add_entry(i INT, s TEXT) 
+BEGIN 
+	IF i > 50 THEN 
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'too big number'; 
+	END IF;
+	INSERT INTO t0 (v1, v2) VALUES (i, s);
+END;`,
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
