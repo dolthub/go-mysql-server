@@ -44,7 +44,7 @@ const (
 	finalizeUnionsId             // finalizeUnions
 	loadTriggersId               // loadTriggers
 	processTruncateId            // processTruncate
-	resolveAlterColumnId         // resolveAlterColumn
+	ResolveAlterColumnId         // ResolveAlterColumn
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
 	optimizeJoinsId              // optimizeJoins
 	pushFiltersId                // pushFilters
