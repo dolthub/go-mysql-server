@@ -43,7 +43,7 @@ type StatsProv struct {
 
 var _ sql.StatsProvider = (*StatsProv)(nil)
 
-func (s *StatsProv) RefreshTableStats(ctx *sql.Context, table sql.Table, db string) error {
+func (s *StatsProv) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) error {
 	// non-Dolt would sample the table to get estimate of unique and histogram
 	iat, ok := table.(sql.IndexAddressableTable)
 	if !ok {

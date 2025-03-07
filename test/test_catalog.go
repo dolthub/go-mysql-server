@@ -179,7 +179,7 @@ func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([
 	panic("implement me")
 }
 
-func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string) error {
+func (c *Catalog) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) error {
 	//TODO implement me
 	panic("implement me")
 }
