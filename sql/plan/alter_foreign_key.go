@@ -535,16 +535,12 @@ func FindForeignKeyColMapping(
 			return nil, nil, fmt.Errorf("column `%s` in foreign key `%s` cannot be found",
 				colName, fkName)
 		}
-		expectedType := localSchTypeMap[colName]
 		destFkCol := destTblName + "." + destFKCols[fkIdx]
 		indexPos, ok := indexColMap[destFkCol]
 		if !ok {
 			// Same as above, renaming a referenced column would cause this error
-			return nil, nil, fmt.Errorf("index column `%s` in foreign key `%s` cannot be found",
+			return nil, nil, fmt.Errorf("inde	x column `%s` in foreign key `%s` cannot be found",
 				destFKCols[fkIdx], fkName)
-		}
-		if !foreignKeyComparableTypes(ctx, indexTypeMap[destFkCol], expectedType) {
-			return nil, nil, sql.ErrForeignKeyColumnTypeMismatch.New(colName, destFkCol)
 		}
 		indexPositions[indexPos] = localRowPos
 	}
