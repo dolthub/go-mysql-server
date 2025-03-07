@@ -123,14 +123,10 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 
 	for i, col := range schema {
 		colIdx := findColIdx(col.Name, columnNames)
-		// if column was not explicitly specified, try to substitute with default or generated value
 		if colIdx == -1 {
 			defaultExpr := col.Default
 			if defaultExpr == nil {
 				defaultExpr = col.Generated
-			}
-			if !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
-				return nil, -1, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
 			}
 
 			var err error

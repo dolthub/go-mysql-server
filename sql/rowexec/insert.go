@@ -393,14 +393,19 @@ func (i *insertIter) evaluateChecks(ctx *sql.Context, row sql.Row) error {
 
 func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
 	for count, col := range dstSchema {
-		if !col.Nullable && row[count] == nil {
+		if row[count] != nil {
+			continue
+		}
+		if !col.Nullable {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
-			if i.ignore {
-				row[count] = col.Type.Zero()
-				_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
-			} else {
+			if !i.ignore {
+				if col.Default != nil || col.Generated != nil {
+					return sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
+				}
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}
+			row[count] = col.Type.Zero()
+			_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 		}
 	}
 	return nil

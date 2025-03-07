@@ -2810,7 +2810,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (3);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 			},
 			{
 				Query:       "ALTER TABLE test ALTER v2 DROP DEFAULT;",
@@ -2826,7 +2826,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:       "INSERT INTO test (pk) VALUES (2);",
-				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 			},
 			{
 				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
