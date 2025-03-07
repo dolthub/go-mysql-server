@@ -105,6 +105,9 @@ func (p *CreateForeignKey) String() string {
 	return pr.String()
 }
 
+// ValidateForeignKeyDefinition checks that the foreign key definition is valid for creation
+var ValidateForeignKeyDefinition = validateForeignKeyDefinition
+
 // ResolveForeignKey verifies the foreign key definition and resolves the foreign key, creating indexes and validating
 // data as necessary.
 // fkChecks - whether to check the foreign key against the data in the table
@@ -171,16 +174,9 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 
 		// Check that the types align and are valid
-		for i := range fkDef.Columns {
-			col := cols[strings.ToLower(fkDef.Columns[i])]
-			parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
-			if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
-				return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
-			}
-			sqlParserType := col.Type.Type()
-			if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
-				return sql.ErrForeignKeyTextBlob.New()
-			}
+		err := ValidateForeignKeyDefinition(ctx, fkDef, cols, parentCols)
+		if err != nil {
+			return err
 		}
 
 		// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
@@ -322,6 +318,22 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		fkDef.IsResolved = fkChecks
 		return tbl.UpdateForeignKey(ctx, fkDef.Name, fkDef)
 	}
+}
+
+// validateForeignKeyDefinition checks that the foreign key definition is valid for creation
+func validateForeignKeyDefinition(ctx *sql.Context, fkDef sql.ForeignKeyConstraint, cols map[string]*sql.Column, parentCols map[string]*sql.Column) error {
+	for i := range fkDef.Columns {
+		col := cols[strings.ToLower(fkDef.Columns[i])]
+		parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
+		if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
+			return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
+		}
+		sqlParserType := col.Type.Type()
+		if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
+			return sql.ErrForeignKeyTextBlob.New()
+		}
+	}
+	return nil
 }
 
 type DropForeignKey struct {
