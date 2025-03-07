@@ -17,9 +17,8 @@ package analyzer
 func init() {
 	OnceAfterAll = []Rule{
 		{assignExecIndexesId, assignExecIndexes},
-		// resolveInsertRows inserts a projection wrapping values that cannot be seen by fixup
-		{resolveInsertRowsId, resolveInsertRows},
 		{applyTriggersId, applyTriggers},
+		{resolveInsertRowsId, resolveInsertRows},
 		{applyProceduresId, applyProcedures},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},

@@ -29,42 +29,49 @@ import (
 )
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if _, ok := n.(*plan.TriggerExecutor); ok {
-		return n, transform.SameTree, nil
-	} else if _, ok := n.(*plan.CreateProcedure); ok {
+	switch n.(type) {
+	case *plan.CreateProcedure:
 		return n, transform.SameTree, nil
 	}
+
 	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		insert, ok := n.(*plan.InsertInto)
+	var selFunc transform.SelectorFunc = func(c transform.Context) bool {
+		switch c.Node.(type) {
+		case *plan.InsertInto:
+			return true
+		default:
+			return false
+		}
+	}
+
+	// TODO: when we encounter a plan.Call node we need to recurse onto the Procedure?
+	var ctxFunc transform.CtxFunc = func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		insert, ok := c.Node.(*plan.InsertInto)
 		if !ok {
-			return n, transform.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		}
 
+		source := insert.Source
+		dstSchema := insert.Destination.Schema()
 		table := getResolvedTable(insert.Destination)
-
 		insertable, err := plan.GetInsertable(table)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		source := insert.Source
-		// TriggerExecutor has already been analyzed
-		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok && !insert.LiteralValueSource {
-			// Analyze the source of the insert independently
-			if _, ok := insert.Source.(*plan.Values); ok {
+		// Analyze the source of the insert independently
+		if !insert.LiteralValueSource {
+			if _, isValues := source.(*plan.Values); isValues {
 				scope = scope.NewScope(plan.NewProject(
-					expression.SchemaToGetFields(insert.Source.Schema()[:len(insert.ColumnNames)], sql.ColSet{}),
-					plan.NewSubqueryAlias("dummy", "", insert.Source),
+					expression.SchemaToGetFields(source.Schema()[:len(insert.ColumnNames)], sql.ColSet{}),
+					plan.NewSubqueryAlias("dummy", "", source),
 				))
 			}
-			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
+			source, _, err = a.analyzeWithSelector(ctx, source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 		}
-
-		dstSchema := insertable.Schema()
 
 		// normalize the column name
 		columnNames := make([]string, len(insert.ColumnNames))
@@ -81,13 +88,15 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		project, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, source, insertable, dstSchema, columnNames, false)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project).WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx), transform.NewTree, nil
-	})
+		newInsert := insert.WithSource(project).WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx)
+		return newInsert, transform.NewTree, nil
+	}
+	return transform.NodeWithCtx(n, selFunc, ctxFunc)
 }
 
 // Ensures that the number of elements in each Value tuple is empty
@@ -117,19 +126,32 @@ func findColIdx(colName string, colNames []string) int {
 // wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
 // the underlying table in the same order. Also, returns an integer value that indicates when this row source will
 // result in an automatically generated value for an auto_increment column.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, error) {
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string, inTrigger bool) (sql.Node, int, error) {
+	// if source is a triggerExec node, we need to wrap the child in the project not the triggerExec node itself
+	if trigExec, isTrigExec := insertSource.(*plan.TriggerExecutor); isTrigExec && trigExec.TriggerTime == plan.BeforeTrigger {
+		newLeft, firstGeneratedAutoIncRowIdx, err := wrapRowSource(ctx, trigExec.Left(), destTbl, schema, columnNames, true)
+		if err != nil {
+			return nil, -1, err
+		}
+		newTrigExec, err := trigExec.WithChildren(newLeft, trigExec.Right())
+		if err != nil {
+			return nil, -1, err
+		}
+		return newTrigExec, firstGeneratedAutoIncRowIdx, nil
+	}
+
 	projExprs := make([]sql.Expression, len(schema))
 	firstGeneratedAutoIncRowIdx := -1
 
 	for i, col := range schema {
 		colIdx := findColIdx(col.Name, columnNames)
-		// if column was not explicitly specified, try to substitute with default or generated value
 		if colIdx == -1 {
 			defaultExpr := col.Default
 			if defaultExpr == nil {
 				defaultExpr = col.Generated
 			}
-			if !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
+
+			if !inTrigger && !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
 				return nil, -1, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
 			}
 
@@ -172,26 +194,30 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				firstGeneratedAutoIncRowIdx = 0
 			} else {
 				// Additionally, the first NULL, DEFAULT, or empty value is what the last_insert_id should be set to.
-				switch src := insertSource.(type) {
-				case *plan.Values:
-					for ii, tup := range src.ExpressionTuples {
-						expr := tup[colIdx]
-						if unwrap, ok := expr.(*expression.Wrapper); ok {
-							expr = unwrap.Unwrap()
-						}
-						if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
-							firstGeneratedAutoIncRowIdx = ii
-							break
-						}
-						if lit, isLit := expr.(*expression.Literal); isLit {
-							// If a literal NULL or if 0 is specified and the NO_AUTO_VALUE_ON_ZERO SQL mode is
-							// not active, then MySQL will fill in an auto_increment value.
-							if types.Null.Equals(lit.Type()) ||
-								(!sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) && isZero(lit)) {
-								firstGeneratedAutoIncRowIdx = ii
-								break
-							}
-						}
+				src, isValues := insertSource.(*plan.Values)
+				if !isValues {
+					continue
+				}
+
+				for ii, tup := range src.ExpressionTuples {
+					expr := tup[colIdx]
+					if unwrap, ok := expr.(*expression.Wrapper); ok {
+						expr = unwrap.Unwrap()
+					}
+					if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
+						firstGeneratedAutoIncRowIdx = ii
+						break
+					}
+					lit, isLit := expr.(*expression.Literal)
+					if !isLit {
+						continue
+					}
+					// If a literal NULL or if 0 is specified and the NO_AUTO_VALUE_ON_ZERO SQL mode is
+					// not active, then MySQL will fill in an auto_increment value.
+					if types.Null.Equals(lit.Type()) ||
+						(!sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) && isZero(lit)) {
+						firstGeneratedAutoIncRowIdx = ii
+						break
 					}
 				}
 			}
