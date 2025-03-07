@@ -90,65 +90,6 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	})
 }
 
-func validateInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if _, ok := n.(*plan.TriggerExecutor); ok {
-		return n, transform.SameTree, nil
-	} else if _, ok := n.(*plan.CreateProcedure); ok {
-		return n, transform.SameTree, nil
-	}
-	// We capture all INSERTs along the tree, such as those inside of block statements.
-	var err error
-	transform.Inspect(n, func(n sql.Node) bool {
-		insert, ok := n.(*plan.InsertInto)
-		if !ok {
-			return true
-		}
-
-		var insertable sql.InsertableTable
-		table := getResolvedTable(insert.Destination)
-		insertable, err = plan.GetInsertable(table)
-		if err != nil {
-			return false
-		}
-
-		source := insert.Source
-		dstSchema := insertable.Schema()
-
-		// normalize the column name
-		columnNames := make([]string, len(insert.ColumnNames))
-		for i, name := range insert.ColumnNames {
-			columnNames[i] = strings.ToLower(name)
-		}
-
-		// If no columns are given and value tuples are not all empty, use the full schema
-		if len(columnNames) == 0 && existsNonZeroValueCount(source) {
-			columnNames = make([]string, len(dstSchema))
-			for i, f := range dstSchema {
-				columnNames[i] = f.Name
-			}
-		}
-
-		for _, col := range dstSchema {
-			colIdx := findColIdx(col.Name, columnNames)
-			if colIdx != -1 {
-				continue
-			}
-
-			if _, isTrigExec := source.(*plan.TriggerExecutor); !isTrigExec && !col.AutoIncrement && !col.Nullable && col.Default == nil && col.Generated == nil {
-				err = sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
-				return false
-			}
-		}
-
-		return true
-	})
-
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return n, transform.SameTree, nil
-}
-
 // Ensures that the number of elements in each Value tuple is empty
 func existsNonZeroValueCount(values sql.Node) bool {
 	switch node := values.(type) {

@@ -20,7 +20,6 @@ func init() {
 		// resolveInsertRows inserts a projection wrapping values that cannot be seen by fixup
 		{resolveInsertRowsId, resolveInsertRows},
 		{applyTriggersId, applyTriggers},
-		{validateInsertRowsId, validateInsertRows},
 		{applyProceduresId, applyProcedures},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},

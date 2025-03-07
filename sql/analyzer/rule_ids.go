@@ -61,7 +61,6 @@ const (
 	applyHashInId                // applyHashIn
 	resolveInsertRowsId          // resolveInsertRows
 	applyTriggersId              // applyTriggers
-	validateInsertRowsId         // validateInsertRows
 	applyProceduresId            // applyProcedures
 	assignRoutinesId             // assignRoutines
 	modifyUpdateExprsForJoinId   // modifyUpdateExprsForJoin

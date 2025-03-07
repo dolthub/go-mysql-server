@@ -59,31 +59,30 @@ func _() {
 	_ = x[applyHashInId-48]
 	_ = x[resolveInsertRowsId-49]
 	_ = x[applyTriggersId-50]
-	_ = x[validateInsertRowsId-51]
-	_ = x[applyProceduresId-52]
-	_ = x[assignRoutinesId-53]
-	_ = x[modifyUpdateExprsForJoinId-54]
-	_ = x[applyForeignKeysId-55]
-	_ = x[interpreterId-56]
-	_ = x[validateResolvedId-57]
-	_ = x[validateOrderById-58]
-	_ = x[validateGroupById-59]
-	_ = x[validateSchemaSourceId-60]
-	_ = x[validateIndexCreationId-61]
-	_ = x[ValidateOperandsId-62]
-	_ = x[validateIntervalUsageId-63]
-	_ = x[validateSubqueryColumnsId-64]
-	_ = x[validateUnionSchemasMatchId-65]
-	_ = x[validateAggregationsId-66]
-	_ = x[validateDeleteFromId-67]
-	_ = x[cacheSubqueryAliasesInJoinsId-68]
-	_ = x[QuoteDefaultColumnValueNamesId-69]
-	_ = x[TrackProcessId-70]
+	_ = x[applyProceduresId-51]
+	_ = x[assignRoutinesId-52]
+	_ = x[modifyUpdateExprsForJoinId-53]
+	_ = x[applyForeignKeysId-54]
+	_ = x[interpreterId-55]
+	_ = x[validateResolvedId-56]
+	_ = x[validateOrderById-57]
+	_ = x[validateGroupById-58]
+	_ = x[validateSchemaSourceId-59]
+	_ = x[validateIndexCreationId-60]
+	_ = x[ValidateOperandsId-61]
+	_ = x[validateIntervalUsageId-62]
+	_ = x[validateSubqueryColumnsId-63]
+	_ = x[validateUnionSchemasMatchId-64]
+	_ = x[validateAggregationsId-65]
+	_ = x[validateDeleteFromId-66]
+	_ = x[cacheSubqueryAliasesInJoinsId-67]
+	_ = x[QuoteDefaultColumnValueNamesId-68]
+	_ = x[TrackProcessId-69]
 }
 
 const _RuleId_name = "applyDefaultSelectLimitvalidateOffsetAndLimitvalidateStarExpressionsvalidateCreateTablevalidateAlterTablevalidateExprSemloadStoredProceduresvalidateDropTablesresolveDropConstraintvalidateDropConstraintresolveCreateSelectresolveSubqueriesresolveUnionsvalidateColumnDefaultsvalidateCreateTriggervalidateReadOnlyDatabasevalidateReadOnlyTransactionvalidateDatabaseSetvalidatePrivilegesflattenTableAliasespushdownSubqueryAliasFiltersvalidateCheckConstraintsreplaceCountStarreplaceCrossJoinsmoveJoinConditionsToFiltersimplifyFilterspushNotFiltershoistOutOfScopeFiltersunnestInSubqueriesunnestExistsSubqueriesfinalizeSubqueriesfinalizeUnionsloadTriggersprocessTruncateResolveAlterColumnstripTableNamesFromColumnDefaultsoptimizeJoinspushFiltersapplyIndexesFromOuterScopepruneTablesassignExecIndexesinlineSubqueryAliasRefseraseProjectionflattenDistinctreplaceAggreplaceIdxSortinsertTopNNodesreplaceIdxOrderByDistanceapplyHashInresolveInsertRowsapplyTriggersapplyProceduresassignRoutinesmodifyUpdateExprsForJoinapplyForeignKeysinterpretervalidateResolvedvalidateOrderByvalidateGroupByvalidateSchemaSourcevalidateIndexCreationvalidateOperandsvalidateIntervalUsagevalidateSubqueryColumnsvalidateUnionSchemasMatchvalidateAggregationsvalidateDeleteFromcacheSubqueryAliasesInJoinsquoteDefaultColumnValueNamestrackProcess"
 
-var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 317, 344, 363, 381, 400, 428, 452, 468, 485, 511, 526, 540, 562, 580, 602, 620, 634, 646, 661, 679, 712, 725, 736, 762, 773, 790, 813, 828, 843, 853, 867, 882, 907, 918, 935, 948, 966, 981, 995, 1019, 1035, 1046, 1062, 1077, 1092, 1112, 1133, 1149, 1170, 1193, 1218, 1238, 1256, 1283, 1311, 1323}
+var _RuleId_index = [...]uint16{0, 23, 45, 68, 87, 105, 120, 140, 158, 179, 201, 220, 237, 250, 272, 293, 317, 344, 363, 381, 400, 428, 452, 468, 485, 511, 526, 540, 562, 580, 602, 620, 634, 646, 661, 679, 712, 725, 736, 762, 773, 790, 813, 828, 843, 853, 867, 882, 907, 918, 935, 948, 963, 977, 1001, 1017, 1028, 1044, 1059, 1074, 1094, 1115, 1131, 1152, 1175, 1200, 1220, 1238, 1265, 1293, 1305}
 
 func (i RuleId) String() string {
 	if i < 0 || i >= RuleId(len(_RuleId_index)-1) {
