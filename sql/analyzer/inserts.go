@@ -142,7 +142,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 				defaultExpr = col.Generated
 			}
 			if !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
-				missingVals[colIdx] = true
+				missingVals[i] = true
 			}
 
 			var err error
