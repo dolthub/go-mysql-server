@@ -90,6 +90,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		ctx:                         ctx,
 		ignore:                      ii.Ignore,
 		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
+		missingValFlags:             ii.MissingValFlags,
 	}
 
 	var ed sql.EditOpenerCloser
