@@ -94,8 +94,8 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		}
 
 		return insert.WithSource(project).
-			WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx).
-			WithMissingValFlags(missingValFlags),
+				WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx).
+				WithMissingValFlags(missingValFlags),
 			transform.NewTree,
 			nil
 	})

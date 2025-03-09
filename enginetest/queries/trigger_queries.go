@@ -574,7 +574,7 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "INSERT INTO t (i) VALUES (1);",
+				Query:       "INSERT INTO t (i) VALUES (1);",
 				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
 			},
 			{
