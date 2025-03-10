@@ -128,7 +128,7 @@ WHERE
 	       CL3DT.FBSRS > 0
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [pbmrx.id:4!null as id, pbmrx.TW55N:5!null as TEYBZ, pbmrx.ZH72S:6 as FB6N7]\n" +
+			" ├─ columns: [pbmrx.id:4!null->id:0, pbmrx.TW55N:5!null->TEYBZ:0, pbmrx.ZH72S:6->FB6N7:0]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ pbmrx.ZH72S:6 IS NULL\n" +
@@ -148,13 +148,13 @@ WHERE
 			"     │       │       ├─ FBSRS:3!null\n" +
 			"     │       │       └─ 0 (tinyint)\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [ccefl.ZH72S:3 as ZH72S, count(ccefl.zh72s):0!null as JTOA7, min(ccefl.wgbrl):1!null as TTDPM, sum(ccefl.wgbrl):2!null as FBSRS]\n" +
+			"     │           ├─ columns: [ccefl.ZH72S:3->ZH72S:0, count(ccefl.zh72s):0!null->JTOA7:0, min(ccefl.wgbrl):1!null->TTDPM:0, sum(ccefl.wgbrl):2!null->FBSRS:0]\n" +
 			"     │           └─ Having\n" +
 			"     │               ├─ GreaterThan\n" +
 			"     │               │   ├─ JTOA7:5!null\n" +
 			"     │               │   └─ 1 (bigint)\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [count(ccefl.zh72s):0!null, min(ccefl.wgbrl):1!null, sum(ccefl.wgbrl):2!null, ccefl.ZH72S:3, ccefl.ZH72S:3 as ZH72S, count(ccefl.zh72s):0!null as JTOA7, min(ccefl.wgbrl):1!null as TTDPM, sum(ccefl.wgbrl):2!null as FBSRS]\n" +
+			"     │                   ├─ columns: [count(ccefl.zh72s):0!null, min(ccefl.wgbrl):1!null, sum(ccefl.wgbrl):2!null, ccefl.ZH72S:3, ccefl.ZH72S:3->ZH72S:0, count(ccefl.zh72s):0!null->JTOA7:0, min(ccefl.wgbrl):1!null->TTDPM:0, sum(ccefl.wgbrl):2!null->FBSRS:0]\n" +
 			"     │                   └─ GroupBy\n" +
 			"     │                       ├─ select: COUNT(ccefl.ZH72S:1), MIN(ccefl.WGBRL:2), SUM(ccefl.WGBRL:2), ccefl.ZH72S:1\n" +
 			"     │                       ├─ group: ccefl.ZH72S:1\n" +
@@ -166,11 +166,11 @@ WHERE
 			"     │                           ├─ colSet: (31-33)\n" +
 			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Project\n" +
-			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
+			"     │                               ├─ columns: [nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
 			"     │                               │   ├─ cacheable: false\n" +
 			"     │                               │   ├─ alias-string: select COUNT(*) from HDDVB where UJ6XY = nd.id\n" +
 			"     │                               │   └─ Project\n" +
-			"     │                               │       ├─ columns: [count(1):20!null as COUNT(*)]\n" +
+			"     │                               │       ├─ columns: [count(1):20!null->COUNT(*):0]\n" +
 			"     │                               │       └─ GroupBy\n" +
 			"     │                               │           ├─ select: COUNT(1 (bigint))\n" +
 			"     │                               │           ├─ group: \n" +
@@ -186,13 +186,13 @@ WHERE
 			"     │                               │                   └─ Table\n" +
 			"     │                               │                       ├─ name: HDDVB\n" +
 			"     │                               │                       └─ columns: [uj6xy]\n" +
-			"     │                               │   as WGBRL]\n" +
+			"     │                               │  ->WGBRL:0]\n" +
 			"     │                               └─ Project\n" +
-			"     │                                   ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
+			"     │                                   ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
 			"     │                                   │   ├─ cacheable: false\n" +
 			"     │                                   │   ├─ alias-string: select COUNT(*) from HDDVB where UJ6XY = nd.id\n" +
 			"     │                                   │   └─ Project\n" +
-			"     │                                   │       ├─ columns: [count(1):17!null as COUNT(*)]\n" +
+			"     │                                   │       ├─ columns: [count(1):17!null->COUNT(*):0]\n" +
 			"     │                                   │       └─ GroupBy\n" +
 			"     │                                   │           ├─ select: COUNT(1 (bigint))\n" +
 			"     │                                   │           ├─ group: \n" +
@@ -208,7 +208,7 @@ WHERE
 			"     │                                   │                   └─ Table\n" +
 			"     │                                   │                       ├─ name: HDDVB\n" +
 			"     │                                   │                       └─ columns: [uj6xy]\n" +
-			"     │                                   │   as WGBRL]\n" +
+			"     │                                   │  ->WGBRL:0]\n" +
 			"     │                                   └─ TableAlias(nd)\n" +
 			"     │                                       └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                                           ├─ index: [E2I7U.ZH72S]\n" +
@@ -530,7 +530,7 @@ WHERE
 			" │               ├─ cacheable: true\n" +
 			" │               ├─ alias-string: select TIZHK.id as FWATE from WGSDC as NHMXW join WRZVO as TIZHK on TIZHK.TVNW2 = NHMXW.NOHHR and TIZHK.ZHITY = NHMXW.AVPYF and TIZHK.SYPKF = NHMXW.SYPKF and TIZHK.IDUT2 = NHMXW.IDUT2 where NHMXW.SWCQV = 0 and NHMXW.id not in (select PRUV2 from HDDVB where PRUV2 is not null)\n" +
 			" │               └─ Project\n" +
-			" │                   ├─ columns: [tizhk.id:19!null as FWATE]\n" +
+			" │                   ├─ columns: [tizhk.id:19!null->FWATE:0]\n" +
 			" │                   └─ Project\n" +
 			" │                       ├─ columns: [WGSDC.id:9!null, WGSDC.NOHHR:10!null, WGSDC.AVPYF:11!null, WGSDC.SYPKF:12!null, WGSDC.IDUT2:13!null, WGSDC.FZXV5:14, WGSDC.DQYGV:15, WGSDC.SWCQV:16!null, WGSDC.YKSSU:17, WGSDC.FHCYT:18, WRZVO.id:19!null, WRZVO.TVNW2:20, WRZVO.ZHITY:21, WRZVO.SYPKF:22, WRZVO.IDUT2:23, WRZVO.O6QJ3:24, WRZVO.NO2JA:25, WRZVO.YKSSU:26, WRZVO.FHCYT:27, WRZVO.QZ6VT:28]\n" +
 			" │                       └─ Filter\n" +
@@ -1216,7 +1216,7 @@ WHERE
 	       CL3DT.FLHXH > 0
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [pbmrx.id:4!null as id, pbmrx.TW55N:5!null as TEYBZ, pbmrx.ZH72S:6 as FB6N7]\n" +
+			" ├─ columns: [pbmrx.id:4!null->id:0, pbmrx.TW55N:5!null->TEYBZ:0, pbmrx.ZH72S:6->FB6N7:0]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ pbmrx.ZH72S:6 IS NULL\n" +
@@ -1236,13 +1236,13 @@ WHERE
 			"     │       │       ├─ FLHXH:3!null\n" +
 			"     │       │       └─ 0 (tinyint)\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [wooj5.ZH72S:3 as ZH72S, count(wooj5.zh72s):0!null as JTOA7, min(wooj5.lea4j):1!null as BADTB, sum(wooj5.lea4j):2!null as FLHXH]\n" +
+			"     │           ├─ columns: [wooj5.ZH72S:3->ZH72S:0, count(wooj5.zh72s):0!null->JTOA7:0, min(wooj5.lea4j):1!null->BADTB:0, sum(wooj5.lea4j):2!null->FLHXH:0]\n" +
 			"     │           └─ Having\n" +
 			"     │               ├─ GreaterThan\n" +
 			"     │               │   ├─ JTOA7:5!null\n" +
 			"     │               │   └─ 1 (bigint)\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [count(wooj5.zh72s):0!null, min(wooj5.lea4j):1!null, sum(wooj5.lea4j):2!null, wooj5.ZH72S:3, wooj5.ZH72S:3 as ZH72S, count(wooj5.zh72s):0!null as JTOA7, min(wooj5.lea4j):1!null as BADTB, sum(wooj5.lea4j):2!null as FLHXH]\n" +
+			"     │                   ├─ columns: [count(wooj5.zh72s):0!null, min(wooj5.lea4j):1!null, sum(wooj5.lea4j):2!null, wooj5.ZH72S:3, wooj5.ZH72S:3->ZH72S:0, count(wooj5.zh72s):0!null->JTOA7:0, min(wooj5.lea4j):1!null->BADTB:0, sum(wooj5.lea4j):2!null->FLHXH:0]\n" +
 			"     │                   └─ GroupBy\n" +
 			"     │                       ├─ select: COUNT(wooj5.ZH72S:1), MIN(wooj5.LEA4J:2), SUM(wooj5.LEA4J:2), wooj5.ZH72S:1\n" +
 			"     │                       ├─ group: wooj5.ZH72S:1\n" +
@@ -1254,11 +1254,11 @@ WHERE
 			"     │                           ├─ colSet: (34-36)\n" +
 			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Project\n" +
-			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
+			"     │                               ├─ columns: [nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
 			"     │                               │   ├─ cacheable: false\n" +
 			"     │                               │   ├─ alias-string: select COUNT(*) from FLQLP where LUEVY = nd.id\n" +
 			"     │                               │   └─ Project\n" +
-			"     │                               │       ├─ columns: [count(1):20!null as COUNT(*)]\n" +
+			"     │                               │       ├─ columns: [count(1):20!null->COUNT(*):0]\n" +
 			"     │                               │       └─ GroupBy\n" +
 			"     │                               │           ├─ select: COUNT(1 (bigint))\n" +
 			"     │                               │           ├─ group: \n" +
@@ -1274,13 +1274,13 @@ WHERE
 			"     │                               │                   └─ Table\n" +
 			"     │                               │                       ├─ name: FLQLP\n" +
 			"     │                               │                       └─ columns: [luevy]\n" +
-			"     │                               │   as LEA4J]\n" +
+			"     │                               │  ->LEA4J:0]\n" +
 			"     │                               └─ Project\n" +
-			"     │                                   ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
+			"     │                                   ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
 			"     │                                   │   ├─ cacheable: false\n" +
 			"     │                                   │   ├─ alias-string: select COUNT(*) from FLQLP where LUEVY = nd.id\n" +
 			"     │                                   │   └─ Project\n" +
-			"     │                                   │       ├─ columns: [count(1):17!null as COUNT(*)]\n" +
+			"     │                                   │       ├─ columns: [count(1):17!null->COUNT(*):0]\n" +
 			"     │                                   │       └─ GroupBy\n" +
 			"     │                                   │           ├─ select: COUNT(1 (bigint))\n" +
 			"     │                                   │           ├─ group: \n" +
@@ -1296,7 +1296,7 @@ WHERE
 			"     │                                   │                   └─ Table\n" +
 			"     │                                   │                       ├─ name: FLQLP\n" +
 			"     │                                   │                       └─ columns: [luevy]\n" +
-			"     │                                   │   as LEA4J]\n" +
+			"     │                                   │  ->LEA4J:0]\n" +
 			"     │                                   └─ TableAlias(nd)\n" +
 			"     │                                       └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                                           ├─ index: [E2I7U.ZH72S]\n" +
@@ -1508,7 +1508,7 @@ WHERE
 	)
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [ct.id:0!null as id, ci.FTQLQ:33!null as VCGT3, nd.TW55N:15!null as UWBAI, aac.BTXC5:30 as TPXBU, ct.V5DPX:8!null as V5DPX, ct.S3Q3Y:9!null as S3Q3Y, ct.ZRV3B:10!null as ZRV3B]\n" +
+			" ├─ columns: [ct.id:0!null->id:0, ci.FTQLQ:33!null->VCGT3:0, nd.TW55N:15!null->UWBAI:0, aac.BTXC5:30->TPXBU:0, ct.V5DPX:8!null->V5DPX:0, ct.S3Q3Y:9!null->S3Q3Y:0, ct.ZRV3B:10!null->ZRV3B:0]\n" +
 			" └─ Filter\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ AND\n" +
@@ -1579,7 +1579,7 @@ WHERE
 			"     │               ├─ cacheable: true\n" +
 			"     │               ├─ alias-string: select uct.id as FDL23 from EPZU6 as I7HCR join OUBDL as uct on uct.FTQLQ = I7HCR.TOFPN and uct.ZH72S = I7HCR.SJYN2 and uct.LJLUM = I7HCR.BTXC5 where I7HCR.SWCQV = 0 and I7HCR.id not in (select OCA7E from FLQLP where OCA7E is not null)\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [uct.id:45!null as FDL23]\n" +
+			"     │                   ├─ columns: [uct.id:45!null->FDL23:0]\n" +
 			"     │                   └─ Project\n" +
 			"     │                       ├─ columns: [EPZU6.id:37!null, EPZU6.TOFPN:38!null, EPZU6.SJYN2:39!null, EPZU6.BTXC5:40!null, EPZU6.FVUCX:41!null, EPZU6.SWCQV:42!null, EPZU6.YKSSU:43, EPZU6.FHCYT:44, OUBDL.id:45!null, OUBDL.FTQLQ:46, OUBDL.ZH72S:47, OUBDL.SFJ6L:48, OUBDL.V5DPX:49, OUBDL.LJLUM:50, OUBDL.IDPK7:51, OUBDL.NO52D:52, OUBDL.ZRV3B:53, OUBDL.VYO5E:54, OUBDL.YKSSU:55, OUBDL.FHCYT:56, OUBDL.QZ6VT:57]\n" +
 			"     │                       └─ Filter\n" +
@@ -1894,7 +1894,7 @@ WHERE
 			"     │   ├─ tableId: 6\n" +
 			"     │   └─ Distinct\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [ylksy.id:0!null as FDL23]\n" +
+			"     │           ├─ columns: [ylksy.id:0!null->FDL23:0]\n" +
 			"     │           └─ HashJoin\n" +
 			"     │               ├─ Eq\n" +
 			"     │               │   ├─ ci.FTQLQ:6!null\n" +
@@ -2113,7 +2113,7 @@ WHERE
 	   TVTJS.SWCQV = 1
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [ct.id:0!null as id, ci.FTQLQ:13!null as VCGT3, nd.TW55N:9!null as UWBAI, aac.BTXC5:11 as TPXBU, ct.V5DPX:5!null as V5DPX, ct.S3Q3Y:6!null as S3Q3Y, ct.ZRV3B:7!null as ZRV3B]\n" +
+			" ├─ columns: [ct.id:0!null->id:0, ci.FTQLQ:13!null->VCGT3:0, nd.TW55N:9!null->UWBAI:0, aac.BTXC5:11->TPXBU:0, ct.V5DPX:5!null->V5DPX:0, ct.S3Q3Y:6!null->S3Q3Y:0, ct.ZRV3B:7!null->ZRV3B:0]\n" +
 			" └─ HashJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ tvtjs.id:14!null\n" +
@@ -2388,7 +2388,7 @@ WHERE
 	       PV6R5.NUMK2 <> 1
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [rn.id:0!null as id, concat(nsplt.TW55N:18!null,FDNCN (longtext),lqncx.TW55N:16!null) as X37NA, concat(xlza5.TW55N:10!null,FDNCN (longtext),afjmd.TW55N:8!null) as THWCS, rn.HVHRZ:3!null as HVHRZ]\n" +
+			" ├─ columns: [rn.id:0!null->id:0, concat(nsplt.TW55N:18!null,FDNCN (longtext),lqncx.TW55N:16!null)->X37NA:0, concat(xlza5.TW55N:10!null,FDNCN (longtext),afjmd.TW55N:8!null)->THWCS:0, rn.HVHRZ:3!null->HVHRZ:0]\n" +
 			" └─ Filter\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ NOT\n" +
@@ -2653,7 +2653,7 @@ WHERE
 	       rn.WNUNU IS NULL AND rn.HHVLX IS NULL
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sn.id:5!null as DRIWM, concat(oe56m.TW55N:10!null,FDNCN (longtext),cgfrz.TW55N:12!null) as GRVSE, skpm6.id:0!null as JIEVY, concat(v5say.TW55N:14!null,FDNCN (longtext),fqthf.TW55N:4!null) as ENCM3, 1 (decimal(2,1)) as OHD3R]\n" +
+			" ├─ columns: [sn.id:5!null->DRIWM:0, concat(oe56m.TW55N:10!null,FDNCN (longtext),cgfrz.TW55N:12!null)->GRVSE:0, skpm6.id:0!null->JIEVY:0, concat(v5say.TW55N:14!null,FDNCN (longtext),fqthf.TW55N:4!null)->ENCM3:0, 1 (decimal(2,1))->OHD3R:99]\n" +
 			" └─ Filter\n" +
 			"     ├─ AND\n" +
 			"     │   ├─ rn.WNUNU:15!null IS NULL\n" +
@@ -2941,7 +2941,7 @@ WHERE
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: TDRVG\n" +
 			"     │           │                           └─ columns: [id sshpj]\n" +
-			"     │           │   as id]\n" +
+			"     │           │  ->id:0]\n" +
 			"     │           └─ Project\n" +
 			"     │               ├─ columns: [s7byt.SSHPJ:5!null, s7byt.SFJ6L:6!null, Subquery\n" +
 			"     │               │   ├─ cacheable: false\n" +
@@ -2962,7 +2962,7 @@ WHERE
 			"     │               │                       └─ Table\n" +
 			"     │               │                           ├─ name: TDRVG\n" +
 			"     │               │                           └─ columns: [id sshpj]\n" +
-			"     │               │   as id]\n" +
+			"     │               │  ->id:0]\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [s7byt.SSHPJ:5!null, s7byt.SFJ6L:6!null]\n" +
 			"     │                   └─ Filter\n" +
@@ -2977,7 +2977,7 @@ WHERE
 			"     │                           │   ├─ tableId: 4\n" +
 			"     │                           │   └─ Distinct\n" +
 			"     │                           │       └─ Project\n" +
-			"     │                           │           ├─ columns: [s5kbm.SSHPJ:7!null as SSHPJ, s5kbm.SFJ6L:8!null as SFJ6L]\n" +
+			"     │                           │           ├─ columns: [s5kbm.SSHPJ:7!null->SSHPJ:0, s5kbm.SFJ6L:8!null->SFJ6L:0]\n" +
 			"     │                           │           └─ LookupJoin\n" +
 			"     │                           │               ├─ TableAlias(nd)\n" +
 			"     │                           │               │   └─ Table\n" +
@@ -3176,7 +3176,7 @@ WHERE
 	       CL3DT.R5CKX > 0
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [pbmrx.id:4!null as id, pbmrx.TW55N:5!null as UYOGN, pbmrx.ZH72S:6 as H4JEA]\n" +
+			" ├─ columns: [pbmrx.id:4!null->id:0, pbmrx.TW55N:5!null->UYOGN:0, pbmrx.ZH72S:6->H4JEA:0]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ NOT\n" +
 			"     │   └─ pbmrx.ZH72S:6 IS NULL\n" +
@@ -3196,13 +3196,13 @@ WHERE
 			"     │       │       ├─ R5CKX:3!null\n" +
 			"     │       │       └─ 0 (tinyint)\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [tq57w.ZH72S:3 as ZH72S, count(tq57w.zh72s):0!null as JTOA7, min(tq57w.tj66d):1!null as B4OVH, sum(tq57w.tj66d):2!null as R5CKX]\n" +
+			"     │           ├─ columns: [tq57w.ZH72S:3->ZH72S:0, count(tq57w.zh72s):0!null->JTOA7:0, min(tq57w.tj66d):1!null->B4OVH:0, sum(tq57w.tj66d):2!null->R5CKX:0]\n" +
 			"     │           └─ Having\n" +
 			"     │               ├─ GreaterThan\n" +
 			"     │               │   ├─ JTOA7:5!null\n" +
 			"     │               │   └─ 1 (bigint)\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [count(tq57w.zh72s):0!null, min(tq57w.tj66d):1!null, sum(tq57w.tj66d):2!null, tq57w.ZH72S:3, tq57w.ZH72S:3 as ZH72S, count(tq57w.zh72s):0!null as JTOA7, min(tq57w.tj66d):1!null as B4OVH, sum(tq57w.tj66d):2!null as R5CKX]\n" +
+			"     │                   ├─ columns: [count(tq57w.zh72s):0!null, min(tq57w.tj66d):1!null, sum(tq57w.tj66d):2!null, tq57w.ZH72S:3, tq57w.ZH72S:3->ZH72S:0, count(tq57w.zh72s):0!null->JTOA7:0, min(tq57w.tj66d):1!null->B4OVH:0, sum(tq57w.tj66d):2!null->R5CKX:0]\n" +
 			"     │                   └─ GroupBy\n" +
 			"     │                       ├─ select: COUNT(tq57w.ZH72S:1), MIN(tq57w.TJ66D:2), SUM(tq57w.TJ66D:2), tq57w.ZH72S:1\n" +
 			"     │                       ├─ group: tq57w.ZH72S:1\n" +
@@ -3214,11 +3214,11 @@ WHERE
 			"     │                           ├─ colSet: (30-32)\n" +
 			"     │                           ├─ tableId: 3\n" +
 			"     │                           └─ Project\n" +
-			"     │                               ├─ columns: [nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
+			"     │                               ├─ columns: [nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
 			"     │                               │   ├─ cacheable: false\n" +
 			"     │                               │   ├─ alias-string: select COUNT(*) from AMYXQ where LUEVY = nd.id\n" +
 			"     │                               │   └─ Project\n" +
-			"     │                               │       ├─ columns: [count(1):20!null as COUNT(*)]\n" +
+			"     │                               │       ├─ columns: [count(1):20!null->COUNT(*):0]\n" +
 			"     │                               │       └─ GroupBy\n" +
 			"     │                               │           ├─ select: COUNT(1 (bigint))\n" +
 			"     │                               │           ├─ group: \n" +
@@ -3234,13 +3234,13 @@ WHERE
 			"     │                               │                   └─ Table\n" +
 			"     │                               │                       ├─ name: AMYXQ\n" +
 			"     │                               │                       └─ columns: [luevy]\n" +
-			"     │                               │   as TJ66D]\n" +
+			"     │                               │  ->TJ66D:0]\n" +
 			"     │                               └─ Project\n" +
-			"     │                                   ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null as id, nd.ZH72S:7 as ZH72S, Subquery\n" +
+			"     │                                   ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null->id:0, nd.ZH72S:7->ZH72S:0, Subquery\n" +
 			"     │                                   │   ├─ cacheable: false\n" +
 			"     │                                   │   ├─ alias-string: select COUNT(*) from AMYXQ where LUEVY = nd.id\n" +
 			"     │                                   │   └─ Project\n" +
-			"     │                                   │       ├─ columns: [count(1):17!null as COUNT(*)]\n" +
+			"     │                                   │       ├─ columns: [count(1):17!null->COUNT(*):0]\n" +
 			"     │                                   │       └─ GroupBy\n" +
 			"     │                                   │           ├─ select: COUNT(1 (bigint))\n" +
 			"     │                                   │           ├─ group: \n" +
@@ -3256,7 +3256,7 @@ WHERE
 			"     │                                   │                   └─ Table\n" +
 			"     │                                   │                       ├─ name: AMYXQ\n" +
 			"     │                                   │                       └─ columns: [luevy]\n" +
-			"     │                                   │   as TJ66D]\n" +
+			"     │                                   │  ->TJ66D:0]\n" +
 			"     │                                   └─ TableAlias(nd)\n" +
 			"     │                                       └─ IndexedTableAccess(E2I7U)\n" +
 			"     │                                           ├─ index: [E2I7U.ZH72S]\n" +
@@ -3861,7 +3861,7 @@ WHERE
 	)
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mf.id:0!null as id, cla.FTQLQ:42!null as T4IBQ, nd.TW55N:23!null as UWBAI, aac.BTXC5:18 as TPXBU, mf.FSDY2:10!null as FSDY2]\n" +
+			" ├─ columns: [mf.id:0!null->id:0, cla.FTQLQ:42!null->T4IBQ:0, nd.TW55N:23!null->UWBAI:0, aac.BTXC5:18->TPXBU:0, mf.FSDY2:10!null->FSDY2:0]\n" +
 			" └─ Filter\n" +
 			"     ├─ Or\n" +
 			"     │   ├─ AND\n" +
@@ -3932,7 +3932,7 @@ WHERE
 			"     │               ├─ cacheable: true\n" +
 			"     │               ├─ alias-string: select umf.id as ORB3K from SZW6V as TJ5D2 join NZKPM as umf on umf.T4IBQ = TJ5D2.T4IBQ and umf.FGG57 = TJ5D2.V7UFH and umf.SYPKF = TJ5D2.SYPKF where TJ5D2.SWCQV = 0 and TJ5D2.id not in (select QQV4M from HGMQ6 where QQV4M is not null)\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [umf.id:79!null as ORB3K]\n" +
+			"     │                   ├─ columns: [umf.id:79!null->ORB3K:0]\n" +
 			"     │                   └─ LookupJoin\n" +
 			"     │                       ├─ AND\n" +
 			"     │                       │   ├─ Eq\n" +
@@ -4531,9 +4531,9 @@ WHERE
 			" │   ├─ columns: [convert\n" +
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ T4IBQ:0!null\n" +
-			" │   │   as T4IBQ, DL754:1!null, BDNYB:2!null, ADURZ:3!null, TPXBU:4, NO52D:5!null, IDPK7:6!null]\n" +
+			" │   │  ->T4IBQ:0, DL754:1!null, BDNYB:2!null, ADURZ:3!null, TPXBU:4, NO52D:5!null, IDPK7:6!null]\n" +
 			" │   └─ Project\n" +
-			" │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sl3s5.TOFPN:62!null as DL754, sn.id:51!null as BDNYB, sl3s5.ADURZ:64!null as ADURZ, Subquery\n" +
+			" │       ├─ columns: [cla.FTQLQ:1!null->T4IBQ:0, sl3s5.TOFPN:62!null->DL754:0, sn.id:51!null->BDNYB:0, sl3s5.ADURZ:64!null->ADURZ:0, Subquery\n" +
 			" │       │   ├─ cacheable: false\n" +
 			" │       │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			" │       │   └─ Project\n" +
@@ -4551,9 +4551,9 @@ WHERE
 			" │       │                   └─ Table\n" +
 			" │       │                       ├─ name: TPXBU\n" +
 			" │       │                       └─ columns: [id btxc5]\n" +
-			" │       │   as TPXBU, sl3s5.NO52D:65!null as NO52D, sl3s5.IDPK7:66!null as IDPK7]\n" +
+			" │       │  ->TPXBU:0, sl3s5.NO52D:65!null->NO52D:0, sl3s5.IDPK7:66!null->IDPK7:0]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [cla.id:37!null, cla.FTQLQ:38!null, cla.TUXML:39, cla.PAEF5:40, cla.RUCY4:41, cla.TPNJ6:42!null, cla.LBL53:43, cla.NB3QS:44, cla.EO7IV:45, cla.MUHJF:46, cla.FM34L:47, cla.TY5RF:48, cla.ZHTLH:49, cla.NPB7W:50, cla.SX3HH:51, cla.ISBNF:52, cla.YA7YB:53, cla.C5YKB:54, cla.QK7KT:55, cla.FFGE6:56, cla.FIIGJ:57, cla.SH3NC:58, cla.NTENA:59, cla.M4AUB:60, cla.X5AIR:61, cla.SAB6M:62, cla.G5QI5:63, cla.ZVQVD:64, cla.YKSSU:65, cla.FHCYT:66, bs.id:33!null, bs.NFRYN:34!null, bs.IXUXU:35, bs.FHCYT:36, mf.id:16!null, mf.GXLUB:17!null, mf.LUEVY:18!null, mf.M22QN:19!null, mf.TJPT7:20!null, mf.ARN5P:21!null, mf.XOSD4:22!null, mf.IDE43:23, mf.HMW4H:24, mf.ZBT6R:25, mf.FSDY2:26!null, mf.LT7K6:27, mf.SPPYD:28, mf.QCGTS:29, mf.TEUJA:30, mf.QQV4M:31, mf.FHCYT:32, sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, cla.FTQLQ:38!null as T4IBQ, sl3s5.TOFPN:1!null as DL754, sn.id:6!null as BDNYB, sl3s5.ADURZ:3!null as ADURZ, Subquery\n" +
+			" │           ├─ columns: [cla.id:37!null, cla.FTQLQ:38!null, cla.TUXML:39, cla.PAEF5:40, cla.RUCY4:41, cla.TPNJ6:42!null, cla.LBL53:43, cla.NB3QS:44, cla.EO7IV:45, cla.MUHJF:46, cla.FM34L:47, cla.TY5RF:48, cla.ZHTLH:49, cla.NPB7W:50, cla.SX3HH:51, cla.ISBNF:52, cla.YA7YB:53, cla.C5YKB:54, cla.QK7KT:55, cla.FFGE6:56, cla.FIIGJ:57, cla.SH3NC:58, cla.NTENA:59, cla.M4AUB:60, cla.X5AIR:61, cla.SAB6M:62, cla.G5QI5:63, cla.ZVQVD:64, cla.YKSSU:65, cla.FHCYT:66, bs.id:33!null, bs.NFRYN:34!null, bs.IXUXU:35, bs.FHCYT:36, mf.id:16!null, mf.GXLUB:17!null, mf.LUEVY:18!null, mf.M22QN:19!null, mf.TJPT7:20!null, mf.ARN5P:21!null, mf.XOSD4:22!null, mf.IDE43:23, mf.HMW4H:24, mf.ZBT6R:25, mf.FSDY2:26!null, mf.LT7K6:27, mf.SPPYD:28, mf.QCGTS:29, mf.TEUJA:30, mf.QQV4M:31, mf.FHCYT:32, sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, cla.FTQLQ:38!null->T4IBQ:0, sl3s5.TOFPN:1!null->DL754:0, sn.id:6!null->BDNYB:0, sl3s5.ADURZ:3!null->ADURZ:0, Subquery\n" +
 			" │           │   ├─ cacheable: false\n" +
 			" │           │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			" │           │   └─ Project\n" +
@@ -4571,7 +4571,7 @@ WHERE
 			" │           │                   └─ Table\n" +
 			" │           │                       ├─ name: TPXBU\n" +
 			" │           │                       └─ columns: [id btxc5]\n" +
-			" │           │   as TPXBU, sl3s5.NO52D:4!null as NO52D, sl3s5.IDPK7:5!null as IDPK7]\n" +
+			" │           │  ->TPXBU:0, sl3s5.NO52D:4!null->NO52D:0, sl3s5.IDPK7:5!null->IDPK7:0]\n" +
 			" │           └─ LookupJoin\n" +
 			" │               ├─ LookupJoin\n" +
 			" │               │   ├─ LookupJoin\n" +
@@ -4587,7 +4587,7 @@ WHERE
 			" │               │   │   │   │   ├─ colSet: (124-129)\n" +
 			" │               │   │   │   │   ├─ tableId: 11\n" +
 			" │               │   │   │   │   └─ Project\n" +
-			" │               │   │   │   │       ├─ columns: [khjjo.BDNYB:12!null as BDNYB, ci.FTQLQ:1!null as TOFPN, ct.M22QN:4!null as M22QN, cec.ADURZ:10!null as ADURZ, cec.NO52D:9!null as NO52D, ct.S3Q3Y:6!null as IDPK7]\n" +
+			" │               │   │   │   │       ├─ columns: [khjjo.BDNYB:12!null->BDNYB:0, ci.FTQLQ:1!null->TOFPN:0, ct.M22QN:4!null->M22QN:0, cec.ADURZ:10!null->ADURZ:0, cec.NO52D:9!null->NO52D:0, ct.S3Q3Y:6!null->IDPK7:0]\n" +
 			" │               │   │   │   │       └─ HashJoin\n" +
 			" │               │   │   │   │           ├─ Eq\n" +
 			" │               │   │   │   │           │   ├─ ci.id:0!null\n" +
@@ -4650,7 +4650,7 @@ WHERE
 			" │               │   │   │   │                           ├─ tableId: 7\n" +
 			" │               │   │   │   │                           └─ Distinct\n" +
 			" │               │   │   │   │                               └─ Project\n" +
-			" │               │   │   │   │                                   ├─ columns: [mf.M22QN:3!null as M22QN, sn.id:0!null as BDNYB, mf.LUEVY:2!null as LUEVY]\n" +
+			" │               │   │   │   │                                   ├─ columns: [mf.M22QN:3!null->M22QN:0, sn.id:0!null->BDNYB:0, mf.LUEVY:2!null->LUEVY:0]\n" +
 			" │               │   │   │   │                                   └─ LookupJoin\n" +
 			" │               │   │   │   │                                       ├─ TableAlias(sn)\n" +
 			" │               │   │   │   │                                       │   └─ Table\n" +
@@ -4708,7 +4708,7 @@ WHERE
 			" │                               ├─ name: YK2GW\n" +
 			" │                               └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [aoev5.t4ibq:0!null as t4ibq, vumuy.DL754:1!null, vumuy.BDNYB:2!null, vumuy.ADURZ:3!null, vumuy.TPXBU:4, vumuy.NO52D:5!null, vumuy.IDPK7:6!null]\n" +
+			"     ├─ columns: [aoev5.t4ibq:0!null->t4ibq:0, vumuy.DL754:1!null, vumuy.BDNYB:2!null, vumuy.ADURZ:3!null, vumuy.TPXBU:4, vumuy.NO52D:5!null, vumuy.IDPK7:6!null]\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [aoev5.t4ibq:6!null, vumuy.DL754:0!null, vumuy.BDNYB:1!null, vumuy.ADURZ:2!null, vumuy.TPXBU:3, vumuy.NO52D:4!null, vumuy.IDPK7:5!null]\n" +
 			"         └─ CrossHashJoin\n" +
@@ -4720,7 +4720,7 @@ WHERE
 			"             │   ├─ colSet: (207-212)\n" +
 			"             │   ├─ tableId: 21\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [sl3s5.TOFPN:11!null as DL754, sn.id:0!null as BDNYB, sl3s5.ADURZ:13!null as ADURZ, Subquery\n" +
+			"             │       ├─ columns: [sl3s5.TOFPN:11!null->DL754:0, sn.id:0!null->BDNYB:0, sl3s5.ADURZ:13!null->ADURZ:0, Subquery\n" +
 			"             │       │   ├─ cacheable: false\n" +
 			"             │       │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			"             │       │   └─ Project\n" +
@@ -4738,9 +4738,9 @@ WHERE
 			"             │       │                   └─ Table\n" +
 			"             │       │                       ├─ name: TPXBU\n" +
 			"             │       │                       └─ columns: [id btxc5]\n" +
-			"             │       │   as TPXBU, sl3s5.NO52D:14!null as NO52D, sl3s5.IDPK7:15!null as IDPK7]\n" +
+			"             │       │  ->TPXBU:0, sl3s5.NO52D:14!null->NO52D:0, sl3s5.IDPK7:15!null->IDPK7:0]\n" +
 			"             │       └─ Project\n" +
-			"             │           ├─ columns: [sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, sl3s5.TOFPN:1!null as DL754, sn.id:6!null as BDNYB, sl3s5.ADURZ:3!null as ADURZ, Subquery\n" +
+			"             │           ├─ columns: [sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, sl3s5.TOFPN:1!null->DL754:0, sn.id:6!null->BDNYB:0, sl3s5.ADURZ:3!null->ADURZ:0, Subquery\n" +
 			"             │           │   ├─ cacheable: false\n" +
 			"             │           │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			"             │           │   └─ Project\n" +
@@ -4758,7 +4758,7 @@ WHERE
 			"             │           │                   └─ Table\n" +
 			"             │           │                       ├─ name: TPXBU\n" +
 			"             │           │                       └─ columns: [id btxc5]\n" +
-			"             │           │   as TPXBU, sl3s5.NO52D:4!null as NO52D, sl3s5.IDPK7:5!null as IDPK7]\n" +
+			"             │           │  ->TPXBU:0, sl3s5.NO52D:4!null->NO52D:0, sl3s5.IDPK7:5!null->IDPK7:0]\n" +
 			"             │           └─ LookupJoin\n" +
 			"             │               ├─ SubqueryAlias\n" +
 			"             │               │   ├─ name: sl3s5\n" +
@@ -4768,7 +4768,7 @@ WHERE
 			"             │               │   ├─ colSet: (192-197)\n" +
 			"             │               │   ├─ tableId: 19\n" +
 			"             │               │   └─ Project\n" +
-			"             │               │       ├─ columns: [sn.id:0!null as BDNYB, ci.FTQLQ:23!null as TOFPN, ct.M22QN:13!null as M22QN, cec.ADURZ:26!null as ADURZ, cec.NO52D:25!null as NO52D, ct.S3Q3Y:19!null as IDPK7]\n" +
+			"             │               │       ├─ columns: [sn.id:0!null->BDNYB:0, ci.FTQLQ:23!null->TOFPN:0, ct.M22QN:13!null->M22QN:0, cec.ADURZ:26!null->ADURZ:0, cec.NO52D:25!null->NO52D:0, ct.S3Q3Y:19!null->IDPK7:0]\n" +
 			"             │               │       └─ HashJoin\n" +
 			"             │               │           ├─ Eq\n" +
 			"             │               │           │   ├─ cec.id:24!null\n" +
@@ -5413,9 +5413,9 @@ WHERE
 			" │   ├─ columns: [convert\n" +
 			" │   │   ├─ type: char\n" +
 			" │   │   └─ T4IBQ:0!null\n" +
-			" │   │   as T4IBQ, DL754:1!null, BDNYB:2!null, ADURZ:3!null, TPXBU:4, NO52D:5!null, IDPK7:6!null]\n" +
+			" │   │  ->T4IBQ:0, DL754:1!null, BDNYB:2!null, ADURZ:3!null, TPXBU:4, NO52D:5!null, IDPK7:6!null]\n" +
 			" │   └─ Project\n" +
-			" │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sl3s5.TOFPN:62!null as DL754, sn.id:51!null as BDNYB, sl3s5.ADURZ:64!null as ADURZ, Subquery\n" +
+			" │       ├─ columns: [cla.FTQLQ:1!null->T4IBQ:0, sl3s5.TOFPN:62!null->DL754:0, sn.id:51!null->BDNYB:0, sl3s5.ADURZ:64!null->ADURZ:0, Subquery\n" +
 			" │       │   ├─ cacheable: false\n" +
 			" │       │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			" │       │   └─ Project\n" +
@@ -5433,9 +5433,9 @@ WHERE
 			" │       │                   └─ Table\n" +
 			" │       │                       ├─ name: TPXBU\n" +
 			" │       │                       └─ columns: [id btxc5]\n" +
-			" │       │   as TPXBU, sl3s5.NO52D:65!null as NO52D, sl3s5.IDPK7:66!null as IDPK7]\n" +
+			" │       │  ->TPXBU:0, sl3s5.NO52D:65!null->NO52D:0, sl3s5.IDPK7:66!null->IDPK7:0]\n" +
 			" │       └─ Project\n" +
-			" │           ├─ columns: [cla.id:37!null, cla.FTQLQ:38!null, cla.TUXML:39, cla.PAEF5:40, cla.RUCY4:41, cla.TPNJ6:42!null, cla.LBL53:43, cla.NB3QS:44, cla.EO7IV:45, cla.MUHJF:46, cla.FM34L:47, cla.TY5RF:48, cla.ZHTLH:49, cla.NPB7W:50, cla.SX3HH:51, cla.ISBNF:52, cla.YA7YB:53, cla.C5YKB:54, cla.QK7KT:55, cla.FFGE6:56, cla.FIIGJ:57, cla.SH3NC:58, cla.NTENA:59, cla.M4AUB:60, cla.X5AIR:61, cla.SAB6M:62, cla.G5QI5:63, cla.ZVQVD:64, cla.YKSSU:65, cla.FHCYT:66, bs.id:33!null, bs.NFRYN:34!null, bs.IXUXU:35, bs.FHCYT:36, mf.id:16!null, mf.GXLUB:17!null, mf.LUEVY:18!null, mf.M22QN:19!null, mf.TJPT7:20!null, mf.ARN5P:21!null, mf.XOSD4:22!null, mf.IDE43:23, mf.HMW4H:24, mf.ZBT6R:25, mf.FSDY2:26!null, mf.LT7K6:27, mf.SPPYD:28, mf.QCGTS:29, mf.TEUJA:30, mf.QQV4M:31, mf.FHCYT:32, sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, cla.FTQLQ:38!null as T4IBQ, sl3s5.TOFPN:1!null as DL754, sn.id:6!null as BDNYB, sl3s5.ADURZ:3!null as ADURZ, Subquery\n" +
+			" │           ├─ columns: [cla.id:37!null, cla.FTQLQ:38!null, cla.TUXML:39, cla.PAEF5:40, cla.RUCY4:41, cla.TPNJ6:42!null, cla.LBL53:43, cla.NB3QS:44, cla.EO7IV:45, cla.MUHJF:46, cla.FM34L:47, cla.TY5RF:48, cla.ZHTLH:49, cla.NPB7W:50, cla.SX3HH:51, cla.ISBNF:52, cla.YA7YB:53, cla.C5YKB:54, cla.QK7KT:55, cla.FFGE6:56, cla.FIIGJ:57, cla.SH3NC:58, cla.NTENA:59, cla.M4AUB:60, cla.X5AIR:61, cla.SAB6M:62, cla.G5QI5:63, cla.ZVQVD:64, cla.YKSSU:65, cla.FHCYT:66, bs.id:33!null, bs.NFRYN:34!null, bs.IXUXU:35, bs.FHCYT:36, mf.id:16!null, mf.GXLUB:17!null, mf.LUEVY:18!null, mf.M22QN:19!null, mf.TJPT7:20!null, mf.ARN5P:21!null, mf.XOSD4:22!null, mf.IDE43:23, mf.HMW4H:24, mf.ZBT6R:25, mf.FSDY2:26!null, mf.LT7K6:27, mf.SPPYD:28, mf.QCGTS:29, mf.TEUJA:30, mf.QQV4M:31, mf.FHCYT:32, sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, cla.FTQLQ:38!null->T4IBQ:0, sl3s5.TOFPN:1!null->DL754:0, sn.id:6!null->BDNYB:0, sl3s5.ADURZ:3!null->ADURZ:0, Subquery\n" +
 			" │           │   ├─ cacheable: false\n" +
 			" │           │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			" │           │   └─ Project\n" +
@@ -5453,7 +5453,7 @@ WHERE
 			" │           │                   └─ Table\n" +
 			" │           │                       ├─ name: TPXBU\n" +
 			" │           │                       └─ columns: [id btxc5]\n" +
-			" │           │   as TPXBU, sl3s5.NO52D:4!null as NO52D, sl3s5.IDPK7:5!null as IDPK7]\n" +
+			" │           │  ->TPXBU:0, sl3s5.NO52D:4!null->NO52D:0, sl3s5.IDPK7:5!null->IDPK7:0]\n" +
 			" │           └─ LookupJoin\n" +
 			" │               ├─ LookupJoin\n" +
 			" │               │   ├─ LookupJoin\n" +
@@ -5469,7 +5469,7 @@ WHERE
 			" │               │   │   │   │   ├─ colSet: (124-129)\n" +
 			" │               │   │   │   │   ├─ tableId: 11\n" +
 			" │               │   │   │   │   └─ Project\n" +
-			" │               │   │   │   │       ├─ columns: [khjjo.BDNYB:1!null as BDNYB, ci.FTQLQ:10!null as TOFPN, ct.M22QN:5!null as M22QN, cec.ADURZ:13!null as ADURZ, cec.NO52D:12!null as NO52D, ct.S3Q3Y:7!null as IDPK7]\n" +
+			" │               │   │   │   │       ├─ columns: [khjjo.BDNYB:1!null->BDNYB:0, ci.FTQLQ:10!null->TOFPN:0, ct.M22QN:5!null->M22QN:0, cec.ADURZ:13!null->ADURZ:0, cec.NO52D:12!null->NO52D:0, ct.S3Q3Y:7!null->IDPK7:0]\n" +
 			" │               │   │   │   │       └─ LookupJoin\n" +
 			" │               │   │   │   │           ├─ LookupJoin\n" +
 			" │               │   │   │   │           │   ├─ LookupJoin\n" +
@@ -5485,7 +5485,7 @@ WHERE
 			" │               │   │   │   │           │   │   │   ├─ tableId: 7\n" +
 			" │               │   │   │   │           │   │   │   └─ Distinct\n" +
 			" │               │   │   │   │           │   │   │       └─ Project\n" +
-			" │               │   │   │   │           │   │   │           ├─ columns: [mf.M22QN:3!null as M22QN, sn.id:0!null as BDNYB, mf.LUEVY:2!null as LUEVY]\n" +
+			" │               │   │   │   │           │   │   │           ├─ columns: [mf.M22QN:3!null->M22QN:0, sn.id:0!null->BDNYB:0, mf.LUEVY:2!null->LUEVY:0]\n" +
 			" │               │   │   │   │           │   │   │           └─ LookupJoin\n" +
 			" │               │   │   │   │           │   │   │               ├─ TableAlias(sn)\n" +
 			" │               │   │   │   │           │   │   │               │   └─ Table\n" +
@@ -5578,7 +5578,7 @@ WHERE
 			" │                               ├─ name: YK2GW\n" +
 			" │                               └─ columns: [id ftqlq tuxml paef5 rucy4 tpnj6 lbl53 nb3qs eo7iv muhjf fm34l ty5rf zhtlh npb7w sx3hh isbnf ya7yb c5ykb qk7kt ffge6 fiigj sh3nc ntena m4aub x5air sab6m g5qi5 zvqvd ykssu fhcyt]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [aoev5.t4ibq:0!null as t4ibq, vumuy.DL754:1!null, vumuy.BDNYB:2!null, vumuy.ADURZ:3!null, vumuy.TPXBU:4, vumuy.NO52D:5!null, vumuy.IDPK7:6!null]\n" +
+			"     ├─ columns: [aoev5.t4ibq:0!null->t4ibq:0, vumuy.DL754:1!null, vumuy.BDNYB:2!null, vumuy.ADURZ:3!null, vumuy.TPXBU:4, vumuy.NO52D:5!null, vumuy.IDPK7:6!null]\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [aoev5.t4ibq:6!null, vumuy.DL754:0!null, vumuy.BDNYB:1!null, vumuy.ADURZ:2!null, vumuy.TPXBU:3, vumuy.NO52D:4!null, vumuy.IDPK7:5!null]\n" +
 			"         └─ CrossHashJoin\n" +
@@ -5590,7 +5590,7 @@ WHERE
 			"             │   ├─ colSet: (207-212)\n" +
 			"             │   ├─ tableId: 21\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [sl3s5.TOFPN:11!null as DL754, sn.id:0!null as BDNYB, sl3s5.ADURZ:13!null as ADURZ, Subquery\n" +
+			"             │       ├─ columns: [sl3s5.TOFPN:11!null->DL754:0, sn.id:0!null->BDNYB:0, sl3s5.ADURZ:13!null->ADURZ:0, Subquery\n" +
 			"             │       │   ├─ cacheable: false\n" +
 			"             │       │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			"             │       │   └─ Project\n" +
@@ -5608,9 +5608,9 @@ WHERE
 			"             │       │                   └─ Table\n" +
 			"             │       │                       ├─ name: TPXBU\n" +
 			"             │       │                       └─ columns: [id btxc5]\n" +
-			"             │       │   as TPXBU, sl3s5.NO52D:14!null as NO52D, sl3s5.IDPK7:15!null as IDPK7]\n" +
+			"             │       │  ->TPXBU:0, sl3s5.NO52D:14!null->NO52D:0, sl3s5.IDPK7:15!null->IDPK7:0]\n" +
 			"             │       └─ Project\n" +
-			"             │           ├─ columns: [sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, sl3s5.TOFPN:1!null as DL754, sn.id:6!null as BDNYB, sl3s5.ADURZ:3!null as ADURZ, Subquery\n" +
+			"             │           ├─ columns: [sn.id:6!null, sn.BRQP2:7!null, sn.FFTBJ:8!null, sn.A7XO2:9, sn.KBO7R:10!null, sn.ECDKM:11, sn.NUMK2:12!null, sn.LETOE:13!null, sn.YKSSU:14, sn.FHCYT:15, sl3s5.BDNYB:0!null, sl3s5.TOFPN:1!null, sl3s5.M22QN:2!null, sl3s5.ADURZ:3!null, sl3s5.NO52D:4!null, sl3s5.IDPK7:5!null, sl3s5.TOFPN:1!null->DL754:0, sn.id:6!null->BDNYB:0, sl3s5.ADURZ:3!null->ADURZ:0, Subquery\n" +
 			"             │           │   ├─ cacheable: false\n" +
 			"             │           │   ├─ alias-string: select aac.BTXC5 from TPXBU as aac where aac.id = SL3S5.M22QN\n" +
 			"             │           │   └─ Project\n" +
@@ -5628,7 +5628,7 @@ WHERE
 			"             │           │                   └─ Table\n" +
 			"             │           │                       ├─ name: TPXBU\n" +
 			"             │           │                       └─ columns: [id btxc5]\n" +
-			"             │           │   as TPXBU, sl3s5.NO52D:4!null as NO52D, sl3s5.IDPK7:5!null as IDPK7]\n" +
+			"             │           │  ->TPXBU:0, sl3s5.NO52D:4!null->NO52D:0, sl3s5.IDPK7:5!null->IDPK7:0]\n" +
 			"             │           └─ LookupJoin\n" +
 			"             │               ├─ SubqueryAlias\n" +
 			"             │               │   ├─ name: sl3s5\n" +
@@ -5638,7 +5638,7 @@ WHERE
 			"             │               │   ├─ colSet: (192-197)\n" +
 			"             │               │   ├─ tableId: 19\n" +
 			"             │               │   └─ Project\n" +
-			"             │               │       ├─ columns: [sn.id:0!null as BDNYB, ci.FTQLQ:23!null as TOFPN, ct.M22QN:13!null as M22QN, cec.ADURZ:26!null as ADURZ, cec.NO52D:25!null as NO52D, ct.S3Q3Y:19!null as IDPK7]\n" +
+			"             │               │       ├─ columns: [sn.id:0!null->BDNYB:0, ci.FTQLQ:23!null->TOFPN:0, ct.M22QN:13!null->M22QN:0, cec.ADURZ:26!null->ADURZ:0, cec.NO52D:25!null->NO52D:0, ct.S3Q3Y:19!null->IDPK7:0]\n" +
 			"             │               │       └─ HashJoin\n" +
 			"             │               │           ├─ Eq\n" +
 			"             │               │           │   ├─ cec.id:24!null\n" +
@@ -6170,9 +6170,9 @@ WHERE
 		Query: `
 	SELECT COUNT(*) FROM NOXN3`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null as COUNT(*)]\n" +
+			" ├─ columns: [count(1):0!null->COUNT(*):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [NOXN3.COUNT(1):0!null as COUNT(1)]\n" +
+			"     ├─ columns: [NOXN3.COUNT(1):0!null->COUNT(1):0]\n" +
 			"     └─ table_count(NOXN3) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -6217,10 +6217,10 @@ WHERE
 	   TYMVL.id = NB6PJ.FFTBJ
 	ORDER BY Y3IOU`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [nb6pj.Y3IOU:0!null as Y3IOU, s7egw.TW55N:9!null as FJVD7, tymvl.TW55N:26!null as KBXXJ, nb6pj.NUMK2:4!null as NUMK2, nb6pj.LETOE:5!null as LETOE]\n" +
-			" └─ Sort(nb6pj.Y3IOU:0!null as Y3IOU ASC nullsFirst)\n" +
+			" ├─ columns: [nb6pj.Y3IOU:0!null->Y3IOU:0, s7egw.TW55N:9!null->FJVD7:0, tymvl.TW55N:26!null->KBXXJ:0, nb6pj.NUMK2:4!null->NUMK2:0, nb6pj.LETOE:5!null->LETOE:0]\n" +
+			" └─ Sort(Y3IOU:40!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [nb6pj.Y3IOU:0!null, nb6pj.id:1!null, nb6pj.BRQP2:2!null, nb6pj.FFTBJ:3!null, nb6pj.NUMK2:4!null, nb6pj.LETOE:5!null, s7egw.id:6!null, s7egw.DKCAJ:7!null, s7egw.KNG7T:8, s7egw.TW55N:9!null, s7egw.QRQXW:10!null, s7egw.ECXAJ:11!null, s7egw.FGG57:12, s7egw.ZH72S:13, s7egw.FSK67:14!null, s7egw.XQDYT:15!null, s7egw.TCE7A:16, s7egw.IWV2H:17, s7egw.HPCMS:18!null, s7egw.N5CC2:19, s7egw.FHCYT:20, s7egw.ETAQ7:21, s7egw.A75X7:22, tymvl.id:23!null, tymvl.DKCAJ:24!null, tymvl.KNG7T:25, tymvl.TW55N:26!null, tymvl.QRQXW:27!null, tymvl.ECXAJ:28!null, tymvl.FGG57:29, tymvl.ZH72S:30, tymvl.FSK67:31!null, tymvl.XQDYT:32!null, tymvl.TCE7A:33, tymvl.IWV2H:34, tymvl.HPCMS:35!null, tymvl.N5CC2:36, tymvl.FHCYT:37, tymvl.ETAQ7:38, tymvl.A75X7:39, nb6pj.Y3IOU:0!null as Y3IOU, s7egw.TW55N:9!null as FJVD7, tymvl.TW55N:26!null as KBXXJ, nb6pj.NUMK2:4!null as NUMK2, nb6pj.LETOE:5!null as LETOE]\n" +
+			"         ├─ columns: [nb6pj.Y3IOU:0!null, nb6pj.id:1!null, nb6pj.BRQP2:2!null, nb6pj.FFTBJ:3!null, nb6pj.NUMK2:4!null, nb6pj.LETOE:5!null, s7egw.id:6!null, s7egw.DKCAJ:7!null, s7egw.KNG7T:8, s7egw.TW55N:9!null, s7egw.QRQXW:10!null, s7egw.ECXAJ:11!null, s7egw.FGG57:12, s7egw.ZH72S:13, s7egw.FSK67:14!null, s7egw.XQDYT:15!null, s7egw.TCE7A:16, s7egw.IWV2H:17, s7egw.HPCMS:18!null, s7egw.N5CC2:19, s7egw.FHCYT:20, s7egw.ETAQ7:21, s7egw.A75X7:22, tymvl.id:23!null, tymvl.DKCAJ:24!null, tymvl.KNG7T:25, tymvl.TW55N:26!null, tymvl.QRQXW:27!null, tymvl.ECXAJ:28!null, tymvl.FGG57:29, tymvl.ZH72S:30, tymvl.FSK67:31!null, tymvl.XQDYT:32!null, tymvl.TCE7A:33, tymvl.IWV2H:34, tymvl.HPCMS:35!null, tymvl.N5CC2:36, tymvl.FHCYT:37, tymvl.ETAQ7:38, tymvl.A75X7:39, nb6pj.Y3IOU:0!null->Y3IOU:0, s7egw.TW55N:9!null->FJVD7:0, tymvl.TW55N:26!null->KBXXJ:0, nb6pj.NUMK2:4!null->NUMK2:0, nb6pj.LETOE:5!null->LETOE:0]\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ LookupJoin\n" +
 			"             │   ├─ SubqueryAlias\n" +
@@ -6231,7 +6231,7 @@ WHERE
 			"             │   │   ├─ colSet: (13-18)\n" +
 			"             │   │   ├─ tableId: 2\n" +
 			"             │   │   └─ Project\n" +
-			"             │   │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null, noxn3.BRQP2:2!null, noxn3.FFTBJ:3!null, noxn3.NUMK2:4!null, noxn3.LETOE:5!null]\n" +
+			"             │   │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null->Y3IOU:0, noxn3.id:1!null, noxn3.BRQP2:2!null, noxn3.FFTBJ:3!null, noxn3.NUMK2:4!null, noxn3.LETOE:5!null]\n" +
 			"             │   │       └─ Sort(noxn3.id:1!null ASC nullsFirst)\n" +
 			"             │   │           └─ Window\n" +
 			"             │   │               ├─ row_number() over ( order by noxn3.id ASC)\n" +
@@ -6266,7 +6266,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [nb6pj.Y3IOU as Y3IOU, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, nb6pj.NUMK2 as NUMK2, nb6pj.LETOE as LETOE]\n" +
-			" └─ Sort(nb6pj.Y3IOU as Y3IOU ASC)\n" +
+			" └─ Sort(Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, s7egw.id, s7egw.DKCAJ, s7egw.KNG7T, s7egw.TW55N, s7egw.QRQXW, s7egw.ECXAJ, s7egw.FGG57, s7egw.ZH72S, s7egw.FSK67, s7egw.XQDYT, s7egw.TCE7A, s7egw.IWV2H, s7egw.HPCMS, s7egw.N5CC2, s7egw.FHCYT, s7egw.ETAQ7, s7egw.A75X7, tymvl.id, tymvl.DKCAJ, tymvl.KNG7T, tymvl.TW55N, tymvl.QRQXW, tymvl.ECXAJ, tymvl.FGG57, tymvl.ZH72S, tymvl.FSK67, tymvl.XQDYT, tymvl.TCE7A, tymvl.IWV2H, tymvl.HPCMS, tymvl.N5CC2, tymvl.FHCYT, tymvl.ETAQ7, tymvl.A75X7, nb6pj.Y3IOU as Y3IOU, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, nb6pj.NUMK2 as NUMK2, nb6pj.LETOE as LETOE]\n" +
 			"         └─ LookupJoin\n" +
@@ -6296,7 +6296,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [nb6pj.Y3IOU as Y3IOU, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, nb6pj.NUMK2 as NUMK2, nb6pj.LETOE as LETOE]\n" +
-			" └─ Sort(nb6pj.Y3IOU as Y3IOU ASC)\n" +
+			" └─ Sort(Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, s7egw.id, s7egw.DKCAJ, s7egw.KNG7T, s7egw.TW55N, s7egw.QRQXW, s7egw.ECXAJ, s7egw.FGG57, s7egw.ZH72S, s7egw.FSK67, s7egw.XQDYT, s7egw.TCE7A, s7egw.IWV2H, s7egw.HPCMS, s7egw.N5CC2, s7egw.FHCYT, s7egw.ETAQ7, s7egw.A75X7, tymvl.id, tymvl.DKCAJ, tymvl.KNG7T, tymvl.TW55N, tymvl.QRQXW, tymvl.ECXAJ, tymvl.FGG57, tymvl.ZH72S, tymvl.FSK67, tymvl.XQDYT, tymvl.TCE7A, tymvl.IWV2H, tymvl.HPCMS, tymvl.N5CC2, tymvl.FHCYT, tymvl.ETAQ7, tymvl.A75X7, nb6pj.Y3IOU as Y3IOU, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, nb6pj.NUMK2 as NUMK2, nb6pj.LETOE as LETOE]\n" +
 			"         └─ LookupJoin\n" +
@@ -6347,10 +6347,10 @@ WHERE
 	   nd.id = NB6PJ.BRQP2
 	ORDER BY TW55N, Y3IOU`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [nd.TW55N:9!null as TW55N, nb6pj.Y3IOU:0!null as Y3IOU]\n" +
-			" └─ Sort(nd.TW55N:9!null as TW55N ASC nullsFirst, nb6pj.Y3IOU:0!null as Y3IOU ASC nullsFirst)\n" +
+			" ├─ columns: [nd.TW55N:9!null->TW55N:0, nb6pj.Y3IOU:0!null->Y3IOU:0]\n" +
+			" └─ Sort(TW55N:23!null ASC nullsFirst, Y3IOU:24!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [nb6pj.Y3IOU:0!null, nb6pj.id:1!null, nb6pj.BRQP2:2!null, nb6pj.FFTBJ:3!null, nb6pj.NUMK2:4!null, nb6pj.LETOE:5!null, nd.id:6!null, nd.DKCAJ:7!null, nd.KNG7T:8, nd.TW55N:9!null, nd.QRQXW:10!null, nd.ECXAJ:11!null, nd.FGG57:12, nd.ZH72S:13, nd.FSK67:14!null, nd.XQDYT:15!null, nd.TCE7A:16, nd.IWV2H:17, nd.HPCMS:18!null, nd.N5CC2:19, nd.FHCYT:20, nd.ETAQ7:21, nd.A75X7:22, nd.TW55N:9!null as TW55N, nb6pj.Y3IOU:0!null as Y3IOU]\n" +
+			"         ├─ columns: [nb6pj.Y3IOU:0!null, nb6pj.id:1!null, nb6pj.BRQP2:2!null, nb6pj.FFTBJ:3!null, nb6pj.NUMK2:4!null, nb6pj.LETOE:5!null, nd.id:6!null, nd.DKCAJ:7!null, nd.KNG7T:8, nd.TW55N:9!null, nd.QRQXW:10!null, nd.ECXAJ:11!null, nd.FGG57:12, nd.ZH72S:13, nd.FSK67:14!null, nd.XQDYT:15!null, nd.TCE7A:16, nd.IWV2H:17, nd.HPCMS:18!null, nd.N5CC2:19, nd.FHCYT:20, nd.ETAQ7:21, nd.A75X7:22, nd.TW55N:9!null->TW55N:0, nb6pj.Y3IOU:0!null->Y3IOU:0]\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: nb6pj\n" +
@@ -6360,7 +6360,7 @@ WHERE
 			"             │   ├─ colSet: (13-18)\n" +
 			"             │   ├─ tableId: 2\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null, noxn3.BRQP2:2!null, noxn3.FFTBJ:3!null, noxn3.NUMK2:4!null, noxn3.LETOE:5!null]\n" +
+			"             │       ├─ columns: [row_number() over ( order by noxn3.id asc):0!null->Y3IOU:0, noxn3.id:1!null, noxn3.BRQP2:2!null, noxn3.FFTBJ:3!null, noxn3.NUMK2:4!null, noxn3.LETOE:5!null]\n" +
 			"             │       └─ Sort(noxn3.id:1!null ASC nullsFirst)\n" +
 			"             │           └─ Window\n" +
 			"             │               ├─ row_number() over ( order by noxn3.id ASC)\n" +
@@ -6386,7 +6386,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [nd.TW55N as TW55N, nb6pj.Y3IOU as Y3IOU]\n" +
-			" └─ Sort(nd.TW55N as TW55N ASC, nb6pj.Y3IOU as Y3IOU ASC)\n" +
+			" └─ Sort(TW55N ASC, Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.TW55N as TW55N, nb6pj.Y3IOU as Y3IOU]\n" +
 			"         └─ LookupJoin\n" +
@@ -6410,7 +6410,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [nd.TW55N as TW55N, nb6pj.Y3IOU as Y3IOU]\n" +
-			" └─ Sort(nd.TW55N as TW55N ASC, nb6pj.Y3IOU as Y3IOU ASC)\n" +
+			" └─ Sort(TW55N ASC, Y3IOU ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [nb6pj.Y3IOU, nb6pj.id, nb6pj.BRQP2, nb6pj.FFTBJ, nb6pj.NUMK2, nb6pj.LETOE, nd.id, nd.DKCAJ, nd.KNG7T, nd.TW55N, nd.QRQXW, nd.ECXAJ, nd.FGG57, nd.ZH72S, nd.FSK67, nd.XQDYT, nd.TCE7A, nd.IWV2H, nd.HPCMS, nd.N5CC2, nd.FHCYT, nd.ETAQ7, nd.A75X7, nd.TW55N as TW55N, nb6pj.Y3IOU as Y3IOU]\n" +
 			"         └─ LookupJoin\n" +
@@ -6450,10 +6450,10 @@ WHERE
 	   E2I7U TYMVL ON (sn.FFTBJ = TYMVL.id)
 	ORDER BY M6T2N ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [(row_number() over ( order by sn.id asc):0!null - 1 (tinyint)) as M6T2N, s7egw.TW55N:1!null as FJVD7, tymvl.TW55N:2!null as KBXXJ, sn.NUMK2:3!null, sn.LETOE:4!null, sn.id:5!null as XLFIA]\n" +
-			" └─ Sort((row_number() over ( order by sn.id asc):0!null - 1 (tinyint)) as M6T2N ASC nullsFirst)\n" +
+			" ├─ columns: [(row_number() over ( order by sn.id asc):0!null - 1 (tinyint))->M6T2N:0, s7egw.TW55N:1!null->FJVD7:0, tymvl.TW55N:2!null->KBXXJ:0, sn.NUMK2:3!null, sn.LETOE:4!null, sn.id:5!null->XLFIA:0]\n" +
+			" └─ Sort(M6T2N:6!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [row_number() over ( order by sn.id asc):0!null, s7egw.TW55N:1!null, tymvl.TW55N:2!null, sn.NUMK2:3!null, sn.LETOE:4!null, sn.id:5!null, (row_number() over ( order by sn.id asc):0!null - 1 (tinyint)) as M6T2N, s7egw.TW55N:1!null as FJVD7, tymvl.TW55N:2!null as KBXXJ, sn.id:5!null as XLFIA]\n" +
+			"         ├─ columns: [row_number() over ( order by sn.id asc):0!null, s7egw.TW55N:1!null, tymvl.TW55N:2!null, sn.NUMK2:3!null, sn.LETOE:4!null, sn.id:5!null, (row_number() over ( order by sn.id asc):0!null - 1 (tinyint))->M6T2N:0, s7egw.TW55N:1!null->FJVD7:0, tymvl.TW55N:2!null->KBXXJ:0, sn.id:5!null->XLFIA:0]\n" +
 			"         └─ Window\n" +
 			"             ├─ row_number() over ( order by sn.id ASC)\n" +
 			"             ├─ s7egw.TW55N:6!null\n" +
@@ -6498,7 +6498,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [(row_number() over ( order by sn.id asc) - 1) as M6T2N, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, sn.NUMK2, sn.LETOE, sn.id as XLFIA]\n" +
-			" └─ Sort((row_number() over ( order by sn.id asc) - 1) as M6T2N ASC)\n" +
+			" └─ Sort(M6T2N ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by sn.id asc), s7egw.TW55N, tymvl.TW55N, sn.NUMK2, sn.LETOE, sn.id, (row_number() over ( order by sn.id asc) - 1) as M6T2N, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, sn.id as XLFIA]\n" +
 			"         └─ Window(row_number() over ( order by sn.id ASC), s7egw.TW55N, tymvl.TW55N, sn.NUMK2, sn.LETOE, sn.id)\n" +
@@ -6526,7 +6526,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [(row_number() over ( order by sn.id asc) - 1) as M6T2N, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, sn.NUMK2, sn.LETOE, sn.id as XLFIA]\n" +
-			" └─ Sort((row_number() over ( order by sn.id asc) - 1) as M6T2N ASC)\n" +
+			" └─ Sort(M6T2N ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [row_number() over ( order by sn.id asc), s7egw.TW55N, tymvl.TW55N, sn.NUMK2, sn.LETOE, sn.id, (row_number() over ( order by sn.id asc) - 1) as M6T2N, s7egw.TW55N as FJVD7, tymvl.TW55N as KBXXJ, sn.id as XLFIA]\n" +
 			"         └─ Window(row_number() over ( order by sn.id ASC), s7egw.TW55N, tymvl.TW55N, sn.NUMK2, sn.LETOE, sn.id)\n" +
@@ -6557,7 +6557,7 @@ WHERE
 		Query: `
 	SELECT id FZZVR, ROW_NUMBER() OVER (ORDER BY sn.id ASC) - 1 M6T2N FROM NOXN3 sn`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sn.id:1!null as FZZVR, (row_number() over ( order by sn.id asc):0!null - 1 (tinyint)) as M6T2N]\n" +
+			" ├─ columns: [sn.id:1!null->FZZVR:0, (row_number() over ( order by sn.id asc):0!null - 1 (tinyint))->M6T2N:0]\n" +
 			" └─ Window\n" +
 			"     ├─ row_number() over ( order by sn.id ASC)\n" +
 			"     ├─ sn.id:0!null\n" +
@@ -6758,7 +6758,7 @@ WHERE
 	   YYKXN
 	`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [athcu.T4IBQ:1!null as T4IBQ, athcu.TW55N:3!null as TW55N, CASE  WHEN fc.OZTQF:8!null IS NULL THEN 0 (tinyint) WHEN IN\n" +
+			" ├─ columns: [athcu.T4IBQ:1!null->T4IBQ:0, athcu.TW55N:3!null->TW55N:0, CASE  WHEN fc.OZTQF:8!null IS NULL THEN 0 (tinyint) WHEN IN\n" +
 			" │   ├─ left: athcu.SJ5DU:5\n" +
 			" │   └─ right: TUPLE(log (longtext), com (longtext), ex (longtext))\n" +
 			" │   THEN 0 (tinyint) WHEN Eq\n" +
@@ -6770,7 +6770,7 @@ WHERE
 			" │   THEN fc.OZTQF:8!null WHEN Eq\n" +
 			" │   ├─ athcu.SOWRY:4!null\n" +
 			" │   └─ o (longtext)\n" +
-			" │   THEN (fc.OZTQF:8!null - 1 (tinyint)) END as OZTQF]\n" +
+			" │   THEN (fc.OZTQF:8!null - 1 (tinyint)) END->OZTQF:0]\n" +
 			" └─ Sort(athcu.YYKXN:2!null ASC nullsFirst)\n" +
 			"     └─ LeftOuterLookupJoin\n" +
 			"         ├─ SubqueryAlias\n" +
@@ -6781,7 +6781,7 @@ WHERE
 			"         │   ├─ colSet: (63-68)\n" +
 			"         │   ├─ tableId: 6\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [tmdtp.B2TX3:0!null, tmdtp.T4IBQ:1!null, nd.id:2!null as YYKXN, nd.TW55N:5!null as TW55N, nd.FSK67:10!null as SOWRY, Subquery\n" +
+			"         │       ├─ columns: [tmdtp.B2TX3:0!null, tmdtp.T4IBQ:1!null, nd.id:2!null->YYKXN:0, nd.TW55N:5!null->TW55N:0, nd.FSK67:10!null->SOWRY:0, Subquery\n" +
 			"         │       │   ├─ cacheable: false\n" +
 			"         │       │   ├─ alias-string: select nt.DZLIM from F35MI as nt where nt.id = nd.DKCAJ\n" +
 			"         │       │   └─ Project\n" +
@@ -6799,9 +6799,9 @@ WHERE
 			"         │       │                   └─ Table\n" +
 			"         │       │                       ├─ name: F35MI\n" +
 			"         │       │                       └─ columns: [id dzlim]\n" +
-			"         │       │   as SJ5DU]\n" +
+			"         │       │  ->SJ5DU:0]\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [tmdtp.B2TX3:17!null, tmdtp.T4IBQ:18!null, nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null as YYKXN, nd.TW55N:3!null as TW55N, nd.FSK67:8!null as SOWRY, Subquery\n" +
+			"         │           ├─ columns: [tmdtp.B2TX3:17!null, tmdtp.T4IBQ:18!null, nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nd.id:0!null->YYKXN:0, nd.TW55N:3!null->TW55N:0, nd.FSK67:8!null->SOWRY:0, Subquery\n" +
 			"         │           │   ├─ cacheable: false\n" +
 			"         │           │   ├─ alias-string: select nt.DZLIM from F35MI as nt where nt.id = nd.DKCAJ\n" +
 			"         │           │   └─ Project\n" +
@@ -6819,7 +6819,7 @@ WHERE
 			"         │           │                   └─ Table\n" +
 			"         │           │                       ├─ name: F35MI\n" +
 			"         │           │                       └─ columns: [id dzlim]\n" +
-			"         │           │   as SJ5DU]\n" +
+			"         │           │  ->SJ5DU:0]\n" +
 			"         │           └─ CrossHashJoin\n" +
 			"         │               ├─ TableAlias(nd)\n" +
 			"         │               │   └─ Table\n" +
@@ -6838,7 +6838,7 @@ WHERE
 			"         │                       ├─ colSet: (37,38)\n" +
 			"         │                       ├─ tableId: 3\n" +
 			"         │                       └─ Project\n" +
-			"         │                           ├─ columns: [bs.id:2!null as B2TX3, cla.FTQLQ:1!null as T4IBQ]\n" +
+			"         │                           ├─ columns: [bs.id:2!null->B2TX3:0, cla.FTQLQ:1!null->T4IBQ:0]\n" +
 			"         │                           └─ MergeJoin\n" +
 			"         │                               ├─ cmp: Eq\n" +
 			"         │                               │   ├─ cla.id:0!null\n" +
@@ -7128,7 +7128,7 @@ WHERE
 	) XPRW6
 	GROUP BY T4IBQ, ECUWU`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xprw6.T4IBQ:2!null as T4IBQ, xprw6.ECUWU:3!null as ECUWU, sum(xprw6.b5ouf):0!null as B5OUF, sum(xprw6.sp4si):1!null as SP4SI]\n" +
+			" ├─ columns: [xprw6.T4IBQ:2!null->T4IBQ:0, xprw6.ECUWU:3!null->ECUWU:0, sum(xprw6.b5ouf):0!null->B5OUF:0, sum(xprw6.sp4si):1!null->SP4SI:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(xprw6.B5OUF:3), SUM(xprw6.SP4SI:4!null), xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
 			"     ├─ group: xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
@@ -7140,7 +7140,7 @@ WHERE
 			"         ├─ colSet: (221-225)\n" +
 			"         ├─ tableId: 25\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [nrfj3.T4IBQ:1!null as T4IBQ, nrfj3.ECUWU:2!null as ECUWU, nrfj3.GSTQA:3!null as GSTQA, nrfj3.B5OUF:4 as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null as SP4SI]\n" +
+			"             ├─ columns: [nrfj3.T4IBQ:1!null->T4IBQ:0, nrfj3.ECUWU:2!null->ECUWU:0, nrfj3.GSTQA:3!null->GSTQA:0, nrfj3.B5OUF:4->B5OUF:0, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null->SP4SI:0]\n" +
 			"             └─ GroupBy\n" +
 			"                 ├─ select: SUM(CASE  WHEN Or\n" +
 			"                 │   ├─ LessThan\n" +
@@ -7169,7 +7169,7 @@ WHERE
 			"                                 ├─ colSet: (201-207)\n" +
 			"                                 ├─ tableId: 23\n" +
 			"                                 └─ Project\n" +
-			"                                     ├─ columns: [bs.T4IBQ:1!null as T4IBQ, pa.DZLIM:6!null as ECUWU, pga.DZLIM:12!null as GSTQA, pog.B5OUF:10, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:16!null as TW55N]\n" +
+			"                                     ├─ columns: [bs.T4IBQ:1!null->T4IBQ:0, pa.DZLIM:6!null->ECUWU:0, pga.DZLIM:12!null->GSTQA:0, pog.B5OUF:10, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:16!null->TW55N:0]\n" +
 			"                                     └─ Filter\n" +
 			"                                         ├─ Eq\n" +
 			"                                         │   ├─ ms.D237E:4!null\n" +
@@ -7203,7 +7203,7 @@ WHERE
 			"                                             │   │   │   │       │   ├─ T4IBQ:1!null\n" +
 			"                                             │   │   │   │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null as T4IBQ]\n" +
+			"                                             │   │   │   │           ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null->T4IBQ:0]\n" +
 			"                                             │   │   │   │           └─ MergeJoin\n" +
 			"                                             │   │   │   │               ├─ cmp: Eq\n" +
 			"                                             │   │   │   │               │   ├─ thnts.IXUXU:1\n" +
@@ -7381,7 +7381,7 @@ WHERE
 			"                                             │               │   └─ Eq\n" +
 			"                                             │               │       ├─ iq.IDWIO:4!null\n" +
 			"                                             │               │       └─ TSG (longtext)\n" +
-			"                                             │               │   THEN 0 (tinyint) ELSE NULL (null) END as YHYLK]\n" +
+			"                                             │               │   THEN 0 (tinyint) ELSE NULL (null) END->YHYLK:0]\n" +
 			"                                             │               └─ LeftOuterHashJoin\n" +
 			"                                             │                   ├─ Eq\n" +
 			"                                             │                   │   ├─ w2mao.YH4XB:6!null\n" +
@@ -7395,7 +7395,7 @@ WHERE
 			"                                             │                   │   │   ├─ colSet: (168-172)\n" +
 			"                                             │                   │   │   ├─ tableId: 17\n" +
 			"                                             │                   │   │   └─ Project\n" +
-			"                                             │                   │   │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.BRQP2:12!null, mf.id:4!null as Z7CP5, mf.FSDY2:7!null, nma.DZLIM:11!null as IDWIO]\n" +
+			"                                             │                   │   │       ├─ columns: [cla.FTQLQ:1!null->T4IBQ:0, sn.BRQP2:12!null, mf.id:4!null->Z7CP5:0, mf.FSDY2:7!null, nma.DZLIM:11!null->IDWIO:0]\n" +
 			"                                             │                   │   │       └─ HashJoin\n" +
 			"                                             │                   │   │           ├─ Eq\n" +
 			"                                             │                   │   │           │   ├─ mf.GXLUB:5!null\n" +
@@ -8003,7 +8003,7 @@ WHERE
 	) XPRW6
 	GROUP BY T4IBQ, ECUWU`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xprw6.T4IBQ:2!null as T4IBQ, xprw6.ECUWU:3!null as ECUWU, sum(xprw6.b5ouf):0!null as B5OUF, sum(xprw6.sp4si):1!null as SP4SI]\n" +
+			" ├─ columns: [xprw6.T4IBQ:2!null->T4IBQ:0, xprw6.ECUWU:3!null->ECUWU:0, sum(xprw6.b5ouf):0!null->B5OUF:0, sum(xprw6.sp4si):1!null->SP4SI:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(xprw6.B5OUF:3), SUM(xprw6.SP4SI:4!null), xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
 			"     ├─ group: xprw6.T4IBQ:0!null, xprw6.ECUWU:1!null\n" +
@@ -8015,7 +8015,7 @@ WHERE
 			"         ├─ colSet: (221-225)\n" +
 			"         ├─ tableId: 25\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [nrfj3.T4IBQ:1!null as T4IBQ, nrfj3.ECUWU:2!null as ECUWU, nrfj3.GSTQA:3!null as GSTQA, nrfj3.B5OUF:4 as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null as SP4SI]\n" +
+			"             ├─ columns: [nrfj3.T4IBQ:1!null->T4IBQ:0, nrfj3.ECUWU:2!null->ECUWU:0, nrfj3.GSTQA:3!null->GSTQA:0, nrfj3.B5OUF:4->B5OUF:0, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end):0!null->SP4SI:0]\n" +
 			"             └─ GroupBy\n" +
 			"                 ├─ select: SUM(CASE  WHEN Or\n" +
 			"                 │   ├─ LessThan\n" +
@@ -8044,7 +8044,7 @@ WHERE
 			"                                 ├─ colSet: (201-207)\n" +
 			"                                 ├─ tableId: 23\n" +
 			"                                 └─ Project\n" +
-			"                                     ├─ columns: [bs.T4IBQ:1!null as T4IBQ, pa.DZLIM:6!null as ECUWU, pga.DZLIM:12!null as GSTQA, pog.B5OUF:10, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:16!null as TW55N]\n" +
+			"                                     ├─ columns: [bs.T4IBQ:1!null->T4IBQ:0, pa.DZLIM:6!null->ECUWU:0, pga.DZLIM:12!null->GSTQA:0, pog.B5OUF:10, fc.OZTQF:20!null, f26zw.YHYLK:24, nd.TW55N:16!null->TW55N:0]\n" +
 			"                                     └─ Filter\n" +
 			"                                         ├─ Eq\n" +
 			"                                         │   ├─ ms.D237E:4!null\n" +
@@ -8078,7 +8078,7 @@ WHERE
 			"                                             │   │   │   │       │   ├─ T4IBQ:1!null\n" +
 			"                                             │   │   │   │       │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null as T4IBQ]\n" +
+			"                                             │   │   │   │           ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null->T4IBQ:0]\n" +
 			"                                             │   │   │   │           └─ MergeJoin\n" +
 			"                                             │   │   │   │               ├─ cmp: Eq\n" +
 			"                                             │   │   │   │               │   ├─ thnts.IXUXU:1\n" +
@@ -8256,7 +8256,7 @@ WHERE
 			"                                             │               │   └─ Eq\n" +
 			"                                             │               │       ├─ iq.IDWIO:4!null\n" +
 			"                                             │               │       └─ TSG (longtext)\n" +
-			"                                             │               │   THEN 0 (tinyint) ELSE NULL (null) END as YHYLK]\n" +
+			"                                             │               │   THEN 0 (tinyint) ELSE NULL (null) END->YHYLK:0]\n" +
 			"                                             │               └─ LeftOuterHashJoin\n" +
 			"                                             │                   ├─ Eq\n" +
 			"                                             │                   │   ├─ w2mao.YH4XB:6!null\n" +
@@ -8270,7 +8270,7 @@ WHERE
 			"                                             │                   │   │   ├─ colSet: (168-172)\n" +
 			"                                             │                   │   │   ├─ tableId: 17\n" +
 			"                                             │                   │   │   └─ Project\n" +
-			"                                             │                   │   │       ├─ columns: [cla.FTQLQ:12!null as T4IBQ, sn.BRQP2:0!null, mf.id:5!null as Z7CP5, mf.FSDY2:8!null, nma.DZLIM:4!null as IDWIO]\n" +
+			"                                             │                   │   │       ├─ columns: [cla.FTQLQ:12!null->T4IBQ:0, sn.BRQP2:0!null, mf.id:5!null->Z7CP5:0, mf.FSDY2:8!null, nma.DZLIM:4!null->IDWIO:0]\n" +
 			"                                             │                   │   │       └─ HashJoin\n" +
 			"                                             │                   │   │           ├─ Eq\n" +
 			"                                             │                   │   │           │   ├─ mf.GXLUB:6!null\n" +
@@ -8786,7 +8786,7 @@ WHERE
 	   ON XJ2RD.WNUNU = TUSAY.XLFIA
 	ORDER BY Y46B2 ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [tusay.Y3IOU:3!null as RWGEU]\n" +
+			" ├─ columns: [tusay.Y3IOU:3!null->RWGEU:0]\n" +
 			" └─ Sort(xj2rd.Y46B2:0!null ASC nullsFirst)\n" +
 			"     └─ HashJoin\n" +
 			"         ├─ Eq\n" +
@@ -8800,7 +8800,7 @@ WHERE
 			"         │   ├─ colSet: (10-12)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [qywqd.id:0!null as Y46B2, qywqd.WNUNU:1!null as WNUNU, qywqd.HVHRZ:2!null as HVHRZ]\n" +
+			"         │       ├─ columns: [qywqd.id:0!null->Y46B2:0, qywqd.WNUNU:1!null->WNUNU:0, qywqd.HVHRZ:2!null->HVHRZ:0]\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: QYWQD\n" +
 			"         │           ├─ columns: [id wnunu hvhrz]\n" +
@@ -8817,7 +8817,7 @@ WHERE
 			"                 ├─ colSet: (26,27)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null as XLFIA]\n" +
+			"                     ├─ columns: [row_number() over ( order by noxn3.id asc):0!null->Y3IOU:0, noxn3.id:1!null->XLFIA:0]\n" +
 			"                     └─ Window\n" +
 			"                         ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                         ├─ noxn3.id:0!null\n" +
@@ -8948,7 +8948,7 @@ WHERE
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [CASE  WHEN NOT\n" +
 			" │   └─ yzxyp.Z35GY:1!null IS NULL\n" +
-			" │   THEN yzxyp.Z35GY:1!null ELSE -1 (tinyint) END as FMSOH]\n" +
+			" │   THEN yzxyp.Z35GY:1!null ELSE -1 (tinyint) END->FMSOH:0]\n" +
 			" └─ SubqueryAlias\n" +
 			"     ├─ name: yzxyp\n" +
 			"     ├─ outerVisibility: false\n" +
@@ -8971,7 +8971,7 @@ WHERE
 			"                 │   ├─ colSet: (19)\n" +
 			"                 │   ├─ tableId: 2\n" +
 			"                 │   └─ Project\n" +
-			"                 │       ├─ columns: [e2i7u.id:0!null as T722E]\n" +
+			"                 │       ├─ columns: [e2i7u.id:0!null->T722E:0]\n" +
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: E2I7U\n" +
 			"                 │           ├─ columns: [id]\n" +
@@ -8988,7 +8988,7 @@ WHERE
 			"                         ├─ colSet: (31,32)\n" +
 			"                         ├─ tableId: 4\n" +
 			"                         └─ Project\n" +
-			"                             ├─ columns: [amyxq.LUEVY:1!null as ZPAIK, max(amyxq.z35gy):0!null as Z35GY]\n" +
+			"                             ├─ columns: [amyxq.LUEVY:1!null->ZPAIK:0, max(amyxq.z35gy):0!null->Z35GY:0]\n" +
 			"                             └─ GroupBy\n" +
 			"                                 ├─ select: MAX(amyxq.Z35GY:1!null), amyxq.LUEVY:0!null\n" +
 			"                                 ├─ group: amyxq.luevy:0!null\n" +
@@ -9129,7 +9129,7 @@ WHERE
 			" │   THEN 2 (tinyint) WHEN Eq\n" +
 			" │   ├─ e2i7u.FSK67:8!null\n" +
 			" │   └─ CRZ2X (longtext)\n" +
-			" │   THEN 0 (tinyint) ELSE 3 (tinyint) END as SZ6KK]\n" +
+			" │   THEN 0 (tinyint) ELSE 3 (tinyint) END->SZ6KK:0]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [e2i7u.id:0!null, e2i7u.DKCAJ:1!null, e2i7u.KNG7T:2, e2i7u.TW55N:3!null, e2i7u.QRQXW:4!null, e2i7u.ECXAJ:5!null, e2i7u.FGG57:6, e2i7u.ZH72S:7, e2i7u.FSK67:8!null, e2i7u.XQDYT:9!null, e2i7u.TCE7A:10, e2i7u.IWV2H:11, e2i7u.HPCMS:12!null, e2i7u.N5CC2:13, e2i7u.FHCYT:14, e2i7u.ETAQ7:15, e2i7u.A75X7:16, CASE  WHEN e2i7u.FGG57:6 IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
 			"     │   ├─ left: e2i7u.id:0!null\n" +
@@ -9162,7 +9162,7 @@ WHERE
 			"     │   THEN 2 (tinyint) WHEN Eq\n" +
 			"     │   ├─ e2i7u.FSK67:8!null\n" +
 			"     │   └─ CRZ2X (longtext)\n" +
-			"     │   THEN 0 (tinyint) ELSE 3 (tinyint) END as SZ6KK]\n" +
+			"     │   THEN 0 (tinyint) ELSE 3 (tinyint) END->SZ6KK:0]\n" +
 			"     └─ IndexedTableAccess(E2I7U)\n" +
 			"         ├─ index: [E2I7U.id]\n" +
 			"         ├─ static: [{[NULL, ∞)}]\n" +
@@ -9326,7 +9326,7 @@ WHERE
 		ExpectedPlan: "Sort(ckele.M6T2N:4!null ASC nullsFirst)\n" +
 			" └─ Distinct\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
+			"         ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2->BTXC5:0, oxxei.vaf:4->vaf:0, oxxei.QCGTS:5->QCGTS:0, oxxei.SNY4H:6!null->SNY4H:0, e52ap.YHVEZ:9!null->YHVEZ:0, e52ap.YAZ4X:10!null->YAZ4X:0]\n" +
 			"         └─ HashJoin\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ ckele.LWQ6O:11!null\n" +
@@ -9343,14 +9343,14 @@ WHERE
 			"             │   │   ├─ colSet: (126-132)\n" +
 			"             │   │   ├─ tableId: 15\n" +
 			"             │   │   └─ Project\n" +
-			"             │   │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:12!null as BDNYB, aac.BTXC5:15 as BTXC5, mf.id:4!null as Z7CP5, CASE  WHEN NOT\n" +
+			"             │   │       ├─ columns: [cla.FTQLQ:1!null->T4IBQ:0, sn.id:12!null->BDNYB:0, aac.BTXC5:15->BTXC5:0, mf.id:4!null->Z7CP5:0, CASE  WHEN NOT\n" +
 			"             │   │       │   └─ mf.LT7K6:9 IS NULL\n" +
-			"             │   │       │   THEN mf.LT7K6:9 ELSE mf.SPPYD:10 END as vaf, CASE  WHEN NOT\n" +
+			"             │   │       │   THEN mf.LT7K6:9 ELSE mf.SPPYD:10 END->vaf:0, CASE  WHEN NOT\n" +
 			"             │   │       │   └─ mf.QCGTS:11 IS NULL\n" +
-			"             │   │       │   THEN mf.QCGTS:11 ELSE 0.5 (decimal(2,1)) END as QCGTS, CASE  WHEN Eq\n" +
+			"             │   │       │   THEN mf.QCGTS:11 ELSE 0.5 (decimal(2,1)) END->QCGTS:0, CASE  WHEN Eq\n" +
 			"             │   │       │   ├─ vc.ZNP4P:19!null\n" +
 			"             │   │       │   └─ L5Q44 (longtext)\n" +
-			"             │   │       │   THEN 1 (tinyint) ELSE 0 (tinyint) END as SNY4H]\n" +
+			"             │   │       │   THEN 1 (tinyint) ELSE 0 (tinyint) END->SNY4H:0]\n" +
 			"             │   │       └─ HashJoin\n" +
 			"             │   │           ├─ Eq\n" +
 			"             │   │           │   ├─ vc.id:18!null\n" +
@@ -9454,16 +9454,16 @@ WHERE
 			"             │           ├─ colSet: (133-136)\n" +
 			"             │           ├─ tableId: 16\n" +
 			"             │           └─ Project\n" +
-			"             │               ├─ columns: [nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
+			"             │               ├─ columns: [nd.TW55N:13!null->KUXQY:0, sn.id:0!null->BDNYB:0, nma.DZLIM:28!null->YHVEZ:0, CASE  WHEN LessThan\n" +
 			"             │               │   ├─ nd.TCE7A:20\n" +
 			"             │               │   └─ 0.9 (decimal(2,1))\n" +
-			"             │               │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
+			"             │               │   THEN 1 (tinyint) ELSE 0 (tinyint) END->YAZ4X:0]\n" +
 			"             │               └─ Sort(sn.id:0!null ASC nullsFirst)\n" +
 			"             │                   └─ Project\n" +
-			"             │                       ├─ columns: [sn.id:0!null, sn.BRQP2:1!null, sn.FFTBJ:2!null, sn.A7XO2:3, sn.KBO7R:4!null, sn.ECDKM:5, sn.NUMK2:6!null, sn.LETOE:7!null, sn.YKSSU:8, sn.FHCYT:9, nd.id:10!null, nd.DKCAJ:11!null, nd.KNG7T:12, nd.TW55N:13!null, nd.QRQXW:14!null, nd.ECXAJ:15!null, nd.FGG57:16, nd.ZH72S:17, nd.FSK67:18!null, nd.XQDYT:19!null, nd.TCE7A:20, nd.IWV2H:21, nd.HPCMS:22!null, nd.N5CC2:23, nd.FHCYT:24, nd.ETAQ7:25, nd.A75X7:26, nma.id:27!null, nma.DZLIM:28!null, nma.F3YUE:29, nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
+			"             │                       ├─ columns: [sn.id:0!null, sn.BRQP2:1!null, sn.FFTBJ:2!null, sn.A7XO2:3, sn.KBO7R:4!null, sn.ECDKM:5, sn.NUMK2:6!null, sn.LETOE:7!null, sn.YKSSU:8, sn.FHCYT:9, nd.id:10!null, nd.DKCAJ:11!null, nd.KNG7T:12, nd.TW55N:13!null, nd.QRQXW:14!null, nd.ECXAJ:15!null, nd.FGG57:16, nd.ZH72S:17, nd.FSK67:18!null, nd.XQDYT:19!null, nd.TCE7A:20, nd.IWV2H:21, nd.HPCMS:22!null, nd.N5CC2:23, nd.FHCYT:24, nd.ETAQ7:25, nd.A75X7:26, nma.id:27!null, nma.DZLIM:28!null, nma.F3YUE:29, nd.TW55N:13!null->KUXQY:0, sn.id:0!null->BDNYB:0, nma.DZLIM:28!null->YHVEZ:0, CASE  WHEN LessThan\n" +
 			"             │                       │   ├─ nd.TCE7A:20\n" +
 			"             │                       │   └─ 0.9 (decimal(2,1))\n" +
-			"             │                       │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
+			"             │                       │   THEN 1 (tinyint) ELSE 0 (tinyint) END->YAZ4X:0]\n" +
 			"             │                       └─ Filter\n" +
 			"             │                           ├─ NOT\n" +
 			"             │                           │   └─ Eq\n" +
@@ -9512,7 +9512,7 @@ WHERE
 			"                     ├─ colSet: (150,151)\n" +
 			"                     ├─ tableId: 18\n" +
 			"                     └─ Project\n" +
-			"                         ├─ columns: [noxn3.id:1!null as LWQ6O, row_number() over ( order by noxn3.id asc):0!null as M6T2N]\n" +
+			"                         ├─ columns: [noxn3.id:1!null->LWQ6O:0, row_number() over ( order by noxn3.id asc):0!null->M6T2N:0]\n" +
 			"                         └─ Window\n" +
 			"                             ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                             ├─ noxn3.id:0!null\n" +
@@ -9826,7 +9826,7 @@ WHERE
 		ExpectedPlan: "Sort(ckele.M6T2N:4!null ASC nullsFirst)\n" +
 			" └─ Distinct\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2 as BTXC5, oxxei.vaf:4 as vaf, oxxei.QCGTS:5 as QCGTS, oxxei.SNY4H:6!null as SNY4H, e52ap.YHVEZ:9!null as YHVEZ, e52ap.YAZ4X:10!null as YAZ4X]\n" +
+			"         ├─ columns: [oxxei.T4IBQ:0!null, oxxei.Z7CP5:3!null, e52ap.KUXQY:7!null, oxxei.BDNYB:1!null, ckele.M6T2N:12!null, oxxei.BTXC5:2->BTXC5:0, oxxei.vaf:4->vaf:0, oxxei.QCGTS:5->QCGTS:0, oxxei.SNY4H:6!null->SNY4H:0, e52ap.YHVEZ:9!null->YHVEZ:0, e52ap.YAZ4X:10!null->YAZ4X:0]\n" +
 			"         └─ HashJoin\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ ckele.LWQ6O:11!null\n" +
@@ -9843,14 +9843,14 @@ WHERE
 			"             │   │   ├─ colSet: (126-132)\n" +
 			"             │   │   ├─ tableId: 15\n" +
 			"             │   │   └─ Project\n" +
-			"             │   │       ├─ columns: [cla.FTQLQ:15!null as T4IBQ, sn.id:0!null as BDNYB, aac.BTXC5:13 as BTXC5, mf.id:2!null as Z7CP5, CASE  WHEN NOT\n" +
+			"             │   │       ├─ columns: [cla.FTQLQ:15!null->T4IBQ:0, sn.id:0!null->BDNYB:0, aac.BTXC5:13->BTXC5:0, mf.id:2!null->Z7CP5:0, CASE  WHEN NOT\n" +
 			"             │   │       │   └─ mf.LT7K6:7 IS NULL\n" +
-			"             │   │       │   THEN mf.LT7K6:7 ELSE mf.SPPYD:8 END as vaf, CASE  WHEN NOT\n" +
+			"             │   │       │   THEN mf.LT7K6:7 ELSE mf.SPPYD:8 END->vaf:0, CASE  WHEN NOT\n" +
 			"             │   │       │   └─ mf.QCGTS:9 IS NULL\n" +
-			"             │   │       │   THEN mf.QCGTS:9 ELSE 0.5 (decimal(2,1)) END as QCGTS, CASE  WHEN Eq\n" +
+			"             │   │       │   THEN mf.QCGTS:9 ELSE 0.5 (decimal(2,1)) END->QCGTS:0, CASE  WHEN Eq\n" +
 			"             │   │       │   ├─ vc.ZNP4P:19!null\n" +
 			"             │   │       │   └─ L5Q44 (longtext)\n" +
-			"             │   │       │   THEN 1 (tinyint) ELSE 0 (tinyint) END as SNY4H]\n" +
+			"             │   │       │   THEN 1 (tinyint) ELSE 0 (tinyint) END->SNY4H:0]\n" +
 			"             │   │       └─ HashJoin\n" +
 			"             │   │           ├─ Eq\n" +
 			"             │   │           │   ├─ vc.id:18!null\n" +
@@ -9948,16 +9948,16 @@ WHERE
 			"             │           ├─ colSet: (133-136)\n" +
 			"             │           ├─ tableId: 16\n" +
 			"             │           └─ Project\n" +
-			"             │               ├─ columns: [nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
+			"             │               ├─ columns: [nd.TW55N:13!null->KUXQY:0, sn.id:0!null->BDNYB:0, nma.DZLIM:28!null->YHVEZ:0, CASE  WHEN LessThan\n" +
 			"             │               │   ├─ nd.TCE7A:20\n" +
 			"             │               │   └─ 0.9 (decimal(2,1))\n" +
-			"             │               │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
+			"             │               │   THEN 1 (tinyint) ELSE 0 (tinyint) END->YAZ4X:0]\n" +
 			"             │               └─ Sort(sn.id:0!null ASC nullsFirst)\n" +
 			"             │                   └─ Project\n" +
-			"             │                       ├─ columns: [sn.id:0!null, sn.BRQP2:1!null, sn.FFTBJ:2!null, sn.A7XO2:3, sn.KBO7R:4!null, sn.ECDKM:5, sn.NUMK2:6!null, sn.LETOE:7!null, sn.YKSSU:8, sn.FHCYT:9, nd.id:10!null, nd.DKCAJ:11!null, nd.KNG7T:12, nd.TW55N:13!null, nd.QRQXW:14!null, nd.ECXAJ:15!null, nd.FGG57:16, nd.ZH72S:17, nd.FSK67:18!null, nd.XQDYT:19!null, nd.TCE7A:20, nd.IWV2H:21, nd.HPCMS:22!null, nd.N5CC2:23, nd.FHCYT:24, nd.ETAQ7:25, nd.A75X7:26, nma.id:27!null, nma.DZLIM:28!null, nma.F3YUE:29, nd.TW55N:13!null as KUXQY, sn.id:0!null as BDNYB, nma.DZLIM:28!null as YHVEZ, CASE  WHEN LessThan\n" +
+			"             │                       ├─ columns: [sn.id:0!null, sn.BRQP2:1!null, sn.FFTBJ:2!null, sn.A7XO2:3, sn.KBO7R:4!null, sn.ECDKM:5, sn.NUMK2:6!null, sn.LETOE:7!null, sn.YKSSU:8, sn.FHCYT:9, nd.id:10!null, nd.DKCAJ:11!null, nd.KNG7T:12, nd.TW55N:13!null, nd.QRQXW:14!null, nd.ECXAJ:15!null, nd.FGG57:16, nd.ZH72S:17, nd.FSK67:18!null, nd.XQDYT:19!null, nd.TCE7A:20, nd.IWV2H:21, nd.HPCMS:22!null, nd.N5CC2:23, nd.FHCYT:24, nd.ETAQ7:25, nd.A75X7:26, nma.id:27!null, nma.DZLIM:28!null, nma.F3YUE:29, nd.TW55N:13!null->KUXQY:0, sn.id:0!null->BDNYB:0, nma.DZLIM:28!null->YHVEZ:0, CASE  WHEN LessThan\n" +
 			"             │                       │   ├─ nd.TCE7A:20\n" +
 			"             │                       │   └─ 0.9 (decimal(2,1))\n" +
-			"             │                       │   THEN 1 (tinyint) ELSE 0 (tinyint) END as YAZ4X]\n" +
+			"             │                       │   THEN 1 (tinyint) ELSE 0 (tinyint) END->YAZ4X:0]\n" +
 			"             │                       └─ Filter\n" +
 			"             │                           ├─ NOT\n" +
 			"             │                           │   └─ Eq\n" +
@@ -10006,7 +10006,7 @@ WHERE
 			"                     ├─ colSet: (150,151)\n" +
 			"                     ├─ tableId: 18\n" +
 			"                     └─ Project\n" +
-			"                         ├─ columns: [noxn3.id:1!null as LWQ6O, row_number() over ( order by noxn3.id asc):0!null as M6T2N]\n" +
+			"                         ├─ columns: [noxn3.id:1!null->LWQ6O:0, row_number() over ( order by noxn3.id asc):0!null->M6T2N:0]\n" +
 			"                         └─ Window\n" +
 			"                             ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                             ├─ noxn3.id:0!null\n" +
@@ -10418,7 +10418,7 @@ WHERE
 	   (SELECT * FROM TPXBU) aac
 	ON aac.id = MJR3D.M22QN`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [mf.FTQLQ:21!null as T4IBQ, CASE  WHEN NOT\n" +
+			" ├─ columns: [mf.FTQLQ:21!null->T4IBQ:0, CASE  WHEN NOT\n" +
 			" │   └─ mjr3d.QNI57:9!null IS NULL\n" +
 			" │   THEN Subquery\n" +
 			" │   ├─ cacheable: false\n" +
@@ -10437,7 +10437,7 @@ WHERE
 			" │               ├─ colSet: (256,257)\n" +
 			" │               ├─ tableId: 27\n" +
 			" │               └─ Project\n" +
-			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
+			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint))->M6T2N:0]\n" +
 			" │                   └─ Window\n" +
 			" │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			" │                       ├─ noxn3.id:34!null\n" +
@@ -10465,7 +10465,7 @@ WHERE
 			" │               ├─ colSet: (258,259)\n" +
 			" │               ├─ tableId: 28\n" +
 			" │               └─ Project\n" +
-			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint)) as M6T2N]\n" +
+			" │                   ├─ columns: [noxn3.id:35!null, (row_number() over ( order by noxn3.id asc):34!null - 1 (tinyint))->M6T2N:0]\n" +
 			" │                   └─ Window\n" +
 			" │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			" │                       ├─ noxn3.id:34!null\n" +
@@ -10474,9 +10474,9 @@ WHERE
 			" │                           ├─ columns: [id]\n" +
 			" │                           ├─ colSet: (1-10)\n" +
 			" │                           └─ tableId: 1\n" +
-			" │   END as M6T2N, mjr3d.GE5EL:4 as GE5EL, mjr3d.F7A4Q:5 as F7A4Q, mjr3d.CC4AX:7 as CC4AX, mjr3d.SL76B:8!null as SL76B, aac.BTXC5:25 as YEBDJ, mjr3d.PSMU6:2!null]\n" +
+			" │   END->M6T2N:0, mjr3d.GE5EL:4->GE5EL:0, mjr3d.F7A4Q:5->F7A4Q:0, mjr3d.CC4AX:7->CC4AX:0, mjr3d.SL76B:8!null->SL76B:0, aac.BTXC5:25->YEBDJ:0, mjr3d.PSMU6:2!null]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.PSMU6:2!null, mjr3d.M22QN:3!null, mjr3d.GE5EL:4, mjr3d.F7A4Q:5, mjr3d.ESFVY:6!null, mjr3d.CC4AX:7, mjr3d.SL76B:8!null, mjr3d.QNI57:9!null, mjr3d.TDEIU:10!null, sn.id:11!null, sn.BRQP2:12!null, sn.FFTBJ:13!null, sn.A7XO2:14, sn.KBO7R:15!null, sn.ECDKM:16, sn.NUMK2:17!null, sn.LETOE:18!null, sn.YKSSU:19, sn.FHCYT:20, mf.FTQLQ:21!null, mf.LUEVY:22!null, mf.M22QN:23!null, aac.id:24!null, aac.BTXC5:25, aac.FHCYT:26, mf.FTQLQ:21!null as T4IBQ, CASE  WHEN NOT\n" +
+			"     ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.PSMU6:2!null, mjr3d.M22QN:3!null, mjr3d.GE5EL:4, mjr3d.F7A4Q:5, mjr3d.ESFVY:6!null, mjr3d.CC4AX:7, mjr3d.SL76B:8!null, mjr3d.QNI57:9!null, mjr3d.TDEIU:10!null, sn.id:11!null, sn.BRQP2:12!null, sn.FFTBJ:13!null, sn.A7XO2:14, sn.KBO7R:15!null, sn.ECDKM:16, sn.NUMK2:17!null, sn.LETOE:18!null, sn.YKSSU:19, sn.FHCYT:20, mf.FTQLQ:21!null, mf.LUEVY:22!null, mf.M22QN:23!null, aac.id:24!null, aac.BTXC5:25, aac.FHCYT:26, mf.FTQLQ:21!null->T4IBQ:0, CASE  WHEN NOT\n" +
 			"     │   └─ mjr3d.QNI57:9!null IS NULL\n" +
 			"     │   THEN Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
@@ -10495,7 +10495,7 @@ WHERE
 			"     │               ├─ colSet: (256,257)\n" +
 			"     │               ├─ tableId: 27\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
+			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint))->M6T2N:0]\n" +
 			"     │                   └─ Window\n" +
 			"     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"     │                       ├─ noxn3.id:27!null\n" +
@@ -10523,7 +10523,7 @@ WHERE
 			"     │               ├─ colSet: (258,259)\n" +
 			"     │               ├─ tableId: 28\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint)) as M6T2N]\n" +
+			"     │                   ├─ columns: [noxn3.id:28!null, (row_number() over ( order by noxn3.id asc):27!null - 1 (tinyint))->M6T2N:0]\n" +
 			"     │                   └─ Window\n" +
 			"     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"     │                       ├─ noxn3.id:27!null\n" +
@@ -10532,7 +10532,7 @@ WHERE
 			"     │                           ├─ columns: [id]\n" +
 			"     │                           ├─ colSet: (1-10)\n" +
 			"     │                           └─ tableId: 1\n" +
-			"     │   END as M6T2N, mjr3d.GE5EL:4 as GE5EL, mjr3d.F7A4Q:5 as F7A4Q, mjr3d.CC4AX:7 as CC4AX, mjr3d.SL76B:8!null as SL76B, aac.BTXC5:25 as YEBDJ]\n" +
+			"     │   END->M6T2N:0, mjr3d.GE5EL:4->GE5EL:0, mjr3d.F7A4Q:5->F7A4Q:0, mjr3d.CC4AX:7->CC4AX:0, mjr3d.SL76B:8!null->SL76B:0, aac.BTXC5:25->YEBDJ:0]\n" +
 			"     └─ HashJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ aac.id:24!null\n" +
@@ -10646,13 +10646,13 @@ WHERE
 			"         │   │   │       │   ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, convert\n" +
 			"         │   │   │       │   │   ├─ type: char\n" +
 			"         │   │   │       │   │   └─ jchir.QNI57:9!null\n" +
-			"         │   │   │       │   │   as QNI57, TDEIU:10 as TDEIU]\n" +
+			"         │   │   │       │   │  ->QNI57:0, TDEIU:10->TDEIU:0]\n" +
 			"         │   │   │       │   └─ Union distinct\n" +
 			"         │   │   │       │       ├─ Project\n" +
 			"         │   │   │       │       │   ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, jchir.QNI57:9!null, convert\n" +
 			"         │   │   │       │       │   │   ├─ type: char\n" +
 			"         │   │   │       │       │   │   └─ jchir.TDEIU:10!null\n" +
-			"         │   │   │       │       │   │   as TDEIU]\n" +
+			"         │   │   │       │       │   │  ->TDEIU:0]\n" +
 			"         │   │   │       │       │   └─ SubqueryAlias\n" +
 			"         │   │   │       │       │       ├─ name: jchir\n" +
 			"         │   │   │       │       │       ├─ outerVisibility: false\n" +
@@ -10671,7 +10671,7 @@ WHERE
 			"         │   │   │       │       │           │       └─ NOT\n" +
 			"         │   │   │       │       │           │           └─ TDEIU:10!null IS NULL\n" +
 			"         │   │   │       │       │           └─ Project\n" +
-			"         │   │   │       │       │               ├─ columns: [ism.FV24E:0!null as FJDP5, cpmfe.id:12!null as BJUF2, cpmfe.TW55N:13!null as PSMU6, ism.M22QN:2!null as M22QN, g3yxs.GE5EL:8, g3yxs.F7A4Q:9, g3yxs.ESFVY:6!null, CASE  WHEN IN\n" +
+			"         │   │   │       │       │               ├─ columns: [ism.FV24E:0!null->FJDP5:0, cpmfe.id:12!null->BJUF2:0, cpmfe.TW55N:13!null->PSMU6:0, ism.M22QN:2!null->M22QN:0, g3yxs.GE5EL:8, g3yxs.F7A4Q:9, g3yxs.ESFVY:6!null, CASE  WHEN IN\n" +
 			"         │   │   │       │       │               │   ├─ left: g3yxs.SL76B:7!null\n" +
 			"         │   │   │       │       │               │   └─ right: TUPLE(FO422 (longtext), SJ53H (longtext))\n" +
 			"         │   │   │       │       │               │   THEN 0 (tinyint) WHEN IN\n" +
@@ -10683,7 +10683,7 @@ WHERE
 			"         │   │   │       │       │               │   THEN 2 (tinyint) WHEN IN\n" +
 			"         │   │   │       │       │               │   ├─ left: g3yxs.SL76B:7!null\n" +
 			"         │   │   │       │       │               │   └─ right: TUPLE(Y62X7 (longtext))\n" +
-			"         │   │   │       │       │               │   THEN 3 (tinyint) END as CC4AX, g3yxs.SL76B:7!null as SL76B, yqif4.id:15!null as QNI57, yvhjz.id:18!null as TDEIU]\n" +
+			"         │   │   │       │       │               │   THEN 3 (tinyint) END->CC4AX:0, g3yxs.SL76B:7!null->SL76B:0, yqif4.id:15!null->QNI57:0, yvhjz.id:18!null->TDEIU:0]\n" +
 			"         │   │   │       │       │               └─ Filter\n" +
 			"         │   │   │       │       │                   ├─ Or\n" +
 			"         │   │   │       │       │                   │   ├─ NOT\n" +
@@ -10769,9 +10769,9 @@ WHERE
 			"         │   │   │       │           ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, jchir.QNI57:9!null, convert\n" +
 			"         │   │   │       │           │   ├─ type: char\n" +
 			"         │   │   │       │           │   └─ TDEIU:10\n" +
-			"         │   │   │       │           │   as TDEIU]\n" +
+			"         │   │   │       │           │  ->TDEIU:0]\n" +
 			"         │   │   │       │           └─ Project\n" +
-			"         │   │   │       │               ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, jchir.QNI57:9!null, NULL (null) as TDEIU]\n" +
+			"         │   │   │       │               ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, jchir.QNI57:9!null, NULL (null)->TDEIU:120]\n" +
 			"         │   │   │       │               └─ SubqueryAlias\n" +
 			"         │   │   │       │                   ├─ name: jchir\n" +
 			"         │   │   │       │                   ├─ outerVisibility: false\n" +
@@ -10786,7 +10786,7 @@ WHERE
 			"         │   │   │       │                       │   └─ NOT\n" +
 			"         │   │   │       │                       │       └─ TDEIU:10!null IS NULL\n" +
 			"         │   │   │       │                       └─ Project\n" +
-			"         │   │   │       │                           ├─ columns: [ism.FV24E:0!null as FJDP5, cpmfe.id:12!null as BJUF2, cpmfe.TW55N:13!null as PSMU6, ism.M22QN:2!null as M22QN, g3yxs.GE5EL:8, g3yxs.F7A4Q:9, g3yxs.ESFVY:6!null, CASE  WHEN IN\n" +
+			"         │   │   │       │                           ├─ columns: [ism.FV24E:0!null->FJDP5:0, cpmfe.id:12!null->BJUF2:0, cpmfe.TW55N:13!null->PSMU6:0, ism.M22QN:2!null->M22QN:0, g3yxs.GE5EL:8, g3yxs.F7A4Q:9, g3yxs.ESFVY:6!null, CASE  WHEN IN\n" +
 			"         │   │   │       │                           │   ├─ left: g3yxs.SL76B:7!null\n" +
 			"         │   │   │       │                           │   └─ right: TUPLE(FO422 (longtext), SJ53H (longtext))\n" +
 			"         │   │   │       │                           │   THEN 0 (tinyint) WHEN IN\n" +
@@ -10798,7 +10798,7 @@ WHERE
 			"         │   │   │       │                           │   THEN 2 (tinyint) WHEN IN\n" +
 			"         │   │   │       │                           │   ├─ left: g3yxs.SL76B:7!null\n" +
 			"         │   │   │       │                           │   └─ right: TUPLE(Y62X7 (longtext))\n" +
-			"         │   │   │       │                           │   THEN 3 (tinyint) END as CC4AX, g3yxs.SL76B:7!null as SL76B, yqif4.id:15!null as QNI57, yvhjz.id:18!null as TDEIU]\n" +
+			"         │   │   │       │                           │   THEN 3 (tinyint) END->CC4AX:0, g3yxs.SL76B:7!null->SL76B:0, yqif4.id:15!null->QNI57:0, yvhjz.id:18!null->TDEIU:0]\n" +
 			"         │   │   │       │                           └─ Filter\n" +
 			"         │   │   │       │                               ├─ Or\n" +
 			"         │   │   │       │                               │   ├─ NOT\n" +
@@ -10884,12 +10884,12 @@ WHERE
 			"         │   │   │           ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, convert\n" +
 			"         │   │   │           │   ├─ type: char\n" +
 			"         │   │   │           │   └─ QNI57:9\n" +
-			"         │   │   │           │   as QNI57, convert\n" +
+			"         │   │   │           │  ->QNI57:0, convert\n" +
 			"         │   │   │           │   ├─ type: char\n" +
 			"         │   │   │           │   └─ jchir.TDEIU:10!null\n" +
-			"         │   │   │           │   as TDEIU]\n" +
+			"         │   │   │           │  ->TDEIU:0]\n" +
 			"         │   │   │           └─ Project\n" +
-			"         │   │   │               ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, NULL (null) as QNI57, jchir.TDEIU:10!null]\n" +
+			"         │   │   │               ├─ columns: [jchir.FJDP5:0!null, jchir.BJUF2:1!null, jchir.PSMU6:2!null, jchir.M22QN:3!null, jchir.GE5EL:4, jchir.F7A4Q:5, jchir.ESFVY:6!null, jchir.CC4AX:7, jchir.SL76B:8!null, NULL (null)->QNI57:132, jchir.TDEIU:10!null]\n" +
 			"         │   │   │               └─ SubqueryAlias\n" +
 			"         │   │   │                   ├─ name: jchir\n" +
 			"         │   │   │                   ├─ outerVisibility: false\n" +
@@ -10904,7 +10904,7 @@ WHERE
 			"         │   │   │                       │   └─ NOT\n" +
 			"         │   │   │                       │       └─ TDEIU:10!null IS NULL\n" +
 			"         │   │   │                       └─ Project\n" +
-			"         │   │   │                           ├─ columns: [ism.FV24E:0!null as FJDP5, cpmfe.id:12!null as BJUF2, cpmfe.TW55N:13!null as PSMU6, ism.M22QN:2!null as M22QN, g3yxs.GE5EL:8, g3yxs.F7A4Q:9, g3yxs.ESFVY:6!null, CASE  WHEN IN\n" +
+			"         │   │   │                           ├─ columns: [ism.FV24E:0!null->FJDP5:0, cpmfe.id:12!null->BJUF2:0, cpmfe.TW55N:13!null->PSMU6:0, ism.M22QN:2!null->M22QN:0, g3yxs.GE5EL:8, g3yxs.F7A4Q:9, g3yxs.ESFVY:6!null, CASE  WHEN IN\n" +
 			"         │   │   │                           │   ├─ left: g3yxs.SL76B:7!null\n" +
 			"         │   │   │                           │   └─ right: TUPLE(FO422 (longtext), SJ53H (longtext))\n" +
 			"         │   │   │                           │   THEN 0 (tinyint) WHEN IN\n" +
@@ -10916,7 +10916,7 @@ WHERE
 			"         │   │   │                           │   THEN 2 (tinyint) WHEN IN\n" +
 			"         │   │   │                           │   ├─ left: g3yxs.SL76B:7!null\n" +
 			"         │   │   │                           │   └─ right: TUPLE(Y62X7 (longtext))\n" +
-			"         │   │   │                           │   THEN 3 (tinyint) END as CC4AX, g3yxs.SL76B:7!null as SL76B, yqif4.id:15!null as QNI57, yvhjz.id:18!null as TDEIU]\n" +
+			"         │   │   │                           │   THEN 3 (tinyint) END->CC4AX:0, g3yxs.SL76B:7!null->SL76B:0, yqif4.id:15!null->QNI57:0, yvhjz.id:18!null->TDEIU:0]\n" +
 			"         │   │   │                           └─ Filter\n" +
 			"         │   │   │                               ├─ Or\n" +
 			"         │   │   │                               │   ├─ NOT\n" +
@@ -11911,7 +11911,7 @@ WHERE
            ZMSPR
    )`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [fs.T4IBQ:0!null as T4IBQ, fs.M6T2N:1 as M6T2N, fs.TUV25:3 as TUV25, fs.BTXC5:2 as YEBDJ]\n" +
+			" ├─ columns: [fs.T4IBQ:0!null->T4IBQ:0, fs.M6T2N:1->M6T2N:0, fs.TUV25:3->TUV25:0, fs.BTXC5:2->YEBDJ:0]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [fs.T4IBQ:0!null, fs.M6T2N:1, fs.BTXC5:2, fs.TUV25:3]\n" +
 			"     └─ Filter\n" +
@@ -11934,7 +11934,7 @@ WHERE
 			"             │   ├─ colSet: (260-263)\n" +
 			"             │   ├─ tableId: 36\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [rsa3y.T4IBQ:3!null as T4IBQ, jmhie.M6T2N:0 as M6T2N, jmhie.BTXC5:1 as BTXC5, jmhie.TUV25:2 as TUV25]\n" +
+			"             │       ├─ columns: [rsa3y.T4IBQ:3!null->T4IBQ:0, jmhie.M6T2N:0->M6T2N:0, jmhie.BTXC5:1->BTXC5:0, jmhie.TUV25:2->TUV25:0]\n" +
 			"             │       └─ CrossHashJoin\n" +
 			"             │           ├─ SubqueryAlias\n" +
 			"             │           │   ├─ name: jmhie\n" +
@@ -11973,7 +11973,7 @@ WHERE
 			"             │           │                   │               ├─ colSet: (210,211)\n" +
 			"             │           │                   │               ├─ tableId: 24\n" +
 			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
@@ -12001,7 +12001,7 @@ WHERE
 			"             │           │                   │               ├─ colSet: (212,213)\n" +
 			"             │           │                   │               ├─ tableId: 25\n" +
 			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
@@ -12010,7 +12010,7 @@ WHERE
 			"             │           │                   │                           ├─ columns: [id]\n" +
 			"             │           │                   │                           ├─ colSet: (1-10)\n" +
 			"             │           │                   │                           └─ tableId: 1\n" +
-			"             │           │                   │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"             │           │                   │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
 			"             │           │                       │   └─ mjr3d.QNI57:5!null IS NULL\n" +
@@ -12031,7 +12031,7 @@ WHERE
 			"             │           │                       │               ├─ colSet: (210,211)\n" +
 			"             │           │                       │               ├─ tableId: 24\n" +
 			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
@@ -12059,7 +12059,7 @@ WHERE
 			"             │           │                       │               ├─ colSet: (212,213)\n" +
 			"             │           │                       │               ├─ tableId: 25\n" +
 			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
@@ -12068,7 +12068,7 @@ WHERE
 			"             │           │                       │                           ├─ columns: [id]\n" +
 			"             │           │                       │                           ├─ colSet: (1-10)\n" +
 			"             │           │                       │                           └─ tableId: 1\n" +
-			"             │           │                       │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"             │           │                       │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ Or\n" +
 			"             │           │                           │   ├─ Or\n" +
@@ -12168,7 +12168,7 @@ WHERE
 			"             │           │                           │   │   ├─ tableId: 18\n" +
 			"             │           │                           │   │   └─ Distinct\n" +
 			"             │           │                           │   │       └─ Project\n" +
-			"             │           │                           │   │           ├─ columns: [ism.FV24E:0!null as FJDP5, cpmfe.id:10!null as BJUF2, ism.M22QN:2!null as M22QN, g3yxs.TUV25:7 as TUV25, g3yxs.ESFVY:6!null as ESFVY, yqif4.id:12!null as QNI57, yvhjz.id:15!null as TDEIU]\n" +
+			"             │           │                           │   │           ├─ columns: [ism.FV24E:0!null->FJDP5:0, cpmfe.id:10!null->BJUF2:0, ism.M22QN:2!null->M22QN:0, g3yxs.TUV25:7->TUV25:0, g3yxs.ESFVY:6!null->ESFVY:0, yqif4.id:12!null->QNI57:0, yvhjz.id:15!null->TDEIU:0]\n" +
 			"             │           │                           │   │           └─ Filter\n" +
 			"             │           │                           │   │               ├─ Or\n" +
 			"             │           │                           │   │               │   ├─ NOT\n" +
@@ -12289,7 +12289,7 @@ WHERE
 			"             │                               ├─ colSet: (232-234)\n" +
 			"             │                               ├─ tableId: 17\n" +
 			"             │                               └─ Project\n" +
-			"             │                                   ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:7!null as BDNYB, mf.M22QN:6!null as M22QN]\n" +
+			"             │                                   ├─ columns: [cla.FTQLQ:1!null->T4IBQ:0, sn.id:7!null->BDNYB:0, mf.M22QN:6!null->M22QN:0]\n" +
 			"             │                                   └─ HashJoin\n" +
 			"             │                                       ├─ Eq\n" +
 			"             │                                       │   ├─ bs.id:2!null\n" +
@@ -12357,7 +12357,7 @@ WHERE
 			"                     ├─ tableId: 35\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
-			"                             ├─ columns: [cld.T4IBQ:0!null as T4IBQ, p4pjz.M6T2N:3 as M6T2N, p4pjz.BTXC5:4 as BTXC5, p4pjz.TUV25:7 as TUV25]\n" +
+			"                             ├─ columns: [cld.T4IBQ:0!null->T4IBQ:0, p4pjz.M6T2N:3->M6T2N:0, p4pjz.BTXC5:4->BTXC5:0, p4pjz.TUV25:7->TUV25:0]\n" +
 			"                             └─ Filter\n" +
 			"                                 ├─ NOT\n" +
 			"                                 │   └─ p4pjz.M6T2N:3 IS NULL\n" +
@@ -12377,7 +12377,7 @@ WHERE
 			"                                     │   ├─ colSet: (244-246)\n" +
 			"                                     │   ├─ tableId: 32\n" +
 			"                                     │   └─ Project\n" +
-			"                                     │       ├─ columns: [cla.FTQLQ:1!null as T4IBQ, sn.id:7!null as BDNYB, mf.M22QN:6!null as M22QN]\n" +
+			"                                     │       ├─ columns: [cla.FTQLQ:1!null->T4IBQ:0, sn.id:7!null->BDNYB:0, mf.M22QN:6!null->M22QN:0]\n" +
 			"                                     │       └─ HashJoin\n" +
 			"                                     │           ├─ Eq\n" +
 			"                                     │           │   ├─ bs.id:2!null\n" +
@@ -12463,7 +12463,7 @@ WHERE
 			"                                                 │               ├─ colSet: (210,211)\n" +
 			"                                                 │               ├─ tableId: 24\n" +
 			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                 │                   └─ Window\n" +
 			"                                                 │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                 │                       ├─ noxn3.id:25!null\n" +
@@ -12491,7 +12491,7 @@ WHERE
 			"                                                 │               ├─ colSet: (212,213)\n" +
 			"                                                 │               ├─ tableId: 25\n" +
 			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                 │                   └─ Window\n" +
 			"                                                 │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                 │                       ├─ noxn3.id:25!null\n" +
@@ -12500,7 +12500,7 @@ WHERE
 			"                                                 │                           ├─ columns: [id]\n" +
 			"                                                 │                           ├─ colSet: (1-10)\n" +
 			"                                                 │                           └─ tableId: 1\n" +
-			"                                                 │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"                                                 │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                 └─ Project\n" +
 			"                                                     ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
 			"                                                     │   └─ mjr3d.QNI57:5!null IS NULL\n" +
@@ -12521,7 +12521,7 @@ WHERE
 			"                                                     │               ├─ colSet: (210,211)\n" +
 			"                                                     │               ├─ tableId: 24\n" +
 			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                     │                   └─ Window\n" +
 			"                                                     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                     │                       ├─ noxn3.id:20!null\n" +
@@ -12549,7 +12549,7 @@ WHERE
 			"                                                     │               ├─ colSet: (212,213)\n" +
 			"                                                     │               ├─ tableId: 25\n" +
 			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                     │                   └─ Window\n" +
 			"                                                     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                     │                       ├─ noxn3.id:20!null\n" +
@@ -12558,7 +12558,7 @@ WHERE
 			"                                                     │                           ├─ columns: [id]\n" +
 			"                                                     │                           ├─ colSet: (1-10)\n" +
 			"                                                     │                           └─ tableId: 1\n" +
-			"                                                     │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"                                                     │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                     └─ LeftOuterJoin\n" +
 			"                                                         ├─ Or\n" +
 			"                                                         │   ├─ Or\n" +
@@ -12658,7 +12658,7 @@ WHERE
 			"                                                         │   │   ├─ tableId: 18\n" +
 			"                                                         │   │   └─ Distinct\n" +
 			"                                                         │   │       └─ Project\n" +
-			"                                                         │   │           ├─ columns: [ism.FV24E:0!null as FJDP5, cpmfe.id:10!null as BJUF2, ism.M22QN:2!null as M22QN, g3yxs.TUV25:7 as TUV25, g3yxs.ESFVY:6!null as ESFVY, yqif4.id:12!null as QNI57, yvhjz.id:15!null as TDEIU]\n" +
+			"                                                         │   │           ├─ columns: [ism.FV24E:0!null->FJDP5:0, cpmfe.id:10!null->BJUF2:0, ism.M22QN:2!null->M22QN:0, g3yxs.TUV25:7->TUV25:0, g3yxs.ESFVY:6!null->ESFVY:0, yqif4.id:12!null->QNI57:0, yvhjz.id:15!null->TDEIU:0]\n" +
 			"                                                         │   │           └─ Filter\n" +
 			"                                                         │   │               ├─ Or\n" +
 			"                                                         │   │               │   ├─ NOT\n" +
@@ -13895,7 +13895,7 @@ WHERE
            ZMSPR
    )`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [fs.T4IBQ:0!null as T4IBQ, fs.M6T2N:1 as M6T2N, fs.TUV25:3 as TUV25, fs.BTXC5:2 as YEBDJ]\n" +
+			" ├─ columns: [fs.T4IBQ:0!null->T4IBQ:0, fs.M6T2N:1->M6T2N:0, fs.TUV25:3->TUV25:0, fs.BTXC5:2->YEBDJ:0]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [fs.T4IBQ:0!null, fs.M6T2N:1, fs.BTXC5:2, fs.TUV25:3]\n" +
 			"     └─ Filter\n" +
@@ -13918,7 +13918,7 @@ WHERE
 			"             │   ├─ colSet: (260-263)\n" +
 			"             │   ├─ tableId: 36\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [rsa3y.T4IBQ:3!null as T4IBQ, jmhie.M6T2N:0 as M6T2N, jmhie.BTXC5:1 as BTXC5, jmhie.TUV25:2 as TUV25]\n" +
+			"             │       ├─ columns: [rsa3y.T4IBQ:3!null->T4IBQ:0, jmhie.M6T2N:0->M6T2N:0, jmhie.BTXC5:1->BTXC5:0, jmhie.TUV25:2->TUV25:0]\n" +
 			"             │       └─ CrossHashJoin\n" +
 			"             │           ├─ SubqueryAlias\n" +
 			"             │           │   ├─ name: jmhie\n" +
@@ -13957,7 +13957,7 @@ WHERE
 			"             │           │                   │               ├─ colSet: (210,211)\n" +
 			"             │           │                   │               ├─ tableId: 24\n" +
 			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
@@ -13985,7 +13985,7 @@ WHERE
 			"             │           │                   │               ├─ colSet: (212,213)\n" +
 			"             │           │                   │               ├─ tableId: 25\n" +
 			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                   │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                   │                   └─ Window\n" +
 			"             │           │                   │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                   │                       ├─ noxn3.id:25!null\n" +
@@ -13994,7 +13994,7 @@ WHERE
 			"             │           │                   │                           ├─ columns: [id]\n" +
 			"             │           │                   │                           ├─ colSet: (1-10)\n" +
 			"             │           │                   │                           └─ tableId: 1\n" +
-			"             │           │                   │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"             │           │                   │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                   └─ Project\n" +
 			"             │           │                       ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
 			"             │           │                       │   └─ mjr3d.QNI57:5!null IS NULL\n" +
@@ -14015,7 +14015,7 @@ WHERE
 			"             │           │                       │               ├─ colSet: (210,211)\n" +
 			"             │           │                       │               ├─ tableId: 24\n" +
 			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
@@ -14043,7 +14043,7 @@ WHERE
 			"             │           │                       │               ├─ colSet: (212,213)\n" +
 			"             │           │                       │               ├─ tableId: 25\n" +
 			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"             │           │                       │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"             │           │                       │                   └─ Window\n" +
 			"             │           │                       │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"             │           │                       │                       ├─ noxn3.id:20!null\n" +
@@ -14052,7 +14052,7 @@ WHERE
 			"             │           │                       │                           ├─ columns: [id]\n" +
 			"             │           │                       │                           ├─ colSet: (1-10)\n" +
 			"             │           │                       │                           └─ tableId: 1\n" +
-			"             │           │                       │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"             │           │                       │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ Or\n" +
 			"             │           │                           │   ├─ Or\n" +
@@ -14152,7 +14152,7 @@ WHERE
 			"             │           │                           │   │   ├─ tableId: 18\n" +
 			"             │           │                           │   │   └─ Distinct\n" +
 			"             │           │                           │   │       └─ Project\n" +
-			"             │           │                           │   │           ├─ columns: [ism.FV24E:0!null as FJDP5, cpmfe.id:10!null as BJUF2, ism.M22QN:2!null as M22QN, g3yxs.TUV25:7 as TUV25, g3yxs.ESFVY:6!null as ESFVY, yqif4.id:12!null as QNI57, yvhjz.id:15!null as TDEIU]\n" +
+			"             │           │                           │   │           ├─ columns: [ism.FV24E:0!null->FJDP5:0, cpmfe.id:10!null->BJUF2:0, ism.M22QN:2!null->M22QN:0, g3yxs.TUV25:7->TUV25:0, g3yxs.ESFVY:6!null->ESFVY:0, yqif4.id:12!null->QNI57:0, yvhjz.id:15!null->TDEIU:0]\n" +
 			"             │           │                           │   │           └─ Filter\n" +
 			"             │           │                           │   │               ├─ Or\n" +
 			"             │           │                           │   │               │   ├─ NOT\n" +
@@ -14273,7 +14273,7 @@ WHERE
 			"             │                               ├─ colSet: (232-234)\n" +
 			"             │                               ├─ tableId: 17\n" +
 			"             │                               └─ Project\n" +
-			"             │                                   ├─ columns: [cla.FTQLQ:8!null as T4IBQ, sn.id:0!null as BDNYB, mf.M22QN:4!null as M22QN]\n" +
+			"             │                                   ├─ columns: [cla.FTQLQ:8!null->T4IBQ:0, sn.id:0!null->BDNYB:0, mf.M22QN:4!null->M22QN:0]\n" +
 			"             │                                   └─ HashJoin\n" +
 			"             │                                       ├─ Eq\n" +
 			"             │                                       │   ├─ bs.id:5!null\n" +
@@ -14335,7 +14335,7 @@ WHERE
 			"                     ├─ tableId: 35\n" +
 			"                     └─ Distinct\n" +
 			"                         └─ Project\n" +
-			"                             ├─ columns: [cld.T4IBQ:0!null as T4IBQ, p4pjz.M6T2N:3 as M6T2N, p4pjz.BTXC5:4 as BTXC5, p4pjz.TUV25:7 as TUV25]\n" +
+			"                             ├─ columns: [cld.T4IBQ:0!null->T4IBQ:0, p4pjz.M6T2N:3->M6T2N:0, p4pjz.BTXC5:4->BTXC5:0, p4pjz.TUV25:7->TUV25:0]\n" +
 			"                             └─ Filter\n" +
 			"                                 ├─ NOT\n" +
 			"                                 │   └─ p4pjz.M6T2N:3 IS NULL\n" +
@@ -14355,7 +14355,7 @@ WHERE
 			"                                     │   ├─ colSet: (244-246)\n" +
 			"                                     │   ├─ tableId: 32\n" +
 			"                                     │   └─ Project\n" +
-			"                                     │       ├─ columns: [cla.FTQLQ:8!null as T4IBQ, sn.id:0!null as BDNYB, mf.M22QN:4!null as M22QN]\n" +
+			"                                     │       ├─ columns: [cla.FTQLQ:8!null->T4IBQ:0, sn.id:0!null->BDNYB:0, mf.M22QN:4!null->M22QN:0]\n" +
 			"                                     │       └─ HashJoin\n" +
 			"                                     │           ├─ Eq\n" +
 			"                                     │           │   ├─ bs.id:5!null\n" +
@@ -14435,7 +14435,7 @@ WHERE
 			"                                                 │               ├─ colSet: (210,211)\n" +
 			"                                                 │               ├─ tableId: 24\n" +
 			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                 │                   └─ Window\n" +
 			"                                                 │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                 │                       ├─ noxn3.id:25!null\n" +
@@ -14463,7 +14463,7 @@ WHERE
 			"                                                 │               ├─ colSet: (212,213)\n" +
 			"                                                 │               ├─ tableId: 25\n" +
 			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                 │                   ├─ columns: [noxn3.id:26!null, (row_number() over ( order by noxn3.id asc):25!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                 │                   └─ Window\n" +
 			"                                                 │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                 │                       ├─ noxn3.id:25!null\n" +
@@ -14472,7 +14472,7 @@ WHERE
 			"                                                 │                           ├─ columns: [id]\n" +
 			"                                                 │                           ├─ colSet: (1-10)\n" +
 			"                                                 │                           └─ tableId: 1\n" +
-			"                                                 │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"                                                 │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                 └─ Project\n" +
 			"                                                     ├─ columns: [mjr3d.FJDP5:0!null, mjr3d.BJUF2:1!null, mjr3d.M22QN:2!null, mjr3d.TUV25:3, mjr3d.ESFVY:4!null, mjr3d.QNI57:5!null, mjr3d.TDEIU:6!null, aac.id:7!null, aac.BTXC5:8, aac.FHCYT:9, sn.id:10!null, sn.BRQP2:11!null, sn.FFTBJ:12!null, sn.A7XO2:13, sn.KBO7R:14!null, sn.ECDKM:15, sn.NUMK2:16!null, sn.LETOE:17!null, sn.YKSSU:18, sn.FHCYT:19, CASE  WHEN NOT\n" +
 			"                                                     │   └─ mjr3d.QNI57:5!null IS NULL\n" +
@@ -14493,7 +14493,7 @@ WHERE
 			"                                                     │               ├─ colSet: (210,211)\n" +
 			"                                                     │               ├─ tableId: 24\n" +
 			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                     │                   └─ Window\n" +
 			"                                                     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                     │                       ├─ noxn3.id:20!null\n" +
@@ -14521,7 +14521,7 @@ WHERE
 			"                                                     │               ├─ colSet: (212,213)\n" +
 			"                                                     │               ├─ tableId: 25\n" +
 			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint)) as M6T2N]\n" +
+			"                                                     │                   ├─ columns: [noxn3.id:21!null, (row_number() over ( order by noxn3.id asc):20!null - 1 (tinyint))->M6T2N:0]\n" +
 			"                                                     │                   └─ Window\n" +
 			"                                                     │                       ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                                                     │                       ├─ noxn3.id:20!null\n" +
@@ -14530,7 +14530,7 @@ WHERE
 			"                                                     │                           ├─ columns: [id]\n" +
 			"                                                     │                           ├─ colSet: (1-10)\n" +
 			"                                                     │                           └─ tableId: 1\n" +
-			"                                                     │   END as M6T2N, aac.BTXC5:8 as BTXC5, aac.id:7!null as NTOFG, sn.id:10!null as LWQ6O, mjr3d.TUV25:3 as TUV25]\n" +
+			"                                                     │   END->M6T2N:0, aac.BTXC5:8->BTXC5:0, aac.id:7!null->NTOFG:0, sn.id:10!null->LWQ6O:0, mjr3d.TUV25:3->TUV25:0]\n" +
 			"                                                     └─ LeftOuterJoin\n" +
 			"                                                         ├─ Or\n" +
 			"                                                         │   ├─ Or\n" +
@@ -14630,7 +14630,7 @@ WHERE
 			"                                                         │   │   ├─ tableId: 18\n" +
 			"                                                         │   │   └─ Distinct\n" +
 			"                                                         │   │       └─ Project\n" +
-			"                                                         │   │           ├─ columns: [ism.FV24E:0!null as FJDP5, cpmfe.id:10!null as BJUF2, ism.M22QN:2!null as M22QN, g3yxs.TUV25:7 as TUV25, g3yxs.ESFVY:6!null as ESFVY, yqif4.id:12!null as QNI57, yvhjz.id:15!null as TDEIU]\n" +
+			"                                                         │   │           ├─ columns: [ism.FV24E:0!null->FJDP5:0, cpmfe.id:10!null->BJUF2:0, ism.M22QN:2!null->M22QN:0, g3yxs.TUV25:7->TUV25:0, g3yxs.ESFVY:6!null->ESFVY:0, yqif4.id:12!null->QNI57:0, yvhjz.id:15!null->TDEIU:0]\n" +
 			"                                                         │   │           └─ Filter\n" +
 			"                                                         │   │               ├─ Or\n" +
 			"                                                         │   │               │   ├─ NOT\n" +
@@ -15774,9 +15774,9 @@ ORDER BY id ASC`,
 		Query: `
 SELECT COUNT(*) FROM E2I7U`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null as COUNT(*)]\n" +
+			" ├─ columns: [count(1):0!null->COUNT(*):0]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [E2I7U.COUNT(1):0!null as COUNT(1)]\n" +
+			"     ├─ columns: [E2I7U.COUNT(1):0!null->COUNT(1):0]\n" +
 			"     └─ table_count(E2I7U) as COUNT(1)\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
@@ -15800,7 +15800,7 @@ SELECT
 FROM
    E2I7U`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [(row_number() over ( order by e2i7u.id asc):0!null - 1 (tinyint)) as DICQO, e2i7u.TW55N:1!null]\n" +
+			" ├─ columns: [(row_number() over ( order by e2i7u.id asc):0!null - 1 (tinyint))->DICQO:0, e2i7u.TW55N:1!null]\n" +
 			" └─ Window\n" +
 			"     ├─ row_number() over ( order by e2i7u.id ASC)\n" +
 			"     ├─ e2i7u.TW55N:1!null\n" +
@@ -15845,7 +15845,7 @@ INNER JOIN
    ON XJ2RD.HHVLX = TUSAY.XLFIA
 ORDER BY Y46B2 ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [tusay.Y3IOU:3!null as Q7H3X]\n" +
+			" ├─ columns: [tusay.Y3IOU:3!null->Q7H3X:0]\n" +
 			" └─ Sort(xj2rd.Y46B2:0!null ASC nullsFirst)\n" +
 			"     └─ HashJoin\n" +
 			"         ├─ Eq\n" +
@@ -15859,7 +15859,7 @@ ORDER BY Y46B2 ASC`,
 			"         │   ├─ colSet: (10-12)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [qywqd.id:0!null as Y46B2, qywqd.HHVLX:1!null as HHVLX, qywqd.HVHRZ:2!null as HVHRZ]\n" +
+			"         │       ├─ columns: [qywqd.id:0!null->Y46B2:0, qywqd.HHVLX:1!null->HHVLX:0, qywqd.HVHRZ:2!null->HVHRZ:0]\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: QYWQD\n" +
 			"         │           ├─ columns: [id hhvlx hvhrz]\n" +
@@ -15876,7 +15876,7 @@ ORDER BY Y46B2 ASC`,
 			"                 ├─ colSet: (26,27)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null as XLFIA]\n" +
+			"                     ├─ columns: [row_number() over ( order by noxn3.id asc):0!null->Y3IOU:0, noxn3.id:1!null->XLFIA:0]\n" +
 			"                     └─ Window\n" +
 			"                         ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                         ├─ noxn3.id:0!null\n" +
@@ -15995,9 +15995,9 @@ ORDER BY sn.XLFIA ASC`,
 			"         │   ├─ colSet: (12,13)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [noxn3.id:0!null as XLFIA, noxn3.BRQP2:1!null]\n" +
+			"         │       ├─ columns: [noxn3.id:0!null->XLFIA:0, noxn3.BRQP2:1!null]\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [noxn3.id:0!null, noxn3.BRQP2:1!null, noxn3.FFTBJ:2!null, noxn3.A7XO2:3, noxn3.KBO7R:4!null, noxn3.ECDKM:5, noxn3.NUMK2:6!null, noxn3.LETOE:7!null, noxn3.YKSSU:8, noxn3.FHCYT:9, noxn3.id:0!null as XLFIA]\n" +
+			"         │           ├─ columns: [noxn3.id:0!null, noxn3.BRQP2:1!null, noxn3.FFTBJ:2!null, noxn3.A7XO2:3, noxn3.KBO7R:4!null, noxn3.ECDKM:5, noxn3.NUMK2:6!null, noxn3.LETOE:7!null, noxn3.YKSSU:8, noxn3.FHCYT:9, noxn3.id:0!null->XLFIA:0]\n" +
 			"         │           └─ IndexedTableAccess(NOXN3)\n" +
 			"         │               ├─ index: [NOXN3.id]\n" +
 			"         │               ├─ static: [{[NULL, ∞)}]\n" +
@@ -16020,7 +16020,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                     ├─ columns: [nd.LUEVY:0!null, CASE  WHEN Eq\n" +
 			"                     │   ├─ nma.DZLIM:3!null\n" +
 			"                     │   └─ Q5I4E (longtext)\n" +
-			"                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END as R2SR7]\n" +
+			"                     │   THEN 1 (tinyint) ELSE 0 (tinyint) END->R2SR7:0]\n" +
 			"                     └─ LeftOuterHashJoin\n" +
 			"                         ├─ Eq\n" +
 			"                         │   ├─ nd.HPCMS:1!null\n" +
@@ -16033,7 +16033,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                         │   ├─ colSet: (33,34)\n" +
 			"                         │   ├─ tableId: 4\n" +
 			"                         │   └─ Project\n" +
-			"                         │       ├─ columns: [e2i7u.id:0!null as LUEVY, e2i7u.HPCMS:1!null as HPCMS]\n" +
+			"                         │       ├─ columns: [e2i7u.id:0!null->LUEVY:0, e2i7u.HPCMS:1!null->HPCMS:0]\n" +
 			"                         │       └─ Table\n" +
 			"                         │           ├─ name: E2I7U\n" +
 			"                         │           ├─ columns: [id hpcms]\n" +
@@ -16050,7 +16050,7 @@ ORDER BY sn.XLFIA ASC`,
 			"                                 ├─ colSet: (39,40)\n" +
 			"                                 ├─ tableId: 6\n" +
 			"                                 └─ Project\n" +
-			"                                     ├─ columns: [tnmxi.id:0!null as MLECF, tnmxi.DZLIM:1!null]\n" +
+			"                                     ├─ columns: [tnmxi.id:0!null->MLECF:0, tnmxi.DZLIM:1!null]\n" +
 			"                                     └─ Table\n" +
 			"                                         ├─ name: TNMXI\n" +
 			"                                         ├─ columns: [id dzlim]\n" +
@@ -16185,7 +16185,7 @@ LEFT JOIN
     ON QI2IE.VIBZI = GRRB6.AHMDT
 ORDER BY GRRB6.XLFIA ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [qi2ie.DICQO:2!null as DICQO]\n" +
+			" ├─ columns: [qi2ie.DICQO:2!null->DICQO:0]\n" +
 			" └─ Sort(grrb6.XLFIA:0!null ASC nullsFirst)\n" +
 			"     └─ LeftOuterHashJoin\n" +
 			"         ├─ Eq\n" +
@@ -16199,7 +16199,7 @@ ORDER BY GRRB6.XLFIA ASC`,
 			"         │   ├─ colSet: (13,14)\n" +
 			"         │   ├─ tableId: 2\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [noxn3.id:0!null as XLFIA, noxn3.BRQP2:1!null as AHMDT]\n" +
+			"         │       ├─ columns: [noxn3.id:0!null->XLFIA:0, noxn3.BRQP2:1!null->AHMDT:0]\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: NOXN3\n" +
 			"         │           ├─ columns: [id brqp2]\n" +
@@ -16216,7 +16216,7 @@ ORDER BY GRRB6.XLFIA ASC`,
 			"                 ├─ colSet: (35,36)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [row_number() over ( order by e2i7u.id asc):0!null as DICQO, e2i7u.id:1!null as VIBZI]\n" +
+			"                     ├─ columns: [row_number() over ( order by e2i7u.id asc):0!null->DICQO:0, e2i7u.id:1!null->VIBZI:0]\n" +
 			"                     └─ Window\n" +
 			"                         ├─ row_number() over ( order by e2i7u.id ASC)\n" +
 			"                         ├─ e2i7u.id:0!null\n" +
@@ -16777,7 +16777,7 @@ LEFT JOIN XGSJM YBBG5
     ON YPGDA.I3L5A = YBBG5.id
 ORDER BY LUEVY`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [ypgda.LUEVY:0!null as LUEVY, ypgda.TW55N:1!null as TW55N, ypgda.IYDZV:2 as IYDZV,  (longtext) as IIISV, ypgda.QRQXW:3!null as QRQXW, ypgda.CAECS:4 as CAECS, ypgda.CJLLY:5!null as CJLLY, ypgda.SHP7H:6!null as SHP7H, ypgda.HARAZ:7 as HARAZ,  (longtext) as ECUWU,  (longtext) as LDMO7, CASE  WHEN Eq\n" +
+			" ├─ columns: [ypgda.LUEVY:0!null->LUEVY:0, ypgda.TW55N:1!null->TW55N:0, ypgda.IYDZV:2->IYDZV:0,  (longtext)->IIISV:59, ypgda.QRQXW:3!null->QRQXW:0, ypgda.CAECS:4->CAECS:0, ypgda.CJLLY:5!null->CJLLY:0, ypgda.SHP7H:6!null->SHP7H:0, ypgda.HARAZ:7->HARAZ:0,  (longtext)->ECUWU:65,  (longtext)->LDMO7:66, CASE  WHEN Eq\n" +
 			" │   ├─ ybbg5.DZLIM:13!null\n" +
 			" │   └─ HGUEM (longtext)\n" +
 			" │   THEN s30 (longtext) WHEN Eq\n" +
@@ -16792,10 +16792,10 @@ ORDER BY LUEVY`,
 			" │   THEN s (longtext) WHEN Eq\n" +
 			" │   ├─ ybbg5.DZLIM:13!null\n" +
 			" │   └─ AX25H (longtext)\n" +
-			" │   THEN r70 (longtext) WHEN ybbg5.DZLIM:13!null IS NULL THEN  (longtext) ELSE ybbg5.DZLIM:13!null END as UBUYI, ypgda.FUG6J:9 as FUG6J, ypgda.NF5AM:10 as NF5AM, ypgda.FRCVC:11!null as FRCVC]\n" +
-			" └─ Sort(ypgda.LUEVY:0!null as LUEVY ASC nullsFirst)\n" +
+			" │   THEN r70 (longtext) WHEN ybbg5.DZLIM:13!null IS NULL THEN  (longtext) ELSE ybbg5.DZLIM:13!null END->UBUYI:0, ypgda.FUG6J:9->FUG6J:0, ypgda.NF5AM:10->NF5AM:0, ypgda.FRCVC:11!null->FRCVC:0]\n" +
+			" └─ Sort(LUEVY:15!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [ypgda.LUEVY:0!null, ypgda.TW55N:1!null, ypgda.IYDZV:2, ypgda.QRQXW:3!null, ypgda.CAECS:4, ypgda.CJLLY:5!null, ypgda.SHP7H:6!null, ypgda.HARAZ:7, ypgda.I3L5A:8, ypgda.FUG6J:9, ypgda.NF5AM:10, ypgda.FRCVC:11!null, ybbg5.id:12!null, ybbg5.DZLIM:13!null, ybbg5.F3YUE:14, ypgda.LUEVY:0!null as LUEVY, ypgda.TW55N:1!null as TW55N, ypgda.IYDZV:2 as IYDZV,  (longtext) as IIISV, ypgda.QRQXW:3!null as QRQXW, ypgda.CAECS:4 as CAECS, ypgda.CJLLY:5!null as CJLLY, ypgda.SHP7H:6!null as SHP7H, ypgda.HARAZ:7 as HARAZ,  (longtext) as ECUWU,  (longtext) as LDMO7, CASE  WHEN Eq\n" +
+			"         ├─ columns: [ypgda.LUEVY:0!null, ypgda.TW55N:1!null, ypgda.IYDZV:2, ypgda.QRQXW:3!null, ypgda.CAECS:4, ypgda.CJLLY:5!null, ypgda.SHP7H:6!null, ypgda.HARAZ:7, ypgda.I3L5A:8, ypgda.FUG6J:9, ypgda.NF5AM:10, ypgda.FRCVC:11!null, ybbg5.id:12!null, ybbg5.DZLIM:13!null, ybbg5.F3YUE:14, ypgda.LUEVY:0!null->LUEVY:0, ypgda.TW55N:1!null->TW55N:0, ypgda.IYDZV:2->IYDZV:0,  (longtext)->IIISV:59, ypgda.QRQXW:3!null->QRQXW:0, ypgda.CAECS:4->CAECS:0, ypgda.CJLLY:5!null->CJLLY:0, ypgda.SHP7H:6!null->SHP7H:0, ypgda.HARAZ:7->HARAZ:0,  (longtext)->ECUWU:65,  (longtext)->LDMO7:66, CASE  WHEN Eq\n" +
 			"         │   ├─ ybbg5.DZLIM:13!null\n" +
 			"         │   └─ HGUEM (longtext)\n" +
 			"         │   THEN s30 (longtext) WHEN Eq\n" +
@@ -16810,7 +16810,7 @@ ORDER BY LUEVY`,
 			"         │   THEN s (longtext) WHEN Eq\n" +
 			"         │   ├─ ybbg5.DZLIM:13!null\n" +
 			"         │   └─ AX25H (longtext)\n" +
-			"         │   THEN r70 (longtext) WHEN ybbg5.DZLIM:13!null IS NULL THEN  (longtext) ELSE ybbg5.DZLIM:13!null END as UBUYI, ypgda.FUG6J:9 as FUG6J, ypgda.NF5AM:10 as NF5AM, ypgda.FRCVC:11!null as FRCVC]\n" +
+			"         │   THEN r70 (longtext) WHEN ybbg5.DZLIM:13!null IS NULL THEN  (longtext) ELSE ybbg5.DZLIM:13!null END->UBUYI:0, ypgda.FUG6J:9->FUG6J:0, ypgda.NF5AM:10->NF5AM:0, ypgda.FRCVC:11!null->FRCVC:0]\n" +
 			"         └─ LeftOuterHashJoin\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ ypgda.I3L5A:8\n" +
@@ -16823,7 +16823,7 @@ ORDER BY LUEVY`,
 			"             │   ├─ colSet: (41-52)\n" +
 			"             │   ├─ tableId: 4\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [nd.id:0!null as LUEVY, nd.TW55N:3!null as TW55N, nd.FGG57:6 as IYDZV, nd.QRQXW:4!null as QRQXW, nd.IWV2H:11 as CAECS, nd.ECXAJ:5!null as CJLLY, nma.DZLIM:18!null as SHP7H, nd.N5CC2:13 as HARAZ, Subquery\n" +
+			"             │       ├─ columns: [nd.id:0!null->LUEVY:0, nd.TW55N:3!null->TW55N:0, nd.FGG57:6->IYDZV:0, nd.QRQXW:4!null->QRQXW:0, nd.IWV2H:11->CAECS:0, nd.ECXAJ:5!null->CJLLY:0, nma.DZLIM:18!null->SHP7H:0, nd.N5CC2:13->HARAZ:0, Subquery\n" +
 			"             │       │   ├─ cacheable: false\n" +
 			"             │       │   ├─ alias-string: select XQDYT from AMYXQ where LUEVY = nd.id limit 1\n" +
 			"             │       │   └─ Limit(1)\n" +
@@ -16841,9 +16841,9 @@ ORDER BY LUEVY`,
 			"             │       │                   └─ Table\n" +
 			"             │       │                       ├─ name: AMYXQ\n" +
 			"             │       │                       └─ columns: [luevy xqdyt]\n" +
-			"             │       │   as I3L5A, nd.ETAQ7:15 as FUG6J, nd.A75X7:16 as NF5AM, nd.FSK67:8!null as FRCVC]\n" +
+			"             │       │  ->I3L5A:0, nd.ETAQ7:15->FUG6J:0, nd.A75X7:16->NF5AM:0, nd.FSK67:8!null->FRCVC:0]\n" +
 			"             │       └─ Project\n" +
-			"             │           ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nma.id:17!null, nma.DZLIM:18!null, nma.F3YUE:19, nd.id:0!null as LUEVY, nd.TW55N:3!null as TW55N, nd.FGG57:6 as IYDZV, nd.QRQXW:4!null as QRQXW, nd.IWV2H:11 as CAECS, nd.ECXAJ:5!null as CJLLY, nma.DZLIM:18!null as SHP7H, nd.N5CC2:13 as HARAZ, Subquery\n" +
+			"             │           ├─ columns: [nd.id:0!null, nd.DKCAJ:1!null, nd.KNG7T:2, nd.TW55N:3!null, nd.QRQXW:4!null, nd.ECXAJ:5!null, nd.FGG57:6, nd.ZH72S:7, nd.FSK67:8!null, nd.XQDYT:9!null, nd.TCE7A:10, nd.IWV2H:11, nd.HPCMS:12!null, nd.N5CC2:13, nd.FHCYT:14, nd.ETAQ7:15, nd.A75X7:16, nma.id:17!null, nma.DZLIM:18!null, nma.F3YUE:19, nd.id:0!null->LUEVY:0, nd.TW55N:3!null->TW55N:0, nd.FGG57:6->IYDZV:0, nd.QRQXW:4!null->QRQXW:0, nd.IWV2H:11->CAECS:0, nd.ECXAJ:5!null->CJLLY:0, nma.DZLIM:18!null->SHP7H:0, nd.N5CC2:13->HARAZ:0, Subquery\n" +
 			"             │           │   ├─ cacheable: false\n" +
 			"             │           │   ├─ alias-string: select XQDYT from AMYXQ where LUEVY = nd.id limit 1\n" +
 			"             │           │   └─ Limit(1)\n" +
@@ -16861,7 +16861,7 @@ ORDER BY LUEVY`,
 			"             │           │                   └─ Table\n" +
 			"             │           │                       ├─ name: AMYXQ\n" +
 			"             │           │                       └─ columns: [luevy xqdyt]\n" +
-			"             │           │   as I3L5A, nd.ETAQ7:15 as FUG6J, nd.A75X7:16 as NF5AM, nd.FSK67:8!null as FRCVC]\n" +
+			"             │           │  ->I3L5A:0, nd.ETAQ7:15->FUG6J:0, nd.A75X7:16->NF5AM:0, nd.FSK67:8!null->FRCVC:0]\n" +
 			"             │           └─ LeftOuterLookupJoin\n" +
 			"             │               ├─ TableAlias(nd)\n" +
 			"             │               │   └─ Table\n" +
@@ -16889,7 +16889,7 @@ ORDER BY LUEVY`,
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ypgda.LUEVY as LUEVY, ypgda.TW55N as TW55N, ypgda.IYDZV as IYDZV, '' as IIISV, ypgda.QRQXW as QRQXW, ypgda.CAECS as CAECS, ypgda.CJLLY as CJLLY, ypgda.SHP7H as SHP7H, ypgda.HARAZ as HARAZ, '' as ECUWU, '' as LDMO7, CASE  WHEN (ybbg5.DZLIM = 'HGUEM') THEN 's30' WHEN (ybbg5.DZLIM = 'YUHMV') THEN 'r90' WHEN (ybbg5.DZLIM = 'T3JIU') THEN 'r50' WHEN (ybbg5.DZLIM = 's') THEN 's' WHEN (ybbg5.DZLIM = 'AX25H') THEN 'r70' WHEN ybbg5.DZLIM IS NULL THEN '' ELSE ybbg5.DZLIM END as UBUYI, ypgda.FUG6J as FUG6J, ypgda.NF5AM as NF5AM, ypgda.FRCVC as FRCVC]\n" +
-			" └─ Sort(ypgda.LUEVY as LUEVY ASC)\n" +
+			" └─ Sort(LUEVY ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [ypgda.LUEVY, ypgda.TW55N, ypgda.IYDZV, ypgda.QRQXW, ypgda.CAECS, ypgda.CJLLY, ypgda.SHP7H, ypgda.HARAZ, ypgda.I3L5A, ypgda.FUG6J, ypgda.NF5AM, ypgda.FRCVC, ybbg5.id, ybbg5.DZLIM, ybbg5.F3YUE, ypgda.LUEVY as LUEVY, ypgda.TW55N as TW55N, ypgda.IYDZV as IYDZV, '' as IIISV, ypgda.QRQXW as QRQXW, ypgda.CAECS as CAECS, ypgda.CJLLY as CJLLY, ypgda.SHP7H as SHP7H, ypgda.HARAZ as HARAZ, '' as ECUWU, '' as LDMO7, CASE  WHEN (ybbg5.DZLIM = 'HGUEM') THEN 's30' WHEN (ybbg5.DZLIM = 'YUHMV') THEN 'r90' WHEN (ybbg5.DZLIM = 'T3JIU') THEN 'r50' WHEN (ybbg5.DZLIM = 's') THEN 's' WHEN (ybbg5.DZLIM = 'AX25H') THEN 'r70' WHEN ybbg5.DZLIM IS NULL THEN '' ELSE ybbg5.DZLIM END as UBUYI, ypgda.FUG6J as FUG6J, ypgda.NF5AM as NF5AM, ypgda.FRCVC as FRCVC]\n" +
 			"         └─ LeftOuterHashJoin\n" +
@@ -16943,7 +16943,7 @@ ORDER BY LUEVY`,
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ypgda.LUEVY as LUEVY, ypgda.TW55N as TW55N, ypgda.IYDZV as IYDZV, '' as IIISV, ypgda.QRQXW as QRQXW, ypgda.CAECS as CAECS, ypgda.CJLLY as CJLLY, ypgda.SHP7H as SHP7H, ypgda.HARAZ as HARAZ, '' as ECUWU, '' as LDMO7, CASE  WHEN (ybbg5.DZLIM = 'HGUEM') THEN 's30' WHEN (ybbg5.DZLIM = 'YUHMV') THEN 'r90' WHEN (ybbg5.DZLIM = 'T3JIU') THEN 'r50' WHEN (ybbg5.DZLIM = 's') THEN 's' WHEN (ybbg5.DZLIM = 'AX25H') THEN 'r70' WHEN ybbg5.DZLIM IS NULL THEN '' ELSE ybbg5.DZLIM END as UBUYI, ypgda.FUG6J as FUG6J, ypgda.NF5AM as NF5AM, ypgda.FRCVC as FRCVC]\n" +
-			" └─ Sort(ypgda.LUEVY as LUEVY ASC)\n" +
+			" └─ Sort(LUEVY ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [ypgda.LUEVY, ypgda.TW55N, ypgda.IYDZV, ypgda.QRQXW, ypgda.CAECS, ypgda.CJLLY, ypgda.SHP7H, ypgda.HARAZ, ypgda.I3L5A, ypgda.FUG6J, ypgda.NF5AM, ypgda.FRCVC, ybbg5.id, ybbg5.DZLIM, ybbg5.F3YUE, ypgda.LUEVY as LUEVY, ypgda.TW55N as TW55N, ypgda.IYDZV as IYDZV, '' as IIISV, ypgda.QRQXW as QRQXW, ypgda.CAECS as CAECS, ypgda.CJLLY as CJLLY, ypgda.SHP7H as SHP7H, ypgda.HARAZ as HARAZ, '' as ECUWU, '' as LDMO7, CASE  WHEN (ybbg5.DZLIM = 'HGUEM') THEN 's30' WHEN (ybbg5.DZLIM = 'YUHMV') THEN 'r90' WHEN (ybbg5.DZLIM = 'T3JIU') THEN 'r50' WHEN (ybbg5.DZLIM = 's') THEN 's' WHEN (ybbg5.DZLIM = 'AX25H') THEN 'r70' WHEN ybbg5.DZLIM IS NULL THEN '' ELSE ybbg5.DZLIM END as UBUYI, ypgda.FUG6J as FUG6J, ypgda.NF5AM as NF5AM, ypgda.FRCVC as FRCVC]\n" +
 			"         └─ LeftOuterHashJoin\n" +
@@ -17076,7 +17076,7 @@ LEFT JOIN
     ON sn.A7XO2 = it.id
 ORDER BY sn.id ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [tvqg4.TW55N:11!null as FJVD7, lsm32.TW55N:13!null as KBXXJ, sn.NUMK2:6!null as NUMK2, CASE  WHEN it.DZLIM:15!null IS NULL THEN N/A (longtext) ELSE it.DZLIM:15!null END as TP6BK, sn.ECDKM:5 as ECDKM, sn.KBO7R:4!null as KBO7R, CASE  WHEN sn.YKSSU:8 IS NULL THEN N/A (longtext) ELSE sn.YKSSU:8 END as RQI4M, CASE  WHEN sn.FHCYT:9 IS NULL THEN N/A (longtext) ELSE sn.FHCYT:9 END as RNVLS, sn.LETOE:7!null as LETOE]\n" +
+			" ├─ columns: [tvqg4.TW55N:11!null->FJVD7:0, lsm32.TW55N:13!null->KBXXJ:0, sn.NUMK2:6!null->NUMK2:0, CASE  WHEN it.DZLIM:15!null IS NULL THEN N/A (longtext) ELSE it.DZLIM:15!null END->TP6BK:0, sn.ECDKM:5->ECDKM:0, sn.KBO7R:4!null->KBO7R:0, CASE  WHEN sn.YKSSU:8 IS NULL THEN N/A (longtext) ELSE sn.YKSSU:8 END->RQI4M:0, CASE  WHEN sn.FHCYT:9 IS NULL THEN N/A (longtext) ELSE sn.FHCYT:9 END->RNVLS:0, sn.LETOE:7!null->LETOE:0]\n" +
 			" └─ Sort(sn.id:0!null ASC nullsFirst)\n" +
 			"     └─ LeftOuterLookupJoin\n" +
 			"         ├─ LeftOuterLookupJoin\n" +
@@ -17259,7 +17259,7 @@ LEFT JOIN
     ON AYFCD.FFTBJ = FA75Y.id
 ORDER BY rn.id ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sdllr.TW55N:15!null as FZX4Y, jgt2h.LETOE:9!null as QWTOI, riiw6.TW55N:17!null as PDX5Y, ayfcd.NUMK2:12!null as V45YB, ayfcd.LETOE:13!null as DAGQN, fa75y.TW55N:19!null as SFQTS, rn.HVHRZ:3!null as HVHRZ, CASE  WHEN rn.YKSSU:4 IS NULL THEN N/A (longtext) ELSE rn.YKSSU:4 END as RQI4M, CASE  WHEN rn.FHCYT:5 IS NULL THEN N/A (longtext) ELSE rn.FHCYT:5 END as RNVLS]\n" +
+			" ├─ columns: [sdllr.TW55N:15!null->FZX4Y:0, jgt2h.LETOE:9!null->QWTOI:0, riiw6.TW55N:17!null->PDX5Y:0, ayfcd.NUMK2:12!null->V45YB:0, ayfcd.LETOE:13!null->DAGQN:0, fa75y.TW55N:19!null->SFQTS:0, rn.HVHRZ:3!null->HVHRZ:0, CASE  WHEN rn.YKSSU:4 IS NULL THEN N/A (longtext) ELSE rn.YKSSU:4 END->RQI4M:0, CASE  WHEN rn.FHCYT:5 IS NULL THEN N/A (longtext) ELSE rn.FHCYT:5 END->RNVLS:0]\n" +
 			" └─ Sort(rn.id:0!null ASC nullsFirst)\n" +
 			"     └─ LeftOuterLookupJoin\n" +
 			"         ├─ LeftOuterLookupJoin\n" +
@@ -17468,7 +17468,7 @@ ORDER BY id ASC`,
 			"             │   ├─ noxn3.NUMK2:2!null\n" +
 			"             │   └─ 4 (int)\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [row_number() over ( order by noxn3.id asc):0!null as Y3IOU, noxn3.id:1!null, noxn3.NUMK2:2!null, noxn3.ECDKM:3]\n" +
+			"                 ├─ columns: [row_number() over ( order by noxn3.id asc):0!null->Y3IOU:0, noxn3.id:1!null, noxn3.NUMK2:2!null, noxn3.ECDKM:3]\n" +
 			"                 └─ Window\n" +
 			"                     ├─ row_number() over ( order by noxn3.id ASC)\n" +
 			"                     ├─ noxn3.id:0!null\n" +
@@ -17559,7 +17559,7 @@ SELECT
 			" ├─ columns: [CASE  WHEN Eq\n" +
 			" │   ├─ noxn3.NUMK2:2!null\n" +
 			" │   └─ 2 (int)\n" +
-			" │   THEN noxn3.ECDKM:1 ELSE 0 (tinyint) END as RGXLL]\n" +
+			" │   THEN noxn3.ECDKM:1 ELSE 0 (tinyint) END->RGXLL:0]\n" +
 			" └─ IndexedTableAccess(NOXN3)\n" +
 			"     ├─ index: [NOXN3.id]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
@@ -17595,7 +17595,7 @@ INNER JOIN E2I7U nd
 INNER JOIN XOAOP pa
     ON QNRBH.CH3FR = pa.id`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [pa.DZLIM:5!null as ECUWU, nd.TW55N:3!null]\n" +
+			" ├─ columns: [pa.DZLIM:5!null->ECUWU:0, nd.TW55N:3!null]\n" +
 			" └─ LookupJoin\n" +
 			"     ├─ LookupJoin\n" +
 			"     │   ├─ TableAlias(qnrbh)\n" +
@@ -17932,7 +17932,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, NFRYN:1!null, IXUXU:2, FHCYT:3]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:35, Subquery\n" +
 			"     │       │   ├─ cacheable: true\n" +
 			"     │       │   ├─ alias-string: select id from JMRQL where DZLIM = 'T4IBQ'\n" +
 			"     │       │   └─ Project\n" +
@@ -17945,9 +17945,9 @@ WHERE
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: JMRQL\n" +
 			"     │       │               └─ columns: [id dzlim]\n" +
-			"     │       │   as NFRYN, yk2gw.id:0!null as IXUXU, NULL (null) as FHCYT]\n" +
+			"     │       │  ->NFRYN:0, yk2gw.id:0!null->IXUXU:0, NULL (null)->FHCYT:41]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [yk2gw.id:0!null, yk2gw.FTQLQ:1!null, yk2gw.TUXML:2, yk2gw.PAEF5:3, yk2gw.RUCY4:4, yk2gw.TPNJ6:5!null, yk2gw.LBL53:6, yk2gw.NB3QS:7, yk2gw.EO7IV:8, yk2gw.MUHJF:9, yk2gw.FM34L:10, yk2gw.TY5RF:11, yk2gw.ZHTLH:12, yk2gw.NPB7W:13, yk2gw.SX3HH:14, yk2gw.ISBNF:15, yk2gw.YA7YB:16, yk2gw.C5YKB:17, yk2gw.QK7KT:18, yk2gw.FFGE6:19, yk2gw.FIIGJ:20, yk2gw.SH3NC:21, yk2gw.NTENA:22, yk2gw.M4AUB:23, yk2gw.X5AIR:24, yk2gw.SAB6M:25, yk2gw.G5QI5:26, yk2gw.ZVQVD:27, yk2gw.YKSSU:28, yk2gw.FHCYT:29, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │           ├─ columns: [yk2gw.id:0!null, yk2gw.FTQLQ:1!null, yk2gw.TUXML:2, yk2gw.PAEF5:3, yk2gw.RUCY4:4, yk2gw.TPNJ6:5!null, yk2gw.LBL53:6, yk2gw.NB3QS:7, yk2gw.EO7IV:8, yk2gw.MUHJF:9, yk2gw.FM34L:10, yk2gw.TY5RF:11, yk2gw.ZHTLH:12, yk2gw.NPB7W:13, yk2gw.SX3HH:14, yk2gw.ISBNF:15, yk2gw.YA7YB:16, yk2gw.C5YKB:17, yk2gw.QK7KT:18, yk2gw.FFGE6:19, yk2gw.FIIGJ:20, yk2gw.SH3NC:21, yk2gw.NTENA:22, yk2gw.M4AUB:23, yk2gw.X5AIR:24, yk2gw.SAB6M:25, yk2gw.G5QI5:26, yk2gw.ZVQVD:27, yk2gw.YKSSU:28, yk2gw.FHCYT:29, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:35, Subquery\n" +
 			"     │           │   ├─ cacheable: true\n" +
 			"     │           │   ├─ alias-string: select id from JMRQL where DZLIM = 'T4IBQ'\n" +
 			"     │           │   └─ Project\n" +
@@ -17960,7 +17960,7 @@ WHERE
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: JMRQL\n" +
 			"     │           │               └─ columns: [id dzlim]\n" +
-			"     │           │   as NFRYN, yk2gw.id:0!null as IXUXU, NULL (null) as FHCYT]\n" +
+			"     │           │  ->NFRYN:0, yk2gw.id:0!null->IXUXU:0, NULL (null)->FHCYT:41]\n" +
 			"     │           └─ IndexedTableAccess(YK2GW)\n" +
 			"     │               ├─ index: [YK2GW.id]\n" +
 			"     │               ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
@@ -18030,7 +18030,7 @@ FROM
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, WNUNU:1!null, HHVLX:2!null, HVHRZ:3!null, YKSSU:4, FHCYT:5]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, itwml.DRIWM:0!null as WNUNU, itwml.JIEVY:1!null as HHVLX, 1 (decimal(2,1)) as HVHRZ, NULL (null) as YKSSU, NULL (null) as FHCYT]\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:39, itwml.DRIWM:0!null->WNUNU:0, itwml.JIEVY:1!null->HHVLX:0, 1 (decimal(2,1))->HVHRZ:42, NULL (null)->YKSSU:43, NULL (null)->FHCYT:44]\n" +
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ name: itwml\n" +
 			"     │           ├─ outerVisibility: false\n" +
@@ -18039,7 +18039,7 @@ FROM
 			"     │           ├─ colSet: (36-38)\n" +
 			"     │           ├─ tableId: 5\n" +
 			"     │           └─ Project\n" +
-			"     │               ├─ columns: [sn.id:0!null as DRIWM, skpm6.id:4!null as JIEVY, sn.ECDKM:2 as HVHRZ]\n" +
+			"     │               ├─ columns: [sn.id:0!null->DRIWM:0, skpm6.id:4!null->JIEVY:0, sn.ECDKM:2->HVHRZ:0]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ AND\n" +
 			"     │                   │   ├─ rn.WNUNU:6!null IS NULL\n" +
@@ -18161,7 +18161,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, QZ7E7:1!null, SSHPJ:2!null, FHCYT:3]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [tdrvg.id:0!null, tdrvg.SFJ6L:2!null, tdrvg.SSHPJ:1!null, NULL (null) as FHCYT]\n" +
+			"     │       ├─ columns: [tdrvg.id:0!null, tdrvg.SFJ6L:2!null, tdrvg.SSHPJ:1!null, NULL (null)->FHCYT:10]\n" +
 			"     │       └─ IndexedTableAccess(TDRVG)\n" +
 			"     │           ├─ index: [TDRVG.id]\n" +
 			"     │           ├─ static: [{[1, 1]}, {[2, 2]}, {[3, 3]}]\n" +
@@ -18267,7 +18267,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, GXLUB:1!null, LUEVY:2!null, XQDYT:3!null, AMYXQ:4!null, OZTQF:5!null, Z35GY:6!null, KKGN5:7]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:40, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select /*+ JOIN_ORDER(cla, bs) */ bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ufc.T4IBQ\n" +
 			"     │       │   └─ Project\n" +
@@ -18298,7 +18298,7 @@ WHERE
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: THNTS\n" +
 			"     │       │                           └─ columns: [id ixuxu]\n" +
-			"     │       │   as GXLUB, nd.id:11!null as LUEVY, nd.XQDYT:20!null as XQDYT, (ufc.AMYXQ:3 + 0 (decimal(2,1))) as AMYXQ, CASE  WHEN Eq\n" +
+			"     │       │  ->GXLUB:0, nd.id:11!null->LUEVY:0, nd.XQDYT:20!null->XQDYT:0, (ufc.AMYXQ:3 + 0 (decimal(2,1)))->AMYXQ:0, CASE  WHEN Eq\n" +
 			"     │       │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │       │   └─ KTNZ2 (longtext)\n" +
 			"     │       │   THEN (ufc.KTNZ2:4 + 0 (decimal(2,1))) WHEN Eq\n" +
@@ -18313,9 +18313,9 @@ WHERE
 			"     │       │   THEN (ufc.VVKNB:7 + 0 (decimal(2,1))) WHEN Eq\n" +
 			"     │       │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │       │   └─ DN3OQ (longtext)\n" +
-			"     │       │   THEN (ufc.DN3OQ:6 + 0 (decimal(2,1))) ELSE NULL (null) END as OZTQF, (ufc.SRZZO:9 + 0 (decimal(2,1))) as Z35GY, ufc.id:0!null as KKGN5]\n" +
+			"     │       │   THEN (ufc.DN3OQ:6 + 0 (decimal(2,1))) ELSE NULL (null) END->OZTQF:0, (ufc.SRZZO:9 + 0 (decimal(2,1)))->Z35GY:0, ufc.id:0!null->KKGN5:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [ufc.id:0!null, ufc.T4IBQ:1, ufc.ZH72S:2, ufc.AMYXQ:3, ufc.KTNZ2:4, ufc.HIID2:5, ufc.DN3OQ:6, ufc.VVKNB:7, ufc.SH7TP:8, ufc.SRZZO:9, ufc.QZ6VT:10, nd.id:11!null, nd.DKCAJ:12!null, nd.KNG7T:13, nd.TW55N:14!null, nd.QRQXW:15!null, nd.ECXAJ:16!null, nd.FGG57:17, nd.ZH72S:18, nd.FSK67:19!null, nd.XQDYT:20!null, nd.TCE7A:21, nd.IWV2H:22, nd.HPCMS:23!null, nd.N5CC2:24, nd.FHCYT:25, nd.ETAQ7:26, nd.A75X7:27, ybbg5.id:28!null, ybbg5.DZLIM:29!null, ybbg5.F3YUE:30, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │           ├─ columns: [ufc.id:0!null, ufc.T4IBQ:1, ufc.ZH72S:2, ufc.AMYXQ:3, ufc.KTNZ2:4, ufc.HIID2:5, ufc.DN3OQ:6, ufc.VVKNB:7, ufc.SH7TP:8, ufc.SRZZO:9, ufc.QZ6VT:10, nd.id:11!null, nd.DKCAJ:12!null, nd.KNG7T:13, nd.TW55N:14!null, nd.QRQXW:15!null, nd.ECXAJ:16!null, nd.FGG57:17, nd.ZH72S:18, nd.FSK67:19!null, nd.XQDYT:20!null, nd.TCE7A:21, nd.IWV2H:22, nd.HPCMS:23!null, nd.N5CC2:24, nd.FHCYT:25, nd.ETAQ7:26, nd.A75X7:27, ybbg5.id:28!null, ybbg5.DZLIM:29!null, ybbg5.F3YUE:30, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:40, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select /*+ JOIN_ORDER(cla, bs) */ bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ufc.T4IBQ\n" +
 			"     │           │   └─ Project\n" +
@@ -18346,7 +18346,7 @@ WHERE
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: THNTS\n" +
 			"     │           │                           └─ columns: [id ixuxu]\n" +
-			"     │           │   as GXLUB, nd.id:11!null as LUEVY, nd.XQDYT:20!null as XQDYT, (ufc.AMYXQ:3 + 0 (decimal(2,1))) as AMYXQ, CASE  WHEN Eq\n" +
+			"     │           │  ->GXLUB:0, nd.id:11!null->LUEVY:0, nd.XQDYT:20!null->XQDYT:0, (ufc.AMYXQ:3 + 0 (decimal(2,1)))->AMYXQ:0, CASE  WHEN Eq\n" +
 			"     │           │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │           │   └─ KTNZ2 (longtext)\n" +
 			"     │           │   THEN (ufc.KTNZ2:4 + 0 (decimal(2,1))) WHEN Eq\n" +
@@ -18361,7 +18361,7 @@ WHERE
 			"     │           │   THEN (ufc.VVKNB:7 + 0 (decimal(2,1))) WHEN Eq\n" +
 			"     │           │   ├─ ybbg5.DZLIM:29!null\n" +
 			"     │           │   └─ DN3OQ (longtext)\n" +
-			"     │           │   THEN (ufc.DN3OQ:6 + 0 (decimal(2,1))) ELSE NULL (null) END as OZTQF, (ufc.SRZZO:9 + 0 (decimal(2,1))) as Z35GY, ufc.id:0!null as KKGN5]\n" +
+			"     │           │   THEN (ufc.DN3OQ:6 + 0 (decimal(2,1))) ELSE NULL (null) END->OZTQF:0, (ufc.SRZZO:9 + 0 (decimal(2,1)))->Z35GY:0, ufc.id:0!null->KKGN5:0]\n" +
 			"     │           └─ InnerJoin\n" +
 			"     │               ├─ Eq\n" +
 			"     │               │   ├─ nd.ZH72S:18\n" +
@@ -18481,7 +18481,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, GXLUB:1!null, CH3FR:2!null, D237E:3!null, JOGI6:4]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │       │   └─ Project\n" +
@@ -18512,7 +18512,7 @@ WHERE
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
 			"     │       │                           └─ columns: [id ftqlq]\n" +
-			"     │       │   as GXLUB, Subquery\n" +
+			"     │       │  ->GXLUB:0, Subquery\n" +
 			"     │       │   ├─ cacheable: true\n" +
 			"     │       │   ├─ alias-string: select id from XOAOP where DZLIM = 'NER'\n" +
 			"     │       │   └─ Project\n" +
@@ -18525,15 +18525,15 @@ WHERE
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
 			"     │       │               └─ columns: [id dzlim]\n" +
-			"     │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │       │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │       │   ├─ ums.ner:2\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
 			"     │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │       │   ├─ ums.ner:2\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
-			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │           │   └─ Project\n" +
@@ -18564,7 +18564,7 @@ WHERE
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
 			"     │           │                           └─ columns: [id ftqlq]\n" +
-			"     │           │   as GXLUB, Subquery\n" +
+			"     │           │  ->GXLUB:0, Subquery\n" +
 			"     │           │   ├─ cacheable: true\n" +
 			"     │           │   ├─ alias-string: select id from XOAOP where DZLIM = 'NER'\n" +
 			"     │           │   └─ Project\n" +
@@ -18577,13 +18577,13 @@ WHERE
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
 			"     │           │               └─ columns: [id dzlim]\n" +
-			"     │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │           │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │           │   ├─ ums.ner:2\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
 			"     │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │           │   ├─ ums.ner:2\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
-			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │           └─ TableAlias(ums)\n" +
 			"     │               └─ IndexedTableAccess(FG26Y)\n" +
 			"     │                   ├─ index: [FG26Y.id]\n" +
@@ -18673,7 +18673,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, GXLUB:1!null, CH3FR:2!null, D237E:3!null, JOGI6:4]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │       │   └─ Project\n" +
@@ -18704,7 +18704,7 @@ WHERE
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
 			"     │       │                           └─ columns: [id ftqlq]\n" +
-			"     │       │   as GXLUB, Subquery\n" +
+			"     │       │  ->GXLUB:0, Subquery\n" +
 			"     │       │   ├─ cacheable: true\n" +
 			"     │       │   ├─ alias-string: select id from XOAOP where DZLIM = 'BER'\n" +
 			"     │       │   └─ Project\n" +
@@ -18717,15 +18717,15 @@ WHERE
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
 			"     │       │               └─ columns: [id dzlim]\n" +
-			"     │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │       │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │       │   ├─ ums.ber:3\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
 			"     │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │       │   ├─ ums.ber:3\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
-			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │           │   └─ Project\n" +
@@ -18756,7 +18756,7 @@ WHERE
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
 			"     │           │                           └─ columns: [id ftqlq]\n" +
-			"     │           │   as GXLUB, Subquery\n" +
+			"     │           │  ->GXLUB:0, Subquery\n" +
 			"     │           │   ├─ cacheable: true\n" +
 			"     │           │   ├─ alias-string: select id from XOAOP where DZLIM = 'BER'\n" +
 			"     │           │   └─ Project\n" +
@@ -18769,13 +18769,13 @@ WHERE
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
 			"     │           │               └─ columns: [id dzlim]\n" +
-			"     │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │           │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │           │   ├─ ums.ber:3\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
 			"     │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │           │   ├─ ums.ber:3\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
-			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │           └─ TableAlias(ums)\n" +
 			"     │               └─ IndexedTableAccess(FG26Y)\n" +
 			"     │                   ├─ index: [FG26Y.id]\n" +
@@ -18865,7 +18865,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, GXLUB:1!null, CH3FR:2!null, D237E:3!null, JOGI6:4]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │       │   └─ Project\n" +
@@ -18896,7 +18896,7 @@ WHERE
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
 			"     │       │                           └─ columns: [id ftqlq]\n" +
-			"     │       │   as GXLUB, Subquery\n" +
+			"     │       │  ->GXLUB:0, Subquery\n" +
 			"     │       │   ├─ cacheable: true\n" +
 			"     │       │   ├─ alias-string: select id from XOAOP where DZLIM = 'HR'\n" +
 			"     │       │   └─ Project\n" +
@@ -18909,15 +18909,15 @@ WHERE
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
 			"     │       │               └─ columns: [id dzlim]\n" +
-			"     │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │       │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │       │   ├─ ums.hr:4\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
 			"     │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │       │   ├─ ums.hr:4\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
-			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │           │   └─ Project\n" +
@@ -18948,7 +18948,7 @@ WHERE
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
 			"     │           │                           └─ columns: [id ftqlq]\n" +
-			"     │           │   as GXLUB, Subquery\n" +
+			"     │           │  ->GXLUB:0, Subquery\n" +
 			"     │           │   ├─ cacheable: true\n" +
 			"     │           │   ├─ alias-string: select id from XOAOP where DZLIM = 'HR'\n" +
 			"     │           │   └─ Project\n" +
@@ -18961,13 +18961,13 @@ WHERE
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
 			"     │           │               └─ columns: [id dzlim]\n" +
-			"     │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │           │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │           │   ├─ ums.hr:4\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
 			"     │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │           │   ├─ ums.hr:4\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
-			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │           └─ TableAlias(ums)\n" +
 			"     │               └─ IndexedTableAccess(FG26Y)\n" +
 			"     │                   ├─ index: [FG26Y.id]\n" +
@@ -19057,7 +19057,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, GXLUB:1!null, CH3FR:2!null, D237E:3!null, JOGI6:4]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │       │   └─ Project\n" +
@@ -19088,7 +19088,7 @@ WHERE
 			"     │       │                       └─ Table\n" +
 			"     │       │                           ├─ name: YK2GW\n" +
 			"     │       │                           └─ columns: [id ftqlq]\n" +
-			"     │       │   as GXLUB, Subquery\n" +
+			"     │       │  ->GXLUB:0, Subquery\n" +
 			"     │       │   ├─ cacheable: true\n" +
 			"     │       │   ├─ alias-string: select id from XOAOP where DZLIM = 'MMR'\n" +
 			"     │       │   └─ Project\n" +
@@ -19101,15 +19101,15 @@ WHERE
 			"     │       │           └─ Table\n" +
 			"     │       │               ├─ name: XOAOP\n" +
 			"     │       │               └─ columns: [id dzlim]\n" +
-			"     │       │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │       │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │       │   ├─ ums.mmr:5\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
 			"     │       │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │       │   ├─ ums.mmr:5\n" +
 			"     │       │   └─ 0.5 (decimal(2,1))\n" +
-			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │       │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │           ├─ columns: [ums.id:0!null, ums.T4IBQ:1, ums.ner:2, ums.ber:3, ums.hr:4, ums.mmr:5, ums.QZ6VT:6, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:13, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select bs.id from THNTS as bs join YK2GW as cla on cla.id = bs.IXUXU where cla.FTQLQ = ums.T4IBQ\n" +
 			"     │           │   └─ Project\n" +
@@ -19140,7 +19140,7 @@ WHERE
 			"     │           │                       └─ Table\n" +
 			"     │           │                           ├─ name: YK2GW\n" +
 			"     │           │                           └─ columns: [id ftqlq]\n" +
-			"     │           │   as GXLUB, Subquery\n" +
+			"     │           │  ->GXLUB:0, Subquery\n" +
 			"     │           │   ├─ cacheable: true\n" +
 			"     │           │   ├─ alias-string: select id from XOAOP where DZLIM = 'MMR'\n" +
 			"     │           │   └─ Project\n" +
@@ -19153,13 +19153,13 @@ WHERE
 			"     │           │           └─ Table\n" +
 			"     │           │               ├─ name: XOAOP\n" +
 			"     │           │               └─ columns: [id dzlim]\n" +
-			"     │           │   as CH3FR, CASE  WHEN GreaterThan\n" +
+			"     │           │  ->CH3FR:0, CASE  WHEN GreaterThan\n" +
 			"     │           │   ├─ ums.mmr:5\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
 			"     │           │   THEN 1 (tinyint) WHEN LessThan\n" +
 			"     │           │   ├─ ums.mmr:5\n" +
 			"     │           │   └─ 0.5 (decimal(2,1))\n" +
-			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END as D237E, ums.id:0!null as JOGI6]\n" +
+			"     │           │   THEN 0 (tinyint) ELSE NULL (null) END->D237E:0, ums.id:0!null->JOGI6:0]\n" +
 			"     │           └─ TableAlias(ums)\n" +
 			"     │               └─ IndexedTableAccess(FG26Y)\n" +
 			"     │                   ├─ index: [FG26Y.id]\n" +
@@ -19247,7 +19247,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, BTXC5:1, FHCYT:2]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, ncvd2.BTXC5:0 as BTXC5, NULL (null) as FHCYT]\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:34, ncvd2.BTXC5:0->BTXC5:0, NULL (null)->FHCYT:36]\n" +
 			"     │       └─ SubqueryAlias\n" +
 			"     │           ├─ name: ncvd2\n" +
 			"     │           ├─ outerVisibility: false\n" +
@@ -19257,7 +19257,7 @@ WHERE
 			"     │           ├─ tableId: 4\n" +
 			"     │           └─ Distinct\n" +
 			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [umf.SYPKF:8 as BTXC5]\n" +
+			"     │                   ├─ columns: [umf.SYPKF:8->BTXC5:0]\n" +
 			"     │                   └─ Filter\n" +
 			"     │                       ├─ AND\n" +
 			"     │                       │   ├─ AND\n" +
@@ -19423,7 +19423,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, GXLUB:1!null, LUEVY:2!null, M22QN:3!null, TJPT7:4!null, ARN5P:5!null, XOSD4:6!null, IDE43:7, HMW4H:8, ZBT6R:9, FSDY2:10!null, LT7K6:11, SPPYD:12, QCGTS:13, TEUJA:14, QQV4M:15, FHCYT:16]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [umf.id:0!null as id, bs.id:63!null as GXLUB, CASE  WHEN NOT\n" +
+			"     │       ├─ columns: [umf.id:0!null->id:0, bs.id:63!null->GXLUB:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ tj5d2.id:25!null IS NULL\n" +
 			"     │       │   THEN Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
@@ -19461,7 +19461,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: E2I7U\n" +
 			"     │       │                       └─ columns: [id fgg57]\n" +
-			"     │       │   END as LUEVY, CASE  WHEN Eq\n" +
+			"     │       │   END->LUEVY:0, CASE  WHEN Eq\n" +
 			"     │       │   ├─ umf.SYPKF:8\n" +
 			"     │       │   └─ N/A (longtext)\n" +
 			"     │       │   THEN Subquery\n" +
@@ -19495,33 +19495,33 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: TPXBU\n" +
 			"     │       │                       └─ columns: [id btxc5]\n" +
-			"     │       │   END as M22QN, umf.TJPT7:6 as TJPT7, umf.ARN5P:7 as ARN5P, umf.XOSD4:13 as XOSD4, umf.IDE43:10 as IDE43, CASE  WHEN NOT\n" +
+			"     │       │   END->M22QN:0, umf.TJPT7:6->TJPT7:0, umf.ARN5P:7->ARN5P:0, umf.XOSD4:13->XOSD4:0, umf.IDE43:10->IDE43:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.HMW4H:14\n" +
 			"     │       │       └─ N/A (longtext)\n" +
-			"     │       │   THEN umf.HMW4H:14 ELSE NULL (null) END as HMW4H, CASE  WHEN NOT\n" +
+			"     │       │   THEN umf.HMW4H:14 ELSE NULL (null) END->HMW4H:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.S76OM:15\n" +
 			"     │       │       └─ N/A (longtext)\n" +
-			"     │       │   THEN (umf.S76OM:15 + 0 (tinyint)) ELSE NULL (null) END as ZBT6R, CASE  WHEN NOT\n" +
+			"     │       │   THEN (umf.S76OM:15 + 0 (tinyint)) ELSE NULL (null) END->ZBT6R:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.FSDY2:12\n" +
 			"     │       │       └─ N/A (longtext)\n" +
-			"     │       │   THEN umf.FSDY2:12 ELSE VUS (longtext) END as FSDY2, CASE  WHEN NOT\n" +
+			"     │       │   THEN umf.FSDY2:12 ELSE VUS (longtext) END->FSDY2:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.vaf:16\n" +
 			"     │       │       └─  (longtext)\n" +
-			"     │       │   THEN (umf.vaf:16 + 0 (decimal(2,1))) ELSE NULL (null) END as LT7K6, CASE  WHEN NOT\n" +
+			"     │       │   THEN (umf.vaf:16 + 0 (decimal(2,1))) ELSE NULL (null) END->LT7K6:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.ZROH6:17\n" +
 			"     │       │       └─  (longtext)\n" +
-			"     │       │   THEN (umf.ZROH6:17 + 0 (decimal(2,1))) ELSE NULL (null) END as SPPYD, CASE  WHEN NOT\n" +
+			"     │       │   THEN (umf.ZROH6:17 + 0 (decimal(2,1))) ELSE NULL (null) END->SPPYD:0, CASE  WHEN NOT\n" +
 			"     │       │   └─ Eq\n" +
 			"     │       │       ├─ umf.QCGTS:18\n" +
 			"     │       │       └─  (longtext)\n" +
-			"     │       │   THEN (umf.QCGTS:18 + 0 (decimal(2,1))) ELSE NULL (null) END as QCGTS, umf.id:0!null as TEUJA, tj5d2.id:25!null as QQV4M, umf.FHCYT:23 as FHCYT]\n" +
+			"     │       │   THEN (umf.QCGTS:18 + 0 (decimal(2,1))) ELSE NULL (null) END->QCGTS:0, umf.id:0!null->TEUJA:0, tj5d2.id:25!null->QQV4M:0, umf.FHCYT:23->FHCYT:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [umf.id:0!null, umf.T4IBQ:1, umf.FGG57:2, umf.SSHPJ:3, umf.NLA6O:4, umf.SFJ6L:5, umf.TJPT7:6, umf.ARN5P:7, umf.SYPKF:8, umf.IVFMK:9, umf.IDE43:10, umf.AZ6SP:11, umf.FSDY2:12, umf.XOSD4:13, umf.HMW4H:14, umf.S76OM:15, umf.vaf:16, umf.ZROH6:17, umf.QCGTS:18, umf.LNFM6:19, umf.TVAWL:20, umf.HDLCL:21, umf.BHHW6:22, umf.FHCYT:23, umf.QZ6VT:24, tj5d2.id:25!null, tj5d2.T4IBQ:26!null, tj5d2.V7UFH:27!null, tj5d2.SYPKF:28!null, tj5d2.H4DMT:29!null, tj5d2.SWCQV:30!null, tj5d2.YKSSU:31, tj5d2.FHCYT:32, cla.id:33!null, cla.FTQLQ:34!null, cla.TUXML:35, cla.PAEF5:36, cla.RUCY4:37, cla.TPNJ6:38!null, cla.LBL53:39, cla.NB3QS:40, cla.EO7IV:41, cla.MUHJF:42, cla.FM34L:43, cla.TY5RF:44, cla.ZHTLH:45, cla.NPB7W:46, cla.SX3HH:47, cla.ISBNF:48, cla.YA7YB:49, cla.C5YKB:50, cla.QK7KT:51, cla.FFGE6:52, cla.FIIGJ:53, cla.SH3NC:54, cla.NTENA:55, cla.M4AUB:56, cla.X5AIR:57, cla.SAB6M:58, cla.G5QI5:59, cla.ZVQVD:60, cla.YKSSU:61, cla.FHCYT:62, bs.id:63!null, bs.NFRYN:64!null, bs.IXUXU:65, bs.FHCYT:66, umf.id:0!null as id, bs.id:63!null as GXLUB, CASE  WHEN NOT\n" +
+			"     │           ├─ columns: [umf.id:0!null, umf.T4IBQ:1, umf.FGG57:2, umf.SSHPJ:3, umf.NLA6O:4, umf.SFJ6L:5, umf.TJPT7:6, umf.ARN5P:7, umf.SYPKF:8, umf.IVFMK:9, umf.IDE43:10, umf.AZ6SP:11, umf.FSDY2:12, umf.XOSD4:13, umf.HMW4H:14, umf.S76OM:15, umf.vaf:16, umf.ZROH6:17, umf.QCGTS:18, umf.LNFM6:19, umf.TVAWL:20, umf.HDLCL:21, umf.BHHW6:22, umf.FHCYT:23, umf.QZ6VT:24, tj5d2.id:25!null, tj5d2.T4IBQ:26!null, tj5d2.V7UFH:27!null, tj5d2.SYPKF:28!null, tj5d2.H4DMT:29!null, tj5d2.SWCQV:30!null, tj5d2.YKSSU:31, tj5d2.FHCYT:32, cla.id:33!null, cla.FTQLQ:34!null, cla.TUXML:35, cla.PAEF5:36, cla.RUCY4:37, cla.TPNJ6:38!null, cla.LBL53:39, cla.NB3QS:40, cla.EO7IV:41, cla.MUHJF:42, cla.FM34L:43, cla.TY5RF:44, cla.ZHTLH:45, cla.NPB7W:46, cla.SX3HH:47, cla.ISBNF:48, cla.YA7YB:49, cla.C5YKB:50, cla.QK7KT:51, cla.FFGE6:52, cla.FIIGJ:53, cla.SH3NC:54, cla.NTENA:55, cla.M4AUB:56, cla.X5AIR:57, cla.SAB6M:58, cla.G5QI5:59, cla.ZVQVD:60, cla.YKSSU:61, cla.FHCYT:62, bs.id:63!null, bs.NFRYN:64!null, bs.IXUXU:65, bs.FHCYT:66, umf.id:0!null->id:0, bs.id:63!null->GXLUB:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ tj5d2.id:25!null IS NULL\n" +
 			"     │           │   THEN Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
@@ -19559,7 +19559,7 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: E2I7U\n" +
 			"     │           │                       └─ columns: [id fgg57]\n" +
-			"     │           │   END as LUEVY, CASE  WHEN Eq\n" +
+			"     │           │   END->LUEVY:0, CASE  WHEN Eq\n" +
 			"     │           │   ├─ umf.SYPKF:8\n" +
 			"     │           │   └─ N/A (longtext)\n" +
 			"     │           │   THEN Subquery\n" +
@@ -19593,31 +19593,31 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: TPXBU\n" +
 			"     │           │                       └─ columns: [id btxc5]\n" +
-			"     │           │   END as M22QN, umf.TJPT7:6 as TJPT7, umf.ARN5P:7 as ARN5P, umf.XOSD4:13 as XOSD4, umf.IDE43:10 as IDE43, CASE  WHEN NOT\n" +
+			"     │           │   END->M22QN:0, umf.TJPT7:6->TJPT7:0, umf.ARN5P:7->ARN5P:0, umf.XOSD4:13->XOSD4:0, umf.IDE43:10->IDE43:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.HMW4H:14\n" +
 			"     │           │       └─ N/A (longtext)\n" +
-			"     │           │   THEN umf.HMW4H:14 ELSE NULL (null) END as HMW4H, CASE  WHEN NOT\n" +
+			"     │           │   THEN umf.HMW4H:14 ELSE NULL (null) END->HMW4H:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.S76OM:15\n" +
 			"     │           │       └─ N/A (longtext)\n" +
-			"     │           │   THEN (umf.S76OM:15 + 0 (tinyint)) ELSE NULL (null) END as ZBT6R, CASE  WHEN NOT\n" +
+			"     │           │   THEN (umf.S76OM:15 + 0 (tinyint)) ELSE NULL (null) END->ZBT6R:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.FSDY2:12\n" +
 			"     │           │       └─ N/A (longtext)\n" +
-			"     │           │   THEN umf.FSDY2:12 ELSE VUS (longtext) END as FSDY2, CASE  WHEN NOT\n" +
+			"     │           │   THEN umf.FSDY2:12 ELSE VUS (longtext) END->FSDY2:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.vaf:16\n" +
 			"     │           │       └─  (longtext)\n" +
-			"     │           │   THEN (umf.vaf:16 + 0 (decimal(2,1))) ELSE NULL (null) END as LT7K6, CASE  WHEN NOT\n" +
+			"     │           │   THEN (umf.vaf:16 + 0 (decimal(2,1))) ELSE NULL (null) END->LT7K6:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.ZROH6:17\n" +
 			"     │           │       └─  (longtext)\n" +
-			"     │           │   THEN (umf.ZROH6:17 + 0 (decimal(2,1))) ELSE NULL (null) END as SPPYD, CASE  WHEN NOT\n" +
+			"     │           │   THEN (umf.ZROH6:17 + 0 (decimal(2,1))) ELSE NULL (null) END->SPPYD:0, CASE  WHEN NOT\n" +
 			"     │           │   └─ Eq\n" +
 			"     │           │       ├─ umf.QCGTS:18\n" +
 			"     │           │       └─  (longtext)\n" +
-			"     │           │   THEN (umf.QCGTS:18 + 0 (decimal(2,1))) ELSE NULL (null) END as QCGTS, umf.id:0!null as TEUJA, tj5d2.id:25!null as QQV4M, umf.FHCYT:23 as FHCYT]\n" +
+			"     │           │   THEN (umf.QCGTS:18 + 0 (decimal(2,1))) ELSE NULL (null) END->QCGTS:0, umf.id:0!null->TEUJA:0, tj5d2.id:25!null->QQV4M:0, umf.FHCYT:23->FHCYT:0]\n" +
 			"     │           └─ LookupJoin\n" +
 			"     │               ├─ LookupJoin\n" +
 			"     │               │   ├─ LeftOuterJoin\n" +
@@ -19822,7 +19822,7 @@ INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 			" └─ Project\n" +
 			"     ├─ columns: [id:0!null, Z7CP5:1!null, YH4XB:2!null]\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, c6pud.id:2!null as Z7CP5, vc.id:0!null as YH4XB]\n" +
+			"         ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:56, c6pud.id:2!null->Z7CP5:0, vc.id:0!null->YH4XB:0]\n" +
 			"         └─ InnerJoin\n" +
 			"             ├─ c6pud.AZ6SP LIKE concat(concat('%',vc.TWMSR),'%')\n" +
 			"             ├─ TableAlias(vc)\n" +
@@ -19838,7 +19838,7 @@ INNER JOIN D34QP vc ON C6PUD.AZ6SP LIKE CONCAT(CONCAT('%', vc.TWMSR), '%')`,
 			"                 ├─ colSet: (48,49)\n" +
 			"                 ├─ tableId: 4\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [mf.id:2!null as id, umf.AZ6SP:1 as AZ6SP]\n" +
+			"                     ├─ columns: [mf.id:2!null->id:0, umf.AZ6SP:1->AZ6SP:0]\n" +
 			"                     └─ InnerJoin\n" +
 			"                         ├─ Eq\n" +
 			"                         │   ├─ umf.id:0!null\n" +
@@ -19980,15 +19980,15 @@ FROM
 			"         │   ├─ columns: [id:0!null, convert\n" +
 			"         │   │   ├─ type: char\n" +
 			"         │   │   └─ FV24E:1!null\n" +
-			"         │   │   as FV24E, convert\n" +
+			"         │   │  ->FV24E:0, convert\n" +
 			"         │   │   ├─ type: char\n" +
 			"         │   │   └─ UJ6XY:2!null\n" +
-			"         │   │   as UJ6XY, M22QN:3!null, NZ4MQ:4, ETPQV:5!null, convert\n" +
+			"         │   │  ->UJ6XY:0, M22QN:3!null, NZ4MQ:4, ETPQV:5!null, convert\n" +
 			"         │   │   ├─ type: char\n" +
 			"         │   │   └─ PRUV2:6\n" +
-			"         │   │   as PRUV2, YKSSU:7, FHCYT:8]\n" +
+			"         │   │  ->PRUV2:0, YKSSU:7, FHCYT:8]\n" +
 			"         │   └─ Project\n" +
-			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, bpnw2.FV24E:1!null as FV24E, bpnw2.UJ6XY:2!null as UJ6XY, bpnw2.M22QN:3!null as M22QN, bpnw2.NZ4MQ:4 as NZ4MQ, bpnw2.MU3KG:0!null as ETPQV, NULL (null) as PRUV2, bpnw2.YKSSU:6 as YKSSU, bpnw2.FHCYT:5 as FHCYT]\n" +
+			"         │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:106, bpnw2.FV24E:1!null->FV24E:0, bpnw2.UJ6XY:2!null->UJ6XY:0, bpnw2.M22QN:3!null->M22QN:0, bpnw2.NZ4MQ:4->NZ4MQ:0, bpnw2.MU3KG:0!null->ETPQV:0, NULL (null)->PRUV2:112, bpnw2.YKSSU:6->YKSSU:0, bpnw2.FHCYT:5->FHCYT:0]\n" +
 			"         │       └─ SubqueryAlias\n" +
 			"         │           ├─ name: bpnw2\n" +
 			"         │           ├─ outerVisibility: false\n" +
@@ -19998,7 +19998,7 @@ FROM
 			"         │           ├─ tableId: 9\n" +
 			"         │           └─ Distinct\n" +
 			"         │               └─ Project\n" +
-			"         │                   ├─ columns: [tizhk.id:0!null as MU3KG, j4jyp.id:20!null as FV24E, rhuzn.id:37!null as UJ6XY, aac.id:71!null as M22QN, Subquery\n" +
+			"         │                   ├─ columns: [tizhk.id:0!null->MU3KG:0, j4jyp.id:20!null->FV24E:0, rhuzn.id:37!null->UJ6XY:0, aac.id:71!null->M22QN:0, Subquery\n" +
 			"         │                   │   ├─ cacheable: false\n" +
 			"         │                   │   ├─ alias-string: select G3YXS.id from YYBCX as G3YXS where CONCAT(G3YXS.ESFVY, '(MI:', G3YXS.SL76B, ')') = TIZHK.IDUT2\n" +
 			"         │                   │   └─ Project\n" +
@@ -20013,9 +20013,9 @@ FROM
 			"         │                   │                   ├─ columns: [id esfvy sl76b]\n" +
 			"         │                   │                   ├─ colSet: (88-95)\n" +
 			"         │                   │                   └─ tableId: 8\n" +
-			"         │                   │   as NZ4MQ, NULL (null) as FHCYT, NULL (null) as YKSSU]\n" +
+			"         │                   │  ->NZ4MQ:0, NULL (null)->FHCYT:97, NULL (null)->YKSSU:98]\n" +
 			"         │                   └─ Project\n" +
-			"         │                       ├─ columns: [tizhk.id:0!null, tizhk.TVNW2:1, tizhk.ZHITY:2, tizhk.SYPKF:3, tizhk.IDUT2:4, tizhk.O6QJ3:5, tizhk.NO2JA:6, tizhk.YKSSU:7, tizhk.FHCYT:8, tizhk.QZ6VT:9, nhmxw.id:10!null, nhmxw.NOHHR:11!null, nhmxw.AVPYF:12!null, nhmxw.SYPKF:13!null, nhmxw.IDUT2:14!null, nhmxw.FZXV5:15, nhmxw.DQYGV:16, nhmxw.SWCQV:17!null, nhmxw.YKSSU:18, nhmxw.FHCYT:19, j4jyp.id:20!null, j4jyp.DKCAJ:21!null, j4jyp.KNG7T:22, j4jyp.TW55N:23!null, j4jyp.QRQXW:24!null, j4jyp.ECXAJ:25!null, j4jyp.FGG57:26, j4jyp.ZH72S:27, j4jyp.FSK67:28!null, j4jyp.XQDYT:29!null, j4jyp.TCE7A:30, j4jyp.IWV2H:31, j4jyp.HPCMS:32!null, j4jyp.N5CC2:33, j4jyp.FHCYT:34, j4jyp.ETAQ7:35, j4jyp.A75X7:36, rhuzn.id:57!null, rhuzn.DKCAJ:58!null, rhuzn.KNG7T:59, rhuzn.TW55N:60!null, rhuzn.QRQXW:61!null, rhuzn.ECXAJ:62!null, rhuzn.FGG57:63, rhuzn.ZH72S:64, rhuzn.FSK67:65!null, rhuzn.XQDYT:66!null, rhuzn.TCE7A:67, rhuzn.IWV2H:68, rhuzn.HPCMS:69!null, rhuzn.N5CC2:70, rhuzn.FHCYT:71, rhuzn.ETAQ7:72, rhuzn.A75X7:73, mf.id:37!null, mf.GXLUB:38!null, mf.LUEVY:39!null, mf.M22QN:40!null, mf.TJPT7:41!null, mf.ARN5P:42!null, mf.XOSD4:43!null, mf.IDE43:44, mf.HMW4H:45, mf.ZBT6R:46, mf.FSDY2:47!null, mf.LT7K6:48, mf.SPPYD:49, mf.QCGTS:50, mf.TEUJA:51, mf.QQV4M:52, mf.FHCYT:53, aac.id:54!null, aac.BTXC5:55, aac.FHCYT:56, tizhk.id:0!null as MU3KG, j4jyp.id:20!null as FV24E, rhuzn.id:57!null as UJ6XY, aac.id:54!null as M22QN, Subquery\n" +
+			"         │                       ├─ columns: [tizhk.id:0!null, tizhk.TVNW2:1, tizhk.ZHITY:2, tizhk.SYPKF:3, tizhk.IDUT2:4, tizhk.O6QJ3:5, tizhk.NO2JA:6, tizhk.YKSSU:7, tizhk.FHCYT:8, tizhk.QZ6VT:9, nhmxw.id:10!null, nhmxw.NOHHR:11!null, nhmxw.AVPYF:12!null, nhmxw.SYPKF:13!null, nhmxw.IDUT2:14!null, nhmxw.FZXV5:15, nhmxw.DQYGV:16, nhmxw.SWCQV:17!null, nhmxw.YKSSU:18, nhmxw.FHCYT:19, j4jyp.id:20!null, j4jyp.DKCAJ:21!null, j4jyp.KNG7T:22, j4jyp.TW55N:23!null, j4jyp.QRQXW:24!null, j4jyp.ECXAJ:25!null, j4jyp.FGG57:26, j4jyp.ZH72S:27, j4jyp.FSK67:28!null, j4jyp.XQDYT:29!null, j4jyp.TCE7A:30, j4jyp.IWV2H:31, j4jyp.HPCMS:32!null, j4jyp.N5CC2:33, j4jyp.FHCYT:34, j4jyp.ETAQ7:35, j4jyp.A75X7:36, rhuzn.id:57!null, rhuzn.DKCAJ:58!null, rhuzn.KNG7T:59, rhuzn.TW55N:60!null, rhuzn.QRQXW:61!null, rhuzn.ECXAJ:62!null, rhuzn.FGG57:63, rhuzn.ZH72S:64, rhuzn.FSK67:65!null, rhuzn.XQDYT:66!null, rhuzn.TCE7A:67, rhuzn.IWV2H:68, rhuzn.HPCMS:69!null, rhuzn.N5CC2:70, rhuzn.FHCYT:71, rhuzn.ETAQ7:72, rhuzn.A75X7:73, mf.id:37!null, mf.GXLUB:38!null, mf.LUEVY:39!null, mf.M22QN:40!null, mf.TJPT7:41!null, mf.ARN5P:42!null, mf.XOSD4:43!null, mf.IDE43:44, mf.HMW4H:45, mf.ZBT6R:46, mf.FSDY2:47!null, mf.LT7K6:48, mf.SPPYD:49, mf.QCGTS:50, mf.TEUJA:51, mf.QQV4M:52, mf.FHCYT:53, aac.id:54!null, aac.BTXC5:55, aac.FHCYT:56, tizhk.id:0!null->MU3KG:0, j4jyp.id:20!null->FV24E:0, rhuzn.id:57!null->UJ6XY:0, aac.id:54!null->M22QN:0, Subquery\n" +
 			"         │                       │   ├─ cacheable: false\n" +
 			"         │                       │   ├─ alias-string: select G3YXS.id from YYBCX as G3YXS where CONCAT(G3YXS.ESFVY, '(MI:', G3YXS.SL76B, ')') = TIZHK.IDUT2\n" +
 			"         │                       │   └─ Project\n" +
@@ -20030,7 +20030,7 @@ FROM
 			"         │                       │                   ├─ columns: [id esfvy sl76b]\n" +
 			"         │                       │                   ├─ colSet: (88-95)\n" +
 			"         │                       │                   └─ tableId: 8\n" +
-			"         │                       │   as NZ4MQ, NULL (null) as FHCYT, NULL (null) as YKSSU]\n" +
+			"         │                       │  ->NZ4MQ:0, NULL (null)->FHCYT:97, NULL (null)->YKSSU:98]\n" +
 			"         │                       └─ Filter\n" +
 			"         │                           ├─ AND\n" +
 			"         │                           │   ├─ Eq\n" +
@@ -20113,12 +20113,12 @@ FROM
 			"         │                                           ├─ name: E2I7U\n" +
 			"         │                                           └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [id:0!null, FV24E:1 as FV24E, UJ6XY:2 as UJ6XY, M22QN:3, NZ4MQ:4, ETPQV:5!null, convert\n" +
+			"             ├─ columns: [id:0!null, FV24E:1->FV24E:0, UJ6XY:2->UJ6XY:0, M22QN:3, NZ4MQ:4, ETPQV:5!null, convert\n" +
 			"             │   ├─ type: char\n" +
 			"             │   └─ PRUV2:6!null\n" +
-			"             │   as PRUV2, YKSSU:7, FHCYT:8]\n" +
+			"             │  ->PRUV2:0, YKSSU:7, FHCYT:8]\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, bpnw2.FV24E:1 as FV24E, bpnw2.UJ6XY:2 as UJ6XY, Subquery\n" +
+			"                 ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:227, bpnw2.FV24E:1->FV24E:0, bpnw2.UJ6XY:2->UJ6XY:0, Subquery\n" +
 			"                 │   ├─ cacheable: false\n" +
 			"                 │   ├─ alias-string: select aac.id from TPXBU as aac where aac.BTXC5 = BPNW2.SYPKF\n" +
 			"                 │   └─ Project\n" +
@@ -20136,9 +20136,9 @@ FROM
 			"                 │                   └─ Table\n" +
 			"                 │                       ├─ name: TPXBU\n" +
 			"                 │                       └─ columns: [id btxc5]\n" +
-			"                 │   as M22QN, bpnw2.NZ4MQ:4 as NZ4MQ, bpnw2.MU3KG:0!null as ETPQV, bpnw2.I4NDZ:7!null as PRUV2, bpnw2.YKSSU:6 as YKSSU, bpnw2.FHCYT:5 as FHCYT]\n" +
+			"                 │  ->M22QN:0, bpnw2.NZ4MQ:4->NZ4MQ:0, bpnw2.MU3KG:0!null->ETPQV:0, bpnw2.I4NDZ:7!null->PRUV2:0, bpnw2.YKSSU:6->YKSSU:0, bpnw2.FHCYT:5->FHCYT:0]\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [bpnw2.MU3KG:0!null, bpnw2.FV24E:1, bpnw2.UJ6XY:2, bpnw2.SYPKF:3, bpnw2.NZ4MQ:4, bpnw2.FHCYT:5, bpnw2.YKSSU:6, bpnw2.I4NDZ:7!null, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, bpnw2.FV24E:1 as FV24E, bpnw2.UJ6XY:2 as UJ6XY, Subquery\n" +
+			"                     ├─ columns: [bpnw2.MU3KG:0!null, bpnw2.FV24E:1, bpnw2.UJ6XY:2, bpnw2.SYPKF:3, bpnw2.NZ4MQ:4, bpnw2.FHCYT:5, bpnw2.YKSSU:6, bpnw2.I4NDZ:7!null, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:227, bpnw2.FV24E:1->FV24E:0, bpnw2.UJ6XY:2->UJ6XY:0, Subquery\n" +
 			"                     │   ├─ cacheable: false\n" +
 			"                     │   ├─ alias-string: select aac.id from TPXBU as aac where aac.BTXC5 = BPNW2.SYPKF\n" +
 			"                     │   └─ Project\n" +
@@ -20156,7 +20156,7 @@ FROM
 			"                     │                   └─ Table\n" +
 			"                     │                       ├─ name: TPXBU\n" +
 			"                     │                       └─ columns: [id btxc5]\n" +
-			"                     │   as M22QN, bpnw2.NZ4MQ:4 as NZ4MQ, bpnw2.MU3KG:0!null as ETPQV, bpnw2.I4NDZ:7!null as PRUV2, bpnw2.YKSSU:6 as YKSSU, bpnw2.FHCYT:5 as FHCYT]\n" +
+			"                     │  ->M22QN:0, bpnw2.NZ4MQ:4->NZ4MQ:0, bpnw2.MU3KG:0!null->ETPQV:0, bpnw2.I4NDZ:7!null->PRUV2:0, bpnw2.YKSSU:6->YKSSU:0, bpnw2.FHCYT:5->FHCYT:0]\n" +
 			"                     └─ SubqueryAlias\n" +
 			"                         ├─ name: bpnw2\n" +
 			"                         ├─ outerVisibility: false\n" +
@@ -20166,7 +20166,7 @@ FROM
 			"                         ├─ tableId: 17\n" +
 			"                         └─ Distinct\n" +
 			"                             └─ Project\n" +
-			"                                 ├─ columns: [tizhk.id:0!null as MU3KG, CASE  WHEN NOT\n" +
+			"                                 ├─ columns: [tizhk.id:0!null->MU3KG:0, CASE  WHEN NOT\n" +
 			"                                 │   └─ nhmxw.FZXV5:15 IS NULL\n" +
 			"                                 │   THEN Subquery\n" +
 			"                                 │   ├─ cacheable: false\n" +
@@ -20186,7 +20186,7 @@ FROM
 			"                                 │                   └─ Table\n" +
 			"                                 │                       ├─ name: E2I7U\n" +
 			"                                 │                       └─ columns: [id tw55n]\n" +
-			"                                 │   ELSE j4jyp.id:20!null END as FV24E, CASE  WHEN NOT\n" +
+			"                                 │   ELSE j4jyp.id:20!null END->FV24E:0, CASE  WHEN NOT\n" +
 			"                                 │   └─ nhmxw.DQYGV:16 IS NULL\n" +
 			"                                 │   THEN Subquery\n" +
 			"                                 │   ├─ cacheable: false\n" +
@@ -20206,7 +20206,7 @@ FROM
 			"                                 │                   └─ Table\n" +
 			"                                 │                       ├─ name: E2I7U\n" +
 			"                                 │                       └─ columns: [id tw55n]\n" +
-			"                                 │   ELSE rhuzn.id:37!null END as UJ6XY, tizhk.SYPKF:3 as SYPKF, Subquery\n" +
+			"                                 │   ELSE rhuzn.id:37!null END->UJ6XY:0, tizhk.SYPKF:3->SYPKF:0, Subquery\n" +
 			"                                 │   ├─ cacheable: false\n" +
 			"                                 │   ├─ alias-string: select G3YXS.id from YYBCX as G3YXS where CONCAT(G3YXS.ESFVY, '(MI:', G3YXS.SL76B, ')') = TIZHK.IDUT2\n" +
 			"                                 │   └─ Project\n" +
@@ -20221,9 +20221,9 @@ FROM
 			"                                 │                   ├─ columns: [id esfvy sl76b]\n" +
 			"                                 │                   ├─ colSet: (207-214)\n" +
 			"                                 │                   └─ tableId: 16\n" +
-			"                                 │   as NZ4MQ, NULL (null) as FHCYT, NULL (null) as YKSSU, nhmxw.id:10!null as I4NDZ]\n" +
+			"                                 │  ->NZ4MQ:0, NULL (null)->FHCYT:216, NULL (null)->YKSSU:217, nhmxw.id:10!null->I4NDZ:0]\n" +
 			"                                 └─ Project\n" +
-			"                                     ├─ columns: [tizhk.id:0!null, tizhk.TVNW2:1, tizhk.ZHITY:2, tizhk.SYPKF:3, tizhk.IDUT2:4, tizhk.O6QJ3:5, tizhk.NO2JA:6, tizhk.YKSSU:7, tizhk.FHCYT:8, tizhk.QZ6VT:9, nhmxw.id:10!null, nhmxw.NOHHR:11!null, nhmxw.AVPYF:12!null, nhmxw.SYPKF:13!null, nhmxw.IDUT2:14!null, nhmxw.FZXV5:15, nhmxw.DQYGV:16, nhmxw.SWCQV:17!null, nhmxw.YKSSU:18, nhmxw.FHCYT:19, j4jyp.id:20!null, j4jyp.DKCAJ:21!null, j4jyp.KNG7T:22, j4jyp.TW55N:23!null, j4jyp.QRQXW:24!null, j4jyp.ECXAJ:25!null, j4jyp.FGG57:26, j4jyp.ZH72S:27, j4jyp.FSK67:28!null, j4jyp.XQDYT:29!null, j4jyp.TCE7A:30, j4jyp.IWV2H:31, j4jyp.HPCMS:32!null, j4jyp.N5CC2:33, j4jyp.FHCYT:34, j4jyp.ETAQ7:35, j4jyp.A75X7:36, rhuzn.id:37!null, rhuzn.DKCAJ:38!null, rhuzn.KNG7T:39, rhuzn.TW55N:40!null, rhuzn.QRQXW:41!null, rhuzn.ECXAJ:42!null, rhuzn.FGG57:43, rhuzn.ZH72S:44, rhuzn.FSK67:45!null, rhuzn.XQDYT:46!null, rhuzn.TCE7A:47, rhuzn.IWV2H:48, rhuzn.HPCMS:49!null, rhuzn.N5CC2:50, rhuzn.FHCYT:51, rhuzn.ETAQ7:52, rhuzn.A75X7:53, tizhk.id:0!null as MU3KG, CASE  WHEN NOT\n" +
+			"                                     ├─ columns: [tizhk.id:0!null, tizhk.TVNW2:1, tizhk.ZHITY:2, tizhk.SYPKF:3, tizhk.IDUT2:4, tizhk.O6QJ3:5, tizhk.NO2JA:6, tizhk.YKSSU:7, tizhk.FHCYT:8, tizhk.QZ6VT:9, nhmxw.id:10!null, nhmxw.NOHHR:11!null, nhmxw.AVPYF:12!null, nhmxw.SYPKF:13!null, nhmxw.IDUT2:14!null, nhmxw.FZXV5:15, nhmxw.DQYGV:16, nhmxw.SWCQV:17!null, nhmxw.YKSSU:18, nhmxw.FHCYT:19, j4jyp.id:20!null, j4jyp.DKCAJ:21!null, j4jyp.KNG7T:22, j4jyp.TW55N:23!null, j4jyp.QRQXW:24!null, j4jyp.ECXAJ:25!null, j4jyp.FGG57:26, j4jyp.ZH72S:27, j4jyp.FSK67:28!null, j4jyp.XQDYT:29!null, j4jyp.TCE7A:30, j4jyp.IWV2H:31, j4jyp.HPCMS:32!null, j4jyp.N5CC2:33, j4jyp.FHCYT:34, j4jyp.ETAQ7:35, j4jyp.A75X7:36, rhuzn.id:37!null, rhuzn.DKCAJ:38!null, rhuzn.KNG7T:39, rhuzn.TW55N:40!null, rhuzn.QRQXW:41!null, rhuzn.ECXAJ:42!null, rhuzn.FGG57:43, rhuzn.ZH72S:44, rhuzn.FSK67:45!null, rhuzn.XQDYT:46!null, rhuzn.TCE7A:47, rhuzn.IWV2H:48, rhuzn.HPCMS:49!null, rhuzn.N5CC2:50, rhuzn.FHCYT:51, rhuzn.ETAQ7:52, rhuzn.A75X7:53, tizhk.id:0!null->MU3KG:0, CASE  WHEN NOT\n" +
 			"                                     │   └─ nhmxw.FZXV5:15 IS NULL\n" +
 			"                                     │   THEN Subquery\n" +
 			"                                     │   ├─ cacheable: false\n" +
@@ -20243,7 +20243,7 @@ FROM
 			"                                     │                   └─ Table\n" +
 			"                                     │                       ├─ name: E2I7U\n" +
 			"                                     │                       └─ columns: [id tw55n]\n" +
-			"                                     │   ELSE j4jyp.id:20!null END as FV24E, CASE  WHEN NOT\n" +
+			"                                     │   ELSE j4jyp.id:20!null END->FV24E:0, CASE  WHEN NOT\n" +
 			"                                     │   └─ nhmxw.DQYGV:16 IS NULL\n" +
 			"                                     │   THEN Subquery\n" +
 			"                                     │   ├─ cacheable: false\n" +
@@ -20263,7 +20263,7 @@ FROM
 			"                                     │                   └─ Table\n" +
 			"                                     │                       ├─ name: E2I7U\n" +
 			"                                     │                       └─ columns: [id tw55n]\n" +
-			"                                     │   ELSE rhuzn.id:37!null END as UJ6XY, tizhk.SYPKF:3 as SYPKF, Subquery\n" +
+			"                                     │   ELSE rhuzn.id:37!null END->UJ6XY:0, tizhk.SYPKF:3->SYPKF:0, Subquery\n" +
 			"                                     │   ├─ cacheable: false\n" +
 			"                                     │   ├─ alias-string: select G3YXS.id from YYBCX as G3YXS where CONCAT(G3YXS.ESFVY, '(MI:', G3YXS.SL76B, ')') = TIZHK.IDUT2\n" +
 			"                                     │   └─ Project\n" +
@@ -20278,7 +20278,7 @@ FROM
 			"                                     │                   ├─ columns: [id esfvy sl76b]\n" +
 			"                                     │                   ├─ colSet: (207-214)\n" +
 			"                                     │                   └─ tableId: 16\n" +
-			"                                     │   as NZ4MQ, NULL (null) as FHCYT, NULL (null) as YKSSU, nhmxw.id:10!null as I4NDZ]\n" +
+			"                                     │  ->NZ4MQ:0, NULL (null)->FHCYT:216, NULL (null)->YKSSU:217, nhmxw.id:10!null->I4NDZ:0]\n" +
 			"                                     └─ Filter\n" +
 			"                                         ├─ NOT\n" +
 			"                                         │   └─ nhmxw.id:10!null IS NULL\n" +
@@ -20449,7 +20449,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, NO52D:1!null, VYO5E:2, DKCAJ:3!null, ADURZ:4!null, FHCYT:5]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, rs.NO52D:0 as NO52D, rs.VYO5E:1 as VYO5E, rs.DKCAJ:2!null as DKCAJ, CASE  WHEN AND\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:72, rs.NO52D:0->NO52D:0, rs.VYO5E:1->VYO5E:0, rs.DKCAJ:2!null->DKCAJ:0, CASE  WHEN AND\n" +
 			"     │       │   ├─ Eq\n" +
 			"     │       │   │   ├─ rs.NO52D:0\n" +
 			"     │       │   │   └─ FZB3D (longtext)\n" +
@@ -20490,7 +20490,7 @@ WHERE
 			"     │       │   THEN 1 (tinyint) WHEN Eq\n" +
 			"     │       │   ├─ rs.NO52D:0\n" +
 			"     │       │   └─ Kd (longtext)\n" +
-			"     │       │   THEN 2 (tinyint) ELSE NULL (null) END as ADURZ, NULL (null) as FHCYT]\n" +
+			"     │       │   THEN 2 (tinyint) ELSE NULL (null) END->ADURZ:0, NULL (null)->FHCYT:77]\n" +
 			"     │       └─ Filter\n" +
 			"     │           ├─ Or\n" +
 			"     │           │   ├─ AND\n" +
@@ -20538,10 +20538,10 @@ WHERE
 			"     │               ├─ tableId: 7\n" +
 			"     │               └─ Distinct\n" +
 			"     │                   └─ Project\n" +
-			"     │                       ├─ columns: [nk7fp.NO52D:0 as NO52D, CASE  WHEN Eq\n" +
+			"     │                       ├─ columns: [nk7fp.NO52D:0->NO52D:0, CASE  WHEN Eq\n" +
 			"     │                       │   ├─ nk7fp.VYO5E:1\n" +
 			"     │                       │   └─ N/A (longtext)\n" +
-			"     │                       │   THEN NULL (null) ELSE nk7fp.VYO5E:1 END as VYO5E, nt.id:7!null as DKCAJ, nt.DZLIM:8!null as F35MI]\n" +
+			"     │                       │   THEN NULL (null) ELSE nk7fp.VYO5E:1 END->VYO5E:0, nt.id:7!null->DKCAJ:0, nt.DZLIM:8!null->F35MI:0]\n" +
 			"     │                       └─ HashJoin\n" +
 			"     │                           ├─ Eq\n" +
 			"     │                           │   ├─ nt.id:7!null\n" +
@@ -20775,7 +20775,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, FZ2R5:1!null, LUEVY:2!null, M22QN:3!null, OVE3E:4!null, NRURT:5, OCA7E:6, XMM6Q:7, V5DPX:8!null, S3Q3Y:9!null, ZRV3B:10!null, FHCYT:11]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, pqsxb.FZ2R5:0 as FZ2R5, nd.id:12!null as LUEVY, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:120, pqsxb.FZ2R5:0->FZ2R5:0, nd.id:12!null->LUEVY:0, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select aac.id from TPXBU as aac where aac.BTXC5 = PQSXB.BTXC5\n" +
 			"     │       │   └─ Project\n" +
@@ -20793,9 +20793,9 @@ WHERE
 			"     │       │                   └─ Table\n" +
 			"     │       │                       ├─ name: TPXBU\n" +
 			"     │       │                       └─ columns: [id btxc5]\n" +
-			"     │       │   as M22QN, pqsxb.OVE3E:1 as OVE3E, pqsxb.NRURT:2!null as NRURT, pqsxb.OCA7E:3!null as OCA7E, pqsxb.XMM6Q:4 as XMM6Q, pqsxb.V5DPX:5 as V5DPX, pqsxb.S3Q3Y:6 as S3Q3Y, pqsxb.ZRV3B:7 as ZRV3B, pqsxb.FHCYT:8 as FHCYT]\n" +
+			"     │       │  ->M22QN:0, pqsxb.OVE3E:1->OVE3E:0, pqsxb.NRURT:2!null->NRURT:0, pqsxb.OCA7E:3!null->OCA7E:0, pqsxb.XMM6Q:4->XMM6Q:0, pqsxb.V5DPX:5->V5DPX:0, pqsxb.S3Q3Y:6->S3Q3Y:0, pqsxb.ZRV3B:7->ZRV3B:0, pqsxb.FHCYT:8->FHCYT:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [pqsxb.FZ2R5:0, pqsxb.OVE3E:1, pqsxb.NRURT:2!null, pqsxb.OCA7E:3!null, pqsxb.XMM6Q:4, pqsxb.V5DPX:5, pqsxb.S3Q3Y:6, pqsxb.ZRV3B:7, pqsxb.FHCYT:8, pqsxb.K3B6V:9, pqsxb.BTXC5:10, pqsxb.H4DMT:11!null, nd.id:12!null, nd.DKCAJ:13!null, nd.KNG7T:14, nd.TW55N:15!null, nd.QRQXW:16!null, nd.ECXAJ:17!null, nd.FGG57:18, nd.ZH72S:19, nd.FSK67:20!null, nd.XQDYT:21!null, nd.TCE7A:22, nd.IWV2H:23, nd.HPCMS:24!null, nd.N5CC2:25, nd.FHCYT:26, nd.ETAQ7:27, nd.A75X7:28, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, pqsxb.FZ2R5:0 as FZ2R5, nd.id:12!null as LUEVY, Subquery\n" +
+			"     │           ├─ columns: [pqsxb.FZ2R5:0, pqsxb.OVE3E:1, pqsxb.NRURT:2!null, pqsxb.OCA7E:3!null, pqsxb.XMM6Q:4, pqsxb.V5DPX:5, pqsxb.S3Q3Y:6, pqsxb.ZRV3B:7, pqsxb.FHCYT:8, pqsxb.K3B6V:9, pqsxb.BTXC5:10, pqsxb.H4DMT:11!null, nd.id:12!null, nd.DKCAJ:13!null, nd.KNG7T:14, nd.TW55N:15!null, nd.QRQXW:16!null, nd.ECXAJ:17!null, nd.FGG57:18, nd.ZH72S:19, nd.FSK67:20!null, nd.XQDYT:21!null, nd.TCE7A:22, nd.IWV2H:23, nd.HPCMS:24!null, nd.N5CC2:25, nd.FHCYT:26, nd.ETAQ7:27, nd.A75X7:28, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:120, pqsxb.FZ2R5:0->FZ2R5:0, nd.id:12!null->LUEVY:0, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select aac.id from TPXBU as aac where aac.BTXC5 = PQSXB.BTXC5\n" +
 			"     │           │   └─ Project\n" +
@@ -20813,7 +20813,7 @@ WHERE
 			"     │           │                   └─ Table\n" +
 			"     │           │                       ├─ name: TPXBU\n" +
 			"     │           │                       └─ columns: [id btxc5]\n" +
-			"     │           │   as M22QN, pqsxb.OVE3E:1 as OVE3E, pqsxb.NRURT:2!null as NRURT, pqsxb.OCA7E:3!null as OCA7E, pqsxb.XMM6Q:4 as XMM6Q, pqsxb.V5DPX:5 as V5DPX, pqsxb.S3Q3Y:6 as S3Q3Y, pqsxb.ZRV3B:7 as ZRV3B, pqsxb.FHCYT:8 as FHCYT]\n" +
+			"     │           │  ->M22QN:0, pqsxb.OVE3E:1->OVE3E:0, pqsxb.NRURT:2!null->NRURT:0, pqsxb.OCA7E:3!null->OCA7E:0, pqsxb.XMM6Q:4->XMM6Q:0, pqsxb.V5DPX:5->V5DPX:0, pqsxb.S3Q3Y:6->S3Q3Y:0, pqsxb.ZRV3B:7->ZRV3B:0, pqsxb.FHCYT:8->FHCYT:0]\n" +
 			"     │           └─ Filter\n" +
 			"     │               ├─ NOT\n" +
 			"     │               │   └─ pqsxb.OVE3E:1 IS NULL\n" +
@@ -20855,7 +20855,7 @@ WHERE
 			"     │                   │       │               └─ Table\n" +
 			"     │                   │       │                   ├─ name: JDLNA\n" +
 			"     │                   │       │                   └─ columns: [id ftqlq]\n" +
-			"     │                   │       │   as FZ2R5, Subquery\n" +
+			"     │                   │       │  ->FZ2R5:0, Subquery\n" +
 			"     │                   │       │   ├─ cacheable: false\n" +
 			"     │                   │       │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = uct.NO52D and (SFEGG.VYO5E = uct.VYO5E or (SFEGG.VYO5E is null and (uct.VYO5E is null or uct.VYO5E = 'N/A' or uct.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end)\n" +
 			"     │                   │       │   └─ Project\n" +
@@ -20924,12 +20924,12 @@ WHERE
 			"     │                   │       │           │               │                   └─ Table\n" +
 			"     │                   │       │           │               │                       ├─ name: E2I7U\n" +
 			"     │                   │       │           │               │                       └─ columns: [dkcaj tw55n]\n" +
-			"     │                   │       │           │               │   END as CASE\n" +
+			"     │                   │       │           │               │   END->CASE\n" +
 			"     │                   │       │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
 			"     │                   │       │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
 			"     │                   │       │           │               │                          ELSE\n" +
 			"     │                   │       │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
-			"     │                   │       │           │               │                      END]\n" +
+			"     │                   │       │           │               │                      END:0]\n" +
 			"     │                   │       │           │               └─ Project\n" +
 			"     │                   │       │           │                   ├─ columns: [dual.:39!null]\n" +
 			"     │                   │       │           │                   └─ Table\n" +
@@ -20945,11 +20945,11 @@ WHERE
 			"     │                   │       │               └─ Table\n" +
 			"     │                   │       │                   ├─ name: SFEGG\n" +
 			"     │                   │       │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │                   │       │   as OVE3E, uct.id:0!null as NRURT, i7hcr.id:13!null as OCA7E, NULL (null) as XMM6Q, uct.V5DPX:4 as V5DPX, (uct.IDPK7:6 + 0 (decimal(2,1))) as S3Q3Y, uct.ZRV3B:8 as ZRV3B, CASE  WHEN NOT\n" +
+			"     │                   │       │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
 			"     │                   │       │   └─ Eq\n" +
 			"     │                   │       │       ├─ uct.FHCYT:11\n" +
 			"     │                   │       │       └─ N/A (longtext)\n" +
-			"     │                   │       │   THEN uct.FHCYT:11 ELSE NULL (null) END as FHCYT, uct.ZH72S:2 as K3B6V, uct.LJLUM:5 as BTXC5, i7hcr.FVUCX:17!null as H4DMT]\n" +
+			"     │                   │       │   THEN uct.FHCYT:11 ELSE NULL (null) END->FHCYT:0, uct.ZH72S:2->K3B6V:0, uct.LJLUM:5->BTXC5:0, i7hcr.FVUCX:17!null->H4DMT:0]\n" +
 			"     │                   │       └─ Project\n" +
 			"     │                   │           ├─ columns: [uct.id:0!null, uct.FTQLQ:1, uct.ZH72S:2, uct.SFJ6L:3, uct.V5DPX:4, uct.LJLUM:5, uct.IDPK7:6, uct.NO52D:7, uct.ZRV3B:8, uct.VYO5E:9, uct.YKSSU:10, uct.FHCYT:11, uct.QZ6VT:12, i7hcr.id:13!null, i7hcr.TOFPN:14!null, i7hcr.SJYN2:15!null, i7hcr.BTXC5:16!null, i7hcr.FVUCX:17!null, i7hcr.SWCQV:18!null, i7hcr.YKSSU:19, i7hcr.FHCYT:20, Subquery\n" +
 			"     │                   │           │   ├─ cacheable: false\n" +
@@ -20968,7 +20968,7 @@ WHERE
 			"     │                   │           │               └─ Table\n" +
 			"     │                   │           │                   ├─ name: JDLNA\n" +
 			"     │                   │           │                   └─ columns: [id ftqlq]\n" +
-			"     │                   │           │   as FZ2R5, Subquery\n" +
+			"     │                   │           │  ->FZ2R5:0, Subquery\n" +
 			"     │                   │           │   ├─ cacheable: false\n" +
 			"     │                   │           │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = uct.NO52D and (SFEGG.VYO5E = uct.VYO5E or (SFEGG.VYO5E is null and (uct.VYO5E is null or uct.VYO5E = 'N/A' or uct.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select case when I7HCR.FVUCX is null then (select nd.DKCAJ from E2I7U as nd where nd.ZH72S = uct.ZH72S limit 1) else (select nd.DKCAJ from E2I7U as nd where nd.TW55N = I7HCR.FVUCX) end)\n" +
 			"     │                   │           │   └─ Project\n" +
@@ -21037,12 +21037,12 @@ WHERE
 			"     │                   │           │           │               │                   └─ Table\n" +
 			"     │                   │           │           │               │                       ├─ name: E2I7U\n" +
 			"     │                   │           │           │               │                       └─ columns: [dkcaj tw55n]\n" +
-			"     │                   │           │           │               │   END as CASE\n" +
+			"     │                   │           │           │               │   END->CASE\n" +
 			"     │                   │           │           │               │                          WHEN I7HCR.FVUCX IS NULL\n" +
 			"     │                   │           │           │               │                              THEN (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.ZH72S = uct.ZH72S LIMIT 1)\n" +
 			"     │                   │           │           │               │                          ELSE\n" +
 			"     │                   │           │           │               │                              (SELECT nd.DKCAJ FROM E2I7U nd WHERE nd.TW55N = I7HCR.FVUCX)\n" +
-			"     │                   │           │           │               │                      END]\n" +
+			"     │                   │           │           │               │                      END:0]\n" +
 			"     │                   │           │           │               └─ Project\n" +
 			"     │                   │           │           │                   ├─ columns: [dual.:27!null]\n" +
 			"     │                   │           │           │                   └─ Table\n" +
@@ -21058,11 +21058,11 @@ WHERE
 			"     │                   │           │               └─ Table\n" +
 			"     │                   │           │                   ├─ name: SFEGG\n" +
 			"     │                   │           │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │                   │           │   as OVE3E, uct.id:0!null as NRURT, i7hcr.id:13!null as OCA7E, NULL (null) as XMM6Q, uct.V5DPX:4 as V5DPX, (uct.IDPK7:6 + 0 (decimal(2,1))) as S3Q3Y, uct.ZRV3B:8 as ZRV3B, CASE  WHEN NOT\n" +
+			"     │                   │           │  ->OVE3E:0, uct.id:0!null->NRURT:0, i7hcr.id:13!null->OCA7E:0, NULL (null)->XMM6Q:83, uct.V5DPX:4->V5DPX:0, (uct.IDPK7:6 + 0 (decimal(2,1)))->S3Q3Y:0, uct.ZRV3B:8->ZRV3B:0, CASE  WHEN NOT\n" +
 			"     │                   │           │   └─ Eq\n" +
 			"     │                   │           │       ├─ uct.FHCYT:11\n" +
 			"     │                   │           │       └─ N/A (longtext)\n" +
-			"     │                   │           │   THEN uct.FHCYT:11 ELSE NULL (null) END as FHCYT, uct.ZH72S:2 as K3B6V, uct.LJLUM:5 as BTXC5, i7hcr.FVUCX:17!null as H4DMT]\n" +
+			"     │                   │           │   THEN uct.FHCYT:11 ELSE NULL (null) END->FHCYT:0, uct.ZH72S:2->K3B6V:0, uct.LJLUM:5->BTXC5:0, i7hcr.FVUCX:17!null->H4DMT:0]\n" +
 			"     │                   │           └─ LeftOuterJoin\n" +
 			"     │                   │               ├─ AND\n" +
 			"     │                   │               │   ├─ AND\n" +
@@ -21216,7 +21216,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, NO52D:1!null, VYO5E:2, DKCAJ:3!null, ADURZ:4!null, FHCYT:5]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, rs.NO52D:0!null as NO52D, rs.VYO5E:1 as VYO5E, rs.DKCAJ:2!null as DKCAJ, CASE  WHEN AND\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:60, rs.NO52D:0!null->NO52D:0, rs.VYO5E:1->VYO5E:0, rs.DKCAJ:2!null->DKCAJ:0, CASE  WHEN AND\n" +
 			"     │       │   ├─ Eq\n" +
 			"     │       │   │   ├─ rs.NO52D:0!null\n" +
 			"     │       │   │   └─ FZB3D (longtext)\n" +
@@ -21257,7 +21257,7 @@ WHERE
 			"     │       │   THEN 1 (tinyint) WHEN Eq\n" +
 			"     │       │   ├─ rs.NO52D:0!null\n" +
 			"     │       │   └─ Kd (longtext)\n" +
-			"     │       │   THEN 2 (tinyint) ELSE NULL (null) END as ADURZ, NULL (null) as FHCYT]\n" +
+			"     │       │   THEN 2 (tinyint) ELSE NULL (null) END->ADURZ:0, NULL (null)->FHCYT:65]\n" +
 			"     │       └─ Filter\n" +
 			"     │           ├─ Or\n" +
 			"     │           │   ├─ AND\n" +
@@ -21305,7 +21305,7 @@ WHERE
 			"     │               ├─ tableId: 5\n" +
 			"     │               └─ Distinct\n" +
 			"     │                   └─ Project\n" +
-			"     │                       ├─ columns: [tvtjs.NO52D:2!null as NO52D, tvtjs.VYO5E:3 as VYO5E, nt.id:6!null as DKCAJ, nt.DZLIM:7!null as F35MI]\n" +
+			"     │                       ├─ columns: [tvtjs.NO52D:2!null->NO52D:0, tvtjs.VYO5E:3->VYO5E:0, nt.id:6!null->DKCAJ:0, nt.DZLIM:7!null->F35MI:0]\n" +
 			"     │                       └─ LookupJoin\n" +
 			"     │                           ├─ LookupJoin\n" +
 			"     │                           │   ├─ TableAlias(tvtjs)\n" +
@@ -21427,7 +21427,7 @@ WHERE
 			"     ├─ Project\n" +
 			"     │   ├─ columns: [id:0!null, FZ2R5:1!null, LUEVY:2!null, M22QN:3!null, OVE3E:4!null, NRURT:5, OCA7E:6, XMM6Q:7, V5DPX:8!null, S3Q3Y:9!null, ZRV3B:10!null, FHCYT:11]\n" +
 			"     │   └─ Project\n" +
-			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │       ├─ columns: [lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:26, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select id from JDLNA where JDLNA.FTQLQ = TVTJS.TOFPN\n" +
 			"     │       │   └─ Project\n" +
@@ -21444,7 +21444,7 @@ WHERE
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: JDLNA\n" +
 			"     │       │                   └─ columns: [id ftqlq]\n" +
-			"     │       │   as FZ2R5, Subquery\n" +
+			"     │       │  ->FZ2R5:0, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select id from E2I7U where TW55N = TVTJS.I3VTA\n" +
 			"     │       │   └─ Project\n" +
@@ -21461,7 +21461,7 @@ WHERE
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: E2I7U\n" +
 			"     │       │                   └─ columns: [id tw55n]\n" +
-			"     │       │   as LUEVY, Subquery\n" +
+			"     │       │  ->LUEVY:0, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select id from TPXBU where BTXC5 = TVTJS.LJLUM\n" +
 			"     │       │   └─ Project\n" +
@@ -21478,7 +21478,7 @@ WHERE
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: TPXBU\n" +
 			"     │       │                   └─ columns: [id btxc5]\n" +
-			"     │       │   as M22QN, Subquery\n" +
+			"     │       │  ->M22QN:0, Subquery\n" +
 			"     │       │   ├─ cacheable: false\n" +
 			"     │       │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = TVTJS.NO52D and (SFEGG.VYO5E = TVTJS.VYO5E or (SFEGG.VYO5E is null and (TVTJS.VYO5E is null or TVTJS.VYO5E = 'N/A' or TVTJS.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select nd.DKCAJ from E2I7U as nd where nd.TW55N = TVTJS.I3VTA)\n" +
 			"     │       │   └─ Project\n" +
@@ -21532,9 +21532,9 @@ WHERE
 			"     │       │               └─ Table\n" +
 			"     │       │                   ├─ name: SFEGG\n" +
 			"     │       │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │       │   as OVE3E, NULL (null) as NRURT, NULL (null) as OCA7E, tvtjs.id:0!null as XMM6Q, tvtjs.V5DPX:4!null as V5DPX, (tvtjs.IDPK7:6!null + 0 (decimal(2,1))) as S3Q3Y, tvtjs.ZRV3B:8!null as ZRV3B, tvtjs.FHCYT:12 as FHCYT]\n" +
+			"     │       │  ->OVE3E:0, NULL (null)->NRURT:79, NULL (null)->OCA7E:80, tvtjs.id:0!null->XMM6Q:0, tvtjs.V5DPX:4!null->V5DPX:0, (tvtjs.IDPK7:6!null + 0 (decimal(2,1)))->S3Q3Y:0, tvtjs.ZRV3B:8!null->ZRV3B:0, tvtjs.FHCYT:12->FHCYT:0]\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [tvtjs.id:0!null, tvtjs.TOFPN:1!null, tvtjs.I3VTA:2!null, tvtjs.SFJ6L:3, tvtjs.V5DPX:4!null, tvtjs.LJLUM:5!null, tvtjs.IDPK7:6!null, tvtjs.NO52D:7!null, tvtjs.ZRV3B:8!null, tvtjs.VYO5E:9, tvtjs.SWCQV:10!null, tvtjs.YKSSU:11, tvtjs.FHCYT:12, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0') as id, Subquery\n" +
+			"     │           ├─ columns: [tvtjs.id:0!null, tvtjs.TOFPN:1!null, tvtjs.I3VTA:2!null, tvtjs.SFJ6L:3, tvtjs.V5DPX:4!null, tvtjs.LJLUM:5!null, tvtjs.IDPK7:6!null, tvtjs.NO52D:7!null, tvtjs.ZRV3B:8!null, tvtjs.VYO5E:9, tvtjs.SWCQV:10!null, tvtjs.YKSSU:11, tvtjs.FHCYT:12, lpad(lower(concat(concat(hex((rand() * 4294967296)),lower(hex((rand() * 4294967296))),lower(hex((rand() * 4294967296)))))), 24, '0')->id:26, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select id from JDLNA where JDLNA.FTQLQ = TVTJS.TOFPN\n" +
 			"     │           │   └─ Project\n" +
@@ -21551,7 +21551,7 @@ WHERE
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: JDLNA\n" +
 			"     │           │                   └─ columns: [id ftqlq]\n" +
-			"     │           │   as FZ2R5, Subquery\n" +
+			"     │           │  ->FZ2R5:0, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select id from E2I7U where TW55N = TVTJS.I3VTA\n" +
 			"     │           │   └─ Project\n" +
@@ -21568,7 +21568,7 @@ WHERE
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: E2I7U\n" +
 			"     │           │                   └─ columns: [id tw55n]\n" +
-			"     │           │   as LUEVY, Subquery\n" +
+			"     │           │  ->LUEVY:0, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select id from TPXBU where BTXC5 = TVTJS.LJLUM\n" +
 			"     │           │   └─ Project\n" +
@@ -21585,7 +21585,7 @@ WHERE
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: TPXBU\n" +
 			"     │           │                   └─ columns: [id btxc5]\n" +
-			"     │           │   as M22QN, Subquery\n" +
+			"     │           │  ->M22QN:0, Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select id from SFEGG where SFEGG.NO52D = TVTJS.NO52D and (SFEGG.VYO5E = TVTJS.VYO5E or (SFEGG.VYO5E is null and (TVTJS.VYO5E is null or TVTJS.VYO5E = 'N/A' or TVTJS.VYO5E = 'NA'))) and SFEGG.DKCAJ = (select nd.DKCAJ from E2I7U as nd where nd.TW55N = TVTJS.I3VTA)\n" +
 			"     │           │   └─ Project\n" +
@@ -21639,7 +21639,7 @@ WHERE
 			"     │           │               └─ Table\n" +
 			"     │           │                   ├─ name: SFEGG\n" +
 			"     │           │                   └─ columns: [id no52d vyo5e dkcaj adurz fhcyt]\n" +
-			"     │           │   as OVE3E, NULL (null) as NRURT, NULL (null) as OCA7E, tvtjs.id:0!null as XMM6Q, tvtjs.V5DPX:4!null as V5DPX, (tvtjs.IDPK7:6!null + 0 (decimal(2,1))) as S3Q3Y, tvtjs.ZRV3B:8!null as ZRV3B, tvtjs.FHCYT:12 as FHCYT]\n" +
+			"     │           │  ->OVE3E:0, NULL (null)->NRURT:79, NULL (null)->OCA7E:80, tvtjs.id:0!null->XMM6Q:0, tvtjs.V5DPX:4!null->V5DPX:0, (tvtjs.IDPK7:6!null + 0 (decimal(2,1)))->S3Q3Y:0, tvtjs.ZRV3B:8!null->ZRV3B:0, tvtjs.FHCYT:12->FHCYT:0]\n" +
 			"     │           └─ TableAlias(tvtjs)\n" +
 			"     │               └─ IndexedTableAccess(HU5A5)\n" +
 			"     │                   ├─ index: [HU5A5.id]\n" +

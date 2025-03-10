@@ -136,7 +136,11 @@ func (e *Alias) String() string {
 }
 
 func (e *Alias) DebugString() string {
-	return fmt.Sprintf("%s as %s", sql.DebugString(e.Child), e.name)
+	if e.unreferencable {
+		return fmt.Sprintf("%s->%s", e.Child, e.name)
+	} else {
+		return fmt.Sprintf("%s->%s:%d", sql.DebugString(e.Child), e.name, e.id)
+	}
 }
 
 // WithChildren implements the Expression interface.
