@@ -46,7 +46,7 @@ type insertIter struct {
 
 	firstGeneratedAutoIncRowIdx int
 
-	missingValFlags []bool
+	deferredDefaults sql.FastIntSet
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -398,7 +398,7 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 		if !col.Nullable && row[count] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if !i.ignore {
-				if i.missingValFlags[count] {
+				if i.deferredDefaults.Contains(count) {
 					return sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
 				}
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
