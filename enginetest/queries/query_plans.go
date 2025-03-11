@@ -6516,34 +6516,28 @@ inner join pq on true
 		Query: `SELECT pk1 AS one, pk2 AS two FROM two_pk ORDER BY pk1, pk2`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [two_pk.pk1:0!null->one:0, two_pk.pk2:1!null->two:0]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1:0!null, two_pk.pk2:1!null, two_pk.c1:2!null, two_pk.c2:3!null, two_pk.c3:4!null, two_pk.c4:5!null, two_pk.c5:6!null, two_pk.pk1:0!null->one:0, two_pk.pk2:1!null->two:0]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         ├─ colSet: (1-7)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
-			"             ├─ name: two_pk\n" +
-			"             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-7)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pk\n" +
+			"         └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [two_pk.pk1 as one, two_pk.pk2 as two]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5, two_pk.pk1 as one, two_pk.pk2 as two]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [two_pk.pk1 as one, two_pk.pk2 as two]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5, two_pk.pk1 as one, two_pk.pk2 as two]\n" +
-			"     └─ IndexedTableAccess(two_pk)\n" +
-			"         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
-			"         ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			" └─ IndexedTableAccess(two_pk)\n" +
+			"     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
 			"",
 	},
 	{

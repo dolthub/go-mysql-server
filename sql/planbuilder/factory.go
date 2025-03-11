@@ -240,12 +240,13 @@ func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColS
 		// (proj ->) sort -> child
 		if p, ok := child.(*plan.Project); ok {
 			var aliases []sql.Expression
+			var aliasCols sql.ColSet
 			for _, p := range p.Projections {
-				if _, ok := p.(*expression.Alias); ok {
+				if a, ok := p.(*expression.Alias); ok {
+					aliasCols.Add(a.Id())
 					aliases = append(aliases, p)
 				}
 			}
-			aliasCols := plan.ExprDeps(aliases...)
 			if !aliasCols.Intersects(deps) {
 				newP := plan.NewProject(p.Projections, plan.NewSort(exprs, p.Child))
 				return f.buildProject(newP, subquery)

@@ -49,7 +49,7 @@ type planErrTest struct {
 func TestPlanBuilder(t *testing.T) {
 	var verbose, rewrite bool
 	//verbose = true
-	rewrite = true
+	//rewrite = true
 
 	var tests = []planTest{
 		{
@@ -117,6 +117,21 @@ Project
                  ├─ columns: [x y z]
                  ├─ colSet: (1-3)
                  └─ tableId: 1
+`,
+		},
+		{
+			Query: "select abs(y) as a from xy order by a",
+			ExpectedPlan: `
+Project
+ ├─ columns: [abs(xy.y:2!null)->a:4]
+ └─ Sort(a:4!null ASC nullsFirst)
+     └─ Project
+         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, abs(xy.y:2!null)->a:4]
+         └─ Table
+             ├─ name: xy
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
@@ -1238,13 +1253,11 @@ Project
 Project
  ├─ columns: [xy.x:1!null, xy.y:2!null->x:4]
  └─ Sort(xy.y:2!null ASC nullsFirst)
-     └─ Project
-         ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.y:2!null->x:4]
-         └─ Table
-             ├─ name: xy
-             ├─ columns: [x y z]
-             ├─ colSet: (1-3)
-             └─ tableId: 1
+     └─ Table
+         ├─ name: xy
+         ├─ columns: [x y z]
+         ├─ colSet: (1-3)
+         └─ tableId: 1
 `,
 		},
 		{
@@ -1828,14 +1841,12 @@ Project
 Project
  ├─ columns: [s.x:1!null->y:4, s.y:2!null]
  └─ Sort(s.x:1!null DESC nullsFirst)
-     └─ Project
-         ├─ columns: [s.x:1!null, s.y:2!null, s.z:3!null, s.x:1!null->y:4]
-         └─ TableAlias(s)
-             └─ Table
-                 ├─ name: xy
-                 ├─ columns: [x y z]
-                 ├─ colSet: (1-3)
-                 └─ tableId: 1
+     └─ TableAlias(s)
+         └─ Table
+             ├─ name: xy
+             ├─ columns: [x y z]
+             ├─ colSet: (1-3)
+             └─ tableId: 1
 `,
 		},
 		{
