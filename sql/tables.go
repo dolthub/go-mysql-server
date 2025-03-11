@@ -192,7 +192,7 @@ type ForeignKeyTable interface {
 	CreateIndexForForeignKey(ctx *Context, indexDef IndexDef) error
 	// GetDeclaredForeignKeys returns the foreign key constraints that are declared by this table.
 	GetDeclaredForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
-	// GetReferencedForeignKeys returns the foreign key constraints that are referenced by this table.
+	// GetReferencedForeignKeys returns the foreign key constraints that reference this table as the parent
 	GetReferencedForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
 	// AddForeignKey adds the given foreign key constraint to the table. Returns an error if the foreign key name
 	// already exists on any other table within the database.

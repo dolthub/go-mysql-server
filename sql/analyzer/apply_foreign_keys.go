@@ -379,6 +379,11 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
+		typeTransforms, err := plan.GetChildParentTypeTransforms(tblSch, childTblSch, fk)
+		if err != nil {
+			return nil, err
+		}
+		
 		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain.AddForeignKey(fk.Name), checkRows)
 		if err != nil {
 			return nil, err
@@ -402,11 +407,12 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		}
 		fkEditor.RefActions[i] = plan.ForeignKeyRefActionData{
 			RowMapper: &plan.ForeignKeyRowMapper{
-				Index:          childIndex,
-				Updater:        childUpdater,
-				SourceSch:      tblSch,
-				IndexPositions: indexPositions,
-				AppendTypes:    appendTypes,
+				Index:                childIndex,
+				Updater:              childUpdater,
+				SourceSch:            tblSch,
+				TargetTypeTransforms: typeTransforms,
+				IndexPositions:       indexPositions,
+				AppendTypes:          appendTypes,
 			},
 			Editor:             childEditor,
 			ForeignKey:         fk,
