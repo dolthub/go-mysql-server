@@ -195,7 +195,7 @@ func (f *factory) buildTableAlias(name string, child sql.Node) (plan.TableIdNode
 // else
 //
 //	sort(project(table)) -> distinct(sort(project(table)))
-func (f *factory) buildDistinct(child sql.Node) sql.Node {
+func (f *factory) buildDistinct(child sql.Node, refsSubquery bool) (sql.Node, error) {
 	if proj, isProj := child.(*plan.Project); isProj {
 		// TODO: if projection columns are just primary key, distinct is no-op
 		// TODO: distinct literals are just one row
@@ -213,12 +213,17 @@ func (f *factory) buildDistinct(child sql.Node) sql.Node {
 			}
 			if !hasDiff {
 				proj.Child = sort.Child
+				// collapse potential redundant project->project
+				proj, err := f.buildProject(proj, refsSubquery)
+				if err != nil {
+					return nil, err
+				}
 				sort.Child = plan.NewDistinct(proj)
-				return sort
+				return sort, nil
 			}
 		}
 	}
-	return plan.NewDistinct(child)
+	return plan.NewDistinct(child), nil
 }
 
 func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
@@ -226,7 +231,7 @@ func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColS
 		// The default binder behavior adds a projection before and after
 		// sort nodes for alias dependency correctness. In many cases the sort
 		// does not reference an alias, and it is beneficial to hoist the inner
-		// projection which lets the optimizer (1) remove redundant projcetions
+		// projection which lets the optimizer (1) remove redundant projections
 		// and usually (2) more aggressively prune table columns.
 		// (proj ->) sort -> proj -> child
 		// =>
@@ -235,12 +240,13 @@ func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColS
 		// (proj ->) sort -> child
 		if p, ok := child.(*plan.Project); ok {
 			var aliases []sql.Expression
+			var aliasCols sql.ColSet
 			for _, p := range p.Projections {
-				if _, ok := p.(*expression.Alias); ok {
+				if a, ok := p.(*expression.Alias); ok {
+					aliasCols.Add(a.Id())
 					aliases = append(aliases, p)
 				}
 			}
-			aliasCols := plan.ExprDeps(aliases...)
 			if !aliasCols.Intersects(deps) {
 				newP := plan.NewProject(p.Projections, plan.NewSort(exprs, p.Child))
 				return f.buildProject(newP, subquery)
