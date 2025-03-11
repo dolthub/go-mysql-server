@@ -571,7 +571,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (5, 44)",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 5}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -629,7 +629,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `INSERT INTO auto_increment_tbl VALUES ('4', 44)`,
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         `SELECT * from auto_increment_tbl where pk=4`,
 		ExpectedSelect: []sql.Row{
 			{4, 44},
@@ -1354,7 +1354,7 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: "insert into auto values (1)",
 				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 1, InsertID: 0}},
+					{types.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
 			},
 			{
@@ -1373,7 +1373,7 @@ var InsertScripts = []ScriptTest{
 			{
 				Query: "insert into auto_pk values (0), (1), (NULL), ()",
 				Expected: []sql.Row{
-					{types.OkResult{RowsAffected: 4, InsertID: 2}},
+					{types.OkResult{RowsAffected: 4}},
 				},
 			},
 			{
@@ -2804,7 +2804,7 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 1}}},
 				//ExpectedWarning: mysql.ERWarnDataTruncated, // TODO: incorrect code
 			},
 			{

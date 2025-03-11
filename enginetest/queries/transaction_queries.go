@@ -837,7 +837,7 @@ var TransactionTests = []TransactionTest{
 			// Client a does a skip ahead
 			{
 				Query:    "/* client a */ insert into t values (10, 10)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 12}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 10}}},
 			},
 			{
 				Query:    "/* client b */ insert into t (y) values (11)",
@@ -846,7 +846,7 @@ var TransactionTests = []TransactionTest{
 			// Client c skips ahead
 			{
 				Query:    "/* client c */ insert into t values (50, 50)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 11}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 50}}},
 			},
 			{
 				Query:    "/* client b */ insert into t (y) values (51)",
