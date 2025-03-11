@@ -200,7 +200,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			}
 		}
 
-		typeTransforms, err := GetChildParentTypeTransforms(refTbl.Schema(), tbl.Schema(), fkDef)
+		typeConversions, err := GetForeignKeyTypeConversions(refTbl.Schema(), tbl.Schema(), fkDef, ChildToParent)
 		if err != nil {
 			return err
 		}
@@ -209,12 +209,12 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			ForeignKey: fkDef,
 			SelfCols:   selfCols,
 			RowMapper: ForeignKeyRowMapper{
-				Index:                refTblIndex,
-				Updater:              refTbl.GetForeignKeyEditor(ctx),
-				SourceSch:            tbl.Schema(),
-				TargetTypeTransforms: typeTransforms,
-				IndexPositions:       indexPositions,
-				AppendTypes:          appendTypes,
+				Index:                 refTblIndex,
+				Updater:               refTbl.GetForeignKeyEditor(ctx),
+				SourceSch:             tbl.Schema(),
+				TargetTypeConversions: typeConversions,
+				IndexPositions:        indexPositions,
+				AppendTypes:           appendTypes,
 			},
 		}
 

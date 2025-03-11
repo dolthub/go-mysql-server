@@ -274,7 +274,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		typeTransforms, err := plan.GetChildParentTypeTransforms(parentTbl.Schema(), tblSch, fk)
+		typeConversions, err := plan.GetForeignKeyTypeConversions(parentTbl.Schema(), tblSch, fk, plan.ChildToParent)
 		if err != nil {
 			return nil, err
 		}
@@ -290,12 +290,12 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			ForeignKey: fk,
 			SelfCols:   selfCols,
 			RowMapper: plan.ForeignKeyRowMapper{
-				Index:                parentIndex,
-				Updater:              parentUpdater,
-				SourceSch:            tblSch,
-				TargetTypeTransforms: typeTransforms,
-				IndexPositions:       indexPositions,
-				AppendTypes:          appendTypes,
+				Index:                 parentIndex,
+				Updater:               parentUpdater,
+				SourceSch:             tblSch,
+				TargetTypeConversions: typeConversions,
+				IndexPositions:        indexPositions,
+				AppendTypes:           appendTypes,
 			},
 		}
 	}
@@ -386,7 +386,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		typeTransforms, err := plan.GetChildParentTypeTransforms(tblSch, childTblSch, fk)
+		typeConversions, err := plan.GetForeignKeyTypeConversions(tblSch, childTblSch, fk, plan.ParentToChild)
 		if err != nil {
 			return nil, err
 		}
@@ -414,12 +414,12 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		}
 		fkEditor.RefActions[i] = plan.ForeignKeyRefActionData{
 			RowMapper: &plan.ForeignKeyRowMapper{
-				Index:                childIndex,
-				Updater:              childUpdater,
-				SourceSch:            tblSch,
-				TargetTypeTransforms: typeTransforms,
-				IndexPositions:       indexPositions,
-				AppendTypes:          appendTypes,
+				Index:                 childIndex,
+				Updater:               childUpdater,
+				SourceSch:             tblSch,
+				TargetTypeConversions: typeConversions,
+				IndexPositions:        indexPositions,
+				AppendTypes:           appendTypes,
 			},
 			Editor:             childEditor,
 			ForeignKey:         fk,
