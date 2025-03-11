@@ -15,6 +15,8 @@
 package procedures
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
@@ -153,7 +155,16 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 
 			caseOp.Index = len(*ops) // start of next case
 		}
-		if s.Else != nil {
+		if s.Else == nil {
+			// throw an error if when there is no else block
+			// this is just an empty case statement that will always hit the else
+			// todo: alternatively, use an error opcode
+			errOp := &InterpreterOperation{
+				OpCode: OpCode_Exception,
+				Error:  mysql.NewSQLError(1339, "20000", "Case not found for CASE statement"),
+			}
+			*ops = append(*ops, errOp)
+		} else {
 			for _, elseStmt := range s.Else {
 				if err := ConvertStmt(ops, stack, elseStmt); err != nil {
 					return err

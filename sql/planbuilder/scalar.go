@@ -106,8 +106,8 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
-		if v.Metadata != nil {
-			return b.ConvertVal(v.Metadata)
+		if v.StoredProcVal != nil {
+			return b.ConvertVal(v.StoredProcVal)
 		}
 		dbName := strings.ToLower(v.Qualifier.DbQualifier.String())
 		tblName := strings.ToLower(v.Qualifier.Name.String())

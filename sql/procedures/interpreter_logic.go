@@ -39,42 +39,6 @@ type Parameter struct {
 	Value any
 }
 
-func unreplaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) ast.SQLNode {
-	switch e := expr.(type) {
-	case *ast.AliasedExpr:
-		newExpr := unreplaceVariablesInExpr(stack, e.Expr)
-		e.Expr = newExpr.(ast.Expr)
-	case *ast.BinaryExpr:
-		newLeftExpr := unreplaceVariablesInExpr(stack, e.Left)
-		newRightExpr := unreplaceVariablesInExpr(stack, e.Right)
-		e.Left = newLeftExpr.(ast.Expr)
-		e.Right = newRightExpr.(ast.Expr)
-	case *ast.ComparisonExpr:
-		newLeftExpr := unreplaceVariablesInExpr(stack, e.Left)
-		newRightExpr := unreplaceVariablesInExpr(stack, e.Right)
-		e.Left = newLeftExpr.(ast.Expr)
-		e.Right = newRightExpr.(ast.Expr)
-	case *ast.FuncExpr:
-		for i := range e.Exprs {
-			newExpr := unreplaceVariablesInExpr(stack, e.Exprs[i])
-			e.Exprs[i] = newExpr.(ast.SelectExpr)
-		}
-	case *ast.NotExpr:
-		newExpr := unreplaceVariablesInExpr(stack, e.Expr)
-		e.Expr = newExpr.(ast.Expr)
-	case *ast.Set:
-		for _, setExpr := range e.Exprs {
-			newExpr := unreplaceVariablesInExpr(stack, setExpr.Expr)
-			setExpr.Expr = newExpr.(ast.Expr)
-		}
-	case *ast.SQLVal:
-		if oldVal, ok := stack.replaceMap[expr]; ok {
-			return oldVal
-		}
-	}
-	return expr
-}
-
 func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLNode, error) {
 	switch e := expr.(type) {
 	case *ast.AliasedExpr:
@@ -136,8 +100,11 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			return expr, nil
 		}
 		newExpr := iv.ToAST()
-		stack.replaceMap[newExpr] = e
-		return newExpr, nil
+		return &ast.ColName{
+			Name:          e.Name,
+			Qualifier:     e.Qualifier,
+			StoredProcVal: newExpr,
+		}, nil
 	}
 	return expr, nil
 }
@@ -207,12 +174,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 			}
 			rowIters = append(rowIters, rowIter)
 
-			for i := range selectStmt.SelectExprs {
-				newNode := unreplaceVariablesInExpr(&stack, selectStmt.SelectExprs[i])
-				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
-			}
-			stack.replaceMap = map[ast.SQLNode]ast.SQLNode{}
-
 		case OpCode_Declare:
 			declareStmt := operation.PrimaryData.(*ast.Declare)
 			for _, decl := range declareStmt.Variables.Names {
@@ -259,14 +220,9 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 				return nil, err
 			}
 
-			for i := range selectStmt.SelectExprs {
-				newNode := unreplaceVariablesInExpr(&stack, selectStmt.SelectExprs[i])
-				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
-			}
-			stack.replaceMap = map[ast.SQLNode]ast.SQLNode{}
-
 		case OpCode_Exception:
-			// TODO: implement
+			return nil, operation.Error
+
 		case OpCode_Execute:
 			// TODO: replace variables
 			stmt, err := replaceVariablesInExpr(&stack, operation.PrimaryData)
@@ -278,9 +234,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 				return nil, err
 			}
 			rowIters = append(rowIters, rowIter)
-
-			stmt = unreplaceVariablesInExpr(&stack, stmt)
-			stack.replaceMap = map[ast.SQLNode]ast.SQLNode{}
 
 		case OpCode_Goto:
 			// We must compare to the index - 1, so that the increment hits our target
@@ -340,12 +293,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 			if !cond {
 				counter = operation.Index - 1 // index of the else block, offset by 1
 			}
-
-			for i := range selectStmt.SelectExprs {
-				newNode := unreplaceVariablesInExpr(&stack, selectStmt.SelectExprs[i])
-				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
-			}
-			stack.replaceMap = map[ast.SQLNode]ast.SQLNode{}
 
 		case OpCode_ScopeBegin:
 			stack.PushScope()

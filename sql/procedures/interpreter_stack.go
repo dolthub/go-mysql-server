@@ -123,7 +123,6 @@ type InterpreterScopeDetails struct {
 // general purpose.
 type InterpreterStack struct {
 	stack      *Stack[*InterpreterScopeDetails]
-	replaceMap map[ast.SQLNode]ast.SQLNode
 }
 
 // NewInterpreterStack creates a new InterpreterStack.
@@ -135,7 +134,6 @@ func NewInterpreterStack() InterpreterStack {
 	})
 	return InterpreterStack{
 		stack:      stack,
-		replaceMap: map[ast.SQLNode]ast.SQLNode{},
 	}
 }
 

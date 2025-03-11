@@ -36,4 +36,5 @@ type InterpreterOperation struct {
 	SecondaryData []string      // This represents auxiliary data, such as bindings, strictness, etc.
 	Target        string        // This is the variable that will store the results (if applicable)
 	Index         int           // This is the index that should be set for operations that move the function counter
+	Error         error         // This is the error that should be returned for OpCode_Exception
 }
