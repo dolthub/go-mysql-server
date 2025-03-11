@@ -15,7 +15,8 @@
 package queries
 
 import (
-	"time"
+	"math"
+"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -2057,7 +2058,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "insert into a (x,y) values (1,1)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -2082,7 +2083,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "insert into b (x) values (1), (2)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
 			},
 			{
 				// The above query doesn't have an auto increment column, so last_insert_id is unchanged
@@ -2093,7 +2094,7 @@ CREATE TABLE tab3 (
 				Query: "insert into a (x, y) values (-100, 10)",
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
-					InsertID:     3,
+					InsertID:     math.MaxUint64 - 100 + 1,
 				}}},
 			},
 			{
@@ -2105,7 +2106,7 @@ CREATE TABLE tab3 (
 				Query: "insert into a (x, y) values (100, 10)",
 				Expected: []sql.Row{{types.OkResult{
 					RowsAffected: 1,
-					InsertID:     3,
+					InsertID:     100,
 				}}},
 			},
 			{
@@ -2200,7 +2201,7 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t(pk) values (10), (default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 11}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 10}}},
 			},
 			{
 				Query: "select last_insert_id()",
@@ -2224,7 +2225,7 @@ CREATE TABLE tab3 (
 
 			{
 				Query:    "insert into t(pk) values (20), (default), (default);",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 21}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3, InsertID: 20}}},
 			},
 			{
 				Query: "select last_insert_id()",
