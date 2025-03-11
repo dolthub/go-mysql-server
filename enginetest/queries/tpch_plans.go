@@ -42,7 +42,7 @@ order by
 	l_returnflag,
 	l_linestatus;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [lineitem.l_returnflag:8!null, lineitem.l_linestatus:9!null, sum(lineitem.l_quantity):7!null as sum_qty, sum(lineitem.l_extendedprice):6!null as sum_base_price, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):5!null as sum_disc_price, sum(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))):4!null as sum_charge, avg(lineitem.l_quantity):2 as avg_qty, avg(lineitem.l_extendedprice):1 as avg_price, avg(lineitem.l_discount):0 as avg_disc, count(1):3!null as count_order]\n" +
+			" ├─ columns: [lineitem.l_returnflag:8!null, lineitem.l_linestatus:9!null, sum(lineitem.l_quantity):7!null->sum_qty:0, sum(lineitem.l_extendedprice):6!null->sum_base_price:0, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):5!null->sum_disc_price:0, sum(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))):4!null->sum_charge:0, avg(lineitem.l_quantity):2->avg_qty:0, avg(lineitem.l_extendedprice):1->avg_price:0, avg(lineitem.l_discount):0->avg_disc:0, count(1):3!null->count_order:0]\n" +
 			" └─ Sort(lineitem.l_returnflag:8!null ASC nullsFirst, lineitem.l_linestatus:9!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: AVG(lineitem.l_discount:2!null), AVG(lineitem.l_extendedprice:1!null), AVG(lineitem.l_quantity:0!null), COUNT(1 (bigint)), SUM(((lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null)) * (1 (tinyint) + lineitem.l_tax:3!null))), SUM((lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null))), SUM(lineitem.l_extendedprice:1!null), SUM(lineitem.l_quantity:0!null), lineitem.l_returnflag:4!null, lineitem.l_linestatus:5!null\n" +
@@ -137,7 +137,7 @@ order by
 			"         │       ├─ cacheable: false\n" +
 			"         │       ├─ alias-string: select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [min(partsupp.ps_supplycost):28!null as min(ps_supplycost)]\n" +
+			"         │           ├─ columns: [min(partsupp.ps_supplycost):28!null->min(ps_supplycost):0]\n" +
 			"         │           └─ GroupBy\n" +
 			"         │               ├─ select: MIN(partsupp.ps_supplycost:30!null)\n" +
 			"         │               ├─ group: \n" +
@@ -384,10 +384,10 @@ order by
 	revenue desc,
 	o_orderdate;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [lineitem.l_orderkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue, orders.o_orderdate:2!null, orders.o_shippriority:3!null]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue DESC nullsFirst, orders.o_orderdate:2!null ASC nullsFirst)\n" +
+			" ├─ columns: [lineitem.l_orderkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0, orders.o_orderdate:2!null, orders.o_shippriority:3!null]\n" +
+			" └─ Sort(revenue:4!null DESC nullsFirst, orders.o_orderdate:2!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, lineitem.l_orderkey:1!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue]\n" +
+			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, lineitem.l_orderkey:1!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0]\n" +
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice:5!null * (1 (tinyint) - lineitem.l_discount:6!null))), lineitem.l_orderkey:4!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null\n" +
 			"             ├─ group: lineitem.l_orderkey:4!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null\n" +
@@ -435,7 +435,7 @@ order by
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [lineitem.l_orderkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue, orders.o_orderdate, orders.o_shippriority]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue DESC, orders.o_orderdate ASC)\n" +
+			" └─ Sort(revenue DESC, orders.o_orderdate ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
@@ -465,7 +465,7 @@ order by
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [lineitem.l_orderkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue, orders.o_orderdate, orders.o_shippriority]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue DESC, orders.o_orderdate ASC)\n" +
+			" └─ Sort(revenue DESC, orders.o_orderdate ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
@@ -519,7 +519,7 @@ group by
 order by
 	o_orderpriority;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [orders.o_orderpriority:1!null, count(1):0!null as order_count]\n" +
+			" ├─ columns: [orders.o_orderpriority:1!null, count(1):0!null->order_count:0]\n" +
 			" └─ Sort(orders.o_orderpriority:1!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: COUNT(1 (bigint)), orders.o_orderpriority:5!null\n" +
@@ -638,10 +638,10 @@ group by
 order by
 	revenue desc;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [nation.n_name:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue DESC nullsFirst)\n" +
+			" ├─ columns: [nation.n_name:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0]\n" +
+			" └─ Sort(revenue:2!null DESC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, nation.n_name:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue]\n" +
+			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, nation.n_name:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0]\n" +
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice:12!null * (1 (tinyint) - lineitem.l_discount:13!null))), nation.n_name:6!null\n" +
 			"             ├─ group: nation.n_name:6!null\n" +
@@ -716,7 +716,7 @@ order by
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue DESC)\n" +
+			" └─ Sort(revenue DESC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
@@ -758,7 +758,7 @@ order by
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue DESC)\n" +
+			" └─ Sort(revenue DESC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
@@ -812,7 +812,7 @@ where
 	and l_discount between .06 - 0.01 and .06 + 0.01
 	and l_quantity < 24;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sum((lineitem.l_extendedprice * lineitem.l_discount)):0!null as revenue]\n" +
+			" ├─ columns: [sum((lineitem.l_extendedprice * lineitem.l_discount)):0!null->revenue:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice:1!null * lineitem.l_discount:2!null))\n" +
 			"     ├─ group: \n" +
@@ -907,7 +907,7 @@ order by
 	cust_nation,
 	l_year;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [shipping.supp_nation:1!null, shipping.cust_nation:2!null, shipping.l_year:3!null, sum(shipping.volume):0!null as revenue]\n" +
+			" ├─ columns: [shipping.supp_nation:1!null, shipping.cust_nation:2!null, shipping.l_year:3!null, sum(shipping.volume):0!null->revenue:0]\n" +
 			" └─ Sort(shipping.supp_nation:1!null ASC nullsFirst, shipping.cust_nation:2!null ASC nullsFirst, shipping.l_year:3!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: SUM(shipping.volume:3!null), shipping.supp_nation:0!null, shipping.cust_nation:1!null, shipping.l_year:2!null\n" +
@@ -920,7 +920,7 @@ order by
 			"             ├─ colSet: (53-56)\n" +
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [n1.n_name:12!null as supp_nation, n2.n_name:14!null as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice:2!null * (1 (tinyint) - lineitem.l_discount:3!null)) as volume]\n" +
+			"                 ├─ columns: [n1.n_name:12!null->supp_nation:0, n2.n_name:14!null->cust_nation:0, extract('YEAR' from lineitem.l_shipdate)->l_year:0, (lineitem.l_extendedprice:2!null * (1 (tinyint) - lineitem.l_discount:3!null))->volume:0]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ Or\n" +
 			"                     │   ├─ AND\n" +
@@ -1146,7 +1146,7 @@ group by
 order by
 	o_year;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [all_nations.o_year:2!null, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end):0!null / sum(all_nations.volume):1!null) as mkt_share]\n" +
+			" ├─ columns: [all_nations.o_year:2!null, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end):0!null / sum(all_nations.volume):1!null)->mkt_share:0]\n" +
 			" └─ Sort(all_nations.o_year:2!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: SUM(CASE  WHEN Eq\n" +
@@ -1162,7 +1162,7 @@ order by
 			"             ├─ colSet: (64-66)\n" +
 			"             ├─ tableId: 9\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice:12!null * (1 (tinyint) - lineitem.l_discount:13!null)) as volume, n2.n_name:19!null as nation]\n" +
+			"                 ├─ columns: [extract('YEAR' from orders.o_orderdate)->o_year:0, (lineitem.l_extendedprice:12!null * (1 (tinyint) - lineitem.l_discount:13!null))->volume:0, n2.n_name:19!null->nation:0]\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
 			"                     │   ├─ LookupJoin\n" +
@@ -1407,7 +1407,7 @@ order by
 	nation,
 	o_year desc;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [profit.nation:1!null, profit.o_year:2!null, sum(profit.amount):0!null as sum_profit]\n" +
+			" ├─ columns: [profit.nation:1!null, profit.o_year:2!null, sum(profit.amount):0!null->sum_profit:0]\n" +
 			" └─ Sort(profit.nation:1!null ASC nullsFirst, profit.o_year:2!null DESC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: SUM(profit.amount:2!null), profit.nation:0!null, profit.o_year:1!null\n" +
@@ -1420,7 +1420,7 @@ order by
 			"             ├─ colSet: (54-56)\n" +
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [nation.n_name:16!null as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice:9!null * (1 (tinyint) - lineitem.l_discount:10!null)) - (partsupp.ps_supplycost:4!null * lineitem.l_quantity:8!null)) as amount]\n" +
+			"                 ├─ columns: [nation.n_name:16!null->nation:0, extract('YEAR' from orders.o_orderdate)->o_year:0, ((lineitem.l_extendedprice:9!null * (1 (tinyint) - lineitem.l_discount:10!null)) - (partsupp.ps_supplycost:4!null * lineitem.l_quantity:8!null))->amount:0]\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ HashJoin\n" +
 			"                     │   ├─ AND\n" +
@@ -1639,10 +1639,10 @@ group by
 order by
 	revenue desc;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [customer.c_custkey:1!null, customer.c_name:2!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue, customer.c_acctbal:3!null, nation.n_name:4!null, customer.c_address:5!null, customer.c_phone:6!null, customer.c_comment:7!null]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue DESC nullsFirst)\n" +
+			" ├─ columns: [customer.c_custkey:1!null, customer.c_name:2!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0, customer.c_acctbal:3!null, nation.n_name:4!null, customer.c_address:5!null, customer.c_phone:6!null, customer.c_comment:7!null]\n" +
+			" └─ Sort(revenue:8!null DESC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, customer.c_custkey:1!null, customer.c_name:2!null, customer.c_acctbal:3!null, nation.n_name:4!null, customer.c_address:5!null, customer.c_phone:6!null, customer.c_comment:7!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue]\n" +
+			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, customer.c_custkey:1!null, customer.c_name:2!null, customer.c_acctbal:3!null, nation.n_name:4!null, customer.c_address:5!null, customer.c_phone:6!null, customer.c_comment:7!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0]\n" +
 			"         └─ GroupBy\n" +
 			"             ├─ select: SUM((lineitem.l_extendedprice:4!null * (1 (tinyint) - lineitem.l_discount:5!null))), customer.c_custkey:7!null, customer.c_name:8!null, customer.c_acctbal:12!null, nation.n_name:15!null, customer.c_address:9!null, customer.c_phone:11!null, customer.c_comment:13!null\n" +
 			"             ├─ group: customer.c_custkey:7!null, customer.c_name:8!null, customer.c_acctbal:12!null, customer.c_phone:11!null, nation.n_name:15!null, customer.c_address:9!null, customer.c_comment:13!null\n" +
@@ -1699,7 +1699,7 @@ order by
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer.c_custkey, customer.c_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue DESC)\n" +
+			" └─ Sort(revenue DESC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
@@ -1732,7 +1732,7 @@ order by
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer.c_custkey, customer.c_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment]\n" +
-			" └─ Sort(sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue DESC)\n" +
+			" └─ Sort(revenue DESC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
@@ -1795,8 +1795,8 @@ group by
 order by
 	value desc;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [partsupp.ps_partkey:1!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null as value]\n" +
-			" └─ Sort(sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null as value DESC nullsFirst)\n" +
+			" ├─ columns: [partsupp.ps_partkey:1!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
+			" └─ Sort(value:4!null DESC nullsFirst)\n" +
 			"     └─ Having\n" +
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null\n" +
@@ -1804,7 +1804,7 @@ order by
 			"         │       ├─ cacheable: true\n" +
 			"         │       ├─ alias-string: select sum(ps_supplycost * ps_availqty) * 0.0001000000 from partsupp, supplier, nation where ps_suppkey = s_suppkey and s_nationkey = n_nationkey and n_name = 'GERMANY'\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null * 0.0001 (decimal(11,10))) as sum(ps_supplycost * ps_availqty) * 0.0001000000]\n" +
+			"         │           ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null * 0.0001 (decimal(11,10)))->sum(ps_supplycost * ps_availqty) * 0.0001000000:0]\n" +
 			"         │           └─ LookupJoin\n" +
 			"         │               ├─ LookupJoin\n" +
 			"         │               │   ├─ Table\n" +
@@ -1833,7 +1833,7 @@ order by
 			"         │                           ├─ name: nation\n" +
 			"         │                           └─ columns: [n_nationkey n_name]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, partsupp.PS_SUPPLYCOST:2!null, partsupp.PS_AVAILQTY:3!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null as value]\n" +
+			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, partsupp.PS_SUPPLYCOST:2!null, partsupp.PS_AVAILQTY:3!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
 			"             └─ GroupBy\n" +
 			"                 ├─ select: SUM((partsupp.ps_supplycost:3!null * partsupp.ps_availqty:2!null)), partsupp.ps_partkey:0!null, partsupp.PS_SUPPLYCOST:3!null, partsupp.PS_AVAILQTY:2!null\n" +
 			"                 ├─ group: partsupp.ps_partkey:0!null\n" +
@@ -1866,7 +1866,7 @@ order by
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
-			" └─ Sort(sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value DESC)\n" +
+			" └─ Sort(value DESC)\n" +
 			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Project\n" +
@@ -1907,7 +1907,7 @@ order by
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
-			" └─ Sort(sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value DESC)\n" +
+			" └─ Sort(value DESC)\n" +
 			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery\n" +
 			"         ├─ cacheable: true\n" +
 			"         └─ Project\n" +
@@ -1979,7 +1979,7 @@ group by
 order by
 	l_shipmode;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [lineitem.l_shipmode:2!null, sum(case  when ((orders.o_orderpriority = '1-urgent') or (orders.o_orderpriority = '2-high')) then 1 else 0 end):1!null as high_line_count, sum(case  when ((not((orders.o_orderpriority = '1-urgent'))) and (not((orders.o_orderpriority = '2-high')))) then 1 else 0 end):0!null as low_line_count]\n" +
+			" ├─ columns: [lineitem.l_shipmode:2!null, sum(case  when ((orders.o_orderpriority = '1-urgent') or (orders.o_orderpriority = '2-high')) then 1 else 0 end):1!null->high_line_count:0, sum(case  when ((not((orders.o_orderpriority = '1-urgent'))) and (not((orders.o_orderpriority = '2-high')))) then 1 else 0 end):0!null->low_line_count:0]\n" +
 			" └─ Sort(lineitem.l_shipmode:2!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: SUM(CASE  WHEN AND\n" +
@@ -2104,10 +2104,10 @@ order by
 	custdist desc,
 	c_count desc;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [c_orders.c_count:1!null, count(1):0!null as custdist]\n" +
-			" └─ Sort(count(1):0!null as custdist DESC nullsFirst, c_orders.c_count:1!null DESC nullsFirst)\n" +
+			" ├─ columns: [c_orders.c_count:1!null, count(1):0!null->custdist:0]\n" +
+			" └─ Sort(custdist:2!null DESC nullsFirst, c_orders.c_count:1!null DESC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [count(1):0!null, c_orders.c_count:1!null, count(1):0!null as custdist]\n" +
+			"         ├─ columns: [count(1):0!null, c_orders.c_count:1!null, count(1):0!null->custdist:0]\n" +
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNT(1 (bigint)), c_orders.c_count:1!null\n" +
 			"             ├─ group: c_orders.c_count:1!null\n" +
@@ -2119,7 +2119,7 @@ order by
 			"                 ├─ colSet: (19,20)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Project\n" +
-			"                     ├─ columns: [customer.c_custkey:1!null, count(orders.o_orderkey):0!null as count(o_orderkey)]\n" +
+			"                     ├─ columns: [customer.c_custkey:1!null, count(orders.o_orderkey):0!null->count(o_orderkey):0]\n" +
 			"                     └─ GroupBy\n" +
 			"                         ├─ select: COUNT(orders.o_orderkey:1!null), customer.c_custkey:0!null\n" +
 			"                         ├─ group: customer.c_custkey:0!null\n" +
@@ -2143,7 +2143,7 @@ order by
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [c_orders.c_count, count(1) as custdist]\n" +
-			" └─ Sort(count(1) as custdist DESC, c_orders.c_count DESC)\n" +
+			" └─ Sort(custdist DESC, c_orders.c_count DESC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), c_orders.c_count, count(1) as custdist]\n" +
 			"         └─ GroupBy\n" +
@@ -2170,7 +2170,7 @@ order by
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [c_orders.c_count, count(1) as custdist]\n" +
-			" └─ Sort(count(1) as custdist DESC, c_orders.c_count DESC)\n" +
+			" └─ Sort(custdist DESC, c_orders.c_count DESC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), c_orders.c_count, count(1) as custdist]\n" +
 			"         └─ GroupBy\n" +
@@ -2213,7 +2213,7 @@ where
 	and l_shipdate >= '1995-09-01'
 	and l_shipdate < '1995-09-01' + interval '1' month;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [((100 (decimal(5,2)) * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end):1!null) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null) as promo_revenue]\n" +
+			" ├─ columns: [((100 (decimal(5,2)) * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end):1!null) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null)->promo_revenue:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null)) ELSE 0 (tinyint) END)\n" +
 			"     ├─ group: \n" +
@@ -2315,7 +2315,7 @@ order by
 			"         │       ├─ cacheable: true\n" +
 			"         │       ├─ alias-string: select max(total_revenue) from revenue0\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [max(revenue0.total_revenue):9!null as max(total_revenue)]\n" +
+			"         │           ├─ columns: [max(revenue0.total_revenue):9!null->max(total_revenue):0]\n" +
 			"         │           └─ GroupBy\n" +
 			"         │               ├─ select: MAX(revenue0.total_revenue:10!null)\n" +
 			"         │               ├─ group: \n" +
@@ -2327,7 +2327,7 @@ order by
 			"         │                   ├─ colSet: (29,30)\n" +
 			"         │                   ├─ tableId: 4\n" +
 			"         │                   └─ Project\n" +
-			"         │                       ├─ columns: [lineitem.l_suppkey:10!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):9!null as sum(l_extendedprice * (1 - l_discount))]\n" +
+			"         │                       ├─ columns: [lineitem.l_suppkey:10!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):9!null->sum(l_extendedprice * (1 - l_discount)):0]\n" +
 			"         │                       └─ GroupBy\n" +
 			"         │                           ├─ select: SUM((lineitem.l_extendedprice:10!null * (1 (tinyint) - lineitem.l_discount:11!null))), lineitem.l_suppkey:9!null\n" +
 			"         │                           ├─ group: lineitem.l_suppkey:9!null\n" +
@@ -2353,7 +2353,7 @@ order by
 			"             │   ├─ colSet: (27,28)\n" +
 			"             │   ├─ tableId: 3\n" +
 			"             │   └─ Project\n" +
-			"             │       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as sum(l_extendedprice * (1 - l_discount))]\n" +
+			"             │       ├─ columns: [lineitem.l_suppkey:1!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->sum(l_extendedprice * (1 - l_discount)):0]\n" +
 			"             │       └─ GroupBy\n" +
 			"             │           ├─ select: SUM((lineitem.l_extendedprice:1!null * (1 (tinyint) - lineitem.l_discount:2!null))), lineitem.l_suppkey:0!null\n" +
 			"             │           ├─ group: lineitem.l_suppkey:0!null\n" +
@@ -2508,10 +2508,10 @@ order by
 	p_type,
 	p_size;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [part.p_brand:1!null, part.p_type:2!null, part.p_size:3!null, countdistinct([partsupp.ps_suppkey]):0!null as supplier_cnt]\n" +
-			" └─ Sort(countdistinct([partsupp.ps_suppkey]):0!null as supplier_cnt DESC nullsFirst, part.p_brand:1!null ASC nullsFirst, part.p_type:2!null ASC nullsFirst, part.p_size:3!null ASC nullsFirst)\n" +
+			" ├─ columns: [part.p_brand:1!null, part.p_type:2!null, part.p_size:3!null, countdistinct([partsupp.ps_suppkey]):0!null->supplier_cnt:0]\n" +
+			" └─ Sort(supplier_cnt:4!null DESC nullsFirst, part.p_brand:1!null ASC nullsFirst, part.p_type:2!null ASC nullsFirst, part.p_size:3!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]):0!null, part.p_brand:1!null, part.p_type:2!null, part.p_size:3!null, countdistinct([partsupp.ps_suppkey]):0!null as supplier_cnt]\n" +
+			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]):0!null, part.p_brand:1!null, part.p_type:2!null, part.p_size:3!null, countdistinct([partsupp.ps_suppkey]):0!null->supplier_cnt:0]\n" +
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand:8!null, part.p_type:9!null, part.p_size:10!null\n" +
 			"             ├─ group: part.p_brand:8!null, part.p_type:9!null, part.p_size:10!null\n" +
@@ -2572,7 +2572,7 @@ order by
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
-			" └─ Sort(countdistinct([partsupp.ps_suppkey]) as supplier_cnt DESC, part.p_brand ASC, part.p_type ASC, part.p_size ASC)\n" +
+			" └─ Sort(supplier_cnt DESC, part.p_brand ASC, part.p_type ASC, part.p_size ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
 			"         └─ GroupBy\n" +
@@ -2603,7 +2603,7 @@ order by
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
-			" └─ Sort(countdistinct([partsupp.ps_suppkey]) as supplier_cnt DESC, part.p_brand ASC, part.p_type ASC, part.p_size ASC)\n" +
+			" └─ Sort(supplier_cnt DESC, part.p_brand ASC, part.p_type ASC, part.p_size ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
 			"         └─ GroupBy\n" +
@@ -2654,7 +2654,7 @@ where
 			l_partkey = p_partkey
 	);`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [(sum(lineitem.l_extendedprice):0!null / 7 (decimal(2,1))) as avg_yearly]\n" +
+			" ├─ columns: [(sum(lineitem.l_extendedprice):0!null / 7 (decimal(2,1)))->avg_yearly:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM(lineitem.l_extendedprice:5!null)\n" +
 			"     ├─ group: \n" +
@@ -2665,7 +2665,7 @@ where
 			"         │       ├─ cacheable: false\n" +
 			"         │       ├─ alias-string: select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [(0.2 (decimal(2,1)) * avg(lineitem.l_quantity):25) as 0.2 * avg(l_quantity)]\n" +
+			"         │           ├─ columns: [(0.2 (decimal(2,1)) * avg(lineitem.l_quantity):25)->0.2 * avg(l_quantity):0]\n" +
 			"         │           └─ GroupBy\n" +
 			"         │               ├─ select: AVG(lineitem.l_quantity:26!null)\n" +
 			"         │               ├─ group: \n" +
@@ -2793,7 +2793,7 @@ order by
 	o_totalprice desc,
 	o_orderdate;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [customer.c_name:1!null, customer.c_custkey:2!null, orders.o_orderkey:3!null, orders.o_orderdate:4!null, orders.o_totalprice:5!null, sum(lineitem.l_quantity):0!null as sum(l_quantity)]\n" +
+			" ├─ columns: [customer.c_name:1!null, customer.c_custkey:2!null, orders.o_orderkey:3!null, orders.o_orderdate:4!null, orders.o_totalprice:5!null, sum(lineitem.l_quantity):0!null->sum(l_quantity):0]\n" +
 			" └─ Sort(orders.o_totalprice:5!null DESC nullsFirst, orders.o_orderdate:4!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: SUM(lineitem.l_quantity:21!null), customer.c_name:1!null, customer.c_custkey:0!null, orders.o_orderkey:8!null, orders.o_orderdate:12!null, orders.o_totalprice:11!null\n" +
@@ -2934,7 +2934,7 @@ where
 		and l_shipinstruct = 'DELIVER IN PERSON'
 	);`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null as revenue]\n" +
+			" ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: SUM((lineitem.l_extendedprice:2!null * (1 (tinyint) - lineitem.l_discount:3!null)))\n" +
 			"     ├─ group: \n" +
@@ -3186,7 +3186,7 @@ order by
 			"         │   │           │       ├─ cacheable: false\n" +
 			"         │   │           │       ├─ alias-string: select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year\n" +
 			"         │   │           │       └─ Project\n" +
-			"         │   │           │           ├─ columns: [(0.5 (decimal(2,1)) * sum(lineitem.l_quantity):5!null) as 0.5 * sum(l_quantity)]\n" +
+			"         │   │           │           ├─ columns: [(0.5 (decimal(2,1)) * sum(lineitem.l_quantity):5!null)->0.5 * sum(l_quantity):0]\n" +
 			"         │   │           │           └─ GroupBy\n" +
 			"         │   │           │               ├─ select: SUM(lineitem.l_quantity:7!null)\n" +
 			"         │   │           │               ├─ group: \n" +
@@ -3424,10 +3424,10 @@ order by
 	numwait desc,
 	s_name;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [supplier.s_name:1!null, count(1):0!null as numwait]\n" +
-			" └─ Sort(count(1):0!null as numwait DESC nullsFirst, supplier.s_name:1!null ASC nullsFirst)\n" +
+			" ├─ columns: [supplier.s_name:1!null, count(1):0!null->numwait:0]\n" +
+			" └─ Sort(numwait:2!null DESC nullsFirst, supplier.s_name:1!null ASC nullsFirst)\n" +
 			"     └─ Project\n" +
-			"         ├─ columns: [count(1):0!null, supplier.s_name:1!null, count(1):0!null as numwait]\n" +
+			"         ├─ columns: [count(1):0!null, supplier.s_name:1!null, count(1):0!null->numwait:0]\n" +
 			"         └─ GroupBy\n" +
 			"             ├─ select: COUNT(1 (bigint)), supplier.s_name:26!null\n" +
 			"             ├─ group: supplier.s_name:26!null\n" +
@@ -3517,7 +3517,7 @@ order by
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [supplier.s_name, count(1) as numwait]\n" +
-			" └─ Sort(count(1) as numwait DESC, supplier.s_name ASC)\n" +
+			" └─ Sort(numwait DESC, supplier.s_name ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), supplier.s_name, count(1) as numwait]\n" +
 			"         └─ GroupBy\n" +
@@ -3564,7 +3564,7 @@ order by
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [supplier.s_name, count(1) as numwait]\n" +
-			" └─ Sort(count(1) as numwait DESC, supplier.s_name ASC)\n" +
+			" └─ Sort(numwait DESC, supplier.s_name ASC)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), supplier.s_name, count(1) as numwait]\n" +
 			"         └─ GroupBy\n" +
@@ -3651,7 +3651,7 @@ group by
 order by
 	cntrycode;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [custsale.cntrycode:2!null, count(1):0!null as numcust, sum(custsale.c_acctbal):1!null as totacctbal]\n" +
+			" ├─ columns: [custsale.cntrycode:2!null, count(1):0!null->numcust:0, sum(custsale.c_acctbal):1!null->totacctbal:0]\n" +
 			" └─ Sort(custsale.cntrycode:2!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: COUNT(1 (bigint)), SUM(custsale.c_acctbal:1!null), custsale.cntrycode:0!null\n" +
@@ -3664,7 +3664,7 @@ order by
 			"             ├─ colSet: (28,29)\n" +
 			"             ├─ tableId: 4\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal:5!null]\n" +
+			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2)->cntrycode:0, customer.c_acctbal:5!null]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ GreaterThan\n" +
 			"                     │   ├─ customer.c_acctbal:5!null\n" +
@@ -3672,7 +3672,7 @@ order by
 			"                     │       ├─ cacheable: true\n" +
 			"                     │       ├─ alias-string: select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17')\n" +
 			"                     │       └─ Project\n" +
-			"                     │           ├─ columns: [avg(customer.c_acctbal):8 as avg(c_acctbal)]\n" +
+			"                     │           ├─ columns: [avg(customer.c_acctbal):8->avg(c_acctbal):0]\n" +
 			"                     │           └─ GroupBy\n" +
 			"                     │               ├─ select: AVG(customer.c_acctbal:9!null)\n" +
 			"                     │               ├─ group: \n" +
