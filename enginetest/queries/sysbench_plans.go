@@ -131,7 +131,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT year_col, count(year_col), max(big_int_col), avg(small_int_col) FROM sbtest1 WHERE big_int_col > 0 GROUP BY set_col ORDER BY year_col`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sbtest1.year_col:3!null, count(sbtest1.year_col):1!null as count(year_col), max(sbtest1.big_int_col):2!null as max(big_int_col), avg(sbtest1.small_int_col):0 as avg(small_int_col)]\n" +
+			" ├─ columns: [sbtest1.year_col:3!null, count(sbtest1.year_col):1!null->count(year_col):0, max(sbtest1.big_int_col):2!null->max(big_int_col):0, avg(sbtest1.small_int_col):0->avg(small_int_col):0]\n" +
 			" └─ Sort(sbtest1.year_col:3!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: AVG(sbtest1.small_int_col:0!null), COUNT(sbtest1.year_col:3!null), MAX(sbtest1.big_int_col:1!null), sbtest1.year_col:3!null\n" +
@@ -171,7 +171,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT count(id) FROM sbtest1 WHERE big_int_col > 0`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(sbtest1.id):0!null as count(id)]\n" +
+			" ├─ columns: [count(sbtest1.id):0!null->count(id):0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(sbtest1.id:0!null)\n" +
 			"     ├─ group: \n" +

@@ -6617,6 +6617,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
+		Query:    "select distinct abs(c5) as a from one_pk where c2 in (1,11,31) order by a",
+		Expected: []sql.Row{{4}, {14}, {34}},
+	},
+	{
+		Query:    "select distinct abs(c5) as a from one_pk order by a",
+		Expected: []sql.Row{{4}, {14}, {24}, {34}},
+	},
+	{
 		Query:    "select ceil(i + 0.5) from mytable order by 1",
 		Expected: []sql.Row{{"2"}, {"3"}, {"4"}},
 	},
