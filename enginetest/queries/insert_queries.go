@@ -629,7 +629,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `INSERT INTO auto_increment_tbl VALUES ('4', 44)`,
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected:1, InsertID:4}}},
+		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         `SELECT * from auto_increment_tbl where pk=4`,
 		ExpectedSelect: []sql.Row{
 			{4, 44},

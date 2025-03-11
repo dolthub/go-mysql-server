@@ -16,7 +16,7 @@ package queries
 
 import (
 	"math"
-"time"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
