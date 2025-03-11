@@ -273,6 +273,12 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		if err != nil {
 			return nil, err
 		}
+
+		typeTransforms, err := plan.GetChildParentTypeTransforms(tblSch, parentTbl.Schema(), fk)
+		if err != nil {
+			return nil, err
+		}
+
 		var selfCols map[string]int
 		if fk.IsSelfReferential() {
 			selfCols = make(map[string]int)
@@ -284,11 +290,12 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			ForeignKey: fk,
 			SelfCols:   selfCols,
 			RowMapper: plan.ForeignKeyRowMapper{
-				Index:          parentIndex,
-				Updater:        parentUpdater,
-				SourceSch:      tblSch,
-				IndexPositions: indexPositions,
-				AppendTypes:    appendTypes,
+				Index:                parentIndex,
+				Updater:              parentUpdater,
+				SourceSch:            tblSch,
+				TargetTypeTransforms: typeTransforms,
+				IndexPositions:       indexPositions,
+				AppendTypes:          appendTypes,
 			},
 		}
 	}

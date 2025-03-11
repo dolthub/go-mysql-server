@@ -566,7 +566,6 @@ func GetChildParentMapping(parentSch sql.Schema, childSch sql.Schema, fkDef sql.
 // GetChildParentTypeTransforms returs a set of functions to transform the value in the child table to the 
 // corresponding type in the parent table, if necessary
 func GetChildParentTypeTransforms(parentSch sql.Schema, childSch sql.Schema, fkDef sql.ForeignKeyConstraint) ([]func(ctx *sql.Context, val any) (any, error), error) {
-	
 	parentMap := make(map[string]int)
 	for i, col := range parentSch {
 		parentMap[strings.ToLower(col.Name)] = i

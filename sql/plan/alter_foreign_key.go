@@ -199,15 +199,22 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 				selfCols[strings.ToLower(col.Name)] = i
 			}
 		}
+
+		typeTransforms, err := GetChildParentTypeTransforms(tbl.Schema(), refTbl.Schema(), fkDef)
+		if err != nil {
+			return err
+		}
+
 		reference := &ForeignKeyReferenceHandler{
 			ForeignKey: fkDef,
 			SelfCols:   selfCols,
 			RowMapper: ForeignKeyRowMapper{
-				Index:          refTblIndex,
-				Updater:        refTbl.GetForeignKeyEditor(ctx),
-				SourceSch:      tbl.Schema(),
-				IndexPositions: indexPositions,
-				AppendTypes:    appendTypes,
+				Index:                refTblIndex,
+				Updater:              refTbl.GetForeignKeyEditor(ctx),
+				SourceSch:            tbl.Schema(),
+				TargetTypeTransforms: typeTransforms,
+				IndexPositions:       indexPositions,
+				AppendTypes:          appendTypes,
 			},
 		}
 
@@ -531,7 +538,7 @@ func FindForeignKeyColMapping(
 		localRowPos, ok := localSchPositionMap[colName]
 		if !ok {
 			// Will happen if a column is renamed that is referenced by a foreign key
-			//TODO: enforce that renaming a column referenced by a foreign key updates that foreign key
+			// TODO: enforce that renaming a column referenced by a foreign key updates that foreign key
 			return nil, nil, fmt.Errorf("column `%s` in foreign key `%s` cannot be found",
 				colName, fkName)
 		}
