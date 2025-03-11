@@ -274,7 +274,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		typeTransforms, err := plan.GetChildParentTypeTransforms(tblSch, parentTbl.Schema(), fk)
+		typeTransforms, err := plan.GetChildParentTypeTransforms(parentTbl.Schema(), tblSch, fk)
 		if err != nil {
 			return nil, err
 		}

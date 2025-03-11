@@ -200,7 +200,7 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			}
 		}
 
-		typeTransforms, err := GetChildParentTypeTransforms(tbl.Schema(), refTbl.Schema(), fkDef)
+		typeTransforms, err := GetChildParentTypeTransforms(refTbl.Schema(), tbl.Schema(), fkDef)
 		if err != nil {
 			return err
 		}
