@@ -107,7 +107,9 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
 
-	b.buildDistinct(outScope, s.QueryOpts.Distinct)
+	if err := b.buildDistinct(outScope, s.QueryOpts.Distinct); err != nil {
+		b.handleErr(err)
+	}
 
 	// OFFSET and LIMIT are last
 	offset := b.buildOffset(outScope, s.Limit)
@@ -194,11 +196,13 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 
 // buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
 // If the query has both DISTINCT and ALL, an error is returned.
-func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
+func (b *Builder) buildDistinct(inScope *scope, distinct bool) error {
 	if !distinct {
-		return
+		return nil
 	}
-	inScope.node = b.f.buildDistinct(inScope.node)
+	var err error
+	inScope.node, err = b.f.buildDistinct(inScope.node, inScope.refsSubquery)
+	return err
 }
 
 func (b *Builder) currentDb() sql.Database {

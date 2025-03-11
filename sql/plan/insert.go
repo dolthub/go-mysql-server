@@ -72,6 +72,9 @@ type InsertInto struct {
 
 	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
 	FirstGeneratedAutoIncRowIdx int
+
+	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
+	DeferredDefaults sql.FastIntSet
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
@@ -198,6 +201,14 @@ func (ii *InsertInto) WithSource(src sql.Node) *InsertInto {
 func (ii *InsertInto) WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx int) *InsertInto {
 	np := *ii
 	np.FirstGeneratedAutoIncRowIdx = firstGeneratedAutoIncRowIdx
+	return &np
+}
+
+// WithDeferredDefaults sets the flags for the insert destination columns, which mark which of the columns are expected
+// to be filled with the DEFAULT or GENERATED value.
+func (ii *InsertInto) WithDeferredDefaults(deferredDefaults sql.FastIntSet) *InsertInto {
+	np := *ii
+	np.DeferredDefaults = deferredDefaults
 	return &np
 }
 

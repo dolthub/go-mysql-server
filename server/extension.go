@@ -27,24 +27,36 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 )
 
-func Intercept(h Interceptor) {
-	inters = append(inters, h)
-	sort.Slice(inters, func(i, j int) bool { return inters[i].Priority() < inters[j].Priority() })
+// InterceptorChain allows an integrator to build a chain of
+// |Interceptor| instances which will wrap and intercept the server's
+// mysql.Handler.
+//
+// Example usage:
+//
+// var ic InterceptorChain
+// ic.WithInterceptor(metricsInterceptor)
+// ic.WithInterceptor(authInterceptor)
+// server, err := NewServer(Config{ ..., Options: []Option{ic.Option()}, ...}, ...)
+type InterceptorChain struct {
+	inters []Interceptor
 }
 
-func WithChain() Option {
-	return func(e *sqle.Engine, sm *SessionManager, handler mysql.Handler) {
-		f := DefaultProtocolListenerFunc
-		DefaultProtocolListenerFunc = func(cfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error) {
-			cfg.Handler = buildChain(cfg.Handler)
-			return f(cfg, sel)
-		}
+func (ic *InterceptorChain) WithInterceptor(h Interceptor) {
+	ic.inters = append(ic.inters, h)
+}
+
+func (ic *InterceptorChain) Option() Option {
+	return func(e *sqle.Engine, sm *SessionManager, handler mysql.Handler) (*sqle.Engine, *SessionManager, mysql.Handler) {
+		chainHandler := buildChain(handler, ic.inters)
+		return e, sm, chainHandler
 	}
 }
 
-var inters []Interceptor
-
-func buildChain(h mysql.Handler) mysql.Handler {
+func buildChain(h mysql.Handler, inters []Interceptor) mysql.Handler {
+	// XXX: Mutates |inters|
+	sort.Slice(inters, func(i, j int) bool {
+		return inters[i].Priority() < inters[j].Priority()
+	})
 	var last Chain = h
 	for i := len(inters) - 1; i >= 0; i-- {
 		filter := inters[i]
@@ -55,7 +67,6 @@ func buildChain(h mysql.Handler) mysql.Handler {
 }
 
 type Interceptor interface {
-
 	// Priority returns the priority of the interceptor.
 	Priority() int
 
@@ -88,7 +99,6 @@ type Interceptor interface {
 }
 
 type Chain interface {
-
 	// ComQuery is called when a connection receives a query.
 	// Note the contents of the query slice may change after
 	// the first call to callback. So the Handler should not

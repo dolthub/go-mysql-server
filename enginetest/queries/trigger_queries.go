@@ -506,6 +506,91 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "insert trigger with missing column default value",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.j = 10;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO t (i) VALUES (1);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "INSERT INTO t (i, j) VALUES (2, null);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{
+					{1, 10},
+					{2, 10},
+				},
+			},
+		},
+	},
+	{
+		Name: "not null column with trigger that sets null should error",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.j = null;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t (i) VALUES (1);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query:       "INSERT INTO t (i, j) VALUES (1, 2);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+		},
+	},
+	{
+		Name: "not null column with before insert trigger should error",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.i = 10 * new.i;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t (i) VALUES (1);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query: "INSERT INTO t (i, j) VALUES (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{
+					{10, 2},
+				},
+			},
+		},
+	},
 
 	// UPDATE triggers
 	{
@@ -3418,6 +3503,135 @@ end;
 			{
 				Query:    "select * from t2;",
 				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
+
+	{
+		Name: "insert trigger with stored procedure with deletes",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"create table t1 (j int);",
+			"insert into t1 values (1);",
+			"create table t2 (k int);",
+			"insert into t2 values (1);",
+			"create table t3 (l int);",
+			"insert into t3 values (1);",
+			"create table t4 (m int);",
+			`
+create procedure proc(x int)
+begin
+  delete from t2 where k = (select j from t1 where j = x);
+  update t3 set l = 10 where l = x;
+  insert into t4 values (x);
+end;
+`,
+			`
+create trigger trig before insert on t
+for each row
+begin
+  call proc(new.i);
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select * from t1;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t3;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query: "select * from t4;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+
+	{
+		Name: "delete trigger with stored procedure with deletes",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (1)",
+			"create table t1 (j int);",
+			"insert into t1 values (1);",
+			"create table t2 (k int);",
+			"insert into t2 values (1);",
+			"create table t3 (l int);",
+			"insert into t3 values (1);",
+			"create table t4 (m int);",
+			`
+create procedure proc(x int)
+begin
+  delete from t2 where k = (select j from t1 where j = x);
+  update t3 set l = 10 where l = x;
+  insert into t4 values (x);
+end;
+`,
+			`
+create trigger trig before delete on t
+for each row
+begin
+  call proc(old.i);
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "delete from t where i = 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t1;",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "select * from t2;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t3;",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+			{
+				Query: "select * from t4;",
+				Expected: []sql.Row{
+					{1},
+				},
 			},
 		},
 	},
