@@ -218,81 +218,80 @@ begin
 	select x;
 end;`,
 
-
-//				`CREATE PROCEDURE p1(IN a BIGINT)
-//BEGIN
-//	DECLARE b VARCHAR(200) DEFAULT "";
-//	tloop: LOOP
-//		CASE
-//			WHEN a < 4 THEN
-//				SET b = CONCAT(b, "a");
-//				SET a = a + 1;
-//			WHEN a < 8 THEN
-//				SET b = CONCAT(b, "b");
-//				SET a = a + 1;
-//			ELSE
-//				LEAVE tloop;
-//		END CASE;
-//	END LOOP;
-//	SELECT b;
-//END;`,
-//				`CREATE PROCEDURE p2(IN a BIGINT)
-//BEGIN
-//	DECLARE b VARCHAR(200) DEFAULT "";
-//	tloop: LOOP
-//		CASE a
-//			WHEN 1 THEN
-//				SET b = CONCAT(b, "a");
-//				SET a = a + 1;
-//			WHEN 2 THEN
-//				SET b = CONCAT(b, "b");
-//				SET a = a + 1;
-//			WHEN 3 THEN
-//				SET b = CONCAT(b, "c");
-//				SET a = a + 1;
-//			ELSE
-//				LEAVE tloop;
-//		END CASE;
-//	END LOOP;
-//	SELECT b;
-//END;`,
-//				`CREATE PROCEDURE p3(IN a BIGINT)
-//BEGIN
-//	DECLARE b VARCHAR(200) DEFAULT "";
-//	tloop: LOOP
-//		CASE a
-//			WHEN 1 THEN
-//				SET b = CONCAT(b, "a");
-//				SET a = a + 1;
-//		END CASE;
-//	END LOOP;
-//	SELECT b;
-//END;`,
-//				`CREATE PROCEDURE p4(IN a BIGINT)
-//BEGIN
-//	DECLARE b VARCHAR(200) DEFAULT "";
-//	tloop: LOOP
-//		CASE
-//			WHEN a = 1 THEN
-//				SET b = CONCAT(b, "a");
-//				SET a = a + 1;
-//		END CASE;
-//	END LOOP;
-//	SELECT b;
-//END;`,
-//				`CREATE PROCEDURE p5(IN a BIGINT)
-//BEGIN
-//	DECLARE b VARCHAR(200) DEFAULT "";
-//	REPEAT
-//		CASE
-//			WHEN a <= 1 THEN
-//				SET b = CONCAT(b, "a");
-//				SET a = a + 1;
-//		END CASE;
-//	UNTIL a > 1
-//	END REPEAT;
-//	SELECT b;
-//END;`,
+				//				`CREATE PROCEDURE p1(IN a BIGINT)
+				//BEGIN
+				//	DECLARE b VARCHAR(200) DEFAULT "";
+				//	tloop: LOOP
+				//		CASE
+				//			WHEN a < 4 THEN
+				//				SET b = CONCAT(b, "a");
+				//				SET a = a + 1;
+				//			WHEN a < 8 THEN
+				//				SET b = CONCAT(b, "b");
+				//				SET a = a + 1;
+				//			ELSE
+				//				LEAVE tloop;
+				//		END CASE;
+				//	END LOOP;
+				//	SELECT b;
+				//END;`,
+				//				`CREATE PROCEDURE p2(IN a BIGINT)
+				//BEGIN
+				//	DECLARE b VARCHAR(200) DEFAULT "";
+				//	tloop: LOOP
+				//		CASE a
+				//			WHEN 1 THEN
+				//				SET b = CONCAT(b, "a");
+				//				SET a = a + 1;
+				//			WHEN 2 THEN
+				//				SET b = CONCAT(b, "b");
+				//				SET a = a + 1;
+				//			WHEN 3 THEN
+				//				SET b = CONCAT(b, "c");
+				//				SET a = a + 1;
+				//			ELSE
+				//				LEAVE tloop;
+				//		END CASE;
+				//	END LOOP;
+				//	SELECT b;
+				//END;`,
+				//				`CREATE PROCEDURE p3(IN a BIGINT)
+				//BEGIN
+				//	DECLARE b VARCHAR(200) DEFAULT "";
+				//	tloop: LOOP
+				//		CASE a
+				//			WHEN 1 THEN
+				//				SET b = CONCAT(b, "a");
+				//				SET a = a + 1;
+				//		END CASE;
+				//	END LOOP;
+				//	SELECT b;
+				//END;`,
+				//				`CREATE PROCEDURE p4(IN a BIGINT)
+				//BEGIN
+				//	DECLARE b VARCHAR(200) DEFAULT "";
+				//	tloop: LOOP
+				//		CASE
+				//			WHEN a = 1 THEN
+				//				SET b = CONCAT(b, "a");
+				//				SET a = a + 1;
+				//		END CASE;
+				//	END LOOP;
+				//	SELECT b;
+				//END;`,
+				//				`CREATE PROCEDURE p5(IN a BIGINT)
+				//BEGIN
+				//	DECLARE b VARCHAR(200) DEFAULT "";
+				//	REPEAT
+				//		CASE
+				//			WHEN a <= 1 THEN
+				//				SET b = CONCAT(b, "a");
+				//				SET a = a + 1;
+				//		END CASE;
+				//	UNTIL a > 1
+				//	END REPEAT;
+				//	SELECT b;
+				//END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
