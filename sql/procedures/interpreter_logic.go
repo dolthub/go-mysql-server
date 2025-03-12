@@ -85,6 +85,10 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 		e.Expr = newExpr.(ast.Expr)
 	case *ast.Set:
 		for _, setExpr := range e.Exprs {
+			// TODO: properly handle user scope variables
+			if setExpr.Scope == ast.SetScope_User {
+				continue
+			}
 			newExpr, err := replaceVariablesInExpr(stack, setExpr.Expr)
 			if err != nil {
 				return nil, err
@@ -188,6 +192,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 					stack.NewVariable(varName, varType)
 				}
 			}
+
 		case OpCode_Set:
 			selectStmt := operation.PrimaryData.(*ast.Select)
 			if selectStmt.SelectExprs == nil {
@@ -260,6 +265,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 					}
 				}
 			}
+
 		case OpCode_If:
 			selectStmt := operation.PrimaryData.(*ast.Select)
 			if selectStmt.SelectExprs == nil {
