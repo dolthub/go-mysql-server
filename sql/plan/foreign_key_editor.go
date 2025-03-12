@@ -228,7 +228,7 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionDat
 
 // Delete handles both the standard DELETE statement and propagated referential actions from a parent table's ON DELETE.
 func (fkEditor *ForeignKeyEditor) Delete(ctx *sql.Context, row sql.Row, depth int) error {
-	//TODO: may need to process some cascades after the update to avoid recursive violations, write some tests on this
+	// TODO: may need to process some cascades after the update to avoid recursive violations, write some tests on this
 	for _, refActionData := range fkEditor.RefActions {
 		switch refActionData.ForeignKey.OnDelete {
 		default: // RESTRICT and friends
@@ -426,7 +426,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 			return nil
 		}
 	}
-	
+
 	return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
@@ -458,7 +458,7 @@ type ForeignKeyRowMapper struct {
 	Updater   sql.ForeignKeyEditor
 	SourceSch sql.Schema
 	// TargetTypeConversions are a set of functions to transform the value in the table to the corresponding value in the
-	// other table. This is required when the types of the two tables are compatible but different (e.g. INT and BIGINT). 
+	// other table. This is required when the types of the two tables are compatible but different (e.g. INT and BIGINT).
 	TargetTypeConversions []ForeignKeyTypeConversionFn
 	// IndexPositions hold the mapping between an index's column position and the source row's column position. Given
 	// an index (x1, x2) and a source row (y1, y2, y3) and the relation (x1->y3, x2->y1), this slice would contain
@@ -486,18 +486,20 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		if rowVal == nil {
 			return sql.RowsToRowIter(), nil
 		}
-		
+
 		targetType := mapper.SourceSch[rowPos].Type
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
 			var err error
 			targetType, rowVal, err = mapper.TargetTypeConversions[rowPos](ctx, rowVal)
-			// TODO: possible for this to fail without error, which means the value cannot be found in the other table
+			// An error means the type conversion failed, which typically means there's no way to convert the value given to
+			// the target value because of e.g. range constraints (trying to assign an INT to a TINYINT column). We treat
+			// this as an empty result for this iterator, since this value cannot possibly be present in the other table.
 			if err != nil {
-				return nil, err
+				return sql.RowsToRowIter(), nil
 			}
 		}
-		
+
 		rang[rangPosition] = sql.ClosedRangeColumnExpr(rowVal, rowVal, targetType)
 	}
 	for i, appendType := range mapper.AppendTypes {
@@ -507,7 +509,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 	if !mapper.Index.CanSupport(rang) {
 		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
 	}
-	//TODO: profile this, may need to redesign this or add a fast path
+	// TODO: profile this, may need to redesign this or add a fast path
 	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{rang}, Index: mapper.Index}
 
 	editorData := mapper.Updater.IndexedAccess(lookup)
@@ -557,9 +559,10 @@ func GetChildParentMapping(parentSch sql.Schema, childSch sql.Schema, fkDef sql.
 	return mapping, nil
 }
 
-// ForeignKeyTypeConversionDirection specifies whether a child column type is being converted to its parent type for 
+// ForeignKeyTypeConversionDirection specifies whether a child column type is being converted to its parent type for
 // constraint enforcement, or vice versa.
 type ForeignKeyTypeConversionDirection byte
+
 const (
 	ChildToParent ForeignKeyTypeConversionDirection = iota
 	ParentToChild
@@ -569,17 +572,17 @@ const (
 // enforcement. The target type is returned along with the transformed value, or an error if the transformation fails.
 type ForeignKeyTypeConversionFn func(ctx *sql.Context, val any) (sql.Type, any, error)
 
-// GetForeignKeyTypeConversions returns a set of functions to convert a type in a one foreign key column table to the 
+// GetForeignKeyTypeConversions returns a set of functions to convert a type in a one foreign key column table to the
 // type in the corresponding table. Specify the schema of both child and parent tables, as well as whether the
 // transformation is from child to parent or vice versa.
 func GetForeignKeyTypeConversions(
-		parentSch sql.Schema,
-		childSch sql.Schema,
-		fkDef sql.ForeignKeyConstraint,
-		direction ForeignKeyTypeConversionDirection,
+	parentSch sql.Schema,
+	childSch sql.Schema,
+	fkDef sql.ForeignKeyConstraint,
+	direction ForeignKeyTypeConversionDirection,
 ) ([]ForeignKeyTypeConversionFn, error) {
-	var mapping []ForeignKeyTypeConversionFn
-	
+	var convFns []ForeignKeyTypeConversionFn
+
 	for i := range fkDef.Columns {
 		childIndex := childSch.IndexOfColName(fkDef.Columns[i])
 		if childIndex < 0 {
@@ -594,13 +597,13 @@ func GetForeignKeyTypeConversions(
 
 		childType := childSch[childIndex].Type
 		parentType := parentSch[parentIndex].Type
-		
+
 		childExtendedType, _ := childType.(types.ExtendedType)
 		// if even one of the types is not an extended type, then we can't transform any values
 		if childExtendedType == nil {
 			return nil, nil
 		}
-		
+
 		if !childType.Equals(parentType) {
 			parentExtendedType, _ := parentType.(types.ExtendedType)
 			if parentExtendedType == nil {
@@ -615,15 +618,15 @@ func GetForeignKeyTypeConversions(
 				toType = childExtendedType
 			}
 
-			if mapping == nil {
-				mapping = make([]ForeignKeyTypeConversionFn, len(childSch))
+			if convFns == nil {
+				convFns = make([]ForeignKeyTypeConversionFn, len(childSch))
 			}
-			mapping[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
+			convFns[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
 				convertedVal, err := toType.ConvertToType(ctx, fromType, val)
 				return toType, convertedVal, err
 			}
 		}
 	}
-	
-	return mapping, nil
+
+	return convFns, nil
 }
