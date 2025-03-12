@@ -136,7 +136,7 @@ func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sq
 }
 
 // Call runs the contained operations on the given runner.
-func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, error) {
+func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *InterpreterStack, error) {
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()
@@ -166,15 +166,15 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 				panic("select stmt with no select exprs")
 			}
 			for i := range selectStmt.SelectExprs {
-				newNode, err := replaceVariablesInExpr(&stack, selectStmt.SelectExprs[i])
+				newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
 			}
 			rowIter, err := query(ctx, runner, selectStmt)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			rowIters = append(rowIters, rowIter)
 
@@ -183,7 +183,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 			for _, decl := range declareStmt.Variables.Names {
 				varType, err := types.ColumnTypeToType(&declareStmt.Variables.VarType)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				varName := strings.ToLower(decl.String())
 				if declareStmt.Variables.VarType.Default != nil {
@@ -199,44 +199,41 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 				panic("select stmt with no select exprs")
 			}
 			for i := range selectStmt.SelectExprs {
-				newNode, err := replaceVariablesInExpr(&stack, selectStmt.SelectExprs[i])
+				newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
 			}
 			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			row, err := rowIter.Next(ctx)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if _, err = rowIter.Next(ctx); err != io.EOF {
-				return nil, err
+				return nil, nil, err
 			}
 			if err = rowIter.Close(ctx); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			err = stack.SetVariable(nil, strings.ToLower(operation.Target), row[0])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-
-		case OpCode_Exception:
-			return nil, operation.Error
 
 		case OpCode_Execute:
 			// TODO: replace variables
-			stmt, err := replaceVariablesInExpr(&stack, operation.PrimaryData)
+			stmt, err := replaceVariablesInExpr(stack, operation.PrimaryData)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			rowIter, err := query(ctx, runner, stmt.(ast.Statement))
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			rowIters = append(rowIters, rowIter)
 
@@ -272,26 +269,26 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 				panic("select stmt with no select exprs")
 			}
 			for i := range selectStmt.SelectExprs {
-				newNode, err := replaceVariablesInExpr(&stack, selectStmt.SelectExprs[i])
+				newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
 			}
 			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			// TODO: exactly one result that is a bool for now
 			row, err := rowIter.Next(ctx)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if _, err = rowIter.Next(ctx); err != io.EOF {
-				return nil, err
+				return nil, nil, err
 			}
 			if err = rowIter.Close(ctx); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			// go to the appropriate block
@@ -300,6 +297,8 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 				counter = operation.Index - 1 // index of the else block, offset by 1
 			}
 
+		case OpCode_Exception:
+			return nil, nil, operation.Error
 		case OpCode_ScopeBegin:
 			stack.PushScope()
 		case OpCode_ScopeEnd:
@@ -308,8 +307,14 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, er
 			panic("unimplemented opcode")
 		}
 	}
+
+
+	// TODO: Set all user and system variables from INOUT and OUT params.
+	//   Copy logic from proc_iters.go: callIter.Close()
+
 	if len(rowIters) == 0 {
-		panic("no rowIters")
+		rowIters = append(rowIters, sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}))
 	}
-	return rowIters[len(rowIters)-1], nil
+
+	return rowIters[len(rowIters)-1], stack, nil
 }

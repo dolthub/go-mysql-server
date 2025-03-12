@@ -285,7 +285,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 func Parse(stmt ast.Statement) ([]*InterpreterOperation, error) {
 	ops := make([]*InterpreterOperation, 0, 64)
 	stack := NewInterpreterStack()
-	err := ConvertStmt(&ops, &stack, stmt)
+	err := ConvertStmt(&ops, stack, stmt)
 	if err != nil {
 		return nil, err
 	}

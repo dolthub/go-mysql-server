@@ -184,8 +184,9 @@ func (b *BaseBuilder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.Proc
 func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.RowIter, error) {
 	procParams := make([]*procedures.Parameter, len(n.Params))
 	for i, paramExpr := range n.Params {
-		paramName := strings.ToLower(n.Procedure.Params[i].Name)
-		paramType := n.Procedure.Params[i].Type
+		param := n.Procedure.Params[i]
+		paramName := strings.ToLower(param.Name)
+		paramType := param.Type
 		paramVal, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
@@ -201,29 +202,38 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}
 	}
 
-	rowIter, err := procedures.Call(ctx, n, procParams)
+	rowIter, stack, err := procedures.Call(ctx, n, procParams)
 	if err != nil {
 		return nil, err
+	}
+
+	for i, param := range n.Params {
+		procParam := n.Procedure.Params[i]
+		if procParam.Direction == plan.ProcedureParamDirection_In {
+			continue
+		}
+		// Set all user and system variables from INOUT and OUT params
+		stackVar := stack.GetVariable(procParam.Name) // TODO: ToLower?
+		switch p := param.(type) {
+		case *expression.ProcedureParam:
+			err = p.Set(stackVar.Value, stackVar.Type)
+			if err != nil {
+				return nil, err
+			}
+		case *expression.UserVar:
+			err = ctx.SetUserVariable(ctx, p.Name, stackVar.Value, stackVar.Type)
+			if err != nil {
+				return nil, err
+			}
+		case *expression.SystemVar:
+			// This should have been caught by the analyzer, so a major bug exists somewhere
+			return nil, fmt.Errorf("unable to set `%s` as it is a system variable", p.Name)
+		}
 	}
 
 	return &callIter{
 		call:      n,
 		innerIter: rowIter.(sql.RowIter),
-	}, nil
-
-	// TODO: mirror plpgsql interpreter_logic.go Call()
-	// TODO: instead of building, run the actual operations
-	// This means call the runner.QueryWithBindings
-	innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: save any select ast rowIters to be returned later
-
-	return &callIter{
-		call:      n,
-		innerIter: innerIter,
 	}, nil
 }
 

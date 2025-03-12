@@ -94,23 +94,23 @@ func (iv *InterpreterVariable) ToAST() *ast.SQLVal {
 		return sqlVal
 	}
 
-	var astType ast.ValType
 	var astVal []byte
 	if types.IsInteger(iv.Type) {
-		intStr := fmt.Sprintf("%d", iv.Value)
-		return ast.NewIntVal([]byte(intStr))
-	} else if types.IsFloat(iv.Type) {
-		floatStr := strconv.FormatFloat(iv.Value.(float64), 'f', -1, 64)
-		return ast.NewFloatVal([]byte(floatStr))
-	} else {
-		astType = ast.StrVal
+		if iv.Value != nil {
+			astVal = []byte(fmt.Sprintf("%d", iv.Value))
+		}
+		return ast.NewIntVal(astVal)
+	}
+	if types.IsFloat(iv.Type) {
+		if iv.Value != nil {
+			astVal = []byte(strconv.FormatFloat(iv.Value.(float64), 'f', -1, 64))
+		}
+		return ast.NewFloatVal(astVal)
+	}
+	if iv.Value != nil {
 		astVal = []byte(fmt.Sprintf("%s", iv.Value))
 	}
-
-	return &ast.SQLVal{
-		Type: astType,
-		Val:  astVal,
-	}
+	return ast.NewStrVal(astVal)
 }
 
 // InterpreterScopeDetails contains all of the details that are relevant to a particular scope.
@@ -126,13 +126,13 @@ type InterpreterStack struct {
 }
 
 // NewInterpreterStack creates a new InterpreterStack.
-func NewInterpreterStack() InterpreterStack {
+func NewInterpreterStack() *InterpreterStack {
 	stack := NewStack[*InterpreterScopeDetails]()
 	// This first push represents the function base, including parameters
 	stack.Push(&InterpreterScopeDetails{
 		variables: make(map[string]*InterpreterVariable),
 	})
-	return InterpreterStack{
+	return &InterpreterStack{
 		stack:      stack,
 	}
 }
