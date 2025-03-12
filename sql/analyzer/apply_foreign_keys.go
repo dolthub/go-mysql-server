@@ -390,7 +390,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		if err != nil {
 			return nil, err
 		}
-		
+
 		childEditor, err := getForeignKeyEditor(ctx, a, childTbl, cache, fkChain.AddForeignKey(fk.Name), checkRows)
 		if err != nil {
 			return nil, err
