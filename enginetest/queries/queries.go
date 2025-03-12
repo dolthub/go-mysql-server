@@ -10218,7 +10218,6 @@ from typestable`,
 			{"     └─ name: "},
 		},
 	},
-
 }
 
 var KeylessQueries = []QueryTest{
