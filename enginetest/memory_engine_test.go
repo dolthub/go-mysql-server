@@ -203,21 +203,28 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "CASE statements",
 			SetUpScript: []string{
+			"SET @x = 0",
 			`
-CREATE PROCEDURE p1()
+CREATE PROCEDURE p1(OUT x INT)
 BEGIN
-	DECLARE b INT DEFAULT "";
-	SELECT b;
-END;
-`,
+	SET x = 123;
+	SELECT x;
+END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "call p1()",
+					Query: "CALL p1(@x)",
 					Expected: []sql.Row{
-						{""},
+						{123},
 					},
 				},
+				{
+					Query: "SELECT @x",
+					Expected: []sql.Row{
+						{123},
+					},
+				},
+
 			},
 		},
 	}
@@ -231,8 +238,8 @@ END;
 			panic(err)
 		}
 
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
