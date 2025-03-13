@@ -198,17 +198,36 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "test script",
+			Name: "IF/ELSE with 1 SELECT at end",
 			SetUpScript: []string{
-				"create table t (i int);",
+				"SET @outparam = ''",
+				`
+CREATE PROCEDURE p1(OUT s VARCHAR(200), N DOUBLE, m DOUBLE)
+BEGIN
+	SET s = '';
+	IF n = m THEN 
+		SET s = 'equals';
+	ELSE
+		IF n > m THEN 
+			SET s = 'greater';
+		ELSE 
+			SET s = 'less';
+		END IF;
+		SET s = CONCAT('is ', s, ' than');
+	END IF;
+	SET s = CONCAT(n, ' ', s, ' ', m, '.');
+	SELECT s;
+END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select 1 into @a",
-					Expected: []sql.Row{},
+					Query: "CALL p1(@outparam, null, 2)",
+					Expected: []sql.Row{
+						{nil},
+					},
 				},
 			},
 		},
@@ -216,10 +235,15 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		// TODO: fix this
+		//harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
+
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

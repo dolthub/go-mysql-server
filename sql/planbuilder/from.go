@@ -705,6 +705,11 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 				b.TriggerCtx().UnresolvedTables = append(b.TriggerCtx().UnresolvedTables, name)
 				return outScope, true
 			}
+			// TODO: do the same for stored procedures
+			if b.procCtx != nil {
+				outScope.node = plan.NewUnresolvedTable(name, db)
+				return outScope, true
+			}
 			return outScope, false
 		} else {
 			b.handleErr(tableResolveErr)
