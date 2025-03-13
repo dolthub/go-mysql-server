@@ -506,6 +506,91 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "insert trigger with missing column default value",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.j = 10;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO t (i) VALUES (1);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "INSERT INTO t (i, j) VALUES (2, null);",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{
+					{1, 10},
+					{2, 10},
+				},
+			},
+		},
+	},
+	{
+		Name: "not null column with trigger that sets null should error",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.j = null;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t (i) VALUES (1);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query:       "INSERT INTO t (i, j) VALUES (1, 2);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+		},
+	},
+	{
+		Name: "not null column with before insert trigger should error",
+		SetUpScript: []string{
+			"CREATE TABLE t (i INT PRIMARY KEY, j INT NOT NULL);",
+			`
+CREATE TRIGGER trig BEFORE INSERT ON t 
+FOR EACH ROW
+BEGIN
+    SET new.i = 10 * new.i;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "INSERT INTO t (i) VALUES (1);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query: "INSERT INTO t (i, j) VALUES (1, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{
+					{10, 2},
+				},
+			},
+		},
+	},
 
 	// UPDATE triggers
 	{
@@ -2507,7 +2592,11 @@ end;`,
 			},
 			{
 				Query:    "INSERT INTO `film` VALUES (3,'ADAPTATION HOLES','An Astounding Reflection in A Baloon Factory'),(4,'AFFAIR PREJUDICE','A Fanciful Documentary in A Shark Tank')",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 0}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2, InsertID: 3}}},
+			},
+			{
+				Query:    "SELECT last_insert_id();",
+				Expected: []sql.Row{{uint64(0)}},
 			},
 			{
 				Query:    "SELECT COUNT(*) FROM film",
@@ -2568,7 +2657,11 @@ INSERT INTO t0 (v1, v2) VALUES (i, s); END;`,
 			{
 				SkipResultCheckOnServerEngine: true, // call depends on stored procedure stmt for whether to use 'query' or 'exec' from go sql driver.
 				Query:                         "CALL add_entry(4, 'aaa');",
-				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected:                      []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 3}}},
+			},
+			{
+				Query:    "SELECT last_insert_id();",
+				Expected: []sql.Row{{uint64(1)}},
 			},
 			{
 				Query:    "SELECT * FROM t0;",

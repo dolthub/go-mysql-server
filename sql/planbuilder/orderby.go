@@ -55,6 +55,10 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			colName := strings.ToLower(e.Name.String())
 			c, ok := projScope.resolveColumn(dbName, tblName, colName, false, false)
 			if ok {
+				if _, ok := c.scalar.(*expression.Alias); ok {
+					// take ref dependency on expression lower in tree
+					c.scalar = nil
+				}
 				c.descending = descending
 				outScope.addColumn(c)
 				continue

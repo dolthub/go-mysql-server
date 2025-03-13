@@ -16341,7 +16341,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `select pk+1 from comp_vector_index_t0 order by vec_distance('[50,50]', v2) limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.pk:0!null + 1 (tinyint)) as pk+1]\n" +
+			"     ├─ columns: [(comp_vector_index_t0.pk:0!null + 1 (tinyint))->pk+1:0]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.v2]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.v2) LIMIT 5 (bigint)\n" +
@@ -16372,7 +16372,7 @@ var IndexPlanTests = []QueryPlanTest{
 		Query: `select v1+1 from comp_vector_index_t0 order by vec_distance(v2, '[50,50]') limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.v1:0 + 1 (tinyint)) as v1+1]\n" +
+			"     ├─ columns: [(comp_vector_index_t0.v1:0 + 1 (tinyint))->v1+1:0]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
 			"         ├─ index: [comp_vector_index_t0.v2]\n" +
 			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.v2, '[50,50]') LIMIT 5 (bigint)\n" +
