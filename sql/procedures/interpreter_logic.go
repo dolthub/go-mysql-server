@@ -41,6 +41,17 @@ type Parameter struct {
 
 func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLNode, error) {
 	switch e := expr.(type) {
+	case *ast.ColName:
+		iv := stack.GetVariable(strings.ToLower(e.Name.String()))
+		if iv == nil {
+			return expr, nil
+		}
+		newExpr := iv.ToAST()
+		return &ast.ColName{
+			Name:          e.Name,
+			Qualifier:     e.Qualifier,
+			StoredProcVal: newExpr,
+		}, nil
 	case *ast.AliasedExpr:
 		newExpr, err := replaceVariablesInExpr(stack, e.Expr)
 		if err != nil {
@@ -98,17 +109,34 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 				return nil, err
 			}
 		}
-	case *ast.ColName:
-		iv := stack.GetVariable(e.Name.String())
-		if iv == nil {
-			return expr, nil
+	case *ast.Call:
+		for i := range e.Params {
+			newExpr, err := replaceVariablesInExpr(stack, e.Params[i])
+			if err != nil {
+				return nil, err
+			}
+			e.Params[i] = newExpr.(ast.Expr)
 		}
-		newExpr := iv.ToAST()
-		return &ast.ColName{
-			Name:          e.Name,
-			Qualifier:     e.Qualifier,
-			StoredProcVal: newExpr,
-		}, nil
+	case ast.ValTuple:
+		for i := range e {
+			newExpr, err := replaceVariablesInExpr(stack, e[i])
+			if err != nil {
+				return nil, err
+			}
+			e[i] = newExpr.(ast.Expr)
+		}
+	case *ast.Insert:
+		switch insRows := e.Rows.(type) {
+		case *ast.AliasedValues:
+			for i := range insRows.Values {
+				newExpr, err := replaceVariablesInExpr(stack, insRows.Values[i])
+				if err != nil {
+					return nil, err
+				}
+				insRows.Values[i] = newExpr.(ast.ValTuple)
+			}
+			e.Rows = insRows
+		}
 	}
 	return expr, nil
 }
@@ -230,7 +258,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 			}
 
 		case OpCode_Execute:
-			// TODO: replace variables
 			stmt, err := replaceVariablesInExpr(stack, operation.PrimaryData)
 			if err != nil {
 				return nil, nil, err
