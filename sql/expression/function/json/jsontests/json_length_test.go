@@ -74,7 +74,11 @@ func TestJsonLength(t *testing.T) {
 			row: sql.Row{`{"a": 1}`},
 			exp: 1,
 		},
-
+		{
+			f:   f1,
+			row: sql.Row{`{"a": 1, "b": 2}`},
+			exp: 2,
+		},
 		{
 			f:   f2,
 			row: sql.Row{`{"a": [1, false]}`, nil},
