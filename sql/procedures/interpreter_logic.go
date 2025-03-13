@@ -292,8 +292,11 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 			}
 
 			// go to the appropriate block
-			cond := row[0].(bool)
-			if !cond {
+			cond, _, err := types.Boolean.Convert(row[0])
+			if err != nil {
+				return nil, nil, err
+			}
+			if cond == nil || cond.(int8) == 0 {
 				counter = operation.Index - 1 // index of the else block, offset by 1
 			}
 

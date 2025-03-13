@@ -89,28 +89,20 @@ type InterpreterVariable struct {
 	Value any
 }
 
-func (iv *InterpreterVariable) ToAST() *ast.SQLVal {
+func (iv *InterpreterVariable) ToAST() ast.Expr {
 	if sqlVal, isSQLVal := iv.Value.(*ast.SQLVal); isSQLVal {
 		return sqlVal
 	}
-
-	var astVal []byte
+	if iv.Value == nil {
+		return &ast.NullVal{}
+	}
 	if types.IsInteger(iv.Type) {
-		if iv.Value != nil {
-			astVal = []byte(fmt.Sprintf("%d", iv.Value))
-		}
-		return ast.NewIntVal(astVal)
+		return ast.NewIntVal([]byte(fmt.Sprintf("%d", iv.Value)))
 	}
 	if types.IsFloat(iv.Type) {
-		if iv.Value != nil {
-			astVal = []byte(strconv.FormatFloat(iv.Value.(float64), 'f', -1, 64))
-		}
-		return ast.NewFloatVal(astVal)
+		return ast.NewFloatVal([]byte(strconv.FormatFloat(iv.Value.(float64), 'f', -1, 64)))
 	}
-	if iv.Value != nil {
-		astVal = []byte(fmt.Sprintf("%s", iv.Value))
-	}
-	return ast.NewStrVal(astVal)
+	return ast.NewStrVal([]byte(fmt.Sprintf("%s", iv.Value)))
 }
 
 // InterpreterScopeDetails contains all of the details that are relevant to a particular scope.
