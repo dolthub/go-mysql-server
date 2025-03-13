@@ -200,33 +200,37 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
-		{
-			Name: "CASE statements",
-			SetUpScript: []string{
-			"SET @x = 0",
+	{
+		Name: "IF/ELSE with 1 SELECT at end",
+		SetUpScript: []string{
+			"SET @outparam = ''",
 			`
-CREATE PROCEDURE p1(OUT x INT)
+CREATE PROCEDURE p1(OUT s VARCHAR(200), N DOUBLE, m DOUBLE)
 BEGIN
-	SET x = 123;
-	SELECT x;
+	SET s = '';
+	IF n = m THEN 
+		SET s = 'equals';
+	ELSE
+		IF n > m THEN 
+			SET s = 'greater';
+		ELSE 
+			SET s = 'less';
+		END IF;
+		SET s = CONCAT('is ', s, ' than');
+	END IF;
+	SET s = CONCAT(n, ' ', s, ' ', m, '.');
+	SELECT s;
 END;`,
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "CALL p1(@x)",
-					Expected: []sql.Row{
-						{123},
-					},
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query: "CALL p1(@outparam, null, 2)",
+				Expected: []sql.Row{
+					{nil},
 				},
-				{
-					Query: "SELECT @x",
-					Expected: []sql.Row{
-						{123},
-					},
-				},
-
 			},
 		},
+	},
 	}
 
 	for _, test := range scripts {
