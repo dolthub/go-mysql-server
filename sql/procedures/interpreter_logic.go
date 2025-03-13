@@ -117,6 +117,40 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			}
 			e.Params[i] = newExpr.(ast.Expr)
 		}
+	case *ast.Into:
+		for i := range e.Variables {
+			newExpr, err := replaceVariablesInExpr(stack, e.Variables[i])
+			if err != nil {
+				return nil, err
+			}
+			e.Variables[i] = newExpr.(ast.ColIdent)
+		}
+	case *ast.Select:
+		for i := range e.SelectExprs {
+			newExpr, err := replaceVariablesInExpr(stack, e.SelectExprs[i])
+			if err != nil {
+				return nil, err
+			}
+			e.SelectExprs[i] = newExpr.(ast.SelectExpr)
+		}
+		if e.Into != nil {
+			newExpr, err := replaceVariablesInExpr(stack, e.Into)
+			if err != nil {
+				return nil, err
+			}
+			e.Into = newExpr.(*ast.Into)
+		}
+	case *ast.SetOp:
+		newLeftExpr, err := replaceVariablesInExpr(stack, e.Left)
+		if err != nil {
+			return nil, err
+		}
+		newRightExpr, err := replaceVariablesInExpr(stack, e.Right)
+		if err != nil {
+			return nil, err
+		}
+		e.Left = newLeftExpr.(ast.SelectStatement)
+		e.Right = newRightExpr.(ast.SelectStatement)
 	case ast.ValTuple:
 		for i := range e {
 			newExpr, err := replaceVariablesInExpr(stack, e[i])
@@ -125,18 +159,20 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			}
 			e[i] = newExpr.(ast.Expr)
 		}
-	case *ast.Insert:
-		switch insRows := e.Rows.(type) {
-		case *ast.AliasedValues:
-			for i := range insRows.Values {
-				newExpr, err := replaceVariablesInExpr(stack, insRows.Values[i])
-				if err != nil {
-					return nil, err
-				}
-				insRows.Values[i] = newExpr.(ast.ValTuple)
+	case *ast.AliasedValues:
+		for i := range e.Values {
+			newExpr, err := replaceVariablesInExpr(stack, e.Values[i])
+			if err != nil {
+				return nil, err
 			}
-			e.Rows = insRows
+			e.Values[i] = newExpr.(ast.ValTuple)
 		}
+	case *ast.Insert:
+		newExpr, err := replaceVariablesInExpr(stack, e.Rows)
+		if err != nil {
+			return nil, err
+		}
+		e.Rows = newExpr.(ast.InsertRows)
 	}
 	return expr, nil
 }
@@ -193,17 +229,11 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 		switch operation.OpCode {
 		case OpCode_Select:
 			selectStmt := operation.PrimaryData.(*ast.Select)
-			if selectStmt.SelectExprs == nil {
-				panic("select stmt with no select exprs")
+			newSelectStmt, err := replaceVariablesInExpr(stack, selectStmt)
+			if err != nil {
+				return nil, nil, err
 			}
-			for i := range selectStmt.SelectExprs {
-				newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
-				if err != nil {
-					return nil, nil, err
-				}
-				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
-			}
-			rowIter, err := query(ctx, runner, selectStmt)
+			rowIter, err := query(ctx, runner, newSelectStmt.(*ast.Select))
 			if err != nil {
 				return nil, nil, err
 			}
