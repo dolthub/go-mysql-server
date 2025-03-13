@@ -144,6 +144,9 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 		stack.NewVariableWithValue(param.Name, param.Type, param.Value)
 	}
 
+	// TODO: remove this; track last selectRowIter
+	var selIter sql.RowIter
+
 	// Run the statements
 	// TODO: eventually return multiple sql.RowIters
 	var rowIters []sql.RowIter
@@ -177,6 +180,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 				return nil, nil, err
 			}
 			rowIters = append(rowIters, rowIter)
+			selIter = rowIter
 
 		case OpCode_Declare:
 			declareStmt := operation.PrimaryData.(*ast.Declare)
@@ -311,13 +315,11 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 		}
 	}
 
-
-	// TODO: Set all user and system variables from INOUT and OUT params.
-	//   Copy logic from proc_iters.go: callIter.Close()
-
+	if selIter != nil {
+		return selIter, stack, nil
+	}
 	if len(rowIters) == 0 {
 		rowIters = append(rowIters, sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}))
 	}
-
 	return rowIters[len(rowIters)-1], stack, nil
 }

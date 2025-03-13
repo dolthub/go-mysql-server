@@ -83,40 +83,44 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		*ops = append(*ops, setOp)
 
 	case *ast.IfStatement:
-		// TODO: assume exactly one condition for now
-		ifCond := s.Conditions[0]
-		// TODO: convert condition into a select query
-		selectCond := &ast.Select{
-			SelectExprs: ast.SelectExprs{
-				&ast.AliasedExpr{
-					Expr: ifCond.Expr,
+		// TODO: each subsequent condition is an else if
+		var ifElseGotoOps []*InterpreterOperation
+		for _, ifCond := range s.Conditions {
+			selectCond := &ast.Select{
+				SelectExprs: ast.SelectExprs{
+					&ast.AliasedExpr{
+						Expr: ifCond.Expr,
+					},
 				},
-			},
-		}
-		ifOp := &InterpreterOperation{
-			OpCode:      OpCode_If,
-			PrimaryData: selectCond,
-		}
-		*ops = append(*ops, ifOp)
-
-		for _, ifStmt := range ifCond.Statements {
-			if err := ConvertStmt(ops, stack, ifStmt); err != nil {
-				return err
 			}
-		}
-		gotoOp := &InterpreterOperation{
-			OpCode: OpCode_Goto,
-		}
-		*ops = append(*ops, gotoOp)
+			ifOp := &InterpreterOperation{
+				OpCode:      OpCode_If,
+				PrimaryData: selectCond,
+			}
+			*ops = append(*ops, ifOp)
 
-		ifOp.Index = len(*ops) // start of else block
+			for _, ifStmt := range ifCond.Statements {
+				if err := ConvertStmt(ops, stack, ifStmt); err != nil {
+					return err
+				}
+			}
+			gotoOp := &InterpreterOperation{
+				OpCode: OpCode_Goto,
+			}
+			ifElseGotoOps = append(ifElseGotoOps, gotoOp)
+			*ops = append(*ops, gotoOp)
+
+			ifOp.Index = len(*ops) // start of next if statement
+		}
 		for _, elseStmt := range s.Else {
 			if err := ConvertStmt(ops, stack, elseStmt); err != nil {
 				return err
 			}
 		}
 
-		gotoOp.Index = len(*ops) // end of if statement
+		for _, gotoOp := range ifElseGotoOps {
+			gotoOp.Index = len(*ops) // end of if statement
+		}
 
 	case *ast.CaseStatement:
 		var caseGotoOps []*InterpreterOperation
