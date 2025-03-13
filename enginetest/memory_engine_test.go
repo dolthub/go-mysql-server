@@ -200,11 +200,11 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
-	{
-		Name: "IF/ELSE with 1 SELECT at end",
-		SetUpScript: []string{
-			"SET @outparam = ''",
-			`
+		{
+			Name: "IF/ELSE with 1 SELECT at end",
+			SetUpScript: []string{
+				"SET @outparam = ''",
+				`
 CREATE PROCEDURE p1(OUT s VARCHAR(200), N DOUBLE, m DOUBLE)
 BEGIN
 	SET s = '';
@@ -221,16 +221,16 @@ BEGIN
 	SET s = CONCAT(n, ' ', s, ' ', m, '.');
 	SELECT s;
 END;`,
-		},
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query: "CALL p1(@outparam, null, 2)",
-				Expected: []sql.Row{
-					{nil},
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "CALL p1(@outparam, null, 2)",
+					Expected: []sql.Row{
+						{nil},
+					},
 				},
 			},
 		},
-	},
 	}
 
 	for _, test := range scripts {

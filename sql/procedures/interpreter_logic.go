@@ -311,7 +311,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 		}
 	}
 
-
 	// TODO: Set all user and system variables from INOUT and OUT params.
 	//   Copy logic from proc_iters.go: callIter.Close()
 
