@@ -339,7 +339,12 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				}
 				return n.WithSource(newSource), transform.NewTree, nil
 			case expression.ProcedureReferencable:
-				return n.WithParamReference(pRef), transform.NewTree, nil
+				newParamRef := n.WithParamReference(pRef)
+				newNode, _, err := transform.NodeWithOpaque(newParamRef, assignProcRef)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				return newNode, transform.NewTree, nil
 			default:
 				return assignProcRef(node)
 			}

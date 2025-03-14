@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	regex "github.com/dolthub/go-icu-regex"
 	"gopkg.in/src-d/go-errors.v1"
@@ -35,7 +34,8 @@ type RegexpLike struct {
 	Pattern sql.Expression
 	Flags   sql.Expression
 
-	cachedVal   atomic.Value
+	cachedVal   any
+	cacheable   bool
 	re          regex.Regex
 	compileOnce sync.Once
 	compileErr  error
@@ -43,7 +43,7 @@ type RegexpLike struct {
 
 var _ sql.FunctionExpression = (*RegexpLike)(nil)
 var _ sql.CollationCoercible = (*RegexpLike)(nil)
-var _ sql.Closer = (*RegexpLike)(nil)
+var _ sql.Disposable = (*RegexpLike)(nil)
 
 // NewRegexpLike creates a new RegexpLike expression.
 func NewRegexpLike(args ...sql.Expression) (sql.Expression, error) {
@@ -115,6 +115,7 @@ func (r *RegexpLike) WithChildren(children ...sql.Expression) (sql.Expression, e
 	return NewRegexpLike(children...)
 }
 
+// String implements the sql.Expression interface.
 func (r *RegexpLike) String() string {
 	var args []string
 	for _, e := range r.Children() {
@@ -123,10 +124,22 @@ func (r *RegexpLike) String() string {
 	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
 }
 
-func (r *RegexpLike) compile(ctx *sql.Context) {
+// compile handles compilation of the regex.
+func (r *RegexpLike) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), nil)
+		r.cacheable = canBeCached(r.Text, r.Pattern, r.Flags)
+		if r.cacheable {
+			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+		}
 	})
+	if !r.cacheable {
+		if r.re != nil {
+			if r.compileErr = r.re.Close(); r.compileErr != nil {
+				return
+			}
+		}
+		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
+	}
 }
 
 // Eval implements the sql.Expression interface.
@@ -134,12 +147,11 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.RegexpLike")
 	defer span.End()
 
-	cached := r.cachedVal.Load()
-	if cached != nil {
-		return cached, nil
+	if r.cachedVal != nil {
+		return r.cachedVal, nil
 	}
 
-	r.compile(ctx)
+	r.compile(ctx, row)
 	if r.compileErr != nil {
 		return nil, r.compileErr
 	}
@@ -174,18 +186,17 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		outVal = int8(0)
 	}
 
-	if canBeCached(r.Text) {
-		r.cachedVal.Store(outVal)
+	if r.cacheable {
+		r.cachedVal = outVal
 	}
 	return outVal, nil
 }
 
-// Close implements the sql.Closer interface.
-func (r *RegexpLike) Close(ctx *sql.Context) error {
+// Dispose implements the sql.Disposable interface.
+func (r *RegexpLike) Dispose() {
 	if r.re != nil {
-		return r.re.Close()
+		_ = r.re.Close()
 	}
-	return nil
 }
 
 func compileRegex(ctx *sql.Context, pattern, text, flags sql.Expression, funcName string, row sql.Row) (regex.Regex, error) {
@@ -293,14 +304,24 @@ func consolidateRegexpFlags(flags, funcName string) (string, error) {
 	return flags, nil
 }
 
-func canBeCached(e sql.Expression) bool {
+// canBeCached returns whether the expression(s) can be cached
+func canBeCached(exprs ...sql.Expression) bool {
 	hasCols := false
-	sql.Inspect(e, func(e sql.Expression) bool {
-		switch e.(type) {
-		case *expression.GetField, *expression.UserVar, *expression.SystemVar, *expression.ProcedureParam:
-			hasCols = true
+	for _, expr := range exprs {
+		if expr == nil {
+			continue
 		}
-		return true
-	})
+		sql.Inspect(expr, func(e sql.Expression) bool {
+			switch e.(type) {
+			case *expression.GetField, *expression.UserVar, *expression.SystemVar, *expression.ProcedureParam:
+				hasCols = true
+			default:
+				if nonDet, ok := expr.(sql.NonDeterministicExpression); ok {
+					hasCols = hasCols || nonDet.IsNonDeterministic()
+				}
+			}
+			return true
+		})
+	}
 	return !hasCols
 }

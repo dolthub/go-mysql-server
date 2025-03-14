@@ -177,7 +177,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 	{
 		Query: `SELECT s_quantity, s_data, s_dist_09 s_dist FROM stock2 WHERE s_i_id = 2532 AND s_w_id= 1 FOR UPDATE`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3 as s_dist]\n" +
+			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3->s_dist:0]\n" +
 			" └─ IndexedTableAccess(stock2)\n" +
 			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
 			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
@@ -263,7 +263,7 @@ SELECT i_price, i_name, i_data FROM item2 WHERE i_id = 2532`,
 	{
 		Query: `SELECT s_quantity, s_data, s_dist_09 s_dist FROM stock2 WHERE s_i_id = 2532 AND s_w_id= 1 FOR UPDATE`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3 as s_dist]\n" +
+			" ├─ columns: [stock2.s_quantity:2, stock2.s_data:4, stock2.s_dist_09:3->s_dist:0]\n" +
 			" └─ IndexedTableAccess(stock2)\n" +
 			"     ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
 			"     ├─ static: [{[1, 1], [2532, 2532]}]\n" +
@@ -405,7 +405,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 	{
 		Query: `SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 5 AND c_last='ESEEINGABLE'`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(customer2.c_id):0!null as namecnt]\n" +
+			" ├─ columns: [count(customer2.c_id):0!null->namecnt:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(customer2.c_id:0!null)\n" +
 			"     ├─ group: \n" +
@@ -530,7 +530,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 -- cycle 3
 SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_last='PRIESEPRES'`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(customer2.c_id):0!null as namecnt]\n" +
+			" ├─ columns: [count(customer2.c_id):0!null->namecnt:0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(customer2.c_id:0!null)\n" +
 			"     ├─ group: \n" +
@@ -687,7 +687,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 	{
 		Query: `SELECT COUNT(DISTINCT (s_i_id)) FROM order_line2, stock2 WHERE ol_w_id = 1 AND ol_d_id = 5 AND ol_o_id < 3003 AND ol_o_id >= 2983 AND s_w_id= 1 AND s_i_id=ol_i_id AND s_quantity < 18`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [countdistinct([stock2.s_i_id]):0!null as COUNT(DISTINCT (s_i_id))]\n" +
+			" ├─ columns: [countdistinct([stock2.s_i_id]):0!null->COUNT(DISTINCT (s_i_id)):0]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock2.s_i_id])\n" +
 			"     ├─ group: \n" +
@@ -763,7 +763,7 @@ WHERE
   o_c_id = 20001 AND
   o_id = (SELECT MAX(o_id) FROM orders2 WHERE o_w_id = 1 AND o_d_id = 3 AND o_c_id = 20001)`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [orders2.o_id:0!null, orders2.o_entry_d:4, coalesce(orders2.o_carrier_id:5,0 (tinyint)) as COALESCE(o_carrier_id,0)]\n" +
+			" ├─ columns: [orders2.o_id:0!null, orders2.o_entry_d:4, coalesce(orders2.o_carrier_id:5,0 (tinyint))->COALESCE(o_carrier_id,0):0]\n" +
 			" └─ Filter\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ orders2.o_id:0!null\n" +
@@ -771,7 +771,7 @@ WHERE
 			"     │       ├─ cacheable: true\n" +
 			"     │       ├─ alias-string: select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001\n" +
 			"     │       └─ Project\n" +
-			"     │           ├─ columns: [max(orders2.o_id):8!null as MAX(o_id)]\n" +
+			"     │           ├─ columns: [max(orders2.o_id):8!null->MAX(o_id):0]\n" +
 			"     │           └─ GroupBy\n" +
 			"     │               ├─ select: MAX(orders2.o_id:8!null)\n" +
 			"     │               ├─ group: \n" +
@@ -862,7 +862,7 @@ from
 			"         │   ├─ tableId: 3\n" +
 			"         │   └─ Limit(1)\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [orders2.o_c_id:1, orders2.o_w_id:2!null, orders2.o_d_id:3!null, countdistinct([orders2.o_id]):0!null as count(distinct o_id)]\n" +
+			"         │           ├─ columns: [orders2.o_c_id:1, orders2.o_w_id:2!null, orders2.o_d_id:3!null, countdistinct([orders2.o_id]):0!null->count(distinct o_id):0]\n" +
 			"         │           └─ Having\n" +
 			"         │               ├─ GreaterThan\n" +
 			"         │               │   ├─ countdistinct([orders2.o_id]):0!null\n" +

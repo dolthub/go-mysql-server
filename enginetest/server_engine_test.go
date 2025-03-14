@@ -48,7 +48,7 @@ func initTestServer(port int) (*server.Server, error) {
 	sessBuilder := func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 		return memory.NewSession(sql.NewBaseSession(), pro), nil
 	}
-	s, err := server.NewServer(config, engine, sessBuilder, nil)
+	s, err := server.NewServer(config, engine, sql.NewContext, sessBuilder, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ type serverScriptTestAssertion struct {
 	expectedRows         []any
 
 	// can't avoid writing custom comparator because of how gosql.Rows.Scan() works
-	checkRows func(rows *gosql.Rows, expectedRows []any) (bool, error)
+	checkRows func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error)
 }
 
 type serverScriptTest struct {
@@ -108,7 +108,7 @@ func TestServerPreparedStatements(t *testing.T) {
 					expectedRows: []any{
 						[]float64{321.4},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i float64
 						var rowNum int
 						for rows.Next() {
@@ -133,7 +133,7 @@ func TestServerPreparedStatements(t *testing.T) {
 						[]float64{213.4},
 						[]float64{213.4},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i float64
 						var rowNum int
 						for rows.Next() {
@@ -197,7 +197,7 @@ func TestServerPreparedStatements(t *testing.T) {
 						[]uint64{uint64(math.MaxInt64 + 1)},
 						[]uint64{uint64(math.MaxUint64)},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i uint64
 						var rowNum int
 						for rows.Next() {
@@ -247,7 +247,7 @@ func TestServerPreparedStatements(t *testing.T) {
 						[]int64{int64(-1)},
 						[]int64{int64(math.MaxInt64)},
 					},
-					checkRows: func(rows *gosql.Rows, expectedRows []any) (bool, error) {
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var i int64
 						var rowNum int
 						for rows.Next() {
@@ -259,6 +259,51 @@ func TestServerPreparedStatements(t *testing.T) {
 							}
 							if i != expectedRows[rowNum].([]int64)[0] {
 								return false, fmt.Errorf("expected %d, got %d", expectedRows[rowNum].([]int64)[0], i)
+							}
+							rowNum++
+						}
+						return true, nil
+					},
+				},
+			},
+		},
+		{
+			name: "regression test for incorrectly setting QFlagMax1Row flag",
+			setup: []string{
+				"create table test(c0 int not null, c1 int not null, pk int primary key, key (c0, c1));",
+				"insert into test values (2, 3, 1), (5, 6, 4), (2, 3, 7);",
+			},
+			assertions: []serverScriptTestAssertion{
+				{
+					query: "select * from test where c0 = 2 and c1 = 3 order by pk;",
+					expectedRows: []any{
+						[]uint64{uint64(2), uint64(3), uint64(1)},
+						[]uint64{uint64(2), uint64(3), uint64(7)},
+					},
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var c0, c1, pk uint64
+						var rowNum int
+						for rows.Next() {
+							err := rows.Scan(&c0, &c1, &pk)
+							require.NoError(t, err)
+							if err != nil {
+								return false, err
+							}
+							require.Less(t, rowNum, len(expectedRows))
+							if rowNum >= len(expectedRows) {
+								return false, nil
+							}
+							require.Equal(t, c0, expectedRows[rowNum].([]uint64)[0])
+							if c0 != expectedRows[rowNum].([]uint64)[0] {
+								return false, nil
+							}
+							require.Equal(t, c1, expectedRows[rowNum].([]uint64)[1])
+							if c1 != expectedRows[rowNum].([]uint64)[1] {
+								return false, nil
+							}
+							require.Equal(t, pk, expectedRows[rowNum].([]uint64)[2])
+							if pk != expectedRows[rowNum].([]uint64)[2] {
+								return false, nil
 							}
 							rowNum++
 						}
@@ -315,8 +360,10 @@ func TestServerPreparedStatements(t *testing.T) {
 					if assertion.expectErr {
 						require.Error(t, err)
 						return
+					} else {
+						require.NoError(t, err)
 					}
-					ok, err := assertion.checkRows(rows, assertion.expectedRows)
+					ok, err := assertion.checkRows(t, rows, assertion.expectedRows)
 					require.NoError(t, err)
 					require.True(t, ok)
 				})

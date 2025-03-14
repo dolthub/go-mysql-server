@@ -23,7 +23,7 @@ func init() {
 		{applyProceduresId, applyProcedures},
 		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
 		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-		{BacktickDefaulColumnValueNamesId, backtickDefaultColumnValueNames},
+		{QuoteDefaultColumnValueNamesId, quoteDefaultColumnValueNames},
 		{TrackProcessId, trackProcess},
 	}
 }
@@ -38,7 +38,7 @@ var OnceBeforeDefault = []Rule{
 	{validateAlterTableId, validateAlterTable},
 	{validateExprSemId, validateExprSem},
 	{resolveDropConstraintId, resolveDropConstraint},
-	{resolveAlterColumnId, resolveAlterColumn},
+	{ResolveAlterColumnId, resolveAlterColumn},
 	{validateDropTablesId, validateDropTables},
 	{resolveCreateSelectId, resolveCreateSelect},
 	{validateDropConstraintId, validateDropConstraint},

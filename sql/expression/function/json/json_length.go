@@ -117,7 +117,7 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 		return len(v), nil
-	case map[any]any:
+	case map[string]interface{}:
 		return len(v), nil
 	default:
 		return 1, nil

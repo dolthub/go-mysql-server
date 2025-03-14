@@ -193,13 +193,22 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 		case *plan.Project:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
 			switch c.Parent.(type) {
-			case *plan.InsertInto, *plan.Into, *plan.TriggerExecutor:
+			case *plan.InsertInto, *plan.Into, *plan.TriggerExecutor, *plan.DeclareCursor:
 				return n, transform.SameTree, nil
 			default:
 				return plan.NewPrependNode(n, row), transform.NewTree, nil
 			}
 		case *plan.ResolvedTable, *plan.IndexedTableAccess:
 			return plan.NewPrependNode(n, row), transform.NewTree, nil
+		case *plan.Call:
+			newNode, same, err := transform.NodeWithCtx(n.Procedure, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return n.WithProcedure(newNode.(*plan.Procedure)), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -329,7 +338,17 @@ type insertRowHandler struct {
 
 func (i *insertRowHandler) handleRowUpdate(row sql.Row) error {
 	i.rowsAffected++
+	if !i.updatedAutoIncrementValue {
+		i.updatedAutoIncrementValue = true
+		if i.lastInsertIdGetter != nil {
+			i.lastInsertId = uint64(i.lastInsertIdGetter(row))
+		}
+	}
 	return nil
+}
+
+func (i *insertRowHandler) getLastInsertId() uint64 {
+	return i.lastInsertId
 }
 
 func (i *insertRowHandler) okResult() types.OkResult {
@@ -555,7 +574,9 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 		if i.updater != nil {
 			return &onDuplicateUpdateHandler{schema: i.schema, clientFoundRowsCapability: clientFoundRowsToggled}
 		}
-		return &insertRowHandler{}
+		return &insertRowHandler{
+			lastInsertIdGetter: i.getAutoIncVal,
+		}
 	case *deleteIter:
 		return &deleteRowHandler{}
 	default:
@@ -650,10 +671,12 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			// For some update accumulators, we don't accurately track the last insert ID in the handler and need to set
 			// it manually in the result by getting it from the session. This doesn't work correctly in all cases and needs
 			// to be fixed. See comment in buildRowUpdateAccumulator in rowexec/dml.go
-			switch a.updateRowHandler.(type) {
-			case *onDuplicateUpdateHandler, *replaceRowHandler, *insertRowHandler:
+			switch rowHandler := a.updateRowHandler.(type) {
+			case *onDuplicateUpdateHandler, *replaceRowHandler:
 				lastInsertId := ctx.Session.GetLastQueryInfoInt(sql.LastInsertId)
 				res.InsertID = uint64(lastInsertId)
+			case *insertRowHandler:
+				res.InsertID = rowHandler.lastInsertId
 			}
 
 			// By definition, ROW_COUNT() is equal to RowsAffected.

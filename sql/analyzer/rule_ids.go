@@ -44,7 +44,7 @@ const (
 	finalizeUnionsId             // finalizeUnions
 	loadTriggersId               // loadTriggers
 	processTruncateId            // processTruncate
-	resolveAlterColumnId         // resolveAlterColumn
+	ResolveAlterColumnId         // ResolveAlterColumn
 	stripTableNameInDefaultsId   // stripTableNamesFromColumnDefaults
 	optimizeJoinsId              // optimizeJoins
 	pushFiltersId                // pushFilters
@@ -81,7 +81,7 @@ const (
 	validateDeleteFromId        // validateDeleteFrom
 
 	// after all
-	cacheSubqueryAliasesInJoinsId    // cacheSubqueryAliasesInJoins
-	BacktickDefaulColumnValueNamesId // backtickDefaultColumnValueNames
-	TrackProcessId                   // trackProcess
+	cacheSubqueryAliasesInJoinsId  // cacheSubqueryAliasesInJoins
+	QuoteDefaultColumnValueNamesId // quoteDefaultColumnValueNames
+	TrackProcessId                 // trackProcess
 )

@@ -107,7 +107,9 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
 
-	b.buildDistinct(outScope, s.QueryOpts.Distinct)
+	if err := b.buildDistinct(outScope, s.QueryOpts.Distinct); err != nil {
+		b.handleErr(err)
+	}
 
 	// OFFSET and LIMIT are last
 	offset := b.buildOffset(outScope, s.Limit)
@@ -149,7 +151,7 @@ func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 }
 
 // buildLimitVal resolves a literal numeric type or a numeric
-// prodecure parameter
+// procedure parameter
 func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 	switch e := e.(type) {
 	case *ast.ColName:
@@ -165,7 +167,7 @@ func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 				}
 			}
 		}
-		err := fmt.Errorf("limit expression expected to be numeric or prodecure parameter, found invalid column: %s", e.String())
+		err := fmt.Errorf("limit expression expected to be numeric or procedure parameter, found invalid column: %s", e.String())
 		b.handleErr(err)
 	default:
 		l := b.buildScalar(inScope, e)
@@ -194,11 +196,13 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 
 // buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
 // If the query has both DISTINCT and ALL, an error is returned.
-func (b *Builder) buildDistinct(inScope *scope, distinct bool) {
+func (b *Builder) buildDistinct(inScope *scope, distinct bool) error {
 	if !distinct {
-		return
+		return nil
 	}
-	inScope.node = b.f.buildDistinct(inScope.node)
+	var err error
+	inScope.node, err = b.f.buildDistinct(inScope.node, inScope.refsSubquery)
+	return err
 }
 
 func (b *Builder) currentDb() sql.Database {

@@ -134,7 +134,7 @@ func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, er
 	case *expression.GetField:
 		// strip table names
 		ne := expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable())
-		ne = ne.WithBackTickNames(e.IsBackTickNames())
+		ne = ne.WithQuotedNames(sql.GlobalParser, e.IsQuotedIdentifier())
 		return ne, transform.NewTree, nil
 	default:
 	}

@@ -781,6 +781,47 @@ func TestRegex(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name: "REGEXP caching behavior",
+			SetUpScript: []string{
+				"CREATE TABLE test (v1 TEXT, v2 INT, v3 INT);",
+				"INSERT INTO test VALUES ('abc', 1, 2), ('[d-i]+', 2, 3), ('ghi', 3, 4);",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "SELECT REGEXP_LIKE('abc def ghi', 'abc') FROM test;",
+					Expected: []sql.Row{{1}, {1}, {1}},
+				},
+				{
+					Query:    "SELECT REGEXP_LIKE('abc def ghi', v1) FROM test;",
+					Expected: []sql.Row{{1}, {1}, {1}},
+				},
+				{
+					Query:    "SELECT REGEXP_INSTR('abc def ghi', '[a-z]+', 1, 2) FROM test;",
+					Expected: []sql.Row{{5}, {5}, {5}},
+				},
+				{
+					Query:    "SELECT REGEXP_INSTR('abc def ghi', v1, 1, 1) FROM test;",
+					Expected: []sql.Row{{1}, {5}, {9}},
+				},
+				{
+					Query:    "SELECT REGEXP_INSTR('abc def ghi', '[a-z]+', v2, v3) FROM test;",
+					Expected: []sql.Row{{5}, {9}, {0}},
+				},
+				{
+					Query:    "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1, 2) FROM test;",
+					Expected: []sql.Row{{"def"}, {"def"}, {"def"}},
+				},
+				{
+					Query:    "SELECT REGEXP_SUBSTR('abc def ghi', v1, 1, 1) FROM test;",
+					Expected: []sql.Row{{"abc"}, {"def"}, {"ghi"}},
+				},
+				{
+					Query:    "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', v2, v3) FROM test;",
+					Expected: []sql.Row{{"def"}, {"ghi"}, {nil}},
+				},
+			},
+		},
 	} {
 		enginetest.TestScript(t, harness, test)
 	}
@@ -1037,7 +1078,7 @@ func newDatabase() (*sql2.DB, func()) {
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("localhost:%d", port),
 	}
-	srv, err := server.NewServer(cfg, engine, harness.SessionBuilder(), nil)
+	srv, err := server.NewServer(cfg, engine, sql.NewContext, harness.SessionBuilder(), nil)
 	if err != nil {
 		panic(err)
 	}

@@ -843,6 +843,26 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	},
 	{
+		Query:    "select coalesce(1, 0.0);",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
+		Query:    "select coalesce(1, '0');",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
+		Query:    "select coalesce(1, 'x');",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
+		Query:    "select coalesce(1, 1);",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select coalesce(1, CAST('2017-08-29' AS DATE))",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
 		Query:    "SELECT count(*) from mytable WHERE ((i IN (NULL >= 1)) IS NULL);",
 		Expected: []sql.Row{{3}},
 	},
@@ -1051,6 +1071,16 @@ Select * from (
   Select x from xy where x in (select * from cte)
  ) dt;`,
 		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: `
+WITH RECURSIVE cte(d) AS (
+  SELECT 0
+  UNION ALL
+  SELECT cte.d + 1 FROM cte limit 3
+)
+SELECT * FROM cte WHERE  d = 2;`,
+		Expected: []sql.Row{{2}},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/5642
@@ -6587,6 +6617,14 @@ Select * from (
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
+		Query:    "select distinct abs(c5) as a from one_pk where c2 in (1,11,31) order by a",
+		Expected: []sql.Row{{4}, {14}, {34}},
+	},
+	{
+		Query:    "select distinct abs(c5) as a from one_pk order by a",
+		Expected: []sql.Row{{4}, {14}, {24}, {34}},
+	},
+	{
 		Query:    "select ceil(i + 0.5) from mytable order by 1",
 		Expected: []sql.Row{{"2"}, {"3"}, {"4"}},
 	},
@@ -10133,11 +10171,51 @@ from typestable`,
 			{2},
 		},
 	},
+	{
+		Query: "select ''",
+		Expected: []sql.Row{
+			{""},
+		},
+	},
+	{
+		Query: "select '' from dual",
+		Expected: []sql.Row{
+			{""},
+		},
+	},
 
 	{
 		Query: "select @@sql_mode = 1",
 		Expected: []sql.Row{
 			{false},
+		},
+	},
+
+	{
+		Query:            "explain select 1",
+		SkipServerEngine: true,
+		Expected: []sql.Row{
+			{1, "SELECT", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", "NULL", ""},
+		},
+	},
+	{
+		Query:            "explain plan select 1",
+		SkipServerEngine: true,
+		Expected: []sql.Row{
+			{"Project"},
+			{" ├─ columns: [1]"},
+			{" └─ Table"},
+			{"     └─ name: "},
+		},
+	},
+	{
+		Query:            "explain format=tree select 1",
+		SkipServerEngine: true,
+		Expected: []sql.Row{
+			{"Project"},
+			{" ├─ columns: [1]"},
+			{" └─ Table"},
+			{"     └─ name: "},
 		},
 	},
 }

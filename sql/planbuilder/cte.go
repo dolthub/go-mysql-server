@@ -154,6 +154,9 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 		}
 		b.renameSource(cteScope, name, columns)
 
+		for _, c := range cteScope.cols {
+			scopeMapping[sql.ColumnId(c.id)] = c.scalarGf()
+		}
 		rTable = plan.NewRecursiveTable(name, recSch)
 		cteScope.node = rTable.WithId(tableId).WithColumns(cols)
 	}

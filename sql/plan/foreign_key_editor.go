@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ChildParentMapping is a mapping from the foreign key columns of a child schema to the parent schema. The position
@@ -227,7 +228,7 @@ func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionDat
 
 // Delete handles both the standard DELETE statement and propagated referential actions from a parent table's ON DELETE.
 func (fkEditor *ForeignKeyEditor) Delete(ctx *sql.Context, row sql.Row, depth int) error {
-	//TODO: may need to process some cascades after the update to avoid recursive violations, write some tests on this
+	// TODO: may need to process some cascades after the update to avoid recursive violations, write some tests on this
 	for _, refActionData := range fkEditor.RefActions {
 		switch refActionData.ForeignKey.OnDelete {
 		default: // RESTRICT and friends
@@ -425,6 +426,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 			return nil
 		}
 	}
+
 	return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
@@ -455,6 +457,9 @@ type ForeignKeyRowMapper struct {
 	Index     sql.Index
 	Updater   sql.ForeignKeyEditor
 	SourceSch sql.Schema
+	// TargetTypeConversions are a set of functions to transform the value in the table to the corresponding value in the
+	// other table. This is required when the types of the two tables are compatible but different (e.g. INT and BIGINT).
+	TargetTypeConversions []ForeignKeyTypeConversionFn
 	// IndexPositions hold the mapping between an index's column position and the source row's column position. Given
 	// an index (x1, x2) and a source row (y1, y2, y3) and the relation (x1->y3, x2->y1), this slice would contain
 	// [2, 0]. The first index column "x1" maps to the third source column "y3" (so position 2 since it's zero-based),
@@ -481,7 +486,21 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		if rowVal == nil {
 			return sql.RowsToRowIter(), nil
 		}
-		rang[rangPosition] = sql.ClosedRangeColumnExpr(rowVal, rowVal, mapper.SourceSch[rowPos].Type)
+
+		targetType := mapper.SourceSch[rowPos].Type
+		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
+		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
+			var err error
+			targetType, rowVal, err = mapper.TargetTypeConversions[rowPos](ctx, rowVal)
+			// An error means the type conversion failed, which typically means there's no way to convert the value given to
+			// the target value because of e.g. range constraints (trying to assign an INT to a TINYINT column). We treat
+			// this as an empty result for this iterator, since this value cannot possibly be present in the other table.
+			if err != nil {
+				return sql.RowsToRowIter(), nil
+			}
+		}
+
+		rang[rangPosition] = sql.ClosedRangeColumnExpr(rowVal, rowVal, targetType)
 	}
 	for i, appendType := range mapper.AppendTypes {
 		rang[i+len(mapper.IndexPositions)] = sql.AllRangeColumnExpr(appendType)
@@ -490,7 +509,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 	if !mapper.Index.CanSupport(rang) {
 		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
 	}
-	//TODO: profile this, may need to redesign this or add a fast path
+	// TODO: profile this, may need to redesign this or add a fast path
 	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{rang}, Index: mapper.Index}
 
 	editorData := mapper.Updater.IndexedAccess(lookup)
@@ -520,30 +539,94 @@ func (mapper *ForeignKeyRowMapper) GetKeyString(row sql.Row) string {
 
 // GetChildParentMapping returns a mapping from the foreign key columns of a child schema to the parent schema.
 func GetChildParentMapping(parentSch sql.Schema, childSch sql.Schema, fkDef sql.ForeignKeyConstraint) (ChildParentMapping, error) {
-	parentMap := make(map[string]int)
-	for i, col := range parentSch {
-		parentMap[strings.ToLower(col.Name)] = i
-	}
-	childMap := make(map[string]int)
-	for i, col := range childSch {
-		childMap[strings.ToLower(col.Name)] = i
-	}
 	mapping := make(ChildParentMapping, len(childSch))
 	for i := range mapping {
 		mapping[i] = -1
 	}
 	for i := range fkDef.Columns {
-		childIndex, ok := childMap[strings.ToLower(fkDef.Columns[i])]
-		if !ok {
+		childIndex := childSch.IndexOfColName(fkDef.Columns[i])
+		if childIndex < 0 {
 			return nil, fmt.Errorf("foreign key `%s` refers to column `%s` on table `%s` but it could not be found",
 				fkDef.Name, fkDef.Columns[i], fkDef.Table)
 		}
-		parentIndex, ok := parentMap[strings.ToLower(fkDef.ParentColumns[i])]
-		if !ok {
+		parentIndex := parentSch.IndexOfColName(fkDef.ParentColumns[i])
+		if parentIndex < 0 {
 			return nil, fmt.Errorf("foreign key `%s` refers to column `%s` on referenced table `%s` but it could not be found",
 				fkDef.Name, fkDef.ParentColumns[i], fkDef.ParentTable)
 		}
 		mapping[childIndex] = parentIndex
 	}
 	return mapping, nil
+}
+
+// ForeignKeyTypeConversionDirection specifies whether a child column type is being converted to its parent type for
+// constraint enforcement, or vice versa.
+type ForeignKeyTypeConversionDirection byte
+
+const (
+	ChildToParent ForeignKeyTypeConversionDirection = iota
+	ParentToChild
+)
+
+// ForeignKeyTypeConversionFn is a function that transforms a value from one type to another for foreign key constraint
+// enforcement. The target type is returned along with the transformed value, or an error if the transformation fails.
+type ForeignKeyTypeConversionFn func(ctx *sql.Context, val any) (sql.Type, any, error)
+
+// GetForeignKeyTypeConversions returns a set of functions to convert a type in a one foreign key column table to the
+// type in the corresponding table. Specify the schema of both child and parent tables, as well as whether the
+// transformation is from child to parent or vice versa.
+func GetForeignKeyTypeConversions(
+	parentSch sql.Schema,
+	childSch sql.Schema,
+	fkDef sql.ForeignKeyConstraint,
+	direction ForeignKeyTypeConversionDirection,
+) ([]ForeignKeyTypeConversionFn, error) {
+	var convFns []ForeignKeyTypeConversionFn
+
+	for i := range fkDef.Columns {
+		childIndex := childSch.IndexOfColName(fkDef.Columns[i])
+		if childIndex < 0 {
+			return nil, fmt.Errorf("foreign key `%s` refers to column `%s` on table `%s` but it could not be found",
+				fkDef.Name, fkDef.Columns[i], fkDef.Table)
+		}
+		parentIndex := parentSch.IndexOfColName(fkDef.ParentColumns[i])
+		if parentIndex < 0 {
+			return nil, fmt.Errorf("foreign key `%s` refers to column `%s` on referenced table `%s` but it could not be found",
+				fkDef.Name, fkDef.ParentColumns[i], fkDef.ParentTable)
+		}
+
+		childType := childSch[childIndex].Type
+		parentType := parentSch[parentIndex].Type
+
+		childExtendedType, ok := childType.(types.ExtendedType)
+		// if even one of the types is not an extended type, then we can't transform any values
+		if !ok {
+			return nil, nil
+		}
+
+		if !childType.Equals(parentType) {
+			parentExtendedType, ok := parentType.(types.ExtendedType)
+			if !ok {
+				// this should be impossible (child and parent should both be extended types), but just in case
+				return nil, nil
+			}
+
+			fromType := childExtendedType
+			toType := parentExtendedType
+			if direction == ParentToChild {
+				fromType = parentExtendedType
+				toType = childExtendedType
+			}
+
+			if convFns == nil {
+				convFns = make([]ForeignKeyTypeConversionFn, len(childSch))
+			}
+			convFns[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
+				convertedVal, err := toType.ConvertToType(ctx, fromType, val)
+				return toType, convertedVal, err
+			}
+		}
+	}
+
+	return convFns, nil
 }

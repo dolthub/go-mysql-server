@@ -17,6 +17,7 @@ package server
 import (
 	"context"
 	"encoding/base64"
+	goerrors "errors"
 	"fmt"
 	"io"
 	"net"
@@ -80,7 +81,6 @@ type Handler struct {
 var _ mysql.Handler = (*Handler)(nil)
 var _ mysql.ExtendedHandler = (*Handler)(nil)
 var _ mysql.BinlogReplicaHandler = (*Handler)(nil)
-var _ sql.ContextProvider = (*Handler)(nil)
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
@@ -102,7 +102,8 @@ func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
-	err := h.sm.SetDB(c, schemaName)
+	// SetDB itself handles session and processlist operation lifecycle callbacks.
+	err := h.sm.SetDB(context.Background(), c, schemaName)
 	if err != nil {
 		logrus.WithField("database", schemaName).Errorf("unable to process ComInitDB: %s", err.Error())
 		err = sql.CastSQLError(err)
@@ -121,6 +122,11 @@ func (h *Handler) ComPrepare(ctx context.Context, c *mysql.Conn, query string, p
 	if err != nil {
 		return nil, err
 	}
+	sqlCtx, err = sqlCtx.ProcessList.BeginOperation(sqlCtx)
+	if err != nil {
+		return nil, err
+	}
+	defer sqlCtx.ProcessList.EndOperation(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return nil, err
@@ -166,7 +172,11 @@ func (h *Handler) ComPrepareParsed(ctx context.Context, c *mysql.Conn, query str
 	if err != nil {
 		return nil, nil, err
 	}
-
+	sqlCtx, err = sqlCtx.ProcessList.BeginOperation(sqlCtx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sqlCtx.ProcessList.EndOperation(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return nil, nil, err
@@ -192,15 +202,16 @@ func (h *Handler) ComPrepareParsed(ctx context.Context, c *mysql.Conn, query str
 	return analyzed, fields, nil
 }
 
-func (h *Handler) NewContext(ctx context.Context, c *mysql.Conn, query string) (*sql.Context, error) {
-	return h.sm.NewContext(ctx, c, query)
-}
-
 func (h *Handler) ComBind(ctx context.Context, c *mysql.Conn, query string, parsedQuery mysql.ParsedQuery, prepare *mysql.PrepareData) (mysql.BoundQuery, []*querypb.Field, error) {
 	sqlCtx, err := h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
 		return nil, nil, err
 	}
+	sqlCtx, err = sqlCtx.ProcessList.BeginOperation(sqlCtx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sqlCtx.ProcessList.EndOperation(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return nil, nil, err
@@ -258,17 +269,19 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) error {
 	h.maybeReleaseAllLocks(c)
 	h.e.CloseSession(c.ConnectionID)
 
+	ctx := context.Background()
+
 	// Create a new session and set the current database
-	err := h.sm.NewSession(context.Background(), c)
+	err := h.sm.NewSession(ctx, c)
 	if err != nil {
 		return err
 	}
 
-	return h.sm.SetDB(c, db)
+	return h.sm.SetDB(ctx, c, db)
 }
 
 func (h *Handler) ParserOptionsForConnection(c *mysql.Conn) (sqlparser.ParserOptions, error) {
-	ctx, err := h.sm.NewContext(context.Background(), c, "")
+	ctx, err := h.sm.NewContextWithQuery(context.Background(), c, "")
 	if err != nil {
 		return sqlparser.ParserOptions{}, err
 	}
@@ -391,10 +404,17 @@ func (h *Handler) doQuery(
 	qFlags *sql.QueryFlags,
 ) (remainder string, err error) {
 	var sqlCtx *sql.Context
-	sqlCtx, err = h.sm.NewContext(ctx, c, query)
+	sqlCtx, err = h.sm.NewContextWithQuery(ctx, c, query)
 	if err != nil {
 		return "", err
 	}
+	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
+	//  marked done until we're done spooling rows over the wire
+	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
+	if err != nil {
+		return remainder, err
+	}
+	defer sqlCtx.ProcessList.EndQuery(sqlCtx)
 	err = sql.SessionCommandBegin(sqlCtx.Session)
 	if err != nil {
 		return "", err
@@ -438,14 +458,6 @@ func (h *Handler) doQuery(
 	}()
 
 	sqlCtx.GetLogger().Tracef("beginning execution")
-
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
-	sqlCtx, err = sqlCtx.ProcessList.BeginQuery(sqlCtx, query)
-	if err != nil {
-		return remainder, err
-	}
-	defer sqlCtx.ProcessList.EndQuery(sqlCtx)
 
 	var schema sql.Schema
 	var rowIter sql.RowIter
@@ -598,31 +610,32 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 
 // resultForDefaultIter reads batches of rows from the iterator
 // and writes results into the callback function.
-func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter, callback func(*sqltypes.Result, bool) error, resultFields []*querypb.Field, more bool, buf *sql.ByteBuffer) (r *sqltypes.Result, processedAtLeastOneBatch bool, returnErr error) {
+func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter, callback func(*sqltypes.Result, bool) error, resultFields []*querypb.Field, more bool, buf *sql.ByteBuffer) (*sqltypes.Result, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
-
-	pan2err := func() {
+	pan2err := func(err *error) {
 		if recoveredPanic := recover(); recoveredPanic != nil {
-			returnErr = fmt.Errorf("handler caught panic: %v", recoveredPanic)
+			*err = goerrors.Join(*err, fmt.Errorf("handler caught panic: %v", recoveredPanic))
 		}
 	}
-
 	wg := sync.WaitGroup{}
 	wg.Add(2)
+
+	var r *sqltypes.Result
+	var processedAtLeastOneBatch bool
 
 	// Read rows off the row iterator and send them to the row channel.
 	iter, projs := GetDeferredProjections(iter)
 	var rowChan = make(chan sql.Row, 512)
-	eg.Go(func() error {
-		defer pan2err()
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
 		defer wg.Done()
 		defer close(rowChan)
 		for {
 			select {
 			case <-ctx.Done():
-				return nil
+				return context.Cause(ctx)
 			default:
 				row, err := iter.Next(ctx)
 				if err == io.EOF {
@@ -640,9 +653,12 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		}
 	})
 
+	// TODO: poll for closed connections should obviously also run even if
+	// we're doing something with an OK result or a single row result, etc.
+	// This should be in the caller.
 	pollCtx, cancelF := ctx.NewSubContext()
-	eg.Go(func() error {
-		defer pan2err()
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
 		return h.pollForClosedConnection(pollCtx, c)
 	})
 
@@ -665,8 +681,8 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 
 	// Reads rows from the channel, converts them to wire format,
 	// and calls |callback| to give them to vitess.
-	eg.Go(func() error {
-		defer pan2err()
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
 		defer cancelF()
 		defer wg.Done()
 		for {
@@ -684,7 +700,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 
 			select {
 			case <-ctx.Done():
-				return nil
+				return context.Cause(ctx)
 			case row, ok := <-rowChan:
 				if !ok {
 					return nil
@@ -705,6 +721,9 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
 				r.Rows = append(r.Rows, outputRow)
 				r.RowsAffected++
+				if !timer.Stop() {
+					<-timer.C
+				}
 			case <-timer.C:
 				// TODO: timer should probably go in its own thread, as rowChan is blocking
 				if h.readTimeout != 0 {
@@ -713,17 +732,14 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					return ErrRowTimeout.New()
 				}
 			}
-			if !timer.Stop() {
-				<-timer.C
-			}
 			timer.Reset(waitTime)
 		}
 	})
 
 	// Close() kills this PID in the process list,
 	// wait until all rows have be sent over the wire
-	eg.Go(func() error {
-		defer pan2err()
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
 		wg.Wait()
 		return iter.Close(ctx)
 	})
@@ -734,9 +750,9 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		if verboseErrorLogging {
 			fmt.Printf("Err: %+v", err)
 		}
-		returnErr = err
+		return nil, false, err
 	}
-	return
+	return r, processedAtLeastOneBatch, nil
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html

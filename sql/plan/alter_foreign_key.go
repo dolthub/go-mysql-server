@@ -105,6 +105,9 @@ func (p *CreateForeignKey) String() string {
 	return pr.String()
 }
 
+// ValidateForeignKeyDefinition checks that the foreign key definition is valid for creation
+var ValidateForeignKeyDefinition = validateForeignKeyDefinition
+
 // ResolveForeignKey verifies the foreign key definition and resolves the foreign key, creating indexes and validating
 // data as necessary.
 // fkChecks - whether to check the foreign key against the data in the table
@@ -171,16 +174,9 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 
 		// Check that the types align and are valid
-		for i := range fkDef.Columns {
-			col := cols[strings.ToLower(fkDef.Columns[i])]
-			parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
-			if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
-				return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
-			}
-			sqlParserType := col.Type.Type()
-			if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
-				return sql.ErrForeignKeyTextBlob.New()
-			}
+		err := ValidateForeignKeyDefinition(ctx, fkDef, cols, parentCols)
+		if err != nil {
+			return err
 		}
 
 		// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
@@ -203,15 +199,22 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 				selfCols[strings.ToLower(col.Name)] = i
 			}
 		}
+
+		typeConversions, err := GetForeignKeyTypeConversions(refTbl.Schema(), tbl.Schema(), fkDef, ChildToParent)
+		if err != nil {
+			return err
+		}
+
 		reference := &ForeignKeyReferenceHandler{
 			ForeignKey: fkDef,
 			SelfCols:   selfCols,
 			RowMapper: ForeignKeyRowMapper{
-				Index:          refTblIndex,
-				Updater:        refTbl.GetForeignKeyEditor(ctx),
-				SourceSch:      tbl.Schema(),
-				IndexPositions: indexPositions,
-				AppendTypes:    appendTypes,
+				Index:                 refTblIndex,
+				Updater:               refTbl.GetForeignKeyEditor(ctx),
+				SourceSch:             tbl.Schema(),
+				TargetTypeConversions: typeConversions,
+				IndexPositions:        indexPositions,
+				AppendTypes:           appendTypes,
 			},
 		}
 
@@ -322,6 +325,22 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		fkDef.IsResolved = fkChecks
 		return tbl.UpdateForeignKey(ctx, fkDef.Name, fkDef)
 	}
+}
+
+// validateForeignKeyDefinition checks that the foreign key definition is valid for creation
+func validateForeignKeyDefinition(ctx *sql.Context, fkDef sql.ForeignKeyConstraint, cols map[string]*sql.Column, parentCols map[string]*sql.Column) error {
+	for i := range fkDef.Columns {
+		col := cols[strings.ToLower(fkDef.Columns[i])]
+		parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
+		if !foreignKeyComparableTypes(ctx, col.Type, parentCol.Type) {
+			return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
+		}
+		sqlParserType := col.Type.Type()
+		if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
+			return sql.ErrForeignKeyTextBlob.New()
+		}
+	}
+	return nil
 }
 
 type DropForeignKey struct {
@@ -519,20 +538,16 @@ func FindForeignKeyColMapping(
 		localRowPos, ok := localSchPositionMap[colName]
 		if !ok {
 			// Will happen if a column is renamed that is referenced by a foreign key
-			//TODO: enforce that renaming a column referenced by a foreign key updates that foreign key
+			// TODO: enforce that renaming a column referenced by a foreign key updates that foreign key
 			return nil, nil, fmt.Errorf("column `%s` in foreign key `%s` cannot be found",
 				colName, fkName)
 		}
-		expectedType := localSchTypeMap[colName]
 		destFkCol := destTblName + "." + destFKCols[fkIdx]
 		indexPos, ok := indexColMap[destFkCol]
 		if !ok {
 			// Same as above, renaming a referenced column would cause this error
 			return nil, nil, fmt.Errorf("index column `%s` in foreign key `%s` cannot be found",
 				destFKCols[fkIdx], fkName)
-		}
-		if !foreignKeyComparableTypes(ctx, indexTypeMap[destFkCol], expectedType) {
-			return nil, nil, sql.ErrForeignKeyColumnTypeMismatch.New(colName, destFkCol)
 		}
 		indexPositions[indexPos] = localRowPos
 	}

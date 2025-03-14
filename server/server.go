@@ -37,14 +37,19 @@ type ProtocolListener interface {
 }
 
 // ProtocolListenerFunc returns a ProtocolListener based on the configuration it was given.
-type ProtocolListenerFunc func(cfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error)
+type ProtocolListenerFunc func(cfg Config, listenerCfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error)
 
-// DefaultProtocolListenerFunc is the protocol listener, which defaults to Vitess' protocol listener. Changing
-// this function will change the protocol listener used when creating all servers. If multiple servers are needed
-// with different protocols, then create each server after changing this function. Servers retain the protocol that
-// they were created with.
-var DefaultProtocolListenerFunc ProtocolListenerFunc = func(cfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error) {
-	return mysql.NewListenerWithConfig(cfg)
+func MySQLProtocolListenerFactory(cfg Config, listenerCfg mysql.ListenerConfig, sel ServerEventListener) (ProtocolListener, error) {
+	vtListener, err := mysql.NewListenerWithConfig(listenerCfg)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Version != "" {
+		vtListener.ServerVersion = cfg.Version
+	}
+	vtListener.TLSConfig = cfg.TLSConfig
+	vtListener.RequireSecureTransport = cfg.RequireSecureTransport
+	return vtListener, nil
 }
 
 type ServerEventListener interface {
@@ -56,36 +61,23 @@ type ServerEventListener interface {
 
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
-func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEventListener) (*Server, error) {
-	var tracer trace.Tracer
-	if cfg.Tracer != nil {
-		tracer = cfg.Tracer
-	} else {
-		tracer = sql.NoopTracer
-	}
-
-	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
-	handler := &Handler{
-		e:                 e,
-		sm:                sm,
-		readTimeout:       cfg.ConnReadTimeout,
-		disableMultiStmts: cfg.DisableClientMultiStatements,
-		maxLoggedQueryLen: cfg.MaxLoggedQueryLen,
-		encodeLoggedQuery: cfg.EncodeLoggedQuery,
-		sel:               listener,
-	}
-	//handler = NewHandler_(e, sm, cfg.ConnReadTimeout, cfg.DisableClientMultiStatements, cfg.MaxLoggedQueryLen, cfg.EncodeLoggedQuery, listener)
-	return newServerFromHandler(cfg, e, sm, handler, listener)
+func NewServer(cfg Config, e *sqle.Engine, ctxFactory sql.ContextFactory, sb SessionBuilder, listener ServerEventListener) (*Server, error) {
+	return NewServerWithHandler(cfg, e, ctxFactory, sb, listener, noopHandlerWrapper)
 }
 
 // HandlerWrapper provides a way for clients to wrap the mysql.Handler used by the server with a custom implementation
 // that wraps it.
 type HandlerWrapper func(h mysql.Handler) (mysql.Handler, error)
 
+func noopHandlerWrapper(h mysql.Handler) (mysql.Handler, error) {
+	return h, nil
+}
+
 // NewServerWithHandler creates a Server with a handler wrapped by the provided wrapper function.
 func NewServerWithHandler(
 	cfg Config,
 	e *sqle.Engine,
+	ctxFactory sql.ContextFactory,
 	sb SessionBuilder,
 	listener ServerEventListener,
 	wrapper HandlerWrapper,
@@ -97,7 +89,7 @@ func NewServerWithHandler(
 		tracer = sql.NoopTracer
 	}
 
-	sm := NewSessionManager(sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
+	sm := NewSessionManager(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
 	h := &Handler{
 		e:                 e,
 		sm:                sm,
@@ -127,10 +119,6 @@ func portInUse(hostPort string) bool {
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
-	for _, option := range cfg.Options {
-		option(e, sm, handler)
-	}
-
 	if cfg.ConnReadTimeout < 0 {
 		cfg.ConnReadTimeout = 0
 	}
@@ -139,6 +127,10 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 	}
 	if cfg.MaxConnections < 0 {
 		cfg.MaxConnections = 0
+	}
+
+	for _, opt := range cfg.Options {
+		e, sm, handler = opt(e, sm, handler)
 	}
 
 	l := cfg.Listener
@@ -169,17 +161,13 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		ConnReadBufferSize:       mysql.DefaultConnBufferSize,
 		AllowClearTextWithoutTLS: cfg.AllowClearTextWithoutTLS,
 	}
-	protocolListener, err := DefaultProtocolListenerFunc(listenerCfg, sel)
+	plf := cfg.ProtocolListenerFactory
+	if plf == nil {
+		plf = MySQLProtocolListenerFactory
+	}
+	protocolListener, err := plf(cfg, listenerCfg, sel)
 	if err != nil {
 		return nil, err
-	}
-
-	if vtListener, ok := protocolListener.(*mysql.Listener); ok {
-		if cfg.Version != "" {
-			vtListener.ServerVersion = cfg.Version
-		}
-		vtListener.TLSConfig = cfg.TLSConfig
-		vtListener.RequireSecureTransport = cfg.RequireSecureTransport
 	}
 
 	return &Server{

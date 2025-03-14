@@ -694,7 +694,11 @@ func (d *Week) Description() string {
 	return "returns the week number."
 }
 
-func (d *Week) String() string { return fmt.Sprintf("WEEK(%s, %d)", d.date, d.mode) }
+func (d *Week) String() string { return fmt.Sprintf("WEEK(%s, %s)", d.date, d.mode.String()) }
+
+func (d *Week) DebugString() string {
+	return fmt.Sprintf("WEEK(%s, %s)", sql.DebugString(d.date), sql.DebugString(d.mode))
+}
 
 // Type implements the Expression interface.
 func (d *Week) Type() sql.Type { return types.Int32 }
