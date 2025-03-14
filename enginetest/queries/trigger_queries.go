@@ -949,13 +949,13 @@ END;`,
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
-				Query:    "update test t set t.i = 2 where t.i = 1;",
+				Query: "update test t set t.i = 2 where t.i = 1;",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
 				},
 			},
 			{
-				Query:    "select * from test;",
+				Query: "select * from test;",
 				Expected: []sql.Row{
 					{2, 200},
 				},
