@@ -17,6 +17,7 @@ package plan
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -135,20 +136,13 @@ func (ii *InsertInto) Schema() sql.Schema {
 		// TODO: If we don't return the destination schema anymore... does that mess up other things, like trigger processing?
 		// TODO: we need to look at the expressions in the returning clause
 
-		// TODO: We need to make sure the Returning expressions get resolved by the analyzer! Will need to be special cased... :-/
-		returningExprsResovled := true
+		// We know that returning exprs are resolved here, because you can't call Schema() safely until Resolved() is true.
 		returningSchema := sql.Schema{}
 		for _, expr := range ii.Returning {
-			if !expr.Resolved() {
-				returningExprsResovled = false
-				break
-			}
 			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
 		}
 
-		if returningExprsResovled {
-			return returningSchema
-		}
+		return returningSchema
 	}
 
 	return ii.Destination.Schema()
@@ -299,26 +293,15 @@ func (ii *InsertInto) Resolved() bool {
 	if !ii.Destination.Resolved() || !ii.Source.Resolved() {
 		return false
 	}
-	for _, updateExpr := range ii.OnDupExprs {
-		if !updateExpr.Resolved() {
-			return false
-		}
-	}
+
 	for _, checkExpr := range ii.checks {
 		if !checkExpr.Expr.Resolved() {
 			return false
 		}
 	}
 
-	if ii.Returning != nil {
-		for _, expr := range ii.Returning {
-			if !expr.Resolved() {
-				return false
-			}
-		}
-	}
-
-	return true
+	return expression.ExpressionsResolved(ii.OnDupExprs...) &&
+			expression.ExpressionsResolved(ii.Returning...)
 }
 
 // InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
