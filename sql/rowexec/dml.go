@@ -187,11 +187,16 @@ func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignK
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
-func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sql.Row) (sql.RowIter, error) {
+func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.Row) (sql.RowIter, error) {
 	var err error
 	var curdb sql.Database
 
-	for _, table := range n.Tables {
+	sortedTables, err := sortTablesByFKDependencies(ctx, n.Tables)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, table := range sortedTables {
 		tbl := table.(*plan.ResolvedTable)
 		curdb = tbl.SqlDatabase
 
@@ -253,6 +258,53 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, row sq
 	}
 
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
+}
+
+// sortTablesByFKDependencies examines the specified |tableNodes| and returns a slice of sql.Table instances, sorted
+// by their foreign key dependencies. Tables that have a foreign key reference to another table in the list will be
+// sorted first in the list, so that foreign key constraints can be dropped in the correct order.
+func sortTablesByFKDependencies(ctx *sql.Context, tableNodes []sql.Node) (sortedTables []sql.Table, err error) {
+	for _, tableNode := range tableNodes {
+		table, ok := tableNode.(sql.Table)
+		if !ok {
+			return nil, fmt.Errorf("encountered unexpected table type `%T` during DROP TABLE", table)
+		}
+
+		if fkTable, err := getForeignKeyTable(table); err == nil {
+			foreignKeys, err := fkTable.GetDeclaredForeignKeys(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			parentTables := make(map[string]struct{})
+			for _, foreignKey := range foreignKeys {
+				qualifiedTableName := foreignKey.ParentTable
+				parentTables[qualifiedTableName] = struct{}{}
+			}
+
+			inserted := false
+			for i, sortedTable := range sortedTables {
+				qualifiedTableName := sortedTable.Name()
+				if _, ok := parentTables[qualifiedTableName]; ok {
+					if i == 0 {
+						sortedTables = append([]sql.Table{table}, sortedTables[i:]...)
+					} else {
+						sortedTables = append(sortedTables[:i-1], append([]sql.Table{table}, sortedTables[i:]...)...)
+					}
+					inserted = true
+					break
+				}
+			}
+
+			if !inserted {
+				sortedTables = append(sortedTables, table)
+			}
+		} else {
+			sortedTables = append(sortedTables, table)
+		}
+	}
+
+	return sortedTables, nil
 }
 
 func (b *BaseBuilder) buildAlterIndex(ctx *sql.Context, n *plan.AlterIndex, row sql.Row) (sql.RowIter, error) {
