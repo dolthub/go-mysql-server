@@ -201,28 +201,55 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Subquery on SET user variable captures parameter",
+			Name: "DECLARE CONDITION",
 			SetUpScript: []string{
-				`
-CREATE PROCEDURE p1(x VARCHAR(20)) 
-BEGIN 
-	SET @randomvar = (SELECT LENGTH(x)); 
-	SELECT @randomvar; 
+				`CREATE PROCEDURE p1(x INT)
+BEGIN
+	DECLARE specialty CONDITION FOR SQLSTATE '45000';
+	DECLARE specialty2 CONDITION FOR SQLSTATE '02000';
+	IF x = 0 THEN
+		SIGNAL SQLSTATE '01000';
+	ELSEIF x = 1 THEN
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'A custom error occurred 1';
+	ELSEIF x = 2 THEN
+		SIGNAL specialty
+			SET MESSAGE_TEXT = 'A custom error occurred 2', MYSQL_ERRNO = 1002;
+	ELSEIF x = 3 THEN
+		SIGNAL specialty;
+	ELSEIF x = 4 THEN
+		SIGNAL specialty2;
+	ELSE
+		SIGNAL SQLSTATE '01000'
+			SET MESSAGE_TEXT = 'A warning occurred', MYSQL_ERRNO = 1000;
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1001;
+	END IF;
+	BEGIN
+		DECLARE specialty3 CONDITION FOR SQLSTATE '45000';
+	END;
 END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					SkipResultCheckOnServerEngine: true, // the user var has null type, which returns nil value over the wire.
-					Query:                         "CALL p1('hi')",
-					Expected: []sql.Row{
-						{int64(2)},
-					},
+					Query:          "CALL p1(0)",
+					ExpectedErrStr: "warnings not yet implemented",
 				},
 				{
-					Query: "CALL p1('hello')",
-					Expected: []sql.Row{
-						{int64(5)},
-					},
+					Query:          "CALL p1(1)",
+					ExpectedErrStr: "A custom error occurred 1 (errno 1644) (sqlstate 45000)",
+				},
+				{
+					Query:          "CALL p1(2)",
+					ExpectedErrStr: "A custom error occurred 2 (errno 1002) (sqlstate 45000)",
+				},
+				{
+					Query:          "CALL p1(3)",
+					ExpectedErrStr: "Unhandled user-defined exception condition (errno 1644) (sqlstate 45000)",
+				},
+				{
+					Query:          "CALL p1(4)",
+					ExpectedErrStr: "Unhandled user-defined not found condition (errno 1643) (sqlstate 02000)",
 				},
 			},
 		},

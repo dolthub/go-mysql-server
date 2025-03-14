@@ -142,6 +142,13 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			}
 			e.Into = newExpr.(*ast.Into)
 		}
+		if e.Where != nil {
+			newExpr, err := replaceVariablesInExpr(stack, e.Where.Expr)
+			if err != nil {
+				return nil, err
+			}
+			e.Where.Expr = newExpr.(ast.Expr)
+		}
 	case *ast.Subquery:
 		newExpr, err := replaceVariablesInExpr(stack, e.Select)
 		if err != nil {
