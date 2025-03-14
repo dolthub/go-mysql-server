@@ -276,6 +276,7 @@ func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, err
 	if err != nil {
 		return nil, err
 	}
+	
 	newExprs = newExprs[len(nii.checks):]
 	nii.Returning = newExprs
 
