@@ -201,22 +201,28 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Simple SELECT INTO",
+			Name: "Subquery on SET user variable captures parameter",
 			SetUpScript: []string{
-				"CREATE PROCEDURE testabc(IN x DOUBLE, IN y DOUBLE, OUT abc DOUBLE) SELECT x*y INTO abc",
+				`
+CREATE PROCEDURE p1(x VARCHAR(20)) 
+BEGIN 
+	SET @randomvar = (SELECT LENGTH(x)); 
+	SELECT @randomvar; 
+END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				//{
-				//	Query:    "select 1 into @x",
-				//	Expected: []sql.Row{},
-				//},
 				{
-					Query:    "CALL testabc(2, 3, @res1)",
-					Expected: []sql.Row{{float64(6)}},
+					SkipResultCheckOnServerEngine: true, // the user var has null type, which returns nil value over the wire.
+					Query:                         "CALL p1('hi')",
+					Expected: []sql.Row{
+						{int64(2)},
+					},
 				},
 				{
-					Query:    "CALL testabc(9, 9.5, @res2)",
-					Expected: []sql.Row{{float64(85.5)}},
+					Query: "CALL p1('hello')",
+					Expected: []sql.Row{
+						{int64(5)},
+					},
 				},
 			},
 		},

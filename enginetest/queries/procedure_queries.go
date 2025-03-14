@@ -903,9 +903,11 @@ END;`,
 		SetUpScript: []string{
 			"CREATE TABLE inventory (item_id int primary key, shelf_id int, item varchar(10))",
 			"INSERT INTO inventory VALUES (1, 1, 'a'), (2, 1, 'b'), (3, 2, 'c'), (4, 1, 'd'), (5, 4, 'e')",
-			`CREATE PROCEDURE count_and_print(IN p_shelf_id INT, OUT p_count INT) BEGIN
-SELECT item FROM inventory WHERE shelf_id = p_shelf_id ORDER BY item ASC;
-SELECT COUNT(*) INTO p_count FROM inventory WHERE shelf_id = p_shelf_id;
+			`
+CREATE PROCEDURE count_and_print(IN p_shelf_id INT, OUT p_count INT)
+BEGIN
+	SELECT item FROM inventory WHERE shelf_id = p_shelf_id ORDER BY item ASC;
+	SELECT COUNT(*) INTO p_count FROM inventory WHERE shelf_id = p_shelf_id;
 END`,
 		},
 		Assertions: []ScriptTestAssertion{
