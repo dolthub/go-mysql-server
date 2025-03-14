@@ -97,12 +97,13 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 	case *ast.Set:
 		for _, setExpr := range e.Exprs {
 			// TODO: properly handle user scope variables
-			if setExpr.Scope == ast.SetScope_User {
-				continue
-			}
 			newExpr, err := replaceVariablesInExpr(stack, setExpr.Expr)
 			if err != nil {
 				return nil, err
+			}
+			setExpr.Expr = newExpr.(ast.Expr)
+			if setExpr.Scope == ast.SetScope_User {
+				continue
 			}
 			err = stack.SetVariable(nil, setExpr.Name.String(), newExpr)
 			if err != nil {
@@ -118,6 +119,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			e.Params[i] = newExpr.(ast.Expr)
 		}
 	case *ast.Into:
+		// TODO: somehow support select into variables
 		for i := range e.Variables {
 			newExpr, err := replaceVariablesInExpr(stack, e.Variables[i])
 			if err != nil {
@@ -140,6 +142,12 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			}
 			e.Into = newExpr.(*ast.Into)
 		}
+	case *ast.Subquery:
+		newExpr, err := replaceVariablesInExpr(stack, e.Select)
+		if err != nil {
+			return nil, err
+		}
+		e.Select = newExpr.(*ast.Select)
 	case *ast.SetOp:
 		newLeftExpr, err := replaceVariablesInExpr(stack, e.Left)
 		if err != nil {
