@@ -100,7 +100,7 @@ func (t *tableEditor) Close(ctx *sql.Context) error {
 
 	// On the normal INSERT / UPDATE / DELETE path this happens at StatementComplete time, but for table rewrites it
 	// only happens at Close
-	err := t.ea.ApplyEdits(t.editedTable)
+	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 }
 
 func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
-	err := t.ea.ApplyEdits(t.editedTable)
+	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return nil
 	}
@@ -285,10 +285,10 @@ func (t *tableEditor) PreciseMatch() bool {
 	return true
 }
 
-func (t *tableEditor) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
 	// Before we return an indexed access for this table, we need to apply all the edits to the table
 	// TODO: optimize this, should create some struct that encloses the tableEditor and filters based on the lookup
-	err := t.ea.ApplyEdits(t.editedTable)
+	err := t.ea.ApplyEdits(ctx, t.editedTable)
 	if err != nil {
 		return nil
 	}
@@ -378,7 +378,7 @@ type tableEditAccumulator interface {
 	Get(value sql.Row) (sql.Row, bool, error)
 	// ApplyEdits updates the table provided with the inserts and deletes that have been added to the accumulator.
 	// Does not clear the accumulator.
-	ApplyEdits(table *Table) error
+	ApplyEdits(ctx *sql.Context, table *Table) error
 	// GetByCols returns the row in the table, or the pending edits, matching the ones given
 	GetByCols(value sql.Row, cols []int, prefixLengths []uint16) (sql.Row, bool, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
@@ -487,7 +487,7 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (pke *pkTableEditAccumulator) ApplyEdits(table *Table) error {
+func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
 
 	if err := pke.deletes.Foreach(func(key string, val sql.Row) error {
 		return pke.deleteHelper(pke.tableData, val)
@@ -497,7 +497,7 @@ func (pke *pkTableEditAccumulator) ApplyEdits(table *Table) error {
 	}
 
 	if err := pke.adds.Foreach(func(key string, val sql.Row) error {
-		return pke.insertHelper(pke.tableData, val)
+		return pke.insertHelper(ctx, pke.tableData, val)
 
 	}); err != nil {
 		return err
@@ -600,8 +600,8 @@ func deleteRowFromIndexes(table *TableData, partKey string, rowIdx int) {
 }
 
 // insertHelper inserts the given row into the given tableData.
-func (pke *pkTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
-	partIdx, err := table.partition(row)
+func (pke *pkTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+	partIdx, err := table.partition(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -748,7 +748,7 @@ func (k *keylessTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefi
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (k *keylessTableEditAccumulator) ApplyEdits(table *Table) error {
+func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
 	for _, val := range k.deletes {
 		err := k.deleteHelper(k.tableData, val)
 		if err != nil {
@@ -757,7 +757,7 @@ func (k *keylessTableEditAccumulator) ApplyEdits(table *Table) error {
 	}
 
 	for _, val := range k.adds {
-		err := k.insertHelper(k.tableData, val)
+		err := k.insertHelper(ctx, k.tableData, val)
 		if err != nil {
 			return err
 		}
@@ -814,8 +814,8 @@ func (k *keylessTableEditAccumulator) deleteHelper(table *TableData, row sql.Row
 }
 
 // insertHelper inserts into a keyless tableData.
-func (k *keylessTableEditAccumulator) insertHelper(table *TableData, row sql.Row) error {
-	partIdx, err := table.partition(row)
+func (k *keylessTableEditAccumulator) insertHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
+	partIdx, err := table.partition(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -866,8 +866,9 @@ func verifyRowTypes(row sql.Row, schema sql.Schema) error {
 			if wrapper, isWrapper := rowVal.(sql.AnyWrapper); isWrapper {
 				method, _ := reflect.TypeOf(wrapper).MethodByName("Unwrap")
 				valType = method.Type.Out(0)
+			} else {
+				valType = reflect.TypeOf(rowVal)
 			}
-			valType = reflect.TypeOf(rowVal)
 			expectedType := col.Type.ValueType()
 			if valType != expectedType && rowVal != nil && !valType.AssignableTo(expectedType) {
 				return fmt.Errorf("Actual Value Type: %s, Expected Value Type: %s", valType.String(), expectedType.String())

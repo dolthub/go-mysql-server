@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"sort"
 	"strconv"
 	"strings"
@@ -114,7 +115,7 @@ func (td TableData) copy() *TableData {
 
 // partition returns the partition for the row given. Uses the primary key columns if they exist, or all columns
 // otherwise
-func (td TableData) partition(row sql.Row) (int, error) {
+func (td TableData) partition(ctx *sql.Context, row sql.Row) (int, error) {
 	var keyColumns []int
 	if len(td.schema.PkOrdinals) > 0 {
 		keyColumns = td.schema.PkOrdinals
@@ -138,7 +139,7 @@ func (td TableData) partition(row sql.Row) (int, error) {
 
 		t, isStringType := td.schema.Schema[keyColumns[i]].Type.(sql.StringType)
 		if isStringType && v != nil {
-			v, _, err = t.Convert(v)
+			v, err = types.ConvertToString(v, t, nil)
 			if err == nil {
 				err = t.Collation().WriteWeightString(hash, v.(string))
 			}

@@ -76,7 +76,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 				return n, transform.SameTree, err
 			}
 			if ok {
-				return indexSearchableLookup(n, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
+				return indexSearchableLookup(ctx, n, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
 			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
@@ -88,13 +88,13 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 	})
 }
 
-func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if lookup.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
 	var ret sql.Node
 	var err error
-	ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+	ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
 	if err != nil {
 		return n, transform.SameTree, err
 	}
@@ -290,7 +290,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 			Table:        rt,
 		})
 	} else {
-		ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -326,7 +326,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	return ret, bestStat, retFilters, nil
 }
 
-func addIndexScans(m *memo.Memo) error {
+func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		filter, ok := e.(*memo.Filter)
 		if !ok {
@@ -359,7 +359,7 @@ func addIndexScans(m *memo.Memo) error {
 				if lookup.IsEmpty() {
 					return nil
 				}
-				ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+				ret, err := plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
 				if err != nil {
 					m.HandleErr(err)
 				}

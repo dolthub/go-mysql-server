@@ -512,7 +512,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 	// TODO: profile this, may need to redesign this or add a fast path
 	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{rang}, Index: mapper.Index}
 
-	editorData := mapper.Updater.IndexedAccess(lookup)
+	editorData := mapper.Updater.IndexedAccess(ctx, lookup)
 
 	if rc, ok := editorData.(sql.ReferenceChecker); refCheck && ok {
 		err := rc.SetReferenceCheck()
