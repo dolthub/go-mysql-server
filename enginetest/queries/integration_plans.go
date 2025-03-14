@@ -17785,50 +17785,188 @@ UPDATE E2I7U nd
 SET nd.KNG7T = (SELECT gn.id FROM WE72E gn INNER JOIN TDRVG ltnm ON ltnm.SSHPJ = gn.SSHPJ WHERE ltnm.FGG57 = nd.FGG57)
 WHERE nd.FGG57 IS NOT NULL AND nd.KNG7T IS NULL`,
 		ExpectedPlan: "Update\n" +
-			" └─ UpdateSource(SET nd.KNG7T:2 = Subquery\n" +
-			"     ├─ cacheable: false\n" +
-			"     ├─ alias-string: select gn.id from WE72E as gn join TDRVG as ltnm on ltnm.SSHPJ = gn.SSHPJ where ltnm.FGG57 = nd.FGG57\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [gn.id:17!null]\n" +
-			"         └─ Filter\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ ltnm.FGG57:19!null\n" +
-			"             │   └─ nd.FGG57:6\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ gn.SSHPJ:18!null\n" +
-			"                 │   └─ ltnm.SSHPJ:20!null\n" +
-			"                 ├─ TableAlias(gn)\n" +
-			"                 │   └─ IndexedTableAccess(WE72E)\n" +
-			"                 │       ├─ index: [WE72E.SSHPJ]\n" +
-			"                 │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │       ├─ colSet: (18-21)\n" +
-			"                 │       ├─ tableId: 2\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: WE72E\n" +
-			"                 │           └─ columns: [id sshpj]\n" +
-			"                 └─ TableAlias(ltnm)\n" +
-			"                     └─ IndexedTableAccess(TDRVG)\n" +
-			"                         ├─ index: [TDRVG.SSHPJ]\n" +
-			"                         ├─ static: [{[NULL, ∞)}]\n" +
-			"                         ├─ colSet: (22-26)\n" +
-			"                         ├─ tableId: 3\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: TDRVG\n" +
-			"                             └─ columns: [fgg57 sshpj]\n" +
-			"    )\n" +
-			"     └─ Filter\n" +
-			"         ├─ NOT\n" +
-			"         │   └─ nd.FGG57:6 IS NULL\n" +
-			"         └─ TableAlias(nd)\n" +
-			"             └─ IndexedTableAccess(E2I7U)\n" +
-			"                 ├─ index: [E2I7U.KNG7T]\n" +
-			"                 ├─ static: [{[NULL, NULL]}]\n" +
-			"                 ├─ colSet: (1-17)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: E2I7U\n" +
-			"                     └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
+			" └─ Trigger(CREATE TRIGGER E2I7U_on_update BEFORE UPDATE ON E2I7U\n" +
+			"    FOR EACH ROW\n" +
+			"    BEGIN\n" +
+			"      IF\n" +
+			"        NEW.TW55N IN (SELECT SVAZ4 FROM TPXHZ)\n" +
+			"        OR\n" +
+			"        NEW.FGG57 IS NOT NULL AND NEW.FGG57 IN (SELECT SVAZ4 FROM TPXHZ)\n" +
+			"        OR\n" +
+			"        NEW.ZH72S IS NOT NULL AND NEW.ZH72S IN (SELECT SVAZ4 FROM TPXHZ)\n" +
+			"      THEN\n" +
+			"        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.';\n" +
+			"      END IF;\n" +
+			"      IF\n" +
+			"        NEW.FSK67 NOT IN ('zero_based', 'one_based', 'O7VZD')\n" +
+			"      THEN\n" +
+			"        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'FSK67 must be either zero_based, one_based, or O7VZD.';\n" +
+			"      END IF;\n" +
+			"      IF\n" +
+			"        NEW.FGG57 IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein' OR DZLIM = 'micro_rna')\n" +
+			"      THEN\n" +
+			"        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein or micro_rna TAFAX UWBAIs can have IYDZV.';\n" +
+			"      END IF;\n" +
+			"      IF\n" +
+			"        NEW.ZH72S IS NOT NULL AND NEW.DKCAJ NOT IN (SELECT id FROM F35MI WHERE DZLIM = 'protein')\n" +
+			"      THEN\n" +
+			"        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only protein TAFAX UWBAIs can have ZH72S.';\n" +
+			"      END IF;\n" +
+			"      IF\n" +
+			"        NEW.FGG57 IS NOT NULL AND NEW.TCE7A IS NULL\n" +
+			"      THEN\n" +
+			"        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'TCE7A is mandatory if UWBAI has IYDZV.';\n" +
+			"      END IF;\n" +
+			"    END//)\n" +
+			"     ├─ UpdateSource(SET nd.KNG7T:2 = Subquery\n" +
+			"     │   ├─ cacheable: false\n" +
+			"     │   ├─ alias-string: select gn.id from WE72E as gn join TDRVG as ltnm on ltnm.SSHPJ = gn.SSHPJ where ltnm.FGG57 = nd.FGG57\n" +
+			"     │   └─ Project\n" +
+			"     │       ├─ columns: [gn.id:17!null]\n" +
+			"     │       └─ Filter\n" +
+			"     │           ├─ Eq\n" +
+			"     │           │   ├─ ltnm.FGG57:19!null\n" +
+			"     │           │   └─ nd.FGG57:6\n" +
+			"     │           └─ MergeJoin\n" +
+			"     │               ├─ cmp: Eq\n" +
+			"     │               │   ├─ gn.SSHPJ:18!null\n" +
+			"     │               │   └─ ltnm.SSHPJ:20!null\n" +
+			"     │               ├─ TableAlias(gn)\n" +
+			"     │               │   └─ IndexedTableAccess(WE72E)\n" +
+			"     │               │       ├─ index: [WE72E.SSHPJ]\n" +
+			"     │               │       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │               │       ├─ colSet: (18-21)\n" +
+			"     │               │       ├─ tableId: 2\n" +
+			"     │               │       └─ Table\n" +
+			"     │               │           ├─ name: WE72E\n" +
+			"     │               │           └─ columns: [id sshpj]\n" +
+			"     │               └─ TableAlias(ltnm)\n" +
+			"     │                   └─ IndexedTableAccess(TDRVG)\n" +
+			"     │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │                       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │                       ├─ colSet: (22-26)\n" +
+			"     │                       ├─ tableId: 3\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: TDRVG\n" +
+			"     │                           └─ columns: [fgg57 sshpj]\n" +
+			"     │  )\n" +
+			"     │   └─ Filter\n" +
+			"     │       ├─ NOT\n" +
+			"     │       │   └─ nd.FGG57:6 IS NULL\n" +
+			"     │       └─ TableAlias(nd)\n" +
+			"     │           └─ IndexedTableAccess(E2I7U)\n" +
+			"     │               ├─ index: [E2I7U.KNG7T]\n" +
+			"     │               ├─ static: [{[NULL, NULL]}]\n" +
+			"     │               ├─ colSet: (1-17)\n" +
+			"     │               ├─ tableId: 1\n" +
+			"     │               └─ Table\n" +
+			"     │                   ├─ name: E2I7U\n" +
+			"     │                   └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
+			"     └─ BEGIN .. END\n" +
+			"         ├─ IF BLOCK\n" +
+			"         │   └─ IF(Or\n" +
+			"         │       ├─ Or\n" +
+			"         │       │   ├─ InSubquery\n" +
+			"         │       │   │   ├─ left: new.TW55N:20!null\n" +
+			"         │       │   │   └─ right: Subquery\n" +
+			"         │       │   │       ├─ cacheable: false\n" +
+			"         │       │   │       ├─ alias-string: select SVAZ4 from TPXHZ\n" +
+			"         │       │   │       └─ Table\n" +
+			"         │       │   │           ├─ name: TPXHZ\n" +
+			"         │       │   │           ├─ columns: [svaz4]\n" +
+			"         │       │   │           ├─ colSet: (52,53)\n" +
+			"         │       │   │           └─ tableId: 4\n" +
+			"         │       │   └─ AND\n" +
+			"         │       │       ├─ NOT\n" +
+			"         │       │       │   └─ new.FGG57:23 IS NULL\n" +
+			"         │       │       └─ InSubquery\n" +
+			"         │       │           ├─ left: new.FGG57:23\n" +
+			"         │       │           └─ right: Subquery\n" +
+			"         │       │               ├─ cacheable: false\n" +
+			"         │       │               ├─ alias-string: select SVAZ4 from TPXHZ\n" +
+			"         │       │               └─ Table\n" +
+			"         │       │                   ├─ name: TPXHZ\n" +
+			"         │       │                   ├─ columns: [svaz4]\n" +
+			"         │       │                   ├─ colSet: (54,55)\n" +
+			"         │       │                   └─ tableId: 5\n" +
+			"         │       └─ AND\n" +
+			"         │           ├─ NOT\n" +
+			"         │           │   └─ new.ZH72S:24 IS NULL\n" +
+			"         │           └─ InSubquery\n" +
+			"         │               ├─ left: new.ZH72S:24\n" +
+			"         │               └─ right: Subquery\n" +
+			"         │                   ├─ cacheable: false\n" +
+			"         │                   ├─ alias-string: select SVAZ4 from TPXHZ\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: TPXHZ\n" +
+			"         │                       ├─ columns: [svaz4]\n" +
+			"         │                       ├─ colSet: (56,57)\n" +
+			"         │                       └─ tableId: 6\n" +
+			"         │      )\n" +
+			"         │       └─ BLOCK\n" +
+			"         │           └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = String field contains invalid value, like empty string, 'none', 'null', 'n/a', 'nan' etc., MYSQL_ERRNO = 1644\n" +
+			"         ├─ IF BLOCK\n" +
+			"         │   └─ IF(NOT\n" +
+			"         │       └─ IN\n" +
+			"         │           ├─ left: new.FSK67:25!null\n" +
+			"         │           └─ right: TUPLE(zero_based (longtext), one_based (longtext), O7VZD (longtext))\n" +
+			"         │      )\n" +
+			"         │       └─ BLOCK\n" +
+			"         │           └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = FSK67 must be either zero_based, one_based, or O7VZD., MYSQL_ERRNO = 1644\n" +
+			"         ├─ IF BLOCK\n" +
+			"         │   └─ IF(AND\n" +
+			"         │       ├─ NOT\n" +
+			"         │       │   └─ new.FGG57:23 IS NULL\n" +
+			"         │       └─ NOT\n" +
+			"         │           └─ InSubquery\n" +
+			"         │               ├─ left: new.DKCAJ:18!null\n" +
+			"         │               └─ right: Subquery\n" +
+			"         │                   ├─ cacheable: false\n" +
+			"         │                   ├─ alias-string: select id from F35MI where DZLIM = 'protein' or DZLIM = 'micro_rna'\n" +
+			"         │                   └─ Project\n" +
+			"         │                       ├─ columns: [f35mi.id:34!null]\n" +
+			"         │                       └─ IndexedTableAccess(F35MI)\n" +
+			"         │                           ├─ index: [F35MI.DZLIM]\n" +
+			"         │                           ├─ static: [{[micro_rna, micro_rna]}, {[protein, protein]}]\n" +
+			"         │                           ├─ colSet: (58-60)\n" +
+			"         │                           ├─ tableId: 7\n" +
+			"         │                           └─ Table\n" +
+			"         │                               ├─ name: F35MI\n" +
+			"         │                               └─ columns: [id dzlim]\n" +
+			"         │      )\n" +
+			"         │       └─ BLOCK\n" +
+			"         │           └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = Only protein or micro_rna TAFAX UWBAIs can have IYDZV., MYSQL_ERRNO = 1644\n" +
+			"         ├─ IF BLOCK\n" +
+			"         │   └─ IF(AND\n" +
+			"         │       ├─ NOT\n" +
+			"         │       │   └─ new.ZH72S:24 IS NULL\n" +
+			"         │       └─ NOT\n" +
+			"         │           └─ InSubquery\n" +
+			"         │               ├─ left: new.DKCAJ:18!null\n" +
+			"         │               └─ right: Subquery\n" +
+			"         │                   ├─ cacheable: false\n" +
+			"         │                   ├─ alias-string: select id from F35MI where DZLIM = 'protein'\n" +
+			"         │                   └─ Project\n" +
+			"         │                       ├─ columns: [f35mi.id:34!null]\n" +
+			"         │                       └─ IndexedTableAccess(F35MI)\n" +
+			"         │                           ├─ index: [F35MI.DZLIM]\n" +
+			"         │                           ├─ static: [{[protein, protein]}]\n" +
+			"         │                           ├─ colSet: (61-63)\n" +
+			"         │                           ├─ tableId: 8\n" +
+			"         │                           └─ Table\n" +
+			"         │                               ├─ name: F35MI\n" +
+			"         │                               └─ columns: [id dzlim]\n" +
+			"         │      )\n" +
+			"         │       └─ BLOCK\n" +
+			"         │           └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = Only protein TAFAX UWBAIs can have ZH72S., MYSQL_ERRNO = 1644\n" +
+			"         └─ IF BLOCK\n" +
+			"             └─ IF(AND\n" +
+			"                 ├─ NOT\n" +
+			"                 │   └─ new.FGG57:23 IS NULL\n" +
+			"                 └─ new.TCE7A:27 IS NULL\n" +
+			"                )\n" +
+			"                 └─ BLOCK\n" +
+			"                     └─ SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = TCE7A is mandatory if UWBAI has IYDZV., MYSQL_ERRNO = 1644\n" +
 			"",
 	},
 	{

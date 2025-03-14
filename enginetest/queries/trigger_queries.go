@@ -931,6 +931,37 @@ END;`,
 			},
 		},
 	},
+	{
+		Name: "trigger before update with table alias",
+		SetUpScript: []string{
+			"CREATE TABLE test (i INT, j INT);",
+			"INSERT INTO test VALUES (1, 1);",
+			`
+CREATE TRIGGER before_test_update BEFORE UPDATE ON test
+FOR EACH ROW
+BEGIN
+	SET new.j = new.i * 100;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "update test t set test.i = 2 where test.i = 1;",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: "update test t set t.i = 2 where t.i = 1;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from test;",
+				Expected: []sql.Row{
+					{2, 200},
+				},
+			},
+		},
+	},
 
 	// DELETE triggers
 	{
