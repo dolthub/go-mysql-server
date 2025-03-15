@@ -179,7 +179,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	if i.returnExprs != nil {
 		var retExprRow sql.Row
-		// TODO: Why does the GetField expression pull field 1 instead of field 0?
+		// TODO NEXT: Why does the GetField expression pull field 1 instead of field 0?
 		emptyOne := []interface{}{nil}
 		row = append(emptyOne, row...)
 		for _, returnExpr := range i.returnExprs {

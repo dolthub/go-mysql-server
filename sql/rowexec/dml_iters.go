@@ -591,10 +591,10 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 		childIter, sch := AddAccumulatorIter(ctx, childIter)
 		return i.WithChildIter(childIter), sch
 	case *plan.TableEditorIter:
-		// TODO: If the TableEditorIter has RETURNING expressions, then we do NOT actually add the accumulatorIter
+		// If the TableEditorIter has RETURNING expressions, then we do NOT actually add the accumulatorIter
 		innerIter := i.InnerIter()
 		if insertIter, ok := innerIter.(*insertIter); ok {
-			if insertIter.returnExprs != nil {
+			if len(insertIter.returnExprs) > 0 {
 				return insertIter, insertIter.returnSchema
 			} else {
 				// TODO: How do we use the default logic if this isn't true... ? For now, just copying...
@@ -610,8 +610,6 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 			}
 		}
 
-		// But... do we add a different iterator? How does Postgresql do this? does it return all rows?
-		// TODO: Where do we get the correct schema from? 🤔
 		return iter, nil
 	default:
 		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
