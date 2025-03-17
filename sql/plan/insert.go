@@ -17,10 +17,10 @@ package plan
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -281,7 +281,7 @@ func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, err
 	if err != nil {
 		return nil, err
 	}
-	
+
 	newExprs = newExprs[len(nii.checks):]
 	nii.Returning = newExprs
 
@@ -301,7 +301,7 @@ func (ii *InsertInto) Resolved() bool {
 	}
 
 	return expression.ExpressionsResolved(ii.OnDupExprs...) &&
-			expression.ExpressionsResolved(ii.Returning...)
+		expression.ExpressionsResolved(ii.Returning...)
 }
 
 // InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
