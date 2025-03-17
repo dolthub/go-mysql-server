@@ -10171,6 +10171,18 @@ from typestable`,
 			{2},
 		},
 	},
+	{
+		Query: "select ''",
+		Expected: []sql.Row{
+			{""},
+		},
+	},
+	{
+		Query: "select '' from dual",
+		Expected: []sql.Row{
+			{""},
+		},
+	},
 
 	{
 		Query: "select @@sql_mode = 1",

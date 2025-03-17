@@ -199,15 +199,22 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 				selfCols[strings.ToLower(col.Name)] = i
 			}
 		}
+
+		typeConversions, err := GetForeignKeyTypeConversions(refTbl.Schema(), tbl.Schema(), fkDef, ChildToParent)
+		if err != nil {
+			return err
+		}
+
 		reference := &ForeignKeyReferenceHandler{
 			ForeignKey: fkDef,
 			SelfCols:   selfCols,
 			RowMapper: ForeignKeyRowMapper{
-				Index:          refTblIndex,
-				Updater:        refTbl.GetForeignKeyEditor(ctx),
-				SourceSch:      tbl.Schema(),
-				IndexPositions: indexPositions,
-				AppendTypes:    appendTypes,
+				Index:                 refTblIndex,
+				Updater:               refTbl.GetForeignKeyEditor(ctx),
+				SourceSch:             tbl.Schema(),
+				TargetTypeConversions: typeConversions,
+				IndexPositions:        indexPositions,
+				AppendTypes:           appendTypes,
 			},
 		}
 
@@ -531,20 +538,16 @@ func FindForeignKeyColMapping(
 		localRowPos, ok := localSchPositionMap[colName]
 		if !ok {
 			// Will happen if a column is renamed that is referenced by a foreign key
-			//TODO: enforce that renaming a column referenced by a foreign key updates that foreign key
+			// TODO: enforce that renaming a column referenced by a foreign key updates that foreign key
 			return nil, nil, fmt.Errorf("column `%s` in foreign key `%s` cannot be found",
 				colName, fkName)
 		}
-		expectedType := localSchTypeMap[colName]
 		destFkCol := destTblName + "." + destFKCols[fkIdx]
 		indexPos, ok := indexColMap[destFkCol]
 		if !ok {
 			// Same as above, renaming a referenced column would cause this error
 			return nil, nil, fmt.Errorf("index column `%s` in foreign key `%s` cannot be found",
 				destFKCols[fkIdx], fkName)
-		}
-		if !foreignKeyComparableTypes(ctx, indexTypeMap[destFkCol], expectedType) {
-			return nil, nil, sql.ErrForeignKeyColumnTypeMismatch.New(colName, destFkCol)
 		}
 		indexPositions[indexPos] = localRowPos
 	}

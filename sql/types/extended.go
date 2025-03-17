@@ -36,6 +36,9 @@ type ExtendedType interface {
 	FormatValue(val any) (string, error)
 	// MaxSerializedWidth returns the maximum size that the serialized value may represent.
 	MaxSerializedWidth() ExtendedTypeSerializedWidth
+	// ConvertToType converts the given value of the given type to this type, or returns an error if
+	// no conversion is possible.
+	ConvertToType(ctx *sql.Context, typ ExtendedType, val any) (any, error)
 }
 
 type ExtendedTypeSerializedWidth uint8
