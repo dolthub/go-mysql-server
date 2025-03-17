@@ -109,7 +109,11 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		if v.StoredProcVal != nil {
 			switch val := v.StoredProcVal.(type) {
 			case *ast.SQLVal:
-				return b.ConvertVal(val)
+				resVal := b.ConvertVal(val)
+				if lit, isLit := resVal.(*expression.Literal); isLit && val.Type == ast.FloatVal {
+					return expression.NewLiteral(lit.Value(), types.Float64)
+				}
+				return resVal
 			case *ast.NullVal:
 				return expression.NewLiteral(nil, types.Null)
 			}
