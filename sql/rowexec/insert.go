@@ -177,7 +177,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	i.updateLastInsertId(ctx, row)
 
-	if i.returnExprs != nil {
+	if len(i.returnExprs) > 0 {
 		var retExprRow sql.Row
 		for _, returnExpr := range i.returnExprs {
 			result, err := returnExpr.Eval(ctx, row)
