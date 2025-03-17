@@ -593,35 +593,27 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 	case *plan.TableEditorIter:
 		// If the TableEditorIter has RETURNING expressions, then we do NOT actually add the accumulatorIter
 		innerIter := i.InnerIter()
-		if insertIter, ok := innerIter.(*insertIter); ok {
-			if len(insertIter.returnExprs) > 0 {
-				return insertIter, insertIter.returnSchema
-			} else {
-				// TODO: How do we use the default logic if this isn't true... ? For now, just copying...
-				clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
-				rowHandler := getRowHandler(clientFoundRowsToggled, iter)
-				if rowHandler == nil {
-					return iter, nil
-				}
-				return &accumulatorIter{
-					iter:             iter,
-					updateRowHandler: rowHandler,
-				}, types.OkResultSchema
-			}
+		if insertIter, ok := innerIter.(*insertIter); ok && len(insertIter.returnExprs) > 0 {
+			return insertIter, insertIter.returnSchema
 		}
 
-		return iter, nil
+		return defaultAccumulatorIter(ctx, iter)
 	default:
-		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
-		rowHandler := getRowHandler(clientFoundRowsToggled, iter)
-		if rowHandler == nil {
-			return iter, nil
-		}
-		return &accumulatorIter{
-			iter:             iter,
-			updateRowHandler: rowHandler,
-		}, types.OkResultSchema
+		return defaultAccumulatorIter(ctx, iter)
 	}
+}
+
+// defaultAccumulatorIter returns the default accumulator iter for a DML node
+func defaultAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema) {
+	clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
+	rowHandler := getRowHandler(clientFoundRowsToggled, iter)
+	if rowHandler == nil {
+		return iter, nil
+	}
+	return &accumulatorIter{
+		iter:             iter,
+		updateRowHandler: rowHandler,
+	}, types.OkResultSchema
 }
 
 func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
