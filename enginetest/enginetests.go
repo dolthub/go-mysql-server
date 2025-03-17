@@ -4877,6 +4877,7 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	AssertErrWithCtx(t, e, harness, ctx, "create table a (b int primary key)", nil, sql.ErrNoDatabaseSelected)
 	AssertErrWithCtx(t, e, harness, ctx, "show tables", nil, sql.ErrNoDatabaseSelected)
 	AssertErrWithCtx(t, e, harness, ctx, "show triggers", nil, sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, harness, ctx, "call non_existent_proc()", nil, sql.ErrNoDatabaseSelected)
 
 	_, _, _, err := e.Query(ctx, "ROLLBACK")
 	require.NoError(t, err)
