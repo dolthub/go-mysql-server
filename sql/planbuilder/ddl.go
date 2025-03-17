@@ -1065,7 +1065,11 @@ func (b *Builder) buildAlterAutoIncrement(inScope *scope, ddl *ast.DDL, table *p
 func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	spec := ddl.NotNullSpec
-	for _, c := range table.Schema() {
+
+	// Resolve the schema defaults, so we don't leave around any UnresolvedColumnDefault expressions,
+	// otherwise Doltgres won't be able to process these nodes.
+	resolvedSchema := b.resolveSchemaDefaults(inScope, table.Schema())
+	for _, c := range resolvedSchema {
 		if strings.EqualFold(c.Name, spec.Column.String()) {
 			colCopy := *c
 			switch strings.ToLower(spec.Action) {
@@ -1093,7 +1097,11 @@ func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.Re
 func (b *Builder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
 	outScope = inScope
 	spec := ddl.ColumnTypeSpec
-	for _, c := range table.Schema() {
+
+	// Resolve the schema defaults, so we don't leave around any UnresolvedColumnDefault expressions,
+	// otherwise Doltgres won't be able to process these nodes.
+	resolvedSchema := b.resolveSchemaDefaults(inScope, table.Schema())
+	for _, c := range resolvedSchema {
 		if strings.EqualFold(c.Name, spec.Column.String()) {
 			colCopy := *c
 			typ, err := types.ColumnTypeToType(&spec.Type)
