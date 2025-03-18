@@ -130,12 +130,7 @@ func (ii *InsertInto) Schema() sql.Schema {
 
 	// Postgres allows the returned values of the insert statement to be controlled, so if returning expressions
 	// were specified, then we return a different schema.
-	// TODO: does anything else depend on the schema returned by insert statements? triggers?
-	// TODO: Do we need to check for the expressions being fully resolved? (probably!)
 	if ii.Returning != nil {
-		// TODO: If we don't return the destination schema anymore... does that mess up other things, like trigger processing?
-		// TODO: we need to look at the expressions in the returning clause
-
 		// We know that returning exprs are resolved here, because you can't call Schema() safely until Resolved() is true.
 		returningSchema := sql.Schema{}
 		for _, expr := range ii.Returning {
