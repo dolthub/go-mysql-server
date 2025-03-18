@@ -665,6 +665,10 @@ func (b *Builder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
 	sqlStateValue := s.SqlStateValue
 	if s.ConditionName != "" {
 		signalName := strings.ToLower(s.ConditionName)
+		if inScope.proc == nil {
+			err := sql.ErrDeclareConditionNotFound.New(signalName)
+			b.handleErr(err)
+		}
 		condition := inScope.proc.GetCondition(signalName)
 		if condition == nil {
 			err := sql.ErrDeclareConditionNotFound.New(signalName)

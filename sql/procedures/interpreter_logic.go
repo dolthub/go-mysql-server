@@ -105,7 +105,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			if setExpr.Scope == ast.SetScope_User {
 				continue
 			}
-			err = stack.SetVariable(nil, setExpr.Name.String(), newExpr)
+			err = stack.SetVariable(setExpr.Name.String(), newExpr)
 			if err != nil {
 				return nil, err
 			}
@@ -244,31 +244,74 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 		switch operation.OpCode {
 		case OpCode_Select:
 			selectStmt := operation.PrimaryData.(*ast.Select)
-			newSelectStmt, err := replaceVariablesInExpr(stack, selectStmt)
-			if err != nil {
+			if newSelectStmt, err := replaceVariablesInExpr(stack, selectStmt); err == nil {
+				selectStmt = newSelectStmt.(*ast.Select)
+			} else {
 				return nil, nil, err
 			}
-			rowIter, err := query(ctx, runner, newSelectStmt.(*ast.Select))
-			if err != nil {
-				return nil, nil, err
-			}
-			rowIters = append(rowIters, rowIter)
-			selIter = rowIter
 
-		case OpCode_Declare:
-			declareStmt := operation.PrimaryData.(*ast.Declare)
-			for _, decl := range declareStmt.Variables.Names {
-				varType, err := types.ColumnTypeToType(&declareStmt.Variables.VarType)
+			if selectStmt.Into == nil {
+				rowIter, err := query(ctx, runner, selectStmt)
 				if err != nil {
 					return nil, nil, err
 				}
-				varName := strings.ToLower(decl.String())
-				if declareStmt.Variables.VarType.Default != nil {
-					stack.NewVariableWithValue(varName, varType, declareStmt.Variables.VarType.Default)
-				} else {
-					stack.NewVariable(varName, varType)
+				rowIters = append(rowIters, rowIter)
+				selIter = rowIter
+				continue
+			}
+
+			selectInto := selectStmt.Into
+			selectStmt.Into = nil
+			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
+			if err != nil {
+				return nil, nil, err
+			}
+			row, err := rowIter.Next(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+			if _, err = rowIter.Next(ctx); err != io.EOF {
+				return nil, nil, err
+			}
+			if err = rowIter.Close(ctx); err != nil {
+				return nil, nil, err
+			}
+			if len(row) != len(selectInto.Variables) {
+				return nil, nil, sql.ErrColumnNumberDoesNotMatch.New()
+			}
+			for i := range selectInto.Variables {
+				intoVar := strings.ToLower(selectInto.Variables[i].String())
+				if strings.HasPrefix(intoVar, "@") {
+					// TODO
+					continue
+				}
+				err = stack.SetVariable(intoVar, row[i])
+				if err != nil {
+					return nil, nil, err
 				}
 			}
+
+		case OpCode_Declare:
+			declareStmt := operation.PrimaryData.(*ast.Declare)
+			if declareStmt.Condition != nil {
+				// TODO: copy error checks from buildDeclareCondition
+				stack.NewCondition(strings.ToLower(declareStmt.Condition.Name), declareStmt.Condition.SqlStateValue, 0)
+			}
+			if declareStmt.Variables != nil {
+				for _, decl := range declareStmt.Variables.Names {
+					varType, err := types.ColumnTypeToType(&declareStmt.Variables.VarType)
+					if err != nil {
+						return nil, nil, err
+					}
+					varName := strings.ToLower(decl.String())
+					if declareStmt.Variables.VarType.Default != nil {
+						stack.NewVariableWithValue(varName, varType, declareStmt.Variables.VarType.Default)
+					} else {
+						stack.NewVariable(varName, varType)
+					}
+				}
+			}
+
 
 		case OpCode_Set:
 			selectStmt := operation.PrimaryData.(*ast.Select)
@@ -297,7 +340,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 				return nil, nil, err
 			}
 
-			err = stack.SetVariable(nil, strings.ToLower(operation.Target), row[0])
+			err = stack.SetVariable(strings.ToLower(operation.Target), row[0])
 			if err != nil {
 				return nil, nil, err
 			}
