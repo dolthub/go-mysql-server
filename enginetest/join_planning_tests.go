@@ -1760,6 +1760,11 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 func runJoinPlanningTests(t *testing.T, harness Harness, tests []joinPlanScript) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(tt.name) {
+					t.Skip(tt.name)
+				}
+			}
 			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
 			e := mustNewEngine(t, harness)
 			defer e.Close()
