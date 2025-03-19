@@ -94,7 +94,6 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		case jp.Op.IsDegenerate():
 			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsHash():
-			// TODO hash has to load whole table into memory, really bad for big right sides
 			if jp.Op.IsPartial() {
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
