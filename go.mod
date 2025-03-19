@@ -43,3 +43,5 @@ require (
 )
 
 go 1.23.3
+
+replace github.com/dolthub/vitess => /Users/neil/Documents/vitess
