@@ -75,6 +75,16 @@ func setupWrapperTests(t *testing.T) (*sql.Context, *memory.Database, *MemoryHar
 	return ctx, db, harness, e
 }
 
+// testQueryWithoutUnwrapping checks if a returned query result matches the expected result.
+// Unlike calling TestQueryWithContext, this doesn't normalize the results (which would result in unwrapping any wrapped values.)
+func testQueryWithoutUnwrapping(t *testing.T, ctx *sql.Context, e QueryEngine, query string, expectedRows []sql.Row) {
+	_, rowIter, _, err := e.Query(ctx, query)
+	require.NoError(t, err)
+	rows, err := sql.RowIterToRows(ctx, rowIter)
+	require.NoError(t, err)
+	require.Equal(t, expectedRows, rows, "Unexpected result for query %s", query)
+}
+
 // TestWrapperCopyInKey tests that copying a wrapped value in the primary key doesn't require the value to be unwrapped.
 // This is skipped because inserting into tables requires comparisons between primary keys, which currently requires
 // unwrapping. But in the future, we may be able to skip fully unwrapping values for specific operations.
@@ -92,6 +102,7 @@ func TestWrapperCopyInKey(t *testing.T) {
 	require.NoError(t, table.Insert(ctx, sql.Row{"!"}))
 
 	TestQueryWithContext(t, ctx, e, harness, "CREATE TABLE t2 AS SELECT 1, col1, 2 FROM test;", nil, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, "SELECT * from t2;", []sql.Row{{1, "brave", 2}, {1, longTextErrorWrapper, 2}, {1, "!", 2}}, nil, nil, nil)
 }
 
 // TestWrapperCopyInKey tests that copying a wrapped value not in the primary key doesn't require the value to be unwrapped.
@@ -121,6 +132,7 @@ func TestWrapperCopyNotInKey(t *testing.T) {
 	db.AddTable("t2", testTable2)
 
 	TestQueryWithContext(t, ctx, e, harness, "INSERT INTO t2 SELECT 1, pk, col1, 2 FROM test;", nil, nil, nil, nil)
+	testQueryWithoutUnwrapping(t, ctx, e, "SELECT * from t2;", []sql.Row{{int64(1), int64(1), "brave", int64(2)}, {int64(1), int64(2), longTextErrorWrapper, int64(2)}, {int64(1), int64(3), "!", int64(2)}})
 }
 
 // TestWrapperCopyWhenWideningColumn tests that widening a column doesn't cause values to be unwrapped.
@@ -140,6 +152,7 @@ func TestWrapperCopyWhenWideningColumn(t *testing.T) {
 	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(3), "!"}))
 
 	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE test MODIFY COLUMN col1 LONGTEXT;", nil, nil, nil, nil)
+	testQueryWithoutUnwrapping(t, ctx, e, "SELECT * from test;", []sql.Row{{int64(1), "brave"}, {int64(2), textErrorWrapper}, {int64(3), "!"}})
 }
 
 // TestWrapperCopyWhenWideningColumn tests that widening a column doesn't cause values to be unwrapped.
@@ -172,9 +185,11 @@ func TestWrapperCopyWithExactLengthWhenNarrowingColumn(t *testing.T) {
 	testTable := memory.NewTable(db.BaseDatabase, "test", schema, nil)
 	db.AddTable("test", testTable)
 
+	wrapper := exactLengthErrorWrapper(64)
 	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(1), "brave"}))
-	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(2), exactLengthErrorWrapper(64)}))
+	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(2), wrapper}))
 	require.NoError(t, testTable.Insert(ctx, sql.Row{int64(3), "!"}))
 
 	TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE test MODIFY COLUMN col1 TEXT;", nil, nil, nil, nil)
+	testQueryWithoutUnwrapping(t, ctx, e, "SELECT * from test;", []sql.Row{{int64(1), "brave"}, {int64(2), wrapper}, {int64(3), "!"}})
 }
