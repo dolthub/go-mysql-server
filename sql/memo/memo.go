@@ -82,6 +82,12 @@ func (m *Memo) StatsProvider() sql.StatsProvider {
 	return m.statsProv
 }
 
+func (m *Memo) SetDefaultHints() {
+	if val, _ := m.Ctx.GetSessionVariable(m.Ctx, sql.DisableMergeJoin); val.(int8) != 0 {
+		m.ApplyHint(Hint{Typ: HintTypeNoMergeJoin})
+	}
+}
+
 // newExprGroup creates a new logical expression group to encapsulate the
 // action of a SQL clause.
 // TODO: this is supposed to deduplicate logically equivalent table scans
@@ -459,6 +465,11 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 // rather than a local property.
 func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 	if !m.hints.isEmpty() {
+		for _, block := range m.hints.block {
+			if !block.isOk(n) {
+				return
+			}
+		}
 		if m.hints.satisfiedBy(n) {
 			if !grp.HintOk {
 				grp.Best = n
@@ -514,17 +525,22 @@ func getProjectColset(p *Project) sql.ColSet {
 func (m *Memo) ApplyHint(hint Hint) {
 	switch hint.Typ {
 	case HintTypeJoinOrder:
-		m.WithJoinOrder(hint.Args)
+		m.SetJoinOrder(hint.Args)
 	case HintTypeJoinFixedOrder:
+	case HintTypeNoMergeJoin:
+		m.SetBlockOp(plan.JoinTypeMerge)
+		m.SetBlockOp(plan.JoinTypeSemiMerge)
+		m.SetBlockOp(plan.JoinTypeAntiMerge)
+		m.SetBlockOp(plan.JoinTypeLeftOuterMerge)
 	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin, HintTypeLeftOuterLookupJoin:
-		m.WithJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
+		m.SetJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
 	case HintTypeLeftDeep:
 		m.hints.leftDeep = true
 	default:
 	}
 }
 
-func (m *Memo) WithJoinOrder(tables []string) {
+func (m *Memo) SetJoinOrder(tables []string) {
 	// order maps groupId -> table dependencies
 	order := make(map[sql.TableId]uint64)
 	for i, t := range tables {
@@ -542,7 +558,11 @@ func (m *Memo) WithJoinOrder(tables []string) {
 	}
 }
 
-func (m *Memo) WithJoinOp(op HintType, left, right string) {
+func (m *Memo) SetBlockOp(op plan.JoinType) {
+	m.hints.block = append(m.hints.block, joinBlockHint{op: op})
+}
+
+func (m *Memo) SetJoinOp(op HintType, left, right string) {
 	var lTab, rTab sql.TableId
 	for _, n := range m.root.RelProps.TableIdNodes() {
 		if strings.EqualFold(left, n.Name()) {

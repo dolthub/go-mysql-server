@@ -32,6 +32,7 @@ const (
 	HintTypeUnknown                  HintType = iota //
 	HintTypeJoinOrder                                // JOIN_ORDER
 	HintTypeJoinFixedOrder                           // JOIN_FIXED_ORDER
+	HintTypeNoMergeJoin                              // NO_MERGE_JOIN
 	HintTypeMergeJoin                                // MERGE_JOIN
 	HintTypeLookupJoin                               // LOOKUP_JOIN
 	HintTypeHashJoin                                 // HASH_JOIN
@@ -81,6 +82,8 @@ func newHint(joinTyp string, args []string) Hint {
 		typ = HintTypeNoIndexConditionPushDown
 	case "left_deep":
 		typ = HintTypeLeftDeep
+	case "no_merge_join":
+		typ = HintTypeNoMergeJoin
 	default:
 		typ = HintTypeUnknown
 	}
@@ -111,6 +114,8 @@ func (h Hint) valid() bool {
 		return len(h.Args) == 0
 	case HintTypeLeftDeep:
 		return len(h.Args) == 0
+	case HintTypeNoMergeJoin:
+		return true
 	case HintTypeUnknown:
 		return false
 	default:
@@ -367,11 +372,29 @@ func (o joinOpHint) typeMatches(n RelExpr) bool {
 	return true
 }
 
+type joinBlockHint struct {
+	op plan.JoinType
+}
+
+func (o joinBlockHint) isOk(n RelExpr) bool {
+	switch n := n.(type) {
+	case JoinRel:
+		jp := n.JoinPrivate()
+		if !jp.Left.Best.Group().HintOk || !jp.Right.Best.Group().HintOk {
+			// equiv closures can generate child plans that bypass hints
+			return false
+		}
+		return !(jp.Op == o.op)
+	}
+	return true
+}
+
 // joinHints wraps a collection of join hints. The memo
 // interfaces with this object during costing.
 type joinHints struct {
 	ops      []joinOpHint
 	order    *joinOrderHint
+	block    []joinBlockHint
 	leftDeep bool
 }
 

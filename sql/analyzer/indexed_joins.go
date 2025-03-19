@@ -200,6 +200,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
+	m.SetDefaultHints()
 	hints := memo.ExtractJoinHint(n)
 	for _, h := range hints {
 		// this should probably happen earlier, but the root is not
