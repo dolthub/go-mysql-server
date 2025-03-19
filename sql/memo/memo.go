@@ -528,10 +528,20 @@ func (m *Memo) ApplyHint(hint Hint) {
 		m.SetJoinOrder(hint.Args)
 	case HintTypeJoinFixedOrder:
 	case HintTypeNoMergeJoin:
-		m.SetBlockOp(plan.JoinTypeMerge)
-		m.SetBlockOp(plan.JoinTypeSemiMerge)
-		m.SetBlockOp(plan.JoinTypeAntiMerge)
-		m.SetBlockOp(plan.JoinTypeLeftOuterMerge)
+		m.SetBlockOp(func(n RelExpr) bool {
+			switch n := n.(type) {
+			case JoinRel:
+				jp := n.JoinPrivate()
+				if !jp.Left.Best.Group().HintOk || !jp.Right.Best.Group().HintOk {
+					// equiv closures can generate child plans that bypass hints
+					return false
+				}
+				if jp.Op.IsMerge() {
+					return false
+				}
+			}
+			return true
+		})
 	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin, HintTypeLeftOuterLookupJoin:
 		m.SetJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
 	case HintTypeLeftDeep:
@@ -558,8 +568,8 @@ func (m *Memo) SetJoinOrder(tables []string) {
 	}
 }
 
-func (m *Memo) SetBlockOp(op plan.JoinType) {
-	m.hints.block = append(m.hints.block, joinBlockHint{op: op})
+func (m *Memo) SetBlockOp(cb func(n RelExpr) bool) {
+	m.hints.block = append(m.hints.block, joinBlockHint{cb: cb})
 }
 
 func (m *Memo) SetJoinOp(op HintType, left, right string) {

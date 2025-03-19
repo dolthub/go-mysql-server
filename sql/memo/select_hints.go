@@ -373,20 +373,11 @@ func (o joinOpHint) typeMatches(n RelExpr) bool {
 }
 
 type joinBlockHint struct {
-	op plan.JoinType
+	cb func(n RelExpr) bool
 }
 
 func (o joinBlockHint) isOk(n RelExpr) bool {
-	switch n := n.(type) {
-	case JoinRel:
-		jp := n.JoinPrivate()
-		if !jp.Left.Best.Group().HintOk || !jp.Right.Best.Group().HintOk {
-			// equiv closures can generate child plans that bypass hints
-			return false
-		}
-		return !(jp.Op == o.op)
-	}
-	return true
+	return o.cb(n)
 }
 
 // joinHints wraps a collection of join hints. The memo
