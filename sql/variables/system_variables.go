@@ -1049,6 +1049,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("inmemory_joins"),
 		Default:           int8(0),
 	},
+	"disable_merge_join": &sql.MysqlSystemVariable{
+		Name:              sql.DisableMergeJoin,
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType(sql.DisableMergeJoin),
+		Default:           int8(0),
+	},
 	"innodb_autoinc_lock_mode": &sql.MysqlSystemVariable{
 		Name:              "innodb_autoinc_lock_mode",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),

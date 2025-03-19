@@ -43,11 +43,13 @@ type JoinPlanTest struct {
 	skipOld bool
 }
 
-var JoinPlanningTests = []struct {
+type joinPlanScript struct {
 	name  string
 	setup []string
 	tests []JoinPlanTest
-}{
+}
+
+var JoinPlanningTests = []joinPlanScript{
 	{
 		name: "filter pushdown through join uppercase name",
 		setup: []string{
@@ -75,6 +77,33 @@ var JoinPlanningTests = []struct {
 				q:     "select count(t.*) from information_schema.columns c join information_schema.tables t on `t`.`TABLE_NAME` = `c`.`TABLE_NAME`",
 				types: []plan.JoinType{plan.JoinTypeHash},
 				exp:   []sql.Row{{734}},
+			},
+		},
+	},
+	{
+		name: "block merge join",
+		setup: []string{
+			"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
+			"CREATE table ab (a int primary key, b int);",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
+			`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+			`analyze table ab update histogram on a using data '{"row_count":1000}'`,
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy)*/ * from ab join xy on y = a order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+				exp:   []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
+			},
+			{
+				q:   "set @@SESSION.disable_merge_join = 1",
+				exp: []sql.Row{{}},
+			},
+			{
+				q:     "select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy)*/ * from ab join xy on y = a order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+				exp:   []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
 			},
 		},
 	},
@@ -1725,8 +1754,17 @@ join uv d on d.u = c.x`,
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {
-	for _, tt := range JoinPlanningTests {
+	runJoinPlanningTests(t, harness, JoinPlanningTests)
+}
+
+func runJoinPlanningTests(t *testing.T, harness Harness, tests []joinPlanScript) {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(tt.name) {
+					t.Skip(tt.name)
+				}
+			}
 			harness.Setup([]setup.SetupScript{setup.MydbData[0], tt.setup})
 			e := mustNewEngine(t, harness)
 			defer e.Close()
@@ -1750,7 +1788,6 @@ func TestJoinPlanning(t *testing.T, harness Harness) {
 		})
 	}
 }
-
 func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string, types []plan.JoinType, skipOld bool) {
 	t.Run(query+" join types", func(t *testing.T) {
 		if skipOld {
