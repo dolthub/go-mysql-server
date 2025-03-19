@@ -57,6 +57,9 @@ type Config struct {
 	ConnWriteTimeout time.Duration
 	// MaxConnections is the maximum number of simultaneous connections that the server will allow.
 	MaxConnections uint64
+	// MaxWaitConnections is the maximum number of simultaneous connections that the server will allow to block waiting
+	// for a connection before new connections result in immediate rejection.
+	MaxWaitConnections uint32
 	// TLSConfig is the configuration for TLS on this server. If |nil|, TLS is not supported.
 	TLSConfig *tls.Config
 	// RequestSecureTransport will require incoming connections to be TLS. Requires non-|nil| TLSConfig.
