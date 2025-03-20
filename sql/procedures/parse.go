@@ -239,8 +239,14 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		whileOp.Index = len(*ops) // end of while block
 
 	case *ast.Repeat:
-		loopStart := len(*ops)
+		// repeat statements always run at least once
+		for _, repeatStmt := range s.Statements {
+			if err := ConvertStmt(ops, stack, repeatStmt); err != nil {
+				return err
+			}
+		}
 
+		loopStart := len(*ops)
 		repeatCond := &ast.NotExpr{Expr: s.Condition}
 		selectCond := &ast.Select{
 			SelectExprs: ast.SelectExprs{
