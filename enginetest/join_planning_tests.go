@@ -87,14 +87,19 @@ var JoinPlanningTests = []joinPlanScript{
 			"CREATE table ab (a int primary key, b int);",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
 			"insert into ab values (0,2), (1,2), (2,2), (3,1);",
-			`analyze table xy update histogram on x using data '{"row_count":1000}'`,
-			`analyze table ab update histogram on a using data '{"row_count":1000}'`,
+			`analyze table xy update histogram on x using data '{"row_count":1000000}'`,
+			`analyze table ab update histogram on a using data '{"row_count":1000000}'`,
 		},
 		tests: []JoinPlanTest{
 			{
 				q:     "select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy)*/ * from ab join xy on y = a order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
+			},
+			{
+				q:     "select * from ab join xy on x = a and y = a order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeMerge},
+				exp:   []sql.Row{{3, 1, 3, 3}},
 			},
 			{
 				q:   "set @@SESSION.disable_merge_join = 1",
@@ -104,6 +109,11 @@ var JoinPlanningTests = []joinPlanScript{
 				q:     "select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy)*/ * from ab join xy on y = a order by 1, 3",
 				types: []plan.JoinType{plan.JoinTypeLookup},
 				exp:   []sql.Row{{0, 2, 1, 0}, {1, 2, 2, 1}, {2, 2, 0, 2}, {3, 1, 3, 3}},
+			},
+			{
+				q:     "select * from ab join xy on x = a and y = a order by 1, 3",
+				types: []plan.JoinType{plan.JoinTypeLookup},
+				exp:   []sql.Row{{3, 1, 3, 3}},
 			},
 		},
 	},
