@@ -62,8 +62,6 @@ func UnwrapAny(ctx context.Context, v interface{}) (result interface{}, err erro
 	switch vv := v.(type) {
 	case AnyWrapper:
 		return vv.UnwrapAny(ctx)
-	case JSONWrapper:
-		return vv.ToInterface()
 	}
 	return v, nil
 }
