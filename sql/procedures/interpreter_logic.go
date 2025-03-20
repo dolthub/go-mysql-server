@@ -352,8 +352,8 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 				if cond == nil {
 					return nil, nil, sql.ErrDeclareConditionNotFound.New(signalStmt.ConditionName)
 				}
-				mysqlErrNo = int(cond.MySQLErrCode)
 				sqlState = cond.SQLState
+				mysqlErrNo = int(cond.MySQLErrCode)
 			}
 
 			if len(sqlState) != 5 {
