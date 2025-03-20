@@ -155,6 +155,9 @@ func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 	switch e := e.(type) {
 	case *ast.ColName:
+		if e.StoredProcVal != nil {
+			return b.buildLimitVal(inScope, e.StoredProcVal)
+		}
 		if inScope.procActive() {
 			if col, ok := inScope.proc.GetVar(e.String()); ok {
 				// proc param is OK

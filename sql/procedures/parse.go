@@ -55,6 +55,27 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		*ops = append(*ops, declareOp)
 
+	case *ast.OpenCursor:
+		openOp := &InterpreterOperation{
+			OpCode:      OpCode_Open,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, openOp)
+
+	case *ast.FetchCursor:
+		fetchOp := &InterpreterOperation{
+			OpCode:      OpCode_Fetch,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, fetchOp)
+
+	case *ast.CloseCursor:
+		closeOp := &InterpreterOperation{
+			OpCode:      OpCode_Close,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, closeOp)
+
 	case *ast.Signal:
 		signalOp := &InterpreterOperation{
 			OpCode:      OpCode_Signal,

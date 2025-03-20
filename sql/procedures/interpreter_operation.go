@@ -20,11 +20,14 @@ const (
 	OpCode_Select   OpCode = iota
 	OpCode_Declare  // https://www.postgresql.org/docs/15/plpgsql-declarations.html
 	OpCode_Signal
+	OpCode_Open
+	OpCode_Fetch
+	OpCode_Close
 	OpCode_Set
-	OpCode_Exception // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-ERROR-TRAPPING
-	OpCode_Execute   // Everything that's not a SELECT
-	OpCode_Goto      // All control-flow structures can be represented using Goto
 	OpCode_If        // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-CONDITIONALS
+	OpCode_Goto      // All control-flow structures can be represented using Goto
+	OpCode_Execute   // Everything that's not a SELECT
+	OpCode_Exception // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-ERROR-TRAPPING
 	OpCode_Return    // https://www.postgresql.org/docs/15/plpgsql-control-structures.html#PLPGSQL-STATEMENTS-RETURNING
 	OpCode_ScopeBegin // This is used for scope control, specific to Doltgres
 	OpCode_ScopeEnd // This is used for scope control, specific to Doltgres

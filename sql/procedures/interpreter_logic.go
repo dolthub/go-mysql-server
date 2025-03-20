@@ -16,15 +16,15 @@ package procedures
 
 import (
 	"fmt"
-	"io"
+	"github.com/dolthub/vitess/go/mysql"
+"io"
 	"strconv"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
-	"github.com/dolthub/vitess/go/mysql"
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+		ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // InterpreterNode is an interface that implements an interpreter. These are typically used for functions (which may be
@@ -121,6 +121,21 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			}
 			e.Params[i] = newExpr.(ast.Expr)
 		}
+	case *ast.Limit:
+		newOffset, err := replaceVariablesInExpr(stack, e.Offset)
+		if err != nil {
+			return nil, err
+		}
+		newRowCount, err := replaceVariablesInExpr(stack, e.Rowcount)
+		if err != nil {
+			return nil, err
+		}
+		if newOffset != nil {
+			e.Offset = newOffset.(ast.Expr)
+		}
+		if newRowCount != nil {
+			e.Rowcount = newRowCount.(ast.Expr)
+		}
 	case *ast.Into:
 		// TODO: somehow support select into variables
 		for i := range e.Variables {
@@ -151,6 +166,13 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 				return nil, err
 			}
 			e.Where.Expr = newExpr.(ast.Expr)
+		}
+		if e.Limit != nil {
+			newExpr, err := replaceVariablesInExpr(stack, e.Limit)
+			if err != nil {
+				return nil, err
+			}
+			e.Limit = newExpr.(*ast.Limit)
 		}
 	case *ast.Subquery:
 		newExpr, err := replaceVariablesInExpr(stack, e.Select)
@@ -265,7 +287,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 
 			selectInto := selectStmt.Into
 			selectStmt.Into = nil
-			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
+			schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -285,8 +307,10 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 			for i := range selectInto.Variables {
 				intoVar := strings.ToLower(selectInto.Variables[i].String())
 				if strings.HasPrefix(intoVar, "@") {
-					// TODO
-					continue
+					err = ctx.SetUserVariable(ctx, intoVar, row[i], schema[i].Type)
+					if err != nil {
+						return nil, nil, err
+					}
 				}
 				err = stack.SetVariable(intoVar, row[i])
 				if err != nil {
@@ -297,6 +321,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 		case OpCode_Declare:
 			declareStmt := operation.PrimaryData.(*ast.Declare)
 
+			// TODO: duplicate conditions?
 			if declareStmt.Condition != nil {
 				cond := declareStmt.Condition
 				condName := strings.ToLower(cond.Name)
@@ -321,6 +346,18 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 				stack.NewCondition(condName, stateVal, num)
 			}
 
+			// TODO: duplicate cursors?
+			if declareStmt.Cursor != nil {
+				cursor := declareStmt.Cursor
+				cursorName := strings.ToLower(cursor.Name)
+				stack.NewCursor(cursorName, cursor.SelectStmt)
+			}
+
+			if declareStmt.Handler != nil {
+				// TODO
+			}
+
+			// TODO: duplicate variables?
 			if declareStmt.Variables != nil {
 				for _, decl := range declareStmt.Variables.Names {
 					varType, err := types.ColumnTypeToType(&declareStmt.Variables.VarType)
@@ -426,6 +463,71 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 
 			return nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, msgTxt)
 
+		case OpCode_Open:
+			openCur := operation.PrimaryData.(*ast.OpenCursor)
+			cursor := stack.GetCursor(strings.ToLower(openCur.Name))
+			if cursor == nil {
+				return nil, nil, sql.ErrCursorNotFound.New(openCur.Name)
+			}
+			if cursor.RowIter != nil {
+				return nil, nil, sql.ErrCursorAlreadyOpen.New(openCur.Name)
+			}
+			stmt, err := replaceVariablesInExpr(stack, cursor.SelectStmt)
+			if err != nil {
+				return nil, nil, err
+			}
+			schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", stmt.(ast.Statement), nil, nil)
+			if err != nil {
+				return nil, nil, err
+			}
+			cursor.Schema = schema
+			cursor.RowIter = rowIter
+
+		case OpCode_Fetch:
+			fetchCur := operation.PrimaryData.(*ast.FetchCursor)
+			cursor := stack.GetCursor(strings.ToLower(fetchCur.Name))
+			if cursor == nil {
+				return nil, nil, sql.ErrCursorNotFound.New(fetchCur.Name)
+			}
+			if cursor.RowIter == nil {
+				return nil, nil, sql.ErrCursorNotOpen.New(fetchCur.Name)
+			}
+			row, err := cursor.RowIter.Next(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+			if len(row) != len(fetchCur.Variables) {
+				return nil, nil, sql.ErrFetchIncorrectCount.New()
+			}
+			for i := range fetchCur.Variables {
+				varName := strings.ToLower(fetchCur.Variables[i])
+				if strings.HasPrefix(varName, "@") {
+					err = ctx.SetUserVariable(ctx, varName, row[i], cursor.Schema[i].Type)
+					if err != nil {
+						return nil, nil, err
+					}
+					continue
+				}
+				err = stack.SetVariable(varName, row[i])
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+
+		case OpCode_Close:
+			closeCur := operation.PrimaryData.(*ast.CloseCursor)
+			cursor := stack.GetCursor(strings.ToLower(closeCur.Name))
+			if cursor == nil {
+				return nil, nil, sql.ErrCursorNotFound.New(closeCur.Name)
+			}
+			if cursor.RowIter == nil {
+				return nil, nil, sql.ErrCursorNotOpen.New(closeCur.Name)
+			}
+			if err := cursor.RowIter.Close(ctx); err != nil {
+				return nil, nil, err
+			}
+			cursor.RowIter = nil
+
 		case OpCode_Set:
 			selectStmt := operation.PrimaryData.(*ast.Select)
 			if selectStmt.SelectExprs == nil {
@@ -456,43 +558,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 			err = stack.SetVariable(strings.ToLower(operation.Target), row[0])
 			if err != nil {
 				return nil, nil, err
-			}
-
-		case OpCode_Execute:
-			stmt, err := replaceVariablesInExpr(stack, operation.PrimaryData)
-			if err != nil {
-				return nil, nil, err
-			}
-			rowIter, err := query(ctx, runner, stmt.(ast.Statement))
-			if err != nil {
-				return nil, nil, err
-			}
-			rowIters = append(rowIters, rowIter)
-
-		case OpCode_Goto:
-			// We must compare to the index - 1, so that the increment hits our target
-			if counter <= operation.Index {
-				for ; counter < operation.Index-1; counter++ {
-					switch statements[counter].OpCode {
-					case OpCode_ScopeBegin:
-						stack.PushScope()
-					case OpCode_ScopeEnd:
-						stack.PopScope()
-					default:
-						// No-op
-					}
-				}
-			} else {
-				for ; counter > operation.Index-1; counter-- {
-					switch statements[counter].OpCode {
-					case OpCode_ScopeBegin:
-						stack.PopScope()
-					case OpCode_ScopeEnd:
-						stack.PushScope()
-					default:
-						// No-op
-					}
-				}
 			}
 
 		case OpCode_If:
@@ -532,12 +597,52 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 				counter = operation.Index - 1 // index of the else block, offset by 1
 			}
 
+		case OpCode_Goto:
+			// We must compare to the index - 1, so that the increment hits our target
+			if counter <= operation.Index {
+				for ; counter < operation.Index-1; counter++ {
+					switch statements[counter].OpCode {
+					case OpCode_ScopeBegin:
+						stack.PushScope()
+					case OpCode_ScopeEnd:
+						stack.PopScope()
+					default:
+						// No-op
+					}
+				}
+			} else {
+				for ; counter > operation.Index-1; counter-- {
+					switch statements[counter].OpCode {
+					case OpCode_ScopeBegin:
+						stack.PopScope()
+					case OpCode_ScopeEnd:
+						stack.PushScope()
+					default:
+						// No-op
+					}
+				}
+			}
+
+		case OpCode_Execute:
+			stmt, err := replaceVariablesInExpr(stack, operation.PrimaryData)
+			if err != nil {
+				return nil, nil, err
+			}
+			rowIter, err := query(ctx, runner, stmt.(ast.Statement))
+			if err != nil {
+				return nil, nil, err
+			}
+			rowIters = append(rowIters, rowIter)
+
 		case OpCode_Exception:
 			return nil, nil, operation.Error
+
 		case OpCode_ScopeBegin:
 			stack.PushScope()
+
 		case OpCode_ScopeEnd:
 			stack.PopScope()
+
 		default:
 			panic("unimplemented opcode")
 		}

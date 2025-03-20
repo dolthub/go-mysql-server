@@ -83,6 +83,19 @@ func (s *Stack[T]) Empty() bool {
 	return len(s.values) == 0
 }
 
+// InterpreterCondition is a declare condition with custom SQLState and ErrorCode.
+type InterpreterCondition struct {
+	SQLState     string
+	MySQLErrCode int64
+}
+
+// InterpreterCursor is a declare condition with custom SQLState and ErrorCode.
+type InterpreterCursor struct {
+	SelectStmt ast.SelectStatement
+	RowIter    sql.RowIter
+	Schema     sql.Schema
+}
+
 // InterpreterVariable is a variable that lives on the stack.
 type InterpreterVariable struct {
 	Type  sql.Type
@@ -105,16 +118,11 @@ func (iv *InterpreterVariable) ToAST() ast.Expr {
 	return ast.NewStrVal([]byte(fmt.Sprintf("%s", iv.Value)))
 }
 
-// InterpreterCondition is a declare condition with custom SQLState and ErrorCode.
-type InterpreterCondition struct {
-	SQLState     string
-	MySQLErrCode int64
-}
-
 // InterpreterScopeDetails contains all of the details that are relevant to a particular scope.
 type InterpreterScopeDetails struct {
-	variables  map[string]*InterpreterVariable
 	conditions map[string]*InterpreterCondition
+	cursors    map[string]*InterpreterCursor
+	variables  map[string]*InterpreterVariable
 }
 
 // InterpreterStack represents the working information that an interpreter will use during execution. It is not exactly
@@ -129,8 +137,9 @@ func NewInterpreterStack() *InterpreterStack {
 	stack := NewStack[*InterpreterScopeDetails]()
 	// This first push represents the function base, including parameters
 	stack.Push(&InterpreterScopeDetails{
-		variables:  make(map[string]*InterpreterVariable),
 		conditions: make(map[string]*InterpreterCondition),
+		cursors:    make(map[string]*InterpreterCursor),
+		variables:  make(map[string]*InterpreterVariable),
 	})
 	return &InterpreterStack{
 		stack: stack,
@@ -184,7 +193,7 @@ func (is *InterpreterStack) NewVariableAlias(alias string, variable *Interpreter
 	is.stack.Peek().variables[alias] = variable
 }
 
-// NewCondition creates a new variable in the current scope.
+// NewCondition creates a new condition in the current scope.
 func (is *InterpreterStack) NewCondition(name string, sqlState string, mysqlErrCode int64) {
 	is.stack.Peek().conditions[name] = &InterpreterCondition{
 		SQLState:     sqlState,
@@ -203,11 +212,30 @@ func (is *InterpreterStack) GetCondition(name string) *InterpreterCondition {
 	return nil
 }
 
+// NewCursor creates a new cursor in the current scope.
+func (is *InterpreterStack) NewCursor(name string, selStmt ast.SelectStatement) {
+	is.stack.Peek().cursors[name] = &InterpreterCursor{
+		SelectStmt: selStmt,
+	}
+}
+
+// GetCursor traverses the stack (starting from the top) to find a condition with a matching name. Returns nil if no
+// variable was found.
+func (is *InterpreterStack) GetCursor(name string) *InterpreterCursor {
+	for i := 0; i < is.stack.Len(); i++ {
+		if ic, ok := is.stack.PeekDepth(i).cursors[name]; ok {
+			return ic
+		}
+	}
+	return nil
+}
+
 // PushScope creates a new scope.
 func (is *InterpreterStack) PushScope() {
 	is.stack.Push(&InterpreterScopeDetails{
-		variables:  make(map[string]*InterpreterVariable),
 		conditions: make(map[string]*InterpreterCondition),
+		cursors:    make(map[string]*InterpreterCursor),
+		variables:  make(map[string]*InterpreterVariable),
 	})
 }
 
