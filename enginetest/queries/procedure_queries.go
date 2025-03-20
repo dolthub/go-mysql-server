@@ -1021,8 +1021,6 @@ BEGIN
 	ELSEIF x = 4 THEN
 		SIGNAL specialty2;
 	ELSE
-		SIGNAL SQLSTATE '01000'
-			SET MESSAGE_TEXT = 'A warning occurred', MYSQL_ERRNO = 1000;
 		SIGNAL SQLSTATE '45000'
 			SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1001;
 	END IF;
@@ -1051,6 +1049,10 @@ END;`,
 			{
 				Query:          "CALL p1(4)",
 				ExpectedErrStr: "Unhandled user-defined not found condition (errno 1643) (sqlstate 02000)",
+			},
+			{
+				Query:          "CALL p1(5)",
+				ExpectedErrStr: "An error occurred (errno 1001) (sqlstate 45000)",
 			},
 		},
 	},
