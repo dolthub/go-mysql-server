@@ -55,6 +55,13 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		*ops = append(*ops, declareOp)
 
+	case *ast.Signal:
+		signalOp := &InterpreterOperation{
+			OpCode:      OpCode_Signal,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, signalOp)
+
 	case *ast.Set:
 		if len(s.Exprs) != 1 {
 			panic("unexpected number of set expressions")
@@ -273,6 +280,8 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 			Target: s.Label, // hacky? way to signal a leave
 		}
 		*ops = append(*ops, leaveOp)
+
+
 	default:
 		execOp := &InterpreterOperation{
 			OpCode:      OpCode_Execute,

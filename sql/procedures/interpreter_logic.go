@@ -15,13 +15,16 @@
 package procedures
 
 import (
+	"fmt"
 	"io"
+	"strconv"
 	"strings"
-
-	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+
+	"github.com/dolthub/vitess/go/mysql"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // InterpreterNode is an interface that implements an interpreter. These are typically used for functions (which may be
@@ -293,10 +296,31 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 
 		case OpCode_Declare:
 			declareStmt := operation.PrimaryData.(*ast.Declare)
+
 			if declareStmt.Condition != nil {
-				// TODO: copy error checks from buildDeclareCondition
-				stack.NewCondition(strings.ToLower(declareStmt.Condition.Name), declareStmt.Condition.SqlStateValue, 0)
+				cond := declareStmt.Condition
+				condName := strings.ToLower(cond.Name)
+				stateVal := cond.SqlStateValue
+				var num int64
+				var err error
+				if stateVal != "" {
+					if len(stateVal) != 5 {
+						return nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+					}
+					if stateVal[0:2] == "00" {
+						return nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", stateVal)
+					}
+				} else {
+					// use our own error
+					num, err = strconv.ParseInt(string(cond.MysqlErrorCode.Val), 10, 64)
+					if err != nil || num == 0 {
+						err = fmt.Errorf("invalid value '%s' for MySQL error code", string(cond.MysqlErrorCode.Val))
+						return nil, nil, err
+					}
+				}
+				stack.NewCondition(condName, stateVal, num)
 			}
+
 			if declareStmt.Variables != nil {
 				for _, decl := range declareStmt.Variables.Names {
 					varType, err := types.ColumnTypeToType(&declareStmt.Variables.VarType)
@@ -312,6 +336,95 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 				}
 			}
 
+		case OpCode_Signal:
+			// TODO: copy logic from planbuilder/proc.go: buildSignal()
+			signalStmt := operation.PrimaryData.(*ast.Signal)
+			var msgTxt string
+			var sqlState string
+			var mysqlErrNo int
+			if signalStmt.ConditionName == "" {
+				sqlState = signalStmt.SqlStateValue
+				if sqlState[0:2] == "01" {
+					return nil, nil, fmt.Errorf("warnings not yet implemented")
+				}
+			} else {
+				cond := stack.GetCondition(strings.ToLower(signalStmt.ConditionName))
+				if cond == nil {
+					return nil, nil, sql.ErrDeclareConditionNotFound.New(signalStmt.ConditionName)
+				}
+				mysqlErrNo = int(cond.MySQLErrCode)
+				sqlState = cond.SQLState
+			}
+
+			if len(sqlState) != 5 {
+				return nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+			}
+
+			for _, item := range signalStmt.Info {
+				switch item.ConditionItemName {
+				case ast.SignalConditionItemName_MysqlErrno:
+					switch val := item.Value.(type) {
+					case *ast.SQLVal:
+						num, err := strconv.ParseInt(string(val.Val), 10, 64)
+						if err != nil || num == 0 {
+							return nil, nil, fmt.Errorf("invalid value '%s' for MySQL error code", string(val.Val))
+						}
+						mysqlErrNo = int(num)
+					case *ast.ColName:
+						return nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
+					default:
+						return nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
+					}
+				case ast.SignalConditionItemName_MessageText:
+					switch val := item.Value.(type) {
+					case *ast.SQLVal:
+						msgTxt = string(val.Val)
+						if len(msgTxt) > 128 {
+							return nil, nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
+						}
+					case *ast.ColName:
+						return nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
+					default:
+						return nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
+					}
+				default:
+					switch val := item.Value.(type) {
+					case *ast.SQLVal:
+						msgTxt = string(val.Val)
+						if len(msgTxt) > 64 {
+							return nil, nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(item.ConditionItemName)))
+						}
+					default:
+						return nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item '%s''", item.Value, strings.ToUpper(string(item.ConditionItemName)))
+					}
+				}
+			}
+
+			if mysqlErrNo == 0 {
+				switch sqlState[0:2] {
+				case "01":
+					mysqlErrNo = 1642
+				case "02":
+					mysqlErrNo = 1643
+				default:
+					mysqlErrNo = 1644
+				}
+			}
+
+			if msgTxt == "" {
+				switch sqlState[0:2] {
+				case "00":
+					return nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", sqlState)
+				case "01":
+					msgTxt = "Unhandled user-defined warning condition"
+				case "02":
+					msgTxt = "Unhandled user-defined not found condition"
+				default:
+					msgTxt = "Unhandled user-defined exception condition"
+				}
+			}
+
+			return nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, msgTxt)
 
 		case OpCode_Set:
 			selectStmt := operation.PrimaryData.(*ast.Select)

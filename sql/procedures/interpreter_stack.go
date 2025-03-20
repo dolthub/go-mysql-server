@@ -129,7 +129,8 @@ func NewInterpreterStack() *InterpreterStack {
 	stack := NewStack[*InterpreterScopeDetails]()
 	// This first push represents the function base, including parameters
 	stack.Push(&InterpreterScopeDetails{
-		variables: make(map[string]*InterpreterVariable),
+		variables:  make(map[string]*InterpreterVariable),
+		conditions: make(map[string]*InterpreterCondition),
 	})
 	return &InterpreterStack{
 		stack: stack,
@@ -191,10 +192,22 @@ func (is *InterpreterStack) NewCondition(name string, sqlState string, mysqlErrC
 	}
 }
 
+// GetCondition traverses the stack (starting from the top) to find a condition with a matching name. Returns nil if no
+// variable was found.
+func (is *InterpreterStack) GetCondition(name string) *InterpreterCondition {
+	for i := 0; i < is.stack.Len(); i++ {
+		if ic, ok := is.stack.PeekDepth(i).conditions[name]; ok {
+			return ic
+		}
+	}
+	return nil
+}
+
 // PushScope creates a new scope.
 func (is *InterpreterStack) PushScope() {
 	is.stack.Push(&InterpreterScopeDetails{
-		variables: make(map[string]*InterpreterVariable),
+		variables:  make(map[string]*InterpreterVariable),
+		conditions: make(map[string]*InterpreterCondition),
 	})
 }
 
