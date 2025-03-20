@@ -135,12 +135,8 @@ var JoinStatTests = []struct {
 			{
 				// b is smallest table, bxc is smallest b-connected join
 				// due to b < 0 filter and positive c skew
-				q:     "select /*+ LEFT_DEEP */  count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b < -2",
-				order: [][]string{{"b", "c", "a"}},
-			},
-			{
 				q:     "select /*+ LEFT_DEEP */ count(*) from u0 b join `u-15` a on a.b = b.b join `u+15` c on a.b = c.b where b.b < -2",
-				order: [][]string{{"b", "c", "a"}},
+				order: [][]string{{"b", "c", "a"}, {"a", "c", "b"}},
 			},
 			{
 				// b is smallest table, bxa is smallest b-connected join

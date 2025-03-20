@@ -3486,7 +3486,7 @@ WHERE
 		ExpectedEstimates: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [ufc.id, ufc.T4IBQ, ufc.ZH72S, ufc.AMYXQ, ufc.KTNZ2, ufc.HIID2, ufc.DN3OQ, ufc.VVKNB, ufc.SH7TP, ufc.SRZZO, ufc.QZ6VT]\n" +
-			"     └─ HashJoin (estimated cost=102847291.680 rows=9769906324)\n" +
+			"     └─ HashJoin (estimated cost=102841528.680 rows=9769906324)\n" +
 			"         ├─ (nd.ZH72S = ufc.ZH72S)\n" +
 			"         ├─ HashJoin (estimated cost=5195054.880 rows=5085844)\n" +
 			"         │   ├─ (cla.FTQLQ = ufc.T4IBQ)\n" +
@@ -3522,7 +3522,7 @@ WHERE
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [ufc.id, ufc.T4IBQ, ufc.ZH72S, ufc.AMYXQ, ufc.KTNZ2, ufc.HIID2, ufc.DN3OQ, ufc.VVKNB, ufc.SH7TP, ufc.SRZZO, ufc.QZ6VT]\n" +
-			"     └─ HashJoin (estimated cost=102847291.680 rows=9769906324) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=102841528.680 rows=9769906324) (actual rows=0 loops=1)\n" +
 			"         ├─ (nd.ZH72S = ufc.ZH72S)\n" +
 			"         ├─ HashJoin (estimated cost=5195054.880 rows=5085844) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (cla.FTQLQ = ufc.T4IBQ)\n" +
@@ -3637,7 +3637,7 @@ WHERE
 		ExpectedEstimates: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [ufc.id, ufc.T4IBQ, ufc.ZH72S, ufc.AMYXQ, ufc.KTNZ2, ufc.HIID2, ufc.DN3OQ, ufc.VVKNB, ufc.SH7TP, ufc.SRZZO, ufc.QZ6VT]\n" +
-			"     └─ HashJoin (estimated cost=102847291.680 rows=9769906324)\n" +
+			"     └─ HashJoin (estimated cost=102841528.680 rows=9769906324)\n" +
 			"         ├─ (nd.ZH72S = ufc.ZH72S)\n" +
 			"         ├─ HashJoin (estimated cost=5195054.880 rows=5085844)\n" +
 			"         │   ├─ (cla.FTQLQ = ufc.T4IBQ)\n" +
@@ -3673,7 +3673,7 @@ WHERE
 		ExpectedAnalysis: "Distinct\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [ufc.id, ufc.T4IBQ, ufc.ZH72S, ufc.AMYXQ, ufc.KTNZ2, ufc.HIID2, ufc.DN3OQ, ufc.VVKNB, ufc.SH7TP, ufc.SRZZO, ufc.QZ6VT]\n" +
-			"     └─ HashJoin (estimated cost=102847291.680 rows=9769906324) (actual rows=0 loops=1)\n" +
+			"     └─ HashJoin (estimated cost=102841528.680 rows=9769906324) (actual rows=0 loops=1)\n" +
 			"         ├─ (nd.ZH72S = ufc.ZH72S)\n" +
 			"         ├─ HashJoin (estimated cost=5195054.880 rows=5085844) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (cla.FTQLQ = ufc.T4IBQ)\n" +
@@ -4321,7 +4321,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [umf.id, umf.T4IBQ, umf.FGG57, umf.SSHPJ, umf.NLA6O, umf.SFJ6L, umf.TJPT7, umf.ARN5P, umf.SYPKF, umf.IVFMK, umf.IDE43, umf.AZ6SP, umf.FSDY2, umf.XOSD4, umf.HMW4H, umf.S76OM, umf.vaf, umf.ZROH6, umf.QCGTS, umf.LNFM6, umf.TVAWL, umf.HDLCL, umf.BHHW6, umf.FHCYT, umf.QZ6VT]\n" +
-			" └─ HashJoin (estimated cost=566371.320 rows=543966)\n" +
+			" └─ HashJoin (estimated cost=560608.320 rows=543966)\n" +
 			"     ├─ (nd.FGG57 = umf.FGG57)\n" +
 			"     ├─ HashJoin (estimated cost=562339.320 rows=543966)\n" +
 			"     │   ├─ (cla.FTQLQ = umf.T4IBQ)\n" +
@@ -4358,7 +4358,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [umf.id, umf.T4IBQ, umf.FGG57, umf.SSHPJ, umf.NLA6O, umf.SFJ6L, umf.TJPT7, umf.ARN5P, umf.SYPKF, umf.IVFMK, umf.IDE43, umf.AZ6SP, umf.FSDY2, umf.XOSD4, umf.HMW4H, umf.S76OM, umf.vaf, umf.ZROH6, umf.QCGTS, umf.LNFM6, umf.TVAWL, umf.HDLCL, umf.BHHW6, umf.FHCYT, umf.QZ6VT]\n" +
-			" └─ HashJoin (estimated cost=566371.320 rows=543966) (actual rows=0 loops=1)\n" +
+			" └─ HashJoin (estimated cost=560608.320 rows=543966) (actual rows=0 loops=1)\n" +
 			"     ├─ (nd.FGG57 = umf.FGG57)\n" +
 			"     ├─ HashJoin (estimated cost=562339.320 rows=543966) (actual rows=0 loops=1)\n" +
 			"     │   ├─ (cla.FTQLQ = umf.T4IBQ)\n" +
