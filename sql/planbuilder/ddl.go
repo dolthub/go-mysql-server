@@ -594,7 +594,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 
 		if ddl.ColumnAction != "" {
 			columnActionOutscope := b.buildAlterTableColumnAction(tableScope, ddl, rt)
-			outScopes = append(outScopes, columnActionOutscope)
+			outScopes = append(outScopes, columnActionOutscope.copy())
 
 			if ddl.TableSpec != nil {
 				if len(ddl.TableSpec.Columns) != 1 {
