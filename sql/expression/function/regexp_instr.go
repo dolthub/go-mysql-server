@@ -146,7 +146,13 @@ func (r *RegexpInstr) WithChildren(children ...sql.Expression) (sql.Expression, 
 	if len(children) != required {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), required)
 	}
-	return NewRegexpInstr(children...)
+
+	// Copy over the regex instance, in case it has already been set to avoid leaking it.
+	instr, err := NewRegexpInstr(children...)
+	if r.re != nil && instr != nil {
+		instr.(*RegexpInstr).re = r.re
+	}
+	return instr, err
 }
 
 // String implements the sql.Expression interface.

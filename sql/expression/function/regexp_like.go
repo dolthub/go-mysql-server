@@ -112,7 +112,14 @@ func (r *RegexpLike) WithChildren(children ...sql.Expression) (sql.Expression, e
 	if len(children) != required {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), required)
 	}
-	return NewRegexpLike(children...)
+
+	// Copy over the regex instance, in case it has already been set to avoid leaking it.
+	like, err := NewRegexpLike(children...)
+	if like != nil && r.re != nil {
+		like.(*RegexpLike).re = r.re
+	}
+
+	return like, err
 }
 
 // String implements the sql.Expression interface.
