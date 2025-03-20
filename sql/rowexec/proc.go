@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 )
 
 func (b *BaseBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement, row sql.Row) (sql.RowIter, error) {
@@ -181,29 +182,58 @@ func (b *BaseBuilder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.Proc
 }
 
 func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.RowIter, error) {
+	procParams := make([]*procedures.Parameter, len(n.Params))
 	for i, paramExpr := range n.Params {
-		val, err := paramExpr.Eval(ctx, row)
+		param := n.Procedure.Params[i]
+		paramName := strings.ToLower(param.Name)
+		paramType := param.Type
+		paramVal, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		paramName := n.Procedure.Params[i].Name
-		paramType := n.Procedure.Params[i].Type
-		err = n.Pref.InitializeVariable(paramName, paramType, val)
+		paramVal, _, err = paramType.Convert(paramVal)
 		if err != nil {
 			return nil, err
+		}
+		procParams[i] = &procedures.Parameter{
+			Name:  paramName,
+			Value: paramVal,
+			Type:  paramType,
 		}
 	}
 
-	n.Pref.PushScope()
-	defer n.Pref.PopScope(ctx)
-
-	innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
+	rowIter, stack, err := procedures.Call(ctx, n, procParams)
 	if err != nil {
 		return nil, err
 	}
+
+	for i, param := range n.Params {
+		procParam := n.Procedure.Params[i]
+		if procParam.Direction == plan.ProcedureParamDirection_In {
+			continue
+		}
+		// Set all user and system variables from INOUT and OUT params
+		stackVar := stack.GetVariable(procParam.Name) // TODO: ToLower?
+		switch p := param.(type) {
+		case *expression.ProcedureParam:
+			err = p.Set(stackVar.Value, stackVar.Type)
+			if err != nil {
+				return nil, err
+			}
+		case *expression.UserVar:
+			err = ctx.SetUserVariable(ctx, p.Name, stackVar.Value, stackVar.Type)
+			if err != nil {
+				return nil, err
+			}
+		case *expression.SystemVar:
+			// This should have been caught by the analyzer, so a major bug exists somewhere
+			return nil, fmt.Errorf("unable to set `%s` as it is a system variable", p.Name)
+		}
+	}
+
 	return &callIter{
 		call:      n,
-		innerIter: innerIter,
+		innerIter: rowIter.(sql.RowIter),
 	}, nil
 }
 

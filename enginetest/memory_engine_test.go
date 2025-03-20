@@ -202,17 +202,58 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "test script",
+			Name: "DECLARE CONDITION",
 			SetUpScript: []string{
-				"create table t (i int);",
+				`CREATE PROCEDURE p1(x INT)
+BEGIN
+	DECLARE specialty CONDITION FOR SQLSTATE '45000';
+	DECLARE specialty2 CONDITION FOR SQLSTATE '02000';
+	IF x = 0 THEN
+		SIGNAL SQLSTATE '01000';
+	ELSEIF x = 1 THEN
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'A custom error occurred 1';
+	ELSEIF x = 2 THEN
+		SIGNAL specialty
+			SET MESSAGE_TEXT = 'A custom error occurred 2', MYSQL_ERRNO = 1002;
+	ELSEIF x = 3 THEN
+		SIGNAL specialty;
+	ELSEIF x = 4 THEN
+		SIGNAL specialty2;
+	ELSE
+		SIGNAL SQLSTATE '01000'
+			SET MESSAGE_TEXT = 'A warning occurred', MYSQL_ERRNO = 1000;
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1001;
+	END IF;
+	BEGIN
+		DECLARE specialty3 CONDITION FOR SQLSTATE '45000';
+	END;
+END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select 1 into @a",
-					Expected: []sql.Row{},
+					Query:          "CALL p1(0)",
+					ExpectedErrStr: "warnings not yet implemented",
+				},
+				{
+					Query:          "CALL p1(1)",
+					ExpectedErrStr: "A custom error occurred 1 (errno 1644) (sqlstate 45000)",
+				},
+				{
+					Query:          "CALL p1(2)",
+					ExpectedErrStr: "A custom error occurred 2 (errno 1002) (sqlstate 45000)",
+				},
+				{
+					Query:          "CALL p1(3)",
+					ExpectedErrStr: "Unhandled user-defined exception condition (errno 1644) (sqlstate 45000)",
+				},
+				{
+					Query:          "CALL p1(4)",
+					ExpectedErrStr: "Unhandled user-defined not found condition (errno 1643) (sqlstate 02000)",
 				},
 			},
 		},
@@ -220,10 +261,15 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		// TODO: fix this
+		//harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
+
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
