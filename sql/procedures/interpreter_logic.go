@@ -322,8 +322,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 			declareStmt := operation.PrimaryData.(*ast.Declare)
 
 			// TODO: duplicate conditions?
-			if declareStmt.Condition != nil {
-				cond := declareStmt.Condition
+			if cond := declareStmt.Condition; cond != nil {
 				condName := strings.ToLower(cond.Name)
 				stateVal := cond.SqlStateValue
 				var num int64
@@ -347,29 +346,48 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 			}
 
 			// TODO: duplicate cursors?
-			if declareStmt.Cursor != nil {
-				cursor := declareStmt.Cursor
+			if cursor := declareStmt.Cursor; cursor != nil {
 				cursorName := strings.ToLower(cursor.Name)
 				stack.NewCursor(cursorName, cursor.SelectStmt)
 			}
 
-			if declareStmt.Handler != nil {
-				// TODO
+			// TODO: duplicate handlers?
+			if handler := declareStmt.Handler; handler != nil {
+				if len(handler.ConditionValues) != 1 {
+					return nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
+				}
+
+				hCond := handler.ConditionValues[0]
+				switch hCond.ValueType {
+				case ast.DeclareHandlerCondition_NotFound:
+				case ast.DeclareHandlerCondition_SqlState:
+				default:
+					return nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
+				}
+
+				switch handler.Action {
+				case ast.DeclareHandlerAction_Continue:
+				case ast.DeclareHandlerAction_Exit:
+				case ast.DeclareHandlerAction_Undo:
+					return nil, nil, fmt.Errorf("unsupported handler action: %s", handler.Action)
+				}
+
+				stack.NewHandler(string(hCond.ValueType), string(handler.Action), handler.Statement)
 			}
 
 			// TODO: duplicate variables?
-			if declareStmt.Variables != nil {
-				for _, decl := range declareStmt.Variables.Names {
-					varType, err := types.ColumnTypeToType(&declareStmt.Variables.VarType)
+			if vars := declareStmt.Variables; vars != nil {
+				for _, decl := range vars.Names {
+					varType, err := types.ColumnTypeToType(&vars.VarType)
 					if err != nil {
 						return nil, nil, err
 					}
 					varName := strings.ToLower(decl.String())
-					if declareStmt.Variables.VarType.Default != nil {
-						stack.NewVariableWithValue(varName, varType, declareStmt.Variables.VarType.Default)
-					} else {
+					if vars.VarType.Default == nil {
 						stack.NewVariable(varName, varType)
+						continue
 					}
+					stack.NewVariableWithValue(varName, varType, vars.VarType.Default)
 				}
 			}
 

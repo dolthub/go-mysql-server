@@ -89,11 +89,18 @@ type InterpreterCondition struct {
 	MySQLErrCode int64
 }
 
-// InterpreterCursor is a declare condition with custom SQLState and ErrorCode.
+// InterpreterCursor is a declare cursor.
 type InterpreterCursor struct {
 	SelectStmt ast.SelectStatement
 	RowIter    sql.RowIter
 	Schema     sql.Schema
+}
+
+// InterpreterHandler is a declare handler that specifies an Action during an error Condition.
+type InterpreterHandler struct {
+	Condition string
+	Action    string
+	Statement ast.Statement
 }
 
 // InterpreterVariable is a variable that lives on the stack.
@@ -122,6 +129,7 @@ func (iv *InterpreterVariable) ToAST() ast.Expr {
 type InterpreterScopeDetails struct {
 	conditions map[string]*InterpreterCondition
 	cursors    map[string]*InterpreterCursor
+	handlers   []*InterpreterHandler
 	variables  map[string]*InterpreterVariable
 }
 
@@ -139,6 +147,7 @@ func NewInterpreterStack() *InterpreterStack {
 	stack.Push(&InterpreterScopeDetails{
 		conditions: make(map[string]*InterpreterCondition),
 		cursors:    make(map[string]*InterpreterCursor),
+		handlers:   make([]*InterpreterHandler),
 		variables:  make(map[string]*InterpreterVariable),
 	})
 	return &InterpreterStack{
@@ -212,6 +221,8 @@ func (is *InterpreterStack) GetCondition(name string) *InterpreterCondition {
 	return nil
 }
 
+
+
 // NewCursor creates a new cursor in the current scope.
 func (is *InterpreterStack) NewCursor(name string, selStmt ast.SelectStatement) {
 	is.stack.Peek().cursors[name] = &InterpreterCursor{
@@ -228,6 +239,26 @@ func (is *InterpreterStack) GetCursor(name string) *InterpreterCursor {
 		}
 	}
 	return nil
+}
+
+// NewHandler creates a new handler in the current scope.
+func (is *InterpreterStack) NewHandler(cond string, action string, stmt ast.Statement) {
+	is.stack.Peek().handlers = append(is.stack.Peek().handlers, &InterpreterHandler{
+		Condition: cond,
+		Action:    action,
+		Statement: stmt,
+	})
+}
+
+// ListHandlers returns a map with the names of all handlers.
+func (is *InterpreterStack) ListHandlers() []*InterpreterHandler {
+	handlers := make([]*InterpreterHandler, 0)
+	for i := 0; i < is.stack.Len(); i++ {
+		for _, handler := range is.stack.PeekDepth(i).handlers {
+			handlers = append(handlers, handler)
+		}
+	}
+	return handlers
 }
 
 // PushScope creates a new scope.

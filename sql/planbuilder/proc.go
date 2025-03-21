@@ -71,6 +71,7 @@ func (p *procCtx) NewState(state declareState) {
 			err := sql.ErrDeclareCursorOrderInvalid.New()
 			p.s.b.handleErr(err)
 		}
+	default:
 	}
 	p.lastState = state
 }
@@ -464,12 +465,9 @@ func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query stri
 		action = expression.DeclareHandlerAction_Exit
 	case ast.DeclareHandlerAction_Undo:
 		action = expression.DeclareHandlerAction_Undo
+		b.handleErr(sql.ErrDeclareHandlerUndo.New())
 	default:
 		err := fmt.Errorf("unknown DECLARE ... HANDLER action: %v", dHandler.Action)
-		b.handleErr(err)
-	}
-	if action == expression.DeclareHandlerAction_Undo {
-		err := sql.ErrDeclareHandlerUndo.New()
 		b.handleErr(err)
 	}
 
