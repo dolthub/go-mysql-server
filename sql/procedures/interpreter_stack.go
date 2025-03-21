@@ -117,7 +117,22 @@ func (iv *InterpreterVariable) ToAST() ast.Expr {
 		return &ast.NullVal{}
 	}
 	if types.IsInteger(iv.Type) {
-		return ast.NewIntVal([]byte(fmt.Sprintf("%d", iv.Value)))
+		switch val := iv.Value.(type) {
+		case bool:
+			if val {
+				return ast.NewIntVal([]byte("1"))
+			} else {
+				return ast.NewIntVal([]byte("0"))
+			}
+		case ast.BoolVal:
+			if val {
+				return ast.NewIntVal([]byte("1"))
+			} else {
+				return ast.NewIntVal([]byte("0"))
+			}
+		default:
+			return ast.NewIntVal([]byte(fmt.Sprintf("%d", val)))
+		}
 	}
 	if types.IsFloat(iv.Type) {
 		return ast.NewFloatVal([]byte(strconv.FormatFloat(iv.Value.(float64), 'f', -1, 64)))
@@ -125,12 +140,15 @@ func (iv *InterpreterVariable) ToAST() ast.Expr {
 	return ast.NewStrVal([]byte(fmt.Sprintf("%s", iv.Value)))
 }
 
-// InterpreterScopeDetails contains all of the details that are relevant to a particular scope.
+// InterpreterScopeDetails contains all the details that are relevant to a particular scope.
 type InterpreterScopeDetails struct {
 	conditions map[string]*InterpreterCondition
 	cursors    map[string]*InterpreterCursor
 	handlers   []*InterpreterHandler
 	variables  map[string]*InterpreterVariable
+
+	// labels mark the counter of the start of a loop or block.
+	labels map[string]int
 }
 
 // InterpreterStack represents the working information that an interpreter will use during execution. It is not exactly
@@ -149,6 +167,8 @@ func NewInterpreterStack() *InterpreterStack {
 		cursors:    make(map[string]*InterpreterCursor),
 		handlers:   make([]*InterpreterHandler, 0),
 		variables:  make(map[string]*InterpreterVariable),
+
+		labels: make(map[string]int),
 	})
 	return &InterpreterStack{
 		stack: stack,
@@ -158,6 +178,26 @@ func NewInterpreterStack() *InterpreterStack {
 // Details returns the details for the current scope.
 func (is *InterpreterStack) Details() *InterpreterScopeDetails {
 	return is.stack.Peek()
+}
+
+// NewVariable creates a new variable in the current scope. If a variable with the same name exists in a previous scope,
+// then that variable will be shadowed until the current scope exits.
+func (is *InterpreterStack) NewVariable(name string, typ sql.Type) {
+	is.NewVariableWithValue(name, typ, typ.Zero())
+}
+
+// NewVariableWithValue creates a new variable in the current scope, setting its initial value to the one given.
+func (is *InterpreterStack) NewVariableWithValue(name string, typ sql.Type, val any) {
+	is.stack.Peek().variables[name] = &InterpreterVariable{
+		Type:  typ,
+		Value: val,
+	}
+}
+
+// NewVariableAlias creates a new variable alias, named |alias|, in the current frame of this stack,
+// pointing to the specified |variable|.
+func (is *InterpreterStack) NewVariableAlias(alias string, variable *InterpreterVariable) {
+	is.stack.Peek().variables[alias] = variable
 }
 
 // GetVariable traverses the stack (starting from the top) to find a variable with a matching name. Returns nil if no
@@ -182,24 +222,16 @@ func (is *InterpreterStack) ListVariables() map[string]struct{} {
 	return seen
 }
 
-// NewVariable creates a new variable in the current scope. If a variable with the same name exists in a previous scope,
-// then that variable will be shadowed until the current scope exits.
-func (is *InterpreterStack) NewVariable(name string, typ sql.Type) {
-	is.NewVariableWithValue(name, typ, typ.Zero())
-}
-
-// NewVariableWithValue creates a new variable in the current scope, setting its initial value to the one given.
-func (is *InterpreterStack) NewVariableWithValue(name string, typ sql.Type, val any) {
-	is.stack.Peek().variables[name] = &InterpreterVariable{
-		Type:  typ,
-		Value: val,
+// SetVariable sets the first variable found, with a matching name, to the value given. This does not ensure that the
+// value matches the expectations of the type, so it should be validated before this is called. Returns an error if the
+// variable cannot be found.
+func (is *InterpreterStack) SetVariable(name string, val any) error {
+	iv := is.GetVariable(name)
+	if iv == nil {
+		return fmt.Errorf("variable `%s` could not be found", name)
 	}
-}
-
-// NewVariableAlias creates a new variable alias, named |alias|, in the current frame of this stack,
-// pointing to the specified |variable|.
-func (is *InterpreterStack) NewVariableAlias(alias string, variable *InterpreterVariable) {
-	is.stack.Peek().variables[alias] = variable
+	iv.Value = val
+	return nil
 }
 
 // NewCondition creates a new condition in the current scope.
@@ -220,8 +252,6 @@ func (is *InterpreterStack) GetCondition(name string) *InterpreterCondition {
 	}
 	return nil
 }
-
-
 
 // NewCursor creates a new cursor in the current scope.
 func (is *InterpreterStack) NewCursor(name string, selStmt ast.SelectStatement) {
@@ -261,28 +291,35 @@ func (is *InterpreterStack) ListHandlers() []*InterpreterHandler {
 	return handlers
 }
 
+// NewLabel creates a new label in the current scope.
+func (is *InterpreterStack) NewLabel(name string, index int) {
+	is.stack.Peek().labels[name] = index
+}
+
+// GetLabel traverses the stack (starting from the top) to find a label with a matching name. Returns -1 if no
+// variable was found.
+func (is *InterpreterStack) GetLabel(name string) int {
+	for i := 0; i < is.stack.Len(); i++ {
+		if index, ok := is.stack.PeekDepth(i).labels[name]; ok {
+			return index
+		}
+	}
+	return -1
+}
+
 // PushScope creates a new scope.
 func (is *InterpreterStack) PushScope() {
 	is.stack.Push(&InterpreterScopeDetails{
 		conditions: make(map[string]*InterpreterCondition),
 		cursors:    make(map[string]*InterpreterCursor),
+		handlers:   make([]*InterpreterHandler, 0),
 		variables:  make(map[string]*InterpreterVariable),
+
+		labels: make(map[string]int),
 	})
 }
 
 // PopScope removes the current scope.
 func (is *InterpreterStack) PopScope() {
 	is.stack.Pop()
-}
-
-// SetVariable sets the first variable found, with a matching name, to the value given. This does not ensure that the
-// value matches the expectations of the type, so it should be validated before this is called. Returns an error if the
-// variable cannot be found.
-func (is *InterpreterStack) SetVariable(name string, val any) error {
-	iv := is.GetVariable(name)
-	if iv == nil {
-		return fmt.Errorf("variable `%s` could not be found", name)
-	}
-	iv.Value = val
-	return nil
 }

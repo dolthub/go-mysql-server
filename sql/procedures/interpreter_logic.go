@@ -57,6 +57,18 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			Qualifier:     e.Qualifier,
 			StoredProcVal: newExpr,
 		}, nil
+	case *ast.ParenExpr:
+		newExpr, err := replaceVariablesInExpr(stack, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		e.Expr = newExpr.(ast.Expr)
+	case *ast.AliasedTableExpr:
+		newExpr, err := replaceVariablesInExpr(stack, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		e.Expr = newExpr.(ast.SimpleTableExpr)
 	case *ast.AliasedExpr:
 		newExpr, err := replaceVariablesInExpr(stack, e.Expr)
 		if err != nil {
@@ -155,6 +167,15 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 			}
 			e.SelectExprs[i] = newExpr.(ast.SelectExpr)
 		}
+		if e.With != nil {
+			for i := range e.With.Ctes {
+				newExpr, err := replaceVariablesInExpr(stack, e.With.Ctes[i].AliasedTableExpr)
+				if err != nil {
+					return nil, err
+				}
+				e.With.Ctes[i].AliasedTableExpr = newExpr.(*ast.AliasedTableExpr)
+			}
+		}
 		if e.Into != nil {
 			newExpr, err := replaceVariablesInExpr(stack, e.Into)
 			if err != nil {
@@ -250,8 +271,10 @@ func handleError(ctx *sql.Context, stack *InterpreterStack, runner sql.Statement
 
 	var matchingHandler *InterpreterHandler
 	for _, handler := range stack.ListHandlers() {
-		if errors.Is(err, expression.FetchEOF) && handler.Condition == ast.DeclareHandlerCondition_NotFound {
-			matchingHandler = handler
+		if errors.Is(err, expression.FetchEOF) {
+			if handler.Condition == ast.DeclareHandlerCondition_NotFound {
+				matchingHandler = handler
+			}
 			break
 		}
 		switch handler.Condition {
@@ -546,6 +569,9 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		}
 		row, err := cursor.RowIter.Next(ctx)
 		if err != nil {
+			if err == io.EOF {
+				return 0, nil, nil, expression.FetchEOF
+			}
 			return 0, nil, nil, err
 		}
 		if len(row) != len(fetchCur.Variables) {
@@ -664,6 +690,9 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			}
 		} else {
 			for ; counter > operation.Index-1; counter-- {
+				if counter == -1 {
+					print()
+				}
 				switch statements[counter].OpCode {
 				case OpCode_ScopeBegin:
 					stack.PopScope()
@@ -730,12 +759,15 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.Row
 
 		operation := statements[counter]
 		newCounter, newSelIter, rowIter, err := execOp(ctx, runner, stack, operation, statements, counter)
-		if err = handleError(ctx, stack, runner, err); err != nil {
-			if err != io.EOF {
-				return nil, nil, err
-			}
-			for counter < len(statements) && statements[counter].OpCode != OpCode_ScopeEnd {
-				counter++
+		if err != nil {
+			hErr := handleError(ctx, stack, runner, err)
+			if hErr != nil {
+				if hErr != io.EOF {
+					return nil, nil, hErr
+				}
+				for counter < len(statements) && statements[counter].OpCode != OpCode_ScopeEnd {
+					counter++
+				}
 			}
 			newCounter = counter
 		}

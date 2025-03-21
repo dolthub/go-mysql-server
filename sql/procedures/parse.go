@@ -20,26 +20,57 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
+// resolveGoToIndexes will iterate over operations from start to end, and resolve the indexes of any OpCode_Goto
+// operations, assigning either loopStart or loopEnd.
+func resolveGoToIndexes(ops *[]*InterpreterOperation, label string, start, end, loopStart, loopEnd int) {
+	if label == "" {
+		return
+	}
+	for idx := start; idx < end; idx++ {
+		op := (*ops)[idx]
+		switch op.OpCode {
+		case OpCode_Goto:
+			if op.Target != label {
+				continue
+			}
+			switch op.Index {
+			case -1: // iterate
+				(*ops)[idx].Index = loopStart
+			case -2: // leave
+				(*ops)[idx].Index = loopEnd
+			default:
+				continue
+			}
+		default:
+			continue
+		}
+	}
+}
+
 func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast.Statement) error {
 	switch s := stmt.(type) {
 	case *ast.BeginEndBlock:
 		stack.PushScope()
-		startOP := &InterpreterOperation{
+		startOp := &InterpreterOperation{
 			OpCode: OpCode_ScopeBegin,
+			Target: s.Label,
 		}
-		*ops = append(*ops, startOP)
+		*ops = append(*ops, startOp)
+		startOp.Index = len(*ops)
 
-		// TODO: add declares
 		for _, ss := range s.Statements {
 			if err := ConvertStmt(ops, stack, ss); err != nil {
 				return err
 			}
 		}
+
 		endOp := &InterpreterOperation{
 			OpCode: OpCode_ScopeEnd,
+			Target: s.Label,
 		}
 		*ops = append(*ops, endOp)
-		stack.PopScope()
+		endOp.Index = len(*ops)
+		resolveGoToIndexes(ops, s.Label, startOp.Index, endOp.Index, startOp.Index, endOp.Index)
 
 	case *ast.Select:
 		selectOp := &InterpreterOperation{
@@ -111,7 +142,6 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		*ops = append(*ops, setOp)
 
 	case *ast.IfStatement:
-		// TODO: each subsequent condition is an else if
 		var ifElseGotoOps []*InterpreterOperation
 		for _, ifCond := range s.Conditions {
 			selectCond := &ast.Select{
@@ -235,11 +265,12 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 			Index:  loopStart,
 		}
 		*ops = append(*ops, gotoOp)
-
 		whileOp.Index = len(*ops) // end of while block
+		resolveGoToIndexes(ops, s.Label, loopStart, whileOp.Index, loopStart, whileOp.Index)
 
 	case *ast.Repeat:
 		// repeat statements always run at least once
+		onceStart := len(*ops)
 		for _, repeatStmt := range s.Statements {
 			if err := ConvertStmt(ops, stack, repeatStmt); err != nil {
 				return err
@@ -247,6 +278,9 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 
 		loopStart := len(*ops)
+		if s.Label != "" {
+			stack.NewLabel(s.Label, loopStart)
+		}
 		repeatCond := &ast.NotExpr{Expr: s.Condition}
 		selectCond := &ast.Select{
 			SelectExprs: ast.SelectExprs{
@@ -272,11 +306,14 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 			Index:  loopStart,
 		}
 		*ops = append(*ops, gotoOp)
-
 		repeatOp.Index = len(*ops) // end of repeat block
+		resolveGoToIndexes(ops, s.Label, onceStart, repeatOp.Index, loopStart, repeatOp.Index)
 
 	case *ast.Loop:
 		loopStart := len(*ops)
+		if s.Label != "" {
+			stack.NewLabel(s.Label, loopStart)
+		}
 		for _, loopStmt := range s.Statements {
 			if err := ConvertStmt(ops, stack, loopStmt); err != nil {
 				return err
@@ -284,37 +321,35 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		gotoOp := &InterpreterOperation{
 			OpCode: OpCode_Goto,
+			Target: s.Label,
 			Index:  loopStart,
 		}
 		*ops = append(*ops, gotoOp)
+		loopEnd := len(*ops)
+		resolveGoToIndexes(ops, s.Label, loopStart, loopEnd, loopStart, loopEnd)
 
-		// perform second pass over loop statements to add labels
-		for idx := loopStart; idx < len(*ops); idx++ {
-			op := (*ops)[idx]
-			switch op.OpCode {
-			case OpCode_Goto:
-				if op.Target == s.Label {
-					(*ops)[idx].Index = len(*ops)
-				}
-			default:
-				continue
-			}
+	case *ast.Iterate:
+		iterateOp := &InterpreterOperation{
+			OpCode: OpCode_Goto,
+			Target: s.Label,
+			Index:  stack.GetLabel(s.Label), // possible this is -1, which will get resolved later
 		}
+		*ops = append(*ops, iterateOp)
 
 	case *ast.Leave:
 		leaveOp := &InterpreterOperation{
 			OpCode: OpCode_Goto,
-			Target: s.Label, // hacky? way to signal a leave
+			Target: s.Label,
+			Index:  -2, // -2 indicates that this is a leave statement with unknown target index
 		}
 		*ops = append(*ops, leaveOp)
 
-
 	default:
-		execOp := &InterpreterOperation{
+		executeOp := &InterpreterOperation{
 			OpCode:      OpCode_Execute,
 			PrimaryData: s,
 		}
-		*ops = append(*ops, execOp)
+		*ops = append(*ops, executeOp)
 	}
 
 	return nil
