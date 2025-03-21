@@ -201,29 +201,33 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "FETCH multiple rows",
+			Name: "SQLEXCEPTION declare handler",
 			SetUpScript: []string{
+				`DROP TABLE IF EXISTS t1;`,
 				`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
 				`
-CREATE PROCEDURE p1()
+CREATE PROCEDURE eof()
 BEGIN
-	DECLARE a, b INT;
-	DECLARE cur1 CURSOR FOR SELECT pk FROM t1;
-	DELETE FROM t1;
-    INSERT INTO t1 VALUES (1), (2);
-    OPEN cur1;
-    FETCH cur1 INTO a;
-    FETCH cur1 INTO b;
-    CLOSE cur1;
-    SELECT a, b;
+	DECLARE a, b INT DEFAULT 1;
+   DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+   OPEN cur1;
+   BEGIN
+		DECLARE EXIT HANDLER FOR SQLEXCEPTION SET a = 7;
+		tloop: LOOP
+			FETCH cur1 INTO b;
+           IF a > 1000 THEN
+				LEAVE tloop;
+           END IF;
+		END LOOP;
+   END;
+   CLOSE cur1;
+   SELECT a;
 END;`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "CALL p1();",
-					Expected: []sql.Row{
-						{1, 2},
-					},
+					Query:    "CALL eof();",
+					Expected: []sql.Row{},
 				},
 			},
 		},
