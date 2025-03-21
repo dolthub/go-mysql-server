@@ -21,6 +21,8 @@ import (
 	"time"
 )
 
+const DisableMergeJoin = "disable_merge_join"
+
 // StatisticsTable is a table that can provide information about its number of rows and other facts to improve query
 // planning performance.
 type StatisticsTable interface {

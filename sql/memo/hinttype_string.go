@@ -11,20 +11,21 @@ func _() {
 	_ = x[HintTypeUnknown-0]
 	_ = x[HintTypeJoinOrder-1]
 	_ = x[HintTypeJoinFixedOrder-2]
-	_ = x[HintTypeMergeJoin-3]
-	_ = x[HintTypeLookupJoin-4]
-	_ = x[HintTypeHashJoin-5]
-	_ = x[HintTypeSemiJoin-6]
-	_ = x[HintTypeAntiJoin-7]
-	_ = x[HintTypeInnerJoin-8]
-	_ = x[HintTypeLeftOuterLookupJoin-9]
-	_ = x[HintTypeNoIndexConditionPushDown-10]
-	_ = x[HintTypeLeftDeep-11]
+	_ = x[HintTypeNoMergeJoin-3]
+	_ = x[HintTypeMergeJoin-4]
+	_ = x[HintTypeLookupJoin-5]
+	_ = x[HintTypeHashJoin-6]
+	_ = x[HintTypeSemiJoin-7]
+	_ = x[HintTypeAntiJoin-8]
+	_ = x[HintTypeInnerJoin-9]
+	_ = x[HintTypeLeftOuterLookupJoin-10]
+	_ = x[HintTypeNoIndexConditionPushDown-11]
+	_ = x[HintTypeLeftDeep-12]
 }
 
-const _HintType_name = "JOIN_ORDERJOIN_FIXED_ORDERMERGE_JOINLOOKUP_JOINHASH_JOINSEMI_JOINANTI_JOININNER_JOINLEFT_OUTER_LOOKUP_JOINNO_ICPLEFT_DEEP"
+const _HintType_name = "JOIN_ORDERJOIN_FIXED_ORDERNO_MERGE_JOINMERGE_JOINLOOKUP_JOINHASH_JOINSEMI_JOINANTI_JOININNER_JOINLEFT_OUTER_LOOKUP_JOINNO_ICPLEFT_DEEP"
 
-var _HintType_index = [...]uint8{0, 0, 10, 26, 36, 47, 56, 65, 74, 84, 106, 112, 121}
+var _HintType_index = [...]uint8{0, 0, 10, 26, 39, 49, 60, 69, 78, 87, 97, 119, 125, 134}
 
 func (i HintType) String() string {
 	if i >= HintType(len(_HintType_index)-1) {

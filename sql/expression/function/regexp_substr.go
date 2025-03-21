@@ -133,7 +133,13 @@ func (r *RegexpSubstr) WithChildren(children ...sql.Expression) (sql.Expression,
 	if len(children) != required {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), required)
 	}
-	return NewRegexpSubstr(children...)
+
+	// Copy over the regex instance, in case it has already been set to avoid leaking it.
+	substr, err := NewRegexpSubstr(children...)
+	if r.re != nil && substr != nil {
+		substr.(*RegexpSubstr).re = r.re
+	}
+	return substr, err
 }
 
 // String implements the sql.Expression interface.
