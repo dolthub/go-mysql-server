@@ -159,6 +159,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		ConnWriteTimeout:         cfg.ConnWriteTimeout,
 		MaxConns:                 cfg.MaxConnections,
 		MaxWaitConns:             cfg.MaxWaitConnections,
+		MaxWaitConnsTimeout:      cfg.MaxWaitConnectionsTimeout,
 		ConnReadBufferSize:       mysql.DefaultConnBufferSize,
 		AllowClearTextWithoutTLS: cfg.AllowClearTextWithoutTLS,
 	}
