@@ -110,7 +110,7 @@ func TestVectorIndex(t *testing.T) {
 		IsReverse:       false,
 	}
 
-	vectorIndexTable := vectorIndexTable{child.IndexedAccess(indexLookup)}
+	vectorIndexTable := vectorIndexTable{child.IndexedAccess(ctx, indexLookup)}
 
 	for _, testCase := range vectorIndexTestCases(t, db, vectorIndexTable) {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -221,7 +221,7 @@ func (i vectorIndexTable) IndexWithPrefix(ctx *sql.Context, expressions []string
 	panic("implement me")
 }
 
-func (i vectorIndexTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+func (i vectorIndexTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
 	return i
 }
 
