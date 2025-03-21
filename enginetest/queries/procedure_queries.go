@@ -1269,11 +1269,11 @@ END;`,
 			`CREATE PROCEDURE duplicate_key()
 BEGIN
 	DECLARE a, b INT DEFAULT 1;
-    BEGIN
+	BEGIN
 		DECLARE EXIT HANDLER FOR SQLEXCEPTION SET a = 7;
 		INSERT INTO t1 values (0);
-    END;
-    SELECT a;
+	END;
+	SELECT a;
 END;`,
 		},
 		Assertions: []ScriptTestAssertion{

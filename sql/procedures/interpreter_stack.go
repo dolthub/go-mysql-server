@@ -98,8 +98,8 @@ type InterpreterCursor struct {
 
 // InterpreterHandler is a declare handler that specifies an Action during an error Condition.
 type InterpreterHandler struct {
-	Condition string
-	Action    string
+	Condition ast.DeclareHandlerConditionValue
+	Action    ast.DeclareHandlerAction
 	Statement ast.Statement
 }
 
@@ -147,7 +147,7 @@ func NewInterpreterStack() *InterpreterStack {
 	stack.Push(&InterpreterScopeDetails{
 		conditions: make(map[string]*InterpreterCondition),
 		cursors:    make(map[string]*InterpreterCursor),
-		handlers:   make([]*InterpreterHandler),
+		handlers:   make([]*InterpreterHandler, 0),
 		variables:  make(map[string]*InterpreterVariable),
 	})
 	return &InterpreterStack{
@@ -242,7 +242,7 @@ func (is *InterpreterStack) GetCursor(name string) *InterpreterCursor {
 }
 
 // NewHandler creates a new handler in the current scope.
-func (is *InterpreterStack) NewHandler(cond string, action string, stmt ast.Statement) {
+func (is *InterpreterStack) NewHandler(cond ast.DeclareHandlerConditionValue, action ast.DeclareHandlerAction, stmt ast.Statement) {
 	is.stack.Peek().handlers = append(is.stack.Peek().handlers, &InterpreterHandler{
 		Condition: cond,
 		Action:    action,

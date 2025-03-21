@@ -233,7 +233,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 
 	return &callIter{
 		call:      n,
-		innerIter: rowIter.(sql.RowIter),
+		innerIter: rowIter,
 	}, nil
 }
 

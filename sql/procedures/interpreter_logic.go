@@ -15,16 +15,18 @@
 package procedures
 
 import (
+	"errors"
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
-"io"
+	"io"
 	"strconv"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
-		ast "github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/dolthub/vitess/go/mysql"
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // InterpreterNode is an interface that implements an interpreter. These are typically used for functions (which may be
@@ -239,8 +241,469 @@ func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sq
 	return sql.RowsToRowIter(rows...), nil
 }
 
+// handleError handles errors that occur during the execution of a procedure according to the defined handlers.
+func handleError(ctx *sql.Context, stack *InterpreterStack, runner sql.StatementRunner, err error) error {
+	// TODO: just copy logic from expression/procedurereference.go
+	if err == nil {
+		return nil
+	}
+
+	var matchingHandler *InterpreterHandler
+	for _, handler := range stack.ListHandlers() {
+		if errors.Is(err, expression.FetchEOF) && handler.Condition == ast.DeclareHandlerCondition_NotFound {
+			matchingHandler = handler
+			break
+		}
+		switch handler.Condition {
+		case ast.DeclareHandlerCondition_MysqlErrorCode:
+        case ast.DeclareHandlerCondition_SqlState:
+        case ast.DeclareHandlerCondition_ConditionName:
+        case ast.DeclareHandlerCondition_SqlWarning:
+        case ast.DeclareHandlerCondition_NotFound:
+		case ast.DeclareHandlerCondition_SqlException:
+			matchingHandler = handler
+			break
+		}
+	}
+
+	if matchingHandler == nil {
+		return err
+	}
+
+	handlerOps := make([]*InterpreterOperation, 0, 1)
+	err = ConvertStmt(&handlerOps, stack, matchingHandler.Statement)
+	if err != nil {
+		return err
+	}
+
+	_, _, rowIter, err := execOp(ctx, runner, stack, handlerOps[0], handlerOps, -1)
+	if err != nil {
+		return err
+	}
+	if rowIter != nil {
+		for {
+			_, err = rowIter.Next(ctx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	switch matchingHandler.Action {
+	case ast.DeclareHandlerAction_Continue:
+		return nil
+	case ast.DeclareHandlerAction_Exit:
+		return io.EOF
+	case ast.DeclareHandlerAction_Undo:
+		return fmt.Errorf("DECLARE UNDO HANDLER is not supported")
+	}
+
+	return nil
+}
+
+func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStack, operation *InterpreterOperation, statements []*InterpreterOperation, counter int) (int, sql.RowIter, sql.RowIter, error) {
+	switch operation.OpCode {
+	case OpCode_Select:
+		selectStmt := operation.PrimaryData.(*ast.Select)
+		if newSelectStmt, err := replaceVariablesInExpr(stack, selectStmt); err == nil {
+			selectStmt = newSelectStmt.(*ast.Select)
+		} else {
+			return 0, nil, nil, err
+		}
+
+		if selectStmt.Into == nil {
+			rowIter, err := query(ctx, runner, selectStmt)
+			if err != nil {
+				return 0, nil, nil, err
+			}
+			return counter, rowIter, rowIter, nil
+		}
+
+		selectInto := selectStmt.Into
+		selectStmt.Into = nil
+		schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		row, err := rowIter.Next(ctx)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		if _, err = rowIter.Next(ctx); err != io.EOF {
+			return 0, nil, nil, err
+		}
+		if err = rowIter.Close(ctx); err != nil {
+			return 0, nil, nil, err
+		}
+		if len(row) != len(selectInto.Variables) {
+			return 0, nil, nil, sql.ErrColumnNumberDoesNotMatch.New()
+		}
+		for i := range selectInto.Variables {
+			intoVar := strings.ToLower(selectInto.Variables[i].String())
+			if strings.HasPrefix(intoVar, "@") {
+				err = ctx.SetUserVariable(ctx, intoVar, row[i], schema[i].Type)
+				if err != nil {
+					return 0, nil, nil, err
+				}
+			}
+			err = stack.SetVariable(intoVar, row[i])
+			if err != nil {
+				return 0, nil, nil, err
+			}
+		}
+
+	case OpCode_Declare:
+		declareStmt := operation.PrimaryData.(*ast.Declare)
+
+		// TODO: duplicate conditions?
+		if cond := declareStmt.Condition; cond != nil {
+			condName := strings.ToLower(cond.Name)
+			stateVal := cond.SqlStateValue
+			var num int64
+			var err error
+			if stateVal != "" {
+				if len(stateVal) != 5 {
+					return 0, nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+				}
+				if stateVal[0:2] == "00" {
+					return 0, nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", stateVal)
+				}
+			} else {
+				// use our own error
+				num, err = strconv.ParseInt(string(cond.MysqlErrorCode.Val), 10, 64)
+				if err != nil || num == 0 {
+					err = fmt.Errorf("invalid value '%s' for MySQL error code", string(cond.MysqlErrorCode.Val))
+					return 0, nil, nil, err
+				}
+			}
+			stack.NewCondition(condName, stateVal, num)
+		}
+
+		// TODO: duplicate cursors?
+		if cursor := declareStmt.Cursor; cursor != nil {
+			cursorName := strings.ToLower(cursor.Name)
+			stack.NewCursor(cursorName, cursor.SelectStmt)
+		}
+
+		// TODO: duplicate handlers?
+		if handler := declareStmt.Handler; handler != nil {
+			if len(handler.ConditionValues) != 1 {
+				return 0, nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
+			}
+
+			hCond := handler.ConditionValues[0]
+			switch hCond.ValueType {
+			case ast.DeclareHandlerCondition_NotFound:
+			case ast.DeclareHandlerCondition_SqlException:
+			default:
+				return 0, nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
+			}
+
+			switch handler.Action {
+			case ast.DeclareHandlerAction_Continue:
+			case ast.DeclareHandlerAction_Exit:
+			case ast.DeclareHandlerAction_Undo:
+				return 0, nil, nil, fmt.Errorf("unsupported handler action: %s", handler.Action)
+			}
+
+			stack.NewHandler(hCond.ValueType, handler.Action, handler.Statement)
+		}
+
+		// TODO: duplicate variables?
+		if vars := declareStmt.Variables; vars != nil {
+			for _, decl := range vars.Names {
+				varType, err := types.ColumnTypeToType(&vars.VarType)
+				if err != nil {
+					return 0, nil, nil, err
+				}
+				varName := strings.ToLower(decl.String())
+				if vars.VarType.Default == nil {
+					stack.NewVariable(varName, varType)
+					continue
+				}
+				stack.NewVariableWithValue(varName, varType, vars.VarType.Default)
+			}
+		}
+
+	case OpCode_Signal:
+		// TODO: copy logic from planbuilder/proc.go: buildSignal()
+		signalStmt := operation.PrimaryData.(*ast.Signal)
+		var msgTxt string
+		var sqlState string
+		var mysqlErrNo int
+		if signalStmt.ConditionName == "" {
+			sqlState = signalStmt.SqlStateValue
+			if sqlState[0:2] == "01" {
+				return 0, nil, nil, fmt.Errorf("warnings not yet implemented")
+			}
+		} else {
+			cond := stack.GetCondition(strings.ToLower(signalStmt.ConditionName))
+			if cond == nil {
+				return 0, nil, nil, sql.ErrDeclareConditionNotFound.New(signalStmt.ConditionName)
+			}
+			sqlState = cond.SQLState
+			mysqlErrNo = int(cond.MySQLErrCode)
+		}
+
+		if len(sqlState) != 5 {
+			return 0, nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+		}
+
+		for _, item := range signalStmt.Info {
+			switch item.ConditionItemName {
+			case ast.SignalConditionItemName_MysqlErrno:
+				switch val := item.Value.(type) {
+				case *ast.SQLVal:
+					num, err := strconv.ParseInt(string(val.Val), 10, 64)
+					if err != nil || num == 0 {
+						return 0, nil, nil, fmt.Errorf("invalid value '%s' for MySQL error code", string(val.Val))
+					}
+					mysqlErrNo = int(num)
+				case *ast.ColName:
+					return 0, nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
+				default:
+					return 0, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
+				}
+			case ast.SignalConditionItemName_MessageText:
+				switch val := item.Value.(type) {
+				case *ast.SQLVal:
+					msgTxt = string(val.Val)
+					if len(msgTxt) > 128 {
+						return 0, nil, nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
+					}
+				case *ast.ColName:
+					return 0, nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
+				default:
+					return 0, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
+				}
+			default:
+				switch val := item.Value.(type) {
+				case *ast.SQLVal:
+					msgTxt = string(val.Val)
+					if len(msgTxt) > 64 {
+						return 0, nil, nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(item.ConditionItemName)))
+					}
+				default:
+					return 0, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item '%s''", item.Value, strings.ToUpper(string(item.ConditionItemName)))
+				}
+			}
+		}
+
+		if mysqlErrNo == 0 {
+			switch sqlState[0:2] {
+			case "01":
+				mysqlErrNo = 1642
+			case "02":
+				mysqlErrNo = 1643
+			default:
+				mysqlErrNo = 1644
+			}
+		}
+
+		if msgTxt == "" {
+			switch sqlState[0:2] {
+			case "00":
+				return 0, nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", sqlState)
+			case "01":
+				msgTxt = "Unhandled user-defined warning condition"
+			case "02":
+				msgTxt = "Unhandled user-defined not found condition"
+			default:
+				msgTxt = "Unhandled user-defined exception condition"
+			}
+		}
+
+		return 0, nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, msgTxt)
+
+	case OpCode_Open:
+		openCur := operation.PrimaryData.(*ast.OpenCursor)
+		cursor := stack.GetCursor(strings.ToLower(openCur.Name))
+		if cursor == nil {
+			return 0, nil, nil, sql.ErrCursorNotFound.New(openCur.Name)
+		}
+		if cursor.RowIter != nil {
+			return 0, nil, nil, sql.ErrCursorAlreadyOpen.New(openCur.Name)
+		}
+		stmt, err := replaceVariablesInExpr(stack, cursor.SelectStmt)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", stmt.(ast.Statement), nil, nil)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		cursor.Schema = schema
+		cursor.RowIter = rowIter
+
+	case OpCode_Fetch:
+		fetchCur := operation.PrimaryData.(*ast.FetchCursor)
+		cursor := stack.GetCursor(strings.ToLower(fetchCur.Name))
+		if cursor == nil {
+			return 0, nil, nil, sql.ErrCursorNotFound.New(fetchCur.Name)
+		}
+		if cursor.RowIter == nil {
+			return 0, nil, nil, sql.ErrCursorNotOpen.New(fetchCur.Name)
+		}
+		row, err := cursor.RowIter.Next(ctx)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		if len(row) != len(fetchCur.Variables) {
+			return 0, nil, nil, sql.ErrFetchIncorrectCount.New()
+		}
+		for i := range fetchCur.Variables {
+			varName := strings.ToLower(fetchCur.Variables[i])
+			if strings.HasPrefix(varName, "@") {
+				err = ctx.SetUserVariable(ctx, varName, row[i], cursor.Schema[i].Type)
+				if err != nil {
+					return 0, nil, nil, err
+				}
+				continue
+			}
+			err = stack.SetVariable(varName, row[i])
+			if err != nil {
+				return 0, nil, nil, err
+			}
+		}
+
+	case OpCode_Close:
+		closeCur := operation.PrimaryData.(*ast.CloseCursor)
+		cursor := stack.GetCursor(strings.ToLower(closeCur.Name))
+		if cursor == nil {
+			return 0, nil, nil, sql.ErrCursorNotFound.New(closeCur.Name)
+		}
+		if cursor.RowIter == nil {
+			return 0, nil, nil, sql.ErrCursorNotOpen.New(closeCur.Name)
+		}
+		if err := cursor.RowIter.Close(ctx); err != nil {
+			return 0, nil, nil, err
+		}
+		cursor.RowIter = nil
+
+	case OpCode_Set:
+		selectStmt := operation.PrimaryData.(*ast.Select)
+		if selectStmt.SelectExprs == nil {
+			panic("select stmt with no select exprs")
+		}
+		for i := range selectStmt.SelectExprs {
+			newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
+			if err != nil {
+				return 0, nil, nil, err
+			}
+			selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
+		}
+		_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		row, err := rowIter.Next(ctx)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		if _, err = rowIter.Next(ctx); err != io.EOF {
+			return 0, nil, nil, err
+		}
+		if err = rowIter.Close(ctx); err != nil {
+			return 0, nil, nil, err
+		}
+
+		err = stack.SetVariable(strings.ToLower(operation.Target), row[0])
+		if err != nil {
+			return 0, nil, nil, err
+		}
+
+	case OpCode_If:
+		selectStmt := operation.PrimaryData.(*ast.Select)
+		if selectStmt.SelectExprs == nil {
+			panic("select stmt with no select exprs")
+		}
+		for i := range selectStmt.SelectExprs {
+			newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
+			if err != nil {
+				return 0, nil, nil, err
+			}
+			selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
+		}
+		_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		// TODO: exactly one result that is a bool for now
+		row, err := rowIter.Next(ctx)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		if _, err = rowIter.Next(ctx); err != io.EOF {
+			return 0, nil, nil, err
+		}
+		if err = rowIter.Close(ctx); err != nil {
+			return 0, nil, nil, err
+		}
+
+		// go to the appropriate block
+		cond, _, err := types.Boolean.Convert(row[0])
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		if cond == nil || cond.(int8) == 0 {
+			counter = operation.Index - 1 // index of the else block, offset by 1
+		}
+
+	case OpCode_Goto:
+		// We must compare to the index - 1, so that the increment hits our target
+		if counter <= operation.Index {
+			for ; counter < operation.Index-1; counter++ {
+				switch statements[counter].OpCode {
+				case OpCode_ScopeBegin:
+					stack.PushScope()
+				case OpCode_ScopeEnd:
+					stack.PopScope()
+				default:
+					// No-op
+				}
+			}
+		} else {
+			for ; counter > operation.Index-1; counter-- {
+				switch statements[counter].OpCode {
+				case OpCode_ScopeBegin:
+					stack.PopScope()
+				case OpCode_ScopeEnd:
+					stack.PushScope()
+				default:
+					// No-op
+				}
+			}
+		}
+
+	case OpCode_Execute:
+		stmt, err := replaceVariablesInExpr(stack, operation.PrimaryData)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		rowIter, err := query(ctx, runner, stmt.(ast.Statement))
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		return counter, nil, rowIter, err
+
+	case OpCode_Exception:
+		return 0, nil, nil, operation.Error
+
+	case OpCode_ScopeBegin:
+		stack.PushScope()
+
+	case OpCode_ScopeEnd:
+		stack.PopScope()
+
+	default:
+		panic("unimplemented opcode")
+	}
+
+	return counter, nil, nil, nil
+}
+
 // Call runs the contained operations on the given runner.
-func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *InterpreterStack, error) {
+func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.RowIter, *InterpreterStack, error) {
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()
@@ -266,404 +729,23 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (any, *I
 		}
 
 		operation := statements[counter]
-		switch operation.OpCode {
-		case OpCode_Select:
-			selectStmt := operation.PrimaryData.(*ast.Select)
-			if newSelectStmt, err := replaceVariablesInExpr(stack, selectStmt); err == nil {
-				selectStmt = newSelectStmt.(*ast.Select)
-			} else {
+		newCounter, newSelIter, rowIter, err := execOp(ctx, runner, stack, operation, statements, counter)
+		if err = handleError(ctx, stack, runner, err); err != nil {
+			if err != io.EOF {
 				return nil, nil, err
 			}
-
-			if selectStmt.Into == nil {
-				rowIter, err := query(ctx, runner, selectStmt)
-				if err != nil {
-					return nil, nil, err
-				}
-				rowIters = append(rowIters, rowIter)
-				selIter = rowIter
-				continue
+			for counter < len(statements) && statements[counter].OpCode != OpCode_ScopeEnd {
+				counter++
 			}
-
-			selectInto := selectStmt.Into
-			selectStmt.Into = nil
-			schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
-			if err != nil {
-				return nil, nil, err
-			}
-			row, err := rowIter.Next(ctx)
-			if err != nil {
-				return nil, nil, err
-			}
-			if _, err = rowIter.Next(ctx); err != io.EOF {
-				return nil, nil, err
-			}
-			if err = rowIter.Close(ctx); err != nil {
-				return nil, nil, err
-			}
-			if len(row) != len(selectInto.Variables) {
-				return nil, nil, sql.ErrColumnNumberDoesNotMatch.New()
-			}
-			for i := range selectInto.Variables {
-				intoVar := strings.ToLower(selectInto.Variables[i].String())
-				if strings.HasPrefix(intoVar, "@") {
-					err = ctx.SetUserVariable(ctx, intoVar, row[i], schema[i].Type)
-					if err != nil {
-						return nil, nil, err
-					}
-				}
-				err = stack.SetVariable(intoVar, row[i])
-				if err != nil {
-					return nil, nil, err
-				}
-			}
-
-		case OpCode_Declare:
-			declareStmt := operation.PrimaryData.(*ast.Declare)
-
-			// TODO: duplicate conditions?
-			if cond := declareStmt.Condition; cond != nil {
-				condName := strings.ToLower(cond.Name)
-				stateVal := cond.SqlStateValue
-				var num int64
-				var err error
-				if stateVal != "" {
-					if len(stateVal) != 5 {
-						return nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
-					}
-					if stateVal[0:2] == "00" {
-						return nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", stateVal)
-					}
-				} else {
-					// use our own error
-					num, err = strconv.ParseInt(string(cond.MysqlErrorCode.Val), 10, 64)
-					if err != nil || num == 0 {
-						err = fmt.Errorf("invalid value '%s' for MySQL error code", string(cond.MysqlErrorCode.Val))
-						return nil, nil, err
-					}
-				}
-				stack.NewCondition(condName, stateVal, num)
-			}
-
-			// TODO: duplicate cursors?
-			if cursor := declareStmt.Cursor; cursor != nil {
-				cursorName := strings.ToLower(cursor.Name)
-				stack.NewCursor(cursorName, cursor.SelectStmt)
-			}
-
-			// TODO: duplicate handlers?
-			if handler := declareStmt.Handler; handler != nil {
-				if len(handler.ConditionValues) != 1 {
-					return nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
-				}
-
-				hCond := handler.ConditionValues[0]
-				switch hCond.ValueType {
-				case ast.DeclareHandlerCondition_NotFound:
-				case ast.DeclareHandlerCondition_SqlState:
-				default:
-					return nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
-				}
-
-				switch handler.Action {
-				case ast.DeclareHandlerAction_Continue:
-				case ast.DeclareHandlerAction_Exit:
-				case ast.DeclareHandlerAction_Undo:
-					return nil, nil, fmt.Errorf("unsupported handler action: %s", handler.Action)
-				}
-
-				stack.NewHandler(string(hCond.ValueType), string(handler.Action), handler.Statement)
-			}
-
-			// TODO: duplicate variables?
-			if vars := declareStmt.Variables; vars != nil {
-				for _, decl := range vars.Names {
-					varType, err := types.ColumnTypeToType(&vars.VarType)
-					if err != nil {
-						return nil, nil, err
-					}
-					varName := strings.ToLower(decl.String())
-					if vars.VarType.Default == nil {
-						stack.NewVariable(varName, varType)
-						continue
-					}
-					stack.NewVariableWithValue(varName, varType, vars.VarType.Default)
-				}
-			}
-
-		case OpCode_Signal:
-			// TODO: copy logic from planbuilder/proc.go: buildSignal()
-			signalStmt := operation.PrimaryData.(*ast.Signal)
-			var msgTxt string
-			var sqlState string
-			var mysqlErrNo int
-			if signalStmt.ConditionName == "" {
-				sqlState = signalStmt.SqlStateValue
-				if sqlState[0:2] == "01" {
-					return nil, nil, fmt.Errorf("warnings not yet implemented")
-				}
-			} else {
-				cond := stack.GetCondition(strings.ToLower(signalStmt.ConditionName))
-				if cond == nil {
-					return nil, nil, sql.ErrDeclareConditionNotFound.New(signalStmt.ConditionName)
-				}
-				sqlState = cond.SQLState
-				mysqlErrNo = int(cond.MySQLErrCode)
-			}
-
-			if len(sqlState) != 5 {
-				return nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
-			}
-
-			for _, item := range signalStmt.Info {
-				switch item.ConditionItemName {
-				case ast.SignalConditionItemName_MysqlErrno:
-					switch val := item.Value.(type) {
-					case *ast.SQLVal:
-						num, err := strconv.ParseInt(string(val.Val), 10, 64)
-						if err != nil || num == 0 {
-							return nil, nil, fmt.Errorf("invalid value '%s' for MySQL error code", string(val.Val))
-						}
-						mysqlErrNo = int(num)
-					case *ast.ColName:
-						return nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
-					default:
-						return nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
-					}
-				case ast.SignalConditionItemName_MessageText:
-					switch val := item.Value.(type) {
-					case *ast.SQLVal:
-						msgTxt = string(val.Val)
-						if len(msgTxt) > 128 {
-							return nil, nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
-						}
-					case *ast.ColName:
-						return nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
-					default:
-						return nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
-					}
-				default:
-					switch val := item.Value.(type) {
-					case *ast.SQLVal:
-						msgTxt = string(val.Val)
-						if len(msgTxt) > 64 {
-							return nil, nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(item.ConditionItemName)))
-						}
-					default:
-						return nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item '%s''", item.Value, strings.ToUpper(string(item.ConditionItemName)))
-					}
-				}
-			}
-
-			if mysqlErrNo == 0 {
-				switch sqlState[0:2] {
-				case "01":
-					mysqlErrNo = 1642
-				case "02":
-					mysqlErrNo = 1643
-				default:
-					mysqlErrNo = 1644
-				}
-			}
-
-			if msgTxt == "" {
-				switch sqlState[0:2] {
-				case "00":
-					return nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", sqlState)
-				case "01":
-					msgTxt = "Unhandled user-defined warning condition"
-				case "02":
-					msgTxt = "Unhandled user-defined not found condition"
-				default:
-					msgTxt = "Unhandled user-defined exception condition"
-				}
-			}
-
-			return nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, msgTxt)
-
-		case OpCode_Open:
-			openCur := operation.PrimaryData.(*ast.OpenCursor)
-			cursor := stack.GetCursor(strings.ToLower(openCur.Name))
-			if cursor == nil {
-				return nil, nil, sql.ErrCursorNotFound.New(openCur.Name)
-			}
-			if cursor.RowIter != nil {
-				return nil, nil, sql.ErrCursorAlreadyOpen.New(openCur.Name)
-			}
-			stmt, err := replaceVariablesInExpr(stack, cursor.SelectStmt)
-			if err != nil {
-				return nil, nil, err
-			}
-			schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", stmt.(ast.Statement), nil, nil)
-			if err != nil {
-				return nil, nil, err
-			}
-			cursor.Schema = schema
-			cursor.RowIter = rowIter
-
-		case OpCode_Fetch:
-			fetchCur := operation.PrimaryData.(*ast.FetchCursor)
-			cursor := stack.GetCursor(strings.ToLower(fetchCur.Name))
-			if cursor == nil {
-				return nil, nil, sql.ErrCursorNotFound.New(fetchCur.Name)
-			}
-			if cursor.RowIter == nil {
-				return nil, nil, sql.ErrCursorNotOpen.New(fetchCur.Name)
-			}
-			row, err := cursor.RowIter.Next(ctx)
-			if err != nil {
-				return nil, nil, err
-			}
-			if len(row) != len(fetchCur.Variables) {
-				return nil, nil, sql.ErrFetchIncorrectCount.New()
-			}
-			for i := range fetchCur.Variables {
-				varName := strings.ToLower(fetchCur.Variables[i])
-				if strings.HasPrefix(varName, "@") {
-					err = ctx.SetUserVariable(ctx, varName, row[i], cursor.Schema[i].Type)
-					if err != nil {
-						return nil, nil, err
-					}
-					continue
-				}
-				err = stack.SetVariable(varName, row[i])
-				if err != nil {
-					return nil, nil, err
-				}
-			}
-
-		case OpCode_Close:
-			closeCur := operation.PrimaryData.(*ast.CloseCursor)
-			cursor := stack.GetCursor(strings.ToLower(closeCur.Name))
-			if cursor == nil {
-				return nil, nil, sql.ErrCursorNotFound.New(closeCur.Name)
-			}
-			if cursor.RowIter == nil {
-				return nil, nil, sql.ErrCursorNotOpen.New(closeCur.Name)
-			}
-			if err := cursor.RowIter.Close(ctx); err != nil {
-				return nil, nil, err
-			}
-			cursor.RowIter = nil
-
-		case OpCode_Set:
-			selectStmt := operation.PrimaryData.(*ast.Select)
-			if selectStmt.SelectExprs == nil {
-				panic("select stmt with no select exprs")
-			}
-			for i := range selectStmt.SelectExprs {
-				newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
-				if err != nil {
-					return nil, nil, err
-				}
-				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
-			}
-			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
-			if err != nil {
-				return nil, nil, err
-			}
-			row, err := rowIter.Next(ctx)
-			if err != nil {
-				return nil, nil, err
-			}
-			if _, err = rowIter.Next(ctx); err != io.EOF {
-				return nil, nil, err
-			}
-			if err = rowIter.Close(ctx); err != nil {
-				return nil, nil, err
-			}
-
-			err = stack.SetVariable(strings.ToLower(operation.Target), row[0])
-			if err != nil {
-				return nil, nil, err
-			}
-
-		case OpCode_If:
-			selectStmt := operation.PrimaryData.(*ast.Select)
-			if selectStmt.SelectExprs == nil {
-				panic("select stmt with no select exprs")
-			}
-			for i := range selectStmt.SelectExprs {
-				newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i])
-				if err != nil {
-					return nil, nil, err
-				}
-				selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
-			}
-			_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
-			if err != nil {
-				return nil, nil, err
-			}
-			// TODO: exactly one result that is a bool for now
-			row, err := rowIter.Next(ctx)
-			if err != nil {
-				return nil, nil, err
-			}
-			if _, err = rowIter.Next(ctx); err != io.EOF {
-				return nil, nil, err
-			}
-			if err = rowIter.Close(ctx); err != nil {
-				return nil, nil, err
-			}
-
-			// go to the appropriate block
-			cond, _, err := types.Boolean.Convert(row[0])
-			if err != nil {
-				return nil, nil, err
-			}
-			if cond == nil || cond.(int8) == 0 {
-				counter = operation.Index - 1 // index of the else block, offset by 1
-			}
-
-		case OpCode_Goto:
-			// We must compare to the index - 1, so that the increment hits our target
-			if counter <= operation.Index {
-				for ; counter < operation.Index-1; counter++ {
-					switch statements[counter].OpCode {
-					case OpCode_ScopeBegin:
-						stack.PushScope()
-					case OpCode_ScopeEnd:
-						stack.PopScope()
-					default:
-						// No-op
-					}
-				}
-			} else {
-				for ; counter > operation.Index-1; counter-- {
-					switch statements[counter].OpCode {
-					case OpCode_ScopeBegin:
-						stack.PopScope()
-					case OpCode_ScopeEnd:
-						stack.PushScope()
-					default:
-						// No-op
-					}
-				}
-			}
-
-		case OpCode_Execute:
-			stmt, err := replaceVariablesInExpr(stack, operation.PrimaryData)
-			if err != nil {
-				return nil, nil, err
-			}
-			rowIter, err := query(ctx, runner, stmt.(ast.Statement))
-			if err != nil {
-				return nil, nil, err
-			}
-			rowIters = append(rowIters, rowIter)
-
-		case OpCode_Exception:
-			return nil, nil, operation.Error
-
-		case OpCode_ScopeBegin:
-			stack.PushScope()
-
-		case OpCode_ScopeEnd:
-			stack.PopScope()
-
-		default:
-			panic("unimplemented opcode")
+			newCounter = counter
 		}
+		if rowIter != nil {
+			rowIters = append(rowIters, rowIter)
+		}
+		if newSelIter != nil {
+			selIter = newSelIter
+		}
+		counter = newCounter
 	}
 
 	if selIter != nil {
