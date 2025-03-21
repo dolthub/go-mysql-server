@@ -988,7 +988,7 @@ END;`,
 				Expected: []sql.Row{{}},
 			},
 			{
-				Query:    "CALL p1(@x);",
+				Query: "CALL p1(@x);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
