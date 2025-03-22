@@ -105,8 +105,9 @@ type InterpreterHandler struct {
 
 // InterpreterVariable is a variable that lives on the stack.
 type InterpreterVariable struct {
-	Type  sql.Type
-	Value any
+	Type       sql.Type
+	Value      any
+	HasBeenSet bool
 }
 
 func (iv *InterpreterVariable) ToAST() ast.Expr {
@@ -231,6 +232,7 @@ func (is *InterpreterStack) SetVariable(name string, val any) error {
 		return fmt.Errorf("variable `%s` could not be found", name)
 	}
 	iv.Value = val
+	iv.HasBeenSet = true
 	return nil
 }
 

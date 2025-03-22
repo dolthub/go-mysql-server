@@ -221,7 +221,11 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 				return nil, err
 			}
 		case *expression.UserVar:
-			err = ctx.SetUserVariable(ctx, p.Name, stackVar.Value, stackVar.Type)
+			val := stackVar.Value
+			if procParam.Direction == plan.ProcedureParamDirection_Out && !stackVar.HasBeenSet {
+				val = nil
+			}
+			err = ctx.SetUserVariable(ctx, p.Name, val, stackVar.Type)
 			if err != nil {
 				return nil, err
 			}
