@@ -2217,9 +2217,7 @@ var ProcedureCallTests = []ScriptTest{
 			{
 				Query: "SELECT @outparam",
 				Expected: []sql.Row{
-					{
-						nil,
-					},
+					{nil},
 				},
 			},
 		},

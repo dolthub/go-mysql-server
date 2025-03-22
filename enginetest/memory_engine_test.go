@@ -200,37 +200,22 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
-		{
-			Name: "SQLEXCEPTION declare handler",
-			SetUpScript: []string{
-				`DROP TABLE IF EXISTS t1;`,
-				`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
-				`
-CREATE PROCEDURE eof()
-BEGIN
-	DECLARE a, b INT DEFAULT 1;
-   DECLARE cur1 CURSOR FOR SELECT * FROM t1;
-   OPEN cur1;
-   BEGIN
-		DECLARE EXIT HANDLER FOR SQLEXCEPTION SET a = 7;
-		tloop: LOOP
-			FETCH cur1 INTO b;
-           IF a > 1000 THEN
-				LEAVE tloop;
-           END IF;
-		END LOOP;
-   END;
-   CLOSE cur1;
-   SELECT a;
-END;`,
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "CALL eof();",
-					Expected: []sql.Row{},
+	{
+		Name: "OUT param without SET",
+		SetUpScript: []string{
+			"SET @outparam = 5",
+			"CREATE PROCEDURE testabc(OUT x BIGINT) SELECT x",
+			"CALL testabc(@outparam)",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{nil},
 				},
 			},
 		},
+	},
 	}
 
 	for _, test := range scripts {

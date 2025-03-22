@@ -264,7 +264,6 @@ func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sq
 
 // handleError handles errors that occur during the execution of a procedure according to the defined handlers.
 func handleError(ctx *sql.Context, stack *InterpreterStack, runner sql.StatementRunner, err error) error {
-	// TODO: just copy logic from expression/procedurereference.go
 	if err == nil {
 		return nil
 	}
