@@ -2933,7 +2933,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				Query:          "call drop_proc()",
-				ExpectedErrStr: "Unknown table 't'",
+				ExpectedErrStr: "table not found: t",
 			},
 		},
 	},
