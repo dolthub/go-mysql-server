@@ -2969,16 +2969,22 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "procedure must not contain CREATE VIEW",
-		SetUpScript: []string{},
+		Name:        "procedure can CREATE VIEW",
+		SetUpScript: []string{
+
+		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:          "create procedure p() create view v as select 1;",
-				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
+				Query:    "create procedure p1() create view v as select 1;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
 			},
 			{
-				Query:          "create procedure p() begin create view v as select 1; end;",
-				ExpectedErrStr: "CREATE statements in CREATE PROCEDURE not yet supported",
+				Query:    "create procedure p() begin create view v as select 1; end;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
 			},
 		},
 	},
