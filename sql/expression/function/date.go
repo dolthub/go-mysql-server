@@ -476,6 +476,22 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if err != nil || date == nil {
 		return &UnixTimestamp{Date: arg}, nil
 	}
+	// special case: text types with fractional seconds preserve scale
+	if types.IsText(arg.Type()) {
+		dateStr := date.(string)
+		idx := strings.Index(dateStr, ".")
+		if idx != -1 {
+			dateStr = strings.TrimSpace(dateStr[idx:])
+			scale := uint8(len(dateStr) - 1)
+			if scale > 0 {
+				typ, tErr := types.CreateDecimalType(19, scale)
+				if tErr != nil {
+					return nil, tErr
+				}
+				return &UnixTimestamp{Date: arg, typ: typ}, nil
+			}
+		}
+	}
 	date, _, err = types.DatetimeMaxPrecision.Convert(date)
 	if err != nil {
 		return &UnixTimestamp{Date: arg}, nil

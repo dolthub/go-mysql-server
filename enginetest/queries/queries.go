@@ -10218,6 +10218,20 @@ from typestable`,
 			{"     └─ name: "},
 		},
 	},
+
+	// check that string timestamps preserve trailing 0s
+	{
+		Query:    "select unix_timestamp('2001-02-03 12:34:56.10');",
+		Expected: []sql.Row{
+			{"981228896.10"},
+		},
+	},
+	{
+		Query:    "select unix_timestamp('2001-02-03 12:34:56.000000');",
+		Expected: []sql.Row{
+			{"981228896.000000"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
