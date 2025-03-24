@@ -201,18 +201,23 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 	{
-		Name: "OUT param without SET",
-		SetUpScript: []string{
-			"SET @outparam = 5",
-			"CREATE PROCEDURE testabc(OUT x BIGINT) SELECT x",
-			"CALL testabc(@outparam)",
-		},
+		Name: "creating invalid procedure doesn't error until it is called",
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query: "SELECT @outparam",
-				Expected: []sql.Row{
-					{nil},
-				},
+				Query:    `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "CALL proc1(@out_count);",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:    "CREATE TABLE mytable (i int, s varchar(128));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "CALL proc1(@out_count);",
+				ExpectedErr: sql.ErrFunctionNotFound,
 			},
 		},
 	},
