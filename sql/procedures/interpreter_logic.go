@@ -278,10 +278,10 @@ func handleError(ctx *sql.Context, stack *InterpreterStack, runner sql.Statement
 		}
 		switch handler.Condition {
 		case ast.DeclareHandlerCondition_MysqlErrorCode:
-        case ast.DeclareHandlerCondition_SqlState:
-        case ast.DeclareHandlerCondition_ConditionName:
-        case ast.DeclareHandlerCondition_SqlWarning:
-        case ast.DeclareHandlerCondition_NotFound:
+		case ast.DeclareHandlerCondition_SqlState:
+		case ast.DeclareHandlerCondition_ConditionName:
+		case ast.DeclareHandlerCondition_SqlWarning:
+		case ast.DeclareHandlerCondition_NotFound:
 		case ast.DeclareHandlerCondition_SqlException:
 			matchingHandler = handler
 			break

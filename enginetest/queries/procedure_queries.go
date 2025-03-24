@@ -2970,18 +2970,16 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 	},
 	{
 		Name:        "procedure can CREATE VIEW",
-		SetUpScript: []string{
-
-		},
+		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create procedure p1() create view v as select 1;",
+				Query: "create procedure p1() create view v as select 1;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Query:    "create procedure p() begin create view v as select 1; end;",
+				Query: "create procedure p() begin create view v as select 1; end;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
