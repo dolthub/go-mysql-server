@@ -101,6 +101,7 @@ type InterpreterHandler struct {
 	Condition ast.DeclareHandlerConditionValue
 	Action    ast.DeclareHandlerAction
 	Statement ast.Statement
+	Counter   int // This is used to track the current position in the stack for the handler
 }
 
 // InterpreterVariable is a variable that lives on the stack.
@@ -274,11 +275,12 @@ func (is *InterpreterStack) GetCursor(name string) *InterpreterCursor {
 }
 
 // NewHandler creates a new handler in the current scope.
-func (is *InterpreterStack) NewHandler(cond ast.DeclareHandlerConditionValue, action ast.DeclareHandlerAction, stmt ast.Statement) {
+func (is *InterpreterStack) NewHandler(cond ast.DeclareHandlerConditionValue, action ast.DeclareHandlerAction, stmt ast.Statement, counter int) {
 	is.stack.Peek().handlers = append(is.stack.Peek().handlers, &InterpreterHandler{
 		Condition: cond,
 		Action:    action,
 		Statement: stmt,
+		Counter:   counter,
 	})
 }
 

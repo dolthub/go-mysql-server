@@ -263,9 +263,9 @@ func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sq
 }
 
 // handleError handles errors that occur during the execution of a procedure according to the defined handlers.
-func handleError(ctx *sql.Context, stack *InterpreterStack, runner sql.StatementRunner, err error) error {
+func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStack, statements []*InterpreterOperation, counter int, err error) (int, error) {
 	if err == nil {
-		return nil
+		return counter, nil
 	}
 
 	var matchingHandler *InterpreterHandler
@@ -289,38 +289,51 @@ func handleError(ctx *sql.Context, stack *InterpreterStack, runner sql.Statement
 	}
 
 	if matchingHandler == nil {
-		return err
+		return -1, err
 	}
 
 	handlerOps := make([]*InterpreterOperation, 0, 1)
 	err = ConvertStmt(&handlerOps, stack, matchingHandler.Statement)
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	_, _, rowIter, err := execOp(ctx, runner, stack, handlerOps[0], handlerOps, -1)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	if rowIter != nil {
 		for {
 			_, err = rowIter.Next(ctx)
 			if err != nil {
-				return err
+				return -1, err
 			}
 		}
 	}
 
 	switch matchingHandler.Action {
 	case ast.DeclareHandlerAction_Continue:
-		return nil
+		return counter, nil
 	case ast.DeclareHandlerAction_Exit:
-		return io.EOF
+		remainingEndScopes := 1
+		var newCounter int
+		for newCounter = matchingHandler.Counter; newCounter < len(statements); newCounter++ {
+			if remainingEndScopes == 0 {
+				break
+			}
+			switch statements[newCounter].OpCode {
+			case OpCode_ScopeBegin:
+				remainingEndScopes++
+			case OpCode_ScopeEnd:
+				remainingEndScopes--
+			default:
+			}
+		}
+		return newCounter, io.EOF
 	case ast.DeclareHandlerAction_Undo:
-		return fmt.Errorf("DECLARE UNDO HANDLER is not supported")
+		return -1, fmt.Errorf("DECLARE UNDO HANDLER is not supported")
 	}
-
-	return nil
+	return counter, nil
 }
 
 func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStack, operation *InterpreterOperation, statements []*InterpreterOperation, counter int) (int, sql.RowIter, sql.RowIter, error) {
@@ -428,7 +441,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 				return 0, nil, nil, fmt.Errorf("unsupported handler action: %s", handler.Action)
 			}
 
-			stack.NewHandler(hCond.ValueType, handler.Action, handler.Statement)
+			stack.NewHandler(hCond.ValueType, handler.Action, handler.Statement, counter)
 		}
 
 		// TODO: duplicate variables?
@@ -759,16 +772,15 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.Row
 		operation := statements[counter]
 		newCounter, newSelIter, rowIter, err := execOp(ctx, runner, stack, operation, statements, counter)
 		if err != nil {
-			hErr := handleError(ctx, stack, runner, err)
-			if hErr != nil {
-				if hErr != io.EOF {
-					return nil, nil, hErr
-				}
-				for counter < len(statements) && statements[counter].OpCode != OpCode_ScopeEnd {
-					counter++
-				}
+			hCounter, hErr := handleError(ctx, runner, stack, statements, counter, err)
+			if hErr != nil && hErr != io.EOF {
+				return nil, nil, hErr
 			}
-			newCounter = counter
+			if hErr == io.EOF {
+				newCounter = hCounter
+			} else {
+				newCounter = counter
+			}
 		}
 		if rowIter != nil {
 			rowIters = append(rowIters, rowIter)
