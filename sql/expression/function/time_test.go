@@ -17,7 +17,7 @@ package function
 import (
 	"fmt"
 	"math"
-"testing"
+	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
