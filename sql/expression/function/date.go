@@ -477,6 +477,7 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		return &UnixTimestamp{Date: arg}, nil
 	}
 	// special case: text types with fractional seconds preserve scale
+	// e.g. '2000-01-02 12:34:56.000' -> scale 3
 	if types.IsText(arg.Type()) {
 		dateStr := date.(string)
 		idx := strings.Index(dateStr, ".")
