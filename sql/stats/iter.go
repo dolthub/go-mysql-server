@@ -82,7 +82,9 @@ func (s *statsIter) updateIndexMeta() {
 	}
 	s.types = dStat.Types()
 	s.typesStr = typesB.String()
-	s.lowerBoundStr = StringifyKey(dStat.LowerBound(), dStat.Types())
+	if len(dStat.LowerBound()) > 0 {
+		s.lowerBoundStr = StringifyKey(dStat.LowerBound(), dStat.Types())
+	}
 	s.colsStr = strings.Join(dStat.Columns(), ",")
 	s.qual = dStat.Qualifier()
 	s.createdAt = dStat.CreatedAt()
@@ -104,7 +106,9 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 	mcvs := make([]string, mcvCnt)
 
 	for i, mcv := range bucket.Mcvs() {
-		mcvs[i] = StringifyKey(mcv, s.types)
+		if len(mcv) > 0 {
+			mcvs[i] = StringifyKey(mcv, s.types)
+		}
 	}
 
 	return sql.Row{
@@ -139,7 +143,8 @@ func ParseRow(rowStr string, types []sql.Type) (sql.Row, error) {
 func StringifyKey(r sql.Row, typs []sql.Type) string {
 	b := strings.Builder{}
 	sep := ""
-	for i, v := range r {
+	for i := range typs {
+		v := r[i]
 		typ := typs[i]
 		if _, ok := typ.(sql.StringType); ok {
 			typ = types.LongText

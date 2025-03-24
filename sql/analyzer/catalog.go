@@ -405,8 +405,8 @@ func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunctio
 	return nil, false
 }
 
-func (c *Catalog) RefreshTableStats(ctx *sql.Context, table sql.Table, db string) error {
-	return c.StatsProvider.RefreshTableStats(ctx, table, db)
+func (c *Catalog) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) error {
+	return c.StatsProvider.AnalyzeTable(ctx, table, db)
 }
 
 func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {

@@ -40,7 +40,7 @@ func (itr *analyzeTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	msgType := "status"
 	msgText := "OK"
-	err := itr.stats.RefreshTableStats(ctx, t, itr.db)
+	err := itr.stats.AnalyzeTable(ctx, t, itr.db)
 	if err != nil {
 		msgType = "Error"
 		msgText = err.Error()
