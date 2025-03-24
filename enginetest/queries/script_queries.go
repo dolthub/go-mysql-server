@@ -5129,6 +5129,34 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Dialect: "mysql",
+		Name:    "UNIX_TIMESTAMP function preserves trailing 0s",
+		SetUpScript: []string{
+			"SET time_zone = '+07:00';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select unix_timestamp('2001-02-03 12:34:56.10');",
+				Expected: []sql.Row{
+					{"981178496.10"},
+				},
+			},
+			{
+				Query: "select unix_timestamp('2001-02-03 12:34:56.000000');",
+				Expected: []sql.Row{
+					{"981178496.000000"},
+				},
+			},
+			{
+				Query: "select unix_timestamp('2001-02-03 12:34:56.1234567');",
+				Expected: []sql.Row{
+					{"981178496.123457"},
+				},
+			},
+		},
+	},
+
+	{
 		Name: "Querying existing view that references non-existing table",
 		SetUpScript: []string{
 			"CREATE TABLE a(id int primary key, col1 int);",
