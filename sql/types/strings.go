@@ -249,6 +249,9 @@ func (t StringType) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
+	// TODO: Add context parameter to Compare
+	ctx := context.Background()
+
 	var as string
 	var bs string
 	var ok bool
@@ -257,6 +260,11 @@ func (t StringType) Compare(a interface{}, b interface{}) (int, error) {
 		if err != nil {
 			return 0, err
 		}
+		ai, err = sql.UnwrapAny(ctx, ai)
+		if err != nil {
+			return 0, err
+		}
+
 		if IsBinaryType(t) {
 			as = encodings.BytesToString(ai.([]byte))
 		} else {
@@ -265,6 +273,10 @@ func (t StringType) Compare(a interface{}, b interface{}) (int, error) {
 	}
 	if bs, ok = b.(string); !ok {
 		bi, _, err := t.Convert(b)
+		if err != nil {
+			return 0, err
+		}
+		bi, err = sql.UnwrapAny(ctx, bi)
 		if err != nil {
 			return 0, err
 		}

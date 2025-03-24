@@ -222,7 +222,11 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 		if err != nil {
 			return err
 		}
-		vs = string(v.([]byte))
+		vb, _, err := sql.Unwrap[[]byte](ctx, v)
+		if err != nil {
+			return err
+		}
+		vs = string(vb)
 		if len(vs) == 0 {
 			return nil
 		}
@@ -234,7 +238,10 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 		if v == nil {
 			return nil
 		}
-		vs = v.(string)
+		vs, _, err = sql.Unwrap[string](ctx, v)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Get the current array of rows and the map

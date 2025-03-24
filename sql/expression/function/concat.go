@@ -128,6 +128,11 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
+		val, _, err = sql.Unwrap[string](ctx, val)
+		if err != nil {
+			return nil, err
+		}
+
 		parts = append(parts, val.(string))
 	}
 

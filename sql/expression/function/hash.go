@@ -126,6 +126,10 @@ func (f *SHA1) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return nil, err
+	}
 
 	h := sha1.New()
 	_, err = io.WriteString(h, string(val.([]byte)))

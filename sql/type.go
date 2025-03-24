@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -147,7 +148,7 @@ type StringType interface {
 // The type of the returned value is time.Time.
 type DatetimeType interface {
 	Type
-	ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
+	ConvertWithoutRangeCheck(ctx context.Context, v interface{}) (time.Time, error)
 	MaximumTime() time.Time
 	MinimumTime() time.Time
 	Precision() int

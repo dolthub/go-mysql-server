@@ -848,7 +848,9 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
-			team := row[1].(string)
+			team, ok, err := sql.Unwrap[string](ctx, row[1])
+			require.True(t, ok)
+			require.NoError(t, err)
 			switch team {
 			case "red":
 				require.True(t, val == 3 || val == 4)
