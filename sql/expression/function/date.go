@@ -484,6 +484,9 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 			dateStr = strings.TrimSpace(dateStr[idx:])
 			scale := uint8(len(dateStr) - 1)
 			if scale > 0 {
+				if scale > 6 {
+					scale = 6
+				}
 				typ, tErr := types.CreateDecimalType(19, scale)
 				if tErr != nil {
 					return nil, tErr

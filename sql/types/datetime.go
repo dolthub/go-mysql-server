@@ -198,10 +198,10 @@ func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
 		return zeroTime, nil
 	}
 
-	// Truncate the date to the precision of this type
+	// Round the date to the precision of this type
 	truncationDuration := time.Second
 	truncationDuration /= time.Duration(precisionConversion[t.precision])
-	res = res.Truncate(truncationDuration)
+	res = res.Round(truncationDuration)
 
 	switch t.baseType {
 	case sqltypes.Date:
