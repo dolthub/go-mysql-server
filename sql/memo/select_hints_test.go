@@ -238,7 +238,7 @@ func TestOrderHintBuilding(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), nil))
 			j.ReorderJoin(tt.plan)
-			j.m.WithJoinOrder(tt.hint)
+			j.m.SetJoinOrder(tt.hint)
 			if tt.invalid {
 				require.Equal(t, j.m.hints.order, (*joinOrderHint)(nil))
 			} else {

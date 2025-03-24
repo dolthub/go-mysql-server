@@ -20,6 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -69,6 +70,10 @@ type InsertInto struct {
 	// LiteralValueSource is set to |true| when |Source| is
 	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
+
+	// Returning is a list of expressions to return after the insert operation. This feature is not supported
+	// in MySQL's syntax, but is exposed through PostgreSQL's syntax.
+	Returning []sql.Expression
 
 	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
 	FirstGeneratedAutoIncRowIdx int
@@ -122,6 +127,19 @@ func (ii *InsertInto) Schema() sql.Schema {
 	if ii.IsReplace {
 		return append(ii.Destination.Schema(), ii.Destination.Schema()...)
 	}
+
+	// Postgres allows the returned values of the insert statement to be controlled, so if returning expressions
+	// were specified, then we return a different schema.
+	if ii.Returning != nil {
+		// We know that returning exprs are resolved here, because you can't call Schema() safely until Resolved() is true.
+		returningSchema := sql.Schema{}
+		for _, expr := range ii.Returning {
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+		}
+
+		return returningSchema
+	}
+
 	return ii.Destination.Schema()
 }
 
@@ -238,23 +256,29 @@ func (ii *InsertInto) DebugString() string {
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	return append(ii.OnDupExprs, ii.checks.ToExpressions()...)
+	exprs := append(ii.OnDupExprs, ii.checks.ToExpressions()...)
+	exprs = append(exprs, ii.Returning...)
+	return exprs
 }
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks))
+	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks)+len(ii.Returning) {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks)+len(ii.Returning))
 	}
 
 	nii := *ii
 	nii.OnDupExprs = newExprs[:len(nii.OnDupExprs)]
+	newExprs = newExprs[len(nii.OnDupExprs):]
 
 	var err error
-	nii.checks, err = nii.checks.FromExpressions(newExprs[len(nii.OnDupExprs):])
+	nii.checks, err = nii.checks.FromExpressions(newExprs[:len(nii.checks)])
 	if err != nil {
 		return nil, err
 	}
+
+	newExprs = newExprs[len(nii.checks):]
+	nii.Returning = newExprs
 
 	return &nii, nil
 }
@@ -264,17 +288,15 @@ func (ii *InsertInto) Resolved() bool {
 	if !ii.Destination.Resolved() || !ii.Source.Resolved() {
 		return false
 	}
-	for _, updateExpr := range ii.OnDupExprs {
-		if !updateExpr.Resolved() {
-			return false
-		}
-	}
+
 	for _, checkExpr := range ii.checks {
 		if !checkExpr.Expr.Resolved() {
 			return false
 		}
 	}
-	return true
+
+	return expression.ExpressionsResolved(ii.OnDupExprs...) &&
+		expression.ExpressionsResolved(ii.Returning...)
 }
 
 // InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be

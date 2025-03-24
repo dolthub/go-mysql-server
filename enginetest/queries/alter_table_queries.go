@@ -514,6 +514,22 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "add column with inline check constraint definition",
+		SetUpScript: []string{
+			"create table t (pk int primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t add column c int CONSTRAINT chk_c check(c > 10);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:          "insert into t values (1, 9);",
+				ExpectedErrStr: `Check constraint "chk_c" violated`,
+			},
+		},
+	},
+	{
 		Name: "multi-alter ddl column errors",
 		SetUpScript: []string{
 			"create table tbl_i (i int primary key)",

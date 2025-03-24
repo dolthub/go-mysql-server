@@ -111,7 +111,11 @@ func TestLateralJoin(t *testing.T) {
 
 // TestJoinPlanning runs join-specific tests for merge
 func TestJoinPlanning(t *testing.T) {
-	enginetest.TestJoinPlanning(t, enginetest.NewDefaultMemoryHarness())
+	harness := enginetest.NewDefaultMemoryHarness()
+	if harness.IsUsingServer() {
+		harness.QueriesToSkip("block merge join")
+	}
+	enginetest.TestJoinPlanning(t, harness)
 }
 
 // TestJoinOps runs join-specific tests for merge

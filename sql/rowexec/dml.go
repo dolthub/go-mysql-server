@@ -90,6 +90,8 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		ctx:                         ctx,
 		ignore:                      ii.Ignore,
 		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
+		returnExprs:                 ii.Returning,
+		returnSchema:                ii.Schema(),
 		deferredDefaults:            ii.DeferredDefaults,
 	}
 
@@ -101,9 +103,15 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 
 	if ii.Ignore {
+		// If ignore is set, then we are either replacing or inserting, but not updating on conflicts
 		return plan.NewCheckpointingTableEditorIter(insertIter, ed), nil
 	} else {
-		return plan.NewTableEditorIter(insertIter, ed), nil
+		// Otherwise, we are potentially inserting AND updating if there are conflicts
+		eds := []sql.EditOpenerCloser{ed}
+		if updater != nil {
+			eds = append(eds, updater)
+		}
+		return plan.NewTableEditorIter(insertIter, eds...), nil
 	}
 }
 

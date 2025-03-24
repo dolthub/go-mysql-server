@@ -150,6 +150,14 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 	ins.LiteralValueSource = srcLiteralOnly
 
+	if i.Returning != nil {
+		returningExprs := make([]sql.Expression, len(i.Returning))
+		for i, selectExpr := range i.Returning {
+			returningExprs[i] = b.selectExprToExpression(destScope, selectExpr)
+		}
+		ins.Returning = returningExprs
+	}
+
 	b.validateInsert(ins)
 
 	outScope = destScope
