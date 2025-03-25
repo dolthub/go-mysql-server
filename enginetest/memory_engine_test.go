@@ -205,23 +205,32 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 	{
-		Name: "creating invalid procedure doesn't error until it is called",
+		Name: "SQLEXCEPTION declare handler",
+		SetUpScript: []string{
+			`DROP TABLE IF EXISTS t1;`,
+			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
+			`CREATE PROCEDURE eof()
+BEGIN
+	DECLARE a, b INT DEFAULT 1;
+    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
+    OPEN cur1;
+    BEGIN
+		DECLARE EXIT HANDLER FOR SQLEXCEPTION SET a = 7;
+		tloop: LOOP
+			FETCH cur1 INTO b;
+            IF a > 1000 THEN
+				LEAVE tloop;
+            END IF;
+		END LOOP;
+    END;
+    CLOSE cur1;
+    SELECT a;
+END;`,
+		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query:    `CREATE PROCEDURE proc1 (OUT out_count INT) READS SQL DATA SELECT COUNT(*) FROM mytable WHERE i = 1 AND s = 'first row' AND func1(i);`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "CALL proc1(@out_count);",
-				ExpectedErr: sql.ErrTableNotFound,
-			},
-			{
-				Query:    "CREATE TABLE mytable (i int, s varchar(128));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:       "CALL proc1(@out_count);",
-				ExpectedErr: sql.ErrFunctionNotFound,
+				Query:    "CALL eof();",
+				Expected: []sql.Row{},
 			},
 		},
 	},
