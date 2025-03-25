@@ -205,32 +205,20 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 	{
-		Name: "SQLEXCEPTION declare handler",
+		Name: "Nested CALL with INOUT param",
 		SetUpScript: []string{
-			`DROP TABLE IF EXISTS t1;`,
-			`CREATE TABLE t1 (pk BIGINT PRIMARY KEY);`,
-			`CREATE PROCEDURE eof()
-BEGIN
-	DECLARE a, b INT DEFAULT 1;
-    DECLARE cur1 CURSOR FOR SELECT * FROM t1;
-    OPEN cur1;
-    BEGIN
-		DECLARE EXIT HANDLER FOR SQLEXCEPTION SET a = 7;
-		tloop: LOOP
-			FETCH cur1 INTO b;
-            IF a > 1000 THEN
-				LEAVE tloop;
-            END IF;
-		END LOOP;
-    END;
-    CLOSE cur1;
-    SELECT a;
-END;`,
+			"SET @outparam = 5",
+			"CREATE PROCEDURE p3(INOUT z INT) BEGIN SET z = z * 111; END;",
+			"CREATE PROCEDURE p2(INOUT y DOUBLE) BEGIN SET y = y + 4; CALL p3(y); END;",
+			"CREATE PROCEDURE p1(INOUT x BIGINT) BEGIN SET x = 3; CALL p2(x); END;",
+			"CALL p2(@outparam)",
 		},
 		Assertions: []queries.ScriptTestAssertion{
 			{
-				Query:    "CALL eof();",
-				Expected: []sql.Row{},
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{int64(999)},
+				},
 			},
 		},
 	},

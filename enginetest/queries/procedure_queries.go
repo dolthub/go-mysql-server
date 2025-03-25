@@ -1278,8 +1278,9 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "CALL eof();",
-				Expected: []sql.Row{},
+				// TODO: MySQL returns: ERROR: 1329: No data - zero rows fetched, selected, or processed
+				Query:          "CALL eof();",
+				ExpectedErrStr: "exhausted fetch iterator",
 			},
 			{
 				Query:    "CALL duplicate_key();",
@@ -2273,9 +2274,7 @@ var ProcedureCallTests = []ScriptTest{
 			{
 				Query: "SELECT @outparam",
 				Expected: []sql.Row{
-					{
-						int64(777),
-					},
+					{int64(777)},
 				},
 			},
 		},
