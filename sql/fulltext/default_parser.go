@@ -52,10 +52,14 @@ type parserWord struct {
 }
 
 // NewDefaultParser creates a new DefaultParser.
-func NewDefaultParser(ctx *sql.Context, collation sql.CollationID, colVals ...interface{}) (DefaultParser, error) {
+func NewDefaultParser(ctx *sql.Context, collation sql.CollationID, colVals ...interface{}) (parser DefaultParser, err error) {
 	//TODO: implement exact matching using double quotes
 	sb := strings.Builder{}
 	for i, colVal := range colVals {
+		colVal, err = sql.UnwrapAny(ctx, colVal)
+		if err != nil {
+			return DefaultParser{}, err
+		}
 		switch v := colVal.(type) {
 		case string:
 			if i > 0 {
