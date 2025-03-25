@@ -98,7 +98,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "format", Fn: NewFormat},
 	sql.Function1{Name: "from_base64", Fn: NewFromBase64},
 	sql.Function1{Name: "from_days", Fn: NewFromDays},
-	sql.Function1{Name: "from_unixtime", Fn: NewFromUnixtime},
+	sql.FunctionN{Name: "from_unixtime", Fn: NewFromUnixtime},
 	sql.Function2{Name: "get_format", Fn: NewGetFormat},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
 	sql.Function0{Name: "group_concat", Fn: aggregation.NewEmptyGroupConcat},
