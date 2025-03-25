@@ -256,7 +256,7 @@ func (editor TableEditor) StatementComplete(ctx *sql.Context) error {
 
 // Insert implements the interface sql.TableEditor.
 func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	hash, err := HashRow(row)
+	hash, err := HashRow(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -382,7 +382,7 @@ func (editor TableEditor) Update(ctx *sql.Context, old sql.Row, new sql.Row) err
 
 // Delete implements the interface sql.TableEditor.
 func (editor TableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	hash, err := HashRow(row)
+	hash, err := HashRow(ctx, row)
 	if err != nil {
 		return err
 	}

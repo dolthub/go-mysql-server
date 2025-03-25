@@ -288,7 +288,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 	}
 
 	accumulatedRelevancy := float32(0)
-	hash, err := fulltext.HashRow(row)
+	hash, err := fulltext.HashRow(ctx, row)
 	if err != nil {
 		return 0, err
 	}
