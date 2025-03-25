@@ -329,7 +329,7 @@ func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *Interprete
 			default:
 			}
 		}
-		return newCounter, io.EOF
+		return newCounter - 1, io.EOF
 	case ast.DeclareHandlerAction_Undo:
 		return -1, fmt.Errorf("DECLARE UNDO HANDLER is not supported")
 	}
