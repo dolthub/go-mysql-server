@@ -134,7 +134,9 @@ func (ci *callIter) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
-
+	if ci.call.Procedure.ExternalProc == nil {
+		return nil
+	}
 	// Set all user and system variables from INOUT and OUT params
 	for i, param := range ci.call.Procedure.Params {
 		if param.Direction == plan.ProcedureParamDirection_Inout ||
