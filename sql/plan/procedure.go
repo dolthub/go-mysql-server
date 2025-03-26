@@ -132,15 +132,24 @@ func NewProcedure(
 
 // Resolved implements the sql.Node interface.
 func (p *Procedure) Resolved() bool {
+	if p.ExternalProc != nil {
+		return p.ExternalProc.Resolved()
+	}
 	return true
 }
 
 func (p *Procedure) IsReadOnly() bool {
+	if p.ExternalProc != nil {
+		return p.ExternalProc.IsReadOnly()
+	}
 	return false
 }
 
 // String implements the sql.Node interface.
 func (p *Procedure) String() string {
+	if p.ExternalProc != nil {
+		return p.ExternalProc.String()
+	}
 	return ""
 }
 
@@ -156,12 +165,23 @@ func (p *Procedure) Schema() sql.Schema {
 
 // Children implements the sql.Node interface.
 func (p *Procedure) Children() []sql.Node {
+	if p.ExternalProc != nil {
+		return []sql.Node{p.ExternalProc}
+	}
 	return nil
 }
 
 // WithChildren implements the sql.Node interface.
 func (p *Procedure) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return p, nil
+	if len(children) == 0 {
+		return p, nil
+	}
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+	}
+	np := *p
+	np.ExternalProc = children[0]
+	return &np, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

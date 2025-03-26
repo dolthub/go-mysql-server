@@ -134,6 +134,55 @@ func (ci *callIter) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
+	if ci.call.Procedure.ExternalProc == nil {
+		return nil
+	}
+	// Set all user and system variables from INOUT and OUT params
+	for i, param := range ci.call.Procedure.Params {
+		if param.Direction == plan.ProcedureParamDirection_Inout ||
+			(param.Direction == plan.ProcedureParamDirection_Out && ci.call.Pref.VariableHasBeenSet(param.Name)) {
+			val, err := ci.call.Pref.GetVariableValue(param.Name)
+			if err != nil {
+				return err
+			}
+
+			typ := ci.call.Pref.GetVariableType(param.Name)
+
+			switch callParam := ci.call.Params[i].(type) {
+			case *expression.UserVar:
+				err = ctx.SetUserVariable(ctx, callParam.Name, val, typ)
+				if err != nil {
+					return err
+				}
+			case *expression.SystemVar:
+				// This should have been caught by the analyzer, so a major bug exists somewhere
+				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
+			case *expression.ProcedureParam:
+				err = callParam.Set(val, param.Type)
+				if err != nil {
+					return err
+				}
+			}
+		} else if param.Direction == plan.ProcedureParamDirection_Out { // VariableHasBeenSet was false
+			// For OUT only, if a var was not set within the procedure body, then we set the vars to nil.
+			// If the var had a value before the call then it is basically removed.
+			switch callParam := ci.call.Params[i].(type) {
+			case *expression.UserVar:
+				err = ctx.SetUserVariable(ctx, callParam.Name, nil, ci.call.Pref.GetVariableType(param.Name))
+				if err != nil {
+					return err
+				}
+			case *expression.SystemVar:
+				// This should have been caught by the analyzer, so a major bug exists somewhere
+				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
+			case *expression.ProcedureParam:
+				err := callParam.Set(nil, param.Type)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 
