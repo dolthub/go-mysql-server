@@ -730,6 +730,12 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 		}
 		return -i, nil
+	case bool:
+		if n {
+			return -1, nil
+		} else {
+			return 1, nil
+		}
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 	}
