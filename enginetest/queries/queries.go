@@ -2854,7 +2854,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		// https://github.com/dolthub/dolt/issues/9036
 		Query:    "SELECT -true, -false",
-		Expected: []sql.Row{{-1, 1}},
+		Expected: []sql.Row{{-1, 0}},
 	},
 	{
 		Query:    "SELECT +i FROM mytable;",
