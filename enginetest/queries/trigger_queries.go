@@ -311,6 +311,50 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "issue #9039: trigger join index error subquery",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int default 1, z int)",
+			"create table b (x int primary key)",
+			"create table c (x int primary key)",
+			"create table d (x int primary key)",
+			"insert into b values (1), (2)",
+			"insert into d values (1), (2)",
+			`
+create trigger insert_into_a
+after insert on a
+for each row replace into c
+select * from d join (select * from b where new.x = b.x) as e using (x)
+where d.x = new.x`,
+			"insert into a (x,z) values (2,2)",
+		},
+		Query: "select x from c order by 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Name: "issue #9039: trigger join index error",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int default 1, z int)",
+			"create table b (x int primary key)",
+			"create table c (x int primary key)",
+			"create table d (x int primary key)",
+			"insert into b values (1), (2)",
+			"insert into d values (1), (2)",
+			`
+create trigger insert_into_a
+after insert on a
+for each row replace into c
+select * from d join b where new.x = b.x using (x)
+where d.x = new.x`,
+			"insert into a (x,z) values (2,2)",
+		},
+		Query: "select x from c order by 1",
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
 		Name: "trigger before insert, alter inserted value",
 		SetUpScript: []string{
 			"create table a (x int primary key)",

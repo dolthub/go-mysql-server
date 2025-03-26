@@ -17,6 +17,7 @@ package rowexec
 import (
 	"fmt"
 	"io"
+	"log"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -209,6 +210,24 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 				return n, transform.SameTree, nil
 			}
 			return n.WithProcedure(newNode.(*plan.Procedure)), transform.NewTree, nil
+		case *plan.InsertInto:
+			newNode, same, err := transform.NodeWithCtx(n.Source, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return n.WithSource(newNode), transform.NewTree, nil
+		case *plan.SubqueryAlias:
+			newNode, same, err := transform.NodeWithCtx(n.Child, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return n.WithChild(newNode), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -236,6 +255,8 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	if err != nil {
 		return nil, err
 	}
+
+	log.Println(sql.DebugString(logic))
 
 	// We don't do anything interesting with this subcontext yet, but it's a good idea to cancel it independently of the
 	// parent context if something goes wrong in trigger execution.
