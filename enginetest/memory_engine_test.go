@@ -152,8 +152,8 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 	var test queries.QueryTest
 	test = queries.QueryTest{
-		Query:    `select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);`,
-		Expected: []sql.Row{{true, 0, true}},
+		Query:    `select -true`,
+		Expected: []sql.Row{{-1}},
 	}
 
 	fmt.Sprintf("%v", test)
