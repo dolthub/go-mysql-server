@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -377,7 +378,7 @@ func TestTime_Microsecond(t *testing.T) {
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
 		{"date as string", sql.NewRow(stringDate), uint64(0), false},
-		{"date as time", sql.NewRow(currTime), uint64(currTime.Nanosecond()) / uint64(time.Microsecond), false},
+		{"date as time", sql.NewRow(currTime), uint64(math.Round(float64(currTime.Nanosecond()) / float64(time.Microsecond))), false},
 	}
 
 	for _, tt := range testCases {

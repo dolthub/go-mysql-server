@@ -799,7 +799,7 @@ var QueryTests = []QueryTest{
 	{
 		// Assert that SYSDATE() returns different times on each call in a query (unlike NOW())
 		// Using the maximum precision for fractional seconds, lets us see a difference.
-		Query:    "select now() = sysdate(), sleep(0.1), now(6) < sysdate(6);",
+		Query:    "select now() = sysdate(), sleep(0.5), now(6) < sysdate(6);",
 		Expected: []sql.Row{{true, 0, true}},
 	},
 	{
