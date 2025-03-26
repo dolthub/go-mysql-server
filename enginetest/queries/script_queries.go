@@ -7790,20 +7790,20 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select 1 from t group by 'abc';",
+				Query:          "select 1 from t group by 'abc';",
 				ExpectedErrStr: "expected integer order by literal",
 			},
 			{
 				// TODO: this actually works in MySQL
-				Query: "select 1 from t group by -123;",
+				Query:          "select 1 from t group by -123;",
 				ExpectedErrStr: "expected positive integer order by literal",
 			},
 			{
-				Query: "select 1 from t group by 0;",
+				Query:          "select 1 from t group by 0;",
 				ExpectedErrStr: "expected positive integer order by literal",
 			},
 			{
-				Query: "select 1 from t group by 100;",
+				Query:          "select 1 from t group by 100;",
 				ExpectedErrStr: "column ordinal out of range: 100",
 			},
 		},
