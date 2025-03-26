@@ -2950,6 +2950,25 @@ func TestPlanBuilderErr(t *testing.T) {
 			Query: "select x + 1 as xx from xy join uv on (x = u) having x = 123;",
 			Err:   "column \"x\" could not be found in any table in scope",
 		},
+
+		// Test GroupBy Ordinals
+		{
+			Query: "select 1 from xy group by 'abc';",
+			Err:   "expected integer order by literal",
+		},
+		{
+			// TODO: this actually works in MySQL
+			Query: "select 1 from xy group by -123;",
+			Err:   "expected positive integer order by literal",
+		},
+		{
+			Query: "select 1 from xy group by 0;",
+			Err:   "expected positive integer order by literal",
+		},
+		{
+			Query: "select 1 from xy group by 100;",
+			Err:   "column ordinal out of range: 100",
+		},
 	}
 
 	db := memory.NewDatabase("mydb")

@@ -131,7 +131,11 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 				b.handleErr(fmt.Errorf("expected integer order by literal"))
 			}
 			if intIdx < 1 {
+				// TODO: this actually works in MySQL
 				b.handleErr(fmt.Errorf("expected positive integer order by literal"))
+			}
+			if int(intIdx) > len(selects) {
+				b.handleErr(fmt.Errorf("column ordinal out of range: %d", intIdx))
 			}
 			col = projScope.cols[intIdx-1]
 		default:
