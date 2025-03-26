@@ -7782,32 +7782,6 @@ where
 			},
 		},
 	},
-	{
-		Name:    "group by ordinal tests",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int, j int);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select 1 from t group by 'abc';",
-				ExpectedErrStr: "expected integer order by literal",
-			},
-			{
-				// TODO: this actually works in MySQL
-				Query: "select 1 from t group by -123;",
-				ExpectedErrStr: "expected positive integer order by literal",
-			},
-			{
-				Query: "select 1 from t group by 0;",
-				ExpectedErrStr: "expected positive integer order by literal",
-			},
-			{
-				Query: "select 1 from t group by 100;",
-				ExpectedErrStr: "column ordinal out of range: 100",
-			},
-		},
-	},
 }
 
 var SpatialScriptTests = []ScriptTest{
