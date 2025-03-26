@@ -1396,7 +1396,7 @@ END;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "CALL outer_declare();",
+				Query: "CALL outer_declare();",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
