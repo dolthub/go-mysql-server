@@ -5133,6 +5133,8 @@ CREATE TABLE tab3 (
 		Name:    "UNIX_TIMESTAMP function preserves trailing 0s",
 		SetUpScript: []string{
 			"SET time_zone = '+07:00';",
+			"create table t (d0 datetime(0), d1 datetime(1), d2 datetime(2), d3 datetime(3), d4 datetime(4), d5 datetime(5), d6 datetime(6));",
+			"insert into t values ('2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -5151,6 +5153,12 @@ CREATE TABLE tab3 (
 				Query: "select unix_timestamp('2001-02-03 12:34:56.1234567');",
 				Expected: []sql.Row{
 					{"981178496.123457"},
+				},
+			},
+			{
+				Query: "select unix_timestamp(d0), unix_timestamp(d1), unix_timestamp(d2), unix_timestamp(d3), unix_timestamp(d4), unix_timestamp(d5), unix_timestamp(d6) from t;",
+				Expected: []sql.Row{
+					{"1577943296", "1577943296.1", "1577943296.12", "1577943296.123", "1577943296.1235", "1577943296.12346", "1577943296.123456"},
 				},
 			},
 		},

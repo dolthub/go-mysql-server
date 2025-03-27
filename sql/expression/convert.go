@@ -17,7 +17,8 @@ package expression
 import (
 	"encoding/hex"
 	"fmt"
-	"strconv"
+	"github.com/dolthub/vitess/go/sqltypes"
+"strconv"
 	"strings"
 	"time"
 
@@ -155,7 +156,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDate:
 		return types.Date
 	case ConvertToDatetime:
-		return types.DatetimeMaxPrecision
+		return types.MustCreateDatetimeType(sqltypes.Datetime, c.typeLength)
 	case ConvertToDecimal:
 		if c.cachedDecimalType == nil {
 			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)

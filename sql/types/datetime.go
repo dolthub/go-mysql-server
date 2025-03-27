@@ -350,6 +350,9 @@ func (t datetimeType) MustConvert(v interface{}) interface{} {
 
 // Equals implements the Type interface.
 func (t datetimeType) Equals(otherType sql.Type) bool {
+	if dtType, isDtType := otherType.(sql.DatetimeType); isDtType {
+		return t.baseType == dtType.Type() && t.precision == dtType.Precision()
+	}
 	return t.baseType == otherType.Type()
 }
 
