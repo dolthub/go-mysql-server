@@ -176,6 +176,7 @@ func TestWrapperCompare(t *testing.T) {
 
 // TestWrapperCompare tests that a wrapped value can be used in comparisons without being unwrapped.
 func TestWrapperSelfCompare(t *testing.T) {
+	t.Skip("This is not currently enabled because it may have performance implications.")
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)

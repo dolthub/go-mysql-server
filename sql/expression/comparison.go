@@ -127,26 +127,6 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, ErrNilOperand.New()
 	}
 
-	if wrapperLeft, isWrapperLeft := left.(sql.AnyWrapper); isWrapperLeft {
-		cmp, isComparable, err := wrapperLeft.Compare(ctx, right)
-		if err != nil {
-			return 0, err
-		}
-		if isComparable {
-			return cmp, nil
-		}
-	}
-
-	if wrapperRight, isWrapperRight := right.(sql.AnyWrapper); isWrapperRight {
-		cmp, isComparable, err := wrapperRight.Compare(ctx, left)
-		if err != nil {
-			return 0, err
-		}
-		if isComparable {
-			return -cmp, nil
-		}
-	}
-
 	left, err = sql.UnwrapAny(ctx, left)
 	if err != nil {
 		return 0, err
