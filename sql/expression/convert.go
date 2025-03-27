@@ -17,11 +17,11 @@ package expression
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
-"strconv"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
