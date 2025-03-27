@@ -326,6 +326,10 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 // TestQuery runs a query on the engine given and asserts that results are as expected.
 // TODO: this should take en engine
 func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr) {
+	testQuery(t, harness, q, expected, expectedCols, bindings, true)
+}
+
+func testQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sqlparser.Expr, unwrapValues bool) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -336,7 +340,7 @@ func TestQuery(t *testing.T, harness Harness, q string, expected []sql.Row, expe
 		e := mustNewEngine(t, harness)
 		defer e.Close()
 		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings, nil)
+		testQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings, nil, unwrapValues)
 	})
 }
 
@@ -379,6 +383,21 @@ func TestQueryWithContext(
 	bindings map[string]sqlparser.Expr,
 	qFlags *sql.QueryFlags,
 ) {
+	testQueryWithContext(t, ctx, e, harness, q, expected, expectedCols, bindings, qFlags, true)
+}
+
+func testQueryWithContext(
+	t *testing.T,
+	ctx *sql.Context,
+	e QueryEngine,
+	harness Harness,
+	q string,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+	bindings map[string]sqlparser.Expr,
+	qFlags *sql.QueryFlags,
+	unwrapValues bool,
+) {
 	ctx = ctx.WithQuery(q)
 	require := require.New(t)
 	if len(bindings) > 0 {
@@ -393,7 +412,7 @@ func TestQueryWithContext(
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		CheckResults(t, harness, expected, expectedCols, sch, rows, q, e)
+		checkResults(t, harness, expected, expectedCols, sch, rows, q, e, unwrapValues)
 	}
 
 	require.Equal(
@@ -502,7 +521,6 @@ func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine,
 	validateEngine(t, ctx, h, e)
 }
 
-// CheckResults compares the
 func CheckResults(
 	t *testing.T,
 	h Harness,
@@ -513,10 +531,24 @@ func CheckResults(
 	q string,
 	e QueryEngine,
 ) {
+	checkResults(t, h, expected, expectedCols, sch, rows, q, e, true)
+}
+
+func checkResults(
+	t *testing.T,
+	h Harness,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+	sch sql.Schema,
+	rows []sql.Row,
+	q string,
+	e QueryEngine,
+	unwrapValues bool,
+) {
 	if reh, ok := h.(ResultEvaluationHarness); ok {
-		reh.EvaluateQueryResults(t, expected, expectedCols, sch, rows, q)
+		reh.EvaluateQueryResults(t, expected, expectedCols, sch, rows, q, unwrapValues)
 	} else {
-		checkResults(t, expected, expectedCols, sch, rows, q, e)
+		checkResultsDefault(t, expected, expectedCols, sch, rows, q, e, unwrapValues)
 	}
 }
 
@@ -669,9 +701,11 @@ func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 	}
 }
 
-// checkResults is the default implementation for checking the results of a test query assertion for harnesses that
+// checkResultsDefault is the default implementation for checking the results of a test query assertion for harnesses that
 // don't implement ResultEvaluationHarness. All numerical values are widened to their widest type before comparison.
-func checkResults(
+// Based on the value of |unwrapValues|, this either normalized wrapped values by unwrapping them, or replaces them
+// with their hash so the test caller can assert that the values are wrapped and have a certain hash.
+func checkResultsDefault(
 	t *testing.T,
 	expected []sql.Row,
 	expectedCols []*sql.Column,
@@ -679,6 +713,7 @@ func checkResults(
 	rows []sql.Row,
 	q string,
 	e QueryEngine,
+	unwrapValues bool,
 ) {
 	widenedRows := WidenRows(t, sch, rows)
 	widenedExpected := WidenRows(t, sch, expected)
@@ -714,6 +749,14 @@ func checkResults(
 						require.NoError(t, err)
 						widenedRow[i] = el
 					}
+				}
+			case sql.AnyWrapper:
+				if unwrapValues {
+					var err error
+					widenedRow[i], err = sql.UnwrapAny(context.Background(), v)
+					require.NoError(t, err)
+				} else {
+					widenedRow[i] = v.Hash()
 				}
 			}
 		}
@@ -825,7 +868,6 @@ func WidenRow(t *testing.T, sch sql.Schema, row sql.Row) sql.Row {
 
 // widenValue normalizes the input by widening it to its widest type and unwrapping any wrappers.
 func widenValue(t *testing.T, v interface{}) (vw interface{}) {
-	var err error
 	switch x := v.(type) {
 	case int:
 		vw = int64(x)
@@ -850,10 +892,6 @@ func widenValue(t *testing.T, v interface{}) (vw interface{}) {
 		// The exact expected decimal type value cannot be defined in enginetests,
 		// so convert the result to string format, which is the value we get on sql shell.
 		vw = x.StringFixed(x.Exponent() * -1)
-	case sql.AnyWrapper:
-		vw, err = x.UnwrapAny(context.Background())
-		vw = widenValue(t, vw)
-		require.NoError(t, err)
 	default:
 		vw = v
 	}
@@ -1160,12 +1198,12 @@ func RunWriteQueryTestWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 	}
 
 	ctx := NewContext(harness)
-	TestQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil, nil)
+	testQueryWithContext(t, ctx, e, harness, tt.WriteQuery, tt.ExpectedWriteResult, nil, nil, nil, !tt.DontUnwrap)
 	expectedSelect := tt.ExpectedSelect
 	if IsServerEngine(e) && tt.SkipServerEngine {
 		expectedSelect = nil
 	}
-	TestQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil, nil)
+	testQueryWithContext(t, ctx, e, harness, tt.SelectQuery, expectedSelect, nil, nil, nil, !tt.DontUnwrap)
 }
 
 func supportedDialect(harness Harness, dialect string) bool {

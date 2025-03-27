@@ -162,6 +162,7 @@ type ResultEvaluationHarness interface {
 		expectdSch sql.Schema,
 		actualRows []sql.Row,
 		query string,
+		unwrapValues bool,
 	)
 
 	// EvaluateExpectedError compares expected error strings to actual errors and emits failed test assertions in the

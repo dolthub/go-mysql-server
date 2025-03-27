@@ -47,6 +47,10 @@ type QueryTest struct {
 	// Dialect is the supported dialect for this query, which must match the dialect of the harness if specified.
 	// The query is skipped if the dialect doesn't match.
 	Dialect string
+	// DontUnwrap indicates whether to skip normalizing the select results via unwrapping wrapped values.
+	// Instead, the test engine will replace wrapped values with their hash (as determined by sql.AnyWrapped.Hash).
+	// Set this to test the exact encodings being returned by the query.
+	DontUnwrap bool
 }
 
 type QueryPlanTest struct {
@@ -11382,6 +11386,10 @@ type WriteQueryTest struct {
 	// Dialect is the supported dialect for this test, which must match the dialect of the harness if specified.
 	// The script is skipped if the dialect doesn't match.
 	Dialect string
+	// DontUnwrap indicates whether to skip normalizing the select results via unwrapping wrapped values.
+	// Instead, the test engine will replace wrapped values with their hash (as determined by sql.AnyWrapped.Hash).
+	// Set this to test the exact encodings being returned by the query.
+	DontUnwrap bool
 }
 
 // GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what

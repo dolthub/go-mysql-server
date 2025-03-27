@@ -66,6 +66,10 @@ func (w ErrorWrapper[T]) IsExactLength() bool {
 	return w.isExactLength
 }
 
+func (w ErrorWrapper[T]) Hash() interface{} {
+	return nil
+}
+
 func setupWrapperTests(t *testing.T) (*sql.Context, *memory.Database, *MemoryHarness, *sqle.Engine) {
 	db := memory.NewDatabase("mydb")
 	pro := memory.NewDBProvider(db)

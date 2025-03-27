@@ -97,6 +97,10 @@ func (w SimpleWrapper[T]) IsExactLength() bool {
 	return w.isExactLength
 }
 
+func (w SimpleWrapper[T]) Hash() interface{} {
+	return nil
+}
+
 // ErrorWrapper is a wrapped type that errors when unwrapped. This can be used to test that certain operations
 // won't trigger an unwrap.
 type ErrorWrapper[T any] struct {
@@ -110,10 +114,6 @@ func (w ErrorWrapper[T]) Compare(ctx context.Context, other interface{}) (cmp in
 
 var textErrorWrapper = ErrorWrapper[string]{maxByteLength: types.Text.MaxByteLength(), isExactLength: false}
 var longTextErrorWrapper = ErrorWrapper[string]{maxByteLength: types.LongText.MaxByteLength(), isExactLength: false}
-
-func exactLengthErrorWrapper(maxByteLength int64) ErrorWrapper[string] {
-	return ErrorWrapper[string]{maxByteLength: maxByteLength, isExactLength: true}
-}
 
 func (w ErrorWrapper[T]) assertInterfaces() {
 	var _ sql.Wrapper[T] = w
@@ -133,6 +133,10 @@ func (w ErrorWrapper[T]) MaxByteLength() int64 {
 
 func (w ErrorWrapper[T]) IsExactLength() bool {
 	return w.isExactLength
+}
+
+func (w ErrorWrapper[T]) Hash() interface{} {
+	return nil
 }
 
 // TestWrapperCompare tests that a wrapped value can be used in comparisons.

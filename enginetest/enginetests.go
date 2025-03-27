@@ -263,7 +263,7 @@ func TestBrokenQueries(t *testing.T, harness Harness) {
 // queries during debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	for _, tt := range queries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		testQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, !tt.DontUnwrap)
 	}
 }
 

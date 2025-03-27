@@ -46,6 +46,10 @@ type AnyWrapper interface {
 	// Setting |comparable| to true means that the wrapper was able to compare them and store the result in |cmp|.
 	// Setting |comparable| to false means that the wrapper wasn't able to compare them.
 	Compare(ctx context.Context, other interface{}) (cmp int, comparable bool, err error)
+
+	// Hash is a value that can be compared to check if two wrapper values are equal. Equality of the hashes implies
+	// equality of the wrappers.
+	Hash() interface{}
 }
 
 // Wrapper is an interface for types that encapsulate a SQL value of a specific type.
