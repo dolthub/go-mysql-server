@@ -17,7 +17,6 @@ package rowexec
 import (
 	"fmt"
 	"io"
-	"log"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -255,7 +254,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// We don't do anything interesting with this subcontext yet, but it's a good idea to cancel it independently of the
 	// parent context if something goes wrong in trigger execution.
 	ctx, cancelFunc := t.ctx.NewSubContext()
