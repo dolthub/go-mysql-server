@@ -231,6 +231,10 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 
+		if pkIdx == nil {
+			return n, transform.SameTree, nil
+		}
+
 		// generate sort fields from aggregations
 		var sf sql.SortField
 		switch agg := gb.SelectedExprs[0].(type) {
@@ -257,7 +261,9 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		}
 
 		// since we're only supporting one aggregation, it must be on the first column of the primary key
-		if !strings.EqualFold(pkIdx.Expressions()[0], sf.Column.String()) {
+		if pkCols := pkIdx.Expressions(); len(pkCols) < 1 {
+			return n, transform.SameTree, nil
+		} else if !strings.EqualFold(pkCols[0], sf.Column.String()) {
 			return n, transform.SameTree, nil
 		}
 
