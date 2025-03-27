@@ -229,6 +229,14 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}
 	}
 
+	// check for existing procedure stack in session
+	// if not found, create a new one
+
+	//
+
+	// TODO: add all procedure parameters
+	// ctx.Session.GetProcedureVariables
+
 	rowIter, stack, err := procedures.Call(ctx, n, procParams)
 	if err != nil {
 		return nil, err

@@ -204,24 +204,24 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
-		{
-			Name: "Nested CALL with INOUT param",
-			SetUpScript: []string{
-				"SET @outparam = 5",
-				"CREATE PROCEDURE p3(INOUT z INT) BEGIN SET z = z * 111; END;",
-				"CREATE PROCEDURE p2(INOUT y DOUBLE) BEGIN SET y = y + 4; CALL p3(y); END;",
-				"CREATE PROCEDURE p1(INOUT x BIGINT) BEGIN SET x = 3; CALL p2(x); END;",
-				"CALL p2(@outparam)",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "SELECT @outparam",
-					Expected: []sql.Row{
-						{int64(999)},
-					},
+	{
+		Name: "Nested CALL with INOUT param",
+		SetUpScript: []string{
+			"SET @outparam = 5",
+			"CREATE PROCEDURE p3(INOUT z INT) BEGIN SET z = z * 111; END;",
+			"CREATE PROCEDURE p2(INOUT y DOUBLE) BEGIN SET y = y + 4; CALL p3(y); END;",
+			"CREATE PROCEDURE p1(INOUT x BIGINT) BEGIN SET x = 3; CALL p2(x); END;",
+			"CALL p1(@outparam)",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{int64(777)},
 				},
 			},
 		},
+	},
 	}
 
 	for _, test := range scripts {

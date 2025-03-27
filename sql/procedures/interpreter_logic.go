@@ -129,6 +129,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode) (ast.SQLN
 		}
 	case *ast.Call:
 		for i := range e.Params {
+			// TODO: don't replace variables for session stack
 			newExpr, err := replaceVariablesInExpr(stack, e.Params[i])
 			if err != nil {
 				return nil, err
