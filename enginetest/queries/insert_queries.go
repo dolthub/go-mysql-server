@@ -2895,7 +2895,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE IGNORE keyless SET val = 2 where pk = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "SELECT * FROM keyless ORDER BY pk",
@@ -2907,7 +2907,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE IGNORE keyless SET val = 1 where pk = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "ALTER TABLE keyless ADD CONSTRAINT c UNIQUE(val)",
@@ -2915,7 +2915,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 			{
 				Query:                 "UPDATE IGNORE keyless SET val = 3 where pk = 1",
-				Expected:              []sql.Row{{newUpdateResult(1, 0)}},
+				Expected:              []sql.Row{{NewUpdateResult(1, 0)}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
@@ -2925,7 +2925,7 @@ var IgnoreWithDuplicateUniqueKeyKeylessScripts = []ScriptTest{
 			},
 			{
 				Query:                 "UPDATE IGNORE keyless SET val = val + 1 ORDER BY pk",
-				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				Expected:              []sql.Row{{NewUpdateResult(3, 1)}},
 				ExpectedWarningsCount: 2,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
