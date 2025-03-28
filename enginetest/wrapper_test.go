@@ -67,7 +67,7 @@ func (w ErrorWrapper[T]) IsExactLength() bool {
 }
 
 func (w ErrorWrapper[T]) Hash() interface{} {
-	return nil
+	panic("not implemented")
 }
 
 func setupWrapperTests(t *testing.T) (*sql.Context, *memory.Database, *MemoryHarness, *sqle.Engine) {

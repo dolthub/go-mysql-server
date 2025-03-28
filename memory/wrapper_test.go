@@ -136,7 +136,7 @@ func (w ErrorWrapper[T]) IsExactLength() bool {
 }
 
 func (w ErrorWrapper[T]) Hash() interface{} {
-	return nil
+	panic("not implemented")
 }
 
 // TestWrapperCompare tests that a wrapped value can be used in comparisons.

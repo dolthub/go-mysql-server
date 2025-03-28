@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"testing"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -162,7 +163,7 @@ type ResultEvaluationHarness interface {
 		expectdSch sql.Schema,
 		actualRows []sql.Row,
 		query string,
-		unwrapValues bool,
+		wrapBehavior queries.WrapBehavior,
 	)
 
 	// EvaluateExpectedError compares expected error strings to actual errors and emits failed test assertions in the
