@@ -312,6 +312,11 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 			// join subquery aliases continue to enjoy full visibility.
 			sqScope.parentScopes = sqScope.parentScopes[:0]
 			sqScope.lateralScopes = sqScope.lateralScopes[:0]
+			for _, p := range s.parentScopes {
+				if p.triggerScope {
+					sqScope.parentScopes = append(sqScope.parentScopes, p)
+				}
+			}
 		}
 		newC, cScope, err := assignIndexesHelper(n.Child, sqScope)
 		if err != nil {

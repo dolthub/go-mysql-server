@@ -193,7 +193,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 		case *plan.Project:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
 			switch c.Parent.(type) {
-			case *plan.InsertInto, *plan.Into, *plan.TriggerExecutor, *plan.DeclareCursor:
+			case *plan.InsertInto, *plan.Into, *plan.TriggerExecutor, *plan.DeclareCursor, *plan.Project:
 				return n, transform.SameTree, nil
 			default:
 				return plan.NewPrependNode(n, row), transform.NewTree, nil
@@ -209,6 +209,24 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 				return n, transform.SameTree, nil
 			}
 			return n.WithProcedure(newNode.(*plan.Procedure)), transform.NewTree, nil
+		case *plan.InsertInto:
+			newNode, same, err := transform.NodeWithCtx(n.Source, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return n.WithSource(newNode), transform.NewTree, nil
+		case *plan.SubqueryAlias:
+			newNode, same, err := transform.NodeWithCtx(n.Child, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
+			}
+			return n.WithChild(newNode), transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
