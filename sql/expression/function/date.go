@@ -405,9 +405,8 @@ var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
 
 const MaxUnixTimeMicroSecs = 32536771199999999
 
-// noEval returns true if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
+// canEval returns if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
 func canEval(expr sql.Expression) bool {
-	// Convert Timezone is not evaluable
 	evaluable := true
 	transform.InspectExpr(expr, func(e sql.Expression) bool {
 		switch e.(type) {
