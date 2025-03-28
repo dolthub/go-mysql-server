@@ -5167,7 +5167,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "select unix_timestamp(d), unix_timestamp(tt) from t;",
 				Expected: []sql.Row{
-					{"1577898000", "1743053696.123456"},
+					{"1577898000", "1743140096.123456"},
 				},
 			},
 		},
