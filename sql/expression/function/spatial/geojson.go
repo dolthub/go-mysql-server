@@ -672,6 +672,11 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		return nil, err
 	}
 
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+
 	switch s := val.(type) {
 	case string:
 		val = []byte(s)

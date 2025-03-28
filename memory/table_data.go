@@ -115,7 +115,7 @@ func (td TableData) copy() *TableData {
 
 // partition returns the partition for the row given. Uses the primary key columns if they exist, or all columns
 // otherwise
-func (td TableData) partition(row sql.Row) (int, error) {
+func (td TableData) partition(ctx *sql.Context, row sql.Row) (int, error) {
 	var keyColumns []int
 	if len(td.schema.PkOrdinals) > 0 {
 		keyColumns = td.schema.PkOrdinals

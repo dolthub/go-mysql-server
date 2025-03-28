@@ -48,7 +48,7 @@ func getDate(ctx *sql.Context,
 		return nil, nil
 	}
 
-	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(val)
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
 	if err != nil {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
 		return nil, nil
@@ -1676,7 +1676,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to date
-	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(v)
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, v)
 	if err == nil {
 		h, m, s := date.Clock()
 		us := date.Nanosecond() / 1000

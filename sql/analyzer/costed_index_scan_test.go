@@ -921,7 +921,7 @@ func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...s
 	return sql.IndexLookup{}, nil, nil, false, nil
 }
 
-func (i *indexSearchableTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+func (i *indexSearchableTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
 	return i
 }
 

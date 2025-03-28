@@ -127,6 +127,16 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, ErrNilOperand.New()
 	}
 
+	left, err = sql.UnwrapAny(ctx, left)
+	if err != nil {
+		return 0, err
+	}
+
+	right, err = sql.UnwrapAny(ctx, right)
+	if err != nil {
+		return 0, err
+	}
+
 	if types.TypesEqual(c.Left().Type(), c.Right().Type()) {
 		return c.Left().Type().Compare(left, right)
 	}

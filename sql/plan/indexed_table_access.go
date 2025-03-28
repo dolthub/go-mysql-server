@@ -53,7 +53,7 @@ var _ sql.TableNode = (*IndexedTableAccess)(nil)
 
 // NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
+func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
 	var table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
@@ -68,7 +68,7 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	var indexedTable sql.IndexedTable
-	indexedTable = iaTable.IndexedAccess(lookup)
+	indexedTable = iaTable.IndexedAccess(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 
 // NewStaticIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
 	table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
@@ -117,7 +117,7 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 	if !lookup.Index.CanSupport(lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
-	indexedTable := iaTable.IndexedAccess(lookup)
+	indexedTable := iaTable.IndexedAccess(ctx, lookup)
 
 	if mtn, ok := node.(sql.MutableTableNode); ok {
 		var err error

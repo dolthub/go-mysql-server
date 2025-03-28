@@ -256,7 +256,7 @@ func (editor TableEditor) StatementComplete(ctx *sql.Context) error {
 
 // Insert implements the interface sql.TableEditor.
 func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	hash, err := HashRow(row)
+	hash, err := HashRow(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -382,7 +382,7 @@ func (editor TableEditor) Update(ctx *sql.Context, old sql.Row, new sql.Row) err
 
 // Delete implements the interface sql.TableEditor.
 func (editor TableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	hash, err := HashRow(row)
+	hash, err := HashRow(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -522,7 +522,7 @@ func (TableEditor) getRowCount(ctx *sql.Context, ie IndexEditors, hash string) (
 		},
 	}, Index: ie.RowCount.Index}
 
-	editorData := ie.RowCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(lookup)
+	editorData := ie.RowCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(ctx, lookup)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -547,7 +547,7 @@ func (TableEditor) getRowCount(ctx *sql.Context, ie IndexEditors, hash string) (
 func (TableEditor) updateGlobalCount(ctx *sql.Context, ie IndexEditors, word string, increment bool) error {
 	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(word, word, ie.GlobalCount.Schema[0].Type)}},
 		Index: ie.GlobalCount.Index}
-	editorData := ie.GlobalCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(lookup)
+	editorData := ie.GlobalCount.Editor.(sql.ForeignKeyEditor).IndexedAccess(ctx, lookup)
 
 	partIter, err := editorData.LookupPartitions(ctx, lookup)
 	if err != nil {

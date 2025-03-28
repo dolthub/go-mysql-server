@@ -263,7 +263,7 @@ func TestBrokenQueries(t *testing.T, harness Harness) {
 // queries during debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	for _, tt := range queries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		testQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, tt.WrapBehavior)
 	}
 }
 
@@ -810,7 +810,9 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
-			team := row[1].(string)
+			team, ok, err := sql.Unwrap[string](ctx, row[1])
+			require.NoError(t, err)
+			require.True(t, ok)
 			switch team {
 			case "red":
 				require.True(t, val == 3 || val == 4)
@@ -846,7 +848,9 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
-			team := row[1].(string)
+			team, ok, err := sql.Unwrap[string](ctx, row[1])
+			require.True(t, ok)
+			require.NoError(t, err)
 			switch team {
 			case "red":
 				require.True(t, val == 3 || val == 4)
