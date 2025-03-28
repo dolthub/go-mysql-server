@@ -3068,7 +3068,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "SELECT unix_timestamp(timestamp_col), unix_timestamp(datetime_col) from datetime_table",
 				Expected: []sql.Row{
-					{"86400.000000", "57600.000000"},
+					{"86400", "57600"},
 				},
 			},
 		},
@@ -5133,8 +5133,11 @@ CREATE TABLE tab3 (
 		Name:    "UNIX_TIMESTAMP function preserves trailing 0s",
 		SetUpScript: []string{
 			"SET time_zone = '+07:00';",
-			"create table t (d0 datetime(0), d1 datetime(1), d2 datetime(2), d3 datetime(3), d4 datetime(4), d5 datetime(5), d6 datetime(6));",
-			"insert into t values ('2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456')",
+			"create table dt (dt0 datetime(0), dt1 datetime(1), dt2 datetime(2), dt3 datetime(3), dt4 datetime(4), dt5 datetime(5), dt6 datetime(6));",
+			"insert into dt values ('2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456', '2020-01-02 12:34:56.123456')",
+			// TODO: time length not supported, so by default we have max precision
+			"create table t (d date, tt time);",
+			"insert into t values ('2020-01-02 12:34:56.123456', '12:34:56.123456');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -5156,9 +5159,15 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Query: "select unix_timestamp(d0), unix_timestamp(d1), unix_timestamp(d2), unix_timestamp(d3), unix_timestamp(d4), unix_timestamp(d5), unix_timestamp(d6) from t;",
+				Query: "select unix_timestamp(dt0), unix_timestamp(dt1), unix_timestamp(dt2), unix_timestamp(dt3), unix_timestamp(dt4), unix_timestamp(dt5), unix_timestamp(dt6) from dt;",
 				Expected: []sql.Row{
 					{"1577943296", "1577943296.1", "1577943296.12", "1577943296.123", "1577943296.1235", "1577943296.12346", "1577943296.123456"},
+				},
+			},
+			{
+				Query: "select unix_timestamp(d), unix_timestamp(tt) from t;",
+				Expected: []sql.Row{
+					{"1577898000", "1743053696.123456"},
 				},
 			},
 		},
