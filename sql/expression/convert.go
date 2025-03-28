@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -155,7 +156,7 @@ func (c *Convert) Type() sql.Type {
 	case ConvertToDate:
 		return types.Date
 	case ConvertToDatetime:
-		return types.DatetimeMaxPrecision
+		return types.MustCreateDatetimeType(sqltypes.Datetime, c.typeLength)
 	case ConvertToDecimal:
 		if c.cachedDecimalType == nil {
 			c.cachedDecimalType = createConvertedDecimalType(c.typeLength, c.typeScale, true)
