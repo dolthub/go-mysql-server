@@ -20,6 +20,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// IsBoolean checks if t is a boolean type.
+func IsBoolean(t sql.Type) bool {
+	return t == Boolean
+}
+
 // IsBlobType checks if t is BLOB
 func IsBlobType(t sql.Type) bool {
 	if t == nil {
