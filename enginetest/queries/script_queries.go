@@ -7840,7 +7840,7 @@ where
 		},
 	},
 	{
-		Name: "negative int limits",
+		Name:    "negative int limits",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t(i8 tinyint, i16 smallint, i24 mediumint, i32 int, i64 bigint);",
@@ -7848,7 +7848,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT -i8, -i16, -i24, -i32 from t;",
+				Query: "SELECT -i8, -i16, -i24, -i32 from t;",
 				Expected: []sql.Row{
 					{128, 32768, 8388608, 2147483648},
 				},

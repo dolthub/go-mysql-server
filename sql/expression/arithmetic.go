@@ -17,7 +17,7 @@ package expression
 import (
 	"fmt"
 	"math"
-"reflect"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
