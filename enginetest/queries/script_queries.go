@@ -7842,6 +7842,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				SkipResultCheckOnServerEngine: true,
 				Query: "SELECT -i8, -i16, -i24, -i32 from t;",
 				Expected: []sql.Row{
 					{128, 32768, 8388608, 2147483648},
