@@ -16,7 +16,8 @@ package expression
 
 import (
 	"fmt"
-	"reflect"
+	"math"
+"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -704,12 +705,24 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case int:
 		return -n, nil
 	case int8:
+		if n == math.MinInt8 {
+			return -int16(n), nil
+		}
 		return -n, nil
 	case int16:
+		if n == math.MinInt16 {
+			return -int32(n), nil
+		}
 		return -n, nil
 	case int32:
+		if n == math.MinInt32 {
+			return -int64(n), nil
+		}
 		return -n, nil
 	case int64:
+		if n == math.MinInt64 {
+			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
+		}
 		return -n, nil
 	case uint:
 		return -int(n), nil
