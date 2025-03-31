@@ -202,22 +202,75 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 	{
-		Name: "Nested CALL with INOUT param",
+		Name: "SELECT with JOIN and table aliases",
 		SetUpScript: []string{
-			"SET @outparam = 5",
-			"CREATE PROCEDURE p3(INOUT z INT) BEGIN SET z = z * 111; END;",
-			"CREATE PROCEDURE p2(INOUT y DOUBLE) BEGIN SET y = y + 4; CALL p3(y); END;",
-			"CREATE PROCEDURE p1(INOUT x BIGINT) BEGIN SET x = 3; CALL p2(x); END;",
-			"CALL p1(@outparam)",
+			"CREATE TABLE foo(a BIGINT PRIMARY KEY, b VARCHAR(20))",
+			"INSERT INTO foo VALUES (1, 'd'), (2, 'e'), (3, 'f')",
+			"CREATE TABLE bar(b VARCHAR(30) PRIMARY KEY, c BIGINT)",
+			"INSERT INTO bar VALUES ('x', 3), ('y', 2), ('z', 1)",
+			// Direct child is SELECT
+			"CREATE PROCEDURE p1() SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1",
+			// Direct child is BEGIN/END
+			"CREATE PROCEDURE p2() BEGIN SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END;",
+			// Direct child is IF
+			"CREATE PROCEDURE p3() IF 0 = 0 THEN SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END IF;",
+			// Direct child is BEGIN/END with preceding SELECT
+			"CREATE PROCEDURE p4() BEGIN SELECT 7; SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END;",
+			// Direct child is IF with preceding SELECT
+			"CREATE PROCEDURE p5() IF 0 = 0 THEN SELECT 7; SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END IF;",
 		},
 		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query: "SELECT @outparam",
+			{ // Enforces that this is the expected output from the query normally
+				Query: "SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1",
 				Expected: []sql.Row{
-					{int64(777)},
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p1()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p2()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
+				Query:                         "CALL p3()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p4()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
+				Query:                         "CALL p5()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
 				},
 			},
 		},

@@ -211,7 +211,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 				if err != nil {
 					return nil, err
 				}
-				e.From[i] = newExpr.(*ast.AliasedTableExpr)
+				e.From[i] = newExpr.(ast.TableExpr)
 			}
 		}
 	case *ast.Subquery:
