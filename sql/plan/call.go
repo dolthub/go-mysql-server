@@ -215,14 +215,8 @@ func (c *Call) GetRunner() sql.StatementRunner {
 	return c.Runner
 }
 
-// GetParameters implements the sql.InterpreterNode interface.
-func (c *Call) GetParameters() []sql.Type {
-	return nil
-}
-
-// GetParameterNames implements the sql.InterpreterNode interface.
-func (c *Call) GetParameterNames() []string {
-	return nil
+func (c *Call) GetAsOf() sql.Expression {
+	return c.asOf
 }
 
 // GetStatements implements the sql.InterpreterNode interface.
