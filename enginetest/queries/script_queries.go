@@ -7832,7 +7832,7 @@ where
 				},
 			},
 			{
-				Query:    "select * from t where i != (false or i);",
+				Query: "select * from t where i != (false or i);",
 				Expected: []sql.Row{
 					{123},
 				},
