@@ -205,72 +205,43 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 	{
-		Name: "SELECT with JOIN and table aliases",
+		Name: "insert trigger with stored procedure with deletes",
 		SetUpScript: []string{
-			"CREATE TABLE foo(a BIGINT PRIMARY KEY, b VARCHAR(20))",
-			"INSERT INTO foo VALUES (1, 'd'), (2, 'e'), (3, 'f')",
-			"CREATE TABLE bar(b VARCHAR(30) PRIMARY KEY, c BIGINT)",
-			"INSERT INTO bar VALUES ('x', 3), ('y', 2), ('z', 1)",
-			// Direct child is SELECT
-			"CREATE PROCEDURE p1() SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1",
-			// Direct child is BEGIN/END
-			"CREATE PROCEDURE p2() BEGIN SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END;",
-			// Direct child is IF
-			"CREATE PROCEDURE p3() IF 0 = 0 THEN SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END IF;",
-			// Direct child is BEGIN/END with preceding SELECT
-			"CREATE PROCEDURE p4() BEGIN SELECT 7; SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END;",
-			// Direct child is IF with preceding SELECT
-			"CREATE PROCEDURE p5() IF 0 = 0 THEN SELECT 7; SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END IF;",
+			"create table t (i int);",
+			"create table t1 (j int);",
+			`
+create procedure proc(x int)
+begin
+  insert into t1 values (x);
+  insert into t1 values (x);
+end;
+`,
+			`
+create trigger trig before insert on t
+for each row
+begin
+  call proc(new.i);
+end;
+`,
 		},
 		Assertions: []queries.ScriptTestAssertion{
-			{ // Enforces that this is the expected output from the query normally
-				Query: "SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1",
+			{
+				Query: "insert into t values (1);",
 				Expected: []sql.Row{
-					{int64(1), "z", "d"},
-					{int64(2), "y", "e"},
-					{int64(3), "x", "f"},
+					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Query: "CALL p1()",
+				Query: "select * from t;",
 				Expected: []sql.Row{
-					{int64(1), "z", "d"},
-					{int64(2), "y", "e"},
-					{int64(3), "x", "f"},
+					{1},
 				},
 			},
 			{
-				Query: "CALL p2()",
+				Query: "select * from t1;",
 				Expected: []sql.Row{
-					{int64(1), "z", "d"},
-					{int64(2), "y", "e"},
-					{int64(3), "x", "f"},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
-				Query:                         "CALL p3()",
-				Expected: []sql.Row{
-					{int64(1), "z", "d"},
-					{int64(2), "y", "e"},
-					{int64(3), "x", "f"},
-				},
-			},
-			{
-				Query: "CALL p4()",
-				Expected: []sql.Row{
-					{int64(1), "z", "d"},
-					{int64(2), "y", "e"},
-					{int64(3), "x", "f"},
-				},
-			},
-			{
-				SkipResultCheckOnServerEngine: true, // tracking issue: https://github.com/dolthub/dolt/issues/6918
-				Query:                         "CALL p5()",
-				Expected: []sql.Row{
-					{int64(1), "z", "d"},
-					{int64(2), "y", "e"},
-					{int64(3), "x", "f"},
+					{1},
+					{1},
 				},
 			},
 		},

@@ -253,6 +253,22 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 			return nil, err
 		}
 		e.Rows = newExpr.(ast.InsertRows)
+	case *ast.Delete:
+		if e.Where != nil {
+			newExpr, err := replaceVariablesInExpr(stack, e.Where.Expr, asOf)
+			if err != nil {
+				return nil, err
+			}
+			e.Where.Expr = newExpr.(ast.Expr)
+		}
+	case *ast.Update:
+		if e.Where != nil {
+			newExpr, err := replaceVariablesInExpr(stack, e.Where.Expr, asOf)
+			if err != nil {
+				return nil, err
+			}
+			e.Where.Expr = newExpr.(ast.Expr)
+		}
 	}
 	return expr, nil
 }
