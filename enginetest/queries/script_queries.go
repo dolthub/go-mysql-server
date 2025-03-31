@@ -7831,6 +7831,12 @@ where
 					{123},
 				},
 			},
+			{
+				Query:    "select * from t where i != (false or i);",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
 		},
 	},
 	{
