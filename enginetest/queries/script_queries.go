@@ -7799,6 +7799,40 @@ where
 			},
 		},
 	},
+	{
+		Name:    "not expression optimization",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (123);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t where 1 = (not(not(i)))",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query:    "select * from t where true = (not(not(i)))",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query:    "select * from t where true = (not(not(i = 123)))",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query:    "select * from t where false = (not(not(i != 123)))",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

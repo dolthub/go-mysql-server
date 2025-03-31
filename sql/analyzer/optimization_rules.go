@@ -431,7 +431,9 @@ func pushNotFiltersHelper(e sql.Expression) (sql.Expression, error) {
 	// NOT(NOT(c))=>c
 	if not, _ := e.(*expression.Not); not != nil {
 		if f, _ := not.Child.(*expression.Not); f != nil {
-			return pushNotFiltersHelper(f.Child)
+			if types.IsBoolean(f.Child.Type()) {
+				return pushNotFiltersHelper(f.Child)
+			}
 		}
 	}
 
