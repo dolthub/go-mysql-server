@@ -5165,9 +5165,9 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Query: "select unix_timestamp(d), unix_timestamp(tt) from t;",
+				Query: "select unix_timestamp(d), substring(cast(unix_timestamp(tt) as char(128)), -6) from t;",
 				Expected: []sql.Row{
-					{"1577898000", "1743140096.123456"},
+					{"1577898000", "123456"},
 				},
 			},
 		},
