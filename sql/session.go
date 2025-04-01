@@ -171,6 +171,8 @@ type Session interface {
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is
 	// executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context) error
+
+	//SetInStoredProcedure(val bool)
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
@@ -205,6 +207,8 @@ type TransactionSession interface {
 	RollbackToSavepoint(ctx *Context, transaction Transaction, name string) error
 	// ReleaseSavepoint removes the savepoint named from the transaction given
 	ReleaseSavepoint(ctx *Context, transaction Transaction, name string) error
+
+	SetInStoredProcedure(val bool)
 }
 
 // A LifecycleAwareSession is a a sql.Session that gets lifecycle callbacks

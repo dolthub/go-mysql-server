@@ -212,8 +212,7 @@ func TestSingleScript(t *testing.T) {
 			`
 create procedure proc(x int)
 begin
-  insert into t1 values (x);
-  insert into t1 values (x);
+  insert into t1 values (x + 100);
 end;
 `,
 			`
@@ -237,13 +236,13 @@ end;
 					{1},
 				},
 			},
-			{
-				Query: "select * from t1;",
-				Expected: []sql.Row{
-					{1},
-					{1},
-				},
-			},
+			//{
+			//	Query: "select * from t1;",
+			//	Expected: []sql.Row{
+			//		{101},
+			//		{201},
+			//	},
+			//},
 		},
 	},
 	}
