@@ -77,7 +77,7 @@ func (nl *NamedLockFunction) GetLockName(ctx *sql.Context, row sql.Row) (*string
 	if !ok {
 		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName)
 	}
-	lockName, err := types.ConvertToString(val, s, nil)
+	lockName, err := types.ConvertToString(ctx, val, s, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName), err)
 	}
@@ -328,7 +328,7 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type().String(), gl.FunctionName())
 	}
 
-	lockName, err := types.ConvertToString(leftVal, s, nil)
+	lockName, err := types.ConvertToString(ctx, leftVal, s, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type().String(), gl.FunctionName()), err)
 	}
