@@ -157,7 +157,7 @@ func TestAsWKB(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }

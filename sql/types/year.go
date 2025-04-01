@@ -39,16 +39,16 @@ var (
 type YearType_ struct{}
 
 // Compare implements Type interface.
-func (t YearType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+func (t YearType_) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	as, _, err := t.Convert(a)
+	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bs, _, err := t.Convert(b)
+	bs, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -65,28 +65,28 @@ func (t YearType_) Compare(s context.Context, a interface{}, b interface{}) (int
 }
 
 // Convert implements Type interface.
-func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t YearType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
 	case int:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int8:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint8:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int16:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint16:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int64:
 		if value == 0 {
 			return int16(0), sql.InRange, nil
@@ -101,18 +101,18 @@ func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 			return int16(value), sql.InRange, nil
 		}
 	case uint64:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case float32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case float64:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case decimal.Decimal:
-		return t.Convert(value.IntPart())
+		return t.Convert(ctx, value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
 			return nil, sql.InRange, nil
 		}
-		return t.Convert(value.Decimal.IntPart())
+		return t.Convert(ctx, value.Decimal.IntPart())
 	case string:
 		valueLength := len(value)
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
@@ -123,9 +123,9 @@ func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 			if i == 0 {
 				return int16(2000), sql.InRange, nil
 			}
-			return t.Convert(i)
+			return t.Convert(ctx, i)
 		} else if f, err := strconv.ParseFloat(value, 64); err == nil {
-			return t.Convert(f)
+			return t.Convert(ctx, f)
 		}
 	case time.Time:
 		year := value.Year()
@@ -135,15 +135,6 @@ func (t YearType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 	}
 
 	return nil, sql.InRange, ErrConvertingToYear.New(v)
-}
-
-// MustConvert implements the Type interface.
-func (t YearType_) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -168,7 +159,7 @@ func (t YearType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

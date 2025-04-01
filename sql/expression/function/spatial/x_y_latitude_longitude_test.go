@@ -96,7 +96,7 @@ func TestSTX(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -110,7 +110,7 @@ func TestSTX(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }
@@ -187,7 +187,7 @@ func TestSTY(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -296,7 +296,7 @@ func TestLongitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -310,7 +310,7 @@ func TestLongitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }
@@ -408,7 +408,7 @@ func TestLatitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -422,7 +422,7 @@ func TestLatitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }

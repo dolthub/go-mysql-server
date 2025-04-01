@@ -129,7 +129,7 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if j.Typ != nil {
-		res, _, err = j.Typ.Convert(res)
+		res, _, err = j.Typ.Convert(ctx, res)
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +176,7 @@ func GetJSONFromWrapperOrCoercibleString(js interface{}, functionName string, ar
 	// The first parameter can be either JSON or a string.
 	switch jsType := js.(type) {
 	case string:
-		strData, _, err := types.LongBlob.Convert(js)
+		strData, _, err := types.LongBlob.Convert(ctx, js)
 		if err != nil {
 			return nil, err
 		}

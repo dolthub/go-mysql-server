@@ -184,7 +184,7 @@ func TestGroupByCollations(t *testing.T) {
 		{
 			Type: tEnum,
 			Value: func(t *testing.T, v string) any {
-				conv, _, err := tEnum.Convert(v)
+				conv, _, err := tEnum.Convert(ctx, v)
 				require.NoError(t, err)
 				return conv
 			},
@@ -192,7 +192,7 @@ func TestGroupByCollations(t *testing.T) {
 		{
 			Type: tSet,
 			Value: func(t *testing.T, v string) any {
-				conv, _, err := tSet.Convert(v)
+				conv, _, err := tSet.Convert(ctx, v)
 				require.NoError(t, err)
 				return conv
 			},

@@ -263,7 +263,7 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 			}
 		}
 
-		enum, _, err := sysVarType.Convert(setVal)
+		enum, _, err := sysVarType.Convert(ctx, setVal)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -301,7 +301,7 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 			return nil, false
 		}
 
-		enum, _, err := sysVarType.Convert(setVal)
+		enum, _, err := sysVarType.Convert(ctx, setVal)
 		if err != nil {
 			b.handleErr(err)
 		}

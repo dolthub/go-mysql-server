@@ -78,7 +78,7 @@ type Type interface {
 	// Convert a value of a compatible type to a most accurate type, returning
 	// the new value, whether the value in range, or an error. If |inRange| is
 	// false, the value was coerced according to MySQL's rules.
-	Convert(interface{}) (interface{}, ConvertInRange, error)
+	Convert(context.Context, interface{}) (interface{}, ConvertInRange, error)
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
 	Equals(otherType Type) bool

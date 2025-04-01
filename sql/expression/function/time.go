@@ -628,7 +628,7 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		if i64, _, err := types.Int64.Convert(val); err == nil {
+		if i64, _, err := types.Int64.Convert(ctx, val); err == nil {
 			if mode, ok = i64.(int64); ok {
 				mode %= 8 // mode in [0, 7]
 			}
@@ -734,7 +734,7 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		if i64, _, err := types.Int64.Convert(val); err == nil {
+		if i64, _, err := types.Int64.Convert(ctx, val); err == nil {
 			if mode, ok = i64.(int64); ok {
 				mode %= 8 // mode in [0, 7]
 			}
@@ -1133,7 +1133,7 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		precisionArg, _, err := types.Int32.Convert(val)
+		precisionArg, _, err := types.Int32.Convert(ctx, val)
 
 		if err != nil {
 			return nil, err
@@ -1281,7 +1281,7 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interfac
 		return nil, nil
 	}
 
-	ret, _, err := types.DatetimeMaxPrecision.Convert(val)
+	ret, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 	return ret, err
 }
 
@@ -1329,7 +1329,7 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if s, ok := val.(string); ok {
-		val, _, err = types.DatetimeMaxPrecision.Convert(s)
+		val, _, err = types.DatetimeMaxPrecision.Convert(ctx, s)
 		if err != nil {
 			ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
 			return nil, nil
@@ -1684,7 +1684,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to time
-	val, _, err := types.Time.Convert(v)
+	val, _, err := types.Time.Convert(ctx, v)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil

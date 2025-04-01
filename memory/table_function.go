@@ -35,7 +35,7 @@ func (s TableFunc) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expre
 	if !ok {
 		return nil, fmt.Errorf("table_func table expects arguments to be literal expressions")
 	}
-	value, _, err := types.Int64.Convert(valueExpr.Value())
+	value, _, err := types.Int64.Convert(ctx, valueExpr.Value())
 	if !ok {
 		return nil, fmt.Errorf("%w; table_func table expects 2nd argument to be a table_func length integer", err)
 	}

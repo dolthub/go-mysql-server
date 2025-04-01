@@ -57,12 +57,12 @@ func (t PolygonType) Compare(ctx context.Context, a interface{}, b interface{}) 
 }
 
 // Convert implements Type interface.
-func (t PolygonType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t PolygonType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
 	case []byte:
-		poly, _, err := GeometryType{}.Convert(buf)
+		poly, _, err := GeometryType{}.Convert(ctx, buf)
 		if sql.ErrInvalidGISData.Is(err) {
 			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("PolygonType.Convert")
 		} else if err != nil {
@@ -70,7 +70,7 @@ func (t PolygonType) Convert(v interface{}) (interface{}, sql.ConvertInRange, er
 		}
 		return poly, sql.InRange, nil
 	case string:
-		return t.Convert([]byte(buf))
+		return t.Convert(ctx, []byte(buf))
 	case Polygon:
 		if err := t.MatchSRID(buf); err != nil {
 			return nil, sql.OutOfRange, err
@@ -103,7 +103,7 @@ func (t PolygonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

@@ -36,7 +36,7 @@ func (s ExponentialDistTable) NewInstance(_ *sql.Context, db sql.Database, args 
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	colCnt, inBounds, _ := types.Int64.Convert(colCntLit.Value())
+	colCnt, inBounds, _ := types.Int64.Convert(ctx, colCntLit.Value())
 	if !inBounds {
 		return nil, fmt.Errorf("normal_dist table expects 1st argument to be column count")
 	}
@@ -44,7 +44,7 @@ func (s ExponentialDistTable) NewInstance(_ *sql.Context, db sql.Database, args 
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	rowCnt, inBounds, _ := types.Int64.Convert(rowCntLit.Value())
+	rowCnt, inBounds, _ := types.Int64.Convert(ctx, rowCntLit.Value())
 	if !inBounds {
 		return nil, fmt.Errorf("normal_dist table expects 2nd argument to be row count")
 	}
@@ -52,7 +52,7 @@ func (s ExponentialDistTable) NewInstance(_ *sql.Context, db sql.Database, args 
 	if !ok {
 		return nil, fmt.Errorf("exponential_dist table expects arguments to be literal expressions")
 	}
-	lambda, inBounds, _ := types.Float64.Convert(lambdaLit.Value())
+	lambda, inBounds, _ := types.Float64.Convert(ctx, lambdaLit.Value())
 	if !inBounds {
 		return nil, fmt.Errorf("exponential_dist table expects 3rd argument to be row count")
 	}

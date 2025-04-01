@@ -287,12 +287,12 @@ func (c *JsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error
 		val = c.Opts.DefEmpVal
 	}
 
-	val, _, err = c.Opts.Typ.Convert(val)
+	val, _, err = c.Opts.Typ.Convert(ctx, val)
 	if err != nil {
 		if c.Opts.ErrOnErr {
 			return nil, err
 		}
-		val, _, err = c.Opts.Typ.Convert(c.Opts.DefErrVal)
+		val, _, err = c.Opts.Typ.Convert(ctx, c.Opts.DefErrVal)
 		if err != nil {
 			return nil, err
 		}

@@ -113,16 +113,16 @@ func MustCreateSetType(values []string, collation sql.CollationID) sql.SetType {
 }
 
 // Compare implements Type interface.
-func (t SetType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+func (t SetType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	ai, _, err := t.Convert(a)
+	ai, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bi, _, err := t.Convert(b)
+	bi, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -139,50 +139,50 @@ func (t SetType) Compare(s context.Context, a interface{}, b interface{}) (int, 
 
 // Convert implements Type interface.
 // Returns the string representing the given value if applicable.
-func (t SetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
 	case int:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int8:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint8:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int16:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint16:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int32:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint32:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int64:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint64:
 		if value <= t.allValuesBitField() {
 			return value, sql.InRange, nil
 		}
 	case float32:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case float64:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case decimal.Decimal:
-		return t.Convert(value.BigInt().Uint64())
+		return t.Convert(ctx, value.BigInt().Uint64())
 	case decimal.NullDecimal:
 		if !value.Valid {
 			return nil, sql.InRange, nil
 		}
-		return t.Convert(value.Decimal.BigInt().Uint64())
+		return t.Convert(ctx, value.Decimal.BigInt().Uint64())
 	case string:
 		ret, err := t.convertStringToBitField(value)
 		return ret, sql.InRange, err
 	case []byte:
-		return t.Convert(string(value))
+		return t.Convert(ctx, string(value))
 	}
 
 	return uint64(0), sql.OutOfRange, sql.ErrConvertingToSet.New(v)
@@ -191,15 +191,6 @@ func (t SetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error)
 // MaxTextResponseByteLength implements the Type interface
 func (t SetType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return t.maxResponseByteLength
-}
-
-// MustConvert implements the Type interface.
-func (t SetType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -225,7 +216,7 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, _, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

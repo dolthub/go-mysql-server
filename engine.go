@@ -282,7 +282,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 		}
 		switch {
 		case v.Type() == sqltypes.Year:
-			v, _, err := types.Year.Convert(string(v.ToBytes()))
+			v, _, err := types.Year.Convert(ctx, string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
@@ -293,7 +293,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 				return nil, err
 			}
 			t := types.Int64
-			c, _, err := t.Convert(v)
+			c, _, err := t.Convert(ctx, v)
 			if err != nil {
 				return nil, err
 			}
@@ -304,7 +304,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 				return nil, err
 			}
 			t := types.Uint64
-			c, _, err := t.Convert(v)
+			c, _, err := t.Convert(ctx, v)
 			if err != nil {
 				return nil, err
 			}
@@ -315,20 +315,20 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 				return nil, err
 			}
 			t := types.Float64
-			c, _, err := t.Convert(v)
+			c, _, err := t.Convert(ctx, v)
 			if err != nil {
 				return nil, err
 			}
 			res[k] = expression.NewLiteral(c, t)
 		case v.Type() == sqltypes.Decimal:
-			v, _, err := types.InternalDecimalType.Convert(string(v.ToBytes()))
+			v, _, err := types.InternalDecimalType.Convert(ctx, string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
 			res[k] = expression.NewLiteral(v, types.InternalDecimalType)
 		case v.Type() == sqltypes.Bit:
 			t := types.MustCreateBitType(types.BitTypeMaxBits)
-			v, _, err := t.Convert(v.ToBytes())
+			v, _, err := t.Convert(ctx, v.ToBytes())
 			if err != nil {
 				return nil, err
 			}
@@ -340,7 +340,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 			if err != nil {
 				return nil, err
 			}
-			v, _, err := t.Convert(v.ToBytes())
+			v, _, err := t.Convert(ctx, v.ToBytes())
 			if err != nil {
 				return nil, err
 			}
@@ -350,7 +350,7 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 			if err != nil {
 				return nil, err
 			}
-			v, _, err := t.Convert(v.ToBytes())
+			v, _, err := t.Convert(ctx, v.ToBytes())
 			if err != nil {
 				return nil, err
 			}
@@ -364,14 +364,14 @@ func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.
 			if err != nil {
 				return nil, err
 			}
-			v, _, err := t.Convert(string(v.ToBytes()))
+			v, _, err := t.Convert(ctx, string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
 			res[k] = expression.NewLiteral(v, t)
 		case v.Type() == sqltypes.Time:
 			t := types.Time
-			v, _, err := t.Convert(string(v.ToBytes()))
+			v, _, err := t.Convert(ctx, string(v.ToBytes()))
 			if err != nil {
 				return nil, err
 			}
@@ -686,7 +686,7 @@ func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.E
 				t = types.Null
 			}
 			if val != nil {
-				val, _, err = t.Promote().Convert(val)
+				val, _, err = t.Promote().Convert(ctx, val)
 				if err != nil {
 					return nil, nil
 				}

@@ -435,12 +435,12 @@ type SystemVariable interface {
 	// InitValue sets value without validation.
 	// This is used for setting the initial values internally
 	// using pre-defined variables or for test-purposes.
-	InitValue(val any, global bool) (SystemVarValue, error)
+	InitValue(ctx *Context, val any, global bool) (SystemVarValue, error)
 	// SetValue sets the value of the sv of given scope, global or session
 	// It validates setting value of correct scope,
 	// converts the given value to appropriate value depending on the sv
 	// and it returns the SystemVarValue with the updated value.
-	SetValue(val any, global bool) (SystemVarValue, error)
+	SetValue(ctx *Context, val any, global bool) (SystemVarValue, error)
 	// IsReadOnly checks whether the variable is read only.
 	// It returns false if variable can be set to a value.
 	IsReadOnly() bool
@@ -514,8 +514,8 @@ func (m *MysqlSystemVariable) GetDefault() any {
 }
 
 // InitValue implements SystemVariable.
-func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, error) {
-	convertedVal, _, err := m.Type.Convert(val)
+func (m *MysqlSystemVariable) InitValue(ctx *Context, val any, global bool) (SystemVarValue, error) {
+	convertedVal, _, err := m.Type.Convert(ctx, val)
 	if err != nil {
 		return SystemVarValue{}, err
 	}
@@ -537,7 +537,7 @@ func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, e
 }
 
 // SetValue implements SystemVariable.
-func (m *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
+func (m *MysqlSystemVariable) SetValue(ctx *Context, val any, global bool) (SystemVarValue, error) {
 	if global && m.Scope.Type == SystemVariableScope_Session {
 		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(m.Name)
 	}
@@ -547,7 +547,7 @@ func (m *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, er
 	if !m.Dynamic || m.ValueFunction != nil {
 		return SystemVarValue{}, ErrSystemVariableReadOnly.New(m.Name)
 	}
-	return m.InitValue(val, global)
+	return m.InitValue(ctx, val, global)
 }
 
 // IsReadOnly implements SystemVariable.

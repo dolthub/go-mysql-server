@@ -43,12 +43,12 @@ func NewSystemBoolType(varName string) sql.SystemVariableType {
 }
 
 // Compare implements Type interface.
-func (t SystemBoolType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
-	as, _, err := t.Convert(a)
+func (t SystemBoolType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bs, _, err := t.Convert(b)
+	bs, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -65,7 +65,7 @@ func (t SystemBoolType) Compare(s context.Context, a interface{}, b interface{})
 }
 
 // Convert implements Type interface.
-func (t SystemBoolType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t SystemBoolType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case bool:
@@ -74,42 +74,42 @@ func (t SystemBoolType) Convert(v interface{}) (interface{}, sql.ConvertInRange,
 		}
 		return int8(0), sql.InRange, nil
 	case int:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int8:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint8:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int16:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint16:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int64:
 		if value == 0 || value == 1 {
 			return int8(value), sql.InRange, nil
 		}
 	case uint64:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case float32:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value == float64(int64(value)) {
-			return t.Convert(int64(value))
+			return t.Convert(ctx, int64(value))
 		}
 	case decimal.Decimal:
 		f, _ := value.Float64()
-		return t.Convert(f)
+		return t.Convert(ctx, f)
 	case decimal.NullDecimal:
 		if value.Valid {
 			f, _ := value.Decimal.Float64()
-			return t.Convert(f)
+			return t.Convert(ctx, f)
 		}
 	case string:
 		switch strings.ToLower(value) {
@@ -121,15 +121,6 @@ func (t SystemBoolType) Convert(v interface{}) (interface{}, sql.ConvertInRange,
 	}
 
 	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
-}
-
-// MustConvert implements the Type interface.
-func (t SystemBoolType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -156,7 +147,7 @@ func (t SystemBoolType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

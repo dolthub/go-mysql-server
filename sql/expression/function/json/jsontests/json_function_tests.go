@@ -38,7 +38,7 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "string",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
-			jsonString, _, err := types.Text.Convert(js)
+			jsonString, _, err := types.Text.Convert(ctx, js)
 			require.NoError(t, err)
 			return jsonString
 		},
@@ -46,7 +46,7 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "JsonDocument",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
-			doc, _, err := types.JSON.Convert(js)
+			doc, _, err := types.JSON.Convert(ctx, js)
 			require.NoError(t, err)
 			val, err := doc.(sql.JSONWrapper).ToInterface()
 			require.NoError(t, err)
@@ -56,7 +56,7 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "LazyJsonDocument",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
-			doc, _, err := types.JSON.Convert(js)
+			doc, _, err := types.JSON.Convert(ctx, js)
 			require.NoError(t, err)
 			bytes, err := types.MarshallJson(doc.(sql.JSONWrapper))
 			require.NoError(t, err)
@@ -102,7 +102,7 @@ func RunJsonTests(t *testing.T, testCases []testCase) {
 
 				var expect interface{}
 				if tstC.expected != nil {
-					expect, _, err = types.JSON.Convert(tstC.expected)
+					expect, _, err = types.JSON.Convert(ctx, tstC.expected)
 					if err != nil {
 						panic("Bad test string. Can't convert string to JSONDocument: " + tstC.expected.(string))
 					}

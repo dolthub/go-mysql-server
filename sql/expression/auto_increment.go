@@ -109,7 +109,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	// if given is negative, don't do any auto_increment logic
 	if cmp < 0 {
-		ret, _, err := i.Type().Convert(given)
+		ret, _, err := i.Type().Convert(ctx, given)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +118,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	if cmp == 0 {
 		if sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) {
-			ret, _, err := i.Type().Convert(given)
+			ret, _, err := i.Type().Convert(ctx, given)
 			if err != nil {
 				return nil, err
 			}
@@ -139,7 +139,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = seq
 	}
 
-	ret, _, err := i.Type().Convert(given)
+	ret, _, err := i.Type().Convert(ctx, given)
 	if err != nil {
 		return nil, err
 	}

@@ -99,21 +99,12 @@ func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) 
 	return as.Compare(bs), nil
 }
 
-func (t TimespanType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t TimespanType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
 	ret, err := t.ConvertToTimespan(v)
 	return ret, sql.InRange, err
-}
-
-// MustConvert implements the Type interface.
-func (t TimespanType_) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which

@@ -168,9 +168,7 @@ func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{})
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
-	// TODO: Add context parameter to Convert
-	ctx := context.Background()
+func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -346,14 +344,6 @@ func parseDatetime(value string) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
-}
-
-func (t datetimeType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.

@@ -127,7 +127,7 @@ func (l *LastInsertUuid) IsNullable() bool {
 
 func (l *LastInsertUuid) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	lastInsertUuid := ctx.GetLastQueryInfoString(sql.LastInsertUuid)
-	result, _, err := l.Type().Convert(lastInsertUuid)
+	result, _, err := l.Type().Convert(ctx, lastInsertUuid)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (r *LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	// With no arguments, just return the last insert id for this session
 	if len(r.Children()) == 0 {
 		lastInsertId := ctx.GetLastQueryInfoInt(sql.LastInsertId)
-		unsigned, _, err := types.Uint64.Convert(lastInsertId)
+		unsigned, _, err := types.Uint64.Convert(ctx, lastInsertId)
 		if err != nil {
 			return nil, err
 		}
@@ -217,7 +217,7 @@ func (r *LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	id, _, err := types.Int64.Convert(res)
+	id, _, err := types.Int64.Convert(ctx, res)
 	if err != nil {
 		return nil, err
 	}

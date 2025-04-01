@@ -327,7 +327,7 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 		switch col.Type.Type() {
 		case query.Type_GEOMETRY:
 			if row[i] != nil {
-				r, _, err := types.GeometryType{}.Convert(row[i].([]byte))
+				r, _, err := types.GeometryType{}.Convert(ctx, row[i].([]byte))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error converting returned geometry result"))
 				} else {
@@ -347,7 +347,7 @@ func convertValue(sch sql.Schema, row sql.Row) sql.Row {
 			}
 		case query.Type_TIME:
 			if row[i] != nil {
-				r, _, err := types.TimespanType_{}.Convert(string(row[i].([]byte)))
+				r, _, err := types.TimespanType_{}.Convert(ctx, string(row[i].([]byte)))
 				if err != nil {
 					//t.Skip(fmt.Sprintf("received error converting returned timespan result"))
 				} else {

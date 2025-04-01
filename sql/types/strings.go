@@ -253,7 +253,7 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 	var bs string
 	var ok bool
 	if as, ok = a.(string); !ok {
-		ai, _, err := t.Convert(a)
+		ai, _, err := t.Convert(ctx, a)
 		if err != nil {
 			return 0, err
 		}
@@ -269,7 +269,7 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		}
 	}
 	if bs, ok = b.(string); !ok {
-		bi, _, err := t.Convert(b)
+		bi, _, err := t.Convert(ctx, b)
 		if err != nil {
 			return 0, err
 		}
@@ -315,9 +315,7 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 }
 
 // Convert implements Type interface.
-func (t StringType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
-	// TODO: Add context parameter to Convert
-	ctx := context.Background()
+func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -508,7 +506,7 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 		} else if byteVal, ok := val.([]byte); ok {
 			content = encodings.BytesToString(byteVal)
 		} else {
-			val, _, err = LongText.Convert(val)
+			val, _, err = LongText.Convert(ctx, val)
 			if err != nil {
 				return "", sql.Collation_Unspecified, err
 			}
@@ -516,22 +514,13 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 		}
 	} else {
 		collation = sql.Collation_Default
-		val, _, err = LongText.Convert(val)
+		val, _, err = LongText.Convert(ctx, val)
 		if err != nil {
 			return "", sql.Collation_Unspecified, err
 		}
 		content = val.(string)
 	}
 	return content, collation, nil
-}
-
-// MustConvert implements the Type interface.
-func (t StringType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.

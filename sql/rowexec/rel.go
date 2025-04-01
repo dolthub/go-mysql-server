@@ -63,7 +63,7 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 				return nil, err
 			}
 			// cast all row values to the most permissive type
-			vals[j], _, err = n.Schema()[j].Type.Convert(p)
+			vals[j], _, err = n.Schema()[j].Type.Convert(ctx, p)
 			if err != nil {
 				return nil, err
 			}
@@ -709,7 +709,7 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 		if err != nil {
 			return nil, err
 		}
-		exprParamVal, _, err = paramDefinition.Type.Convert(exprParamVal)
+		exprParamVal, _, err = paramDefinition.Type.Convert(ctx, exprParamVal)
 		if err != nil {
 			return nil, err
 		}

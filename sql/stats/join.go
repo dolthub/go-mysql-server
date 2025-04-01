@@ -16,6 +16,7 @@ package stats
 
 import (
 	"container/heap"
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -44,7 +45,7 @@ func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error
 				cmp, err = s1.Types()[i].Compare(ctx, row1[i], row2[i])
 			} else {
 				k1 := row1[i]
-				k2, _, err := s1.Types()[i].Convert(row2[i])
+				k2, _, err := s1.Types()[i].Convert(ctx, row2[i])
 				if err != nil {
 					return 0, fmt.Errorf("incompatible types")
 				}
@@ -572,13 +573,15 @@ const (
 // euclideanDistance is a vectorwise sum of squares distance between
 // two numeric types.
 func euclideanDistance(row1, row2 sql.Row, prefixLen int) (float64, error) {
+	// TODO: Add context parameter
+	ctx := context.Background()
 	var distSq float64
 	for i := 0; i < prefixLen; i++ {
-		v1, _, err := types.Float64.Convert(row1[i])
+		v1, _, err := types.Float64.Convert(ctx, row1[i])
 		if err != nil {
 			return 0, err
 		}
-		v2, _, err := types.Float64.Convert(row2[i])
+		v2, _, err := types.Float64.Convert(ctx, row2[i])
 		if err != nil {
 			return 0, err
 		}

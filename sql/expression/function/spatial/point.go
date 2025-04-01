@@ -94,7 +94,7 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, _, err := types.Float64.Convert(x)
+	_x, _, err := types.Float64.Convert(ctx, x)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, _, err := types.Float64.Convert(y)
+	_y, _, err := types.Float64.Convert(ctx, y)
 	if err != nil {
 		return nil, err
 	}

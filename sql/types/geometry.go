@@ -407,7 +407,7 @@ func (t GeometryType) Compare(s context.Context, a interface{}, b interface{}) (
 }
 
 // Convert implements Type interface.
-func (t GeometryType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t GeometryType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -443,7 +443,7 @@ func (t GeometryType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 		}
 		return geom, sql.InRange, nil
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert(ctx, []byte(val))
 	case GeometryValue:
 		if err := t.MatchSRID(val); err != nil {
 			return nil, sql.OutOfRange, err
@@ -476,7 +476,7 @@ func (t GeometryType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

@@ -123,7 +123,7 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		val, _, err = types.LongText.Convert(val)
+		val, _, err = types.LongText.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}

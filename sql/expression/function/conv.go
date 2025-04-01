@@ -92,7 +92,7 @@ func (c *Conv) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err = types.LongText.Convert(n)
+	n, _, err = types.LongText.Convert(ctx, n)
 	if err != nil {
 		return nil, nil
 	}
@@ -136,7 +136,7 @@ func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // This conversion truncates nVal as its first subpart that is convertable.
 // nVal is treated as unsigned except nVal is negative.
 func convertFromBase(nVal string, fromBase interface{}) interface{} {
-	fromBase, _, err := types.Int64.Convert(fromBase)
+	fromBase, _, err := types.Int64.Convert(ctx, fromBase)
 	if err != nil {
 		return nil
 	}
@@ -198,7 +198,7 @@ func convertFromBase(nVal string, fromBase interface{}) interface{} {
 // convertToBase returns result of whole CONV function in string format, empty string if to input is invalid.
 // The sign of toBase decides whether result is formatted as signed or unsigned.
 func convertToBase(val interface{}, toBase interface{}) string {
-	toBase, _, err := types.Int64.Convert(toBase)
+	toBase, _, err := types.Int64.Convert(ctx, toBase)
 	if err != nil {
 		return ""
 	}

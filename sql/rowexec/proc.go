@@ -188,7 +188,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}
 		paramName := n.Procedure.Params[i].Name
 		paramType := n.Procedure.Params[i].Type
-		err = n.Pref.InitializeVariable(paramName, paramType, val)
+		err = n.Pref.InitializeVariable(ctx, paramName, paramType, val)
 		if err != nil {
 			return nil, err
 		}

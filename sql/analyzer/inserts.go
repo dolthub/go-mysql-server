@@ -243,7 +243,7 @@ func isZero(lit *expression.Literal) bool {
 		return false
 	}
 
-	convert, inRange, err := types.Int8.Convert(lit.Value())
+	convert, inRange, err := types.Int8.Convert(ctx, lit.Value())
 	if err != nil {
 		// Ignore any conversion errors, since that means the value isn't 0
 		// and the values are validated in other parts of the analyzer anyway.

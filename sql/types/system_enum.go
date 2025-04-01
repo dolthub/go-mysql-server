@@ -51,12 +51,12 @@ func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType 
 }
 
 // Compare implements Type interface.
-func (t systemEnumType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
-	as, _, err := t.Convert(a)
+func (t systemEnumType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bs, _, err := t.Convert(b)
+	bs, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -73,7 +73,7 @@ func (t systemEnumType) Compare(s context.Context, a interface{}, b interface{})
 }
 
 // Convert implements Type interface.
-func (t systemEnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemEnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
@@ -81,38 +81,38 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange,
 			return t.indexToVal[value], sql.InRange, nil
 		}
 	case uint:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int16:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint16:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case float32:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value == float64(int(value)) {
-			return t.Convert(int(value))
+			return t.Convert(ctx, int(value))
 		}
 	case decimal.Decimal:
 		f, _ := value.Float64()
-		return t.Convert(f)
+		return t.Convert(ctx, f)
 	case decimal.NullDecimal:
 		if value.Valid {
 			f, _ := value.Decimal.Float64()
-			return t.Convert(f)
+			return t.Convert(ctx, f)
 		}
 	case string:
 		if idx, ok := t.valToIndex[strings.ToLower(value)]; ok {
@@ -121,15 +121,6 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange,
 	}
 
 	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
-}
-
-// MustConvert implements the Type interface.
-func (t systemEnumType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -161,7 +152,7 @@ func (t systemEnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -207,7 +198,7 @@ func (t systemEnumType) EncodeValue(val interface{}) (string, error) {
 
 // DecodeValue implements SystemVariableType interface.
 func (t systemEnumType) DecodeValue(val string) (interface{}, error) {
-	outVal, _, err := t.Convert(val)
+	outVal, _, err := t.Convert(context.Background(), val)
 	if err != nil {
 		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}

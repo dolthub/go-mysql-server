@@ -63,7 +63,7 @@ func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, _, err := types.Text.Convert(val)
+	str, _, err := types.Text.Convert(ctx, val)
 
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (o *Ord) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	str, _, err := types.Text.Convert(val)
+	str, _, err := types.Text.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 	case uint8, uint16, uint32, uint, int, int8, int16, int32, int64:
-		n, _, err := types.Int64.Convert(arg)
+		n, _, err := types.Int64.Convert(ctx, arg)
 
 		if err != nil {
 			return nil, err
@@ -353,7 +353,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(arg)
+	val, _, err := types.LongText.Convert(ctx, arg)
 
 	if err != nil {
 		return nil, err

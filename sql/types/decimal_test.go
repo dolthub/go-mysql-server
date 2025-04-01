@@ -88,7 +88,7 @@ func TestDecimalAccuracy(t *testing.T) {
 			fullStr := baseStr + fullDecimalStr
 
 			t.Run(fmt.Sprintf("Scale:%v DecVal:%v", test.scale, fullDecimalStr), func(t *testing.T) {
-				res, _, err := decimalType.Convert(fullStr)
+				res, _, err := decimalType.Convert(ctx, fullStr)
 				require.NoError(t, err)
 				require.Equal(t, fullStr, res.(decimal.Decimal).StringFixed(int32(decimalType.Scale())))
 			})
@@ -342,7 +342,7 @@ func TestDecimalConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.precision, test.scale, test.val), func(t *testing.T) {
 			typ := MustCreateDecimalType(test.precision, test.scale)
-			val, _, err := typ.Convert(test.val)
+			val, _, err := typ.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {

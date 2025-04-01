@@ -139,7 +139,7 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 }
 
 // Convert implements Type interface.
-func (t DecimalType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
 		return nil, sql.OutOfRange, err
@@ -264,15 +264,6 @@ func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, sql.Conve
 		return decimal.Decimal{}, sql.InRange, ErrConvertToDecimalLimit.New()
 	}
 	return v, sql.InRange, nil
-}
-
-// MustConvert implements the Type interface.
-func (t DecimalType_) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.

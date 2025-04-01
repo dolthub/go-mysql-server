@@ -180,7 +180,7 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 	// todo this should be in a module that can generically coerce to a type or type class
 	switch e := e.(type) {
 	case *expression.Literal:
-		val, _, err := types.Int64.Convert(e.Value())
+		val, _, err := types.Int64.Convert(ctx, e.Value())
 		if err != nil {
 			err = fmt.Errorf("%s: %w", err.Error(), sql.ErrInvalidTypeForLimit.New(types.Int64, e.Type()))
 		}

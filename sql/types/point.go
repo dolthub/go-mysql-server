@@ -56,7 +56,7 @@ func (t PointType) Compare(ctx context.Context, a interface{}, b interface{}) (i
 }
 
 // Convert implements Type interface.
-func (t PointType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t PointType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Allow null
 	if v == nil {
 		return nil, sql.InRange, nil
@@ -80,7 +80,7 @@ func (t PointType) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 		}
 		return point, sql.InRange, nil
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert(ctx, []byte(val))
 	case Point:
 		if err := t.MatchSRID(val); err != nil {
 			return nil, sql.OutOfRange, err
@@ -113,7 +113,7 @@ func (t PointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

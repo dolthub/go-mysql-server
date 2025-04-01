@@ -289,12 +289,14 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 }
 
 func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	l, err := convertValue(left, convertTo, nil, 0, 0)
+	// TODO: Add context parameter
+	ctx := sql.NewEmptyContext()
+	l, err := convertValue(ctx, left, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := convertValue(right, convertTo, nil, 0, 0)
+	r, err := convertValue(ctx, right, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -243,7 +243,7 @@ func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{},
 	case float32, float64:
 		return nil, errors.New("received a float when it should be an int")
 	}
-	x, _, err = types.Int64.Convert(x)
+	x, _, err = types.Int64.Convert(ctx, x)
 	if err != nil {
 		return nil, err
 	}
@@ -667,7 +667,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if val == nil {
 		return nil, nil
 	}
-	val, _, err = types.LongBlob.Convert(val)
+	val, _, err = types.LongBlob.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}

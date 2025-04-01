@@ -219,7 +219,7 @@ func TestNumberConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.inp, test.exp), func(t *testing.T) {
-			val, inRange, err := test.typ.Convert(test.inp)
+			val, inRange, err := test.typ.Convert(ctx, test.inp)
 			if test.err {
 				assert.Error(t, err)
 			} else {

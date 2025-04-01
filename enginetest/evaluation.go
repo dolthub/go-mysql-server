@@ -696,7 +696,7 @@ func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 		c.Type.Type() == sqltypes.Year || (isTime && isZeroTime) || (isStr && types.IsTextOnly(c.Type)) {
 		return expected, nil
 	} else {
-		val, _, err := c.Type.Convert(expected)
+		val, _, err := c.Type.Convert(ctx, expected)
 		return val, err
 	}
 }

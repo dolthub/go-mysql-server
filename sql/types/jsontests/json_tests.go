@@ -30,7 +30,7 @@ func ConvertToJson(t *testing.T, val interface{}) types.MutableJSON {
 	if val == nil {
 		return nil
 	}
-	val, inRange, err := types.JSON.Convert(val)
+	val, inRange, err := types.JSON.Convert(ctx, val)
 	require.NoError(t, err)
 	require.True(t, bool(inRange))
 	require.Implements(t, (*sql.JSONWrapper)(nil), val)

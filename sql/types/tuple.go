@@ -43,12 +43,12 @@ func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (i
 		return res, nil
 	}
 
-	a, _, err := t.Convert(a)
+	a, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
 
-	b, _, err = t.Convert(b)
+	b, _, err = t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -69,7 +69,7 @@ func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (i
 	return 0, nil
 }
 
-func (t TupleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t TupleType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -81,7 +81,7 @@ func (t TupleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 		var result = make([]interface{}, len(t))
 		for i, typ := range t {
 			var err error
-			result[i], _, err = typ.Convert(vals[i])
+			result[i], _, err = typ.Convert(ctx, vals[i])
 			if err != nil {
 				return nil, sql.OutOfRange, err
 			}
@@ -90,14 +90,6 @@ func (t TupleType) Convert(v interface{}) (interface{}, sql.ConvertInRange, erro
 		return result, sql.InRange, nil
 	}
 	return nil, sql.OutOfRange, sql.ErrNotTuple.New(v)
-}
-
-func (t TupleType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
