@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 
@@ -43,7 +44,7 @@ func NewSystemUintType(varName string, lowerbound, upperbound uint64) sql.System
 }
 
 // Compare implements Type interface.
-func (t systemUintType) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemUintType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err

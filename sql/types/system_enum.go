@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strings"
 
@@ -50,7 +51,7 @@ func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType 
 }
 
 // Compare implements Type interface.
-func (t systemEnumType) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemEnumType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err

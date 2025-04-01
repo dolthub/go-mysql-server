@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/bits"
@@ -112,7 +113,7 @@ func MustCreateSetType(values []string, collation sql.CollationID) sql.SetType {
 }
 
 // Compare implements Type interface.
-func (t SetType) Compare(a interface{}, b interface{}) (int, error) {
+func (t SetType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}

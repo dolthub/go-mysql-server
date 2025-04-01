@@ -117,9 +117,7 @@ func RunJsonCompareTests(t *testing.T, tests []JsonCompareTest, prepare prepareJ
 		}
 		t.Run(name, func(t *testing.T) {
 			left, right := prepare(t, test.Left, test.Right)
-			cmp, err := types.JSON.Compare(
-				left, right,
-			)
+			cmp, err := types.JSON.Compare(ctx, left, right)
 			require.NoError(t, err)
 			assert.Equal(t, test.Cmp, cmp)
 		})

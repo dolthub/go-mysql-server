@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"reflect"
 	"strconv"
@@ -81,7 +82,7 @@ func (t TimespanType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 type Timespan int64
 
 // Compare implements Type interface.
-func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}

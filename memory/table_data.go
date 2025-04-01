@@ -368,7 +368,7 @@ func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
 }
 
 // Sorts the rows in the partitions of the table to be in primary key order.
-func (td *TableData) sortRows() {
+func (td *TableData) sortRows(ctx *sql.Context) {
 	var pk []pkfield
 	for _, column := range td.schema.Schema {
 		if column.PrimaryKey {
@@ -390,12 +390,13 @@ func (td *TableData) sortRows() {
 		ps:      td.partitions,
 		allRows: flattenedRows,
 		indexes: td.secondaryIndexStorage,
+		ctx:     ctx,
 	})
 
-	td.sortSecondaryIndexes()
+	td.sortSecondaryIndexes(ctx)
 }
 
-func (td *TableData) sortSecondaryIndexes() {
+func (td *TableData) sortSecondaryIndexes(ctx *sql.Context) {
 	for idxName, idxStorage := range td.secondaryIndexStorage {
 		idx := td.indexes[strings.ToLower(string(idxName))].(*Index)
 		fieldIndexes := idx.columnIndexes(td.schema.Schema)
@@ -419,7 +420,7 @@ func (td *TableData) sortSecondaryIndexes() {
 					return false
 				}
 
-				compare, err := typ.Compare(left, right)
+				compare, err := typ.Compare(ctx, left, right)
 				if err != nil {
 					panic(err)
 				}

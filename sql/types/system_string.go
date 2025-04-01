@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -39,7 +40,7 @@ func NewSystemStringType(varName string) sql.SystemVariableType {
 }
 
 // Compare implements Type interface.
-func (t systemStringType) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemStringType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err

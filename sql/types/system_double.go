@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 
@@ -43,7 +44,7 @@ func NewSystemDoubleType(varName string, lowerbound, upperbound float64) sql.Sys
 }
 
 // Compare implements Type interface.
-func (t systemDoubleType) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemDoubleType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err

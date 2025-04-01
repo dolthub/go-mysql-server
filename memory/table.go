@@ -1151,7 +1151,7 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
 	data := t.sessionTableData(ctx)
 
-	cmp, err := types.Uint64.Compare(insertVal, data.autoIncVal)
+	cmp, err := types.Uint64.Compare(ctx, insertVal, data.autoIncVal)
 	if err != nil {
 		return 0, err
 	}
@@ -1238,7 +1238,7 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 						continue
 					}
 
-					cmp, err := newCol.Type.Compare(row[newColIdx], data.autoIncVal)
+					cmp, err := newCol.Type.Compare(ctx, row[newColIdx], data.autoIncVal)
 					if err != nil {
 						panic(err)
 					}
@@ -2222,6 +2222,7 @@ type partitionssort struct {
 	ps      map[string][]sql.Row
 	allRows []partitionRow
 	indexes map[indexName][]sql.Row
+	ctx     *sql.Context
 }
 
 func (ps partitionssort) Len() int {
@@ -2238,7 +2239,7 @@ func (ps partitionssort) Less(i, j int) bool {
 
 func (ps partitionssort) pkLess(l, r sql.Row) bool {
 	for _, f := range ps.pk {
-		r, err := f.c.Type.Compare(l[f.i], r[f.i])
+		r, err := f.c.Type.Compare(ps.ctx, l[f.i], r[f.i])
 		if err != nil {
 			panic(err)
 		}

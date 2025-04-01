@@ -383,7 +383,7 @@ func (di *orderedDistinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		if di.prevRow != nil {
-			ok, err := di.prevRow.Equals(row, di.schema)
+			ok, err := di.prevRow.Equals(ctx, row, di.schema)
 			if err != nil {
 				return nil, err
 			}

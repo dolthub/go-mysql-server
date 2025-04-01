@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 
@@ -37,7 +38,7 @@ var _ sql.CollationCoercible = JsonType{}
 type JsonType struct{}
 
 // Compare implements Type interface.
-func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
+func (t JsonType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}

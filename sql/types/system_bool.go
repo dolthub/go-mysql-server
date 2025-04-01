@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 	"strings"
@@ -42,7 +43,7 @@ func NewSystemBoolType(varName string) sql.SystemVariableType {
 }
 
 // Compare implements Type interface.
-func (t SystemBoolType) Compare(a interface{}, b interface{}) (int, error) {
+func (t SystemBoolType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err

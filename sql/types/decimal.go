@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -120,7 +121,7 @@ func (t DecimalType_) Type() query.Type {
 }
 
 // Compare implements Type interface.
-func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}

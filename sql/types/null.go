@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -35,7 +36,7 @@ type nullType struct{}
 
 // Compare implements Type interface. Note that while this returns 0 (equals)
 // for ordering purposes, in SQL NULL != NULL.
-func (t nullType) Compare(a interface{}, b interface{}) (int, error) {
+func (t nullType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 

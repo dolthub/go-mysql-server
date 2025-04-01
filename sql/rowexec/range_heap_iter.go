@@ -235,7 +235,7 @@ func (iter *rangeHeapJoinIter) getActiveRanges(ctx *sql.Context, _ sql.NodeExecB
 	// Remove rows from the heap if we've advanced beyond their max value.
 	for iter.Len() > 0 {
 		maxValue := iter.Peek()
-		compareResult, err := compareNullsFirst(iter.rangeHeapPlan.ComparisonType, row[iter.rangeHeapPlan.ValueColumnIndex], maxValue)
+		compareResult, err := compareNullsFirst(ctx, iter.rangeHeapPlan.ComparisonType, row[iter.rangeHeapPlan.ValueColumnIndex], maxValue)
 		if err != nil {
 			return nil, err
 		}
@@ -254,7 +254,7 @@ func (iter *rangeHeapJoinIter) getActiveRanges(ctx *sql.Context, _ sql.NodeExecB
 	// Advance the child iterator until we encounter a row whose min value is beyond the range.
 	for iter.pendingRow != nil {
 		minValue := iter.pendingRow[iter.rangeHeapPlan.MinColumnIndex]
-		compareResult, err := compareNullsFirst(iter.rangeHeapPlan.ComparisonType, row[iter.rangeHeapPlan.ValueColumnIndex], minValue)
+		compareResult, err := compareNullsFirst(ctx, iter.rangeHeapPlan.ComparisonType, row[iter.rangeHeapPlan.ValueColumnIndex], minValue)
 		if err != nil {
 			return nil, err
 		}
@@ -289,7 +289,7 @@ func (iter *rangeHeapJoinIter) getActiveRanges(ctx *sql.Context, _ sql.NodeExecB
 // This is consistent with the order received if either child node is an index.
 // Note: We could get the same behavior by simply excluding values and ranges containing NULL,
 // but this is forward compatible if we ever want to convert joins with null-safe conditions into RangeHeapJoins.
-func compareNullsFirst(comparisonType sql.Type, a, b interface{}) (int, error) {
+func compareNullsFirst(ctx *sql.Context, comparisonType sql.Type, a, b interface{}) (int, error) {
 	if a == nil {
 		if b == nil {
 			return 0, nil
@@ -300,16 +300,18 @@ func compareNullsFirst(comparisonType sql.Type, a, b interface{}) (int, error) {
 	if b == nil {
 		return 1, nil
 	}
-	return comparisonType.Compare(a, b)
+	return comparisonType.Compare(ctx, a, b)
 }
 
 func (iter rangeHeapJoinIter) Len() int { return len(iter.activeRanges) }
 
 func (iter *rangeHeapJoinIter) Less(i, j int) bool {
+	// TODO: Add context parameter to Less
+	ctx := sql.NewEmptyContext()
 	lhs := iter.activeRanges[i][iter.rangeHeapPlan.MaxColumnIndex]
 	rhs := iter.activeRanges[j][iter.rangeHeapPlan.MaxColumnIndex]
 	// compareResult will be 0 if lhs==rhs, -1 if lhs < rhs, and +1 if lhs > rhs.
-	compareResult, err := compareNullsFirst(iter.rangeHeapPlan.ComparisonType, lhs, rhs)
+	compareResult, err := compareNullsFirst(ctx, iter.rangeHeapPlan.ComparisonType, lhs, rhs)
 	if iter.err == nil && err != nil {
 		iter.err = err
 	}

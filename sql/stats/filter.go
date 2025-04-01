@@ -145,6 +145,8 @@ func PrefixKey(buckets []sql.HistogramBucket, types []sql.Type, key []interface{
 }
 
 func nilSafeCmp(typ sql.Type, left, right interface{}) (int, error) {
+	// TODO: Add Context parameter
+	ctx := sql.NewEmptyContext()
 	if left == nil && right == nil {
 		return 0, nil
 	} else if left == nil && right != nil {
@@ -152,7 +154,7 @@ func nilSafeCmp(typ sql.Type, left, right interface{}) (int, error) {
 	} else if left != nil && right == nil {
 		return 1, nil
 	} else {
-		return typ.Compare(left, right)
+		return typ.Compare(ctx, left, right)
 	}
 }
 
@@ -185,9 +187,11 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 }
 
 func keysEqual(types []sql.Type, left, right []interface{}) (bool, error) {
+	// TODO: Add Context parameter
+	ctx := sql.NewEmptyContext()
 	for i, _ := range right {
 		t := types[i]
-		cmp, err := t.Compare(left[i], right[i])
+		cmp, err := t.Compare(ctx, left[i], right[i])
 		if err != nil {
 			return false, err
 		}

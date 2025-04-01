@@ -63,7 +63,7 @@ func TestTimeCompare(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val1, test.val2), func(t *testing.T) {
-			cmp, err := Time.Compare(test.val1, test.val2)
+			cmp, err := Time.Compare(ctx, test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})
@@ -175,7 +175,7 @@ func TestTimeConvert(t *testing.T) {
 					require.True(t, timespan.Equals(val.(Timespan)))
 					ms := timespan.AsMicroseconds()
 					ums := Time.MicrosecondsToTimespan(ms)
-					cmp, err := Time.Compare(test.val, ums)
+					cmp, err := Time.Compare(ctx, test.val, ums)
 					require.NoError(t, err)
 					assert.Equal(t, 0, cmp)
 				}

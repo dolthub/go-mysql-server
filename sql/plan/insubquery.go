@@ -114,7 +114,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return false, nil
 		}
 
-		cmp, err := typ.Compare(left, val)
+		cmp, err := typ.Compare(ctx, left, val)
 		if err != nil {
 			return nil, err
 		}

@@ -102,7 +102,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// When a row passes in 0 as the auto_increment value it is equivalent to NULL.
-	cmp, err := i.Type().Compare(given, i.Type().Zero())
+	cmp, err := i.Type().Compare(ctx, given, i.Type().Zero())
 	if err != nil {
 		return nil, err
 	}

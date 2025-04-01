@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -37,7 +38,7 @@ func CreateTuple(types ...sql.Type) sql.Type {
 	return TupleType(types)
 }
 
-func (t TupleType) Compare(a, b interface{}) (int, error) {
+func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -55,7 +56,7 @@ func (t TupleType) Compare(a, b interface{}) (int, error) {
 	left := a.([]interface{})
 	right := b.([]interface{})
 	for i := range left {
-		cmp, err := t[i].Compare(left[i], right[i])
+		cmp, err := t[i].Compare(ctx, left[i], right[i])
 		if err != nil {
 			return 0, err
 		}

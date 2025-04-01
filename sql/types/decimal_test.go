@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -126,7 +127,7 @@ func TestDecimalCompare(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val1, test.val2), func(t *testing.T) {
-			cmp, err := MustCreateDecimalType(test.precision, test.scale).Compare(test.val1, test.val2)
+			cmp, err := MustCreateDecimalType(test.precision, test.scale).Compare(context.Background(), test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})

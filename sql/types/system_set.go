@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -39,7 +40,7 @@ func NewSystemSetType(varName string, collation sql.CollationID, values ...strin
 }
 
 // Compare implements Type interface.
-func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemSetType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if a == nil || b == nil {
 		return 0, sql.ErrInvalidSystemVariableValue.New(t.varName, nil)
 	}

@@ -84,7 +84,7 @@ func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 			if tt.err == nil {
 				require.NoError(err)
 				if tt.typ == types.JSON {
-					cmp, err := types.JSON.Compare(tt.expected, result)
+					cmp, err := types.JSON.Compare(ctx, tt.expected, result)
 					require.NoError(err)
 					require.Equal(0, cmp)
 				} else {

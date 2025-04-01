@@ -50,14 +50,14 @@ func (r Row) Append(r2 Row) Row {
 }
 
 // Equals checks whether two rows are equal given a schema.
-func (r Row) Equals(row Row, schema Schema) (bool, error) {
+func (r Row) Equals(ctx *Context, row Row, schema Schema) (bool, error) {
 	if len(row) != len(r) || len(row) != len(schema) {
 		return false, nil
 	}
 
 	for i, colLeft := range r {
 		colRight := row[i]
-		cmp, err := schema[i].Type.Compare(colLeft, colRight)
+		cmp, err := schema[i].Type.Compare(ctx, colLeft, colRight)
 		if err != nil {
 			return false, err
 		}

@@ -288,7 +288,7 @@ func TestBinAlignment(t *testing.T) {
 	}
 
 	cmp := func(i, j sql.Row) (int, error) {
-		return types.Int64.Compare(i[0], j[0])
+		return types.Int64.Compare(ctx, i[0], j[0])
 	}
 
 	for i, tt := range tests {
@@ -439,7 +439,7 @@ func TestJoin(t *testing.T) {
 	}
 
 	cmp := func(i, j sql.Row) (int, error) {
-		return types.Int64.Compare(i[0], j[0])
+		return types.Int64.Compare(ctx, i[0], j[0])
 	}
 
 	for i, tt := range tests {

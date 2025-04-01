@@ -34,19 +34,21 @@ var ErrJoinStringStatistics = errors.New("joining string histograms is unsupport
 // values (mcvs) directly and assuming key uniformity otherwise. Only
 // numeric types are supported.
 func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error) {
+	// TODO: Add Context parameter
+	ctx := sql.NewEmptyContext()
 	cmp := func(row1, row2 sql.Row) (int, error) {
 		var cmp int
 		var err error
 		for i := 0; i < prefixCnt; i++ {
 			if s1.Types()[i].Equals(s2.Types()[i]) {
-				cmp, err = s1.Types()[i].Compare(row1[i], row2[i])
+				cmp, err = s1.Types()[i].Compare(ctx, row1[i], row2[i])
 			} else {
 				k1 := row1[i]
 				k2, _, err := s1.Types()[i].Convert(row2[i])
 				if err != nil {
 					return 0, fmt.Errorf("incompatible types")
 				}
-				cmp, err = s1.Types()[i].Compare(k1, k2)
+				cmp, err = s1.Types()[i].Compare(ctx, k1, k2)
 			}
 			if err != nil {
 				return 0, err
@@ -499,9 +501,11 @@ type BucketConstructor func(rows, distinct, nulls, boundCnt uint64, bound sql.Ro
 // MergeOverlappingBuckets folds bins with one element into the previous
 // bucket when the bound keys match.
 func MergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type, newB BucketConstructor) ([]sql.HistogramBucket, error) {
+	// TODO: Add Context parameter
+	ctx := sql.NewEmptyContext()
 	cmp := func(l, r sql.Row) (int, error) {
 		for i := 0; i < len(types); i++ {
-			cmp, err := types[i].Compare(l[i], r[i])
+			cmp, err := types[i].Compare(ctx, l[i], r[i])
 			if err != nil {
 				return 0, err
 			}

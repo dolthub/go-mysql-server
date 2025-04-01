@@ -62,7 +62,7 @@ func TestTuple(t *testing.T) {
 
 	for _, comparison := range comparisons {
 		t.Run(fmt.Sprintf("%v %v", comparison.val1, comparison.val2), func(t *testing.T) {
-			cmp, err := typ.Compare(comparison.val1, comparison.val2)
+			cmp, err := typ.Compare(ctx, comparison.val1, comparison.val2)
 			require.NoError(err)
 			assert.Equal(t, comparison.expectedCmp, cmp)
 		})

@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -181,7 +182,7 @@ func NumericUnaryValue(t sql.Type) interface{} {
 }
 
 // Compare implements Type interface.
-func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
+func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}

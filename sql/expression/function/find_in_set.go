@@ -130,7 +130,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	strType := types.CreateLongText(collPref)
 	for i, r := range strings.Split(r, ",") {
-		cmp, err := strType.Compare(l, r)
+		cmp, err := strType.Compare(ctx, l, r)
 		if err != nil {
 			return nil, err
 		}

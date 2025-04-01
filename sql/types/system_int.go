@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 
@@ -44,7 +45,7 @@ func NewSystemIntType(varName string, lowerbound, upperbound int64, negativeOne 
 }
 
 // Compare implements Type interface.
-func (t systemIntType) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemIntType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(a)
 	if err != nil {
 		return 0, err

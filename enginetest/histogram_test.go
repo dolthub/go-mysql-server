@@ -338,7 +338,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 			return 0
 		}
 		col := sch[fields[k]]
-		cmp, _ := col.Type.Compare(keyVals[i][k], keyVals[j][k])
+		cmp, _ := col.Type.Compare(ctx, keyVals[i][k], keyVals[j][k])
 		return cmp
 	}
 

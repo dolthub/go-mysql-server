@@ -562,7 +562,7 @@ func (m *maxBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	cmp, err := m.expr.Type().Compare(v, m.val)
+	cmp, err := m.expr.Type().Compare(ctx, v, m.val)
 	if err != nil {
 		return err
 	}
@@ -608,7 +608,7 @@ func (m *minBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	cmp, err := m.expr.Type().Compare(v, m.val)
+	cmp, err := m.expr.Type().Compare(ctx, v, m.val)
 	if err != nil {
 		return err
 	}

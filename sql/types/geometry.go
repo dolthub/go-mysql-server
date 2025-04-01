@@ -16,6 +16,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"math"
 	"reflect"
@@ -387,7 +388,7 @@ func WriteCount(buf []byte, count uint32) {
 }
 
 // Compare implements Type interface.
-func (t GeometryType) Compare(a any, b any) (int, error) {
+func (t GeometryType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}

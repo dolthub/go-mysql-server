@@ -114,7 +114,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				if err != nil {
 					return nil, err
 				}
-				cmp, err = rtyp.Compare(left, right)
+				cmp, err = rtyp.Compare(ctx, left, right)
 				if err != nil {
 					return nil, err
 				}
@@ -123,7 +123,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				if err != nil {
 					return nil, err
 				}
-				cmp, err = typ.Compare(left, right)
+				cmp, err = typ.Compare(ctx, left, right)
 				if err != nil {
 					return nil, err
 				}

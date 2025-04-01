@@ -107,7 +107,7 @@ func RunJsonTests(t *testing.T, testCases []testCase) {
 					}
 				}
 
-				cmp, err := types.JSON.Compare(expect, result)
+				cmp, err := types.JSON.Compare(ctx, expect, result)
 				req.NoError(err)
 				if cmp != 0 {
 					t.Error("Not equal:")

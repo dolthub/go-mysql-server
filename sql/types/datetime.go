@@ -132,7 +132,7 @@ func (t datetimeType) Precision() int {
 }
 
 // Compare implements Type interface.
-func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
+func (t datetimeType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}

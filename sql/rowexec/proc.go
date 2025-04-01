@@ -36,7 +36,7 @@ func (b *BaseBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement
 		if err != nil {
 			return nil, err
 		}
-		comparison, err := n.Expr.Type().Compare(caseValue, whenValue)
+		comparison, err := n.Expr.Type().Compare(ctx, caseValue, whenValue)
 		if err != nil {
 			return nil, err
 		}

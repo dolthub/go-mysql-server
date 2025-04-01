@@ -522,7 +522,7 @@ func (a *MaxAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer s
 			max = v
 		}
 
-		cmp, err := a.expr.Type().Compare(v, max)
+		cmp, err := a.expr.Type().Compare(ctx, v, max)
 		if err != nil {
 			return err
 		}
@@ -594,7 +594,7 @@ func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 			continue
 		}
 
-		cmp, err := a.expr.Type().Compare(v, min)
+		cmp, err := a.expr.Type().Compare(ctx, v, min)
 		if err != nil {
 			return err
 		}

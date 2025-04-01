@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 	"time"
@@ -38,7 +39,7 @@ var (
 type YearType_ struct{}
 
 // Compare implements Type interface.
-func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t YearType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
