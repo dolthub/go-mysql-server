@@ -75,8 +75,6 @@ func (g *globalStatusVariables) GetGlobal(name string) (sql.StatusVariable, inte
 
 // SetGlobal implements sql.StatusVariableRegistry
 func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
-	// TODO: Add context parameter
-	ctx := sql.NewEmptyContext()
 	v, ok := g.varVals[name]
 	if !ok || v.Variable().GetScope() == sql.StatusVariableScope_Session {
 		return sql.ErrUnknownStatusVariable.New(name)
@@ -86,7 +84,8 @@ func (g *globalStatusVariables) SetGlobal(name string, val interface{}) error {
 	//       non-uint64 status variables. This should really use the type of the status variable as
 	//       type to convert to, but because those are systemInt without the correct bounds configured,
 	//       that conversion will fail with an out of bounds error.
-	convVal, _, err := types.Uint64.Convert(ctx, val)
+	// NOTE: A nil context is passed in here. A context is only needed for adaptive encoding, which shouldn't be possible here.
+	convVal, _, err := types.Uint64.Convert(nil, val)
 	if err != nil {
 		return err
 	}
