@@ -405,19 +405,18 @@ var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
 
 const MaxUnixTimeMicroSecs = 32536771199999999
 
-// noEval returns true if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
-func noEval(expr sql.Expression) bool {
-	var hasBadExpr bool
+// canEval returns if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
+func canEval(expr sql.Expression) bool {
+	evaluable := true
 	transform.InspectExpr(expr, func(e sql.Expression) bool {
 		switch e.(type) {
-		case *expression.GetField:
-			hasBadExpr = true
-		case *ConvertTz:
-			hasBadExpr = true
+		case *expression.GetField, *ConvertTz:
+			evaluable = false
+			return true
 		}
-		return hasBadExpr
+		return false
 	})
-	return hasBadExpr
+	return evaluable
 }
 
 func getNowExpr(expr sql.Expression) *Now {
@@ -436,7 +435,7 @@ func evalNowType(now *Now) sql.Type {
 	if now.prec == nil {
 		return types.Int64
 	}
-	if noEval(now.prec) {
+	if !canEval(now.prec) {
 		return types.MustCreateDecimalType(19, 6)
 	}
 	prec, pErr := now.prec.Eval(nil, nil)
@@ -463,7 +462,10 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	arg := args[0]
-	if noEval(arg) {
+	if dtType, isDtType := arg.Type().(sql.DatetimeType); isDtType {
+		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, uint8(dtType.Precision()))}, nil
+	}
+	if !canEval(arg) {
 		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
 	}
 	if now := getNowExpr(arg); now != nil {

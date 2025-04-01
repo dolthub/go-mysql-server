@@ -814,10 +814,10 @@ var QueryTests = []QueryTest{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
 		Expected: []sql.Row{{0}, {1}, {3}},
 	},
-	//{
+	// {
 	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
 	//	Expected: []sql.Row{{1}, {2}, {3}},
-	//},
+	// },
 	{
 		Query:    "SELECT * FROM mytable t0 INNER JOIN mytable t1 ON (t1.i IN (((true)%(''))));",
 		Expected: []sql.Row{},
@@ -2850,6 +2850,11 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "SELECT -i FROM mytable;",
 		Expected: []sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9036
+		Query:    "SELECT -true, -false",
+		Expected: []sql.Row{{-1, 0}},
 	},
 	{
 		Query:    "SELECT +i FROM mytable;",
@@ -6580,14 +6585,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{types.MustJSON(`1`)}},
 	},
 	// TODO(andy)
-	//{
+	// {
 	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
 	//	Expected: []sql.Row{{int32(3)}},
-	//},
-	//{
+	// },
+	// {
 	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
 	//	Expected: []sql.Row{{int32(3)}},
-	//},
+	// },
 	{
 		Query:    `SELECT GREATEST(@@back_log,@@auto_increment_offset)`,
 		Expected: []sql.Row{{1}},

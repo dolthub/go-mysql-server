@@ -350,7 +350,10 @@ func (t datetimeType) MustConvert(v interface{}) interface{} {
 
 // Equals implements the Type interface.
 func (t datetimeType) Equals(otherType sql.Type) bool {
-	return t.baseType == otherType.Type()
+	if dtType, isDtType := otherType.(sql.DatetimeType); isDtType {
+		return t.baseType == dtType.Type() && t.precision == dtType.Precision()
+	}
+	return false
 }
 
 // MaxTextResponseByteLength implements the Type interface
