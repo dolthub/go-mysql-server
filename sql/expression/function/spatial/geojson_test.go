@@ -380,6 +380,7 @@ func TestAsGeoJSON(t *testing.T) {
 }
 
 func TestGeomFromGeoJSON(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("convert point from geojson", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(expression.NewLiteral(`{"type":"Point", "coordinates":[1,2]}`, types.Blob))

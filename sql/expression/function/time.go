@@ -15,6 +15,7 @@
 package function
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -1120,6 +1121,8 @@ var _ sql.CollationCoercible = (*UTCTimestamp)(nil)
 
 // NewUTCTimestamp returns a new UTCTimestamp node.
 func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	// TODO: Add context parameter
+	ctx := context.Background()
 	var precision *int
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))

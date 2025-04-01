@@ -1320,7 +1320,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		j++
 	}
 
-	if !idx.SqlIdx().CanSupport(rang) {
+	if !idx.SqlIdx().CanSupport(ctx, rang) {
 		return nil, false, nil
 	}
 

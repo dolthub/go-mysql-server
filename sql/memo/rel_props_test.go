@@ -197,7 +197,7 @@ type dummyIndex struct {
 	cols []string
 }
 
-func (dummyIndex) CanSupport(...sql.Range) bool {
+func (dummyIndex) CanSupport(*sql.Context, ...sql.Range) bool {
 	return true
 }
 

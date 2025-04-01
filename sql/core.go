@@ -609,7 +609,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if !ok {
 			return ErrSessionDoesNotSupportPersistence.New()
 		}
-		err := persistSess.PersistGlobal(name, val)
+		err := persistSess.PersistGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -622,7 +622,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if !ok {
 			return ErrSessionDoesNotSupportPersistence.New()
 		}
-		err := persistSess.PersistGlobal(name, val)
+		err := persistSess.PersistGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}

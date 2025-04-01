@@ -26,11 +26,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var sqlCtx = sql.NewEmptyContext()
+
 func ConvertToJson(t *testing.T, val interface{}) types.MutableJSON {
 	if val == nil {
 		return nil
 	}
-	val, inRange, err := types.JSON.Convert(ctx, val)
+	val, inRange, err := types.JSON.Convert(sqlCtx, val)
 	require.NoError(t, err)
 	require.True(t, bool(inRange))
 	require.Implements(t, (*sql.JSONWrapper)(nil), val)

@@ -60,11 +60,11 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	lookup, err := lb.GetLookup(lb.GetZeroKey())
+	lookup, err := lb.GetLookup(ctx, lb.GetZeroKey())
 	if err != nil {
 		return nil, err
 	}
-	if !lookup.Index.CanSupport(lookup.Ranges.ToRanges()...) {
+	if !lookup.Index.CanSupport(ctx, lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	var indexedTable sql.IndexedTable
@@ -114,7 +114,7 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	if !lookup.Index.CanSupport(lookup.Ranges.ToRanges()...) {
+	if !lookup.Index.CanSupport(ctx, lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	indexedTable := iaTable.IndexedAccess(ctx, lookup)
@@ -268,7 +268,7 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	}
 
 	key := i.lb.GetZeroKey()
-	lookup, err := i.lb.GetLookup(key)
+	lookup, err := i.lb.GetLookup(ctx, key)
 	return err == nil && !lookup.IsEmpty(), nil
 }
 
@@ -307,7 +307,7 @@ func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	if err != nil {
 		return sql.IndexLookup{}, err
 	}
-	return i.lb.GetLookup(key)
+	return i.lb.GetLookup(ctx, key)
 }
 
 func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.IndexLookup, error) {
@@ -320,7 +320,7 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.Ind
 	if err != nil {
 		return sql.IndexLookup{}, err
 	}
-	return i.lb.GetLookup(key)
+	return i.lb.GetLookup(ctx, key)
 }
 
 func (i *IndexedTableAccess) String() string {
@@ -573,7 +573,7 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	return
 }
 
-func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error) {
+func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
 		return sql.IndexLookup{

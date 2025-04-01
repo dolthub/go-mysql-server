@@ -79,7 +79,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			// else throw away
 			v, ok := b.normalizeIntVal(e)
 			if ok {
-				idx, _, err := types.Int64.Convert(ctx, v)
+				idx, _, err := types.Int64.Convert(b.ctx, v)
 				if err != nil {
 					b.handleErr(err)
 				}

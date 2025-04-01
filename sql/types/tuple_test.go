@@ -26,6 +26,7 @@ import (
 )
 
 func TestTuple(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	typ := CreateTuple(Int32, LongText, Int64)

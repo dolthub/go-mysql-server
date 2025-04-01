@@ -31,6 +31,7 @@ import (
 )
 
 func TestNumberCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.Type
 		val1        interface{}
@@ -165,6 +166,7 @@ func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 }
 
 func TestNumberConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ     sql.Type
 		inp     interface{}

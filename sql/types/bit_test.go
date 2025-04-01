@@ -28,6 +28,7 @@ import (
 )
 
 func TestBitCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.Type
 		val1        interface{}

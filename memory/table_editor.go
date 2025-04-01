@@ -143,7 +143,7 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 
 // Insert inserts a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.editedTable.data.schema.Schema, row); err != nil {
+	if err := checkRow(ctx, t.editedTable.data.schema.Schema, row); err != nil {
 		return err
 	}
 
@@ -204,7 +204,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.editedTable.Schema(), row); err != nil {
+	if err := checkRow(ctx, t.editedTable.Schema(), row); err != nil {
 		return err
 	}
 
@@ -218,10 +218,10 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 
 // Update updates the given row in the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	if err := checkRow(t.editedTable.Schema(), oldRow); err != nil {
+	if err := checkRow(ctx, t.editedTable.Schema(), oldRow); err != nil {
 		return err
 	}
-	if err := checkRow(t.editedTable.Schema(), newRow); err != nil {
+	if err := checkRow(ctx, t.editedTable.Schema(), newRow); err != nil {
 		return err
 	}
 
@@ -531,7 +531,7 @@ func (pke *pkTableEditAccumulator) getRowKey(r sql.Row) string {
 
 // deleteHelper deletes the given row from the tableData.
 func (pke *pkTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
-	if err := checkRow(table.schema.Schema, row); err != nil {
+	if err := checkRow(ctx, table.schema.Schema, row); err != nil {
 		return err
 	}
 
@@ -778,7 +778,7 @@ func (k *keylessTableEditAccumulator) Clear() {
 
 // deleteHelper deletes a row from a keyless tableData, if it exists.
 func (k *keylessTableEditAccumulator) deleteHelper(ctx *sql.Context, table *TableData, row sql.Row) error {
-	if err := checkRow(table.schema.Schema, row); err != nil {
+	if err := checkRow(ctx, table.schema.Schema, row); err != nil {
 		return err
 	}
 
@@ -846,10 +846,10 @@ func formatRow(r sql.Row, idxs []int) string {
 	return b.String()
 }
 
-func checkRow(schema sql.Schema, row sql.Row) error {
+func checkRow(ctx *sql.Context, schema sql.Schema, row sql.Row) error {
 	for i, value := range row {
 		c := schema[i]
-		if !c.Check(value) {
+		if !c.Check(ctx, value) {
 			return sql.ErrInvalidType.New(value)
 		}
 	}

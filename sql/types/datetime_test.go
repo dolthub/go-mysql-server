@@ -29,6 +29,7 @@ import (
 )
 
 func TestDatetimeCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.Type
 		val1        interface{}
@@ -149,6 +150,7 @@ func TestDatetimeCreateInvalidBaseTypes(t *testing.T) {
 }
 
 func TestDatetimeConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	type testcase struct {
 		typ         sql.Type
 		val         interface{}

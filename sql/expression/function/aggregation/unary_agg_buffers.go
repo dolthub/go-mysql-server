@@ -71,12 +71,12 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	m.PerformSum(v)
+	m.PerformSum(ctx, v)
 
 	return nil
 }
 
-func (m *sumBuffer) PerformSum(v interface{}) {
+func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
 	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type()) {
@@ -192,7 +192,7 @@ func (a *avgBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	a.sum.PerformSum(v)
+	a.sum.PerformSum(ctx, v)
 	a.rows += 1
 
 	return nil

@@ -25,6 +25,7 @@ import (
 )
 
 func TestSwapXY(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("point swap", func(t *testing.T) {
 		require := require.New(t)
 		f := NewSwapXY(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))

@@ -190,7 +190,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 	//  However, Dolt supports, but not go-sql-driver client
 	switch parsed.(type) {
 	case *sqlparser.Load, *sqlparser.Execute, *sqlparser.Prepare:
-		return s.queryOrExec(nil, parsed, query, []any{})
+		return s.queryOrExec(ctx, nil, parsed, query, []any{})
 	}
 
 	stmt, err := s.conn.Prepare(query)
@@ -203,7 +203,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 		return nil, nil, nil, err
 	}
 
-	return s.queryOrExec(stmt, parsed, query, args)
+	return s.queryOrExec(ctx, stmt, parsed, query, args)
 }
 
 // queryOrExec function use `query()` or `exec()` method of go-sql-driver depending on the sql parser plan.
@@ -212,7 +212,7 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 // TODO: for `EXECUTE` and `CALL` statements, it can be either query or exec depending on the statement that prepared or stored procedure holds.
 //
 //	for now, we use `query` to get the row results for these statements. For statements that needs `exec`, there will be no result.
-func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func (s *ServerQueryEngine) queryOrExec(ctx *sql.Context, stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	var err error
 	switch parsed.(type) {
 	// TODO: added `FLUSH` stmt here (should be `exec`) because we don't support `FLUSH BINARY LOGS` or `FLUSH ENGINE LOGS`, so nil schema is returned.
@@ -226,7 +226,7 @@ func (s *ServerQueryEngine) queryOrExec(stmt *gosql.Stmt, parsed sqlparser.State
 		if err != nil {
 			return nil, nil, nil, trimMySQLErrCodePrefix(err)
 		}
-		return convertRowsResult(rows)
+		return convertRowsResult(ctx, rows)
 	default:
 		var res gosql.Result
 		if stmt != nil {
@@ -280,13 +280,13 @@ func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, *sql.QueryFl
 	return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil, nil
 }
 
-func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func convertRowsResult(ctx *sql.Context, rows *gosql.Rows) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	sch, err := schemaForRows(rows)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	rowIter, err := rowIterForGoSqlRows(sch, rows)
+	rowIter, err := rowIterForGoSqlRows(ctx, sch, rows)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -294,7 +294,7 @@ func convertRowsResult(rows *gosql.Rows) (sql.Schema, sql.RowIter, *sql.QueryFla
 	return sch, rowIter, nil, nil
 }
 
-func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) {
+func rowIterForGoSqlRows(ctx *sql.Context, sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) {
 	result := make([]sql.Row, 0)
 	r, err := emptyRowForSchema(sch)
 	if err != nil {
@@ -312,7 +312,7 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 			return nil, err
 		}
 
-		row = convertValue(sch, row)
+		row = convertValue(ctx, sch, row)
 
 		result = append(result, row)
 	}
@@ -322,7 +322,7 @@ func rowIterForGoSqlRows(sch sql.Schema, rows *gosql.Rows) (sql.RowIter, error) 
 
 // convertValue converts the row value scanned from go sql driver client to type that we expect.
 // This method helps with testing existing enginetests that expects specific type as returned value.
-func convertValue(sch sql.Schema, row sql.Row) sql.Row {
+func convertValue(ctx *sql.Context, sch sql.Schema, row sql.Row) sql.Row {
 	for i, col := range sch {
 		switch col.Type.Type() {
 		case query.Type_GEOMETRY:

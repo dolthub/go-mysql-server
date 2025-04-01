@@ -28,6 +28,7 @@ import (
 )
 
 func TestSetCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
@@ -64,6 +65,7 @@ func TestSetCompare(t *testing.T) {
 }
 
 func TestSetCompareErrors(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals      []string
 		collation sql.CollationID
@@ -142,6 +144,7 @@ func TestSetCreateTooLarge(t *testing.T) {
 }
 
 func TestSetConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
@@ -204,6 +207,7 @@ func TestSetConvert(t *testing.T) {
 }
 
 func TestSetMarshalMax(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	vals := make([]string, 64)
 	for i := range vals {
 		vals[i] = strconv.Itoa(i)

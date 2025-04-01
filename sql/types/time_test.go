@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 )
 
 func TestTimeCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	// This is here so that it doesn't pollute the namespace
 	parseDuration := func(str string) time.Duration {
 		d, err := time.ParseDuration(str)
@@ -71,6 +73,7 @@ func TestTimeCompare(t *testing.T) {
 }
 
 func TestTimeConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	// This is here so that it doesn't pollute the namespace
 	parseDuration := func(str string) time.Duration {
 		d, err := time.ParseDuration(str)

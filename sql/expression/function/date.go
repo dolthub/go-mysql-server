@@ -15,6 +15,7 @@
 package function
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -454,6 +455,8 @@ func evalNowType(now *Now) sql.Type {
 }
 
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	// TODO: Add context.parameter
+	ctx := context.Background()
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}

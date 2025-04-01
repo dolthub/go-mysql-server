@@ -172,7 +172,7 @@ func (j *JsonValue) String() string {
 // and unwraps the JSON, or coerces the string into JSON. The return value can return any type that can be stored in
 // a JSON column, not just maps. For a complete list, see
 // https://dev.mysql.com/doc/refman/8.3/en/json-attribute-functions.html#function_json-type
-func GetJSONFromWrapperOrCoercibleString(js interface{}, functionName string, argumentPosition int) (jsonData interface{}, err error) {
+func GetJSONFromWrapperOrCoercibleString(ctx *sql.Context, js interface{}, functionName string, argumentPosition int) (jsonData interface{}, err error) {
 	// The first parameter can be either JSON or a string.
 	switch jsType := js.(type) {
 	case string:

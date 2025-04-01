@@ -31,6 +31,7 @@ import (
 )
 
 func TestStringCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.StringType
 		val1        interface{}
@@ -299,6 +300,7 @@ func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
 }
 
 func TestStringConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.StringType
 		val         interface{}

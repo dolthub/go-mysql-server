@@ -261,7 +261,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		}
 	}
 
-	if !idx.CanSupport(ranges.ToRanges()...) {
+	if !idx.CanSupport(ctx, ranges.ToRanges()...) {
 		return nil, nil, nil, err
 	}
 

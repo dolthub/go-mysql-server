@@ -41,6 +41,7 @@ func TestJsonCompareNulls(t *testing.T) {
 }
 
 func TestJsonConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	type testStruct struct {
 		Field string `json:"field"`
 	}

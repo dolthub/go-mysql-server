@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"reflect"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ import (
 )
 
 func TestYearCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val1        interface{}
 		val2        interface{}
@@ -51,6 +53,7 @@ func TestYearCompare(t *testing.T) {
 }
 
 func TestYearConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val         interface{}
 		expectedVal interface{}

@@ -29,7 +29,7 @@ func (s NormalDistTable) UnderlyingTable() sql.Table {
 	return s
 }
 
-func (s NormalDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
+func (s NormalDistTable) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
 	if len(args) != 4 {
 		return nil, fmt.Errorf("normal_dist table expects 4 arguments: (cols, rows, mean, std)")
 	}

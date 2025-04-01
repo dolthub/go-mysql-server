@@ -142,7 +142,7 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		if paramDefinition.Direction == ProcedureParamDirection_Inout || paramDefinition.Direction == ProcedureParamDirection_Out {
 			exprParam := n.Params[i]
 			funcParamVal := funcParams[i+1].Elem().Interface()
-			err := exprParam.Set(funcParamVal, exprParam.Type())
+			err := exprParam.Set(ctx, funcParamVal, exprParam.Type())
 			if err != nil {
 				return nil, err
 			}

@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"math/big"
 	"reflect"
 	"strings"
@@ -31,6 +32,8 @@ import (
 func TestDecimalAccuracy(t *testing.T) {
 	t.Skip("This runs 821471 tests, which take quite a while. Re-run this if the max precision is ever updated.")
 	precision := 65
+
+	ctx := sql.NewEmptyContext()
 
 	tests := []struct {
 		scale     int
@@ -277,6 +280,7 @@ func TestCreateColumnDecimal(t *testing.T) {
 }
 
 func TestDecimalConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		precision   uint8
 		scale       uint8

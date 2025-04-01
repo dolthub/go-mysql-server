@@ -28,7 +28,7 @@ func (s ExponentialDistTable) UnderlyingTable() sql.Table {
 	return s
 }
 
-func (s ExponentialDistTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
+func (s ExponentialDistTable) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
 	if len(args) != 3 {
 		return nil, fmt.Errorf("exponential_dist table expects 2 arguments: (cols, rows, lambda)")
 	}

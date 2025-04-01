@@ -25,6 +25,7 @@ import (
 )
 
 func TestAsWKT(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("convert point", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKT(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))

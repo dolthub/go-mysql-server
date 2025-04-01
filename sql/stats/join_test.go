@@ -103,6 +103,7 @@ func TestEuclideanDistance(t *testing.T) {
 }
 
 func TestBinAlignment(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		left     []sql.HistogramBucket
 		right    []sql.HistogramBucket
@@ -302,6 +303,7 @@ func TestBinAlignment(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		left  sql.Histogram
 		right sql.Histogram

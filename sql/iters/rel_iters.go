@@ -219,7 +219,7 @@ func (c *JsonTableCol) Reset() {
 }
 
 // Next returns the next row for this column.
-func (c *JsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error) {
+func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord int) (sql.Row, error) {
 	// nested column should recurse
 	if len(c.Cols) != 0 {
 		if c.data == nil {
@@ -234,7 +234,7 @@ func (c *JsonTableCol) Next(obj interface{}, pass bool, ord int) (sql.Row, error
 		var row sql.Row
 		for i, col := range c.Cols {
 			innerPass := len(col.Cols) != 0 && i != c.currSib
-			rowPart, err := col.Next(innerObj, pass || innerPass, c.pos+1)
+			rowPart, err := col.Next(ctx, innerObj, pass || innerPass, c.pos+1)
 			if err != nil {
 				return nil, err
 			}
@@ -344,7 +344,7 @@ func (j *JsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var row sql.Row
 	for i, col := range j.Cols {
 		pass := len(col.Cols) != 0 && i != j.currSib
-		rowPart, err := col.Next(obj, pass, j.pos+1)
+		rowPart, err := col.Next(ctx, obj, pass, j.pos+1)
 		if err != nil {
 			return nil, err
 		}

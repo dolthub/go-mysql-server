@@ -19,7 +19,7 @@ type TableFunc struct {
 	value int64
 }
 
-func (s TableFunc) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
+func (s TableFunc) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
 	if len(args) != 2 {
 		return nil, fmt.Errorf("table_func table expects 2 arguments: (name, len)")
 	}

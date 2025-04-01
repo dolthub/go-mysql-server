@@ -412,7 +412,7 @@ func testQueryWithContext(
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		checkResults(t, harness, expected, expectedCols, sch, rows, q, e, wrapBehavior)
+		checkResults(t, ctx, harness, expected, expectedCols, sch, rows, q, e, wrapBehavior)
 	}
 
 	require.Equal(
@@ -455,7 +455,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	require.NoError(err, "Unexpected error for query %s: %s", q, err)
 
 	if expected != nil {
-		CheckResults(t, harness, expected, expectedCols, sch, rows, q, e)
+		CheckResults(ctx, t, harness, expected, expectedCols, sch, rows, q, e)
 	}
 
 	require.Equal(
@@ -514,41 +514,22 @@ func TestPreparedQueryWithContext(t *testing.T, ctx *sql.Context, e QueryEngine,
 
 	if expected != nil {
 		// TODO fix expected cols for prepared?
-		CheckResults(t, h, expected, expectedCols, sch, rows, q, e)
+		CheckResults(ctx, t, h, expected, expectedCols, sch, rows, q, e)
 	}
 
 	require.Equal(0, ctx.Memory.NumCaches())
 	validateEngine(t, ctx, h, e)
 }
 
-func CheckResults(
-	t *testing.T,
-	h Harness,
-	expected []sql.Row,
-	expectedCols []*sql.Column,
-	sch sql.Schema,
-	rows []sql.Row,
-	q string,
-	e QueryEngine,
-) {
-	checkResults(t, h, expected, expectedCols, sch, rows, q, e, queries.WrapBehavior_Unwrap)
+func CheckResults(ctx *sql.Context, t *testing.T, h Harness, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string, e QueryEngine) {
+	checkResults(t, ctx, h, expected, expectedCols, sch, rows, q, e, queries.WrapBehavior_Unwrap)
 }
 
-func checkResults(
-	t *testing.T,
-	h Harness,
-	expected []sql.Row,
-	expectedCols []*sql.Column,
-	sch sql.Schema,
-	rows []sql.Row,
-	q string,
-	e QueryEngine,
-	wrapBehavior queries.WrapBehavior,
-) {
+func checkResults(t *testing.T, ctx *sql.Context, h Harness, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string, e QueryEngine, wrapBehavior queries.WrapBehavior) {
 	if reh, ok := h.(ResultEvaluationHarness); ok {
 		reh.EvaluateQueryResults(t, expected, expectedCols, sch, rows, q, wrapBehavior)
 	} else {
-		checkResultsDefault(t, expected, expectedCols, sch, rows, q, e, wrapBehavior)
+		checkResultsDefault(t, ctx, expected, expectedCols, sch, rows, q, e, wrapBehavior)
 	}
 }
 
@@ -688,7 +669,7 @@ type CustomValueValidator interface {
 // toSQL converts the given expected value into appropriate type of given column.
 // |isZeroTime| is true if the query is any `SHOW` statement, except for `SHOW EVENTS`.
 // This is set earlier in `checkResult()` method.
-func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
+func toSQL(ctx *sql.Context, c *sql.Column, expected any, isZeroTime bool) (any, error) {
 	_, isTime := expected.(time.Time)
 	_, isStr := expected.(string)
 	// cases where we don't want the result value to be converted
@@ -705,16 +686,7 @@ func toSQL(c *sql.Column, expected any, isZeroTime bool) (any, error) {
 // don't implement ResultEvaluationHarness. All numerical values are widened to their widest type before comparison.
 // Based on the value of |unwrapValues|, this either normalized wrapped values by unwrapping them, or replaces them
 // with their hash so the test caller can assert that the values are wrapped and have a certain hash.
-func checkResultsDefault(
-	t *testing.T,
-	expected []sql.Row,
-	expectedCols []*sql.Column,
-	sch sql.Schema,
-	rows []sql.Row,
-	q string,
-	e QueryEngine,
-	wrapBehavior queries.WrapBehavior,
-) {
+func checkResultsDefault(t *testing.T, ctx *sql.Context, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string, e QueryEngine, wrapBehavior queries.WrapBehavior) {
 	widenedRows := WidenRows(t, sch, rows)
 	widenedExpected := WidenRows(t, sch, expected)
 
@@ -804,7 +776,7 @@ func checkResultsDefault(
 			} else {
 				// this attempts to do what `rowToSQL()` method in `handler.go` on expected row
 				// because over the wire values gets converted to SQL values depending on the column types.
-				convertedExpected, err := toSQL(sch[j], widenedExpected[i][j], setZeroTime)
+				convertedExpected, err := toSQL(ctx, sch[j], widenedExpected[i][j], setZeroTime)
 				require.NoError(t, err)
 				widenedExpected[i][j] = convertedExpected
 			}
@@ -1120,7 +1092,7 @@ func AssertWarningAndTestQuery(
 	}
 
 	if !skipResultsCheck {
-		CheckResults(t, harness, expected, expectedCols, sch, rows, query, e)
+		CheckResults(ctx, t, harness, expected, expectedCols, sch, rows, query, e)
 	}
 	validateEngine(t, ctx, harness, e)
 }

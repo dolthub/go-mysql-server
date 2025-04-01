@@ -25,6 +25,7 @@ import (
 )
 
 func TestSRID(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("select unspecified SRID is 0", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))

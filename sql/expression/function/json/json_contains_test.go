@@ -26,6 +26,8 @@ import (
 )
 
 func TestJSONContains(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+
 	// Quickly assert that an error is thrown with < 2 and > 3 arguments
 	_, err := NewJSONContains(
 		expression.NewGetField(0, types.JSON, "arg1", false),

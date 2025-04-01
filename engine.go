@@ -273,7 +273,7 @@ func clearWarnings(ctx *sql.Context, node sql.Node) {
 	}
 }
 
-func bindingsToExprs(bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
+func bindingsToExprs(ctx *sql.Context, bindings map[string]*querypb.BindVariable) (map[string]sql.Expression, error) {
 	res := make(map[string]sql.Expression, len(bindings))
 	for k, v := range bindings {
 		v, err := sqltypes.NewValue(v.Type, v.Value)

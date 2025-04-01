@@ -156,7 +156,7 @@ func (ci *callIter) Close(ctx *sql.Context) error {
 				// This should have been caught by the analyzer, so a major bug exists somewhere
 				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
 			case *expression.ProcedureParam:
-				err = callParam.Set(val, param.Type)
+				err = callParam.Set(ctx, val, param.Type)
 				if err != nil {
 					return err
 				}
@@ -174,7 +174,7 @@ func (ci *callIter) Close(ctx *sql.Context) error {
 				// This should have been caught by the analyzer, so a major bug exists somewhere
 				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
 			case *expression.ProcedureParam:
-				err := callParam.Set(nil, param.Type)
+				err := callParam.Set(ctx, nil, param.Type)
 				if err != nil {
 					return err
 				}

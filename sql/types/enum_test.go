@@ -28,6 +28,7 @@ import (
 )
 
 func TestEnumCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
@@ -111,6 +112,7 @@ func TestEnumCreateTooLarge(t *testing.T) {
 }
 
 func TestEnumConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID

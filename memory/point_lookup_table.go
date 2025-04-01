@@ -77,7 +77,7 @@ type pointLookupIndex struct {
 	sql.Index
 }
 
-func (i pointLookupIndex) CanSupport(ranges ...sql.Range) bool {
+func (i pointLookupIndex) CanSupport(ctx *sql.Context, ranges ...sql.Range) bool {
 	for _, r := range ranges {
 		mysqlRange, ok := r.(sql.MySQLRange)
 		if !ok || len(mysqlRange) != 1 {

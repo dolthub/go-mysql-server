@@ -506,7 +506,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		rang[i+len(mapper.IndexPositions)] = sql.AllRangeColumnExpr(appendType)
 	}
 
-	if !mapper.Index.CanSupport(rang) {
+	if !mapper.Index.CanSupport(ctx, rang) {
 		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
 	}
 	// TODO: profile this, may need to redesign this or add a fast path

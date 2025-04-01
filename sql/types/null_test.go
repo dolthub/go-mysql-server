@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 )
 
 func TestNullCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val1 interface{}
 		val2 interface{}
@@ -43,6 +45,7 @@ func TestNullCompare(t *testing.T) {
 }
 
 func TestNullConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val         interface{}
 		expectedVal interface{}

@@ -16,55 +16,12 @@ package driver
 
 import (
 	"database/sql/driver"
-	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-// ErrUnsupportedType is returned when a query argument of an unsupported type is passed to a statement
-var ErrUnsupportedType = errors.New("unsupported type")
-
-func valueToExpr(v driver.Value) (sql.Expression, error) {
-	if v == nil {
-		return expression.NewLiteral(nil, types.Null), nil
-	}
-
-	var typ sql.Type
-	var err error
-	switch v := v.(type) {
-	case int64:
-		typ = types.Int64
-	case float64:
-		typ = types.Float64
-	case bool:
-		typ = types.Boolean
-	case []byte:
-		typ, err = types.CreateBinary(sqltypes.Blob, int64(len(v)))
-	case string:
-		typ, err = types.CreateStringWithDefaults(sqltypes.Text, int64(len(v)))
-	case time.Time:
-		typ = types.Datetime
-	default:
-		return nil, fmt.Errorf("%w: %T", ErrUnsupportedType, v)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	c, _, err := typ.Convert(ctx, v)
-	if err != nil {
-		return nil, err
-	}
-	return expression.NewLiteral(c, typ), nil
-}
 
 func valuesToBindings(vals []driver.Value) (map[string]sqlparser.Expr, error) {
 	if len(vals) == 0 {

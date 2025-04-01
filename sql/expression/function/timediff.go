@@ -75,7 +75,7 @@ func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewTimeDiff(children[0], children[1]), nil
 }
 
-func convToDateOrTime(val interface{}) (interface{}, error) {
+func convToDateOrTime(ctx *sql.Context, val interface{}) (interface{}, error) {
 	date, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 	if err == nil {
 		return date, nil
@@ -109,14 +109,14 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// always convert string types
 	if _, ok := left.(string); ok {
-		left, err = convToDateOrTime(left)
+		left, err = convToDateOrTime(ctx, left)
 		if err != nil {
 			ctx.Warn(1292, err.Error())
 			return nil, nil
 		}
 	}
 	if _, ok := right.(string); ok {
-		right, err = convToDateOrTime(right)
+		right, err = convToDateOrTime(ctx, right)
 		if err != nil {
 			ctx.Warn(1292, err.Error())
 			return nil, nil
