@@ -15,6 +15,7 @@
 package jsontests
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -84,7 +85,7 @@ func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 			if tt.err == nil {
 				require.NoError(err)
 				if tt.typ == types.JSON {
-					cmp, err := types.JSON.Compare(ctx, tt.expected, result)
+					cmp, err := types.JSON.Compare(context.Background(), tt.expected, result)
 					require.NoError(err)
 					require.Equal(0, cmp)
 				} else {
