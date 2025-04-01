@@ -172,6 +172,22 @@ func TestWrapperCompare(t *testing.T) {
 	filteredRows := getAllRows(t, ctx, filtered)
 	require.Len(t, filteredRows, 2)
 	require.ElementsMatch(t, filteredRows, []sql.Row{{int64(1), "BIG"}, {int64(2), upperUnknownLength}})
+
+	{
+		// Filter using LIKE
+		likeFilter := []sql.Expression{
+			expression.NewLike(
+				expression.NewGetFieldWithTable(1, 0, types.Text, "db", "test", "col1", false),
+				expression.NewLiteral("l%", types.Text),
+				nil),
+		}
+
+		filtered := table.WithFilters(ctx, likeFilter)
+
+		filteredRows := getAllRows(t, ctx, filtered)
+		require.Len(t, filteredRows, 2)
+		require.ElementsMatch(t, filteredRows, []sql.Row{{int64(3), lowerUnknownLength}, {int64(4), "little"}})
+	}
 }
 
 // TestWrapperCompare tests that a wrapped value can be used in comparisons without being unwrapped.

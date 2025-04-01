@@ -81,6 +81,10 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil || left == nil {
 		return nil, err
 	}
+	left, err = sql.UnwrapAny(ctx, left)
+	if err != nil {
+		return nil, err
+	}
 	if _, ok := left.(string); !ok {
 		left, _, err = types.LongText.Convert(left)
 		if err != nil {
@@ -130,6 +134,10 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape rune, err error) {
 	rightVal, err := l.RightChild.Eval(ctx, row)
 	if err != nil || rightVal == nil {
+		return nil, 0, err
+	}
+	rightVal, err = sql.UnwrapAny(ctx, rightVal)
+	if err != nil {
 		return nil, 0, err
 	}
 	if _, ok := rightVal.(string); !ok {
