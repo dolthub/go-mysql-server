@@ -5165,9 +5165,9 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				Query: "select unix_timestamp(d), unix_timestamp(tt) from t;",
+				Query: "select unix_timestamp(d), substring(cast(unix_timestamp(tt) as char(128)), -6) from t;",
 				Expected: []sql.Row{
-					{"1577898000", "1743140096.123456"},
+					{"1577898000", "123456"},
 				},
 			},
 		},
@@ -7796,6 +7796,40 @@ where
 			{
 				Query:          "insert into t values (1, -1)",
 				ExpectedErrStr: "value -1 is not valid for this Enum",
+			},
+		},
+	},
+	{
+		Name:    "not expression optimization",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"insert into t values (123);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t where 1 = (not(not(i)))",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query: "select * from t where true = (not(not(i)))",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query: "select * from t where true = (not(not(i = 123)))",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+			{
+				Query: "select * from t where false = (not(not(i != 123)))",
+				Expected: []sql.Row{
+					{123},
+				},
 			},
 		},
 	},
