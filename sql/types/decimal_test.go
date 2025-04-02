@@ -17,12 +17,13 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"math/big"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
