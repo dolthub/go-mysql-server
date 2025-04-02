@@ -204,47 +204,47 @@ func TestSingleQueryPrepared(t *testing.T) {
 func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
-	{
-		Name: "insert trigger with stored procedure with deletes",
-		SetUpScript: []string{
-			"create table t (i int);",
-			"create table t1 (j int);",
-			`
+		{
+			Name: "insert trigger with stored procedure with deletes",
+			SetUpScript: []string{
+				"create table t (i int);",
+				"create table t1 (j int);",
+				`
 create procedure proc(x int)
 begin
   insert into t1 values (x + 100);
 end;
 `,
-			`
+				`
 create trigger trig before insert on t
 for each row
 begin
   call proc(new.i);
 end;
 `,
-		},
-		Assertions: []queries.ScriptTestAssertion{
-			{
-				Query: "insert into t values (1);",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
 			},
-			{
-				Query: "select * from t;",
-				Expected: []sql.Row{
-					{1},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query: "insert into t values (1);",
+					Expected: []sql.Row{
+						{types.NewOkResult(1)},
+					},
 				},
+				{
+					Query: "select * from t;",
+					Expected: []sql.Row{
+						{1},
+					},
+				},
+				//{
+				//	Query: "select * from t1;",
+				//	Expected: []sql.Row{
+				//		{101},
+				//		{201},
+				//	},
+				//},
 			},
-			//{
-			//	Query: "select * from t1;",
-			//	Expected: []sql.Row{
-			//		{101},
-			//		{201},
-			//	},
-			//},
 		},
-	},
 	}
 
 	for _, test := range scripts {
