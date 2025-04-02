@@ -778,14 +778,6 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 // Call runs the contained operations on the given runner.
 func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.RowIter, *InterpreterStack, error) {
-	// TODO: what about nested stored procedures?
-	if transSess, isTransSess := ctx.Session.(sql.TransactionSession); isTransSess {
-		transSess.SetInStoredProcedure(true)
-		defer func() {
-			transSess.SetInStoredProcedure(false)
-		}()
-	}
-
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()

@@ -207,8 +207,6 @@ type TransactionSession interface {
 	RollbackToSavepoint(ctx *Context, transaction Transaction, name string) error
 	// ReleaseSavepoint removes the savepoint named from the transaction given
 	ReleaseSavepoint(ctx *Context, transaction Transaction, name string) error
-
-	SetInStoredProcedure(val bool)
 }
 
 // A LifecycleAwareSession is a a sql.Session that gets lifecycle callbacks

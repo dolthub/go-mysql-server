@@ -229,14 +229,6 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}
 	}
 
-	// check for existing procedure stack in session
-	// if not found, create a new one
-
-	//
-
-	// TODO: add all procedure parameters
-	// ctx.Session.GetProcedureVariables
-
 	rowIter, stack, err := procedures.Call(ctx, n, procParams)
 	if err != nil {
 		return nil, err
@@ -268,6 +260,15 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 			// This should have been caught by the analyzer, so a major bug exists somewhere
 			return nil, fmt.Errorf("unable to set `%s` as it is a system variable", p.Name)
 		}
+	}
+
+	// We might close transactions in the procedure, so we need to start a new one if we're not in one already
+	if sess, ok := ctx.Session.(sql.TransactionSession); ok {
+		tx, tErr := sess.StartTransaction(ctx, sql.ReadWrite)
+		if tErr != nil {
+			return nil, tErr
+		}
+		ctx.SetTransaction(tx)
 	}
 
 	return &callIter{
