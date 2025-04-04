@@ -209,6 +209,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}, nil
 	}
 
+	// TODO: replace with direct ctx modification
 	procParams := make([]*procedures.Parameter, len(n.Params))
 	for i, paramExpr := range n.Params {
 		param := n.Procedure.Params[i]
@@ -229,7 +230,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}
 	}
 
-	rowIter, stack, err := procedures.Call(ctx, n, procParams)
+	rowIter, _, err := procedures.Call(ctx, n, procParams)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +241,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 			continue
 		}
 		// Set all user and system variables from INOUT and OUT params
-		stackVar := stack.GetVariable(procParam.Name) // TODO: ToLower?
+		stackVar := ctx.Session.GetStoredProcParam(procParam.Name) // TODO: ToLower?
 		switch p := param.(type) {
 		case *expression.ProcedureParam:
 			err = p.Set(stackVar.Value, stackVar.Type)

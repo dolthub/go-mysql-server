@@ -92,6 +92,13 @@ type Session interface {
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)
+
+	NewStoredProcParam(name string, param *StoredProcParam)
+
+	GetStoredProcParam(name string) *StoredProcParam
+
+	SetStoredProcParam(name string, val any) error
+
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session

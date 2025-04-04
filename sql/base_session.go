@@ -53,6 +53,8 @@ type BaseSession struct {
 	// privilege set if our counter doesn't equal the database's counter.
 	privSetCounter uint64
 	privilegeSet   PrivilegeSet
+
+	storedProcParams map[string]*StoredProcParam
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
@@ -250,6 +252,29 @@ func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, 
 		s.statusVars[statVarName].Increment((uint64(val)))
 	}
 	return
+}
+
+func (s *BaseSession) NewStoredProcParam(name string, param *StoredProcParam) {
+	if _, ok := s.storedProcParams[name]; ok {
+		return
+	}
+	s.storedProcParams[name] = param
+}
+
+func (s *BaseSession) GetStoredProcParam(name string) *StoredProcParam {
+	if param, ok := s.storedProcParams[name]; ok {
+		return param
+	}
+	return nil
+}
+
+func (s *BaseSession) SetStoredProcParam(name string, val any) error {
+	param := s.GetStoredProcParam(name)
+	if  param == nil {
+		return fmt.Errorf("variable `%s` could not be found", name)
+	}
+	param.SetValue(val)
+	return nil
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
@@ -504,17 +529,18 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
-		addr:           server,
-		client:         client,
-		id:             id,
-		systemVars:     systemVars,
-		statusVars:     statusVars,
-		userVars:       NewUserVars(),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
+		addr:             server,
+		client:           client,
+		id:               id,
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
 	}
 }
 
@@ -534,14 +560,15 @@ func NewBaseSession() *BaseSession {
 		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
-		id:             atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:     systemVars,
-		statusVars:     statusVars,
-		userVars:       NewUserVars(),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
+		id:               atomic.AddUint32(&autoSessionIDs, 1),
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
 	}
 }

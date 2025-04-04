@@ -345,8 +345,26 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		b.handleErr(err)
 	}
 
+	// TODO: build references here?
+	// TODO: here fill in x from session
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {
+		if len(proc.Params) == len(c.Params) {
+			procParam := proc.Params[i]
+			rspp := &sql.StoredProcParam{Type: procParam.Type}
+			b.ctx.Session.NewStoredProcParam(procParam.Name, rspp)
+			if col, isCol := param.(*ast.ColName); isCol {
+				colName := col.Name.String() // TODO: to lower?
+				if spp := b.ctx.Session.GetStoredProcParam(colName); spp != nil {
+					iv := &procedures.InterpreterVariable{
+						Type:  spp.Type,
+						Value: spp.Value,
+					}
+					param = iv.ToAST()
+					rspp.Reference = spp
+				}
+			}
+		}
 		expr := b.buildScalar(inScope, param)
 		params[i] = expr
 	}

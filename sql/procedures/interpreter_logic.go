@@ -45,12 +45,21 @@ type Parameter struct {
 	Value any
 }
 
-func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast.AsOf) (ast.SQLNode, error) {
+func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.SQLNode, asOf *ast.AsOf) (ast.SQLNode, error) {
 	switch e := expr.(type) {
 	case *ast.ColName:
-		iv := stack.GetVariable(strings.ToLower(e.Name.String()))
+		varName := strings.ToLower(e.Name.String())
+		iv := stack.GetVariable(varName)
 		if iv == nil {
-			return expr, nil
+			spp := ctx.Session.GetStoredProcParam(varName)
+			if spp == nil {
+				return expr, nil
+			}
+			iv = &InterpreterVariable{
+				Value:      spp.Value,
+				Type:       spp.Type,
+				HasBeenSet: spp.HasBeenSet,
+			}
 		}
 		newExpr := iv.ToAST()
 		return &ast.ColName{
@@ -59,13 +68,13 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 			StoredProcVal: newExpr,
 		}, nil
 	case *ast.ParenExpr:
-		newExpr, err := replaceVariablesInExpr(stack, e.Expr, asOf)
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
 		if err != nil {
 			return nil, err
 		}
 		e.Expr = newExpr.(ast.Expr)
 	case *ast.AliasedTableExpr:
-		newExpr, err := replaceVariablesInExpr(stack, e.Expr, asOf)
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
 		if err != nil {
 			return nil, err
 		}
@@ -74,28 +83,28 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 			e.AsOf = asOf
 		}
 	case *ast.AliasedExpr:
-		newExpr, err := replaceVariablesInExpr(stack, e.Expr, asOf)
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
 		if err != nil {
 			return nil, err
 		}
 		e.Expr = newExpr.(ast.Expr)
 	case *ast.BinaryExpr:
-		newLeftExpr, err := replaceVariablesInExpr(stack, e.Left, asOf)
+		newLeftExpr, err := replaceVariablesInExpr(ctx, stack, e.Left, asOf)
 		if err != nil {
 			return nil, err
 		}
-		newRightExpr, err := replaceVariablesInExpr(stack, e.Right, asOf)
+		newRightExpr, err := replaceVariablesInExpr(ctx, stack, e.Right, asOf)
 		if err != nil {
 			return nil, err
 		}
 		e.Left = newLeftExpr.(ast.Expr)
 		e.Right = newRightExpr.(ast.Expr)
 	case *ast.ComparisonExpr:
-		newLeftExpr, err := replaceVariablesInExpr(stack, e.Left, asOf)
+		newLeftExpr, err := replaceVariablesInExpr(ctx, stack, e.Left, asOf)
 		if err != nil {
 			return nil, err
 		}
-		newRightExpr, err := replaceVariablesInExpr(stack, e.Right, asOf)
+		newRightExpr, err := replaceVariablesInExpr(ctx, stack, e.Right, asOf)
 		if err != nil {
 			return nil, err
 		}
@@ -103,14 +112,14 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		e.Right = newRightExpr.(ast.Expr)
 	case *ast.FuncExpr:
 		for i := range e.Exprs {
-			newExpr, err := replaceVariablesInExpr(stack, e.Exprs[i], asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Exprs[i], asOf)
 			if err != nil {
 				return nil, err
 			}
 			e.Exprs[i] = newExpr.(ast.SelectExpr)
 		}
 	case *ast.NotExpr:
-		newExpr, err := replaceVariablesInExpr(stack, e.Expr, asOf)
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +127,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 	case *ast.Set:
 		for _, setExpr := range e.Exprs {
 			// TODO: properly handle user scope variables
-			newExpr, err := replaceVariablesInExpr(stack, setExpr.Expr, asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, setExpr.Expr, asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -133,8 +142,8 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		}
 	case *ast.Call:
 		for i := range e.Params {
-			// TODO: don't replace variables for session stack
-			newExpr, err := replaceVariablesInExpr(stack, e.Params[i], asOf)
+			// TODO: do not replace certain params
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Params[i], asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -144,11 +153,11 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 			e.AsOf = asOf.Time
 		}
 	case *ast.Limit:
-		newOffset, err := replaceVariablesInExpr(stack, e.Offset, asOf)
+		newOffset, err := replaceVariablesInExpr(ctx, stack, e.Offset, asOf)
 		if err != nil {
 			return nil, err
 		}
-		newRowCount, err := replaceVariablesInExpr(stack, e.Rowcount, asOf)
+		newRowCount, err := replaceVariablesInExpr(ctx, stack, e.Rowcount, asOf)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +170,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 	case *ast.Into:
 		// TODO: somehow support select into variables
 		for i := range e.Variables {
-			newExpr, err := replaceVariablesInExpr(stack, e.Variables[i], asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Variables[i], asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -169,7 +178,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		}
 	case *ast.Select:
 		for i := range e.SelectExprs {
-			newExpr, err := replaceVariablesInExpr(stack, e.SelectExprs[i], asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.SelectExprs[i], asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -177,7 +186,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		}
 		if e.With != nil {
 			for i := range e.With.Ctes {
-				newExpr, err := replaceVariablesInExpr(stack, e.With.Ctes[i].AliasedTableExpr, asOf)
+				newExpr, err := replaceVariablesInExpr(ctx, stack, e.With.Ctes[i].AliasedTableExpr, asOf)
 				if err != nil {
 					return nil, err
 				}
@@ -185,21 +194,21 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 			}
 		}
 		if e.Into != nil {
-			newExpr, err := replaceVariablesInExpr(stack, e.Into, asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Into, asOf)
 			if err != nil {
 				return nil, err
 			}
 			e.Into = newExpr.(*ast.Into)
 		}
 		if e.Where != nil {
-			newExpr, err := replaceVariablesInExpr(stack, e.Where.Expr, asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Where.Expr, asOf)
 			if err != nil {
 				return nil, err
 			}
 			e.Where.Expr = newExpr.(ast.Expr)
 		}
 		if e.Limit != nil {
-			newExpr, err := replaceVariablesInExpr(stack, e.Limit, asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Limit, asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -207,7 +216,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		}
 		if e.From != nil {
 			for i := range e.From {
-				newExpr, err := replaceVariablesInExpr(stack, e.From[i], asOf)
+				newExpr, err := replaceVariablesInExpr(ctx, stack, e.From[i], asOf)
 				if err != nil {
 					return nil, err
 				}
@@ -215,17 +224,17 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 			}
 		}
 	case *ast.Subquery:
-		newExpr, err := replaceVariablesInExpr(stack, e.Select, asOf)
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Select, asOf)
 		if err != nil {
 			return nil, err
 		}
 		e.Select = newExpr.(*ast.Select)
 	case *ast.SetOp:
-		newLeftExpr, err := replaceVariablesInExpr(stack, e.Left, asOf)
+		newLeftExpr, err := replaceVariablesInExpr(ctx, stack, e.Left, asOf)
 		if err != nil {
 			return nil, err
 		}
-		newRightExpr, err := replaceVariablesInExpr(stack, e.Right, asOf)
+		newRightExpr, err := replaceVariablesInExpr(ctx, stack, e.Right, asOf)
 		if err != nil {
 			return nil, err
 		}
@@ -233,7 +242,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		e.Right = newRightExpr.(ast.SelectStatement)
 	case ast.ValTuple:
 		for i := range e {
-			newExpr, err := replaceVariablesInExpr(stack, e[i], asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e[i], asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -241,21 +250,21 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		}
 	case *ast.AliasedValues:
 		for i := range e.Values {
-			newExpr, err := replaceVariablesInExpr(stack, e.Values[i], asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Values[i], asOf)
 			if err != nil {
 				return nil, err
 			}
 			e.Values[i] = newExpr.(ast.ValTuple)
 		}
 	case *ast.Insert:
-		newExpr, err := replaceVariablesInExpr(stack, e.Rows, asOf)
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Rows, asOf)
 		if err != nil {
 			return nil, err
 		}
 		e.Rows = newExpr.(ast.InsertRows)
 	case *ast.Delete:
 		if e.Where != nil {
-			newExpr, err := replaceVariablesInExpr(stack, e.Where.Expr, asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Where.Expr, asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -263,7 +272,7 @@ func replaceVariablesInExpr(stack *InterpreterStack, expr ast.SQLNode, asOf *ast
 		}
 	case *ast.Update:
 		if e.Where != nil {
-			newExpr, err := replaceVariablesInExpr(stack, e.Where.Expr, asOf)
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Where.Expr, asOf)
 			if err != nil {
 				return nil, err
 			}
@@ -373,7 +382,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 	switch operation.OpCode {
 	case OpCode_Select:
 		selectStmt := operation.PrimaryData.(*ast.Select)
-		if newSelectStmt, err := replaceVariablesInExpr(stack, selectStmt, asOf); err == nil {
+		if newSelectStmt, err := replaceVariablesInExpr(ctx, stack, selectStmt, asOf); err == nil {
 			selectStmt = newSelectStmt.(*ast.Select)
 		} else {
 			return 0, nil, nil, err
@@ -416,7 +425,10 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			}
 			err = stack.SetVariable(intoVar, row[i])
 			if err != nil {
-				return 0, nil, nil, err
+				err = ctx.Session.SetStoredProcParam(intoVar, row[i])
+				if err != nil {
+					return 0, nil, nil, err
+				}
 			}
 		}
 
@@ -592,7 +604,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		if cursor.RowIter != nil {
 			return 0, nil, nil, sql.ErrCursorAlreadyOpen.New(openCur.Name)
 		}
-		stmt, err := replaceVariablesInExpr(stack, cursor.SelectStmt, asOf)
+		stmt, err := replaceVariablesInExpr(ctx, stack, cursor.SelectStmt, asOf)
 		if err != nil {
 			return 0, nil, nil, err
 		}
@@ -657,7 +669,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			panic("select stmt with no select exprs")
 		}
 		for i := range selectStmt.SelectExprs {
-			newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i], asOf)
+			newNode, err := replaceVariablesInExpr(ctx, stack, selectStmt.SelectExprs[i], asOf)
 			if err != nil {
 				return 0, nil, nil, err
 			}
@@ -680,7 +692,10 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 		err = stack.SetVariable(strings.ToLower(operation.Target), row[0])
 		if err != nil {
-			return 0, nil, nil, err
+			err = ctx.Session.SetStoredProcParam(operation.Target, row[0])
+			if err != nil {
+				return 0, nil, nil, err
+			}
 		}
 
 	case OpCode_If:
@@ -689,7 +704,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			panic("select stmt with no select exprs")
 		}
 		for i := range selectStmt.SelectExprs {
-			newNode, err := replaceVariablesInExpr(stack, selectStmt.SelectExprs[i], asOf)
+			newNode, err := replaceVariablesInExpr(ctx, stack, selectStmt.SelectExprs[i], asOf)
 			if err != nil {
 				return 0, nil, nil, err
 			}
@@ -750,10 +765,11 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		}
 
 	case OpCode_Execute:
-		stmt, err := replaceVariablesInExpr(stack, operation.PrimaryData, asOf)
+		stmt, err := replaceVariablesInExpr(ctx, stack, operation.PrimaryData, asOf)
 		if err != nil {
 			return 0, nil, nil, err
 		}
+		// TODO: create a OpCode_Call to store procedures in the stack
 		rowIter, err := query(ctx, runner, stmt.(ast.Statement))
 		if err != nil {
 			return 0, nil, nil, err
@@ -778,12 +794,21 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 // Call runs the contained operations on the given runner.
 func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.RowIter, *InterpreterStack, error) {
+	for _, param := range params {
+		var spp *sql.StoredProcParam
+		spp = ctx.Session.GetStoredProcParam(param.Name)
+		for spp != nil {
+			spp.Value = param.Value
+			spp = spp.Reference
+		}
+	}
+
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()
-	for _, param := range params {
-		stack.NewVariableWithValue(param.Name, param.Type, param.Value)
-	}
+	//for _, param := range params {
+	//	stack.NewVariableWithValue(param.Name, param.Type, param.Value)
+	//}
 
 	var asOf *ast.AsOf
 	if asOfExpr := iNode.GetAsOf(); asOfExpr != nil {

@@ -880,6 +880,21 @@ func IncrementStatusVariable(ctx *Context, name string, val int) {
 	ctx.Session.IncrementStatusVariable(ctx, name, val)
 }
 
+type StoredProcParam struct {
+	Type       Type
+	Value      any
+	HasBeenSet bool
+	Reference  *StoredProcParam
+}
+
+func (s *StoredProcParam) SetValue(val any) {
+	s.Value = val
+	s.HasBeenSet = true
+	if s.Reference != nil {
+		s.Reference.SetValue(val)
+	}
+}
+
 // OrderAndLimit stores the context of an ORDER BY ... LIMIT statement, and is used by index lookups and iterators.
 type OrderAndLimit struct {
 	OrderBy       Expression
