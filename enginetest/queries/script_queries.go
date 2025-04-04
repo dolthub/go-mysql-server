@@ -7837,6 +7837,12 @@ where
 					{123},
 				},
 			},
+			{
+				Query: "select * from t where ((true and -1) >= 0);",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
 		},
 	},
 	{
