@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -130,7 +131,7 @@ var _ MySQLRangeCut = Above{}
 // Compare implements MySQLRangeCut.
 func (a Above) Compare(c MySQLRangeCut, typ Type) (int, error) {
 	//TODO: Add context parameter to MySQLRangeCut.Compare
-	ctx := NewEmptyContext()
+	ctx := context.Background()
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
@@ -207,7 +208,7 @@ var _ MySQLRangeCut = Below{}
 // Compare implements MySQLRangeCut.
 func (b Below) Compare(c MySQLRangeCut, typ Type) (int, error) {
 	//TODO: Add context parameter to MySQLRangeCut.Compare
-	ctx := NewEmptyContext()
+	ctx := context.Background()
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
