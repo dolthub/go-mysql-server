@@ -61,7 +61,7 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	v, _, err = types.LongText.Convert(v)
+	v, _, err = types.LongText.Convert(ctx, v)
 	if err != nil {
 		return nil, err
 	}

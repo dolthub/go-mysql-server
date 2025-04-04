@@ -469,7 +469,7 @@ func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int,
 			return 0, err
 		}
 
-		cmp, err = expr.Type().Compare(res, cur)
+		cmp, err = expr.Type().Compare(ctx, res, cur)
 		if err != nil {
 			return 0, err
 		}

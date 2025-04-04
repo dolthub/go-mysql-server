@@ -91,7 +91,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lVal, _, err := types.LongText.Convert(left)
+	lVal, _, err := types.LongText.Convert(ctx, left)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	} else {
 		var rVal interface{}
-		rVal, _, err = types.LongText.Convert(right)
+		rVal, _, err = types.LongText.Convert(ctx, right)
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +130,7 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	strType := types.CreateLongText(collPref)
 	for i, r := range strings.Split(r, ",") {
-		cmp, err := strType.Compare(l, r)
+		cmp, err := strType.Compare(ctx, l, r)
 		if err != nil {
 			return nil, err
 		}

@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -181,7 +182,7 @@ func NumericUnaryValue(t sql.Type) interface{} {
 }
 
 // Compare implements Type interface.
-func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
+func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -242,7 +243,7 @@ func (t NumberTypeImpl_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t NumberTypeImpl_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t NumberTypeImpl_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	var err error
 	if v == nil {
 		return nil, sql.InRange, nil
@@ -376,15 +377,6 @@ func (t NumberTypeImpl_) MaxTextResponseByteLength(*sql.Context) uint32 {
 	default:
 		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
 	}
-}
-
-// MustConvert implements the Type interface.
-func (t NumberTypeImpl_) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.

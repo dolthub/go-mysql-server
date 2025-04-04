@@ -127,8 +127,18 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, ErrNilOperand.New()
 	}
 
+	left, err = sql.UnwrapAny(ctx, left)
+	if err != nil {
+		return 0, err
+	}
+
+	right, err = sql.UnwrapAny(ctx, right)
+	if err != nil {
+		return 0, err
+	}
+
 	if types.TypesEqual(c.Left().Type(), c.Right().Type()) {
-		return c.Left().Type().Compare(left, right)
+		return c.Left().Type().Compare(ctx, left, right)
 	}
 
 	// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
@@ -163,7 +173,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		}
 	}
 	if compareType == nil {
-		left, right, compareType, err = c.castLeftAndRight(left, right)
+		left, right, compareType, err = c.castLeftAndRight(ctx, left, right)
 		if err != nil {
 			return 0, err
 		}
@@ -174,7 +184,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 
-	return compareType.Compare(left, right)
+	return compareType.Compare(ctx, left, right)
 }
 
 func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -191,7 +201,7 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 	return left, right, nil
 }
 
-func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, sql.Type, error) {
+func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	leftType := c.Left().Type()
 	rightType := c.Right().Type()
 	if types.IsTuple(leftType) && types.IsTuple(rightType) {
@@ -199,7 +209,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	}
 
 	if types.IsTime(leftType) || types.IsTime(rightType) {
-		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
+		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -213,7 +223,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	}
 
 	if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {
-		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
+		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToBinary)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -223,7 +233,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	if types.IsNumber(leftType) || types.IsNumber(rightType) {
 		if types.IsDecimal(leftType) || types.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type
-			l, r, err := convertLeftAndRight(left, right, ConvertToDecimal)
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDecimal)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -236,7 +246,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		}
 
 		if types.IsFloat(leftType) || types.IsFloat(rightType) {
-			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -245,7 +255,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		}
 
 		if types.IsSigned(leftType) && types.IsSigned(rightType) {
-			l, r, err := convertLeftAndRight(left, right, ConvertToSigned)
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToSigned)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -254,7 +264,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		}
 
 		if types.IsUnsigned(leftType) && types.IsUnsigned(rightType) {
-			l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToUnsigned)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -262,7 +272,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return l, r, types.Uint64, nil
 		}
 
-		l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
+		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -270,7 +280,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		return l, r, types.Float64, nil
 	}
 
-	left, right, err := convertLeftAndRight(left, right, ConvertToChar)
+	left, right, err := convertLeftAndRight(ctx, left, right, ConvertToChar)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -278,13 +288,13 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	return left, right, types.LongText, nil
 }
 
-func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	l, err := convertValue(left, convertTo, nil, 0, 0)
+func convertLeftAndRight(ctx *sql.Context, left, right interface{}, convertTo string) (interface{}, interface{}, error) {
+	l, err := convertValue(ctx, left, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := convertValue(right, convertTo, nil, 0, 0)
+	r, err := convertValue(ctx, right, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -425,16 +435,16 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	if types.TypesEqual(e.Left().Type(), e.Right().Type()) {
-		return e.Left().Type().Compare(left, right)
+		return e.Left().Type().Compare(ctx, left, right)
 	}
 
 	var compareType sql.Type
-	left, right, compareType, err = e.castLeftAndRight(left, right)
+	left, right, compareType, err = e.castLeftAndRight(ctx, left, right)
 	if err != nil {
 		return 0, err
 	}
 
-	return compareType.Compare(left, right)
+	return compareType.Compare(ctx, left, right)
 }
 
 // Eval implements the Expression interface.

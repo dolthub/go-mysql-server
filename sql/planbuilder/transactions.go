@@ -47,7 +47,7 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 		if err != nil {
 			b.handleErr(err)
 		}
-		strVal, _, err := types.LongText.Convert(val)
+		strVal, _, err := types.LongText.Convert(b.ctx, val)
 		if err != nil {
 			b.handleErr(err)
 		}

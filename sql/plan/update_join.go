@@ -191,7 +191,7 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 		newRow := tableToNewRowMap[tableName]
 		schema := u.schemaMap[tableName]
 
-		eq, err := oldRow.Equals(newRow, schema)
+		eq, err := oldRow.Equals(ctx, newRow, schema)
 		if err != nil {
 			return err
 		}

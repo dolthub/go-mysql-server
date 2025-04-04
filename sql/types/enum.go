@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -120,18 +121,18 @@ func (t EnumType) MaxTextResponseByteLength(*sql.Context) uint32 {
 }
 
 // Compare implements Type interface.
-func (t EnumType) Compare(a interface{}, b interface{}) (int, error) {
+func (t EnumType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
 	// Attempt to convert the values to their enum values, but don't error
 	// out if they aren't valid enum values.
-	ai, _, err := t.Convert(a)
+	ai, _, err := t.Convert(ctx, a)
 	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
-	bi, _, err := t.Convert(b)
+	bi, _, err := t.Convert(ctx, b)
 	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
@@ -156,7 +157,7 @@ func (t EnumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t EnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -167,52 +168,43 @@ func (t EnumType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error
 			return uint16(value), sql.InRange, nil
 		}
 	case uint:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int16:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint16:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case float32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case float64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case decimal.Decimal:
-		return t.Convert(value.IntPart())
+		return t.Convert(ctx, value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
 			return nil, sql.InRange, nil
 		}
-		return t.Convert(value.Decimal.IntPart())
+		return t.Convert(ctx, value.Decimal.IntPart())
 	case string:
 		if index := t.IndexOf(value); index != -1 {
 			return uint16(index), sql.InRange, nil
 		}
 	case []byte:
-		return t.Convert(string(value))
+		return t.Convert(ctx, string(value))
 	}
 
 	return nil, sql.InRange, ErrConvertingToEnum.New(v)
-}
-
-// MustConvert implements the Type interface.
-func (t EnumType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -238,7 +230,7 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, _, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

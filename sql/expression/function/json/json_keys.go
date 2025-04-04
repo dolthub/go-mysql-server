@@ -134,7 +134,7 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			return res[i] < res[j]
 		})
-		result, _, err := types.JSON.Convert(res)
+		result, _, err := types.JSON.Convert(ctx, res)
 		if err != nil {
 			return nil, err
 		}

@@ -151,8 +151,8 @@ func (m *Mod) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
-		right = convertToDecimalValue(right, rIsTimeType)
+		left = convertToDecimalValue(ctx, left, lIsTimeType)
+		right = convertToDecimalValue(ctx, right, rIsTimeType)
 	}
 
 	return left, right

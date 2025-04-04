@@ -25,6 +25,7 @@ import (
 )
 
 func TestSRID(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("select unspecified SRID is 0", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
@@ -293,7 +294,7 @@ func TestSRID(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -307,7 +308,7 @@ func TestSRID(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }

@@ -91,7 +91,7 @@ func (js *JSONQuote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return val, err
 	}
 
-	ex, _, err := types.LongText.Convert(val)
+	ex, _, err := types.LongText.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}

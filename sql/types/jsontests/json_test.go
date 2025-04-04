@@ -41,6 +41,7 @@ func TestJsonCompareNulls(t *testing.T) {
 }
 
 func TestJsonConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	type testStruct struct {
 		Field string `json:"field"`
 	}
@@ -61,7 +62,7 @@ func TestJsonConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val, test.expectedVal), func(t *testing.T) {
-			val, _, err := types.JSON.Convert(test.val)
+			val, _, err := types.JSON.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {

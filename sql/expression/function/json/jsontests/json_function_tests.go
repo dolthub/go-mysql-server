@@ -26,6 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+var sqlCtx = sql.NewEmptyContext()
+
 type prepareJsonValue = func(*testing.T, interface{}) interface{}
 
 type jsonFormatTest struct {
@@ -37,7 +39,7 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "string",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
-			jsonString, _, err := types.Text.Convert(js)
+			jsonString, _, err := types.Text.Convert(sqlCtx, js)
 			require.NoError(t, err)
 			return jsonString
 		},
@@ -45,7 +47,7 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "JsonDocument",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
-			doc, _, err := types.JSON.Convert(js)
+			doc, _, err := types.JSON.Convert(sqlCtx, js)
 			require.NoError(t, err)
 			val, err := doc.(sql.JSONWrapper).ToInterface()
 			require.NoError(t, err)
@@ -55,7 +57,7 @@ var jsonFormatTests = []jsonFormatTest{
 	{
 		name: "LazyJsonDocument",
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
-			doc, _, err := types.JSON.Convert(js)
+			doc, _, err := types.JSON.Convert(sqlCtx, js)
 			require.NoError(t, err)
 			bytes, err := types.MarshallJson(doc.(sql.JSONWrapper))
 			require.NoError(t, err)
@@ -95,19 +97,19 @@ func RunJsonTests(t *testing.T, testCases []testCase) {
 
 		t.Run(tstC.name+"."+tstC.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
 			req := require.New(t)
-			result, err := tstC.f.Eval(sql.NewEmptyContext(), tstC.row)
+			result, err := tstC.f.Eval(sqlCtx, tstC.row)
 			if tstC.err == nil {
 				req.NoError(err)
 
 				var expect interface{}
 				if tstC.expected != nil {
-					expect, _, err = types.JSON.Convert(tstC.expected)
+					expect, _, err = types.JSON.Convert(sqlCtx, tstC.expected)
 					if err != nil {
 						panic("Bad test string. Can't convert string to JSONDocument: " + tstC.expected.(string))
 					}
 				}
 
-				cmp, err := types.JSON.Compare(expect, result)
+				cmp, err := types.JSON.Compare(sqlCtx, expect, result)
 				req.NoError(err)
 				if cmp != 0 {
 					t.Error("Not equal:")

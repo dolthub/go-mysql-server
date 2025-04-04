@@ -407,7 +407,7 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t;",
@@ -415,7 +415,7 @@ SET entity_test.value = joined.value;`,
 			},
 			{
 				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "select * from t;",
@@ -433,7 +433,7 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t;",
@@ -441,7 +441,7 @@ SET entity_test.value = joined.value;`,
 			},
 			{
 				Query:    "update t join (select 1, 2, 3, 4, 5 from t) as tt set t.k = 30;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "select * from t;",
@@ -459,7 +459,7 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30 where t.i = 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t;",
@@ -469,15 +469,15 @@ SET entity_test.value = joined.value;`,
 				// TODO: should throw can't update error
 				Skip:     true,
 				Query:    "update t join (select i, j, k from t) as tt set t.k = 30 where t.i = 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 0)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 0)}},
 			},
 			{
 				Query:    "update t join (select 1 from t) as tt set t.k = 30 limit 1 offset 1;",
-				Expected: []sql.Row{{newUpdateResult(0, 0)}},
+				Expected: []sql.Row{{NewUpdateResult(0, 0)}},
 			},
 		},
 	},
@@ -507,7 +507,7 @@ SET entity_test.value = joined.value;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "UPDATE test_users JOIN (SELECT 1 FROM test_users) AS tu SET test_users.favorite_number = 42;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from test_users;",
@@ -515,7 +515,7 @@ SET entity_test.value = joined.value;`,
 			},
 			{
 				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.favorite_number = 420;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from test_users;",
@@ -523,7 +523,7 @@ SET entity_test.value = joined.value;`,
 			},
 			{
 				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.deleted = 1;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from test_users;",

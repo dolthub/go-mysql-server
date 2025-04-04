@@ -92,7 +92,7 @@ func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.Date.Convert(date)
+	date, _, err = types.Date.Convert(ctx, date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -213,7 +213,7 @@ func (f *FromDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	d, _, err = types.Int64.Convert(d)
+	d, _, err = types.Int64.Convert(ctx, d)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return "0000-00-00", nil
@@ -297,7 +297,7 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	date, _, err = types.Date.Convert(date)
+	date, _, err = types.Date.Convert(ctx, date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil

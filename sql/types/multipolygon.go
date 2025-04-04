@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"reflect"
 
@@ -51,23 +52,23 @@ var _ sql.CollationCoercible = MultiPolygonType{}
 var _ GeometryValue = MultiPolygon{}
 
 // Compare implements Type interface.
-func (t MultiPolygonType) Compare(a interface{}, b interface{}) (int, error) {
-	return GeometryType{}.Compare(a, b)
+func (t MultiPolygonType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t MultiPolygonType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t MultiPolygonType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
 	case []byte:
-		mpoly, _, err := GeometryType{}.Convert(buf)
+		mpoly, _, err := GeometryType{}.Convert(ctx, buf)
 		if sql.ErrInvalidGISData.Is(err) {
 			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("MultiPolygon.Convert")
 		}
 		return mpoly, sql.OutOfRange, err
 	case string:
-		return t.Convert([]byte(buf))
+		return t.Convert(ctx, []byte(buf))
 	case MultiPolygon:
 		if err := t.MatchSRID(buf); err != nil {
 			return nil, sql.OutOfRange, err
@@ -100,7 +101,7 @@ func (t MultiPolygonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

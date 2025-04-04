@@ -129,7 +129,7 @@ func (l *LogBase) Eval(
 		return nil, nil
 	}
 
-	val, _, err := types.Float64.Convert(v)
+	val, _, err := types.Float64.Convert(ctx, v)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
 	}
@@ -211,7 +211,7 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 
-	lhs, _, err := types.Float64.Convert(left)
+	lhs, _, err := types.Float64.Convert(ctx, left)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(left))
 	}
@@ -225,7 +225,7 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 
-	rhs, _, err := types.Float64.Convert(right)
+	rhs, _, err := types.Float64.Convert(ctx, right)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(right))
 	}

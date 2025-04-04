@@ -27,91 +27,91 @@ import (
 var UpdateTests = []WriteQueryTest{
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET S = 'updated';",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' WHERE i > 9999;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(0, 0)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' WHERE i = 1;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' WHERE i <> 9999;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
 		WriteQuery:          "UPDATE floattable SET f32 = f32 + f32, f64 = f32 * f64 WHERE i = 2;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM floattable WHERE i = 2;",
 		ExpectedSelect:      []sql.Row{{int64(2), float32(3.0), float64(4.5)}},
 	},
 	{
 		WriteQuery:          "UPDATE floattable SET f32 = 5, f32 = 4 WHERE i = 1;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT f32 FROM floattable WHERE i = 1;",
 		ExpectedSelect:      []sql.Row{{float32(4.0)}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'first row' WHERE i = 1;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 0)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "UPDATE niltable SET b = NULL WHERE f IS NULL;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 2)}},
 		SelectQuery:         "SELECT i,b FROM niltable WHERE f IS NULL;",
 		ExpectedSelect:      []sql.Row{{int64(1), nil}, {int64(2), nil}, {int64(3), nil}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' ORDER BY i ASC LIMIT 2;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' ORDER BY i DESC LIMIT 2;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated' ORDER BY i LIMIT 1 OFFSET 1;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "updated"}, {int64(3), "third row"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = _binary 'updated' WHERE i = 3;",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "updated"}},
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00';",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",
 		ExpectedSelect: []sql.Row{{
 			int64(1),
@@ -125,8 +125,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.MustConvert(types.Timestamp.Convert("2020-03-06 00:00:00")),
-			sql.MustConvert(types.Date.Convert("2019-12-31")),
+			sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2020-03-06 00:00:00")),
+			sql.MustConvert(types.Date.Convert(sqlCtx, "2019-12-31")),
 			"fourteen",
 			0,
 			nil,
@@ -135,7 +135,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00', da = '2020-03-06';",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",
 		ExpectedSelect: []sql.Row{{
 			int64(1),
@@ -149,8 +149,8 @@ var UpdateTests = []WriteQueryTest{
 			uint64(9),
 			float32(10),
 			float64(11),
-			sql.MustConvert(types.Timestamp.Convert("2020-03-06 00:00:00")),
-			sql.MustConvert(types.Date.Convert("2020-03-06")),
+			sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2020-03-06 00:00:00")),
+			sql.MustConvert(types.Date.Convert(sqlCtx, "2020-03-06")),
 			"fourteen",
 			0,
 			nil,
@@ -160,7 +160,7 @@ var UpdateTests = []WriteQueryTest{
 	{
 		SkipServerEngine:    true, // datetime returned is non-zero over the wire
 		WriteQuery:          "UPDATE typestable SET da = '0000-00-00', ti = '0000-00-00 00:00:00';",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",
 		ExpectedSelect: []sql.Row{{
 			int64(1),
@@ -184,7 +184,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(4, 4)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(4, 4)}},
 		SelectQuery:         "SELECT * FROM two_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
@@ -195,7 +195,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "UPDATE mytable INNER JOIN one_pk ON mytable.i = one_pk.c5 SET mytable.i = mytable.i * 10",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(0, 0)}},
 		SelectQuery:         "SELECT * FROM mytable",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(int64(1), "first row"),
@@ -205,7 +205,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1 WHERE one_pk.c5 < 10`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM two_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
@@ -216,7 +216,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN othertable on othertable.i2 = two_pk.pk2 SET one_pk.c1 = one_pk.c1 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM one_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 1, 1, 2, 3, 4),
@@ -227,7 +227,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk order by pk1, pk2) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = t2.c1 + 1 where one_pk.pk < 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM one_pk where pk < 1",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 1, 1, 2, 3, 4),
@@ -235,7 +235,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM one_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 1, 1, 2, 3, 4),
@@ -246,7 +246,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, one_pk.c2 = one_pk.c2 + 1 ORDER BY one_pk.pk`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM one_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 1, 2, 2, 3, 4),
@@ -257,7 +257,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(6, 6)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(6, 6)}},
 		SelectQuery:         "SELECT * FROM two_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 2, 1, 2, 3, 4),
@@ -268,13 +268,13 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `update mytable h join mytable on h.i = mytable.i and h.s <> mytable.s set h.i = mytable.i+1;`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(0, 0)}},
 		SelectQuery:         "select * from mytable",
 		ExpectedSelect:      []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
 	},
 	{
 		WriteQuery:          `UPDATE othertable CROSS JOIN tabletest set othertable.i2 = othertable.i2 * 10`, // cross join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM othertable order by i2",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow("third", 10),
@@ -284,7 +284,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE tabletest cross join tabletest as t2 set tabletest.i = tabletest.i * 10`, // cross join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(10, "first row"),
@@ -294,7 +294,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable cross join tabletest set tabletest.i = tabletest.i * 10`, // cross join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(10, "first row"),
@@ -304,7 +304,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`, // cross join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM two_pk order by pk1 ASC, pk2 ASC;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
@@ -315,7 +315,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`, // cross join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM othertable order by i2",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow("third", 1),
@@ -325,7 +325,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE tabletest cross join tabletest as t2 set t2.i = t2.i * 10`, // cross join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(10, "first row"),
@@ -335,7 +335,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`, // left join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM othertable order by i2",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow("fourth", 1),
@@ -345,7 +345,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET tabletest.s = 'fourth row', tabletest.i = tabletest.i + 1`, // left join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(1, "first row"),
@@ -355,7 +355,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest t3 on othertable.i2=3 and t3.i=3 SET t3.s = 'fourth row', t3.i = t3.i + 1`, // left join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(1, "first row"),
@@ -365,7 +365,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 LEFT JOIN one_pk on othertable.i2 = one_pk.pk SET one_pk.c1 = one_pk.c1 + 1`, // left join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM one_pk order by pk",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 1, 2, 3, 4),
@@ -376,7 +376,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 LEFT JOIN one_pk on othertable.i2 = one_pk.pk SET one_pk.c1 = one_pk.c1 + 1 where one_pk.pk > 4`, // left join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(0, 0)}},
 		SelectQuery:         "SELECT * FROM one_pk order by pk",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 1, 2, 3, 4),
@@ -387,7 +387,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 LEFT JOIN one_pk on othertable.i2 = 1 and one_pk.pk = 1 SET one_pk.c1 = one_pk.c1 + 1`, // left join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM one_pk order by pk",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 1, 2, 3, 4),
@@ -398,7 +398,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable RIGHT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`, // right join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM othertable order by i2",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow("third", 1),
@@ -408,7 +408,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable RIGHT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.i2 = othertable.i2 + 1`, // right join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM othertable order by i2",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow("third", 1),
@@ -418,7 +418,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=tabletest.i RIGHT JOIN one_pk on othertable.i2 = 1 and one_pk.pk = 1 SET tabletest.s = 'updated';`, // right join
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(1, "updated"),
@@ -428,7 +428,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE IGNORE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(4, 4)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(4, 4)}},
 		SelectQuery:         "SELECT * FROM two_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
@@ -450,7 +450,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "with t (n) as (select (1) from dual) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "select * from mytable order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(1, "updated 1"),
@@ -460,7 +460,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 2) UPDATE mytable set s = concat('updated ', i) where i in (select n from t)",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "select * from mytable order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(1, "updated 1"),
@@ -473,19 +473,19 @@ var UpdateTests = []WriteQueryTest{
 var SpatialUpdateTests = []WriteQueryTest{
 	{
 		WriteQuery:          "UPDATE point_table SET p = point(123.456,789);",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
 		ExpectedSelect:      []sql.Row{{int64(5), types.Point{X: 123.456, Y: 789}}},
 	},
 	{
 		WriteQuery:          "UPDATE line_table SET l = linestring(point(1.2,3.4),point(5.6,7.8));",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM line_table;",
 		ExpectedSelect:      []sql.Row{{int64(0), types.LineString{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), types.LineString{Points: []types.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
 	},
 	{
 		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
 		ExpectedSelect: []sql.Row{
 			{int64(0), types.Polygon{Lines: []types.LineString{{Points: []types.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}},
@@ -498,7 +498,7 @@ var SpatialUpdateTests = []WriteQueryTest{
 var SkippedUpdateTests = []WriteQueryTest{
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 6)}}, // TODO: Should be matched = 6
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(8, 6)}}, // TODO: Should be matched = 6
 		SelectQuery:         "SELECT * FROM two_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 2, 1, 2, 3, 4),
@@ -509,7 +509,7 @@ var SkippedUpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM othertable;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow("third", 1),
@@ -519,7 +519,7 @@ var SkippedUpdateTests = []WriteQueryTest{
 	},
 }
 
-func newUpdateResult(matched, updated int) types.OkResult {
+func NewUpdateResult(matched, updated int) types.OkResult {
 	return types.OkResult{
 		RowsAffected: uint64(updated),
 		Info:         plan.UpdateInfo{matched, updated, 0},
@@ -592,7 +592,7 @@ var GenericUpdateErrorTests = []GenericErrorQueryTest{
 var UpdateIgnoreTests = []WriteQueryTest{
 	{
 		WriteQuery:          "UPDATE IGNORE mytable SET i = 2 where i = 1",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 0)}},
 		SelectQuery:         "SELECT * FROM mytable order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(1, "first row"),
@@ -602,7 +602,7 @@ var UpdateIgnoreTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "UPDATE IGNORE mytable SET i = i+1 where i = 1",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 0)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 0)}},
 		SelectQuery:         "SELECT * FROM mytable order by i",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(1, "first row"),
@@ -624,7 +624,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:                 "UPDATE IGNORE pkTable set pk = pk + 1, val = val + 1",
-				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				Expected:              []sql.Row{{NewUpdateResult(3, 1)}},
 				ExpectedWarningsCount: 2,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
@@ -634,7 +634,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:                 "UPDATE IGNORE idxTable set val = val + 1",
-				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				Expected:              []sql.Row{{NewUpdateResult(3, 1)}},
 				ExpectedWarningsCount: 2,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
@@ -644,7 +644,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE IGNORE pkTable set val = val + 1 where pk = 2",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "SELECT * FROM pkTable order by pk",
@@ -652,7 +652,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:                 "UPDATE IGNORE pkTable SET pk = NULL",
-				Expected:              []sql.Row{{newUpdateResult(3, 3)}},
+				Expected:              []sql.Row{{NewUpdateResult(3, 3)}},
 				ExpectedWarningsCount: 3,
 				ExpectedWarning:       mysql.ERBadNullError,
 			},
@@ -662,7 +662,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "UPDATE IGNORE pkTable SET val = NULL",
-				Expected: []sql.Row{{newUpdateResult(3, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(3, 1)}},
 			},
 			{
 				Query:    "SELECT * FROM pkTable order by pk",
@@ -670,7 +670,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:                 "UPDATE IGNORE idxTable set pk = pk + 1, val = val + 1", // two bad updates
-				Expected:              []sql.Row{{newUpdateResult(3, 1)}},
+				Expected:              []sql.Row{{NewUpdateResult(3, 1)}},
 				ExpectedWarningsCount: 2,
 				ExpectedWarning:       mysql.ERDupEntry,
 			},
@@ -689,7 +689,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:                 "UPDATE IGNORE t1 SET v1 = 'dsddads'",
-				Expected:              []sql.Row{{newUpdateResult(1, 1)}},
+				Expected:              []sql.Row{{NewUpdateResult(1, 1)}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
@@ -699,7 +699,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:                 "UPDATE IGNORE t1 SET pk = 'dasda', v2 = 'dsddads'",
-				Expected:              []sql.Row{{newUpdateResult(1, 1)}},
+				Expected:              []sql.Row{{NewUpdateResult(1, 1)}},
 				ExpectedWarningsCount: 2,
 				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
 			},
@@ -720,7 +720,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:                 "UPDATE IGNORE objects SET color = 'orange' where id = 2",
-				Expected:              []sql.Row{{newUpdateResult(1, 0)}},
+				Expected:              []sql.Row{{NewUpdateResult(1, 0)}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ErNoReferencedRow2,
 			},
@@ -740,7 +740,7 @@ var UpdateIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:                 "UPDATE IGNORE checksTable SET pk = pk + 1 where pk = 4",
-				Expected:              []sql.Row{{newUpdateResult(1, 0)}},
+				Expected:              []sql.Row{{NewUpdateResult(1, 0)}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERUnknownError,
 			},

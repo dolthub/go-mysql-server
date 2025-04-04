@@ -421,14 +421,14 @@ func (c ColDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 
 	if columnDefaultExpr == nil && !c.Column.Nullable {
 		val := c.Column.Type.Zero()
-		ret, _, err := c.Column.Type.Convert(val)
+		ret, _, err := c.Column.Type.Convert(ctx, val)
 		return ret, err
 	} else if columnDefaultExpr != nil {
 		val, err := columnDefaultExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		ret, _, err := c.Column.Type.Convert(val)
+		ret, _, err := c.Column.Type.Convert(ctx, val)
 		return ret, err
 	}
 

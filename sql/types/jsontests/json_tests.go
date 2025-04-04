@@ -26,11 +26,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var sqlCtx = sql.NewEmptyContext()
+
 func ConvertToJson(t *testing.T, val interface{}) types.MutableJSON {
 	if val == nil {
 		return nil
 	}
-	val, inRange, err := types.JSON.Convert(val)
+	val, inRange, err := types.JSON.Convert(sqlCtx, val)
 	require.NoError(t, err)
 	require.True(t, bool(inRange))
 	require.Implements(t, (*sql.JSONWrapper)(nil), val)
@@ -117,9 +119,7 @@ func RunJsonCompareTests(t *testing.T, tests []JsonCompareTest, prepare prepareJ
 		}
 		t.Run(name, func(t *testing.T) {
 			left, right := prepare(t, test.Left, test.Right)
-			cmp, err := types.JSON.Compare(
-				left, right,
-			)
+			cmp, err := types.JSON.Compare(context.Background(), left, right)
 			require.NoError(t, err)
 			assert.Equal(t, test.Cmp, cmp)
 		})

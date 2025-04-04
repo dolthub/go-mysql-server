@@ -112,7 +112,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	if str == nil {
 		return nil, nil
 	}
-	str, _, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 	if replaceStr == nil {
 		return nil, nil
 	}
-	replaceStr, _, err = types.LongText.Convert(replaceStr)
+	replaceStr, _, err = types.LongText.Convert(ctx, replaceStr)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 		}
 
 		// Convert to int32
-		pos, _, err = types.Int32.Convert(pos)
+		pos, _, err = types.Int32.Convert(ctx, pos)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +211,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (val interface{}, er
 		}
 
 		// Convert occurrence to int32
-		occ, _, err = types.Int32.Convert(occ)
+		occ, _, err = types.Int32.Convert(ctx, occ)
 		if err != nil {
 			return nil, err
 		}

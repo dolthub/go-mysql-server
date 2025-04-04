@@ -493,19 +493,6 @@ func (r MySQLRangeColumnExpr) Type() RangeType {
 	return RangeType_Invalid
 }
 
-// RepresentsEquals returns whether this MySQLRangeColumnExpr represents an "equals". An "equals" is a special kind of
-// RangeType_ClosedClosed that iterates over a single value (or the specific prefix of some value).
-func (r MySQLRangeColumnExpr) RepresentsEquals() (bool, error) {
-	if r.Type() == RangeType_ClosedClosed {
-		cmp, err := r.Typ.Compare(GetMySQLRangeCutKey(r.LowerBound), GetMySQLRangeCutKey(r.UpperBound))
-		if err != nil {
-			return false, err
-		}
-		return cmp == 0, nil
-	}
-	return false, nil
-}
-
 // OrderedCuts returns the given Cuts in order from lowest-touched values to highest-touched values.
 func OrderedCuts(l, r MySQLRangeCut, typ Type) (MySQLRangeCut, MySQLRangeCut, error) {
 	comp, err := l.Compare(r, typ)

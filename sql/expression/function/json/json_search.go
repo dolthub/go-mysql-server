@@ -219,7 +219,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if oneOrAll == nil {
 		return nil, nil
 	}
-	oneOrAll, _, err = types.Text.Convert(oneOrAll)
+	oneOrAll, _, err = types.Text.Convert(ctx, oneOrAll)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if search == nil {
 		return nil, nil
 	}
-	search, _, err = types.Text.Convert(search)
+	search, _, err = types.Text.Convert(ctx, search)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if escapeVal != nil {
-			escapeVal, _, err = types.Text.Convert(escapeVal)
+			escapeVal, _, err = types.Text.Convert(ctx, escapeVal)
 			if err != nil {
 				return nil, err
 			}
@@ -334,7 +334,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	} else {
 		finalResults = results
 	}
-	finalResults, _, err = types.JSON.Convert(finalResults)
+	finalResults, _, err = types.JSON.Convert(ctx, finalResults)
 	if err != nil {
 		return nil, err
 	}

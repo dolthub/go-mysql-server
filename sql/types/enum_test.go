@@ -28,6 +28,7 @@ import (
 )
 
 func TestEnumCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
@@ -54,7 +55,7 @@ func TestEnumCompare(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v %v", test.vals, test.collation, test.val1, test.val2), func(t *testing.T) {
 			typ := MustCreateEnumType(test.vals, test.collation)
-			cmp, err := typ.Compare(test.val1, test.val2)
+			cmp, err := typ.Compare(ctx, test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})
@@ -111,6 +112,7 @@ func TestEnumCreateTooLarge(t *testing.T) {
 }
 
 func TestEnumConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
@@ -144,7 +146,7 @@ func TestEnumConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.vals, test.collation, test.val), func(t *testing.T) {
 			typ := MustCreateEnumType(test.vals, test.collation)
-			val, _, err := typ.Convert(test.val)
+			val, _, err := typ.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -152,7 +154,7 @@ func TestEnumConvert(t *testing.T) {
 				if test.val != nil {
 					umar, ok := typ.At(int(val.(uint16)))
 					require.True(t, ok)
-					cmp, err := typ.Compare(test.val, umar)
+					cmp, err := typ.Compare(ctx, test.val, umar)
 					require.NoError(t, err)
 					assert.Equal(t, 0, cmp)
 					assert.Equal(t, typ.ValueType(), reflect.TypeOf(val))

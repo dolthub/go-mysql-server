@@ -75,12 +75,12 @@ func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewTimeDiff(children[0], children[1]), nil
 }
 
-func convToDateOrTime(val interface{}) (interface{}, error) {
-	date, _, err := types.DatetimeMaxPrecision.Convert(val)
+func convToDateOrTime(ctx *sql.Context, val interface{}) (interface{}, error) {
+	date, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 	if err == nil {
 		return date, nil
 	}
-	tim, _, err := types.Time.Convert(val)
+	tim, _, err := types.Time.Convert(ctx, val)
 	if err == nil {
 		return tim, err
 	}
@@ -109,14 +109,14 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// always convert string types
 	if _, ok := left.(string); ok {
-		left, err = convToDateOrTime(left)
+		left, err = convToDateOrTime(ctx, left)
 		if err != nil {
 			ctx.Warn(1292, err.Error())
 			return nil, nil
 		}
 	}
 	if _, ok := right.(string); ok {
-		right, err = convToDateOrTime(right)
+		right, err = convToDateOrTime(ctx, right)
 		if err != nil {
 			ctx.Warn(1292, err.Error())
 			return nil, nil
@@ -132,7 +132,7 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if leftDatetime.Location() != rightDatetime.Location() {
 			rightDatetime = rightDatetime.In(leftDatetime.Location())
 		}
-		ret, _, err := types.Time.Convert(leftDatetime.Sub(rightDatetime))
+		ret, _, err := types.Time.Convert(ctx, leftDatetime.Sub(rightDatetime))
 		return ret, err
 	}
 
@@ -205,13 +205,13 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr1, _, err = types.DatetimeMaxPrecision.Convert(expr1)
+	expr1, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr1)
 	if err != nil {
 		return nil, err
 	}
 
 	expr1str := expr1.(time.Time).String()[:10]
-	expr1, _, _ = types.DatetimeMaxPrecision.Convert(expr1str)
+	expr1, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr1str)
 
 	expr2, err := d.RightChild.Eval(ctx, row)
 	if err != nil {
@@ -221,13 +221,13 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr2, _, err = types.DatetimeMaxPrecision.Convert(expr2)
+	expr2, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr2)
 	if err != nil {
 		return nil, err
 	}
 
 	expr2str := expr2.(time.Time).String()[:10]
-	expr2, _, _ = types.DatetimeMaxPrecision.Convert(expr2str)
+	expr2, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr2str)
 
 	date1 := expr1.(time.Time)
 	date2 := expr2.(time.Time)
@@ -322,12 +322,12 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	expr1, _, err = types.DatetimeMaxPrecision.Convert(expr1)
+	expr1, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr1)
 	if err != nil {
 		return nil, err
 	}
 
-	expr2, _, err = types.DatetimeMaxPrecision.Convert(expr2)
+	expr2, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr2)
 	if err != nil {
 		return nil, err
 	}

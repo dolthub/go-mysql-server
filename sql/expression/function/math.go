@@ -131,7 +131,7 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var seed int64
 	if types.IsNumber(r.Child.Type()) {
-		e, _, err = types.Int64.Convert(e)
+		e, _, err = types.Int64.Convert(ctx, e)
 		if err == nil {
 			seed = e.(int64)
 		}
@@ -174,7 +174,7 @@ func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (s *Cos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +379,7 @@ func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -488,12 +488,12 @@ func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	nx, _, err := types.Float64.Convert(xx)
+	nx, _, err := types.Float64.Convert(ctx, xx)
 	if err != nil {
 		return nil, err
 	}
 
-	ny, _, err := types.Float64.Convert(yy)
+	ny, _, err := types.Float64.Convert(ctx, yy)
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +547,7 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -611,7 +611,7 @@ func (d *Degrees) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -660,7 +660,7 @@ func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	n, _, err := types.Float64.Convert(val)
+	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -714,7 +714,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case string:
 		bytes = []byte(val)
 	case int8, int16, int32, int64, int:
-		val, _, err := types.Int64.Convert(arg)
+		val, _, err := types.Int64.Convert(ctx, arg)
 
 		if err != nil {
 			return nil, err
@@ -722,7 +722,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		bytes = []byte(strconv.FormatInt(val.(int64), 10))
 	case uint8, uint16, uint32, uint64, uint:
-		val, _, err := types.Uint64.Convert(arg)
+		val, _, err := types.Uint64.Convert(ctx, arg)
 
 		if err != nil {
 			return nil, err
@@ -805,7 +805,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch typedVal := arg.(type) {
 	case int8, int16, int32, int64, float64, float32, int, decimal.Decimal:
-		val, _, err := types.Int64.Convert(arg)
+		val, _, err := types.Int64.Convert(ctx, arg)
 
 		if err != nil {
 			return nil, err
@@ -821,7 +821,7 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int8(1), nil
 
 	case uint8, uint16, uint32, uint64, uint:
-		val, _, err := types.Uint64.Convert(arg)
+		val, _, err := types.Uint64.Convert(ctx, arg)
 
 		if err != nil {
 			return nil, err
@@ -974,7 +974,7 @@ func (e *Exp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	v, _, err := types.Float64.Convert(val)
+	v, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
 		// TODO: truncate
 		ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%v'", val)

@@ -432,7 +432,7 @@ func (i dummyIdx) CanSupportOrderBy(Expression) bool {
 
 var _ DriverIndex = (*dummyIdx)(nil)
 
-func (i dummyIdx) CanSupport(r ...Range) bool {
+func (i dummyIdx) CanSupport(context *Context, r ...Range) bool {
 	return false
 }
 

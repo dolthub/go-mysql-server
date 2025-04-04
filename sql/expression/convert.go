@@ -266,7 +266,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Should always return nil, and a warning instead
-	casted, err := convertValue(val, c.castToType, c.Child.Type(), c.typeLength, c.typeScale)
+	casted, err := convertValue(ctx, val, c.castToType, c.Child.Type(), c.typeLength, c.typeScale)
 	if err != nil {
 		if c.castToType == ConvertToJSON {
 			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
@@ -283,10 +283,10 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // If |typeLength| and |typeScale| are 0, they are ignored, otherwise they are used as constraints on the
 // converted type where applicable (e.g. Char conversion supports only |typeLength|, Decimal conversion supports
 // |typeLength| and |typeScale|).
-func convertValue(val interface{}, castTo string, originType sql.Type, typeLength, typeScale int) (interface{}, error) {
+func convertValue(ctx *sql.Context, val interface{}, castTo string, originType sql.Type, typeLength, typeScale int) (interface{}, error) {
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		b, _, err := types.LongBlob.Convert(val)
+		b, _, err := types.LongBlob.Convert(ctx, val)
 		if err != nil {
 			return nil, nil
 		}
@@ -304,7 +304,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		}
 		return truncateConvertedValue(b, typeLength)
 	case ConvertToChar, ConvertToNChar:
-		s, _, err := types.LongText.Convert(val)
+		s, _, err := types.LongText.Convert(ctx, val)
 		if err != nil {
 			return nil, nil
 		}
@@ -316,7 +316,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, _, err := types.Date.Convert(val)
+		d, _, err := types.Date.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}
@@ -328,7 +328,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, _, err := types.DatetimeMaxPrecision.Convert(val)
+		d, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}
@@ -339,7 +339,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 			return nil, err
 		}
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
-		d, _, err := dt.Convert(value)
+		d, _, err := dt.Convert(ctx, value)
 		if err != nil {
 			return dt.Zero(), nil
 		}
@@ -349,7 +349,7 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if err != nil {
 			return nil, err
 		}
-		d, _, err := types.Float32.Convert(value)
+		d, _, err := types.Float32.Convert(ctx, value)
 		if err != nil {
 			return types.Float32.Zero(), nil
 		}
@@ -359,13 +359,13 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if err != nil {
 			return nil, err
 		}
-		d, _, err := types.Float64.Convert(value)
+		d, _, err := types.Float64.Convert(ctx, value)
 		if err != nil {
 			return types.Float64.Zero(), nil
 		}
 		return d, nil
 	case ConvertToJSON:
-		js, _, err := types.JSON.Convert(val)
+		js, _, err := types.JSON.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}
@@ -375,14 +375,14 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if err != nil {
 			return nil, err
 		}
-		num, _, err := types.Int64.Convert(value)
+		num, _, err := types.Int64.Convert(ctx, value)
 		if err != nil {
 			return types.Int64.Zero(), nil
 		}
 
 		return num, nil
 	case ConvertToTime:
-		t, _, err := types.Time.Convert(val)
+		t, _, err := types.Time.Convert(ctx, val)
 		if err != nil {
 			return nil, nil
 		}
@@ -392,9 +392,9 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if err != nil {
 			return nil, err
 		}
-		num, _, err := types.Uint64.Convert(value)
+		num, _, err := types.Uint64.Convert(ctx, value)
 		if err != nil {
-			num, _, err = types.Int64.Convert(value)
+			num, _, err = types.Int64.Convert(ctx, value)
 			if err != nil {
 				return types.Uint64.Zero(), nil
 			}
@@ -406,9 +406,9 @@ func convertValue(val interface{}, castTo string, originType sql.Type, typeLengt
 		if err != nil {
 			return nil, err
 		}
-		num, _, err := types.Uint64.Convert(value)
+		num, _, err := types.Uint64.Convert(ctx, value)
 		if err != nil {
-			num, _, err = types.Int64.Convert(value)
+			num, _, err = types.Int64.Convert(ctx, value)
 			if err != nil {
 				return types.Uint64.Zero(), nil
 			}

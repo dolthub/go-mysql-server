@@ -31,6 +31,7 @@ import (
 )
 
 func TestNumberCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.Type
 		val1        interface{}
@@ -84,7 +85,7 @@ func TestNumberCompare(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.val1, test.val2), func(t *testing.T) {
-			cmp, err := test.typ.Compare(test.val1, test.val2)
+			cmp, err := test.typ.Compare(ctx, test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})
@@ -165,6 +166,7 @@ func TestNumberCreateInvalidBaseTypes(t *testing.T) {
 }
 
 func TestNumberConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ     sql.Type
 		inp     interface{}
@@ -219,7 +221,7 @@ func TestNumberConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.inp, test.exp), func(t *testing.T) {
-			val, inRange, err := test.typ.Convert(test.inp)
+			val, inRange, err := test.typ.Convert(ctx, test.inp)
 			if test.err {
 				assert.Error(t, err)
 			} else {

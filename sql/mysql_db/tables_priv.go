@@ -196,7 +196,7 @@ func UserToTablesRows(ctx *sql.Context, user *User) ([]sql.Row, error) {
 					privs = append(privs, "Trigger")
 				}
 			}
-			formattedSet, _, err := tablesPrivTblSchema[tablesPrivTblColIndex_Table_priv].Type.Convert(strings.Join(privs, ","))
+			formattedSet, _, err := tablesPrivTblSchema[tablesPrivTblColIndex_Table_priv].Type.Convert(ctx, strings.Join(privs, ","))
 			if err != nil {
 				return nil, err
 			}

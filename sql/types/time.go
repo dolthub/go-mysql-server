@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"reflect"
 	"strconv"
@@ -81,7 +82,7 @@ func (t TimespanType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 type Timespan int64
 
 // Compare implements Type interface.
-func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -98,21 +99,12 @@ func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
 	return as.Compare(bs), nil
 }
 
-func (t TimespanType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t TimespanType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
 	ret, err := t.ConvertToTimespan(v)
 	return ret, sql.InRange, err
-}
-
-// MustConvert implements the Type interface.
-func (t TimespanType_) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which

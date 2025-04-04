@@ -139,9 +139,10 @@ func TestBindingsToExprs(t *testing.T) {
 		},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			res, err := bindingsToExprs(c.Bindings)
+			res, err := bindingsToExprs(ctx, c.Bindings)
 			if !c.Err {
 				require.NoError(t, err)
 				require.Equal(t, c.Result, res)

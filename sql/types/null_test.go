@@ -19,11 +19,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNullCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val1 interface{}
 		val2 interface{}
@@ -35,7 +38,7 @@ func TestNullCompare(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val1, test.val2), func(t *testing.T) {
-			cmp, err := Null.Compare(test.val1, test.val2)
+			cmp, err := Null.Compare(ctx, test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, 0, cmp)
 		})
@@ -43,6 +46,7 @@ func TestNullCompare(t *testing.T) {
 }
 
 func TestNullConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val         interface{}
 		expectedVal interface{}
@@ -68,7 +72,7 @@ func TestNullConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val, test.expectedVal), func(t *testing.T) {
-			val, _, err := Null.Convert(test.val)
+			val, _, err := Null.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {

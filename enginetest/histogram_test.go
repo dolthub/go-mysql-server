@@ -236,6 +236,7 @@ func TestMultiDist(t *testing.T) {
 // the stats join algo to simulate a join estimate, and (4) compare the
 // estimate to the actual result set count.
 func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug bool) {
+	ctx := sql.NewEmptyContext()
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%s: , rows: %d, buckets: %d", tt.name, rowCnt, bucketCnt), func(t *testing.T) {
 			db := memory.NewDatabase(fmt.Sprintf("test%d", i))
@@ -275,7 +276,7 @@ func runStatsSuite(t *testing.T, tests []statsTest, rowCnt, bucketCnt int, debug
 				rStat.Hist = append(rStat.Hist, b.(*stats.Bucket))
 			}
 
-			res, err := stats.Join(stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), 1, debug)
+			res, err := stats.Join(ctx, stats.UpdateCounts(lStat), stats.UpdateCounts(rStat), 1, debug)
 			require.NoError(t, err)
 			if debug {
 				log.Printf("join %s\n", res.Histogram().DebugString())
@@ -338,7 +339,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 			return 0
 		}
 		col := sch[fields[k]]
-		cmp, _ := col.Type.Compare(keyVals[i][k], keyVals[j][k])
+		cmp, _ := col.Type.Compare(ctx, keyVals[i][k], keyVals[j][k])
 		return cmp
 	}
 

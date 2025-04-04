@@ -407,7 +407,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 		defer s.cacheMu.Unlock()
 		if !s.resultsCached || s.hashCache == nil {
 			hashCache, disposeFn := ctx.Memory.NewHistoryCache()
-			err = putAllRows(hashCache, result)
+			err = putAllRows(ctx, hashCache, result)
 			if err != nil {
 				return nil, err
 			}
@@ -417,7 +417,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 	}
 
 	cache := sql.NewMapCache()
-	return cache, putAllRows(cache, result)
+	return cache, putAllRows(ctx, cache, result)
 }
 
 // HasResultRow returns whether the subquery has a result set > 0.
@@ -464,8 +464,19 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 	return true, nil
 }
 
-func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
+// normalizeValue returns a canonical version of a value for use in a sql.KeyValueCache.
+// Two values that compare equal should have the same canonical version.
+// TODO: Fix https://github.com/dolthub/dolt/issues/9049 by making this function collation-aware
+func normalizeForKeyValueCache(ctx *sql.Context, val interface{}) (interface{}, error) {
+	return sql.UnwrapAny(ctx, val)
+}
+
+func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, vals []interface{}) error {
 	for _, val := range vals {
+		val, err := normalizeForKeyValueCache(ctx, val)
+		if err != nil {
+			return err
+		}
 		rowKey, err := sql.HashOf(sql.NewRow(val))
 		if err != nil {
 			return err

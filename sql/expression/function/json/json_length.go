@@ -89,7 +89,7 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 	var path string
-	if p, _, strErr := types.LongText.Convert(pathVal); strErr == nil {
+	if p, _, strErr := types.LongText.Convert(ctx, pathVal); strErr == nil {
 		path = p.(string)
 	} else {
 		return nil, strErr

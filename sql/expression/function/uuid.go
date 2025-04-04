@@ -278,7 +278,7 @@ func (ub *UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Get the inputted uuid as a string.
-	converted, _, err := types.LongText.Convert(str)
+	converted, _, err := types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func (ub *UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, _, err = types.Int8.Convert(sf)
+	sf, _, err = types.Int8.Convert(ctx, sf)
 	if err != nil {
 		return nil, err
 	}
@@ -448,7 +448,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Get the inputted uuid as a string.
-	converted, _, err := types.MustCreateBinary(query.Type_VARBINARY, int64(16)).Convert(str)
+	converted, _, err := types.MustCreateBinary(query.Type_VARBINARY, int64(16)).Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +473,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, _, err = types.Int8.Convert(sf)
+	sf, _, err = types.Int8.Convert(ctx, sf)
 	if err != nil {
 		return nil, err
 	}

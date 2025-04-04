@@ -433,7 +433,7 @@ func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
 		err := fmt.Errorf("invalid json_value coercion type: %s", e)
 		b.handleErr(err)
 	}
-	convStr, _, err := types.LongText.Convert(typLit.Value())
+	convStr, _, err := types.LongText.Convert(b.ctx, typLit.Value())
 	if err != nil {
 		err := fmt.Errorf("invalid json_value coercion type: %s; %s", typLit.Value(), err.Error())
 		b.handleErr(err)
@@ -591,7 +591,7 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 				// information casting to the column type. The conditions
 				// should preclude out of range, casting errors, or
 				// correctness missteps.
-				val, _, err := leftGf.Type().Convert(rightLit.Value())
+				val, _, err := leftGf.Type().Convert(b.ctx, rightLit.Value())
 				if err != nil && !expression.ErrNilOperand.Is(err) {
 					b.handleErr(err)
 				}
@@ -869,7 +869,7 @@ func (b *Builder) convertInt(value string, base int) *expression.Literal {
 	if ui64, err := strconv.ParseUint(value, base, 64); err == nil {
 		return expression.NewLiteral(uint64(ui64), types.Uint64)
 	}
-	if decimal, _, err := types.InternalDecimalType.Convert(value); err == nil {
+	if decimal, _, err := types.InternalDecimalType.Convert(b.ctx, value); err == nil {
 		return expression.NewLiteral(decimal, types.InternalDecimalType)
 	}
 
@@ -901,7 +901,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			if err != nil {
 				return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 			}
-			dVal, _, err := dt.Convert(ogVal)
+			dVal, _, err := dt.Convert(b.ctx, ogVal)
 			if err != nil {
 				return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 			}

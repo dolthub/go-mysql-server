@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"reflect"
 
@@ -51,17 +52,17 @@ var (
 )
 
 // Compare implements Type interface.
-func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
-	return GeometryType{}.Compare(a, b)
+func (t MultiPointType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t MultiPointType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t MultiPointType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
 	case []byte:
-		multipoint, _, err := GeometryType{}.Convert(buf)
+		multipoint, _, err := GeometryType{}.Convert(ctx, buf)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -71,7 +72,7 @@ func (t MultiPointType) Convert(v interface{}) (interface{}, sql.ConvertInRange,
 		}
 		return multipoint, sql.InRange, nil
 	case string:
-		return t.Convert([]byte(buf))
+		return t.Convert(ctx, []byte(buf))
 	case MultiPoint:
 		if err := t.MatchSRID(buf); err != nil {
 			return nil, sql.OutOfRange, err
@@ -104,7 +105,7 @@ func (t MultiPointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

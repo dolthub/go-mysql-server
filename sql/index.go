@@ -123,7 +123,7 @@ type Index interface {
 	ColumnExpressionTypes() []ColumnExpressionType
 	// CanSupport returns whether this index supports lookups on the given
 	// range filters.
-	CanSupport(...Range) bool
+	CanSupport(*Context, ...Range) bool
 	// CanSupportOrderBy returns whether this index can optimize ORDER BY a given expression type.
 	// Verifying that the expression's children match the index columns are done separately.
 	CanSupportOrderBy(expr Expression) bool

@@ -111,7 +111,7 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
-		v, _, err := types.Uint32.Convert(val)
+		v, _, err := types.Uint32.Convert(ctx, val)
 		if err != nil {
 			ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", val)
 			res = append(res, 0)
@@ -121,7 +121,7 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		res = append(res, char(v.(uint32))...)
 	}
 
-	result, _, err := c.Type().Convert(res)
+	result, _, err := c.Type().Convert(ctx, res)
 	if err != nil {
 		return nil, err
 	}

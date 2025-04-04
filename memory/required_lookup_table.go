@@ -73,7 +73,7 @@ func (s RequiredLookupTable) Database() sql.Database {
 	return s.db
 }
 
-func (s RequiredLookupTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+func (s RequiredLookupTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
 	return RequiredLookupTable{indexOk: true, IntSequenceTable: s.IntSequenceTable}
 }
 

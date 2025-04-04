@@ -78,7 +78,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 	var td TimeDelta
 
 	if r, ok := unitTextFormats[i.Unit]; ok {
-		val, _, err = types.LongText.Convert(val)
+		val, _, err = types.LongText.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +138,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 			return nil, errInvalidIntervalUnit.New(i.Unit)
 		}
 	} else {
-		val, _, err = types.Int64.Convert(val)
+		val, _, err = types.Int64.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}

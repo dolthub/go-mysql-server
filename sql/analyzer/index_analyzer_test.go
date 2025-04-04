@@ -131,7 +131,7 @@ type dummyIdx struct {
 
 var _ sql.Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) CanSupport(r ...sql.Range) bool {
+func (i dummyIdx) CanSupport(context *sql.Context, r ...sql.Range) bool {
 	return true
 }
 

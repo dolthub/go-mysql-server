@@ -263,7 +263,7 @@ func TestBrokenQueries(t *testing.T, harness Harness) {
 // queries during debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []queries.QueryTest) {
 	for _, tt := range queries {
-		TestQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil)
+		testQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, tt.WrapBehavior)
 	}
 }
 
@@ -810,7 +810,9 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
-			team := row[1].(string)
+			team, ok, err := sql.Unwrap[string](ctx, row[1])
+			require.NoError(t, err)
+			require.True(t, ok)
 			switch team {
 			case "red":
 				require.True(t, val == 3 || val == 4)
@@ -846,7 +848,9 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 				panic(fmt.Sprintf("unexpected type %T", v))
 			}
 
-			team := row[1].(string)
+			team, ok, err := sql.Unwrap[string](ctx, row[1])
+			require.True(t, ok)
+			require.NoError(t, err)
 			switch team {
 			case "red":
 				require.True(t, val == 3 || val == 4)
@@ -2078,7 +2082,7 @@ func TestUserPrivileges(t *testing.T, harness ClientHarness) {
 					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
 					// nil in script.Expected as matching "any" non-error result.
 					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
-						CheckResults(t, harness, script.Expected, nil, sch, rows, lastQuery, engine)
+						CheckResults(ctx, t, harness, script.Expected, nil, sch, rows, lastQuery, engine)
 					}
 				})
 			}
@@ -6039,15 +6043,16 @@ func findRole(toUser string, roles []*mysql_db.RoleEdge) *mysql_db.RoleEdge {
 }
 
 func TestBlobs(t *testing.T, h Harness) {
+	ctx := sql.NewEmptyContext()
 	h.Setup(setup.MydbData, setup.BlobData, setup.MytableData)
 
 	// By default, strict_mysql_compatibility is disabled, but these tests require it to be enabled.
-	err := sql.SystemVariables.SetGlobal("strict_mysql_compatibility", int8(1))
+	err := sql.SystemVariables.SetGlobal(ctx, "strict_mysql_compatibility", int8(1))
 	require.NoError(t, err)
 	for _, tt := range queries.BlobErrors {
 		runQueryErrorTest(t, h, tt)
 	}
-	err = sql.SystemVariables.SetGlobal("strict_mysql_compatibility", int8(0))
+	err = sql.SystemVariables.SetGlobal(ctx, "strict_mysql_compatibility", int8(0))
 	require.NoError(t, err)
 
 	e := mustNewEngine(t, h)

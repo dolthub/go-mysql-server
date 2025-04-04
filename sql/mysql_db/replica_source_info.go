@@ -62,7 +62,7 @@ func ReplicaSourceInfoToRow(ctx *sql.Context, v *ReplicaSourceInfo) (sql.Row, er
 }
 
 func ReplicaSourceInfoFromRow(ctx *sql.Context, row sql.Row) (*ReplicaSourceInfo, error) {
-	if err := replicaSourceInfoTblSchema.CheckRow(row); err != nil {
+	if err := replicaSourceInfoTblSchema.CheckRow(ctx, row); err != nil {
 		return nil, err
 	}
 

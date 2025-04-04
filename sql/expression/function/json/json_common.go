@@ -67,7 +67,7 @@ func getJSONDocumentFromRow(ctx *sql.Context, row sql.Row, json sql.Expression) 
 	case string:
 		// When coercing a string into a JSON object, don't use LazyJSONDocument; actually unmarshall it.
 		// This guarantees that we validate and normalize the JSON.
-		strData, _, err := types.LongBlob.Convert(js)
+		strData, _, err := types.LongBlob.Convert(ctx, js)
 		if err != nil {
 			return nil, err
 		}

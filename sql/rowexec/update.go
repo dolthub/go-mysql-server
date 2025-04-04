@@ -38,7 +38,7 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
-	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
+	if equals, err := oldRow.Equals(ctx, newRow, u.schema); err == nil {
 		if !equals {
 			// apply check constraints
 			for _, check := range u.checks {
@@ -251,7 +251,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		newJoinRow = recreateRowFromMap(tableToNewRowMap, u.joinSchema)
-		equals, err := oldJoinRow.Equals(newJoinRow, u.joinSchema)
+		equals, err := oldJoinRow.Equals(ctx, newJoinRow, u.joinSchema)
 		if err != nil {
 			return nil, err
 		}

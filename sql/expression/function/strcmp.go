@@ -101,5 +101,5 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	strType := types.CreateLongText(collationPreference)
-	return strType.Compare(expr1, expr2)
+	return strType.Compare(ctx, expr1, expr2)
 }

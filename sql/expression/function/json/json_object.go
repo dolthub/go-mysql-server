@@ -102,7 +102,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			val, _, err := types.LongText.Convert(val)
+			val, _, err := types.LongText.Convert(ctx, val)
 			if err != nil {
 				return nil, err
 			}

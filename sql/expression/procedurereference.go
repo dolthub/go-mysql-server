@@ -63,11 +63,11 @@ type ProcedureReferencable interface {
 }
 
 // InitializeVariable sets the initial value for the variable.
-func (ppr *ProcedureReference) InitializeVariable(name string, sqlType sql.Type, val interface{}) error {
+func (ppr *ProcedureReference) InitializeVariable(ctx *sql.Context, name string, sqlType sql.Type, val interface{}) error {
 	if ppr == nil || ppr.InnermostScope == nil {
 		return fmt.Errorf("cannot initialize variable `%s` in an empty procedure reference", name)
 	}
-	convertedVal, _, err := sqlType.Convert(val)
+	convertedVal, _, err := sqlType.Convert(ctx, val)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (ppr *ProcedureReference) GetVariableType(name string) sql.Type {
 }
 
 // SetVariable updates the value of the given parameter.
-func (ppr *ProcedureReference) SetVariable(name string, val interface{}, valType sql.Type) error {
+func (ppr *ProcedureReference) SetVariable(ctx *sql.Context, name string, val interface{}, valType sql.Type) error {
 	if ppr == nil {
 		return fmt.Errorf("cannot find value for parameter `%s`", name)
 	}
@@ -151,7 +151,7 @@ func (ppr *ProcedureReference) SetVariable(name string, val interface{}, valType
 	for scope != nil {
 		if varRefVal, ok := scope.variables[lowerName]; ok {
 			//TODO: do some actual type checking using the given value's type
-			val, _, err := varRefVal.SqlType.Convert(val)
+			val, _, err := varRefVal.SqlType.Convert(ctx, val)
 			if err != nil {
 				return err
 			}
@@ -373,8 +373,8 @@ func (pp *ProcedureParam) WithParamReference(pRef *ProcedureReference) *Procedur
 }
 
 // Set sets the value of this procedure parameter to the given value.
-func (pp *ProcedureParam) Set(val interface{}, valType sql.Type) error {
-	return pp.pRef.SetVariable(pp.name, val, valType)
+func (pp *ProcedureParam) Set(ctx *sql.Context, val interface{}, valType sql.Type) error {
+	return pp.pRef.SetVariable(ctx, pp.name, val, valType)
 }
 
 // UnresolvedProcedureParam represents an unresolved parameter of a stored procedure or stored function.

@@ -118,7 +118,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	key, _, err = n.LeftProbeKey.Type().Convert(key)
+	key, _, err = n.LeftProbeKey.Type().Convert(ctx, key)
 	if types.ErrValueNotNil.Is(err) {
 		// The LHS expression was NullType. This is allowed.
 		return nil, nil

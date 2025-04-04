@@ -85,7 +85,7 @@ func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	child, _, err = types.Float64.Convert(child)
+	child, _, err = types.Float64.Convert(ctx, child)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	left, _, err = types.Float64.Convert(left)
+	left, _, err = types.Float64.Convert(ctx, left)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	right, _, err = types.Float64.Convert(right)
+	right, _, err = types.Float64.Convert(ctx, right)
 	if err != nil {
 		return nil, err
 	}

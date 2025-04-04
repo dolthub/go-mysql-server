@@ -160,7 +160,7 @@ type testIndex struct {
 	numcols int
 }
 
-func (testIndex) CanSupport(...sql.Range) bool {
+func (testIndex) CanSupport(*sql.Context, ...sql.Range) bool {
 	return true
 }
 

@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -39,12 +40,12 @@ func NewSystemStringType(varName string) sql.SystemVariableType {
 }
 
 // Compare implements Type interface.
-func (t systemStringType) Compare(a interface{}, b interface{}) (int, error) {
-	as, _, err := t.Convert(a)
+func (t systemStringType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bs, _, err := t.Convert(b)
+	bs, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -61,7 +62,7 @@ func (t systemStringType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemStringType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemStringType) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return "", sql.InRange, nil
 	}
@@ -70,15 +71,6 @@ func (t systemStringType) Convert(v interface{}) (interface{}, sql.ConvertInRang
 	}
 
 	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
-}
-
-// MustConvert implements the Type interface.
-func (t systemStringType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -105,7 +97,7 @@ func (t systemStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

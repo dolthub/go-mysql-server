@@ -73,7 +73,7 @@ func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {
 }
 
 func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
-	if err := userTblSchema.CheckRow(row); err != nil {
+	if err := userTblSchema.CheckRow(ctx, row); err != nil {
 		return nil, err
 	}
 	//TODO: once the remaining fields are added, fill those in as well

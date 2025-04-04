@@ -26,18 +26,19 @@ import (
 )
 
 func TestTuple(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	require := require.New(t)
 
 	typ := CreateTuple(Int32, LongText, Int64)
-	_, _, err := typ.Convert("foo")
+	_, _, err := typ.Convert(ctx, "foo")
 	require.Error(err)
 	require.True(sql.ErrNotTuple.Is(err))
 
-	_, _, err = typ.Convert([]interface{}{1, 2})
+	_, _, err = typ.Convert(ctx, []interface{}{1, 2})
 	require.Error(err)
 	require.True(sql.ErrInvalidColumnNumber.Is(err))
 
-	conVal, _, err := typ.Convert([]interface{}{1, 2, 3})
+	conVal, _, err := typ.Convert(ctx, []interface{}{1, 2, 3})
 	require.NoError(err)
 	assert.Equal(t, []interface{}{int32(1), "2", int64(3)}, conVal)
 
@@ -62,7 +63,7 @@ func TestTuple(t *testing.T) {
 
 	for _, comparison := range comparisons {
 		t.Run(fmt.Sprintf("%v %v", comparison.val1, comparison.val2), func(t *testing.T) {
-			cmp, err := typ.Compare(comparison.val1, comparison.val2)
+			cmp, err := typ.Compare(ctx, comparison.val1, comparison.val2)
 			require.NoError(err)
 			assert.Equal(t, comparison.expectedCmp, cmp)
 		})

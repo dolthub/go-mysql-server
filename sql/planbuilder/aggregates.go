@@ -122,7 +122,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			if !ok {
 				b.handleErr(fmt.Errorf("expected integer order by literal"))
 			}
-			idx, _, err := types.Int64.Convert(v)
+			idx, _, err := types.Int64.Convert(b.ctx, v)
 			if err != nil {
 				b.handleErr(err)
 			}

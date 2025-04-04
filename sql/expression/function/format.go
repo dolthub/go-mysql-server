@@ -115,13 +115,13 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	numVal, _, err = types.Float64.Convert(numVal)
+	numVal, _, err = types.Float64.Convert(ctx, numVal)
 	if err != nil {
 		return nil, nil
 	}
 	numValue := numVal.(float64)
 
-	numDP, _, err = types.Float64.Convert(numDP)
+	numDP, _, err = types.Float64.Convert(ctx, numDP)
 	if err != nil {
 		return nil, nil
 	}

@@ -134,7 +134,7 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keys ...interfa
 		}
 
 		var err error
-		k, _, err = typ.Convert(k)
+		k, _, err = typ.Convert(ctx, k)
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
@@ -172,7 +172,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, key interfac
 		}
 	}
 
-	key, _, err := typ.Convert(key)
+	key, _, err := typ.Convert(ctx, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -212,7 +212,7 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, key interf
 		key = floor(key)
 	}
 
-	key, _, err := typ.Convert(key)
+	key, _, err := typ.Convert(ctx, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -247,7 +247,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key int
 		key = newKey
 	}
 
-	key, _, err := typ.Convert(key)
+	key, _, err := typ.Convert(ctx, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -280,7 +280,7 @@ func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, key interface
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		key = ceil(key)
 	}
-	key, _, err := typ.Convert(key)
+	key, _, err := typ.Convert(ctx, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -315,7 +315,7 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interf
 		key = newKey
 	}
 
-	key, _, err := typ.Convert(key)
+	key, _, err := typ.Convert(ctx, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -538,7 +538,7 @@ func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
 }
 
 // AddEquality represents colExpr = key. For IN expressions, pass all of them in the same AddEquality call.
-func (b *EqualityIndexBuilder) AddEquality(_ *Context, colIdx int, k interface{}) error {
+func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface{}) error {
 	if b.empty {
 		return nil
 	}
@@ -568,7 +568,7 @@ func (b *EqualityIndexBuilder) AddEquality(_ *Context, colIdx int, k interface{}
 	}
 
 	var err error
-	k, _, err = typ.Convert(k)
+	k, _, err = typ.Convert(ctx, k)
 	if err != nil {
 		return err
 	}

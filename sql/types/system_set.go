@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -39,15 +40,15 @@ func NewSystemSetType(varName string, collation sql.CollationID, values ...strin
 }
 
 // Compare implements Type interface.
-func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
+func (t systemSetType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if a == nil || b == nil {
 		return 0, sql.ErrInvalidSystemVariableValue.New(t.varName, nil)
 	}
-	ai, _, err := t.Convert(a)
+	ai, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bi, _, err := t.Convert(b)
+	bi, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -64,59 +65,50 @@ func (t systemSetType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemSetType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemSetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case uint:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case int8:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case uint8:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case int16:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case uint16:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case int32:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case uint32:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case int64:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case uint64:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	case float32:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value == float64(int64(value)) {
-			return t.SetType.Convert(int64(value))
+			return t.SetType.Convert(ctx, int64(value))
 		}
 	case decimal.Decimal:
 		f, _ := value.Float64()
-		return t.Convert(f)
+		return t.Convert(ctx, f)
 	case decimal.NullDecimal:
 		if value.Valid {
 			f, _ := value.Decimal.Float64()
-			return t.Convert(f)
+			return t.Convert(ctx, f)
 		}
 	case string:
-		return t.SetType.Convert(value)
+		return t.SetType.Convert(ctx, value)
 	}
 
 	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
-}
-
-// MustConvert implements the Type interface.
-func (t systemSetType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -142,7 +134,7 @@ func (t systemSetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltyp
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, _, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -192,7 +184,7 @@ func (t systemSetType) EncodeValue(val interface{}) (string, error) {
 
 // DecodeValue implements SystemVariableType interface.
 func (t systemSetType) DecodeValue(val string) (interface{}, error) {
-	outVal, _, err := t.Convert(val)
+	outVal, _, err := t.Convert(context.Background(), val)
 	if err != nil {
 		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}

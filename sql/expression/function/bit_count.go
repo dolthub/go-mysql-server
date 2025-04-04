@@ -97,7 +97,7 @@ func (b *BitCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			res += countBits(uint64(v))
 		}
 	default:
-		num, _, err := types.Int64.Convert(child)
+		num, _, err := types.Int64.Convert(ctx, child)
 		if err != nil {
 			ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", child)
 			num = int64(0)

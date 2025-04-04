@@ -53,22 +53,22 @@ var _ sql.TableNode = (*IndexedTableAccess)(nil)
 
 // NewIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
+func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *LookupBuilder) (*IndexedTableAccess, error) {
 	var table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	lookup, err := lb.GetLookup(lb.GetZeroKey())
+	lookup, err := lb.GetLookup(ctx, lb.GetZeroKey())
 	if err != nil {
 		return nil, err
 	}
-	if !lookup.Index.CanSupport(lookup.Ranges.ToRanges()...) {
+	if !lookup.Index.CanSupport(ctx, lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
 	var indexedTable sql.IndexedTable
-	indexedTable = iaTable.IndexedAccess(lookup)
+	indexedTable = iaTable.IndexedAccess(ctx, lookup)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func NewIndexedAccessForTableNode(node sql.TableNode, lb *LookupBuilder) (*Index
 
 // NewStaticIndexedAccessForTableNode creates an IndexedTableAccess node if the resolved table embeds
 // an IndexAddressableTable, otherwise returns an error.
-func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
+func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lookup sql.IndexLookup) (*IndexedTableAccess, error) {
 	var table sql.Table
 	table = node.UnderlyingTable()
 	iaTable, ok := table.(sql.IndexAddressableTable)
@@ -114,10 +114,10 @@ func NewStaticIndexedAccessForTableNode(node sql.TableNode, lookup sql.IndexLook
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	if !lookup.Index.CanSupport(lookup.Ranges.ToRanges()...) {
+	if !lookup.Index.CanSupport(ctx, lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
-	indexedTable := iaTable.IndexedAccess(lookup)
+	indexedTable := iaTable.IndexedAccess(ctx, lookup)
 
 	if mtn, ok := node.(sql.MutableTableNode); ok {
 		var err error
@@ -268,7 +268,7 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	}
 
 	key := i.lb.GetZeroKey()
-	lookup, err := i.lb.GetLookup(key)
+	lookup, err := i.lb.GetLookup(ctx, key)
 	return err == nil && !lookup.IsEmpty(), nil
 }
 
@@ -307,7 +307,7 @@ func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	if err != nil {
 		return sql.IndexLookup{}, err
 	}
-	return i.lb.GetLookup(key)
+	return i.lb.GetLookup(ctx, key)
 }
 
 func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.IndexLookup, error) {
@@ -320,7 +320,7 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.Ind
 	if err != nil {
 		return sql.IndexLookup{}, err
 	}
-	return i.lb.GetLookup(key)
+	return i.lb.GetLookup(ctx, key)
 }
 
 func (i *IndexedTableAccess) String() string {
@@ -573,7 +573,7 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	return
 }
 
-func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error) {
+func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
 		return sql.IndexLookup{
@@ -596,7 +596,7 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 			if key[i] == nil {
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
 			} else {
-				k, _, err := lb.rang[i].Typ.Convert(key[i])
+				k, _, err := lb.rang[i].Typ.Convert(ctx, key[i])
 				if err != nil {
 					// TODO: throw warning, and this should truncate for strings
 					err = nil
@@ -606,7 +606,7 @@ func (lb *LookupBuilder) GetLookup(key lookupBuilderKey) (sql.IndexLookup, error
 				lb.rang[i].UpperBound = sql.Above{Key: k}
 			}
 		} else {
-			k, _, err := lb.rang[i].Typ.Convert(key[i])
+			k, _, err := lb.rang[i].Typ.Convert(ctx, key[i])
 			if err != nil {
 				// TODO: throw warning, and this should truncate for strings
 				err = nil

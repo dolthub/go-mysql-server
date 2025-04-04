@@ -598,7 +598,7 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 				return lit
 			}
 		}
-		ret, _, err := types.Text.Convert(v.Val)
+		ret, _, err := types.Text.Convert(b.ctx, v.Val)
 		if err != nil {
 			b.handleErr(err)
 		}

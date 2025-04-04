@@ -71,7 +71,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "update t1 set a = 10 where a = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t1 order by a",
@@ -149,7 +149,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "update t1 set a = 10 where a = 1",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t1 where b = 11 order by a",
@@ -466,7 +466,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "update t1 set a = 5, c = 10 where b = 2 and c = 3",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t1 where b = 6 and c = 10 order by a",
@@ -1006,7 +1006,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "update t1 set b = 5 where c = 3",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query: "select * from t1 order by a",
@@ -1046,7 +1046,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "update t1 set j = '{\"a\": 5}' where v = 2",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query: "select * from t1 order by v",

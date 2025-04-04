@@ -369,7 +369,7 @@ func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row
 	}
 
 	for i, expr := range partitionBy {
-		cmp, err := expr.Type().Compare(lastExp[i], thisExp[i])
+		cmp, err := expr.Type().Compare(ctx, lastExp[i], thisExp[i])
 		if err != nil {
 			return false, err
 		}

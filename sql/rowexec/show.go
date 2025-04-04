@@ -548,7 +548,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 			if err != nil {
 				return nil, err
 			}
-			res, _, err = types.Boolean.Convert(res)
+			res, _, err = types.Boolean.Convert(ctx, res)
 			if err != nil {
 				ctx.Warn(1292, err.Error())
 				continue

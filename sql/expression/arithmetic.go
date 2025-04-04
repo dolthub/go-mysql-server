@@ -359,7 +359,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			left = convertValueToType(ctx, typ, left, lIsTimeType)
 		} else {
-			left = convertToDecimalValue(left, lIsTimeType)
+			left = convertToDecimalValue(ctx, left, lIsTimeType)
 		}
 	}
 
@@ -370,7 +370,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			right = convertValueToType(ctx, typ, right, rIsTimeType)
 		} else {
-			right = convertToDecimalValue(right, rIsTimeType)
+			right = convertToDecimalValue(ctx, right, rIsTimeType)
 		}
 	}
 
@@ -434,7 +434,7 @@ func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}, isTimeT
 		val = convertTimeTypeToString(val)
 	}
 
-	cval, _, err := typ.Convert(val)
+	cval, _, err := typ.Convert(ctx, val)
 	if err != nil {
 		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
 		// the value is interpreted as 0, but we need to match the type of the other valid value

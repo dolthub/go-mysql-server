@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"reflect"
 
@@ -51,12 +52,12 @@ var (
 )
 
 // Compare implements Type interface.
-func (t GeomCollType) Compare(a interface{}, b interface{}) (int, error) {
-	return GeometryType{}.Compare(a, b)
+func (t GeomCollType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t GeomCollType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t GeomCollType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Allow null
 	if v == nil {
 		return nil, sql.InRange, nil
@@ -80,7 +81,7 @@ func (t GeomCollType) Convert(v interface{}) (interface{}, sql.ConvertInRange, e
 		}
 		return geom, sql.InRange, nil
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert(ctx, []byte(val))
 	case GeomColl:
 		if err := t.MatchSRID(val); err != nil {
 			return nil, sql.OutOfRange, err
@@ -113,7 +114,7 @@ func (t GeomCollType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.NULL, nil
 	}
 
-	v, _, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}

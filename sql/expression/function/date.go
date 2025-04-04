@@ -15,6 +15,7 @@
 package function
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -133,7 +134,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var dateVal interface{}
-	dateVal, _, err = types.DatetimeMaxPrecision.Convert(date)
+	dateVal, _, err = types.DatetimeMaxPrecision.Convert(ctx, date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -164,7 +165,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	ret, _, err := resType.Convert(res)
+	ret, _, err := resType.Convert(ctx, res)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +281,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var dateVal interface{}
-	dateVal, _, err = types.DatetimeMaxPrecision.Convert(date)
+	dateVal, _, err = types.DatetimeMaxPrecision.Convert(ctx, date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
@@ -311,7 +312,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	ret, _, err := resType.Convert(res)
+	ret, _, err := resType.Convert(ctx, res)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +367,7 @@ func (t *DatetimeConversion) Eval(ctx *sql.Context, r sql.Row) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	ret, _, err := types.DatetimeMaxPrecision.Convert(e)
+	ret, _, err := types.DatetimeMaxPrecision.Convert(ctx, e)
 	return ret, err
 }
 
@@ -454,6 +455,8 @@ func evalNowType(now *Now) sql.Type {
 }
 
 func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	// TODO: Add context.parameter
+	ctx := context.Background()
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}
@@ -498,7 +501,7 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 			}
 		}
 	}
-	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	date, _, err = types.DatetimeMaxPrecision.Convert(ctx, date)
 	if err != nil {
 		return &UnixTimestamp{Date: arg}, nil
 	}
@@ -575,7 +578,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, nil
 	}
 
-	date, _, err = types.DatetimeMaxPrecision.Convert(date)
+	date, _, err = types.DatetimeMaxPrecision.Convert(ctx, date)
 	if err != nil {
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
@@ -675,7 +678,7 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	n, _, err := types.Int64.Convert(val)
+	n, _, err := types.Int64.Convert(ctx, val)
 	if err != nil {
 		return nil, err
 	}
