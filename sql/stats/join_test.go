@@ -25,6 +25,7 @@ import (
 )
 
 func TestBinMerge(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		inp []sql.HistogramBucket
 		exp []sql.HistogramBucket
@@ -70,7 +71,7 @@ func TestBinMerge(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("bin merge %d", i), func(t *testing.T) {
-			cmp, err := MergeOverlappingBuckets(tt.inp, []sql.Type{types.Int64}, NewHistogramBucket)
+			cmp, err := MergeOverlappingBuckets(ctx, tt.inp, []sql.Type{types.Int64}, NewHistogramBucket)
 			require.NoError(t, err)
 			compareHist(t, tt.exp, cmp)
 		})

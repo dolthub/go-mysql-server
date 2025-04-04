@@ -414,7 +414,7 @@ type SystemVariableRegistry interface {
 	// GetGlobal returns the current global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
-	SetGlobal(name string, val interface{}) error
+	SetGlobal(ctx *Context, name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
 }
@@ -480,7 +480,7 @@ type MysqlSystemVariable struct {
 	// the global context and in a particular session. They should never
 	// block.  NotifyChanged is not called when a new system variable is
 	// registered.
-	NotifyChanged func(SystemVariableScope, SystemVarValue) error
+	NotifyChanged func(*Context, SystemVariableScope, SystemVarValue) error
 	// ValueFunction defines an optional function that is executed to provide
 	// the value of this system variable whenever it is requested. System variables
 	// that provide a ValueFunction should also set Dynamic to false, since they
@@ -528,7 +528,7 @@ func (m *MysqlSystemVariable) InitValue(ctx *Context, val any, global bool) (Sys
 		scope = GetMysqlScope(SystemVariableScope_Global)
 	}
 	if m.NotifyChanged != nil {
-		err = m.NotifyChanged(scope, svv)
+		err = m.NotifyChanged(ctx, scope, svv)
 		if err != nil {
 			return SystemVarValue{}, err
 		}
@@ -595,7 +595,7 @@ func GetMysqlScope(t MysqlSVScopeType) *MysqlScope {
 func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		err := SystemVariables.SetGlobal(name, val)
+		err := SystemVariables.SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -613,7 +613,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if err != nil {
 			return err
 		}
-		err = SystemVariables.SetGlobal(name, val)
+		err = SystemVariables.SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}

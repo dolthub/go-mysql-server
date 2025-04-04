@@ -34,9 +34,7 @@ var ErrJoinStringStatistics = errors.New("joining string histograms is unsupport
 // then pairwise estimates bucket cardinalities by joining most common
 // values (mcvs) directly and assuming key uniformity otherwise. Only
 // numeric types are supported.
-func Join(s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error) {
-	// TODO: Add Context parameter
-	ctx := sql.NewEmptyContext()
+func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sql.Statistic, error) {
 	cmp := func(row1, row2 sql.Row) (int, error) {
 		var cmp int
 		var err error
@@ -501,9 +499,7 @@ type BucketConstructor func(rows, distinct, nulls, boundCnt uint64, bound sql.Ro
 
 // MergeOverlappingBuckets folds bins with one element into the previous
 // bucket when the bound keys match.
-func MergeOverlappingBuckets(h []sql.HistogramBucket, types []sql.Type, newB BucketConstructor) ([]sql.HistogramBucket, error) {
-	// TODO: Add Context parameter
-	ctx := sql.NewEmptyContext()
+func MergeOverlappingBuckets(ctx *sql.Context, h []sql.HistogramBucket, types []sql.Type, newB BucketConstructor) ([]sql.HistogramBucket, error) {
 	cmp := func(l, r sql.Row) (int, error) {
 		for i := 0; i < len(types); i++ {
 			cmp, err := types[i].Compare(ctx, l[i], r[i])

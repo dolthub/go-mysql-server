@@ -52,6 +52,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		scopeLen:      j.ScopeLen,
 		b:             b,
 		rangeHeapPlan: rhp,
+		ctx:           ctx,
 	}), nil
 }
 
@@ -76,6 +77,8 @@ type rangeHeapJoinIter struct {
 
 	activeRanges []sql.Row
 	err          error
+
+	ctx *sql.Context
 }
 
 func (iter *rangeHeapJoinIter) loadPrimary(ctx *sql.Context) error {
@@ -306,12 +309,10 @@ func compareNullsFirst(ctx *sql.Context, comparisonType sql.Type, a, b interface
 func (iter rangeHeapJoinIter) Len() int { return len(iter.activeRanges) }
 
 func (iter *rangeHeapJoinIter) Less(i, j int) bool {
-	// TODO: Add context parameter to Less
-	ctx := sql.NewEmptyContext()
 	lhs := iter.activeRanges[i][iter.rangeHeapPlan.MaxColumnIndex]
 	rhs := iter.activeRanges[j][iter.rangeHeapPlan.MaxColumnIndex]
 	// compareResult will be 0 if lhs==rhs, -1 if lhs < rhs, and +1 if lhs > rhs.
-	compareResult, err := compareNullsFirst(ctx, iter.rangeHeapPlan.ComparisonType, lhs, rhs)
+	compareResult, err := compareNullsFirst(iter.ctx, iter.rangeHeapPlan.ComparisonType, lhs, rhs)
 	if iter.err == nil && err != nil {
 		iter.err = err
 	}

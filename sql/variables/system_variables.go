@@ -137,9 +137,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
 // statement. To set session system variables, use the appropriate function on the session context. To set values
 // directly (such as when loading persisted values), use AssignValues. Case-insensitive.
-func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
-	// TODO: Add context parameter
-	ctx := sql.NewEmptyContext()
+func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val interface{}) error {
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	name = strings.ToLower(name)
@@ -804,9 +802,7 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemEnumType("event_scheduler", "ON", "OFF", "DISABLED"),
 		Default:           "ON",
-		NotifyChanged: func(_ sql.SystemVariableScope, value sql.SystemVarValue) error {
-			// TODO: Add context parameter
-			ctx := sql.NewEmptyContext()
+		NotifyChanged: func(ctx *sql.Context, _ sql.SystemVariableScope, value sql.SystemVarValue) error {
 			convertedVal, _, err := value.Var.GetType().Convert(ctx, value.Val)
 			if err == nil {
 				// TODO: need to update EventScheduler state at runtime if applicable

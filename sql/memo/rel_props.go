@@ -310,7 +310,7 @@ func (p *relProps) populateFds() {
 	p.fds = fds
 }
 
-func CardMemoGroups(g *ExprGroup) {
+func CardMemoGroups(ctx *sql.Context, g *ExprGroup) {
 	// card checking is called after indexScans and lookups joins are generated,
 	// both of which have metadata that makes cardinality estimation more
 	// accurate.
@@ -318,13 +318,13 @@ func CardMemoGroups(g *ExprGroup) {
 		return
 	}
 	for _, g := range g.children() {
-		CardMemoGroups(g)
+		CardMemoGroups(ctx, g)
 	}
-	s := statsForRel(g.First)
+	s := statsForRel(ctx, g.First)
 	g.RelProps.SetStats(s)
 }
 
-func statsForRel(rel RelExpr) sql.Statistic {
+func statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 	var stat sql.Statistic
 	switch rel := rel.(type) {
 	case JoinRel:
@@ -363,7 +363,7 @@ func statsForRel(rel RelExpr) sql.Statistic {
 				// least the length-1 prefix are comparable.
 				// todo: better way to find the complete prefix match
 				prefixLen := 1
-				mStat, err := getJoinStats(n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, prefixLen)
+				mStat, err := getJoinStats(ctx, n.InnerScan.Stats, n.OuterScan.Stats, leftChildStats, rightChildStats, prefixLen)
 				if err != nil {
 					n.Group().m.HandleErr(err)
 				}
@@ -490,7 +490,7 @@ func indexCoverageAdjustment(lookup *IndexScan) float64 {
 	return math.Max(0, 12.0+missing-(3*filled))
 }
 
-func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefixCnt int) (sql.Statistic, error) {
+func getJoinStats(ctx *sql.Context, leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefixCnt int) (sql.Statistic, error) {
 	if stats.Empty(rightIdx) || stats.Empty(leftIdx) {
 		return nil, nil
 	}
@@ -511,7 +511,7 @@ func getJoinStats(leftIdx, rightIdx, leftChild, rightChild sql.Statistic, prefix
 	if !stats.Empty(rightChild) {
 		rightIdx = stats.InterpolateNewCounts(rightIdx, rightChild)
 	}
-	stat, err := stats.Join(leftIdx, rightIdx, prefixCnt, false)
+	stat, err := stats.Join(ctx, leftIdx, rightIdx, prefixCnt, false)
 	if errors.Is(err, stats.ErrJoinStringStatistics) {
 		return nil, nil
 	}

@@ -185,7 +185,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
-	memo.CardMemoGroups(m.Root())
+	memo.CardMemoGroups(ctx, m.Root())
 
 	err = addCrossHashJoins(m)
 	if err != nil {
