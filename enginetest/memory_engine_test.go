@@ -202,17 +202,69 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "test script",
+			Name: "insert trigger with stored procedure with deletes",
 			SetUpScript: []string{
 				"create table t (i int);",
+				"create table t1 (j int);",
+				"insert into t1 values (1);",
+				"create table t2 (k int);",
+				"insert into t2 values (1);",
+				"create table t3 (l int);",
+				"insert into t3 values (1);",
+				"create table t4 (m int);",
+				`
+create procedure proc(x int)
+begin
+  delete from t2 where k = (select j from t1 where j = x);
+  update t3 set l = 10 where l = x;
+  insert into t4 values (x);
+end;
+`,
+				`
+create trigger trig before insert on t
+for each row
+begin
+  call proc(new.i);
+end;
+`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select 1 into @a",
+					Query: "insert into t values (1);",
+					Expected: []sql.Row{
+						{types.NewOkResult(1)},
+					},
+				},
+				{
+					Query: "select * from t;",
+					Expected: []sql.Row{
+						{1},
+					},
+				},
+				{
+					Query: "select * from t1;",
+					Expected: []sql.Row{
+						{1},
+					},
+				},
+				{
+					Query:    "select * from t2;",
 					Expected: []sql.Row{},
+				},
+				{
+					Query: "select * from t3;",
+					Expected: []sql.Row{
+						{10},
+					},
+				},
+				{
+					Query: "select * from t4;",
+					Expected: []sql.Row{
+						{1},
+					},
 				},
 			},
 		},
@@ -220,10 +272,15 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		// TODO: fix this
+		//harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
+
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

@@ -92,6 +92,13 @@ type Session interface {
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)
+
+	NewStoredProcParam(name string, param *StoredProcParam)
+
+	GetStoredProcParam(name string) *StoredProcParam
+
+	SetStoredProcParam(name string, val any) error
+
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
@@ -171,6 +178,8 @@ type Session interface {
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is
 	// executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context) error
+
+	//SetInStoredProcedure(val bool)
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
