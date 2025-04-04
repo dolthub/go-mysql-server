@@ -270,7 +270,7 @@ func (s *BaseSession) GetStoredProcParam(name string) *StoredProcParam {
 
 func (s *BaseSession) SetStoredProcParam(name string, val any) error {
 	param := s.GetStoredProcParam(name)
-	if  param == nil {
+	if param == nil {
 		return fmt.Errorf("variable `%s` could not be found", name)
 	}
 	param.SetValue(val)
