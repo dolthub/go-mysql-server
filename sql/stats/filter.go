@@ -129,7 +129,7 @@ func PrefixKey(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type
 	equals := true
 	var err error
 	for equals && upperBucket < len(buckets) {
-		equals, err = keysEqual(types, buckets[upperBucket].UpperBound(), key)
+		equals, err = keysEqual(ctx, types, buckets[upperBucket].UpperBound(), key)
 		if err != nil {
 			return nil, err
 		}
@@ -184,9 +184,7 @@ func UpdateCounts(statistic sql.Statistic) sql.Statistic {
 	return statistic.WithRowCount(rowCount).WithDistinctCount(distinctCount).WithNullCount(nullCount)
 }
 
-func keysEqual(types []sql.Type, left, right []interface{}) (bool, error) {
-	// TODO: Add Context parameter
-	ctx := sql.NewEmptyContext()
+func keysEqual(ctx *sql.Context, types []sql.Type, left, right []interface{}) (bool, error) {
 	for i, _ := range right {
 		t := types[i]
 		cmp, err := t.Compare(ctx, left[i], right[i])
