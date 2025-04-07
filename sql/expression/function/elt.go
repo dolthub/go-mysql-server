@@ -116,7 +116,7 @@ func (e *Elt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	indexInt, _, err := types.Int64.Convert(index)
+	indexInt, _, err := types.Int64.Convert(ctx, index)
 	if err != nil {
 		// TODO: truncate
 		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", index)
@@ -133,7 +133,7 @@ func (e *Elt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	res, _, err := types.Text.Convert(str)
+	res, _, err := types.Text.Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}

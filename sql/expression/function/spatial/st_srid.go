@@ -106,7 +106,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.Int64.Convert(v)
+	val, _, err := types.Int64.Convert(ctx, v)
 	if err != nil {
 		return nil, err
 	}

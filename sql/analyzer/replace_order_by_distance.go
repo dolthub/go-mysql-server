@@ -114,7 +114,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 				Literal: literal,
 			},
 		}
-		nn, err := plan.NewStaticIndexedAccessForTableNode(n, lookup)
+		nn, err := plan.NewStaticIndexedAccessForTableNode(ctx, n, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}

@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"reflect"
@@ -78,16 +79,16 @@ func (t BitType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 }
 
 // Compare implements Type interface.
-func (t BitType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t BitType_) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	ac, _, err := t.Convert(a)
+	ac, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bc, _, err := t.Convert(b)
+	bc, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -103,7 +104,7 @@ func (t BitType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t BitType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t BitType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -137,7 +138,7 @@ func (t BitType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error
 	case uint64:
 		value = val
 	case float32:
-		return t.Convert(float64(val))
+		return t.Convert(ctx, float64(val))
 	case float64:
 		if val < 0 {
 			return nil, sql.InRange, fmt.Errorf(`negative floats cannot become bit values`)
@@ -147,7 +148,7 @@ func (t BitType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error
 		if !val.Valid {
 			return nil, sql.InRange, nil
 		}
-		return t.Convert(val.Decimal)
+		return t.Convert(ctx, val.Decimal)
 	case decimal.Decimal:
 		val = val.Round(0)
 		if val.GreaterThan(dec_uint64_max) {
@@ -158,7 +159,7 @@ func (t BitType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error
 		}
 		value = uint64(val.IntPart())
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert(ctx, []byte(val))
 	case []byte:
 		if len(val) > 8 {
 			return nil, sql.OutOfRange, errBeyondMaxBit.New(value, t.numOfBits)
@@ -172,15 +173,6 @@ func (t BitType_) Convert(v interface{}) (interface{}, sql.ConvertInRange, error
 		return nil, sql.OutOfRange, errBeyondMaxBit.New(value, t.numOfBits)
 	}
 	return value, sql.InRange, nil
-}
-
-// MustConvert implements the Type interface.
-func (t BitType_) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -201,7 +193,7 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	value, _, err := t.Convert(v)
+	value, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

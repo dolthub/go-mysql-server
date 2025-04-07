@@ -63,7 +63,7 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 				return nil, err
 			}
 			// cast all row values to the most permissive type
-			vals[j], _, err = n.Schema()[j].Type.Convert(p)
+			vals[j], _, err = n.Schema()[j].Type.Convert(ctx, p)
 			if err != nil {
 				return nil, err
 			}
@@ -190,7 +190,7 @@ func (b *BaseBuilder) buildJSONTable(ctx *sql.Context, n *plan.JSONTable, row sq
 		return &iters.JsonTableRowIter{}, nil
 	}
 
-	jsonData, err := json.GetJSONFromWrapperOrCoercibleString(data, "json_table", 1)
+	jsonData, err := json.GetJSONFromWrapperOrCoercibleString(ctx, data, "json_table", 1)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.
 			if err != nil {
 				return nil, err
 			}
-			err = left.Set(value, setField.RightChild.Type())
+			err = left.Set(ctx, value, setField.RightChild.Type())
 			if err != nil {
 				return nil, err
 			}
@@ -675,7 +675,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 				return nil, err
 			}
 		case *expression.ProcedureParam:
-			err = variable.Set(rowValues[j], types.ApproximateTypeFromValue(rowValues[j]))
+			err = variable.Set(ctx, rowValues[j], types.ApproximateTypeFromValue(rowValues[j]))
 			if err != nil {
 				return nil, err
 			}
@@ -709,7 +709,7 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 		if err != nil {
 			return nil, err
 		}
-		exprParamVal, _, err = paramDefinition.Type.Convert(exprParamVal)
+		exprParamVal, _, err = paramDefinition.Type.Convert(ctx, exprParamVal)
 		if err != nil {
 			return nil, err
 		}
@@ -729,7 +729,7 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 		if paramDefinition.Direction == plan.ProcedureParamDirection_Inout || paramDefinition.Direction == plan.ProcedureParamDirection_Out {
 			exprParam := n.Params[i]
 			funcParamVal := funcParams[i+1].Elem().Interface()
-			err := exprParam.Set(funcParamVal, exprParam.Type())
+			err := exprParam.Set(ctx, funcParamVal, exprParam.Type())
 			if err != nil {
 				return nil, err
 			}

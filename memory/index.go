@@ -106,7 +106,7 @@ func (idx *Index) ExtendedExprs() []sql.Expression {
 	return exprs
 }
 
-func (idx *Index) CanSupport(...sql.Range) bool {
+func (idx *Index) CanSupport(*sql.Context, ...sql.Range) bool {
 	return true
 }
 

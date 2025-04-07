@@ -47,7 +47,7 @@ func RoleEdgeToRow(ctx *sql.Context, r *RoleEdge) (sql.Row, error) {
 }
 
 func RoleEdgeFromRow(ctx *sql.Context, row sql.Row) (*RoleEdge, error) {
-	if err := roleEdgesTblSchema.CheckRow(row); err != nil {
+	if err := roleEdgesTblSchema.CheckRow(ctx, row); err != nil {
 		return nil, err
 	}
 	return &RoleEdge{

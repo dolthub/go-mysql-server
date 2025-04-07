@@ -67,7 +67,7 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(arg)
+	val, _, err := types.LongText.Convert(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,11 @@ func (f *SHA1) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongBlob.Convert(arg)
+	val, _, err := types.LongBlob.Convert(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	val, err = sql.UnwrapAny(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -184,11 +188,11 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(arg)
+	val, _, err := types.LongText.Convert(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
-	count, _, err := types.Int64.Convert(countArg)
+	count, _, err := types.Int64.Convert(ctx, countArg)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +279,7 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongBlob.Convert(arg)
+	val, _, err := types.LongBlob.Convert(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +363,7 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongBlob.Convert(arg)
+	val, _, err := types.LongBlob.Convert(ctx, arg)
 	if err != nil {
 		ctx.Warn(1258, err.Error())
 		return nil, nil
@@ -447,7 +451,7 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 		return nil, nil
 	}
 
-	val, _, err := types.LongBlob.Convert(arg)
+	val, _, err := types.LongBlob.Convert(ctx, arg)
 	if err != nil {
 		ctx.Warn(1258, err.Error())
 		return nil, nil
@@ -513,7 +517,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(arg)
+	val, _, err := types.LongText.Convert(ctx, arg)
 	if err != nil {
 		return nil, nil
 	}

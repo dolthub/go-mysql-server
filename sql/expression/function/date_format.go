@@ -292,7 +292,7 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	timeVal, _, err := types.DatetimeMaxPrecision.Convert(left)
+	timeVal, _, err := types.DatetimeMaxPrecision.Convert(ctx, left)
 
 	if err != nil {
 		return nil, err

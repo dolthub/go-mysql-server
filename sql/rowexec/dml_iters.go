@@ -337,14 +337,14 @@ func (t *triggerIter) Close(ctx *sql.Context) error {
 }
 
 type accumulatorRowHandler interface {
-	handleRowUpdate(row sql.Row) error
+	handleRowUpdate(ctx *sql.Context, row sql.Row) error
 	okResult() types.OkResult
 }
 
 // TODO: Extend this to UPDATE IGNORE JOIN
 type updateIgnoreAccumulatorRowHandler interface {
 	accumulatorRowHandler
-	handleRowUpdateWithIgnore(row sql.Row, ignore bool) error
+	handleRowUpdateWithIgnore(ctx *sql.Context, row sql.Row, ignore bool) error
 }
 
 type insertRowHandler struct {
@@ -354,7 +354,7 @@ type insertRowHandler struct {
 	lastInsertIdGetter        func(row sql.Row) int64
 }
 
-func (i *insertRowHandler) handleRowUpdate(row sql.Row) error {
+func (i *insertRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	i.rowsAffected++
 	if !i.updatedAutoIncrementValue {
 		i.updatedAutoIncrementValue = true
@@ -379,7 +379,7 @@ type replaceRowHandler struct {
 	rowsAffected int
 }
 
-func (r *replaceRowHandler) handleRowUpdate(row sql.Row) error {
+func (r *replaceRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	r.rowsAffected++
 
 	// If a row was deleted as well as inserted, increment the counter again. A row was deleted if at least one column in
@@ -404,7 +404,7 @@ type onDuplicateUpdateHandler struct {
 	clientFoundRowsCapability bool
 }
 
-func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
+func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	// See https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html for row count semantics
 	// If a row was inserted, increment by 1
 	if len(row) == len(o.schema) {
@@ -415,7 +415,7 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
-	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
+	if equals, err := oldRow.Equals(ctx, newRow, o.schema); err == nil {
 		if equals {
 			// Ig the CLIENT_FOUND_ROWS capabilities flag is set, increment by 1 if a row stays the same.
 			if o.clientFoundRowsCapability {
@@ -442,11 +442,11 @@ type updateRowHandler struct {
 	clientFoundRowsCapability bool
 }
 
-func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
+func (u *updateRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	u.rowsMatched++
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
-	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
+	if equals, err := oldRow.Equals(ctx, newRow, u.schema); err == nil {
 		if !equals {
 			u.rowsAffected++
 		}
@@ -456,9 +456,9 @@ func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
 	return nil
 }
 
-func (u *updateRowHandler) handleRowUpdateWithIgnore(row sql.Row, ignore bool) error {
+func (u *updateRowHandler) handleRowUpdateWithIgnore(ctx *sql.Context, row sql.Row, ignore bool) error {
 	if !ignore {
-		return u.handleRowUpdate(row)
+		return u.handleRowUpdate(ctx, row)
 	}
 
 	u.rowsMatched++
@@ -498,7 +498,7 @@ func (u *updateJoinRowHandler) handleRowMatched() {
 	u.rowsMatched += 1
 }
 
-func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
+func (u *updateJoinRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	oldJoinRow := row[:len(row)/2]
 	newJoinRow := row[len(row)/2:]
 
@@ -508,7 +508,7 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	for tableName, _ := range u.updaterMap {
 		tableOldRow := tableToOldRow[tableName]
 		tableNewRow := tableToNewRow[tableName]
-		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
+		if equals, err := tableOldRow.Equals(ctx, tableNewRow, u.tableMap[tableName]); err == nil {
 			if !equals {
 				u.rowsAffected++
 			}
@@ -538,7 +538,7 @@ type deleteRowHandler struct {
 	rowsAffected int
 }
 
-func (u *deleteRowHandler) handleRowUpdate(row sql.Row) error {
+func (u *deleteRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	u.rowsAffected++
 	return nil
 }
@@ -693,7 +693,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			return sql.NewRow(res), nil
 		} else if isIg {
 			if ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler); ok {
-				err = ui.handleRowUpdateWithIgnore(igErr.OffendingRow, true)
+				err = ui.handleRowUpdateWithIgnore(ctx, igErr.OffendingRow, true)
 				if err != nil {
 					return nil, err
 				}
@@ -701,7 +701,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 		} else if err != nil {
 			return nil, err
 		} else {
-			err = a.updateRowHandler.handleRowUpdate(row)
+			err = a.updateRowHandler.handleRowUpdate(ctx, row)
 			if err != nil {
 				return nil, err
 			}

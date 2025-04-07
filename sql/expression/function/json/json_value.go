@@ -129,7 +129,7 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if j.Typ != nil {
-		res, _, err = j.Typ.Convert(res)
+		res, _, err = j.Typ.Convert(ctx, res)
 		if err != nil {
 			return nil, err
 		}
@@ -172,11 +172,11 @@ func (j *JsonValue) String() string {
 // and unwraps the JSON, or coerces the string into JSON. The return value can return any type that can be stored in
 // a JSON column, not just maps. For a complete list, see
 // https://dev.mysql.com/doc/refman/8.3/en/json-attribute-functions.html#function_json-type
-func GetJSONFromWrapperOrCoercibleString(js interface{}, functionName string, argumentPosition int) (jsonData interface{}, err error) {
+func GetJSONFromWrapperOrCoercibleString(ctx *sql.Context, js interface{}, functionName string, argumentPosition int) (jsonData interface{}, err error) {
 	// The first parameter can be either JSON or a string.
 	switch jsType := js.(type) {
 	case string:
-		strData, _, err := types.LongBlob.Convert(js)
+		strData, _, err := types.LongBlob.Convert(ctx, js)
 		if err != nil {
 			return nil, err
 		}

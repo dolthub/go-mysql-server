@@ -88,7 +88,7 @@ func (js *JSONUnquote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return json, err
 	}
 
-	ex, _, err := types.LongText.Convert(json)
+	ex, _, err := types.LongText.Convert(ctx, json)
 	if err != nil {
 		return nil, err
 	}

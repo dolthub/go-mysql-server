@@ -21,7 +21,7 @@ import (
 )
 
 // validateCharacterSet is used in NotifyChange to validate that the given character set is valid.
-func validateCharacterSet(_ sql.SystemVariableScope, value sql.SystemVarValue) error {
+func validateCharacterSet(ctx *sql.Context, _ sql.SystemVariableScope, value sql.SystemVarValue) error {
 	charset, ok := value.Val.(string)
 	if !ok {
 		return fmt.Errorf("character set variables expect the `string` type, but received `%T`", value.Val)
@@ -31,7 +31,7 @@ func validateCharacterSet(_ sql.SystemVariableScope, value sql.SystemVarValue) e
 }
 
 // validateCollation is used in NotifyChange to validate that the given collation is valid.
-func validateCollation(_ sql.SystemVariableScope, value sql.SystemVarValue) error {
+func validateCollation(ctx *sql.Context, _ sql.SystemVariableScope, value sql.SystemVarValue) error {
 	collation, ok := value.Val.(string)
 	if !ok {
 		return fmt.Errorf("collation variables expect the `string` type, but received `%T`", value.Val)

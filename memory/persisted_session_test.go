@@ -62,7 +62,7 @@ func TestPersistVariable(t *testing.T) {
 		t.Run(test.title, func(t *testing.T) {
 			sqlCtx := newPersistedSqlContext()
 			sess := sqlCtx.Session.(*Session)
-			err := sqlCtx.Session.(sql.PersistableSession).PersistGlobal(test.name, test.value)
+			err := sqlCtx.Session.(sql.PersistableSession).PersistGlobal(sqlCtx, test.name, test.value)
 			if test.err != nil {
 				assert.True(t, test.err.Is(err))
 			} else {
