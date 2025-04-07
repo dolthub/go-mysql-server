@@ -159,8 +159,7 @@ func GenerateCreateTableCheckConstraintClause(checkName, checkExpr string, enfor
 // QuoteIdentifier wraps the specified identifier in backticks and escapes all occurrences of backticks in the
 // identifier by replacing them with double backticks.
 func QuoteIdentifier(id string) string {
-	id = strings.ReplaceAll(id, "`", "``")
-	return fmt.Sprintf("`%s`", id)
+	return GlobalSchemaFormatter.QuoteIdentifier(id)
 }
 
 // QuoteIdentifiers wraps each of the specified identifiers in backticks, escapes all occurrences of backticks in
