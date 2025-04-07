@@ -36,6 +36,9 @@ func NewNot(child sql.Expression) *Not {
 
 // Type implements the Expression interface.
 func (e *Not) Type() sql.Type {
+	if types.IsNull(e.Child) {
+		return types.Null
+	}
 	return types.Boolean
 }
 
