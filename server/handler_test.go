@@ -537,7 +537,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 
 	for _, test := range []testcase{
 		{
-			name: "select statement returns nil schema",
+			name: "select statement returns nil schema bug",
 			prepare: &mysql.PrepareData{
 				StatementID: 0,
 				PrepareStmt: "select c1 from test where c1 < ?",
@@ -553,6 +553,40 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 			},
 			expected: []sql.Row{
 				{0}, {1}, {2}, {3}, {4},
+			},
+		},
+		{
+			name: "ifnull typing",
+			prepare: &mysql.PrepareData{
+				StatementID: 0,
+				PrepareStmt: "select ifnull(not null, 1000) as a",
+				ParamsCount: 0,
+				ParamsType:  nil,
+				ColumnNames: nil,
+				BindVars:    nil,
+			},
+			schema: []*query.Field{
+				{Name: "a", OrgName: "a", Table: "", OrgTable: "", Database: "", Type: query.Type_INT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 6, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+			},
+			expected: []sql.Row{
+				{1000},
+			},
+		},
+		{
+			name: "ifnull typing negative",
+			prepare: &mysql.PrepareData{
+				StatementID: 0,
+				PrepareStmt: "select ifnull(not null, -129) as a",
+				ParamsCount: 0,
+				ParamsType:  nil,
+				ColumnNames: nil,
+				BindVars:    nil,
+			},
+			schema: []*query.Field{
+				{Name: "a", OrgName: "a", Table: "", OrgTable: "", Database: "", Type: query.Type_INT16, Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 6, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+			},
+			expected: []sql.Row{
+				{-129},
 			},
 		},
 	} {
