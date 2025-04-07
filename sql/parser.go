@@ -267,13 +267,3 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableCheckConstraintClause(checkNam
 func (m *MySqlSchemaFormatter) QuoteIdentifier(id string) string {
 	return fmt.Sprintf("`%s`", strings.ReplaceAll(id, "`", "``"))
 }
-
-// QuoteIdentifiers wraps each of the specified identifiers in backticks, escapes all occurrences of backticks in
-// the identifier, and returns a slice of the quoted identifiers.
-func (m *MySqlSchemaFormatter) QuoteIdentifiers(ids []string) []string {
-	quoted := make([]string, len(ids))
-	for i, id := range ids {
-		quoted[i] = QuoteIdentifier(id)
-	}
-	return quoted
-}
