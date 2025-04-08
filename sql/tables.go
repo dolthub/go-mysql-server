@@ -126,7 +126,7 @@ type IndexAddressable interface {
 	// IndexedAccess returns a table that can perform scans constrained to
 	// an IndexLookup on the index given, or nil if the index cannot support
 	// the lookup expression.
-	IndexedAccess(lookup IndexLookup) IndexedTable
+	IndexedAccess(ctx *Context, lookup IndexLookup) IndexedTable
 	// GetIndexes returns an array of this table's Indexes
 	GetIndexes(ctx *Context) ([]Index, error)
 	// PreciseMatch returns whether an indexed access can substitute for filters

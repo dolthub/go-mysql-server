@@ -116,7 +116,7 @@ func (f *Field) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int64(0), nil
 	}
 
-	key, _, err = types.Text.Convert(key)
+	key, _, err = types.Text.Convert(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (f *Field) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
-		val, _, err = types.Text.Convert(val)
+		val, _, err = types.Text.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}

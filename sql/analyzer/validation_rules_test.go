@@ -152,7 +152,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	err = sql.SystemVariables.SetGlobal("sql_mode", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES")
+	err = sql.SystemVariables.SetGlobal(ctx, "sql_mode", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES")
 	require.NoError(err)
 	_, _, err = vr.Apply(ctx, nil, p, nil, DefaultRuleSelector, nil)
 	require.Error(err)

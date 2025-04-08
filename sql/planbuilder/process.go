@@ -72,7 +72,7 @@ func (b *Builder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) 
 		err := sql.ErrUnsupportedFeature.New(errStr)
 		b.handleErr(err)
 	} else {
-		i64, _, err := types.Int64.Convert(nl.Value())
+		i64, _, err := types.Int64.Convert(b.ctx, nl.Value())
 		if err != nil {
 			err := sql.ErrUnsupportedFeature.New(errStr)
 			b.handleErr(err)

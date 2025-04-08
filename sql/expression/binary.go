@@ -57,7 +57,7 @@ func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return convertValue(val, ConvertToBinary, b.Child.Type(), 0, 0)
+	return convertValue(ctx, val, ConvertToBinary, b.Child.Type(), 0, 0)
 }
 
 func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {

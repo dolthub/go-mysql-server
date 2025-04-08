@@ -245,11 +245,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.LeftChild) {
+				if isFalse(e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.RightChild) {
+				if isFalse(e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
 					return e.LeftChild, transform.NewTree, nil
 				}
 
@@ -263,11 +263,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.LeftChild) {
+				if isTrue(e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.RightChild) {
+				if isTrue(e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
 					return e.LeftChild, transform.NewTree, nil
 				}
 

@@ -88,7 +88,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// non number type will be caught here
 	if !types.IsNumber(c.Child.Type()) {
-		child, _, err = types.Float64.Convert(child)
+		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			return int32(0), nil
 		}
@@ -172,7 +172,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// non number type will be caught here
 	if !types.IsNumber(f.Child.Type()) {
-		child, _, err = types.Float64.Convert(child)
+		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			return int32(0), nil
 		}
@@ -250,7 +250,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	decType := types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)
-	val, _, err = decType.Convert(val)
+	val, _, err = decType.Convert(ctx, val)
 	if err != nil {
 		// TODO: truncate
 		return nil, err
@@ -269,7 +269,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if tmp != nil {
-			tmp, _, err = types.Int32.Convert(tmp)
+			tmp, _, err = types.Int32.Convert(ctx, tmp)
 			if err != nil {
 				// TODO: truncate
 				return nil, err
@@ -289,15 +289,15 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var res interface{}
 	tmp := val.(decimal.Decimal).Round(prec)
 	if types.IsSigned(r.LeftChild.Type()) {
-		res, _, err = types.Int64.Convert(tmp)
+		res, _, err = types.Int64.Convert(ctx, tmp)
 	} else if types.IsUnsigned(r.LeftChild.Type()) {
-		res, _, err = types.Uint64.Convert(tmp)
+		res, _, err = types.Uint64.Convert(ctx, tmp)
 	} else if types.IsFloat(r.LeftChild.Type()) {
-		res, _, err = types.Float64.Convert(tmp)
+		res, _, err = types.Float64.Convert(ctx, tmp)
 	} else if types.IsDecimal(r.LeftChild.Type()) {
 		res = tmp
 	} else if types.IsTextBlob(r.LeftChild.Type()) {
-		res, _, err = types.Float64.Convert(tmp)
+		res, _, err = types.Float64.Convert(ctx, tmp)
 	}
 
 	return res, err

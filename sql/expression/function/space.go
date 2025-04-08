@@ -53,7 +53,7 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO: better truncate integer handling
-	v, _, err := types.Int64.Convert(val)
+	v, _, err := types.Int64.Convert(ctx, val)
 	if err != nil {
 		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", val)
 		v = int64(0)

@@ -43,6 +43,7 @@ type Scope struct {
 	inJoin        bool
 	inLateralJoin bool
 	joinSiblings  []sql.Node
+	JoinTrees     []string
 }
 
 func (s *Scope) SetJoin(b bool) {

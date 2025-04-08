@@ -59,7 +59,7 @@ func (l *Lower) Eval(
 		return nil, nil
 	}
 
-	vStr, collation, err := types.ConvertToCollatedString(v, l.Child.Type())
+	vStr, collation, err := types.ConvertToCollatedString(ctx, v, l.Child.Type())
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (u *Upper) Eval(
 		return nil, nil
 	}
 
-	vStr, collation, err := types.ConvertToCollatedString(v, u.Child.Type())
+	vStr, collation, err := types.ConvertToCollatedString(ctx, v, u.Child.Type())
 	if err != nil {
 		return nil, err
 	}

@@ -168,12 +168,12 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 	var svv SystemVarValue
 	var err error
 	if init {
-		svv, err = sysVar.InitValue(value, false)
+		svv, err = sysVar.InitValue(ctx, value, false)
 		if err != nil {
 			return err
 		}
 	} else {
-		svv, err = sysVar.SetValue(value, false)
+		svv, err = sysVar.SetValue(ctx, value, false)
 		if err != nil {
 			return err
 		}

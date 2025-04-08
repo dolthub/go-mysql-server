@@ -29,6 +29,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// WrapBehavior determines how the test engine will process sql.AnyWrapper values in query results before comparing them to expected results.
+type WrapBehavior int
+
+const (
+	// WrapBehavior_Unwrap causes the engine to return the unwrapped value. Use this for tests that verify the semantic meaning of the result. (Most tests)
+	WrapBehavior_Unwrap = iota
+	// WrapBehavior_Hash causes the engine to return the result of the wrapper's Hash() function. Use this for tests that verify the specific representation of the result.
+	WrapBehavior_Hash
+)
+
 type QueryTest struct {
 	// Query is the query string to execute
 	Query string
@@ -47,6 +57,10 @@ type QueryTest struct {
 	// Dialect is the supported dialect for this query, which must match the dialect of the harness if specified.
 	// The query is skipped if the dialect doesn't match.
 	Dialect string
+	// WrapBehavior indicates whether to normalize the select results via unwrapping wrapped values (the default),
+	// or replace wrapped values with their hash as determined by sql.AnyWrapped.Hash.
+	// Set this to WrapBehvior_Hash to test the exact encodings being returned by the query.
+	WrapBehavior WrapBehavior
 }
 
 type QueryPlanTest struct {
@@ -11387,6 +11401,10 @@ type WriteQueryTest struct {
 	// Dialect is the supported dialect for this test, which must match the dialect of the harness if specified.
 	// The script is skipped if the dialect doesn't match.
 	Dialect string
+	// WrapBehavior indicates whether to normalize the select results via unwrapping wrapped values (the default),
+	// or replace wrapped values with their hash as determined by sql.AnyWrapped.Hash.
+	// Set this to WrapBehvior_Hash to test the exact encodings being returned by the query.
+	WrapBehavior WrapBehavior
 }
 
 // GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what

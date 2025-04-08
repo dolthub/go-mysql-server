@@ -15,6 +15,7 @@
 package stats
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -128,19 +129,9 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 	}, nil
 }
 
-func ParseRow(rowStr string, types []sql.Type) (sql.Row, error) {
-	var row sql.Row
-	for i, v := range strings.Split(rowStr, ",") {
-		val, _, err := types[i].Convert(v)
-		if err != nil {
-			return nil, err
-		}
-		row = append(row, val)
-	}
-	return row, nil
-}
-
 func StringifyKey(r sql.Row, typs []sql.Type) string {
+	// TODO: Add context parameter
+	ctx := context.Background()
 	b := strings.Builder{}
 	sep := ""
 	for i := range typs {
@@ -148,7 +139,7 @@ func StringifyKey(r sql.Row, typs []sql.Type) string {
 		typ := typs[i]
 		if _, ok := typ.(sql.StringType); ok {
 			typ = types.LongText
-			v, _, _ = typ.Convert(v)
+			v, _, _ = typ.Convert(ctx, v)
 		}
 		if v == nil {
 			v = typ.Zero()

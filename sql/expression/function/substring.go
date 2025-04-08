@@ -105,7 +105,7 @@ func (s *Substring) Eval(
 		return nil, nil
 	}
 
-	start, _, err = types.Int64.Convert(start)
+	start, _, err = types.Int64.Convert(ctx, start)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (s *Substring) Eval(
 			return nil, nil
 		}
 
-		len, _, err = types.Int64.Convert(len)
+		len, _, err = types.Int64.Convert(ctx, len)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, _, err = types.LongText.Convert(ex)
+	ex, _, err = types.LongText.Convert(ctx, ex)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +232,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, _, err = types.LongText.Convert(ex)
+	ex, _, err = types.LongText.Convert(ctx, ex)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, _, err = types.Int64.Convert(ex)
+	ex, _, err = types.Int64.Convert(ctx, ex)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, _, err = types.Int64.Convert(len)
+	len, _, err = types.Int64.Convert(ctx, len)
 	if err != nil {
 		return nil, err
 	}
@@ -455,8 +455,20 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch str := str.(type) {
 	case string:
 		text = []rune(str)
+	case sql.StringWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
 		text = []rune(string(str))
+	case sql.BytesWrapper:
+		b, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(string(b))
 	case nil:
 		return nil, nil
 	default:
@@ -474,7 +486,7 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, _, err = types.Int64.Convert(len)
+	len, _, err = types.Int64.Convert(ctx, len)
 	if err != nil {
 		return nil, err
 	}

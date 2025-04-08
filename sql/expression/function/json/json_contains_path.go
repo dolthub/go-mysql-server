@@ -54,7 +54,7 @@ func (j JSONContainsPath) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil || oneOrAll == nil {
 		return nil, err
 	}
-	oneOrAll, _, err = types.LongText.Convert(oneOrAll)
+	oneOrAll, _, err = types.LongText.Convert(ctx, oneOrAll)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (j JSONContainsPath) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 			return nil, err
 		}
 
-		path, _, err = types.LongText.Convert(path)
+		path, _, err = types.LongText.Convert(ctx, path)
 		if err != nil {
 			return nil, err
 		}

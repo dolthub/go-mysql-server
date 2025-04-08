@@ -242,7 +242,7 @@ func TestSlowQueryTracking(t *testing.T) {
 	require.NoError(t, err)
 
 	// Change @@long_query_time so we don't have to wait for 10 seconds
-	require.NoError(t, sql.SystemVariables.SetGlobal("long_query_time", 1))
+	require.NoError(t, sql.SystemVariables.SetGlobal(ctx, "long_query_time", 1))
 	time.Sleep(1_500 * time.Millisecond)
 	p.EndQuery(ctx)
 

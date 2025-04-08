@@ -90,7 +90,7 @@ func (r *RandomBytes) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err = types.Int64.Convert(val)
+	val, _, err = types.Int64.Convert(ctx, val)
 	if err != nil {
 		val = 0
 		ctx.Warn(1292, "Truncated incorrect INTEGER value")

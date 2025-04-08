@@ -25,6 +25,7 @@ import (
 )
 
 func TestSwapXY(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("point swap", func(t *testing.T) {
 		require := require.New(t)
 		f := NewSwapXY(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
@@ -156,7 +157,7 @@ func TestSwapXY(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }
