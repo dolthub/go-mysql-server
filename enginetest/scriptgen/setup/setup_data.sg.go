@@ -3028,6 +3028,14 @@ var NiltableData = []SetupScript{{
     (5,null,1,5.0),
     (6,6,0,6.0)`,
 	`create index niltable_i2 on niltable (i2)`,
+	"CREATE TABLE `niltexttable` (   `i` bigint NOT NULL,   `c` char(2),   `vc` varchar(2),   `t` text,   `b` binary(2),   `vb` varbinary(2),   `bl` blob,   PRIMARY KEY (`i`) )",
+	`insert into niltexttable values
+    (1, null, null, null, null, null, null),
+    (2, '2',  null, '2',  null, '2',  null),
+    (3, null, '3',  '3',  null, null, '3'),
+    (4, '4',  '4',  null, '4',  null, null),
+    (5, null, null, null, '5',  '5',  '5'),
+    (6, '6',  '6',  '6',  '6',  '6',  '6')`,
 }}
 
 var Null_rangesData = []SetupScript{{

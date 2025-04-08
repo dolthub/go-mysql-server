@@ -5207,6 +5207,17 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{-3.0}},
 	},
 	{
+		Query: "SELECT BINARY c, BINARY vc, BINARY t, BINARY b, BINARY vb, BINARY bl FROM niltexttable",
+		Expected: []sql.Row{
+			{nil, nil, nil, nil, nil, nil},
+			{[]byte("2"), nil, []byte("2"), nil, []byte("2"), nil},
+			{nil, []byte("3"), []byte("3"), nil, nil, []byte("3")},
+			{[]byte("4"), []byte("4"), nil, []byte("4\x00"), nil, nil},
+			{nil, nil, nil, []byte("5\x00"), []byte("5"), []byte("5")},
+			{[]byte("6"), []byte("6"), []byte("6"), []byte("6\x00"), []byte("6"), []byte("6")},
+		},
+	},
+	{
 		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
 		Expected: []sql.Row{{float32(-3.9876)}},
 	},
