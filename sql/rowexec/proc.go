@@ -219,7 +219,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		if err != nil {
 			return nil, err
 		}
-		paramVal, _, err = paramType.Convert(paramVal)
+		paramVal, _, err = paramType.Convert(ctx, paramVal)
 		if err != nil {
 			return nil, err
 		}
@@ -247,7 +247,7 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		stackVar := ctx.Session.GetStoredProcParam(procParam.Name) // TODO: ToLower?
 		switch p := param.(type) {
 		case *expression.ProcedureParam:
-			err = p.Set(stackVar.Value, stackVar.Type)
+			err = p.Set(ctx, stackVar.Value, stackVar.Type)
 			if err != nil {
 				return nil, err
 			}
