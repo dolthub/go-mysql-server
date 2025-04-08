@@ -32,3 +32,5 @@ unaryAggs:
 - name:     "Sum"
   desc:     "returns the sum of expr in all rows"
   nullable: false
+- name:     "StdDevPop"
+  desc:     "returns the population standard deviation of expr"

@@ -7887,6 +7887,57 @@ where
 			},
 		},
 	},
+	{
+		Name:    "std, stdev, stddev_pop tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Expected: []sql.Row{
+					{nil, nil, nil},
+				},
+			},
+			{
+				Query: "insert into t values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.0, 0.0, 0.0},
+				},
+			},
+			{
+				Query: "insert into t values (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.5, 0.5, 0.5},
+				},
+			},
+			{
+				Query: "insert into t values (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.816496580927726, 0.816496580927726, 0.816496580927726},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

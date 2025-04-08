@@ -958,3 +958,82 @@ func (a *Sum) NewWindowFunction() (sql.WindowFunction, error) {
 	}
 	return NewSumAgg(child).WithWindow(a.Window())
 }
+
+type StdDevPop struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*StdDevPop)(nil)
+var _ sql.Aggregation = (*StdDevPop)(nil)
+var _ sql.WindowAdaptableExpression = (*StdDevPop)(nil)
+
+func NewStdDevPop(e sql.Expression) *StdDevPop {
+	return &StdDevPop{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "StdDevPop",
+			description:     "returns the population standard deviation of expr",
+		},
+	}
+}
+
+func (a *StdDevPop) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *StdDevPop) IsNullable() bool {
+	return false
+}
+
+func (a *StdDevPop) String() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("STDDEV_POP")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("STDDEV_POP(%s)", a.Child)
+}
+
+func (a *StdDevPop) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("STDDEV_POP")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("STDDEV_POP(%s)", sql.DebugString(a.Child))
+}
+
+func (a *StdDevPop) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &StdDevPop{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *StdDevPop) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &StdDevPop{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *StdDevPop) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &StdDevPop{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *StdDevPop) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewStdDevPopBuffer(child), nil
+}
+
+func (a *StdDevPop) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewStdDevPopAgg(child).WithWindow(a.Window())
+}

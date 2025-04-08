@@ -1408,3 +1408,55 @@ func (a *leadLagBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 	a.pos++
 	return res
 }
+
+type StdDevPopAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+}
+
+func NewStdDevPopAgg(e sql.Expression) *StdDevPopAgg {
+	return &StdDevPopAgg{
+		expr: e,
+	}
+}
+
+func (s *StdDevPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	ns := *s
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		ns.framer = framer
+	}
+	return &ns, nil
+}
+
+func (s *StdDevPopAgg) Dispose() {
+	expression.Dispose(s.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (s *StdDevPopAgg) DefaultFramer() sql.WindowFramer {
+	if s.framer != nil {
+		return s.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	s.Dispose()
+	return nil
+}
+
+func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		v, err := s.expr.Eval(ctx, row)
+		if err != nil {
+			return err
+		}
+		return v
+	}
+	return nil
+}
