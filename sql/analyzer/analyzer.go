@@ -264,14 +264,15 @@ func (ab *Builder) Build() *Analyzer {
 	}
 
 	return &Analyzer{
-		Debug:        debug || ab.debug,
-		Verbose:      verbose,
-		contextStack: make([]string, 0),
-		Batches:      batches,
-		Catalog:      NewCatalog(ab.provider),
-		Coster:       memo.NewDefaultCoster(),
-		ExecBuilder:  rowexec.DefaultBuilder,
-		Parser:       sql.GlobalParser,
+		Debug:           debug || ab.debug,
+		Verbose:         verbose,
+		contextStack:    make([]string, 0),
+		Batches:         batches,
+		Catalog:         NewCatalog(ab.provider),
+		Coster:          memo.NewDefaultCoster(),
+		ExecBuilder:     rowexec.DefaultBuilder,
+		Parser:          sql.GlobalParser,
+		SchemaFormatter: sql.GlobalSchemaFormatter,
 	}
 }
 
@@ -296,6 +297,8 @@ type Analyzer struct {
 	Runner StatementRunner
 	// Parser is the parser used to parse SQL statements.
 	Parser sql.Parser
+	// SchemaFormatter is used to format the schema of a node to a string.
+	SchemaFormatter sql.SchemaFormatter
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
