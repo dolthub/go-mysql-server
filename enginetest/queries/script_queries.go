@@ -7892,6 +7892,9 @@ where
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int);",
+			"create table tt (i int, j int);",
+			"insert into tt values (0, 1), (0, 2), (0, 3);",
+			"insert into tt values (1, 123), (1, 456), (1, 789);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7934,6 +7937,13 @@ where
 				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
 				Expected: []sql.Row{
 					{0.816496580927726, 0.816496580927726, 0.816496580927726},
+				},
+			},
+			{
+				Query: "select i, std(j) from tt group by i;",
+				Expected: []sql.Row{
+					{0, 0.816496580927726},
+					{1, 271.89336144893275},
 				},
 			},
 		},
