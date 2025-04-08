@@ -209,31 +209,25 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		}, nil
 	}
 
-	// TODO: replace with direct ctx modification
-	procParams := make([]*procedures.Parameter, len(n.Params))
+	// Initialize parameters
 	for i, paramExpr := range n.Params {
 		param := n.Procedure.Params[i]
-		paramName := strings.ToLower(param.Name)
-		paramType := param.Type
 		paramVal, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		paramVal, _, err = paramType.Convert(ctx, paramVal)
+		paramVal, _, err = param.Type.Convert(ctx, paramVal)
 		if err != nil {
 			return nil, err
 		}
-		procParams[i] = &procedures.Parameter{
-			Name:  paramName,
-			Value: paramVal,
-			Type:  paramType,
+		paramName := strings.ToLower(param.Name)
+		for spp := ctx.Session.GetStoredProcParam(paramName); spp != nil; {
+			spp.Value = paramVal
+			spp = spp.Reference
 		}
 	}
 
-	rowIter, _, err := procedures.Call(ctx, n, procParams)
-	if err != nil && err.Error() == "context canceled" {
-		print()
-	}
+	rowIter, _, err := procedures.Call(ctx, n)
 	if err != nil {
 		return nil, err
 	}
@@ -244,25 +238,25 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 			continue
 		}
 		// Set all user and system variables from INOUT and OUT params
-		stackVar := ctx.Session.GetStoredProcParam(procParam.Name) // TODO: ToLower?
+		paramName := strings.ToLower(procParam.Name)
+		spp := ctx.Session.GetStoredProcParam(paramName)
+		if spp == nil {
+			return nil, fmt.Errorf("parameter `%s` not found", paramName)
+		}
 		switch p := param.(type) {
 		case *expression.ProcedureParam:
-			err = p.Set(ctx, stackVar.Value, stackVar.Type)
-			if err != nil {
-				return nil, err
-			}
+			err = p.Set(ctx, spp.Value, spp.Type)
 		case *expression.UserVar:
-			val := stackVar.Value
-			if procParam.Direction == plan.ProcedureParamDirection_Out && !stackVar.HasBeenSet {
+			val := spp.Value
+			if procParam.Direction == plan.ProcedureParamDirection_Out && !spp.HasBeenSet {
 				val = nil
 			}
-			err = ctx.SetUserVariable(ctx, p.Name, val, stackVar.Type)
-			if err != nil {
-				return nil, err
-			}
+			err = ctx.SetUserVariable(ctx, p.Name, val, spp.Type)
 		case *expression.SystemVar:
-			// This should have been caught by the analyzer, so a major bug exists somewhere
-			return nil, fmt.Errorf("unable to set `%s` as it is a system variable", p.Name)
+			err = fmt.Errorf("unable to set `%s` as it is a system variable", p.Name)
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 

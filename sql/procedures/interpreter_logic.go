@@ -40,12 +40,6 @@ type InterpreterNode interface {
 	SetSchema(sch sql.Schema)
 }
 
-type Parameter struct {
-	Name  string
-	Type  sql.Type
-	Value any
-}
-
 func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.SQLNode, asOf *ast.AsOf) (ast.SQLNode, error) {
 	switch e := expr.(type) {
 	case *ast.ColName:
@@ -797,22 +791,10 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 }
 
 // Call runs the contained operations on the given runner.
-func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.RowIter, *InterpreterStack, error) {
-	for _, param := range params {
-		var spp *sql.StoredProcParam
-		spp = ctx.Session.GetStoredProcParam(param.Name)
-		for spp != nil {
-			spp.Value = param.Value
-			spp = spp.Reference
-		}
-	}
-
+func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterStack, error) {
 	// Set up the initial state of the function
 	counter := -1 // We increment before accessing, so start at -1
 	stack := NewInterpreterStack()
-	//for _, param := range params {
-	//	stack.NewVariableWithValue(param.Name, param.Type, param.Value)
-	//}
 
 	var asOf *ast.AsOf
 	if asOfExpr := iNode.GetAsOf(); asOfExpr != nil {
