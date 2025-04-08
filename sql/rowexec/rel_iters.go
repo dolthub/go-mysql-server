@@ -351,7 +351,7 @@ func (d *declareVariablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 	for _, varName := range d.Names {
-		if err := d.Pref.InitializeVariable(varName, d.Type, defaultVal); err != nil {
+		if err := d.Pref.InitializeVariable(ctx, varName, d.Type, defaultVal); err != nil {
 			return nil, err
 		}
 	}

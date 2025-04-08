@@ -15,6 +15,7 @@
 package function
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -48,7 +49,7 @@ func getDate(ctx *sql.Context,
 		return nil, nil
 	}
 
-	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(val)
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
 	if err != nil {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
 		return nil, nil
@@ -628,7 +629,7 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		if i64, _, err := types.Int64.Convert(val); err == nil {
+		if i64, _, err := types.Int64.Convert(ctx, val); err == nil {
 			if mode, ok = i64.(int64); ok {
 				mode %= 8 // mode in [0, 7]
 			}
@@ -734,7 +735,7 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if val != nil {
-		if i64, _, err := types.Int64.Convert(val); err == nil {
+		if i64, _, err := types.Int64.Convert(ctx, val); err == nil {
 			if mode, ok = i64.(int64); ok {
 				mode %= 8 // mode in [0, 7]
 			}
@@ -1120,6 +1121,8 @@ var _ sql.CollationCoercible = (*UTCTimestamp)(nil)
 
 // NewUTCTimestamp returns a new UTCTimestamp node.
 func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	// TODO: Add context parameter
+	ctx := context.Background()
 	var precision *int
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UTC_TIMESTAMP", 1, len(args))
@@ -1133,7 +1136,7 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		precisionArg, _, err := types.Int32.Convert(val)
+		precisionArg, _, err := types.Int32.Convert(ctx, val)
 
 		if err != nil {
 			return nil, err
@@ -1281,7 +1284,7 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interfac
 		return nil, nil
 	}
 
-	ret, _, err := types.DatetimeMaxPrecision.Convert(val)
+	ret, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
 	return ret, err
 }
 
@@ -1329,7 +1332,7 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if s, ok := val.(string); ok {
-		val, _, err = types.DatetimeMaxPrecision.Convert(s)
+		val, _, err = types.DatetimeMaxPrecision.Convert(ctx, s)
 		if err != nil {
 			ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
 			return nil, nil
@@ -1676,7 +1679,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to date
-	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(v)
+	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, v)
 	if err == nil {
 		h, m, s := date.Clock()
 		us := date.Nanosecond() / 1000
@@ -1684,7 +1687,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// convert to time
-	val, _, err := types.Time.Convert(v)
+	val, _, err := types.Time.Convert(ctx, v)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil

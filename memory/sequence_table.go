@@ -29,7 +29,7 @@ func (s IntSequenceTable) UnderlyingTable() sql.Table {
 	return s
 }
 
-func (s IntSequenceTable) NewInstance(_ *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
+func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
 	if len(args) != 2 {
 		return nil, fmt.Errorf("sequence table expects 2 arguments: (name, len)")
 	}
@@ -45,7 +45,7 @@ func (s IntSequenceTable) NewInstance(_ *sql.Context, db sql.Database, args []sq
 	if !ok {
 		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
 	}
-	length, _, err := types.Int64.Convert(lenExp.Value())
+	length, _, err := types.Int64.Convert(ctx, lenExp.Value())
 	if !ok {
 		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
 	}
@@ -190,29 +190,29 @@ func (s IntSequenceTable) PartitionRows(ctx *sql.Context, partition sql.Partitio
 }
 
 // LookupPartitions is a sql.IndexedTable interface function that takes an index lookup and returns the set of corresponding partitions.
-func (s IntSequenceTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
+func (s IntSequenceTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
 	lowerBound := lookup.Ranges.(sql.MySQLRangeCollection)[0][0].LowerBound
 	below, ok := lowerBound.(sql.Below)
 	if !ok {
-		return s.Partitions(context)
+		return s.Partitions(ctx)
 	}
 	upperBound := lookup.Ranges.(sql.MySQLRangeCollection)[0][0].UpperBound
 	above, ok := upperBound.(sql.Above)
 	if !ok {
-		return s.Partitions(context)
+		return s.Partitions(ctx)
 	}
-	min, _, err := s.Schema()[0].Type.Convert(below.Key)
+	min, _, err := s.Schema()[0].Type.Convert(ctx, below.Key)
 	if err != nil {
 		return nil, err
 	}
-	max, _, err := s.Schema()[0].Type.Convert(above.Key)
+	max, _, err := s.Schema()[0].Type.Convert(ctx, above.Key)
 	if err != nil {
 		return nil, err
 	}
 	return sql.PartitionsToPartitionIter(&sequencePartition{min: min.(int64), max: max.(int64)}), nil
 }
 
-func (s IntSequenceTable) IndexedAccess(lookup sql.IndexLookup) sql.IndexedTable {
+func (s IntSequenceTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
 	return s
 }
 

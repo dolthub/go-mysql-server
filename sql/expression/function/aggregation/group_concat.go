@@ -218,23 +218,30 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 	var v interface{}
 	var vs string
 	if types.IsBlobType(retType) {
-		v, _, err = types.Blob.Convert(evalRow[0])
+		v, _, err = types.Blob.Convert(ctx, evalRow[0])
 		if err != nil {
 			return err
 		}
-		vs = string(v.([]byte))
+		vb, _, err := sql.Unwrap[[]byte](ctx, v)
+		if err != nil {
+			return err
+		}
+		vs = string(vb)
 		if len(vs) == 0 {
 			return nil
 		}
 	} else {
-		v, _, err = types.LongText.Convert(evalRow[0])
+		v, _, err = types.LongText.Convert(ctx, evalRow[0])
 		if err != nil {
 			return err
 		}
 		if v == nil {
 			return nil
 		}
-		vs = v.(string)
+		vs, _, err = sql.Unwrap[string](ctx, v)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Get the current array of rows and the map

@@ -207,7 +207,7 @@ func (c *Coalesce) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if !types.IsEnum(c.Type()) && !types.IsSet(c.Type()) {
-			val, _, err = c.Type().Convert(val)
+			val, _, err = c.Type().Convert(ctx, val)
 			if err != nil {
 				return nil, err
 			}

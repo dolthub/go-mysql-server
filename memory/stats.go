@@ -128,7 +128,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 				return true
 			}
 			col := sch[ordinals[k]]
-			cmp, _ := col.Type.Compare(keyVals[i][k], keyVals[j][k])
+			cmp, _ := col.Type.Compare(ctx, keyVals[i][k], keyVals[j][k])
 			return cmp <= 0
 		})
 

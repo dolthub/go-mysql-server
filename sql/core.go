@@ -414,7 +414,7 @@ type SystemVariableRegistry interface {
 	// GetGlobal returns the current global value of the system variable with the given name
 	GetGlobal(name string) (SystemVariable, interface{}, bool)
 	// SetGlobal sets the global value of the system variable with the given name
-	SetGlobal(name string, val interface{}) error
+	SetGlobal(ctx *Context, name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
 }
@@ -435,12 +435,12 @@ type SystemVariable interface {
 	// InitValue sets value without validation.
 	// This is used for setting the initial values internally
 	// using pre-defined variables or for test-purposes.
-	InitValue(val any, global bool) (SystemVarValue, error)
+	InitValue(ctx *Context, val any, global bool) (SystemVarValue, error)
 	// SetValue sets the value of the sv of given scope, global or session
 	// It validates setting value of correct scope,
 	// converts the given value to appropriate value depending on the sv
 	// and it returns the SystemVarValue with the updated value.
-	SetValue(val any, global bool) (SystemVarValue, error)
+	SetValue(ctx *Context, val any, global bool) (SystemVarValue, error)
 	// IsReadOnly checks whether the variable is read only.
 	// It returns false if variable can be set to a value.
 	IsReadOnly() bool
@@ -480,7 +480,7 @@ type MysqlSystemVariable struct {
 	// the global context and in a particular session. They should never
 	// block.  NotifyChanged is not called when a new system variable is
 	// registered.
-	NotifyChanged func(SystemVariableScope, SystemVarValue) error
+	NotifyChanged func(*Context, SystemVariableScope, SystemVarValue) error
 	// ValueFunction defines an optional function that is executed to provide
 	// the value of this system variable whenever it is requested. System variables
 	// that provide a ValueFunction should also set Dynamic to false, since they
@@ -514,8 +514,8 @@ func (m *MysqlSystemVariable) GetDefault() any {
 }
 
 // InitValue implements SystemVariable.
-func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, error) {
-	convertedVal, _, err := m.Type.Convert(val)
+func (m *MysqlSystemVariable) InitValue(ctx *Context, val any, global bool) (SystemVarValue, error) {
+	convertedVal, _, err := m.Type.Convert(ctx, val)
 	if err != nil {
 		return SystemVarValue{}, err
 	}
@@ -528,7 +528,7 @@ func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, e
 		scope = GetMysqlScope(SystemVariableScope_Global)
 	}
 	if m.NotifyChanged != nil {
-		err = m.NotifyChanged(scope, svv)
+		err = m.NotifyChanged(ctx, scope, svv)
 		if err != nil {
 			return SystemVarValue{}, err
 		}
@@ -537,7 +537,7 @@ func (m *MysqlSystemVariable) InitValue(val any, global bool) (SystemVarValue, e
 }
 
 // SetValue implements SystemVariable.
-func (m *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, error) {
+func (m *MysqlSystemVariable) SetValue(ctx *Context, val any, global bool) (SystemVarValue, error) {
 	if global && m.Scope.Type == SystemVariableScope_Session {
 		return SystemVarValue{}, ErrSystemVariableSessionOnly.New(m.Name)
 	}
@@ -547,7 +547,7 @@ func (m *MysqlSystemVariable) SetValue(val any, global bool) (SystemVarValue, er
 	if !m.Dynamic || m.ValueFunction != nil {
 		return SystemVarValue{}, ErrSystemVariableReadOnly.New(m.Name)
 	}
-	return m.InitValue(val, global)
+	return m.InitValue(ctx, val, global)
 }
 
 // IsReadOnly implements SystemVariable.
@@ -595,7 +595,7 @@ func GetMysqlScope(t MysqlSVScopeType) *MysqlScope {
 func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		err := SystemVariables.SetGlobal(name, val)
+		err := SystemVariables.SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -609,11 +609,11 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if !ok {
 			return ErrSessionDoesNotSupportPersistence.New()
 		}
-		err := persistSess.PersistGlobal(name, val)
+		err := persistSess.PersistGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
-		err = SystemVariables.SetGlobal(name, val)
+		err = SystemVariables.SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -622,7 +622,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if !ok {
 			return ErrSessionDoesNotSupportPersistence.New()
 		}
-		err := persistSess.PersistGlobal(name, val)
+		err := persistSess.PersistGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}

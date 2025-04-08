@@ -25,6 +25,7 @@ import (
 )
 
 func TestDimension(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("point is dimension 0", func(t *testing.T) {
 		require := require.New(t)
 		f := NewDimension(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
@@ -167,7 +168,7 @@ func TestDimension(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, inRange, err := typ.Convert(v)
+		_, inRange, err := typ.Convert(ctx, v)
 		require.True(bool(inRange))
 		require.NoError(err)
 	})

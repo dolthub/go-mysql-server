@@ -440,7 +440,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 			} else {
 				n.SetDistinct(HashDistinctOp)
 				d := &Distinct{Child: grp}
-				dCost = float64(statsForRel(d).RowCount())
+				dCost = float64(statsForRel(m.Ctx, d).RowCount())
 			}
 			relCost += dCost
 		} else {

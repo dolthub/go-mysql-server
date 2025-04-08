@@ -173,6 +173,8 @@ var (
 	_ PartitionIter   = (*informationSchemaPartitionIter)(nil)
 )
 
+var sqlCtx = NewEmptyContext()
+
 var administrableRoleAuthorizationsSchema = Schema{
 	{Name: "USER", Type: types.MustCreateString(sqltypes.VarChar, 97, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
 	{Name: "HOST", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
@@ -180,9 +182,9 @@ var administrableRoleAuthorizationsSchema = Schema{
 	{Name: "GRANTEE_HOST", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
 	{Name: "ROLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 255, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
 	{Name: "ROLE_HOST", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
-	{Name: "IS_GRANTABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: AdministrableRoleAuthorizationsTableName},
+	{Name: "IS_GRANTABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: AdministrableRoleAuthorizationsTableName},
 	{Name: "IS_DEFAULT", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
-	{Name: "IS_MANDATORY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: AdministrableRoleAuthorizationsTableName},
+	{Name: "IS_MANDATORY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: AdministrableRoleAuthorizationsTableName},
 }
 
 var applicableRolesSchema = Schema{
@@ -192,9 +194,9 @@ var applicableRolesSchema = Schema{
 	{Name: "GRANTEE_HOST", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ApplicableRolesTableName},
 	{Name: "ROLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 255, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ApplicableRolesTableName},
 	{Name: "ROLE_HOST", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ApplicableRolesTableName},
-	{Name: "IS_GRANTABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ApplicableRolesTableName},
+	{Name: "IS_GRANTABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ApplicableRolesTableName},
 	{Name: "IS_DEFAULT", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ApplicableRolesTableName},
-	{Name: "IS_MANDATORY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ApplicableRolesTableName},
+	{Name: "IS_MANDATORY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ApplicableRolesTableName},
 }
 
 var characterSetsSchema = Schema{
@@ -219,21 +221,21 @@ var collationCharacterSetApplicabilitySchema = Schema{
 var collationsSchema = Schema{
 	{Name: "COLLATION_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: CollationsTableName},
 	{Name: "CHARACTER_SET_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: CollationsTableName},
-	{Name: "ID", Type: types.Uint64, Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Uint64, false), Nullable: false, Source: CollationsTableName},
-	{Name: "IS_DEFAULT", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: CollationsTableName},
-	{Name: "IS_COMPILED", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: CollationsTableName},
+	{Name: "ID", Type: types.Uint64, Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, "0", types.Uint64, false), Nullable: false, Source: CollationsTableName},
+	{Name: "IS_DEFAULT", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: CollationsTableName},
+	{Name: "IS_COMPILED", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: true, Source: CollationsTableName},
 	{Name: "SORTLEN", Type: types.Uint32, Default: nil, Nullable: false, Source: CollationsTableName},
 	{Name: "PAD_ATTRIBUTE", Type: types.MustCreateEnumType([]string{"PAD SPACE", "NO PAD"}, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: CollationsTableName},
 }
 
 var columnPrivilegesSchema = Schema{
-	{Name: "GRANTEE", Type: types.MustCreateString(sqltypes.VarChar, 292, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
-	{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 512, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
-	{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
-	{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
-	{Name: "COLUMN_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
-	{Name: "PRIVILEGE_TYPE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
-	{Name: "IS_GRANTABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "GRANTEE", Type: types.MustCreateString(sqltypes.VarChar, 292, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 512, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "COLUMN_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "PRIVILEGE_TYPE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "IS_GRANTABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: ColumnPrivilegesTableName},
 }
 
 var columnStatisticsSchema = Schema{
@@ -250,7 +252,7 @@ var columnsSchema = Schema{
 	{Name: "COLUMN_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "ORDINAL_POSITION", Type: types.Uint32, Default: nil, Nullable: false, Source: ColumnsTableName},
 	{Name: "COLUMN_DEFAULT", Type: types.Text, Default: nil, Nullable: true, Source: ColumnsTableName},
-	{Name: "IS_NULLABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), false), Nullable: false, Source: ColumnsTableName},
+	{Name: "IS_NULLABLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), false), Nullable: false, Source: ColumnsTableName},
 	{Name: "DATA_TYPE", Type: types.LongText, Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "CHARACTER_MAXIMUM_LENGTH", Type: types.Int64, Default: nil, Nullable: true, Source: ColumnsTableName},
 	{Name: "CHARACTER_OCTET_LENGTH", Type: types.Int64, Default: nil, Nullable: true, Source: ColumnsTableName},
@@ -281,16 +283,16 @@ var enabledRolesSchema = Schema{
 	{Name: "ROLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 255, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: EnabledRolesTablesName},
 	{Name: "ROLE_HOST", Type: types.MustCreateString(sqltypes.VarChar, 255, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: EnabledRolesTablesName},
 	{Name: "IS_DEFAULT", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: EnabledRolesTablesName},
-	{Name: "IS_MANDATORY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnabledRolesTablesName},
+	{Name: "IS_MANDATORY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: EnabledRolesTablesName},
 }
 
 var enginesSchema = Schema{
-	{Name: "ENGINE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
-	{Name: "SUPPORT", Type: types.MustCreateString(sqltypes.VarChar, 8, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
-	{Name: "COMMENT", Type: types.MustCreateString(sqltypes.VarChar, 80, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
-	{Name: "TRANSACTIONS", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
-	{Name: "XA", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
-	{Name: "SAVEPOINTS", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
+	{Name: "ENGINE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
+	{Name: "SUPPORT", Type: types.MustCreateString(sqltypes.VarChar, 8, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
+	{Name: "COMMENT", Type: types.MustCreateString(sqltypes.VarChar, 80, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: EnginesTableName},
+	{Name: "TRANSACTIONS", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
+	{Name: "XA", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
+	{Name: "SAVEPOINTS", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: true, Source: EnginesTableName},
 }
 
 var eventsSchema = Schema{
@@ -299,9 +301,9 @@ var eventsSchema = Schema{
 	{Name: "EVENT_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "DEFINER", Type: types.MustCreateString(sqltypes.VarChar, 288, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "TIME_ZONE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: EventsTableName},
-	{Name: "EVENT_BODY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EventsTableName},
+	{Name: "EVENT_BODY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: EventsTableName},
 	{Name: "EVENT_DEFINITION", Type: types.LongText, Default: nil, Nullable: false, Source: EventsTableName},
-	{Name: "EVENT_TYPE", Type: types.MustCreateString(sqltypes.VarChar, 9, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.LongText, false), Nullable: false, Source: EventsTableName},
+	{Name: "EVENT_TYPE", Type: types.MustCreateString(sqltypes.VarChar, 9, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.LongText, false), Nullable: false, Source: EventsTableName},
 	{Name: "EXECUTE_AT", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "INTERVAL_VALUE", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "INTERVAL_FIELD", Type: types.MustCreateEnumType([]string{
@@ -312,7 +314,7 @@ var eventsSchema = Schema{
 	{Name: "STARTS", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "ENDS", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
 	{Name: "STATUS", Type: types.MustCreateEnumType([]string{"ENABLED", "DISABLED", "SLAVESIDE_DISABLED"}, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: EventsTableName},
-	{Name: "ON_COMPLETION", Type: types.MustCreateString(sqltypes.VarChar, 12, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateString(sqltypes.VarChar, 12, Collation_Information_Schema_Default), false), Nullable: false, Source: EventsTableName},
+	{Name: "ON_COMPLETION", Type: types.MustCreateString(sqltypes.VarChar, 12, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.MustCreateString(sqltypes.VarChar, 12, Collation_Information_Schema_Default), false), Nullable: false, Source: EventsTableName},
 	{Name: "CREATED", Type: types.Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "LAST_ALTERED", Type: types.Timestamp, Default: nil, Nullable: false, Source: EventsTableName},
 	{Name: "LAST_EXECUTED", Type: types.Datetime, Default: nil, Nullable: true, Source: EventsTableName},
@@ -328,7 +330,7 @@ var filesSchema = Schema{
 	{Name: "FILE_NAME", Type: types.Text, Default: nil, Nullable: true, Source: FilesTableName},
 	{Name: "FILE_TYPE", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: FilesTableName},
 	{Name: "TABLESPACE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 268, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: FilesTableName},
-	{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.Char, 0, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateString(sqltypes.Char, 0, Collation_Information_Schema_Default), false), Nullable: true, Source: FilesTableName},
+	{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.Char, 0, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.MustCreateString(sqltypes.Char, 0, Collation_Information_Schema_Default), false), Nullable: true, Source: FilesTableName},
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateBinary(sqltypes.Binary, 0), Default: nil, Nullable: true, Source: FilesTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateBinary(sqltypes.Binary, 0), Default: nil, Nullable: true, Source: FilesTableName},
 	{Name: "LOGFILE_GROUP_NAME", Type: types.MustCreateString(sqltypes.VarChar, 256, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: FilesTableName},
@@ -372,7 +374,7 @@ var keyColumnUsageSchema = Schema{
 	{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
 	{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
 	{Name: "COLUMN_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
-	{Name: "ORDINAL_POSITION", Type: types.Uint32, Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Uint32, false), Nullable: false, Source: KeyColumnUsageTableName},
+	{Name: "ORDINAL_POSITION", Type: types.Uint32, Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, "0", types.Uint32, false), Nullable: false, Source: KeyColumnUsageTableName},
 	{Name: "POSITION_IN_UNIQUE_CONSTRAINT", Type: types.Uint32, Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
 	{Name: "REFERENCED_TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
 	{Name: "REFERENCED_TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: KeyColumnUsageTableName},
@@ -395,7 +397,7 @@ var parametersSchema = Schema{
 	{Name: "SPECIFIC_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "SPECIFIC_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "SPECIFIC_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: ParametersTableName},
-	{Name: "ORDINAL_POSITION", Type: types.Uint64, Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), "0", types.Uint64, false), Nullable: false, Source: ParametersTableName},
+	{Name: "ORDINAL_POSITION", Type: types.Uint64, Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, "0", types.Uint64, false), Nullable: false, Source: ParametersTableName},
 	{Name: "PARAMETER_MODE", Type: types.MustCreateString(sqltypes.VarChar, 5, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "PARAMETER_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: ParametersTableName},
 	{Name: "DATA_TYPE", Type: types.LongText, Default: nil, Nullable: true, Source: ParametersTableName},
@@ -561,10 +563,10 @@ var routinesSchema = Schema{
 	{Name: "CHARACTER_SET_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: RoutinesTableName},
 	{Name: "COLLATION_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: RoutinesTableName},
 	{Name: "DTD_IDENTIFIER", Type: types.LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
-	{Name: "ROUTINE_BODY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), false), Nullable: false, Source: RoutinesTableName},
+	{Name: "ROUTINE_BODY", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `""`, types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), false), Nullable: false, Source: RoutinesTableName},
 	{Name: "ROUTINE_DEFINITION", Type: types.LongText, Default: nil, Nullable: true, Source: RoutinesTableName},
 	{Name: "EXTERNAL_NAME", Type: types.MustCreateBinary(sqltypes.Binary, 0), Default: nil, Nullable: true, Source: RoutinesTableName},
-	{Name: "EXTERNAL_LANGUAGE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(NewEmptyContext(), `"SQL"`, types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), false), Nullable: false, Source: RoutinesTableName},
+	{Name: "EXTERNAL_LANGUAGE", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: planbuilder.MustStringToColumnDefaultValue(sqlCtx, `"SQL"`, types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), false), Nullable: false, Source: RoutinesTableName},
 	{Name: "PARAMETER_STYLE", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: RoutinesTableName},
 	{Name: "IS_DETERMINISTIC", Type: types.MustCreateString(sqltypes.VarChar, 3, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: RoutinesTableName},
 	{Name: "SQL_DATA_ACCESS", Type: types.MustCreateEnumType([]string{"CONTAINS SQL", "NO SQL", "READS SQL DATA", "MODIFIES SQL DATA"}, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: RoutinesTableName},

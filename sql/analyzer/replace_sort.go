@@ -72,7 +72,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			lookup.IsSpatialLookup,
 			true,
 		)
-		nn, err := plan.NewStaticIndexedAccessForTableNode(n.TableNode, lookup)
+		nn, err := plan.NewStaticIndexedAccessForTableNode(ctx, n.TableNode, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -140,10 +140,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if oi, ok := idx.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
 			return n, transform.SameTree, nil
 		}
-		if !idx.CanSupport(lookup.Ranges.(sql.MySQLRangeCollection).ToRanges()...) {
+		if !idx.CanSupport(ctx, lookup.Ranges.(sql.MySQLRangeCollection).ToRanges()...) {
 			return n, transform.SameTree, nil
 		}
-		nn, err := plan.NewStaticIndexedAccessForTableNode(n, lookup)
+		nn, err := plan.NewStaticIndexedAccessForTableNode(ctx, n, lookup)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
