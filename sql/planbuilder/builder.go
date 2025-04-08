@@ -113,7 +113,7 @@ func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser)
 	if p == nil {
 		p = sql.GlobalParser
 	}
-	
+
 	var state sql.AuthorizationQueryState
 	if cat != nil {
 		state = cat.AuthorizationHandler().NewQueryState(ctx)

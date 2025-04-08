@@ -133,7 +133,7 @@ func RemoveSpaceAndDelimiter(query string, d rune) string {
 	})
 }
 
-type MySqlSchemaFormatter struct {}
+type MySqlSchemaFormatter struct{}
 
 var _ SchemaFormatter = &MySqlSchemaFormatter{}
 
@@ -243,7 +243,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableIndexDefinition(isUnique, isSp
 // GenerateCreateTableForiegnKeyDefinition implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTableForiegnKeyDefinition(fkName string, fkCols []string, parentTbl string, parentCols []string, onDelete, onUpdate string) string {
 	keyCols := strings.Join(m.QuoteIdentifiers(fkCols), ",")
- 	refCols := strings.Join(m.QuoteIdentifiers(parentCols), ",")
+	refCols := strings.Join(m.QuoteIdentifiers(parentCols), ",")
 	fkey := fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", m.QuoteIdentifier(fkName), keyCols, m.QuoteIdentifier(parentTbl), refCols)
 	if onDelete != "" {
 		fkey = fmt.Sprintf("%s ON DELETE %s", fkey, onDelete)
