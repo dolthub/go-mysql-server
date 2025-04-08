@@ -731,7 +731,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		}
 
 		// go to the appropriate block
-		cond, _, err := types.Boolean.Convert(row[0])
+		cond, _, err := types.Boolean.Convert(ctx, row[0])
 		if err != nil {
 			return 0, nil, nil, nil, err
 		}
