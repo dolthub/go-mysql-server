@@ -39,7 +39,7 @@ func GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string {
 
 // GenerateCreateTableIndexDefinition returns index definition string for 'CREATE TABLE' statement
 // for given index. This part comes after primary key definition if there is any.
-func GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector bool, indexID string, indexCols []string, comment string) string {
+func GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector bool, indexID string, indexCols []string, comment string) (string, bool) {
 	return GlobalSchemaFormatter.GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector, indexID, indexCols, comment)
 }
 
@@ -66,7 +66,7 @@ func QuoteIdentifier(id string) string {
 func QuoteIdentifiers(ids []string) []string {
 	quoted := make([]string, len(ids))
 	for i, id := range ids {
-		quoted[i] = QuoteIdentifier(id)
+		quoted[i] = GlobalSchemaFormatter.QuoteIdentifier(id)
 	}
 	return quoted
 }

@@ -64,8 +64,9 @@ type SchemaFormatter interface {
 	// for given column(s). This part comes after each column definitions.
 	GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string
 	// GenerateCreateTableIndexDefinition returns index definition string for 'CREATE TABLE' statement
-	// for given index. This part comes after primary key definition if there is any.
-	GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector bool, indexID string, indexCols []string, comment string) string
+	// for given index. This part comes after primary key definition if there is any. Implementors can signal that the
+	// index definition provided cannot be included with the second return param
+	GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector bool, indexID string, indexCols []string, comment string) (string, bool)
 	// GenerateCreateTableForiegnKeyDefinition returns foreign key constraint definition string for 'CREATE TABLE' statement
 	// for given foreign key. This part comes after index definitions if there are any.
 	GenerateCreateTableForiegnKeyDefinition(fkName string, fkCols []string, parentTbl string, parentCols []string, onDelete, onUpdate string) string
@@ -151,7 +152,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colS
 	return fmt.Sprintf(
 		"CREATE%s TABLE %s (\n%s\n) ENGINE=InnoDB%s DEFAULT CHARSET=%s COLLATE=%s%s",
 		temp,
-		QuoteIdentifier(tblName),
+		m.QuoteIdentifier(tblName),
 		strings.Join(colStmts, ",\n"),
 		autoInc,
 		tblCharsetName,
@@ -168,7 +169,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, 
 	} else {
 		colTypeString = col.Type.String()
 	}
-	stmt := fmt.Sprintf("  %s %s", QuoteIdentifier(col.Name), colTypeString)
+	stmt := fmt.Sprintf("  %s %s", m.QuoteIdentifier(col.Name), colTypeString)
 	if !col.Nullable {
 		stmt = fmt.Sprintf("%s NOT NULL", stmt)
 	}
@@ -207,11 +208,11 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, 
 
 // GenerateCreateTablePrimaryKeyDefinition implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTablePrimaryKeyDefinition(pkCols []string) string {
-	return fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(QuoteIdentifiers(pkCols), ","))
+	return fmt.Sprintf("  PRIMARY KEY (%s)", strings.Join(m.QuoteIdentifiers(pkCols), ","))
 }
 
 // GenerateCreateTableIndexDefinition implements the SchemaFormatter interface.
-func (m *MySqlSchemaFormatter) GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector bool, indexID string, indexCols []string, comment string) string {
+func (m *MySqlSchemaFormatter) GenerateCreateTableIndexDefinition(isUnique, isSpatial, isFullText, isVector bool, indexID string, indexCols []string, comment string) (string, bool) {
 	unique := ""
 	if isUnique {
 		unique = "UNIQUE "
@@ -232,18 +233,18 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableIndexDefinition(isUnique, isSp
 		vector = "VECTOR "
 	}
 
-	key := fmt.Sprintf("  %s%s%s%sKEY %s (%s)", unique, spatial, fulltext, vector, QuoteIdentifier(indexID), strings.Join(indexCols, ","))
+	key := fmt.Sprintf("  %s%s%s%sKEY %s (%s)", unique, spatial, fulltext, vector, m.QuoteIdentifier(indexID), strings.Join(indexCols, ","))
 	if comment != "" {
 		key = fmt.Sprintf("%s COMMENT '%s'", key, comment)
 	}
-	return key
+	return key, true
 }
 
 // GenerateCreateTableForiegnKeyDefinition implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTableForiegnKeyDefinition(fkName string, fkCols []string, parentTbl string, parentCols []string, onDelete, onUpdate string) string {
-	keyCols := strings.Join(QuoteIdentifiers(fkCols), ",")
-	refCols := strings.Join(QuoteIdentifiers(parentCols), ",")
-	fkey := fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", QuoteIdentifier(fkName), keyCols, QuoteIdentifier(parentTbl), refCols)
+	keyCols := strings.Join(m.QuoteIdentifiers(fkCols), ",")
+ 	refCols := strings.Join(m.QuoteIdentifiers(parentCols), ",")
+	fkey := fmt.Sprintf("  CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)", m.QuoteIdentifier(fkName), keyCols, m.QuoteIdentifier(parentTbl), refCols)
 	if onDelete != "" {
 		fkey = fmt.Sprintf("%s ON DELETE %s", fkey, onDelete)
 	}
@@ -255,7 +256,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableForiegnKeyDefinition(fkName st
 
 // GenerateCreateTableCheckConstraintClause implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTableCheckConstraintClause(checkName, checkExpr string, enforced bool) string {
-	cc := fmt.Sprintf("  CONSTRAINT %s CHECK (%s)", QuoteIdentifier(checkName), checkExpr)
+	cc := fmt.Sprintf("  CONSTRAINT %s CHECK (%s)", m.QuoteIdentifier(checkName), checkExpr)
 	if !enforced {
 		cc = fmt.Sprintf("%s /*!80016 NOT ENFORCED */", cc)
 	}
@@ -266,4 +267,14 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableCheckConstraintClause(checkNam
 // identifier by replacing them with double backticks.
 func (m *MySqlSchemaFormatter) QuoteIdentifier(id string) string {
 	return fmt.Sprintf("`%s`", strings.ReplaceAll(id, "`", "``"))
+}
+
+// QuoteIdentifiers wraps each of the specified identifiers in backticks, escapes all occurrences of backticks in
+// the identifier, and returns a slice of the quoted identifiers.
+func (m *MySqlSchemaFormatter) QuoteIdentifiers(ids []string) []string {
+	quoted := make([]string, len(ids))
+	for i, id := range ids {
+		quoted[i] = m.QuoteIdentifier(id)
+	}
+	return quoted
 }
