@@ -160,6 +160,9 @@ func (p *Procedure) DebugString() string {
 
 // Schema implements the sql.Node interface.
 func (p *Procedure) Schema() sql.Schema {
+	if p.ExternalProc != nil {
+		return p.ExternalProc.Schema()
+	}
 	return types.OkResultSchema
 }
 

@@ -15,7 +15,8 @@
 package procedures
 
 import (
-	"errors"
+		"context"
+"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -34,9 +35,9 @@ import (
 type InterpreterNode interface {
 	GetAsOf() sql.Expression
 	GetRunner() sql.StatementRunner
-	GetReturn() sql.Type
 	GetStatements() []*InterpreterOperation
 	SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node
+	SetSchema(sch sql.Schema)
 }
 
 type Parameter struct {
@@ -282,10 +283,10 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 	return expr, nil
 }
 
-func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sql.RowIter, error) {
-	_, rowIter, _, err := runner.QueryWithBindings(ctx, "", stmt, nil, nil)
+func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sql.Schema, sql.RowIter, error) {
+	sch, rowIter, _, err := runner.QueryWithBindings(ctx, "", stmt, nil, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var rows []sql.Row
 	for {
@@ -294,14 +295,14 @@ func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sq
 			if rErr == io.EOF {
 				break
 			}
-			return nil, rErr
+			return nil, nil, rErr
 		}
 		rows = append(rows, row)
 	}
 	if err = rowIter.Close(ctx); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return sql.RowsToRowIter(rows...), nil
+	return sch, sql.RowsToRowIter(rows...), nil
 }
 
 // handleError handles errors that occur during the execution of a procedure according to the defined handlers.
@@ -340,7 +341,7 @@ func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *Interprete
 		return -1, err
 	}
 
-	_, _, rowIter, err := execOp(ctx, runner, stack, handlerOps[0], handlerOps, nil, -1)
+	_, _, _, rowIter, err := execOp(ctx, runner, stack, handlerOps[0], handlerOps, nil, -1)
 	if err != nil {
 		return -1, err
 	}
@@ -378,56 +379,59 @@ func handleError(ctx *sql.Context, runner sql.StatementRunner, stack *Interprete
 	return counter, nil
 }
 
-func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStack, operation *InterpreterOperation, statements []*InterpreterOperation, asOf *ast.AsOf, counter int) (int, sql.RowIter, sql.RowIter, error) {
+func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStack, operation *InterpreterOperation, statements []*InterpreterOperation, asOf *ast.AsOf, counter int) (int, sql.Schema, sql.RowIter, sql.RowIter, error) {
 	switch operation.OpCode {
 	case OpCode_Select:
+		if counter == 2 {
+			print()
+		}
 		selectStmt := operation.PrimaryData.(*ast.Select)
 		if newSelectStmt, err := replaceVariablesInExpr(ctx, stack, selectStmt, asOf); err == nil {
 			selectStmt = newSelectStmt.(*ast.Select)
 		} else {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 
 		if selectStmt.Into == nil {
-			rowIter, err := query(ctx, runner, selectStmt)
+			sch, rowIter, err := query(ctx, runner, selectStmt)
 			if err != nil {
-				return 0, nil, nil, err
+				return 0, nil, nil, nil, err
 			}
-			return counter, rowIter, rowIter, nil
+			return counter, sch, rowIter, rowIter, nil
 		}
 
 		selectInto := selectStmt.Into
 		selectStmt.Into = nil
 		schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		row, err := rowIter.Next(ctx)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if _, err = rowIter.Next(ctx); err != io.EOF {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if err = rowIter.Close(ctx); err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if len(row) != len(selectInto.Variables) {
-			return 0, nil, nil, sql.ErrColumnNumberDoesNotMatch.New()
+			return 0, nil, nil, nil, sql.ErrColumnNumberDoesNotMatch.New()
 		}
 		for i := range selectInto.Variables {
 			intoVar := strings.ToLower(selectInto.Variables[i].String())
 			if strings.HasPrefix(intoVar, "@") {
 				err = ctx.SetUserVariable(ctx, intoVar, row[i], schema[i].Type)
 				if err != nil {
-					return 0, nil, nil, err
+					return 0, nil, nil, nil, err
 				}
 			}
 			err = stack.SetVariable(intoVar, row[i])
 			if err != nil {
 				err = ctx.Session.SetStoredProcParam(intoVar, row[i])
 				if err != nil {
-					return 0, nil, nil, err
+					return 0, nil, nil, nil, err
 				}
 			}
 		}
@@ -443,17 +447,17 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			var err error
 			if stateVal != "" {
 				if len(stateVal) != 5 {
-					return 0, nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+					return 0, nil, nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
 				}
 				if stateVal[0:2] == "00" {
-					return 0, nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", stateVal)
+					return 0, nil, nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", stateVal)
 				}
 			} else {
 				// use our own error
 				num, err = strconv.ParseInt(string(cond.MysqlErrorCode.Val), 10, 64)
 				if err != nil || num == 0 {
 					err = fmt.Errorf("invalid value '%s' for MySQL error code", string(cond.MysqlErrorCode.Val))
-					return 0, nil, nil, err
+					return 0, nil, nil, nil, err
 				}
 			}
 			stack.NewCondition(condName, stateVal, num)
@@ -468,7 +472,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		// TODO: duplicate handlers?
 		if handler := declareStmt.Handler; handler != nil {
 			if len(handler.ConditionValues) != 1 {
-				return 0, nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
+				return 0, nil, nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
 			}
 
 			hCond := handler.ConditionValues[0]
@@ -476,14 +480,14 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			case ast.DeclareHandlerCondition_NotFound:
 			case ast.DeclareHandlerCondition_SqlException:
 			default:
-				return 0, nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
+				return 0, nil, nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
 			}
 
 			switch handler.Action {
 			case ast.DeclareHandlerAction_Continue:
 			case ast.DeclareHandlerAction_Exit:
 			case ast.DeclareHandlerAction_Undo:
-				return 0, nil, nil, fmt.Errorf("unsupported handler action: %s", handler.Action)
+				return 0, nil, nil, nil, fmt.Errorf("unsupported handler action: %s", handler.Action)
 			}
 
 			stack.NewHandler(hCond.ValueType, handler.Action, handler.Statement, counter)
@@ -494,7 +498,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			for _, decl := range vars.Names {
 				varType, err := types.ColumnTypeToType(&vars.VarType)
 				if err != nil {
-					return 0, nil, nil, err
+					return 0, nil, nil, nil, err
 				}
 				varName := strings.ToLower(decl.String())
 				if vars.VarType.Default == nil {
@@ -514,19 +518,19 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		if signalStmt.ConditionName == "" {
 			sqlState = signalStmt.SqlStateValue
 			if sqlState[0:2] == "01" {
-				return 0, nil, nil, fmt.Errorf("warnings not yet implemented")
+				return 0, nil, nil, nil, fmt.Errorf("warnings not yet implemented")
 			}
 		} else {
 			cond := stack.GetCondition(strings.ToLower(signalStmt.ConditionName))
 			if cond == nil {
-				return 0, nil, nil, sql.ErrDeclareConditionNotFound.New(signalStmt.ConditionName)
+				return 0, nil, nil, nil, sql.ErrDeclareConditionNotFound.New(signalStmt.ConditionName)
 			}
 			sqlState = cond.SQLState
 			mysqlErrNo = int(cond.MySQLErrCode)
 		}
 
 		if len(sqlState) != 5 {
-			return 0, nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+			return 0, nil, nil, nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
 		}
 
 		for _, item := range signalStmt.Info {
@@ -536,35 +540,35 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 				case *ast.SQLVal:
 					num, err := strconv.ParseInt(string(val.Val), 10, 64)
 					if err != nil || num == 0 {
-						return 0, nil, nil, fmt.Errorf("invalid value '%s' for MySQL error code", string(val.Val))
+						return 0, nil, nil, nil, fmt.Errorf("invalid value '%s' for MySQL error code", string(val.Val))
 					}
 					mysqlErrNo = int(num)
 				case *ast.ColName:
-					return 0, nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
+					return 0, nil, nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
 				default:
-					return 0, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
+					return 0, nil, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
 				}
 			case ast.SignalConditionItemName_MessageText:
 				switch val := item.Value.(type) {
 				case *ast.SQLVal:
 					msgTxt = string(val.Val)
 					if len(msgTxt) > 128 {
-						return 0, nil, nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
+						return 0, nil, nil, nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
 					}
 				case *ast.ColName:
-					return 0, nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
+					return 0, nil, nil, nil, fmt.Errorf("unsupported signal message text type: %T", val)
 				default:
-					return 0, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
+					return 0, nil, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item MESSAGE_TEXT", val)
 				}
 			default:
 				switch val := item.Value.(type) {
 				case *ast.SQLVal:
 					msgTxt = string(val.Val)
 					if len(msgTxt) > 64 {
-						return 0, nil, nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(item.ConditionItemName)))
+						return 0, nil, nil, nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(item.ConditionItemName)))
 					}
 				default:
-					return 0, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item '%s''", item.Value, strings.ToUpper(string(item.ConditionItemName)))
+					return 0, nil, nil, nil, fmt.Errorf("invalid value '%v' for signal condition information item '%s''", item.Value, strings.ToUpper(string(item.ConditionItemName)))
 				}
 			}
 		}
@@ -583,7 +587,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		if msgTxt == "" {
 			switch sqlState[0:2] {
 			case "00":
-				return 0, nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", sqlState)
+				return 0, nil, nil, nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", sqlState)
 			case "01":
 				msgTxt = "Unhandled user-defined warning condition"
 			case "02":
@@ -593,24 +597,24 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			}
 		}
 
-		return 0, nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, msgTxt)
+		return 0, nil, nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, msgTxt)
 
 	case OpCode_Open:
 		openCur := operation.PrimaryData.(*ast.OpenCursor)
 		cursor := stack.GetCursor(strings.ToLower(openCur.Name))
 		if cursor == nil {
-			return 0, nil, nil, sql.ErrCursorNotFound.New(openCur.Name)
+			return 0, nil, nil, nil, sql.ErrCursorNotFound.New(openCur.Name)
 		}
 		if cursor.RowIter != nil {
-			return 0, nil, nil, sql.ErrCursorAlreadyOpen.New(openCur.Name)
+			return 0, nil, nil, nil, sql.ErrCursorAlreadyOpen.New(openCur.Name)
 		}
 		stmt, err := replaceVariablesInExpr(ctx, stack, cursor.SelectStmt, asOf)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		schema, rowIter, _, err := runner.QueryWithBindings(ctx, "", stmt.(ast.Statement), nil, nil)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		cursor.Schema = schema
 		cursor.RowIter = rowIter
@@ -619,33 +623,33 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		fetchCur := operation.PrimaryData.(*ast.FetchCursor)
 		cursor := stack.GetCursor(strings.ToLower(fetchCur.Name))
 		if cursor == nil {
-			return 0, nil, nil, sql.ErrCursorNotFound.New(fetchCur.Name)
+			return 0, nil, nil, nil, sql.ErrCursorNotFound.New(fetchCur.Name)
 		}
 		if cursor.RowIter == nil {
-			return 0, nil, nil, sql.ErrCursorNotOpen.New(fetchCur.Name)
+			return 0, nil, nil, nil, sql.ErrCursorNotOpen.New(fetchCur.Name)
 		}
 		row, err := cursor.RowIter.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
-				return 0, nil, nil, expression.FetchEOF
+				return 0, nil, nil, nil, expression.FetchEOF
 			}
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if len(row) != len(fetchCur.Variables) {
-			return 0, nil, nil, sql.ErrFetchIncorrectCount.New()
+			return 0, nil, nil, nil, sql.ErrFetchIncorrectCount.New()
 		}
 		for i := range fetchCur.Variables {
 			varName := strings.ToLower(fetchCur.Variables[i])
 			if strings.HasPrefix(varName, "@") {
 				err = ctx.SetUserVariable(ctx, varName, row[i], cursor.Schema[i].Type)
 				if err != nil {
-					return 0, nil, nil, err
+					return 0, nil, nil, nil, err
 				}
 				continue
 			}
 			err = stack.SetVariable(varName, row[i])
 			if err != nil {
-				return 0, nil, nil, err
+				return 0, nil, nil, nil, err
 			}
 		}
 
@@ -653,13 +657,13 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		closeCur := operation.PrimaryData.(*ast.CloseCursor)
 		cursor := stack.GetCursor(strings.ToLower(closeCur.Name))
 		if cursor == nil {
-			return 0, nil, nil, sql.ErrCursorNotFound.New(closeCur.Name)
+			return 0, nil, nil, nil, sql.ErrCursorNotFound.New(closeCur.Name)
 		}
 		if cursor.RowIter == nil {
-			return 0, nil, nil, sql.ErrCursorNotOpen.New(closeCur.Name)
+			return 0, nil, nil, nil, sql.ErrCursorNotOpen.New(closeCur.Name)
 		}
 		if err := cursor.RowIter.Close(ctx); err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		cursor.RowIter = nil
 
@@ -671,30 +675,30 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		for i := range selectStmt.SelectExprs {
 			newNode, err := replaceVariablesInExpr(ctx, stack, selectStmt.SelectExprs[i], asOf)
 			if err != nil {
-				return 0, nil, nil, err
+				return 0, nil, nil, nil, err
 			}
 			selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
 		}
 		_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		row, err := rowIter.Next(ctx)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if _, err = rowIter.Next(ctx); err != io.EOF {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if err = rowIter.Close(ctx); err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 
 		err = stack.SetVariable(strings.ToLower(operation.Target), row[0])
 		if err != nil {
 			err = ctx.Session.SetStoredProcParam(operation.Target, row[0])
 			if err != nil {
-				return 0, nil, nil, err
+				return 0, nil, nil, nil, err
 			}
 		}
 
@@ -706,30 +710,30 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		for i := range selectStmt.SelectExprs {
 			newNode, err := replaceVariablesInExpr(ctx, stack, selectStmt.SelectExprs[i], asOf)
 			if err != nil {
-				return 0, nil, nil, err
+				return 0, nil, nil, nil, err
 			}
 			selectStmt.SelectExprs[i] = newNode.(ast.SelectExpr)
 		}
 		_, rowIter, _, err := runner.QueryWithBindings(ctx, "", selectStmt, nil, nil)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		// TODO: exactly one result that is a bool for now
 		row, err := rowIter.Next(ctx)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if _, err = rowIter.Next(ctx); err != io.EOF {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if err = rowIter.Close(ctx); err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 
 		// go to the appropriate block
 		cond, _, err := types.Boolean.Convert(row[0])
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		if cond == nil || cond.(int8) == 0 {
 			counter = operation.Index - 1 // index of the else block, offset by 1
@@ -767,17 +771,17 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 	case OpCode_Execute:
 		stmt, err := replaceVariablesInExpr(ctx, stack, operation.PrimaryData, asOf)
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
 		// TODO: create a OpCode_Call to store procedures in the stack
-		rowIter, err := query(ctx, runner, stmt.(ast.Statement))
+		_, rowIter, err := query(ctx, runner, stmt.(ast.Statement))
 		if err != nil {
-			return 0, nil, nil, err
+			return 0, nil, nil, nil, err
 		}
-		return counter, nil, rowIter, err
+		return counter, nil, nil, rowIter, err
 
 	case OpCode_Exception:
-		return 0, nil, nil, operation.Error
+		return 0, nil, nil, nil, operation.Error
 
 	case OpCode_ScopeBegin:
 		stack.PushScope()
@@ -789,7 +793,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		panic("unimplemented opcode")
 	}
 
-	return counter, nil, nil, nil
+	return counter, nil, nil, nil, nil
 }
 
 // Call runs the contained operations on the given runner.
@@ -828,6 +832,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.Row
 
 	// TODO: remove this; track last selectRowIter
 	var selIter sql.RowIter
+	var selSch  sql.Schema
 
 	// Run the statements
 	// TODO: eventually return multiple sql.RowIters
@@ -843,10 +848,17 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.Row
 			break
 		}
 
+		// TODO: server engine can't run multiple statements in procedures because the ctx keeps getting cancelled
+		//   from the TrackedRowIter.
+		//   Uncancel query?
+		//   Use subcontexts?
+		subCtx := sql.NewContext(context.Background())
+		subCtx.Session = ctx.Session
+
 		operation := statements[counter]
-		newCounter, newSelIter, rowIter, err := execOp(ctx, runner, stack, operation, statements, asOf, counter)
+		newCounter, newSelSch, newSelIter, rowIter, err := execOp(subCtx, runner, stack, operation, statements, asOf, counter)
 		if err != nil {
-			hCounter, hErr := handleError(ctx, runner, stack, statements, counter, err)
+			hCounter, hErr := handleError(subCtx, runner, stack, statements, counter, err)
 			if hErr != nil && hErr != io.EOF {
 				return nil, nil, hErr
 			}
@@ -861,15 +873,19 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.Row
 		}
 		if newSelIter != nil {
 			selIter = newSelIter
+			selSch  = newSelSch
 		}
 		counter = newCounter
 	}
 
 	if selIter != nil {
+		iNode.SetSchema(selSch)
 		return selIter, stack, nil
 	}
 	if len(rowIters) == 0 {
 		rowIters = append(rowIters, sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}))
 	}
+
+	// TODO: probably need to set result schema for these too
 	return rowIters[len(rowIters)-1], stack, nil
 }

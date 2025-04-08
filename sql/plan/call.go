@@ -38,6 +38,9 @@ type Call struct {
 	// this will have list of parsed operations to run
 	Runner sql.StatementRunner
 	Ops    []procedures.InterpreterOperation
+
+	// TODO: sure whatever
+	resSch   sql.Schema
 }
 
 var _ sql.Node = (*Call)(nil)
@@ -84,6 +87,9 @@ func (c *Call) IsReadOnly() bool {
 
 // Schema implements the sql.Node interface.
 func (c *Call) Schema() sql.Schema {
+	if c.resSch != nil {
+		return c.resSch
+	}
 	if c.Procedure != nil {
 		return c.Procedure.Schema()
 	}
@@ -224,7 +230,8 @@ func (c *Call) GetStatements() []*procedures.InterpreterOperation {
 	return c.Procedure.Ops
 }
 
-// GetReturn implements the sql.InterpreterNode interface.
-func (c *Call) GetReturn() sql.Type {
-	return nil
+// SetSchema implements the sql.InterpreterNode interface.
+func (c *Call) SetSchema(sch sql.Schema) {
+	c.resSch = sch
 }
+

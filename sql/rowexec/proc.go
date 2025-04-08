@@ -231,6 +231,9 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 	}
 
 	rowIter, _, err := procedures.Call(ctx, n, procParams)
+	if err != nil && err.Error() == "context canceled" {
+		print()
+	}
 	if err != nil {
 		return nil, err
 	}
