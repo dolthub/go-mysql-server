@@ -15,8 +15,8 @@
 package procedures
 
 import (
-		"context"
-"errors"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -832,7 +832,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.Row
 
 	// TODO: remove this; track last selectRowIter
 	var selIter sql.RowIter
-	var selSch  sql.Schema
+	var selSch sql.Schema
 
 	// Run the statements
 	// TODO: eventually return multiple sql.RowIters
@@ -873,7 +873,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode, params []*Parameter) (sql.Row
 		}
 		if newSelIter != nil {
 			selIter = newSelIter
-			selSch  = newSelSch
+			selSch = newSelSch
 		}
 		counter = newCounter
 	}

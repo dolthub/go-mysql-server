@@ -40,7 +40,7 @@ type Call struct {
 	Ops    []procedures.InterpreterOperation
 
 	// TODO: sure whatever
-	resSch   sql.Schema
+	resSch sql.Schema
 }
 
 var _ sql.Node = (*Call)(nil)
@@ -234,4 +234,3 @@ func (c *Call) GetStatements() []*procedures.InterpreterOperation {
 func (c *Call) SetSchema(sch sql.Schema) {
 	c.resSch = sch
 }
-
