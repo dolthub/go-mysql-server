@@ -1417,8 +1417,8 @@ type StdDevPopAgg struct {
 	partitionStart int
 	partitionEnd   int
 
-	prefixSum  []float64
-	nullCnt    []int
+	prefixSum []float64
+	nullCnt   []int
 }
 
 func NewStdDevPopAgg(e sql.Expression) *StdDevPopAgg {
@@ -1454,7 +1454,7 @@ func (s *StdDevPopAgg) DefaultFramer() sql.WindowFramer {
 func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	s.Dispose()
 	s.partitionStart = interval.Start
-	s.partitionEnd   = interval.End
+	s.partitionEnd = interval.End
 	var err error
 	s.prefixSum, s.nullCnt, err = floatPrefixSum(ctx, interval, buf, s.expr)
 	return err
@@ -1516,8 +1516,8 @@ type StdDevSampAgg struct {
 	partitionStart int
 	partitionEnd   int
 
-	prefixSum  []float64
-	nullCnt    []int
+	prefixSum []float64
+	nullCnt   []int
 }
 
 func NewStdDevSampAgg(e sql.Expression) *StdDevSampAgg {
@@ -1553,7 +1553,7 @@ func (s *StdDevSampAgg) DefaultFramer() sql.WindowFramer {
 func (s *StdDevSampAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	s.Dispose()
 	s.partitionStart = interval.Start
-	s.partitionEnd   = interval.End
+	s.partitionEnd = interval.End
 	var err error
 	s.prefixSum, s.nullCnt, err = floatPrefixSum(ctx, interval, buf, s.expr)
 	return err
@@ -1582,5 +1582,5 @@ func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, b
 		return err
 	}
 
-	return math.Sqrt(v / float64(nonNullCnt - 1))
+	return math.Sqrt(v / float64(nonNullCnt-1))
 }

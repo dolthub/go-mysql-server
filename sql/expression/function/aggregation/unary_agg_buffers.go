@@ -772,9 +772,9 @@ func (s *stdDevSampBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	s.newMean = s.oldMean + (val - s.oldMean) / float64(s.count)
-	s.newVar  = s.oldVar  + (val - s.oldMean) * (val - s.newMean)
-	s.oldVar  = s.newVar
+	s.newMean = s.oldMean + (val-s.oldMean)/float64(s.count)
+	s.newVar = s.oldVar + (val-s.oldMean)*(val-s.newMean)
+	s.oldVar = s.newVar
 	s.oldMean = s.newMean
 
 	return nil
@@ -785,7 +785,7 @@ func (s *stdDevSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	if s.count <= 1 {
 		return nil, nil
 	}
-	return math.Sqrt(s.newVar / float64(s.count - 1)), nil
+	return math.Sqrt(s.newVar / float64(s.count-1)), nil
 }
 
 // Dispose implements the Disposable interface.
