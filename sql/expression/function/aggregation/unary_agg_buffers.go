@@ -3,7 +3,7 @@ package aggregation
 import (
 	"fmt"
 	"math"
-"reflect"
+	"reflect"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/shopspring/decimal"
@@ -711,9 +711,9 @@ func (s *stdDevPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	s.newMean = s.oldMean + (val - s.oldMean) / float64(s.count)
-	s.newVar  = s.oldVar  + (val - s.oldMean) * (val - s.newMean)
-	s.oldVar  = s.newVar
+	s.newMean = s.oldMean + (val-s.oldMean)/float64(s.count)
+	s.newVar = s.oldVar + (val-s.oldMean)*(val-s.newMean)
+	s.oldVar = s.newVar
 	s.oldMean = s.newMean
 
 	return nil
