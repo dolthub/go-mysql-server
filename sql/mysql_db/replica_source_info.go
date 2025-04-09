@@ -27,6 +27,7 @@ import (
 type ReplicaSourceInfo struct {
 	Host                 string
 	User                 string
+	Ssl                  bool
 	Password             string
 	Port                 uint16
 	Uuid                 string
@@ -58,6 +59,12 @@ func ReplicaSourceInfoToRow(ctx *sql.Context, v *ReplicaSourceInfo) (sql.Row, er
 	row[replicaSourceInfoTblColIndex_Connect_retry] = v.ConnectRetryInterval
 	row[replicaSourceInfoTblColIndex_Retry_count] = v.ConnectRetryCount
 
+	if v.Ssl {
+		row[replicaSourceInfoTblColIndex_Enabled_ssl] = 1
+	} else {
+		row[replicaSourceInfoTblColIndex_Enabled_ssl] = 0
+	}
+
 	return row, nil
 }
 
@@ -66,9 +73,15 @@ func ReplicaSourceInfoFromRow(ctx *sql.Context, row sql.Row) (*ReplicaSourceInfo
 		return nil, err
 	}
 
+	ssl := false
+	if row[replicaSourceInfoTblColIndex_Enabled_ssl] == 1 {
+		ssl = true
+	}
+
 	return &ReplicaSourceInfo{
 		Host:                 row[replicaSourceInfoTblColIndex_Host].(string),
 		User:                 row[replicaSourceInfoTblColIndex_User_name].(string),
+		Ssl:                  ssl,
 		Password:             row[replicaSourceInfoTblColIndex_User_password].(string),
 		Port:                 row[replicaSourceInfoTblColIndex_Port].(uint16),
 		Uuid:                 row[replicaSourceInfoTblColIndex_Uuid].(string),
@@ -79,6 +92,7 @@ func ReplicaSourceInfoFromRow(ctx *sql.Context, row sql.Row) (*ReplicaSourceInfo
 
 func ReplicaSourceInfoEquals(left, right *ReplicaSourceInfo) bool {
 	return left.User == right.User &&
+		left.Ssl == right.Ssl &&
 		left.Host == right.Host &&
 		left.Port == right.Port &&
 		left.Password == right.Password &&
