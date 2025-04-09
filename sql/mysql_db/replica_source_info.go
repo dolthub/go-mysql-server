@@ -73,10 +73,7 @@ func ReplicaSourceInfoFromRow(ctx *sql.Context, row sql.Row) (*ReplicaSourceInfo
 		return nil, err
 	}
 
-	ssl := false
-	if row[replicaSourceInfoTblColIndex_Enabled_ssl] == 1 {
-		ssl = true
-	}
+	ssl := row[replicaSourceInfoTblColIndex_Enabled_ssl] == 1
 
 	return &ReplicaSourceInfo{
 		Host:                 row[replicaSourceInfoTblColIndex_Host].(string),
