@@ -66,6 +66,64 @@ func Unquote(s string) (string, error) {
 	return str, nil
 }
 
+// UnquoteBytes is the same as Unquote, except it modifies a byte slice in-place
+// Be careful: by reusing the slice, this destroys the original input value.
+func UnquoteBytes(b []byte) ([]byte, error) {
+	outIdx := 0
+	for i := 0; i < len(b); i++ {
+		if b[i] == '\\' {
+			i++
+			if i == len(b) {
+				b[outIdx] = '\\'
+			}
+			switch b[i] {
+			case '"':
+				b[outIdx] = '"'
+			case 'b':
+				b[outIdx] = '\b'
+			case 'f':
+				b[outIdx] = '\f'
+			case 'n':
+				b[outIdx] = '\n'
+			case 'r':
+				b[outIdx] = '\r'
+			case 't':
+				b[outIdx] = '\t'
+			case '\\':
+				b[outIdx] = '\\'
+			case 'u':
+				if i+4 > len(b) {
+					return nil, fmt.Errorf("Invalid unicode: %s", b[i+1:])
+				}
+				char, size, err := decodeEscapedUnicode(b[i+1 : i+5])
+				if err != nil {
+					return nil, err
+				}
+				for j, c := range char[:size] {
+					b[outIdx+j] = c
+				}
+				i += 4
+			default:
+				// For all other escape sequences, backslash is ignored.
+				b[outIdx] = b[i]
+			}
+		} else {
+			b[outIdx] = b[i]
+		}
+		outIdx++
+	}
+	b = b[:outIdx]
+
+	// Remove prefix and suffix '"'.
+	if outIdx > 1 {
+		head, tail := b[0], b[outIdx-1]
+		if head == '"' && tail == '"' {
+			return b[1 : outIdx-1], nil
+		}
+	}
+	return b, nil
+}
+
 // decodeEscapedUnicode decodes unicode into utf8 bytes specified in RFC 3629.
 // According RFC 3629, the max length of utf8 characters is 4 bytes.
 // And MySQL use 4 bytes to represent the unicode which must be in [0, 65536).

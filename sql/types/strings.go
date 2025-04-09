@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/internal/strings"
 	"reflect"
 	"strconv"
 	strings2 "strings"
@@ -29,7 +30,6 @@ import (
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/internal/strings"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
@@ -354,6 +354,9 @@ func ConvertToString(ctx context.Context, v interface{}, t sql.StringType, dest 
 func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest []byte) ([]byte, error) {
 	var val []byte
 	start := len(dest)
+	// Based on the type of the input, convert it into a byte array, writing it into |dest| to avoid an allocation.
+	// If the current implementation must make a separate allocation anyway, avoid copying it into dest by replacing
+	// |val| entirely (and setting |start| to 0).
 	switch s := v.(type) {
 	case bool:
 		if s {
@@ -394,7 +397,8 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	case string:
 		val = append(dest, s...)
 	case []byte:
-		val = append(dest, s...)
+		val = s
+		start = 0
 	case time.Time:
 		val = s.AppendFormat(dest, sql.TimestampDatetimeLayout)
 	case decimal.Decimal:
@@ -405,24 +409,29 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		}
 		val = append(dest, s.Decimal.String()...)
 	case sql.JSONWrapper:
-		jsonString, err := StringifyJSON(s)
+		var err error
+		val, err = JsonToMySqlBytes(s)
 		if err != nil {
 			return nil, err
 		}
-		st, err := strings.Unquote(jsonString)
+		val, err = strings.UnquoteBytes(val)
 		if err != nil {
 			return nil, err
 		}
-		val = append(dest, st...)
-	case sql.AnyWrapper:
-		unwrapped, err := s.UnwrapAny(ctx)
+		start = 0
+	case sql.Wrapper[string]:
+		unwrapped, err := s.Unwrap(ctx)
 		if err != nil {
 			return nil, err
 		}
-		val, err = ConvertToBytes(ctx, unwrapped, t, dest)
+		val = append(val, unwrapped...)
+	case sql.Wrapper[[]byte]:
+		var err error
+		val, err = s.Unwrap(ctx)
 		if err != nil {
 			return nil, err
 		}
+		start = 0
 	case GeometryValue:
 		return s.Serialize(), nil
 	default:
