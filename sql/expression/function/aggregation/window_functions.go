@@ -1460,6 +1460,29 @@ func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInter
 	return err
 }
 
+func computeVariance(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression, m float64) (float64, error) {
+	var v float64
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		val, err := expr.Eval(ctx, row)
+		if err != nil {
+			return 0, err
+		}
+		// TODO: consider saving conversions to avoid double Converts
+		val, _, err = types.Float64.Convert(ctx, val)
+		if err != nil {
+			val = 0.0
+			ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
+		}
+		if val == nil {
+			continue
+		}
+		dv := val.(float64) - m
+		v += dv * dv
+	}
+	return v, nil
+}
+
 func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	startIdx := interval.Start - s.partitionStart - 1
 	endIdx := interval.End - s.partitionStart - 1
@@ -1478,22 +1501,9 @@ func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, bu
 	}
 
 	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
-	v := 0.0
-	for i := interval.Start; i < interval.End; i++ {
-		row := buf[i]
-		val, err := s.expr.Eval(ctx, row)
-		if err != nil {
-			return err
-		}
-		val, _, err = types.Float64.Convert(ctx, val)
-		if err != nil {
-			return nil
-		}
-		if val == nil {
-			continue
-		}
-		dv := val.(float64) - m
-		v += dv * dv
+	v, err := computeVariance(ctx, interval, buf, s.expr, m)
+	if err != nil {
+		return err
 	}
 
 	return math.Sqrt(v / float64(nonNullCnt))
