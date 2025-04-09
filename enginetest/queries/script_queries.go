@@ -7888,7 +7888,7 @@ where
 		},
 	},
 	{
-		Name:    "std, stdev, stddev_pop tests",
+		Name:    "std, stdev, stddev_pop, variance, var_pop, var_samp tests",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (i int);",
@@ -7904,6 +7904,12 @@ where
 				},
 			},
 			{
+				Query: "select variance(i), var_pop(i) from t;",
+				Expected: []sql.Row{
+					{nil, nil},
+				},
+			},
+			{
 				Query: "insert into t values (1);",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
@@ -7913,6 +7919,12 @@ where
 				Query: "select std(i), stddev(i), stddev_pop(i), stddev_samp(i) from t;",
 				Expected: []sql.Row{
 					{0.0, 0.0, 0.0, nil},
+				},
+			},
+			{
+				Query: "select variance(i), var_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.0, 0.0},
 				},
 			},
 			{
@@ -7928,6 +7940,12 @@ where
 				},
 			},
 			{
+				Query: "select variance(i), var_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.25, 0.25},
+				},
+			},
+			{
 				Query: "insert into t values (3);",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
@@ -7937,6 +7955,12 @@ where
 				Query: "select std(i), stddev(i), stddev_pop(i), stddev_samp(i) from t;",
 				Expected: []sql.Row{
 					{0.816496580927726, 0.816496580927726, 0.816496580927726, 1.0},
+				},
+			},
+			{
+				Query: "select variance(i), var_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.6666666666666666, 0.6666666666666666},
 				},
 			},
 			{
@@ -7952,10 +7976,23 @@ where
 				},
 			},
 			{
+				Query: "select variance(i), var_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.6666666666666666, 0.6666666666666666},
+				},
+			},
+			{
 				Query: "select i, std(j), stddev_samp(j) from tt group by i;",
 				Expected: []sql.Row{
 					{0, 0.816496580927726, 1.0},
 					{1, 271.89336144893275, 333.0},
+				},
+			},
+			{
+				Query: "select i, variance(i) from tt group by i;",
+				Expected: []sql.Row{
+					{0, 0.0},
+					{1, 0.0},
 				},
 			},
 			{
@@ -7981,21 +8018,43 @@ where
 				},
 			},
 			{
+				Query: "select i, variance(i) over() from tt order by i;",
+				Expected: []sql.Row{
+					{0, 0.25},
+					{0, 0.25},
+					{0, 0.25},
+					{1, 0.25},
+					{1, 0.25},
+					{1, 0.25},
+				},
+			},
+			{
+				Query: "select i, variance(j) over(partition by i) from tt order by i;",
+				Expected: []sql.Row{
+					{0, 0.6666666666666666},
+					{0, 0.6666666666666666},
+					{0, 0.6666666666666666},
+					{1, 73926.0},
+					{1, 73926.0},
+					{1, 73926.0},
+				},
+			},
+			{
 				Query: "insert into tt values (null, null);",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Query: "select std(i) over(), std(j) over(), stddev_samp(j) over() from tt order by i;",
+				Query: "select i, std(i) over(), std(j) over(), stddev_samp(j) over() from tt order by i;",
 				Expected: []sql.Row{
-					{0.5, 297.47660972475353, 325.86929895281634},
-					{0.5, 297.47660972475353, 325.86929895281634},
-					{0.5, 297.47660972475353, 325.86929895281634},
-					{0.5, 297.47660972475353, 325.86929895281634},
-					{0.5, 297.47660972475353, 325.86929895281634},
-					{0.5, 297.47660972475353, 325.86929895281634},
-					{0.5, 297.47660972475353, 325.86929895281634},
+					{nil, 0.5, 297.47660972475353, 325.86929895281634},
+					{0, 0.5, 297.47660972475353, 325.86929895281634},
+					{0, 0.5, 297.47660972475353, 325.86929895281634},
+					{0, 0.5, 297.47660972475353, 325.86929895281634},
+					{1, 0.5, 297.47660972475353, 325.86929895281634},
+					{1, 0.5, 297.47660972475353, 325.86929895281634},
+					{1, 0.5, 297.47660972475353, 325.86929895281634},
 				},
 			},
 			{
@@ -8008,6 +8067,30 @@ where
 					{1, 271.89336144893275, 333.0},
 					{1, 271.89336144893275, 333.0},
 					{1, 271.89336144893275, 333.0},
+				},
+			},
+			{
+				Query: "select i, variance(i) over() from tt order by i;",
+				Expected: []sql.Row{
+					{nil, 0.25},
+					{0, 0.25},
+					{0, 0.25},
+					{0, 0.25},
+					{1, 0.25},
+					{1, 0.25},
+					{1, 0.25},
+				},
+			},
+			{
+				Query: "select i, variance(j) over(partition by i) from tt order by i;",
+				Expected: []sql.Row{
+					{nil, nil},
+					{0, 0.6666666666666666},
+					{0, 0.6666666666666666},
+					{0, 0.6666666666666666},
+					{1, 73926.0},
+					{1, 73926.0},
+					{1, 73926.0},
 				},
 			},
 		},

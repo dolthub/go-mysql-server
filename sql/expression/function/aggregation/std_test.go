@@ -94,3 +94,147 @@ func TestStd(t *testing.T) {
 		})
 	}
 }
+
+func TestStdSamp(t *testing.T) {
+	sum := NewStdDevSamp(expression.NewGetField(0, nil, "", false))
+
+	testCases := []struct {
+		name     string
+		rows     []sql.Row
+		expected interface{}
+	}{
+		{
+			"string int values",
+			[]sql.Row{{"1"}, {"2"}, {"3"}, {"4"}},
+			1.2909944487358056,
+		},
+		{
+			"string float values",
+			[]sql.Row{{"1.5"}, {"2"}, {"3"}, {"4"}},
+			1.1086778913041726,
+		},
+		{
+			"string non-int values",
+			[]sql.Row{{"a"}, {"b"}, {"c"}, {"d"}},
+			float64(0),
+		},
+		{
+			"float values",
+			[]sql.Row{{1.}, {2.5}, {3.}, {4.}},
+			1.25,
+		},
+		{
+			"no rows",
+			[]sql.Row{},
+			nil,
+		},
+		{
+			"nil values",
+			[]sql.Row{{nil}, {nil}},
+			nil,
+		},
+		{
+			"int64 values",
+			[]sql.Row{{int64(1)}, {int64(3)}},
+			1.4142135623730951,
+		},
+		{
+			"int32 values",
+			[]sql.Row{{int32(1)}, {int32(3)}},
+			1.4142135623730951,
+		},
+		{
+			"int32 and nil values",
+			[]sql.Row{{int32(1)}, {int32(3)}, {nil}},
+			1.4142135623730951,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			ctx := sql.NewEmptyContext()
+			buf, _ := sum.NewBuffer()
+			for _, row := range tt.rows {
+				require.NoError(buf.Update(ctx, row))
+			}
+
+			result, err := buf.Eval(sql.NewEmptyContext())
+			require.NoError(err)
+			require.Equal(tt.expected, result)
+		})
+	}
+}
+
+func TestVariance(t *testing.T) {
+	sum := NewVarPop(expression.NewGetField(0, nil, "", false))
+
+	testCases := []struct {
+		name     string
+		rows     []sql.Row
+		expected interface{}
+	}{
+		{
+			"string int values",
+			[]sql.Row{{"1"}, {"2"}, {"3"}, {"4"}},
+			1.25,
+		},
+		{
+			"string float values",
+			[]sql.Row{{"1.5"}, {"2"}, {"3"}, {"4"}},
+			0.9218750000000001,
+		},
+		{
+			"string non-int values",
+			[]sql.Row{{"a"}, {"b"}, {"c"}, {"d"}},
+			float64(0),
+		},
+		{
+			"float values",
+			[]sql.Row{{1.}, {2.5}, {3.}, {4.}},
+			1.171875,
+		},
+		{
+			"no rows",
+			[]sql.Row{},
+			nil,
+		},
+		{
+			"nil values",
+			[]sql.Row{{nil}, {nil}},
+			nil,
+		},
+		{
+			"int64 values",
+			[]sql.Row{{int64(1)}, {int64(3)}},
+			1.0,
+		},
+		{
+			"int32 values",
+			[]sql.Row{{int32(1)}, {int32(3)}},
+			1.0,
+		},
+		{
+			"int32 and nil values",
+			[]sql.Row{{int32(1)}, {int32(3)}, {nil}},
+			1.0,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			ctx := sql.NewEmptyContext()
+			buf, _ := sum.NewBuffer()
+			for _, row := range tt.rows {
+				require.NoError(buf.Update(ctx, row))
+			}
+
+			result, err := buf.Eval(sql.NewEmptyContext())
+			require.NoError(err)
+			require.Equal(tt.expected, result)
+		})
+	}
+}

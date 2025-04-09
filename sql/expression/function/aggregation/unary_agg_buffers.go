@@ -668,15 +668,34 @@ func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 func (j *jsonArrayBuffer) Dispose() {
 }
 
+func evalFloat64(ctx *sql.Context, row sql.Row, expr sql.Expression) (any, error) {
+	v, err := expr.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	v, _, err = types.Float64.Convert(ctx, v)
+	if err != nil {
+		v = 0.0
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
+	}
+	return v, nil
+}
+
+func calcOnlineMean(oldMean float64, val float64, count uint64) float64 {
+	return oldMean + (val - oldMean) / float64(count)
+}
+
+func calcOnlineVar2(oldMean, newMean, oldVar2, val float64) float64 {
+	return oldVar2 + (val - oldMean) * (val - newMean)
+}
+
 type stdDevPopBuffer struct {
 	vals []interface{}
 	expr sql.Expression
 
-	count   uint64
-	oldMean float64
-	newMean float64
-	oldVar  float64
-	newVar  float64
+	count uint64
+	mean  float64
+	std2  float64
 }
 
 func NewStdDevPopBuffer(child sql.Expression) *stdDevPopBuffer {
@@ -688,15 +707,9 @@ func NewStdDevPopBuffer(child sql.Expression) *stdDevPopBuffer {
 
 // Update implements the AggregationBuffer interface.
 func (s *stdDevPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	v, err := s.expr.Eval(ctx, row)
+	v, err := evalFloat64(ctx, row, s.expr)
 	if err != nil {
 		return err
-	}
-
-	v, _, err = types.Float64.Convert(ctx, v)
-	if err != nil {
-		v = 0.0
-		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
 	}
 	if v == nil {
 		return nil
@@ -705,15 +718,13 @@ func (s *stdDevPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 	s.count += 1
 	if s.count == 1 {
-		s.oldMean = val
-		s.newMean = val
+		s.mean = val
 		return nil
 	}
 
-	s.newMean = s.oldMean + (val-s.oldMean)/float64(s.count)
-	s.newVar = s.oldVar + (val-s.oldMean)*(val-s.newMean)
-	s.oldVar = s.newVar
-	s.oldMean = s.newMean
+	newMean := calcOnlineMean(s.mean, val, s.count)
+	s.std2 = calcOnlineVar2(s.mean, newMean, s.std2, val)
+	s.mean = newMean
 
 	return nil
 }
@@ -723,22 +734,19 @@ func (s *stdDevPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	if s.count == 0 {
 		return nil, nil
 	}
-	return math.Sqrt(s.newVar / float64(s.count)), nil
+	return math.Sqrt(s.std2 / float64(s.count)), nil
 }
 
 // Dispose implements the Disposable interface.
-func (s *stdDevPopBuffer) Dispose() {
-}
+func (s *stdDevPopBuffer) Dispose() {}
 
 type stdDevSampBuffer struct {
 	vals []interface{}
 	expr sql.Expression
 
-	count   uint64
-	oldMean float64
-	newMean float64
-	oldVar  float64
-	newVar  float64
+	count uint64
+	mean  float64
+	std2  float64
 }
 
 func NewStdDevSampBuffer(child sql.Expression) *stdDevSampBuffer {
@@ -750,15 +758,9 @@ func NewStdDevSampBuffer(child sql.Expression) *stdDevSampBuffer {
 
 // Update implements the AggregationBuffer interface.
 func (s *stdDevSampBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	v, err := s.expr.Eval(ctx, row)
+	v, err := evalFloat64(ctx, row, s.expr)
 	if err != nil {
 		return err
-	}
-
-	v, _, err = types.Float64.Convert(ctx, v)
-	if err != nil {
-		v = 0.0
-		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
 	}
 	if v == nil {
 		return nil
@@ -767,15 +769,13 @@ func (s *stdDevSampBuffer) Update(ctx *sql.Context, row sql.Row) error {
 
 	s.count += 1
 	if s.count == 1 {
-		s.oldMean = val
-		s.newMean = val
+		s.mean = val
 		return nil
 	}
 
-	s.newMean = s.oldMean + (val-s.oldMean)/float64(s.count)
-	s.newVar = s.oldVar + (val-s.oldMean)*(val-s.newMean)
-	s.oldVar = s.newVar
-	s.oldMean = s.newMean
+	newMean := calcOnlineMean(s.mean, val, s.count)
+	s.std2 = calcOnlineVar2(s.mean, newMean, s.std2, val)
+	s.mean = newMean
 
 	return nil
 }
@@ -785,8 +785,59 @@ func (s *stdDevSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	if s.count <= 1 {
 		return nil, nil
 	}
-	return math.Sqrt(s.newVar / float64(s.count-1)), nil
+	return math.Sqrt(s.std2 / float64(s.count-1)), nil
 }
 
 // Dispose implements the Disposable interface.
 func (s *stdDevSampBuffer) Dispose() {}
+
+type varPopBuffer struct {
+	vals []interface{}
+	expr sql.Expression
+
+	count uint64
+	mean float64
+	std2 float64
+}
+
+func NewVarPopBuffer(child sql.Expression) *varPopBuffer {
+	return &varPopBuffer{
+		vals: nil,
+		expr: child,
+	}
+}
+
+// Update implements the AggregationBuffer interface.
+func (s *varPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := evalFloat64(ctx, row, s.expr)
+	if err != nil {
+		return err
+	}
+	if v == nil {
+		return nil
+	}
+	val := v.(float64)
+
+	s.count += 1
+	if s.count == 1 {
+		s.mean = val
+		return nil
+	}
+
+	newMean := calcOnlineMean(s.mean, val, s.count)
+	s.std2 = calcOnlineVar2(s.mean, newMean, s.std2, val)
+	s.mean = newMean
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (s *varPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if s.count == 0 {
+		return nil, nil
+	}
+	return s.std2 / float64(s.count), nil
+}
+
+// Dispose implements the Disposable interface.
+func (s *varPopBuffer) Dispose() {}

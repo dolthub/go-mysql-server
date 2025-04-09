@@ -1460,7 +1460,7 @@ func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInter
 	return err
 }
 
-func computeVariance(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression, m float64) (float64, error) {
+func computeStd2(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression, m float64) (float64, error) {
 	var v float64
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
@@ -1472,7 +1472,7 @@ func computeVariance(ctx *sql.Context, interval sql.WindowInterval, buf sql.Wind
 		val, _, err = types.Float64.Convert(ctx, val)
 		if err != nil {
 			val = 0.0
-			ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
+			ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", val)
 		}
 		if val == nil {
 			continue
@@ -1501,12 +1501,12 @@ func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, bu
 	}
 
 	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
-	v, err := computeVariance(ctx, interval, buf, s.expr, m)
+	s2, err := computeStd2(ctx, interval, buf, s.expr, m)
 	if err != nil {
 		return err
 	}
 
-	return math.Sqrt(v / float64(nonNullCnt))
+	return math.Sqrt(s2 / float64(nonNullCnt))
 }
 
 type StdDevSampAgg struct {
@@ -1577,10 +1577,86 @@ func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, b
 	}
 
 	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
-	v, err := computeVariance(ctx, interval, buf, s.expr, m)
+	s2, err := computeStd2(ctx, interval, buf, s.expr, m)
 	if err != nil {
 		return err
 	}
 
-	return math.Sqrt(v / float64(nonNullCnt-1))
+	return math.Sqrt(s2 / float64(nonNullCnt - 1))
+}
+
+type VarPopAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+
+	partitionStart int
+	partitionEnd   int
+
+	prefixSum []float64
+	nullCnt   []int
+}
+
+func NewVarPopAgg(e sql.Expression) *VarPopAgg {
+	return &VarPopAgg{
+		expr: e,
+	}
+}
+
+func (v *VarPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	ns := *v
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		ns.framer = framer
+	}
+	return &ns, nil
+}
+
+func (v *VarPopAgg) Dispose() {
+	expression.Dispose(v.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (v *VarPopAgg) DefaultFramer() sql.WindowFramer {
+	if v.framer != nil {
+		return v.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (v *VarPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	v.Dispose()
+	v.partitionStart = interval.Start
+	v.partitionEnd = interval.End
+	var err error
+	v.prefixSum, v.nullCnt, err = floatPrefixSum(ctx, interval, buf, v.expr)
+	return err
+}
+
+func (v *VarPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	startIdx := interval.Start - v.partitionStart - 1
+	endIdx := interval.End - v.partitionStart - 1
+
+	var nonNullCnt int
+	if endIdx >= 0 {
+		nonNullCnt += endIdx + 1
+		nonNullCnt -= v.nullCnt[endIdx]
+	}
+	if startIdx >= 0 {
+		nonNullCnt -= startIdx + 1
+		nonNullCnt += v.nullCnt[startIdx]
+	}
+	if nonNullCnt <= 0 {
+		return nil
+	}
+
+	m := computePrefixSum(interval, v.partitionStart, v.prefixSum) / float64(nonNullCnt)
+	s2, err := computeStd2(ctx, interval, buf, v.expr, m)
+	if err != nil {
+		return err
+	}
+
+	return s2 / float64(nonNullCnt)
 }
