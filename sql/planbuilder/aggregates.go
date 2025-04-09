@@ -504,7 +504,8 @@ func isWindowFunc(name string) bool {
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
 		"row_number", "percent_rank", "lead", "lag",
 		"first_value", "last_value",
-		"rank", "dense_rank":
+		"rank", "dense_rank",
+		"std", "stddev", "stddev_pop":
 		return true
 	default:
 		return false

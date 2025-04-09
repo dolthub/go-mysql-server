@@ -693,7 +693,6 @@ func (s *stdDevPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	// TODO: convert val to appropriate type
 	v, _, err = types.Float64.Convert(ctx, v)
 	if err != nil {
 		v = 0.0
@@ -724,7 +723,7 @@ func (s *stdDevPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	if s.count == 0 {
 		return nil, nil
 	}
-	return math.Sqrt(s.newVar / float64(s.count)), nil // TODO: sqrt?
+	return math.Sqrt(s.newVar / float64(s.count)), nil
 }
 
 // Dispose implements the Disposable interface.

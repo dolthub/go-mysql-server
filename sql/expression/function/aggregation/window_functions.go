@@ -15,7 +15,8 @@
 package aggregation
 
 import (
-	"sort"
+	"math"
+"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -1412,6 +1413,12 @@ func (a *leadLagBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 type StdDevPopAgg struct {
 	expr   sql.Expression
 	framer sql.WindowFramer
+
+	partitionStart int
+	partitionEnd   int
+
+	prefixSum  []float64
+	nullCnt    []int
 }
 
 func NewStdDevPopAgg(e sql.Expression) *StdDevPopAgg {
@@ -1446,17 +1453,48 @@ func (s *StdDevPopAgg) DefaultFramer() sql.WindowFramer {
 
 func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
 	s.Dispose()
-	return nil
+	s.partitionStart = interval.Start
+	s.partitionEnd   = interval.End
+	var err error
+	s.prefixSum, s.nullCnt, err = floatPrefixSum(ctx, interval, buf, s.expr)
+	return err
 }
 
 func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	startIdx := interval.Start - s.partitionStart - 1
+	endIdx := interval.End - s.partitionStart - 1
+
+	var nonNullCnt int
+	if endIdx >= 0 {
+		nonNullCnt += endIdx + 1
+		nonNullCnt -= s.nullCnt[endIdx]
+	}
+	if startIdx >= 0 {
+		nonNullCnt -= startIdx + 1
+		nonNullCnt += s.nullCnt[startIdx]
+	}
+	if nonNullCnt == 0 {
+		return nil
+	}
+
+	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
+	v := 0.0
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
-		v, err := s.expr.Eval(ctx, row)
+		val, err := s.expr.Eval(ctx, row)
 		if err != nil {
 			return err
 		}
-		return v
+		val, _, err = types.Float64.Convert(ctx, val)
+		if err != nil {
+			return nil
+		}
+		if val == nil {
+			continue
+		}
+		dv := val.(float64) - m
+		v += dv * dv
 	}
-	return nil
+
+	return math.Sqrt(v / float64(nonNullCnt))
 }

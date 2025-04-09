@@ -7940,9 +7940,73 @@ where
 				},
 			},
 			{
+				Query: "insert into t values (null), (null);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Expected: []sql.Row{
+					{0.816496580927726, 0.816496580927726, 0.816496580927726},
+				},
+			},
+			{
 				Query: "select i, std(j) from tt group by i;",
 				Expected: []sql.Row{
 					{0, 0.816496580927726},
+					{1, 271.89336144893275},
+				},
+			},
+			{
+				Query: "select std(i) over(), std(j) over() from tt order by i;",
+				Expected: []sql.Row{
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+				},
+			},
+			{
+				Query: "select i, std(j) over(partition by i) from tt order by i;",
+				Expected: []sql.Row{
+					{0, 0.816496580927726},
+					{0, 0.816496580927726},
+					{0, 0.816496580927726},
+					{1, 271.89336144893275},
+					{1, 271.89336144893275},
+					{1, 271.89336144893275},
+				},
+			},
+			{
+				Query: "insert into tt values (null, null);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select std(i) over(), std(j) over() from tt order by i;",
+				Expected: []sql.Row{
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353},
+				},
+			},
+			{
+				Query: "select i, std(j) over(partition by i) from tt order by i;",
+				Expected: []sql.Row{
+					{nil, nil},
+					{0, 0.816496580927726},
+					{0, 0.816496580927726},
+					{0, 0.816496580927726},
+					{1, 271.89336144893275},
+					{1, 271.89336144893275},
 					{1, 271.89336144893275},
 				},
 			},
