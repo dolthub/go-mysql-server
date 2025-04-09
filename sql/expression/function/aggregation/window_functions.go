@@ -16,7 +16,7 @@ package aggregation
 
 import (
 	"math"
-"sort"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
