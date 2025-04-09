@@ -1582,7 +1582,7 @@ func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, b
 		return err
 	}
 
-	return math.Sqrt(s2 / float64(nonNullCnt - 1))
+	return math.Sqrt(s2 / float64(nonNullCnt-1))
 }
 
 type VarPopAgg struct {

@@ -682,11 +682,11 @@ func evalFloat64(ctx *sql.Context, row sql.Row, expr sql.Expression) (any, error
 }
 
 func calcOnlineMean(oldMean float64, val float64, count uint64) float64 {
-	return oldMean + (val - oldMean) / float64(count)
+	return oldMean + (val-oldMean)/float64(count)
 }
 
 func calcOnlineVar2(oldMean, newMean, oldVar2, val float64) float64 {
-	return oldVar2 + (val - oldMean) * (val - newMean)
+	return oldVar2 + (val-oldMean)*(val-newMean)
 }
 
 type stdDevPopBuffer struct {
@@ -796,8 +796,8 @@ type varPopBuffer struct {
 	expr sql.Expression
 
 	count uint64
-	mean float64
-	std2 float64
+	mean  float64
+	std2  float64
 }
 
 func NewVarPopBuffer(child sql.Expression) *varPopBuffer {
