@@ -672,7 +672,7 @@ type stdDevPopBuffer struct {
 	vals []interface{}
 	expr sql.Expression
 
-	count   int64
+	count   uint64
 	oldMean float64
 	newMean float64
 	oldVar  float64
@@ -729,3 +729,64 @@ func (s *stdDevPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 // Dispose implements the Disposable interface.
 func (s *stdDevPopBuffer) Dispose() {
 }
+
+type stdDevSampBuffer struct {
+	vals []interface{}
+	expr sql.Expression
+
+	count   uint64
+	oldMean float64
+	newMean float64
+	oldVar  float64
+	newVar  float64
+}
+
+func NewStdDevSampBuffer(child sql.Expression) *stdDevSampBuffer {
+	return &stdDevSampBuffer{
+		vals: nil,
+		expr: child,
+	}
+}
+
+// Update implements the AggregationBuffer interface.
+func (s *stdDevSampBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := s.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	v, _, err = types.Float64.Convert(ctx, v)
+	if err != nil {
+		v = 0.0
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
+	}
+	if v == nil {
+		return nil
+	}
+	val := v.(float64)
+
+	s.count += 1
+	if s.count == 1 {
+		s.oldMean = val
+		s.newMean = val
+		return nil
+	}
+
+	s.newMean = s.oldMean + (val - s.oldMean) / float64(s.count)
+	s.newVar  = s.oldVar  + (val - s.oldMean) * (val - s.newMean)
+	s.oldVar  = s.newVar
+	s.oldMean = s.newMean
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (s *stdDevSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if s.count <= 1 {
+		return nil, nil
+	}
+	return math.Sqrt(s.newVar / float64(s.count - 1)), nil
+}
+
+// Dispose implements the Disposable interface.
+func (s *stdDevSampBuffer) Dispose() {}

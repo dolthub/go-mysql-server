@@ -7898,9 +7898,9 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Query: "select std(i), stddev(i), stddev_pop(i), stddev_samp(i) from t;",
 				Expected: []sql.Row{
-					{nil, nil, nil},
+					{nil, nil, nil, nil},
 				},
 			},
 			{
@@ -7910,9 +7910,9 @@ where
 				},
 			},
 			{
-				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Query: "select std(i), stddev(i), stddev_pop(i), stddev_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.0, 0.0, 0.0},
+					{0.0, 0.0, 0.0, nil},
 				},
 			},
 			{
@@ -7922,9 +7922,9 @@ where
 				},
 			},
 			{
-				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Query: "select std(i), stddev(i), stddev_pop(i), stddev_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.5, 0.5, 0.5},
+					{0.5, 0.5, 0.5, 0.7071067811865476},
 				},
 			},
 			{
@@ -7934,9 +7934,9 @@ where
 				},
 			},
 			{
-				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Query: "select std(i), stddev(i), stddev_pop(i), stddev_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.816496580927726, 0.816496580927726, 0.816496580927726},
+					{0.816496580927726, 0.816496580927726, 0.816496580927726, 1.0},
 				},
 			},
 			{
@@ -7946,38 +7946,38 @@ where
 				},
 			},
 			{
-				Query: "select std(i), stddev(i), stddev_pop(i) from t;",
+				Query: "select std(i), stddev(i), stddev_pop(i), stddev_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.816496580927726, 0.816496580927726, 0.816496580927726},
+					{0.816496580927726, 0.816496580927726, 0.816496580927726, 1.0},
 				},
 			},
 			{
-				Query: "select i, std(j) from tt group by i;",
+				Query: "select i, std(j), stddev_samp(j) from tt group by i;",
 				Expected: []sql.Row{
-					{0, 0.816496580927726},
-					{1, 271.89336144893275},
+					{0, 0.816496580927726, 1.0},
+					{1, 271.89336144893275, 333.0},
 				},
 			},
 			{
-				Query: "select std(i) over(), std(j) over() from tt order by i;",
+				Query: "select std(i) over(), std(j) over(), stddev_samp(j) over() from tt order by i;",
 				Expected: []sql.Row{
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
 				},
 			},
 			{
-				Query: "select i, std(j) over(partition by i) from tt order by i;",
+				Query: "select i, std(j) over(partition by i), stddev_samp(j) over(partition by i) from tt order by i;",
 				Expected: []sql.Row{
-					{0, 0.816496580927726},
-					{0, 0.816496580927726},
-					{0, 0.816496580927726},
-					{1, 271.89336144893275},
-					{1, 271.89336144893275},
-					{1, 271.89336144893275},
+					{0, 0.816496580927726, 1.0},
+					{0, 0.816496580927726, 1.0},
+					{0, 0.816496580927726, 1.0},
+					{1, 271.89336144893275, 333.0},
+					{1, 271.89336144893275, 333.0},
+					{1, 271.89336144893275, 333.0},
 				},
 			},
 			{
@@ -7987,27 +7987,27 @@ where
 				},
 			},
 			{
-				Query: "select std(i) over(), std(j) over() from tt order by i;",
+				Query: "select std(i) over(), std(j) over(), stddev_samp(j) over() from tt order by i;",
 				Expected: []sql.Row{
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
-					{0.5, 297.47660972475353},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
+					{0.5, 297.47660972475353, 325.86929895281634},
 				},
 			},
 			{
-				Query: "select i, std(j) over(partition by i) from tt order by i;",
+				Query: "select i, std(j) over(partition by i), stddev_samp(j) over(partition by i) from tt order by i;",
 				Expected: []sql.Row{
-					{nil, nil},
-					{0, 0.816496580927726},
-					{0, 0.816496580927726},
-					{0, 0.816496580927726},
-					{1, 271.89336144893275},
-					{1, 271.89336144893275},
-					{1, 271.89336144893275},
+					{nil, nil, nil},
+					{0, 0.816496580927726, 1.0},
+					{0, 0.816496580927726, 1.0},
+					{0, 0.816496580927726, 1.0},
+					{1, 271.89336144893275, 333.0},
+					{1, 271.89336144893275, 333.0},
+					{1, 271.89336144893275, 333.0},
 				},
 			},
 		},

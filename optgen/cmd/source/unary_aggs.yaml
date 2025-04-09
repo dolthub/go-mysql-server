@@ -34,3 +34,5 @@ unaryAggs:
   nullable: false
 - name:     "StdDevPop"
   desc:     "returns the population standard deviation of expr"
+- name:     "StdDevSamp"
+  desc:     "returns the sample standard deviation of expr"

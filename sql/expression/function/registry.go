@@ -292,6 +292,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "std", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewStdDevPop(e) }},
 	sql.Function1{Name: "stddev", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewStdDevPop(e) }},
 	sql.Function1{Name: "stddev_pop", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewStdDevPop(e) }},
+	sql.Function1{Name: "stddev_samp", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewStdDevSamp(e) }},
 	sql.FunctionN{Name: "sysdate", Fn: NewSysdate},
 	sql.Function1{Name: "tan", Fn: NewTan},
 	sql.Function1{Name: "time", Fn: NewTime},

@@ -1508,3 +1508,79 @@ func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, bu
 
 	return math.Sqrt(v / float64(nonNullCnt))
 }
+
+type StdDevSampAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+
+	partitionStart int
+	partitionEnd   int
+
+	prefixSum  []float64
+	nullCnt    []int
+}
+
+func NewStdDevSampAgg(e sql.Expression) *StdDevSampAgg {
+	return &StdDevSampAgg{
+		expr: e,
+	}
+}
+
+func (s *StdDevSampAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	ns := *s
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		ns.framer = framer
+	}
+	return &ns, nil
+}
+
+func (s *StdDevSampAgg) Dispose() {
+	expression.Dispose(s.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (s *StdDevSampAgg) DefaultFramer() sql.WindowFramer {
+	if s.framer != nil {
+		return s.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (s *StdDevSampAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	s.Dispose()
+	s.partitionStart = interval.Start
+	s.partitionEnd   = interval.End
+	var err error
+	s.prefixSum, s.nullCnt, err = floatPrefixSum(ctx, interval, buf, s.expr)
+	return err
+}
+
+func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	startIdx := interval.Start - s.partitionStart - 1
+	endIdx := interval.End - s.partitionStart - 1
+
+	var nonNullCnt int
+	if endIdx >= 0 {
+		nonNullCnt += endIdx + 1
+		nonNullCnt -= s.nullCnt[endIdx]
+	}
+	if startIdx >= 0 {
+		nonNullCnt -= startIdx + 1
+		nonNullCnt += s.nullCnt[startIdx]
+	}
+	if nonNullCnt <= 1 {
+		return nil
+	}
+
+	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
+	v, err := computeVariance(ctx, interval, buf, s.expr, m)
+	if err != nil {
+		return err
+	}
+
+	return math.Sqrt(v / float64(nonNullCnt - 1))
+}
