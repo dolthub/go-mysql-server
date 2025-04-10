@@ -958,3 +958,319 @@ func (a *Sum) NewWindowFunction() (sql.WindowFunction, error) {
 	}
 	return NewSumAgg(child).WithWindow(a.Window())
 }
+
+type StdDevPop struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*StdDevPop)(nil)
+var _ sql.Aggregation = (*StdDevPop)(nil)
+var _ sql.WindowAdaptableExpression = (*StdDevPop)(nil)
+
+func NewStdDevPop(e sql.Expression) *StdDevPop {
+	return &StdDevPop{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "StdDevPop",
+			description:     "returns the population standard deviation of expr",
+		},
+	}
+}
+
+func (a *StdDevPop) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *StdDevPop) IsNullable() bool {
+	return false
+}
+
+func (a *StdDevPop) String() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("STDDEVPOP")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("STDDEVPOP(%s)", a.Child)
+}
+
+func (a *StdDevPop) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("STDDEVPOP")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("STDDEVPOP(%s)", sql.DebugString(a.Child))
+}
+
+func (a *StdDevPop) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &StdDevPop{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *StdDevPop) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &StdDevPop{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *StdDevPop) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &StdDevPop{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *StdDevPop) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewStdDevPopBuffer(child), nil
+}
+
+func (a *StdDevPop) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewStdDevPopAgg(child).WithWindow(a.Window())
+}
+
+type StdDevSamp struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*StdDevSamp)(nil)
+var _ sql.Aggregation = (*StdDevSamp)(nil)
+var _ sql.WindowAdaptableExpression = (*StdDevSamp)(nil)
+
+func NewStdDevSamp(e sql.Expression) *StdDevSamp {
+	return &StdDevSamp{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "StdDevSamp",
+			description:     "returns the sample standard deviation of expr",
+		},
+	}
+}
+
+func (a *StdDevSamp) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *StdDevSamp) IsNullable() bool {
+	return false
+}
+
+func (a *StdDevSamp) String() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("STDDEVSAMP")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("STDDEVSAMP(%s)", a.Child)
+}
+
+func (a *StdDevSamp) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("STDDEVSAMP")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("STDDEVSAMP(%s)", sql.DebugString(a.Child))
+}
+
+func (a *StdDevSamp) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &StdDevSamp{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *StdDevSamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &StdDevSamp{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *StdDevSamp) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &StdDevSamp{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *StdDevSamp) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewStdDevSampBuffer(child), nil
+}
+
+func (a *StdDevSamp) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewStdDevSampAgg(child).WithWindow(a.Window())
+}
+
+type VarPop struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*VarPop)(nil)
+var _ sql.Aggregation = (*VarPop)(nil)
+var _ sql.WindowAdaptableExpression = (*VarPop)(nil)
+
+func NewVarPop(e sql.Expression) *VarPop {
+	return &VarPop{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "VarPop",
+			description:     "returns the population variance of expr",
+		},
+	}
+}
+
+func (a *VarPop) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *VarPop) IsNullable() bool {
+	return false
+}
+
+func (a *VarPop) String() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("VARPOP")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("VARPOP(%s)", a.Child)
+}
+
+func (a *VarPop) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("VARPOP")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("VARPOP(%s)", sql.DebugString(a.Child))
+}
+
+func (a *VarPop) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &VarPop{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *VarPop) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &VarPop{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *VarPop) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &VarPop{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *VarPop) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewVarPopBuffer(child), nil
+}
+
+func (a *VarPop) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewVarPopAgg(child).WithWindow(a.Window())
+}
+
+type VarSamp struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*VarSamp)(nil)
+var _ sql.Aggregation = (*VarSamp)(nil)
+var _ sql.WindowAdaptableExpression = (*VarSamp)(nil)
+
+func NewVarSamp(e sql.Expression) *VarSamp {
+	return &VarSamp{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "VarSamp",
+			description:     "returns the sample variance of expr",
+		},
+	}
+}
+
+func (a *VarSamp) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *VarSamp) IsNullable() bool {
+	return false
+}
+
+func (a *VarSamp) String() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("VARSAMP")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("VARSAMP(%s)", a.Child)
+}
+
+func (a *VarSamp) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("VARSAMP")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("VARSAMP(%s)", sql.DebugString(a.Child))
+}
+
+func (a *VarSamp) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &VarSamp{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *VarSamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &VarSamp{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *VarSamp) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &VarSamp{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *VarSamp) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewVarSampBuffer(child), nil
+}
+
+func (a *VarSamp) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewVarSampAgg(child).WithWindow(a.Window())
+}
