@@ -668,7 +668,7 @@ func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 func (j *jsonArrayBuffer) Dispose() {
 }
 
-type varAggBase struct {
+type varBaseBuffer struct {
 	vals []interface{}
 	expr sql.Expression
 
@@ -678,7 +678,7 @@ type varAggBase struct {
 }
 
 // Update implements the AggregationBuffer interface.
-func (vb *varAggBase) Update(ctx *sql.Context, row sql.Row) error {
+func (vb *varBaseBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	v, err := vb.expr.Eval(ctx, row)
 	if err != nil {
 		return err
@@ -707,15 +707,15 @@ func (vb *varAggBase) Update(ctx *sql.Context, row sql.Row) error {
 }
 
 // Dispose implements the Disposable interface.
-func (vb *varAggBase) Dispose() {}
+func (vb *varBaseBuffer) Dispose() {}
 
 type stdDevPopBuffer struct {
-	varAggBase
+	varBaseBuffer
 }
 
 func NewStdDevPopBuffer(child sql.Expression) *stdDevPopBuffer {
 	return &stdDevPopBuffer{
-		varAggBase: varAggBase {
+		varBaseBuffer: varBaseBuffer {
 			expr: child,
 		},
 	}
@@ -730,12 +730,12 @@ func (s *stdDevPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 type stdDevSampBuffer struct {
-	varAggBase
+	varBaseBuffer
 }
 
 func NewStdDevSampBuffer(child sql.Expression) *stdDevSampBuffer {
 	return &stdDevSampBuffer{
-		varAggBase: varAggBase {
+		varBaseBuffer: varBaseBuffer {
 			expr: child,
 		},
 	}
@@ -750,12 +750,12 @@ func (s *stdDevSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 type varPopBuffer struct {
-	varAggBase
+	varBaseBuffer
 }
 
 func NewVarPopBuffer(child sql.Expression) *varPopBuffer {
 	return &varPopBuffer{
-		varAggBase: varAggBase {
+		varBaseBuffer: varBaseBuffer {
 			expr: child,
 		},
 	}
@@ -770,12 +770,12 @@ func (vp *varPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 }
 
 type varSampBuffer struct {
-	varAggBase
+	varBaseBuffer
 }
 
 func NewVarSampBuffer(child sql.Expression) *varSampBuffer {
 	return &varSampBuffer{
-		varAggBase: varAggBase{
+		varBaseBuffer: varBaseBuffer{
 			expr: child,
 		},
 	}

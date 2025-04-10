@@ -1468,7 +1468,6 @@ func computeStd2(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBu
 		if err != nil {
 			return 0, err
 		}
-		// TODO: consider saving conversions to avoid double Converts
 		val, _, err = types.Float64.Convert(ctx, val)
 		if err != nil {
 			val = 0.0
