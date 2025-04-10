@@ -699,8 +699,8 @@ func (vb *varBaseBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	newMean := vb.mean + (val - vb.mean) / float64(vb.count)
-	vb.std2 = vb.std2 + (val - vb.mean) * (val - newMean)
+	newMean := vb.mean + (val-vb.mean)/float64(vb.count)
+	vb.std2 = vb.std2 + (val-vb.mean)*(val-newMean)
 	vb.mean = newMean
 
 	return nil
@@ -715,7 +715,7 @@ type stdDevPopBuffer struct {
 
 func NewStdDevPopBuffer(child sql.Expression) *stdDevPopBuffer {
 	return &stdDevPopBuffer{
-		varBaseBuffer: varBaseBuffer {
+		varBaseBuffer: varBaseBuffer{
 			expr: child,
 		},
 	}
@@ -735,7 +735,7 @@ type stdDevSampBuffer struct {
 
 func NewStdDevSampBuffer(child sql.Expression) *stdDevSampBuffer {
 	return &stdDevSampBuffer{
-		varBaseBuffer: varBaseBuffer {
+		varBaseBuffer: varBaseBuffer{
 			expr: child,
 		},
 	}
@@ -755,7 +755,7 @@ type varPopBuffer struct {
 
 func NewVarPopBuffer(child sql.Expression) *varPopBuffer {
 	return &varPopBuffer{
-		varBaseBuffer: varBaseBuffer {
+		varBaseBuffer: varBaseBuffer{
 			expr: child,
 		},
 	}
