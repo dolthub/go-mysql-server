@@ -808,8 +808,8 @@ func NewVarPopBuffer(child sql.Expression) *varPopBuffer {
 }
 
 // Update implements the AggregationBuffer interface.
-func (s *varPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	v, err := evalFloat64(ctx, row, s.expr)
+func (vp *varPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := evalFloat64(ctx, row, vp.expr)
 	if err != nil {
 		return err
 	}
@@ -818,26 +818,77 @@ func (s *varPopBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 	val := v.(float64)
 
-	s.count += 1
-	if s.count == 1 {
-		s.mean = val
+	vp.count += 1
+	if vp.count == 1 {
+		vp.mean = val
 		return nil
 	}
 
-	newMean := calcOnlineMean(s.mean, val, s.count)
-	s.std2 = calcOnlineVar2(s.mean, newMean, s.std2, val)
-	s.mean = newMean
+	newMean := calcOnlineMean(vp.mean, val, vp.count)
+	vp.std2 = calcOnlineVar2(vp.mean, newMean, vp.std2, val)
+	vp.mean = newMean
 
 	return nil
 }
 
 // Eval implements the AggregationBuffer interface.
-func (s *varPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
-	if s.count == 0 {
+func (vp *varPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if vp.count == 0 {
 		return nil, nil
 	}
-	return s.std2 / float64(s.count), nil
+	return vp.std2 / float64(vp.count), nil
 }
 
 // Dispose implements the Disposable interface.
-func (s *varPopBuffer) Dispose() {}
+func (vp *varPopBuffer) Dispose() {}
+
+type varSampBuffer struct {
+	vals []interface{}
+	expr sql.Expression
+
+	count uint64
+	mean float64
+	std2 float64
+}
+
+func NewVarSampBuffer(child sql.Expression) *varSampBuffer {
+	return &varSampBuffer{
+		vals: nil,
+		expr: child,
+	}
+}
+
+// Update implements the AggregationBuffer interface.
+func (vp *varSampBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := evalFloat64(ctx, row, vp.expr)
+	if err != nil {
+		return err
+	}
+	if v == nil {
+		return nil
+	}
+	val := v.(float64)
+
+	vp.count += 1
+	if vp.count == 1 {
+		vp.mean = val
+		return nil
+	}
+
+	newMean := calcOnlineMean(vp.mean, val, vp.count)
+	vp.std2 = calcOnlineVar2(vp.mean, newMean, vp.std2, val)
+	vp.mean = newMean
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (vp *varSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if vp.count <= 1 {
+		return nil, nil
+	}
+	return vp.std2 / float64(vp.count - 1), nil
+}
+
+// Dispose implements the Disposable interface.
+func (vp *varSampBuffer) Dispose() {}

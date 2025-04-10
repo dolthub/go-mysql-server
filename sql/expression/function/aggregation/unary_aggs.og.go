@@ -1195,3 +1195,82 @@ func (a *VarPop) NewWindowFunction() (sql.WindowFunction, error) {
 	}
 	return NewVarPopAgg(child).WithWindow(a.Window())
 }
+
+type VarSamp struct {
+	unaryAggBase
+}
+
+var _ sql.FunctionExpression = (*VarSamp)(nil)
+var _ sql.Aggregation = (*VarSamp)(nil)
+var _ sql.WindowAdaptableExpression = (*VarSamp)(nil)
+
+func NewVarSamp(e sql.Expression) *VarSamp {
+	return &VarSamp{
+		unaryAggBase{
+			UnaryExpression: expression.UnaryExpression{Child: e},
+			functionName:    "VarSamp",
+			description:     "returns the sample variance of expr",
+		},
+	}
+}
+
+func (a *VarSamp) Type() sql.Type {
+	return a.Child.Type()
+}
+
+func (a *VarSamp) IsNullable() bool {
+	return false
+}
+
+func (a *VarSamp) String() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("VARSAMP")
+		children := []string{a.window.String(), a.Child.String()}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("VARSAMP(%s)", a.Child)
+}
+
+func (a *VarSamp) DebugString() string {
+	if a.window != nil {
+		pr := sql.NewTreePrinter()
+		_ = pr.WriteNode("VARSAMP")
+		children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}
+		pr.WriteChildren(children...)
+		return pr.String()
+	}
+	return fmt.Sprintf("VARSAMP(%s)", sql.DebugString(a.Child))
+}
+
+func (a *VarSamp) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+	res := a.unaryAggBase.WithWindow(window)
+	return &VarSamp{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *VarSamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	res, err := a.unaryAggBase.WithChildren(children...)
+	return &VarSamp{unaryAggBase: *res.(*unaryAggBase)}, err
+}
+
+func (a *VarSamp) WithId(id sql.ColumnId) sql.IdExpression {
+	res := a.unaryAggBase.WithId(id)
+	return &VarSamp{unaryAggBase: *res.(*unaryAggBase)}
+}
+
+func (a *VarSamp) NewBuffer() (sql.AggregationBuffer, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewVarSampBuffer(child), nil
+}
+
+func (a *VarSamp) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := transform.Clone(a.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewVarSampAgg(child).WithWindow(a.Window())
+}

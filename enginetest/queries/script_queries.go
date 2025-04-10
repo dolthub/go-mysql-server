@@ -7904,9 +7904,9 @@ where
 				},
 			},
 			{
-				Query: "select variance(i), var_pop(i) from t;",
+				Query: "select variance(i), var_pop(i), var_samp(i) from t;",
 				Expected: []sql.Row{
-					{nil, nil},
+					{nil, nil, nil},
 				},
 			},
 			{
@@ -7922,9 +7922,9 @@ where
 				},
 			},
 			{
-				Query: "select variance(i), var_pop(i) from t;",
+				Query: "select variance(i), var_pop(i), var_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.0, 0.0},
+					{0.0, 0.0, nil},
 				},
 			},
 			{
@@ -7940,9 +7940,9 @@ where
 				},
 			},
 			{
-				Query: "select variance(i), var_pop(i) from t;",
+				Query: "select variance(i), var_pop(i), var_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.25, 0.25},
+					{0.25, 0.25, 0.5},
 				},
 			},
 			{
@@ -7958,9 +7958,9 @@ where
 				},
 			},
 			{
-				Query: "select variance(i), var_pop(i) from t;",
+				Query: "select variance(i), var_pop(i), var_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.6666666666666666, 0.6666666666666666},
+					{0.6666666666666666, 0.6666666666666666, 1.0},
 				},
 			},
 			{
@@ -7976,9 +7976,9 @@ where
 				},
 			},
 			{
-				Query: "select variance(i), var_pop(i) from t;",
+				Query: "select variance(i), var_pop(i), var_samp(i) from t;",
 				Expected: []sql.Row{
-					{0.6666666666666666, 0.6666666666666666},
+					{0.6666666666666666, 0.6666666666666666, 1.0},
 				},
 			},
 			{
@@ -7989,10 +7989,10 @@ where
 				},
 			},
 			{
-				Query: "select i, variance(i) from tt group by i;",
+				Query: "select i, variance(i), var_samp(i) from tt group by i;",
 				Expected: []sql.Row{
-					{0, 0.0},
-					{1, 0.0},
+					{0, 0.0, 0.0},
+					{1, 0.0, 0.0},
 				},
 			},
 			{
@@ -8018,25 +8018,25 @@ where
 				},
 			},
 			{
-				Query: "select i, variance(i) over() from tt order by i;",
+				Query: "select i, variance(i) over(), var_samp(i) over() from tt order by i;",
 				Expected: []sql.Row{
-					{0, 0.25},
-					{0, 0.25},
-					{0, 0.25},
-					{1, 0.25},
-					{1, 0.25},
-					{1, 0.25},
+					{0, 0.25, 0.3},
+					{0, 0.25, 0.3},
+					{0, 0.25, 0.3},
+					{1, 0.25, 0.3},
+					{1, 0.25, 0.3},
+					{1, 0.25, 0.3},
 				},
 			},
 			{
-				Query: "select i, variance(j) over(partition by i) from tt order by i;",
+				Query: "select i, variance(j) over(partition by i), var_samp(i) over(partition by i) from tt order by i;",
 				Expected: []sql.Row{
-					{0, 0.6666666666666666},
-					{0, 0.6666666666666666},
-					{0, 0.6666666666666666},
-					{1, 73926.0},
-					{1, 73926.0},
-					{1, 73926.0},
+					{0, 0.6666666666666666, 0.0},
+					{0, 0.6666666666666666, 0.0},
+					{0, 0.6666666666666666, 0.0},
+					{1, 73926.0, 0.0},
+					{1, 73926.0, 0.0},
+					{1, 73926.0, 0.0},
 				},
 			},
 			{
@@ -8070,27 +8070,27 @@ where
 				},
 			},
 			{
-				Query: "select i, variance(i) over() from tt order by i;",
+				Query: "select i, variance(i) over(), var_samp(i) over() from tt order by i;",
 				Expected: []sql.Row{
-					{nil, 0.25},
-					{0, 0.25},
-					{0, 0.25},
-					{0, 0.25},
-					{1, 0.25},
-					{1, 0.25},
-					{1, 0.25},
+					{nil, 0.25, 0.3},
+					{0, 0.25, 0.3},
+					{0, 0.25, 0.3},
+					{0, 0.25, 0.3},
+					{1, 0.25, 0.3},
+					{1, 0.25, 0.3},
+					{1, 0.25, 0.3},
 				},
 			},
 			{
-				Query: "select i, variance(j) over(partition by i) from tt order by i;",
+				Query: "select i, variance(j) over(partition by i), var_samp(i) over(partition by i) from tt order by i;",
 				Expected: []sql.Row{
-					{nil, nil},
-					{0, 0.6666666666666666},
-					{0, 0.6666666666666666},
-					{0, 0.6666666666666666},
-					{1, 73926.0},
-					{1, 73926.0},
-					{1, 73926.0},
+					{nil, nil, nil},
+					{0, 0.6666666666666666, 0.0},
+					{0, 0.6666666666666666, 0.0},
+					{0, 0.6666666666666666, 0.0},
+					{1, 73926.0, 0.0},
+					{1, 73926.0, 0.0},
+					{1, 73926.0, 0.0},
 				},
 			},
 		},

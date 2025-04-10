@@ -38,3 +38,5 @@ unaryAggs:
   desc:     "returns the sample standard deviation of expr"
 - name:     "VarPop"
   desc:     "returns the population variance of expr"
+- name:     "VarSamp"
+  desc:     "returns the sample variance of expr"
