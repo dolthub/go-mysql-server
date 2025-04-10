@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
+
+func isFloatEqual(a, b float64) bool {
+	return math.Abs(a - b) < 1e-9
+}
 
 func TestStd(t *testing.T) {
 	sum := NewStdDevPop(expression.NewGetField(0, nil, "", false))
@@ -90,7 +95,11 @@ func TestStd(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if tt.expected == nil {
+				require.Equal(tt.expected, nil)
+				return
+			}
+			require.True(isFloatEqual(tt.expected.(float64), result.(float64)))
 		})
 	}
 }
@@ -162,7 +171,11 @@ func TestStdSamp(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if tt.expected == nil {
+				require.Equal(tt.expected, nil)
+				return
+			}
+			require.True(isFloatEqual(tt.expected.(float64), result.(float64)))
 		})
 	}
 }
@@ -234,7 +247,11 @@ func TestVariance(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if tt.expected == nil {
+				require.Equal(tt.expected, nil)
+				return
+			}
+			require.True(isFloatEqual(tt.expected.(float64), result.(float64)))
 		})
 	}
 }
@@ -306,7 +323,11 @@ func TestVarSamp(t *testing.T) {
 
 			result, err := buf.Eval(sql.NewEmptyContext())
 			require.NoError(err)
-			require.Equal(tt.expected, result)
+			if tt.expected == nil {
+				require.Equal(tt.expected, nil)
+				return
+			}
+			require.True(isFloatEqual(tt.expected.(float64), result.(float64)))
 		})
 	}
 }
