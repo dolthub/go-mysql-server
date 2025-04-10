@@ -397,6 +397,8 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	case string:
 		val = append(dest, s...)
 	case []byte:
+		// We can avoid copying the slice if this isn't a conversion to BINARY
+		// We'll check for that below, immediately before extending the slice.
 		val = s
 		start = 0
 	case time.Time:
@@ -464,6 +466,11 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		}
 
 		if st.baseType == sqltypes.Binary {
+			if b, ok := v.([]byte); ok {
+				// Make a copy now to avoid overwriting the original allocation.
+				val = append(dest, b...)
+				start = len(dest)
+			}
 			val = append(val, bytes.Repeat([]byte{0}, int(st.maxCharLength)-len(val))...)
 		}
 	}
