@@ -847,8 +847,8 @@ type varSampBuffer struct {
 	expr sql.Expression
 
 	count uint64
-	mean float64
-	std2 float64
+	mean  float64
+	std2  float64
 }
 
 func NewVarSampBuffer(child sql.Expression) *varSampBuffer {
@@ -887,7 +887,7 @@ func (vp *varSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	if vp.count <= 1 {
 		return nil, nil
 	}
-	return vp.std2 / float64(vp.count - 1), nil
+	return vp.std2 / float64(vp.count-1), nil
 }
 
 // Dispose implements the Disposable interface.

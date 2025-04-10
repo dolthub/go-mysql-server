@@ -1734,5 +1734,5 @@ func (v *VarSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf 
 		return err
 	}
 
-	return s2 / float64(nonNullCnt - 1)
+	return s2 / float64(nonNullCnt-1)
 }
