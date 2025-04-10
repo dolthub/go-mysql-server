@@ -78,7 +78,7 @@ func (r *RegexpLike) Description() string {
 
 // Type implements the sql.Expression interface.
 func (r *RegexpLike) Type() sql.Type {
-	return types.Boolean 
+	return types.Boolean
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
