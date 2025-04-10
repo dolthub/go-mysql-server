@@ -150,7 +150,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		}
 		js := jsVal.(sql.JSONWrapper)
 
-		str, err := StringifyJSON(js)
+		str, err := JsonToMySqlString(js)
 		if err != nil {
 			return sqltypes.NULL, err
 		}
