@@ -1410,19 +1410,18 @@ func (n *NTile) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.W
 
 	// the first n.bigBuckets buckets are of size n.bucketSize + 1
 	// the remaining buckets are of size n.bucketSize
-	if n.bigBuckets > 0 && n.pos % (n.bucketSize + 1) == 0 {
+	if n.bigBuckets > 0 && n.pos%(n.bucketSize+1) == 0 {
 		n.bucket++
 		n.bigBuckets--
 		if n.bigBuckets == 0 {
 			n.pos = 0
 		}
-	} else if n.bigBuckets == 0 && n.pos % n.bucketSize == 0 {
+	} else if n.bigBuckets == 0 && n.pos%n.bucketSize == 0 {
 		n.bucket++
 	}
 
 	return n.bucket
 }
-
 
 type Lag struct {
 	leadLagBase
