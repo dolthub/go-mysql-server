@@ -91,6 +91,10 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	left, err = sql.UnwrapAny(ctx, left)
+	if err != nil {
+		return nil, err
+	}
 	lVal, _, err := types.LongText.Convert(ctx, left)
 	if err != nil {
 		return nil, err
@@ -103,6 +107,10 @@ func (f *FindInSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var r string
+	right, err = sql.UnwrapAny(ctx, right)
+	if err != nil {
+		return nil, err
+	}
 	rType := f.RightChild.Type()
 	if setType, ok := rType.(types.SetType); ok {
 		// TODO: set type should take advantage of bit arithmetic
