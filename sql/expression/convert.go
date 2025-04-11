@@ -284,6 +284,9 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // converted type where applicable (e.g. Char conversion supports only |typeLength|, Decimal conversion supports
 // |typeLength| and |typeScale|).
 func convertValue(ctx *sql.Context, val interface{}, castTo string, originType sql.Type, typeLength, typeScale int) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
 		b, _, err := types.LongBlob.Convert(ctx, val)

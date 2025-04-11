@@ -38,8 +38,8 @@ type GetField struct {
 	fieldType2 sql.Type2
 	nullable   bool
 
-	// parser is the parser used to parse the expression and print it
-	parser sql.Parser
+	// schemaFormatter is the schemaFormatter used to quote field names
+	schemaFormatter sql.SchemaFormatter
 
 	// quoteName indicates whether the field name should be quoted when printed with String()
 	quoteName bool
@@ -170,7 +170,7 @@ func (p *GetField) String() string {
 	// stripped away. The output of this method is load-bearing in many places of analysis and execution.
 	if p.table == "" {
 		if p.quoteName {
-			return p.parser.QuoteIdentifier(p.name)
+			return p.schemaFormatter.QuoteIdentifier(p.name)
 		}
 		return p.name
 	}
@@ -197,10 +197,10 @@ func (p *GetField) WithIndex(n int) sql.Expression {
 }
 
 // WithQuotedNames returns a copy of this expression with the backtick names flag set to the given value.
-func (p *GetField) WithQuotedNames(parser sql.Parser, quoteNames bool) *GetField {
+func (p *GetField) WithQuotedNames(formatter sql.SchemaFormatter, quoteNames bool) *GetField {
 	p2 := *p
 	p2.quoteName = quoteNames
-	p2.parser = parser
+	p2.schemaFormatter = formatter
 	return &p2
 }
 

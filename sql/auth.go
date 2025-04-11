@@ -84,5 +84,5 @@ func GetAuthorizationHandlerFactory() AuthorizationHandlerFactory {
 	if globalAuthorizationHandlerFactory != nil {
 		return globalAuthorizationHandlerFactory
 	}
-	return emptyAuthorizationHandlerFactory{}
+	return NoopAuthorizationHandlerFactory{}
 }

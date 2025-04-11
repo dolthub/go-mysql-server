@@ -34,21 +34,22 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// JSONStringer can be converted to a string representation that is compatible with MySQL's JSON output, including spaces.
-type JSONStringer interface {
-	JSONString() (string, error)
-}
-
-// StringifyJSON generates a string representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
-func StringifyJSON(jsonWrapper sql.JSONWrapper) (string, error) {
-	if stringer, ok := jsonWrapper.(JSONStringer); ok {
-		return stringer.JSONString()
-	}
+// JsonToMySqlString generates a string representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
+func JsonToMySqlString(jsonWrapper sql.JSONWrapper) (string, error) {
 	val, err := jsonWrapper.ToInterface()
 	if err != nil {
 		return "", err
 	}
 	return marshalToMySqlString(val)
+}
+
+// JsonToMySqlString generates a byte slice representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
+func JsonToMySqlBytes(jsonWrapper sql.JSONWrapper) ([]byte, error) {
+	val, err := jsonWrapper.ToInterface()
+	if err != nil {
+		return nil, err
+	}
+	return marshalToMySqlBytes(val)
 }
 
 // JSONBytes are values which can be represented as JSON.
@@ -202,12 +203,12 @@ func (j *LazyJSONDocument) GetBytes() ([]byte, error) {
 
 // Value implements driver.Valuer for interoperability with other go libraries
 func (j *LazyJSONDocument) Value() (driver.Value, error) {
-	return StringifyJSON(j)
+	return JsonToMySqlString(j)
 }
 
 // LazyJSONDocument implements the fmt.Stringer interface.
 func (j *LazyJSONDocument) String() string {
-	s, err := StringifyJSON(j)
+	s, err := JsonToMySqlString(j)
 	if err != nil {
 		return fmt.Sprintf("error while stringifying JSON: %s", err.Error())
 	}
