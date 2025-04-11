@@ -768,11 +768,11 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			return 0, nil, nil, nil, err
 		}
 		// TODO: create a OpCode_Call to store procedures in the stack
-		_, rowIter, err := query(ctx, runner, stmt.(ast.Statement))
+		sch, rowIter, err := query(ctx, runner, stmt.(ast.Statement))
 		if err != nil {
 			return 0, nil, nil, nil, err
 		}
-		return counter, nil, nil, rowIter, err
+		return counter, sch, nil, rowIter, err
 
 	case OpCode_Exception:
 		return 0, nil, nil, nil, operation.Error
@@ -819,6 +819,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 	// Run the statements
 	// TODO: eventually return multiple sql.RowIters
 	var rowIters []sql.RowIter
+	var retSch sql.Schema
 	runner := iNode.GetRunner()
 	statements := iNode.GetStatements()
 	for {
@@ -838,7 +839,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		subCtx.Session = ctx.Session
 
 		operation := statements[counter]
-		newCounter, newSelSch, newSelIter, rowIter, err := execOp(subCtx, runner, stack, operation, statements, asOf, counter)
+		newCounter, sch, newSelIter, rowIter, err := execOp(subCtx, runner, stack, operation, statements, asOf, counter)
 		if err != nil {
 			hCounter, hErr := handleError(subCtx, runner, stack, statements, counter, err)
 			if hErr != nil && hErr != io.EOF {
@@ -852,10 +853,11 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		}
 		if rowIter != nil {
 			rowIters = append(rowIters, rowIter)
+			retSch = sch
 		}
 		if newSelIter != nil {
 			selIter = newSelIter
-			selSch = newSelSch
+			selSch = sch
 		}
 		counter = newCounter
 	}
@@ -865,7 +867,10 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		return selIter, stack, nil
 	}
 	if len(rowIters) == 0 {
+		iNode.SetSchema(types.OkResultSchema)
 		rowIters = append(rowIters, sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}))
+	} else {
+		iNode.SetSchema(retSch)
 	}
 
 	// TODO: probably need to set result schema for these too
