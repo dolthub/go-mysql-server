@@ -125,11 +125,11 @@ func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression,
 	return &na, nil
 }
 
-func (a unaryAggBase) FunctionName() string {
+func (a *unaryAggBase) FunctionName() string {
 	return a.functionName
 }
 
-func (a unaryAggBase) Description() string {
+func (a *unaryAggBase) Description() string {
 	return a.description
 }
 

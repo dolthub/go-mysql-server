@@ -2,6 +2,7 @@ package aggregation
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 
 	"github.com/cespare/xxhash/v2"
@@ -665,4 +666,125 @@ func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 
 // Dispose implements the Disposable interface.
 func (j *jsonArrayBuffer) Dispose() {
+}
+
+type varBaseBuffer struct {
+	vals []interface{}
+	expr sql.Expression
+
+	count uint64
+	mean  float64
+	std2  float64
+}
+
+// Update implements the AggregationBuffer interface.
+func (vb *varBaseBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := vb.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+	v, _, err = types.Float64.Convert(ctx, v)
+	if err != nil {
+		v = 0.0
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
+	}
+	if v == nil {
+		return nil
+	}
+	val := v.(float64)
+
+	vb.count += 1
+	if vb.count == 1 {
+		vb.mean = val
+		return nil
+	}
+
+	newMean := vb.mean + (val-vb.mean)/float64(vb.count)
+	vb.std2 = vb.std2 + (val-vb.mean)*(val-newMean)
+	vb.mean = newMean
+
+	return nil
+}
+
+// Dispose implements the Disposable interface.
+func (vb *varBaseBuffer) Dispose() {}
+
+type stdDevPopBuffer struct {
+	varBaseBuffer
+}
+
+func NewStdDevPopBuffer(child sql.Expression) *stdDevPopBuffer {
+	return &stdDevPopBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (s *stdDevPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if s.count == 0 {
+		return nil, nil
+	}
+	return math.Sqrt(s.std2 / float64(s.count)), nil
+}
+
+type stdDevSampBuffer struct {
+	varBaseBuffer
+}
+
+func NewStdDevSampBuffer(child sql.Expression) *stdDevSampBuffer {
+	return &stdDevSampBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (s *stdDevSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if s.count <= 1 {
+		return nil, nil
+	}
+	return math.Sqrt(s.std2 / float64(s.count-1)), nil
+}
+
+type varPopBuffer struct {
+	varBaseBuffer
+}
+
+func NewVarPopBuffer(child sql.Expression) *varPopBuffer {
+	return &varPopBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (vp *varPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if vp.count == 0 {
+		return nil, nil
+	}
+	return vp.std2 / float64(vp.count), nil
+}
+
+type varSampBuffer struct {
+	varBaseBuffer
+}
+
+func NewVarSampBuffer(child sql.Expression) *varSampBuffer {
+	return &varSampBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (vp *varSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if vp.count <= 1 {
+		return nil, nil
+	}
+	return vp.std2 / float64(vp.count-1), nil
 }

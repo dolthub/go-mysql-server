@@ -142,6 +142,18 @@ func marshalToMySqlString(val interface{}) (string, error) {
 	return b.String(), nil
 }
 
+// marshalToMySqlBytes is a helper function to marshal a JSONDocument to a byte slice that is
+// compatible with MySQL's JSON output, including spaces.
+func marshalToMySqlBytes(val interface{}) ([]byte, error) {
+	b := NewNoCopyBuilder(1024)
+	err := writeMarshalledValue(b, val)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
 func sortKeys[T any](m map[string]T) []string {
 	var keys []string
 	for k := range m {

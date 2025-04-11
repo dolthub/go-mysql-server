@@ -131,6 +131,7 @@ type BinaryLogStatus struct {
 type ReplicaStatus struct {
 	SourceHost            string
 	SourceUser            string
+	SourceSsl             bool
 	SourcePort            uint
 	ConnectRetry          uint32
 	SourceRetryCount      uint64
