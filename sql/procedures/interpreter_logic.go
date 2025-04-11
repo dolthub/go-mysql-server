@@ -869,7 +869,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 	if len(rowIters) == 0 {
 		iNode.SetSchema(types.OkResultSchema)
 		rowIters = append(rowIters, sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}))
-	} else {
+	} else if retSch != nil {
 		iNode.SetSchema(retSch)
 	}
 
