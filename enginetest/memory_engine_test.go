@@ -205,7 +205,7 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "AS OF propagates to nested CALLs",
+			Name:        "AS OF propagates to nested CALLs",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{

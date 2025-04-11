@@ -990,7 +990,7 @@ END;`,
 			{
 				// TODO: Set statements don't return anything for whatever reason
 				SkipResultCheckOnServerEngine: true,
-				Query: "CALL p1(@x);",
+				Query:                         "CALL p1(@x);",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
@@ -1400,7 +1400,7 @@ END;`,
 			{
 				// TODO: Set statements don't return anything for whatever reason
 				SkipResultCheckOnServerEngine: true,
-				Query: "CALL outer_declare();",
+				Query:                         "CALL outer_declare();",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
