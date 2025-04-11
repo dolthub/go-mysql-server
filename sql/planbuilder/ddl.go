@@ -737,6 +737,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 			outScope.node = &plan.DropConstraint{
 				UnaryNode: plan.UnaryNode{Child: table},
 				Name:      c.name,
+				IfExists:  ddl.ConstraintIfExists,
 			}
 		default:
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
