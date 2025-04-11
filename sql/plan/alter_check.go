@@ -41,8 +41,9 @@ var _ sql.CollationCoercible = (*CreateCheck)(nil)
 
 type DropCheck struct {
 	ddlNode
-	Table *ResolvedTable
-	Name  string
+	Table    *ResolvedTable
+	Name     string
+	IfExists bool
 }
 
 var _ sql.Node = (*DropCheck)(nil)
@@ -172,7 +173,8 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 // not known, and is determined during analysis.
 type DropConstraint struct {
 	UnaryNode
-	Name string
+	Name     string
+	IfExists bool
 }
 
 var _ sql.Node = (*DropConstraint)(nil)
