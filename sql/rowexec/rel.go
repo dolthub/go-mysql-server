@@ -730,7 +730,6 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 	}
 	for i, paramDefinition := range n.ParamDefinitions {
 		if paramDefinition.Direction == plan.ProcedureParamDirection_Inout || paramDefinition.Direction == plan.ProcedureParamDirection_Out {
-			// TODO: not sure if we should still be doing this
 			exprParam := n.Params[i]
 			funcParamVal := funcParams[i+1].Elem().Interface()
 			err := exprParam.Set(ctx, funcParamVal, exprParam.Type())

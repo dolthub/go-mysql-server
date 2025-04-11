@@ -23,8 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// TODO: instead of procedure reference, copy stack from doltgres
-
 // ProcedureReference contains the state for a single CALL statement of a stored procedure.
 type ProcedureReference struct {
 	InnermostScope *procedureScope

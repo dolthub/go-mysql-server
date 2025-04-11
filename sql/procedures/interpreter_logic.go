@@ -121,7 +121,6 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 		e.Expr = newExpr.(ast.Expr)
 	case *ast.Set:
 		for _, setExpr := range e.Exprs {
-			// TODO: properly handle user scope variables
 			newExpr, err := replaceVariablesInExpr(ctx, stack, setExpr.Expr, asOf)
 			if err != nil {
 				return nil, err
@@ -137,7 +136,6 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 		}
 	case *ast.Call:
 		for i := range e.Params {
-			// TODO: do not replace certain params
 			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Params[i], asOf)
 			if err != nil {
 				return nil, err
@@ -163,7 +161,6 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			e.Rowcount = newRowCount.(ast.Expr)
 		}
 	case *ast.Into:
-		// TODO: somehow support select into variables
 		for i := range e.Variables {
 			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Variables[i], asOf)
 			if err != nil {
@@ -433,7 +430,6 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 	case OpCode_Declare:
 		declareStmt := operation.PrimaryData.(*ast.Declare)
 
-		// TODO: duplicate conditions?
 		if cond := declareStmt.Condition; cond != nil {
 			condName := strings.ToLower(cond.Name)
 			stateVal := cond.SqlStateValue
@@ -457,13 +453,11 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			stack.NewCondition(condName, stateVal, num)
 		}
 
-		// TODO: duplicate cursors?
 		if cursor := declareStmt.Cursor; cursor != nil {
 			cursorName := strings.ToLower(cursor.Name)
 			stack.NewCursor(cursorName, cursor.SelectStmt)
 		}
 
-		// TODO: duplicate handlers?
 		if handler := declareStmt.Handler; handler != nil {
 			if len(handler.ConditionValues) != 1 {
 				return 0, nil, nil, nil, sql.ErrUnsupportedSyntax.New(ast.String(declareStmt))
@@ -487,7 +481,6 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			stack.NewHandler(hCond.ValueType, handler.Action, handler.Statement, counter)
 		}
 
-		// TODO: duplicate variables?
 		if vars := declareStmt.Variables; vars != nil {
 			for _, decl := range vars.Names {
 				varType, err := types.ColumnTypeToType(&vars.VarType)
@@ -504,7 +497,6 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		}
 
 	case OpCode_Signal:
-		// TODO: copy logic from planbuilder/proc.go: buildSignal()
 		signalStmt := operation.PrimaryData.(*ast.Signal)
 		var msgTxt string
 		var sqlState string
@@ -712,7 +704,6 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		if err != nil {
 			return 0, nil, nil, nil, err
 		}
-		// TODO: exactly one result that is a bool for now
 		row, err := rowIter.Next(ctx)
 		if err != nil {
 			return 0, nil, nil, nil, err
@@ -767,7 +758,6 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		if err != nil {
 			return 0, nil, nil, nil, err
 		}
-		// TODO: create a OpCode_Call to store procedures in the stack
 		sch, rowIter, err := query(ctx, runner, stmt.(ast.Statement))
 		if err != nil {
 			return 0, nil, nil, nil, err
@@ -812,12 +802,10 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		}
 	}
 
-	// TODO: remove this; track last selectRowIter
 	var selIter sql.RowIter
 	var selSch sql.Schema
 
 	// Run the statements
-	// TODO: eventually return multiple sql.RowIters
 	var rowIters []sql.RowIter
 	var retSch sql.Schema
 	runner := iNode.GetRunner()
@@ -831,10 +819,6 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 			break
 		}
 
-		// TODO: server engine can't run multiple statements in procedures because the ctx keeps getting cancelled
-		//   from the TrackedRowIter.
-		//   Uncancel query?
-		//   Use subcontexts?
 		subCtx := sql.NewContext(context.Background())
 		subCtx.Session = ctx.Session
 
@@ -873,6 +857,5 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		iNode.SetSchema(retSch)
 	}
 
-	// TODO: probably need to set result schema for these too
 	return rowIters[len(rowIters)-1], stack, nil
 }

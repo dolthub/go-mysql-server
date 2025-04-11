@@ -27,9 +27,6 @@ type Interpreter interface {
 	SetStatementRunner(ctx *Context, runner StatementRunner) Expression
 }
 
-// TODO: InterpreterNode interface
-// TODO: alternatively have plan.Call just have an interpreter expression
-
 // StatementRunner is essentially an interface that the engine will implement. We cannot directly reference the engine
 // here as it will cause an import cycle, so this may be updated to suit any function changes that the engine
 // experiences.

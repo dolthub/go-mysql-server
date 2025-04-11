@@ -345,8 +345,6 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		b.handleErr(err)
 	}
 
-	// TODO: build references here?
-	// TODO: here fill in x from session
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {
 		if len(proc.Params) == len(c.Params) {
