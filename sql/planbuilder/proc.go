@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -70,6 +71,7 @@ func (p *procCtx) NewState(state declareState) {
 			err := sql.ErrDeclareCursorOrderInvalid.New()
 			p.s.b.handleErr(err)
 		}
+	default:
 	}
 	p.lastState = state
 }
@@ -254,22 +256,13 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 	stmt, _, _, _ := b.parser.ParseWithOptions(b.ctx, procDetails.CreateStatement, ';', false, b.parserOpts)
 	procStmt := stmt.(*ast.DDL)
 
+	ops, err := procedures.Parse(procStmt.ProcedureSpec.Body)
+	if err != nil {
+		b.handleErr(err)
+	}
+
 	procParams := b.buildProcedureParams(procStmt.ProcedureSpec.Params)
 	characteristics, securityType, comment := b.buildProcedureCharacteristics(procStmt.ProcedureSpec.Characteristics)
-
-	// populate inScope with the procedure parameters. this will be
-	// subject maybe a bug where an inner procedure has access to
-	// outer procedure parameters.
-	if inScope == nil {
-		inScope = b.newScope()
-	}
-	inScope.initProc()
-	for _, p := range procParams {
-		inScope.proc.AddVar(expression.NewProcedureParam(strings.ToLower(p.Name), p.Type))
-	}
-
-	bodyStr := strings.TrimSpace(procDetails.CreateStatement[procStmt.SubStatementPositionStart:procStmt.SubStatementPositionEnd])
-	bodyScope := b.buildSubquery(inScope, procStmt.ProcedureSpec.Body, bodyStr, procDetails.CreateStatement)
 
 	proc = plan.NewProcedure(
 		procDetails.Name,
@@ -279,12 +272,12 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 		comment,
 		characteristics,
 		procDetails.CreateStatement,
-		bodyScope.node,
 		procDetails.CreatedAt,
 		procDetails.ModifiedAt,
+		ops,
 	)
-	qFlags = b.qFlags
-	return
+
+	return proc, qFlags, nil
 }
 
 func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
@@ -321,6 +314,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 	if esp != nil {
 		proc, err = resolveExternalStoredProcedure(*esp)
+		// TODO: return plan.NewExternalCall here
 	} else if spdb, ok := db.(sql.StoredProcedureDatabase); ok {
 		var procDetails sql.StoredProcedureDetails
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
@@ -353,12 +347,28 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {
+		if len(proc.Params) == len(c.Params) {
+			procParam := proc.Params[i]
+			rspp := &sql.StoredProcParam{Type: procParam.Type}
+			b.ctx.Session.NewStoredProcParam(procParam.Name, rspp)
+			if col, isCol := param.(*ast.ColName); isCol {
+				colName := col.Name.String() // TODO: to lower?
+				if spp := b.ctx.Session.GetStoredProcParam(colName); spp != nil {
+					iv := &procedures.InterpreterVariable{
+						Type:  spp.Type,
+						Value: spp.Value,
+					}
+					param = iv.ToAST()
+					rspp.Reference = spp
+				}
+			}
+		}
 		expr := b.buildScalar(inScope, param)
 		params[i] = expr
 	}
 
 	outScope = inScope.push()
-	outScope.node = plan.NewCall(db, procName, params, proc, asOf, b.cat)
+	outScope.node = plan.NewCall(db, procName, params, proc, asOf, b.cat, nil)
 	return outScope
 }
 
@@ -471,12 +481,9 @@ func (b *Builder) buildDeclareHandler(inScope *scope, d *ast.Declare, query stri
 		action = expression.DeclareHandlerAction_Exit
 	case ast.DeclareHandlerAction_Undo:
 		action = expression.DeclareHandlerAction_Undo
+		b.handleErr(sql.ErrDeclareHandlerUndo.New())
 	default:
 		err := fmt.Errorf("unknown DECLARE ... HANDLER action: %v", dHandler.Action)
-		b.handleErr(err)
-	}
-	if action == expression.DeclareHandlerAction_Undo {
-		err := sql.ErrDeclareHandlerUndo.New()
 		b.handleErr(err)
 	}
 
@@ -672,6 +679,10 @@ func (b *Builder) buildSignal(inScope *scope, s *ast.Signal) (outScope *scope) {
 	sqlStateValue := s.SqlStateValue
 	if s.ConditionName != "" {
 		signalName := strings.ToLower(s.ConditionName)
+		if inScope.proc == nil {
+			err := sql.ErrDeclareConditionNotFound.New(signalName)
+			b.handleErr(err)
+		}
 		condition := inScope.proc.GetCondition(signalName)
 		if condition == nil {
 			err := sql.ErrDeclareConditionNotFound.New(signalName)
