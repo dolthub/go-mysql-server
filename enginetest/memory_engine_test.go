@@ -205,65 +205,19 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "insert trigger with stored procedure with deletes",
-			SetUpScript: []string{
-				"create table t (i int);",
-				"create table t1 (j int);",
-				"insert into t1 values (1);",
-				"create table t2 (k int);",
-				"insert into t2 values (1);",
-				"create table t3 (l int);",
-				"insert into t3 values (1);",
-				"create table t4 (m int);",
-				`
-create procedure proc(x int)
-begin
-  delete from t2 where k = (select j from t1 where j = x);
-  update t3 set l = 10 where l = x;
-  insert into t4 values (x);
-end;
-`,
-				`
-create trigger trig before insert on t
-for each row
-begin
-  call proc(new.i);
-end;
-`,
-			},
+			Name: "AS OF propagates to nested CALLs",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into t values (1);",
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
 					Expected: []sql.Row{
-						{types.NewOkResult(1)},
+						{types.NewOkResult(0)},
 					},
 				},
 				{
-					Query: "select * from t;",
+					Query: "call create_proc()",
 					Expected: []sql.Row{
-						{1},
-					},
-				},
-				{
-					Query: "select * from t1;",
-					Expected: []sql.Row{
-						{1},
-					},
-				},
-				{
-					Query:    "select * from t2;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query: "select * from t3;",
-					Expected: []sql.Row{
-						{10},
-					},
-				},
-				{
-					Query: "select * from t4;",
-					Expected: []sql.Row{
-						{1},
+						{types.NewOkResult(0)},
 					},
 				},
 			},
@@ -272,8 +226,7 @@ end;
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		// TODO: fix this
-		//harness.UseServer()
+		harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
