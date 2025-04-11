@@ -608,7 +608,6 @@ func TestTableFunctions(t *testing.T) {
 func TestExternalProcedures(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	harness.Setup(setup.MydbData)
-	harness.UseServer()
 	for _, script := range queries.ExternalProcedureTests {
 		func() {
 			e, err := harness.NewEngine(t)

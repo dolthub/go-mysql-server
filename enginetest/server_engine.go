@@ -216,7 +216,7 @@ func (s *ServerQueryEngine) queryOrExec(ctx *sql.Context, stmt *gosql.Stmt, pars
 	var err error
 	switch parsed.(type) {
 	// TODO: added `FLUSH` stmt here (should be `exec`) because we don't support `FLUSH BINARY LOGS` or `FLUSH ENGINE LOGS`, so nil schema is returned.
-	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set, *sqlparser.Begin, *sqlparser.Use, *sqlparser.Load, *sqlparser.Execute, *sqlparser.Analyze, *sqlparser.Flush:
+	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set, *sqlparser.Call, *sqlparser.Begin, *sqlparser.Use, *sqlparser.Load, *sqlparser.Execute, *sqlparser.Analyze, *sqlparser.Flush:
 		var rows *gosql.Rows
 		if stmt != nil {
 			rows, err = stmt.Query(args...)
