@@ -74,6 +74,12 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 			}
 		}
 
+		if dropConstraint.IfExists {
+			newAlterDropCheck := plan.NewAlterDropCheck(rt, dropConstraint.Name)
+			newAlterDropCheck.IfExists = true
+			return newAlterDropCheck, transform.NewTree, nil
+		}
+
 		return nil, transform.SameTree, sql.ErrUnknownConstraint.New(dropConstraint.Name)
 	})
 }
@@ -82,6 +88,11 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.DropCheck:
+		// Don't bother validating that the constraint exists if the IfExists flag is set
+		if n.IfExists {
+			return n, transform.SameTree, nil
+		}
+
 		rt := n.Table
 
 		ct, ok := rt.Table.(sql.CheckTable)
