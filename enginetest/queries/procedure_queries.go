@@ -2849,7 +2849,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
-				Query: "call create_proc()",
+				Query:                         "call create_proc()",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
@@ -2877,7 +2877,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
-				Query: "call insert_proc()",
+				Query:                         "call insert_proc()",
 				Expected: []sql.Row{
 					{types.NewOkResult(3)},
 				},
@@ -2892,8 +2892,8 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
-				Query:          "call insert_proc()",
-				ExpectedErrStr: "duplicate primary key given: [1]",
+				Query:                         "call insert_proc()",
+				ExpectedErrStr:                "duplicate primary key given: [1]",
 			},
 
 			{
@@ -2904,7 +2904,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
-				Query: "call update_proc()",
+				Query:                         "call update_proc()",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 2, Info: plan.UpdateInfo{Matched: 2, Updated: 2}}},
 				},
@@ -2919,7 +2919,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
-				Query: "call update_proc()",
+				Query:                         "call update_proc()",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 2}}},
 				},
@@ -2933,7 +2933,7 @@ var ProcedureCreateInSubroutineTests = []ScriptTest{
 			},
 			{
 				SkipResultCheckOnServerEngine: true,
-				Query: "call drop_proc()",
+				Query:                         "call drop_proc()",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
