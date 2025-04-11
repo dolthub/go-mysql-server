@@ -6,7 +6,7 @@ require (
 	github.com/dolthub/go-icu-regex v0.0.0-20250327004329-6799764f2dad
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20250410090211-143e6b272ad4
+	github.com/dolthub/vitess v0.0.0-20250410233614-8d8c7a5b3d6b
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
 	github.com/gocraft/dbr/v2 v2.7.2
