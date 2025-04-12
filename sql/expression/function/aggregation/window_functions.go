@@ -1335,6 +1335,94 @@ func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 	return a.denseRank
 }
 
+type NTile struct {
+	numBucketsExpr sql.Expression
+
+	pos        uint64
+	bucketSize uint64
+	bigBuckets uint64
+	bucket     uint64
+
+	// orderBy tracks peer group increments
+	orderBy []sql.Expression
+}
+
+func NewNTile(expr sql.Expression) *NTile {
+	return &NTile{
+		numBucketsExpr: expr,
+	}
+}
+
+func (n *NTile) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *n
+	na.orderBy = w.OrderBy.ToExpressions()
+	return &na, nil
+}
+
+func (n *NTile) Dispose() {
+	return
+}
+
+func (n *NTile) DefaultFramer() sql.WindowFramer {
+	return NewPeerGroupFramer(n.orderBy)
+}
+
+func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	n.Dispose()
+	if interval.End < interval.Start {
+		return nil
+	}
+
+	numBucketsVal, err := n.numBucketsExpr.Eval(ctx, nil)
+	if err != nil {
+		return err
+	}
+	numBucketsVal, _, err = types.Int64.Convert(ctx, numBucketsVal)
+	if err != nil {
+		numBucketsVal = uint64(0)
+	}
+	if numBucketsVal == nil {
+		return sql.ErrInvalidArgument.New("NTILE")
+	}
+	if numBucketsVal.(int64) <= 0 {
+		return sql.ErrInvalidArgument.New("NTILE")
+	}
+
+	count := uint64(interval.End - interval.Start)
+	numBuckets := uint64(numBucketsVal.(int64))
+	if numBuckets > count {
+		n.bucketSize = 1
+	} else {
+		n.bucketSize = count / numBuckets
+		n.bigBuckets = count % numBuckets
+	}
+	n.pos = 0
+	n.bucket = 1
+	return nil
+}
+
+// Compute returns the appropriate bucket for the current row.
+func (n *NTile) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+	defer func() { n.pos++ }()
+	if n.pos == 0 {
+		return n.bucket
+	}
+
+	// the first n.bigBuckets buckets are of size n.bucketSize + 1
+	// the remaining buckets are of size n.bucketSize
+	if n.bigBuckets > 0 && n.pos%(n.bucketSize+1) == 0 {
+		n.bucket++
+		n.bigBuckets--
+		if n.bigBuckets == 0 {
+			n.pos = 0
+		}
+	} else if n.bigBuckets == 0 && n.pos%n.bucketSize == 0 {
+		n.bucket++
+	}
+
+	return n.bucket
+}
+
 type Lag struct {
 	leadLagBase
 }
