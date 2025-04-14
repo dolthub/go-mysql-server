@@ -134,6 +134,7 @@ var ForeignKeyTests = []ScriptTest{
 		},
 	},
 	{
+		// MySQL parses the SET DEFAULT referential action, but most engines, e.g. InnoDB, don't actually support it
 		Name: "SET DEFAULT not supported",
 		Assertions: []ScriptTestAssertion{
 			{

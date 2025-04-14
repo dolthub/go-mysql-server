@@ -107,6 +107,7 @@ var DefaultValidationRules = []Rule{
 	{validateSubqueryColumnsId, validateSubqueryColumns},
 	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
 	{validateAggregationsId, validateAggregations},
+	{ValidateForeignKeyReferentialActionsId, validateForeignKeyReferentialActions},
 }
 
 var OnceAfterAll []Rule
