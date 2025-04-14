@@ -21,7 +21,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 )
 
 // applyForeignKeys handles the application and resolution of foreign keys and their tables.
@@ -380,7 +382,11 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		if err != nil {
 			return nil, err
 		}
-		childTblSch := childTbl.Schema()
+		childTblSch, err := resolveSchemaDefaults(ctx, a.Catalog, childTbl)
+		if err != nil {
+			return nil, err
+		}
+
 		childParentMapping, err := plan.GetChildParentMapping(tblSch, childTblSch, fk)
 		if err != nil {
 			return nil, err
@@ -427,6 +433,40 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		}
 	}
 	return fkEditor, nil
+}
+
+// resolveSchemaDefaults resolves the default values for the schema of |table|. This is primarily needed for column
+// default value expressions, since those don't get resolved during the planbuilder phase and assignExecIndexes
+// doesn't traverse through the ForeignKeyEditors and referential actions to find all of them. In addition to resolving
+// the expressions, this also ensures their GetField indexes are correct, knowing that those expressions will only
+// be evaluated in the context of a single table.
+func resolveSchemaDefaults(ctx *sql.Context, catalog *Catalog, table sql.Table) (sql.Schema, error) {
+	// Resolve any column default expressions in tblSch
+	builder := planbuilder.New(ctx, catalog, nil, sql.GlobalParser)
+	childTblSch := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema())
+
+	// Field Indexes are off by one initially and don't fixed by assignExecIndexes because it doesn't traverse through
+	// the ForeignKeyEditors and referential actions, so we correct them here. This is safe because we know these fields
+	// will only ever be accessed within the scope of a single table, so all we have to do is decrement the index by 1.
+	for i, col := range childTblSch {
+		if col.Default != nil {
+			expr := col.Default.Expr
+			expr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if gf, ok := e.(*expression.GetField); ok {
+					return gf.WithIndex(gf.Index() - 1), transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
+			})
+			if err != nil {
+				return nil, err
+			}
+			if identity == transform.NewTree {
+				childTblSch[i].Default.Expr = expr
+			}
+		}
+	}
+
+	return childTblSch, nil
 }
 
 // foreignKeyTableName is the combination of a table's database along with their name, both lowercased.

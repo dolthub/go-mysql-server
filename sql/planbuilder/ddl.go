@@ -1573,6 +1573,25 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 	return ret
 }
 
+// ResolveSchemaDefaults resolves any column default value expressions for the specified |schema|, for the table
+// named |tableName| and returns the schema with the default value expressions resolved. Note that any GetField
+// expressions in the column default value expressions have not had their indexes corrected yet.
+func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) sql.Schema {
+	tableScope := b.newScope()
+	for _, c := range schema {
+		tableScope.newColumn(scopeColumn{
+			table:       strings.ToLower(tableName),
+			db:          strings.ToLower(db),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
+		})
+	}
+
+	return b.resolveSchemaDefaults(tableScope, schema)
+}
+
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {
 	if len(schema) == 0 {
 		return nil

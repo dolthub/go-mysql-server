@@ -109,6 +109,7 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 			}
 		case sql.ForeignKeyReferentialAction_Cascade:
 		case sql.ForeignKeyReferentialAction_SetNull:
+		case sql.ForeignKeyReferentialAction_SetDefault:
 		}
 	}
 	if err := fkEditor.Editor.Update(ctx, old, new); err != nil {
@@ -122,6 +123,10 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 			}
 		case sql.ForeignKeyReferentialAction_SetNull:
 			if err := fkEditor.OnUpdateSetNull(ctx, refActionData, old, new, depth+1); err != nil {
+				return err
+			}
+		case sql.ForeignKeyReferentialAction_SetDefault:
+			if err := fkEditor.OnUpdateSetDefault(ctx, refActionData, old, new, depth+1); err != nil {
 				return err
 			}
 		}
@@ -190,6 +195,58 @@ func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionDat
 	return err
 }
 
+// OnUpdateSetDefault handles the ON UPDATE SET DEFAULT referential action.
+func (fkEditor *ForeignKeyEditor) OnUpdateSetDefault(ctx *sql.Context, refActionData ForeignKeyRefActionData, old sql.Row, new sql.Row, depth int) error {
+	if ok, err := fkEditor.ColumnsUpdated(ctx, refActionData, old, new); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
+	rowIter, err := refActionData.RowMapper.GetIter(ctx, old, false)
+	if err != nil {
+		return err
+	}
+	defer rowIter.Close(ctx)
+	var rowToDefault sql.Row
+	for rowToDefault, err = rowIter.Next(ctx); err == nil; rowToDefault, err = rowIter.Next(ctx) {
+		// MySQL seems to have a bug where cyclical foreign keys return an error at a depth of 15 instead of 16.
+		// This replicates the observed behavior, regardless of whether we're replicating a bug or intentional behavior.
+		if depth >= 15 {
+			if fkEditor.Cyclical {
+				return sql.ErrForeignKeyDepthLimit.New()
+			} else if depth > 15 {
+				return sql.ErrForeignKeyDepthLimit.New()
+			}
+		}
+
+		modifiedRow := make(sql.Row, len(rowToDefault))
+		for i := range rowToDefault {
+			// Row contents are nil by default, so we only need to assign the non-affected values
+			if refActionData.ChildParentMapping[i] == -1 {
+				modifiedRow[i] = rowToDefault[i]
+			} else {
+				col := refActionData.Editor.Schema[i]
+				if col.Default != nil {
+					newVal, err := col.Default.Eval(ctx, rowToDefault)
+					if err != nil {
+						return err
+					}
+					modifiedRow[i] = newVal
+				}
+			}
+		}
+		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
+		if err != nil {
+			return err
+		}
+	}
+	if err == io.EOF {
+		return nil
+	}
+	return err
+}
+
 // OnUpdateSetNull handles the ON UPDATE SET NULL referential action.
 func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionData ForeignKeyRefActionData, old sql.Row, new sql.Row, depth int) error {
 	if ok, err := fkEditor.ColumnsUpdated(ctx, refActionData, old, new); err != nil {
@@ -237,6 +294,7 @@ func (fkEditor *ForeignKeyEditor) Delete(ctx *sql.Context, row sql.Row, depth in
 			}
 		case sql.ForeignKeyReferentialAction_Cascade:
 		case sql.ForeignKeyReferentialAction_SetNull:
+		case sql.ForeignKeyReferentialAction_SetDefault:
 		}
 	}
 	if err := fkEditor.Editor.Delete(ctx, row); err != nil {
@@ -250,6 +308,10 @@ func (fkEditor *ForeignKeyEditor) Delete(ctx *sql.Context, row sql.Row, depth in
 			}
 		case sql.ForeignKeyReferentialAction_SetNull:
 			if err := fkEditor.OnDeleteSetNull(ctx, refActionData, row, depth+1); err != nil {
+				return err
+			}
+		case sql.ForeignKeyReferentialAction_SetDefault:
+			if err := fkEditor.OnDeleteSetDefault(ctx, refActionData, row, depth+1); err != nil {
 				return err
 			}
 		}
@@ -293,6 +355,52 @@ func (fkEditor *ForeignKeyEditor) OnDeleteCascade(ctx *sql.Context, refActionDat
 			}
 		}
 		err = refActionData.Editor.Delete(ctx, rowToDelete, depth)
+		if err != nil {
+			return err
+		}
+	}
+	if err == io.EOF {
+		return nil
+	}
+	return err
+}
+
+// OnDeleteSetDefault handles the ON DELETE SET DEFAULT referential action.
+func (fkEditor *ForeignKeyEditor) OnDeleteSetDefault(ctx *sql.Context, refActionData ForeignKeyRefActionData, row sql.Row, depth int) error {
+	rowIter, err := refActionData.RowMapper.GetIter(ctx, row, false)
+	if err != nil {
+		return err
+	}
+	defer rowIter.Close(ctx)
+	var rowToDefault sql.Row
+	for rowToDefault, err = rowIter.Next(ctx); err == nil; rowToDefault, err = rowIter.Next(ctx) {
+		// MySQL seems to have a bug where cyclical foreign keys return an error at a depth of 15 instead of 16.
+		// This replicates the observed behavior, regardless of whether we're replicating a bug or intentional behavior.
+		if depth >= 15 {
+			if fkEditor.Cyclical {
+				return sql.ErrForeignKeyDepthLimit.New()
+			} else if depth > 15 {
+				return sql.ErrForeignKeyDepthLimit.New()
+			}
+		}
+
+		modifiedRow := make(sql.Row, len(rowToDefault))
+		for i := range rowToDefault {
+			// Row contents are nil by default, so we only need to assign the non-affected values
+			if refActionData.ChildParentMapping[i] == -1 {
+				modifiedRow[i] = rowToDefault[i]
+			} else {
+				col := refActionData.Editor.Schema[i]
+				if col.Default != nil {
+					newVal, err := col.Default.Eval(ctx, rowToDefault)
+					if err != nil {
+						return err
+					}
+					modifiedRow[i] = newVal
+				}
+			}
+		}
+		err = refActionData.Editor.Update(ctx, rowToDefault, modifiedRow, depth)
 		if err != nil {
 			return err
 		}
