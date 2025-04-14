@@ -4694,6 +4694,16 @@ CREATE TABLE tab3 (
 			"insert into collate_tbl values (7, 'a,c');",
 			"insert into collate_tbl values (8, 'a,b,c');",
 
+			"create table text_tbl (i int primary key, s text);",
+			"insert into text_tbl values (0, '');",
+			"insert into text_tbl values (1, 'a');",
+			"insert into text_tbl values (2, 'b');",
+			"insert into text_tbl values (3, 'c');",
+			"insert into text_tbl values (4, 'a,b');",
+			"insert into text_tbl values (6, 'b,c');",
+			"insert into text_tbl values (7, 'a,c');",
+			"insert into text_tbl values (8, 'a,b,c');",
+
 			"create table enum_tbl (i int primary key, s enum('a','b','c'));",
 			"insert into enum_tbl values (0, 'a'), (1, 'b'), (2, 'c');",
 			"select i, s, find_in_set('a', s) from enum_tbl;",
@@ -4714,6 +4724,19 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query: "select i, find_in_set('A', s) from collate_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('a', s) from text_tbl;",
 				Expected: []sql.Row{
 					{0, 0},
 					{1, 1},
