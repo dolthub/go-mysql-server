@@ -1876,8 +1876,12 @@ func (b *BaseBuilder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) erro
 		}
 	}
 
-	if !exists && n.IfExists {
-		return nil
+	if !exists {
+		if n.IfExists {
+			return nil
+		} else {
+			return fmt.Errorf("check '%s' was not found on the table", n.Name)
+		}
 	}
 
 	return chAlterable.DropCheck(ctx, n.Name)
