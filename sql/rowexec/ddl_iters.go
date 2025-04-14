@@ -1859,6 +1859,31 @@ func (b *BaseBuilder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) erro
 		return err
 	}
 
+	checkTable, ok := chAlterable.(sql.CheckTable)
+	if !ok {
+		return plan.ErrNoCheckConstraintSupport.New(chAlterable.Name())
+	}
+
+	checks, err := checkTable.GetChecks(ctx)
+	if err != nil {
+		return err
+	}
+
+	exists := false
+	for _, check := range checks {
+		if strings.EqualFold(check.Name, n.Name) {
+			exists = true
+		}
+	}
+
+	if !exists {
+		if n.IfExists {
+			return nil
+		} else {
+			return fmt.Errorf("check '%s' was not found on the table", n.Name)
+		}
+	}
+
 	return chAlterable.DropCheck(ctx, n.Name)
 }
 
