@@ -128,7 +128,10 @@ func (d *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewAlterDropCheck(children[0].(*ResolvedTable), d.Name), nil
+
+	newAlterDropCheck := NewAlterDropCheck(children[0].(*ResolvedTable), d.Name)
+	newAlterDropCheck.IfExists = d.IfExists
+	return newAlterDropCheck, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
