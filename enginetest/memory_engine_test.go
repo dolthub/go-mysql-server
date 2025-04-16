@@ -88,9 +88,6 @@ func TestQueries(t *testing.T) {
 // TestQueriesPreparedSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesPreparedSimple(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	if harness.IsUsingServer() {
-		t.Skip("issue: https://github.com/dolthub/dolt/issues/6904 and https://github.com/dolthub/dolt/issues/6901")
-	}
 	enginetest.TestQueriesPrepared(t, harness)
 }
 
@@ -865,10 +862,7 @@ func TestAlterTable(t *testing.T) {
 
 func TestDateParse(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	if harness.IsUsingServer() {
-		t.Skip("issue: https://github.com/dolthub/dolt/issues/6901")
-	}
-	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
+	enginetest.TestDateParse(t, harness)
 }
 
 func TestJsonScripts(t *testing.T) {
