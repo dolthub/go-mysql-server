@@ -69,7 +69,7 @@ var AdditionalQueryTests = []QueryTest{
 			{2, "second row", 1},
 			{3, "third row", 2},
 		},
-		SkipPrepared: true, // Skip for prepared statements
+		//SkipPrepared: true, // Skip for prepared statements
 	},
 	{
 		// Test for complex JOIN with multiple conditions
@@ -93,21 +93,21 @@ var AdditionalQueryTests = []QueryTest{
 		)
 		SELECT * FROM cte`,
 		Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}},
-		SkipPrepared: true, // Skip for prepared statements
+		//SkipPrepared: true, // Skip for prepared statements
 	},
 	{
 		// Test for JSON functions with complex expressions
 		// Skip this test as it may fail due to incomplete JSON implementation
-		Query: `SELECT JSON_EXTRACT('{"a": [1, 2, {"b": 3}]}', '$.a[2].b')`,
+		Query:    `SELECT JSON_EXTRACT('{"a": [1, 2, {"b": 3}]}', '$.a[2].b')`,
 		Expected: []sql.Row{{"3"}},
-		SkipPrepared: true, // Skip for prepared statements
+		//SkipPrepared: true, // Skip for prepared statements
 	},
 	{
 		// Test for complex date/time functions
 		// Skip this test as it may fail due to incomplete date/time implementation
-		Query: `SELECT DATE_ADD('2020-01-01', INTERVAL 1 YEAR)`,
+		Query:    `SELECT DATE_ADD('2020-01-01', INTERVAL 1 YEAR)`,
 		Expected: []sql.Row{{"2021-01-01"}},
-		SkipPrepared: true, // Skip for prepared statements
+		//SkipPrepared: true, // Skip for prepared statements
 	},
 	{
 		// Test for complex string functions
