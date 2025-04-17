@@ -435,7 +435,7 @@ func (j *JoinNode) Describe(options sql.DescribeOptions) string {
 	if j.Filter != nil {
 		// Don't print a filter that's always true, it's just noise.
 		literal, isLiteral := j.Filter.(*expression.Literal)
-		if !isLiteral || literal.Value() != true {
+		if !isLiteral || literal.LiteralValue() != true {
 			if j.Op.IsMerge() {
 				filters := expression.SplitConjunction(j.Filter)
 				children = append(children, fmt.Sprintf("cmp: %s", sql.Describe(filters[0], options)))

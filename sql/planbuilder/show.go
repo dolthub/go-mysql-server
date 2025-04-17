@@ -845,7 +845,7 @@ func (b *Builder) buildShowCollation(inScope *scope, s *ast.Show) (outScope *sco
 		filterExpr, _, _ = transform.Expr(filterExpr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if exprLiteral, ok := expr.(*expression.Literal); ok {
 				const utf8Prefix = "utf8_"
-				if strLiteral, ok := exprLiteral.Value().(string); ok && strings.HasPrefix(strLiteral, utf8Prefix) {
+				if strLiteral, ok := exprLiteral.LiteralValue().(string); ok && strings.HasPrefix(strLiteral, utf8Prefix) {
 					return expression.NewLiteral("utf8mb3_"+strLiteral[len(utf8Prefix):], exprLiteral.Type()), transform.NewTree, nil
 				}
 			}

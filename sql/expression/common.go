@@ -141,7 +141,7 @@ func LiteralToInt(e sql.Expression) (int, error) {
 	if !ok {
 		return 0, ErrInvalidOffset.New(e)
 	}
-	val := lit.Value()
+	val := lit.LiteralValue()
 	var offset int
 	switch e := val.(type) {
 	case int:

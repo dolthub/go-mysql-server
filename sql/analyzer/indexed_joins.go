@@ -1311,7 +1311,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		if found && lit == nil {
 			break
 		}
-		rang[j] = sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), idx.SqlIdx().ColumnExpressionTypes()[j].Type)
+		rang[j] = sql.ClosedRangeColumnExpr(lit.LiteralValue(), lit.LiteralValue(), idx.SqlIdx().ColumnExpressionTypes()[j].Type)
 		j++
 		if found {
 			break

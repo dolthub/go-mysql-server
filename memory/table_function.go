@@ -27,7 +27,7 @@ func (s TableFunc) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Exp
 	if !ok {
 		return nil, fmt.Errorf("table_func table expects arguments to be literal expressions")
 	}
-	name, ok := nameExp.Value().(string)
+	name, ok := nameExp.LiteralValue().(string)
 	if !ok {
 		return nil, fmt.Errorf("table_func table expects 1st argument to be column name")
 	}
@@ -35,7 +35,7 @@ func (s TableFunc) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Exp
 	if !ok {
 		return nil, fmt.Errorf("table_func table expects arguments to be literal expressions")
 	}
-	value, _, err := types.Int64.Convert(ctx, valueExpr.Value())
+	value, _, err := types.Int64.Convert(ctx, valueExpr.LiteralValue())
 	if !ok {
 		return nil, fmt.Errorf("%w; table_func table expects 2nd argument to be a table_func length integer", err)
 	}

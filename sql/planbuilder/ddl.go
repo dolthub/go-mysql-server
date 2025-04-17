@@ -1712,7 +1712,7 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 	// TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
 	if unaryMinusExpr, ok := resExpr.(*expression.UnaryMinus); ok {
 		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
-			switch val := literalExpr.Value().(type) {
+			switch val := literalExpr.LiteralValue().(type) {
 			case float32:
 				resExpr = expression.NewLiteral(-val, types.Float32)
 				isLiteral = true

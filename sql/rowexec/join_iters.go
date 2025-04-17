@@ -359,7 +359,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func isTrueLit(e sql.Expression) bool {
 	if lit, ok := e.(*expression.Literal); ok {
-		return lit.Value() == true
+		return lit.LiteralValue() == true
 	}
 	return false
 }

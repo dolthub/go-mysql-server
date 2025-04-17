@@ -268,7 +268,7 @@ func (p *relProps) populateFds() {
 						equiv = append(equiv, [2]sql.ColumnId{l.Id(), r.Id()})
 					case *expression.Literal:
 						constant.Add(l.Id())
-						if r.Value() != nil {
+						if r.LiteralValue() != nil {
 							notNull.Add(l.Id())
 						}
 					}
@@ -279,7 +279,7 @@ func (p *relProps) populateFds() {
 						equiv = append(equiv, [2]sql.ColumnId{l.Id(), r.Id()})
 					case *expression.Literal:
 						constant.Add(r.Id())
-						if l.Value() != nil {
+						if l.LiteralValue() != nil {
 							notNull.Add(r.Id())
 						}
 					}

@@ -178,10 +178,10 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 		case *expression.NullSafeEquals:
 			nullRejecting = false
 		case *expression.Equals:
-			if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
+			if lit, ok := e.Left().(*expression.Literal); ok && lit.LiteralValue() == nil {
 				nullRejecting = false
 			}
-			if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
+			if lit, ok := e.Right().(*expression.Literal); ok && lit.LiteralValue() == nil {
 				nullRejecting = false
 			}
 		case *plan.Subquery:
@@ -194,10 +194,10 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 				case *expression.NullSafeEquals:
 					nullRejecting = false
 				case *expression.Equals:
-					if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
+					if lit, ok := e.Left().(*expression.Literal); ok && lit.LiteralValue() == nil {
 						nullRejecting = false
 					}
-					if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
+					if lit, ok := e.Right().(*expression.Literal); ok && lit.LiteralValue() == nil {
 						nullRejecting = false
 					}
 				}
@@ -289,7 +289,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				if e.Escape != nil {
 					return e, transform.SameTree, nil
 				}
-				val := r.Value()
+				val := r.LiteralValue()
 				valStr, ok := val.(string)
 				if !ok {
 					return e, transform.SameTree, nil
@@ -369,8 +369,8 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.LiteralValue() != nil {
+		switch v := lit.LiteralValue().(type) {
 		case bool:
 			return !v
 		case int8:
@@ -382,8 +382,8 @@ func isFalse(e sql.Expression) bool {
 
 func isTrue(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.LiteralValue() != nil {
+		switch v := lit.LiteralValue().(type) {
 		case bool:
 			return v
 		case int8:

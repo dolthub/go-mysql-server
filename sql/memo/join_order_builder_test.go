@@ -769,7 +769,7 @@ func assertScalarEq(t *testing.T, exp, cmp sql.Expression) {
 	case *expression.Literal:
 		exp, ok := exp.(*expression.Literal)
 		require.True(t, ok)
-		require.Equal(t, exp.Value(), cmp.Value())
+		require.Equal(t, exp.LiteralValue(), cmp.LiteralValue())
 	case *expression.GetField:
 		exp, ok := exp.(*expression.GetField)
 		require.True(t, ok)

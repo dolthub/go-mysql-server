@@ -913,7 +913,7 @@ func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...s
 	if eq, ok := exprs[0].(*expression.Equals); ok {
 		if gf, ok := eq.Left().(*expression.GetField); ok && strings.EqualFold(gf.Name(), "x") {
 			if lit, ok := eq.Right().(*expression.Literal); ok {
-				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type())}}
+				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.LiteralValue(), lit.LiteralValue(), lit.Type())}}
 				return sql.IndexLookup{Index: xIdx, Ranges: ranges}, nil, nil, true, nil
 			}
 		}

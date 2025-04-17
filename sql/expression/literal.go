@@ -35,6 +35,7 @@ type Literal struct {
 var _ sql.Expression = &Literal{}
 var _ sql.Expression2 = &Literal{}
 var _ sql.CollationCoercible = &Literal{}
+var _ sql.LiteralExpression = &Literal{}
 
 // NewLiteral creates a new Literal expression.
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
@@ -146,7 +147,7 @@ func (lit *Literal) Type2() sql.Type2 {
 	return t2
 }
 
-// Value returns the literal value.
-func (p *Literal) Value() interface{} {
-	return p.value
+// LiteralValue returns the literal value.
+func (lit *Literal) LiteralValue() interface{} {
+	return lit.value
 }
