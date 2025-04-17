@@ -2,7 +2,6 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -24,7 +23,7 @@ func AliasSubqueryString(e sql.Expression) string {
 
 	// String literal values are quoted when their String() method is called, so to avoid that, we
 	// check if we're dealing with a string literal and use it's raw value if so.
-	if literal, ok := e.(*expression.Literal); ok {
+	if literal, ok := e.(sql.LiteralExpression); ok {
 		if s, ok := literal.LiteralValue().(string); ok {
 			return s
 		}

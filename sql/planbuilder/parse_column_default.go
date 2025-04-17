@@ -56,7 +56,7 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	var isLiteral bool
 	switch e := parsedExpr.(type) {
 	case *expression.UnaryMinus:
-		_, isLiteral = e.Child.(*expression.Literal)
+		_, isLiteral = e.Child.(sql.LiteralExpression)
 	case *expression.UnresolvedFunction:
 		isLiteral = false
 	default:

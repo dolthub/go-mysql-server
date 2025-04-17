@@ -24,7 +24,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -358,7 +357,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func isTrueLit(e sql.Expression) bool {
-	if lit, ok := e.(*expression.Literal); ok {
+	if lit, ok := e.(sql.LiteralExpression); ok {
 		return lit.LiteralValue() == true
 	}
 	return false

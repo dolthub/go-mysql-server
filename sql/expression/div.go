@@ -354,7 +354,7 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 					maxFrac = s
 				}
 			}
-		case *Literal:
+		case sql.LiteralExpression:
 			if types.IsNumber(c.Type()) {
 				l, err := c.Eval(nil, nil)
 				if err == nil {
@@ -576,8 +576,8 @@ func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt 
 	// TODO: likely need a case for IntDiv
 
 	var fScale uint8
-	if lit, isLit := expr.(*Literal); isLit {
-		_, fScale = GetPrecisionAndScale(lit.value)
+	if lit, isLit := expr.(sql.LiteralExpression); isLit {
+		_, fScale = GetPrecisionAndScale(lit.LiteralValue())
 	}
 	typ := expr.Type()
 	if dt, dok := typ.(sql.DecimalType); dok {

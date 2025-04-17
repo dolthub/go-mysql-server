@@ -195,7 +195,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 							firstGeneratedAutoIncRowIdx = ii
 							break
 						}
-						if lit, isLit := expr.(*expression.Literal); isLit {
+						if lit, isLit := expr.(sql.LiteralExpression); isLit {
 							// If a literal NULL or if 0 is specified and the NO_AUTO_VALUE_ON_ZERO SQL mode is
 							// not active, then MySQL will fill in an auto_increment value.
 							if types.Null.Equals(lit.Type()) ||
@@ -238,7 +238,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 }
 
 // isZero returns true if the specified literal value |lit| has a value equal to 0.
-func isZero(ctx *sql.Context, lit *expression.Literal) bool {
+func isZero(ctx *sql.Context, lit sql.LiteralExpression) bool {
 	if !types.IsNumber(lit.Type()) {
 		return false
 	}

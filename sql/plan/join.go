@@ -434,7 +434,7 @@ func (j *JoinNode) Describe(options sql.DescribeOptions) string {
 	var children []string
 	if j.Filter != nil {
 		// Don't print a filter that's always true, it's just noise.
-		literal, isLiteral := j.Filter.(*expression.Literal)
+		literal, isLiteral := j.Filter.(sql.LiteralExpression)
 		if !isLiteral || literal.LiteralValue() != true {
 			if j.Op.IsMerge() {
 				filters := expression.SplitConjunction(j.Filter)

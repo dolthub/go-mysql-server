@@ -37,7 +37,7 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 		switch n := n.(type) {
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
-			case *expression.Literal:
+			case sql.LiteralExpression:
 				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
@@ -63,7 +63,7 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			}
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
-			case *expression.Literal:
+			case sql.LiteralExpression:
 				if !types.IsInteger(e.Type()) {
 					err = sql.ErrInvalidType.New(e.Type().String())
 					return false
@@ -296,7 +296,7 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 	valid := true
 	sql.Inspect(expr, func(expr sql.Expression) bool {
 		switch expr := expr.(type) {
-		case nil, sql.Aggregation, *expression.Literal:
+		case nil, sql.Aggregation, sql.LiteralExpression:
 			return false
 		case *expression.Alias, sql.FunctionExpression:
 			if stringContains(groupBys, expr.String()) {

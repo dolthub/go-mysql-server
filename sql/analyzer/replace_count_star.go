@@ -71,7 +71,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 
 				var doReplace bool
 				switch e := cnt.Child.(type) {
-				case *expression.Star, *expression.Literal:
+				case *expression.Star, sql.LiteralExpression:
 					doReplace = true
 
 				case *expression.GetField:

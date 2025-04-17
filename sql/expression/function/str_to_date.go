@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder/dateparse"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -50,7 +49,7 @@ func (s *StrToDate) String() string {
 func (s *StrToDate) Type() sql.Type {
 	// TODO: depending on the format, the return type can be a date, datetime or timestamp
 	//  just make best guess for now
-	formatLit, isLit := s.Format.(*expression.Literal)
+	formatLit, isLit := s.Format.(sql.LiteralExpression)
 	if !isLit {
 		return types.Datetime
 	}

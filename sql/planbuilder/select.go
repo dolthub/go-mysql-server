@@ -136,7 +136,7 @@ func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
 func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 	if limit != nil && limit.Offset != nil {
 		e := b.buildLimitVal(inScope, limit.Offset)
-		if lit, ok := e.(*expression.Literal); ok {
+		if lit, ok := e.(sql.LiteralExpression); ok {
 			// Check if offset starts at 0, if so, we can just remove the offset node.
 			// Only cast to int8, as a larger int type just means a non-zero offset.
 			if val, err := lit.Eval(b.ctx, nil); err == nil {
@@ -179,7 +179,7 @@ func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 	// todo this should be in a module that can generically coerce to a type or type class
 	switch e := e.(type) {
-	case *expression.Literal:
+	case sql.LiteralExpression:
 		val, _, err := types.Int64.Convert(b.ctx, e.LiteralValue())
 		if err != nil {
 			err = fmt.Errorf("%s: %w", err.Error(), sql.ErrInvalidTypeForLimit.New(types.Int64, e.Type()))

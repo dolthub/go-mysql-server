@@ -331,7 +331,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		// If we're collating a string literal, we check that the charset and collation match now. Other string sources
 		// (such as from tables) will have their own charset, which we won't know until after the parsing stage.
 		charSet := b.ctx.GetCharacterSet()
-		if _, isLiteral := innerExpr.(*expression.Literal); isLiteral && collation.CharacterSet() != charSet {
+		if _, isLiteral := innerExpr.(sql.LiteralExpression); isLiteral && collation.CharacterSet() != charSet {
 			b.handleErr(sql.ErrCollationInvalidForCharSet.New(collation.Name(), charSet.Name()))
 		}
 		return expression.NewCollatedExpression(innerExpr, collation)
@@ -428,7 +428,7 @@ func (b *Builder) getOrigTblName(node sql.Node, alias string) string {
 // getJsonValueTypeLiteral converts a type coercion string into a literal
 // expression with the zero type of the coercion (see json_value function).
 func (b *Builder) getJsonValueTypeLiteral(e sql.Expression) sql.Expression {
-	typLit, ok := e.(*expression.Literal)
+	typLit, ok := e.(sql.LiteralExpression)
 	if !ok {
 		err := fmt.Errorf("invalid json_value coercion type: %s", e)
 		b.handleErr(err)
@@ -512,7 +512,7 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 
 			// Character set introducers only work on string literals
 			expr := b.buildScalar(inScope, e.Expr)
-			if _, ok := expr.(*expression.Literal); !ok || !types.IsText(expr.Type()) {
+			if _, ok := expr.(sql.LiteralExpression); !ok || !types.IsText(expr.Type()) {
 				err := sql.ErrCharSetIntroducer.New()
 				b.handleErr(err)
 			}
@@ -557,18 +557,18 @@ func (b *Builder) buildBinaryScalar(inScope *scope, be *ast.BinaryExpr) sql.Expr
 // typeExpandComparisonLiteral expands comparison literals to column types
 // to simplify comparison execution when the conversion is safe.
 func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.Expression, sql.Expression) {
-	var leftLit, rightLit *expression.Literal
+	var leftLit, rightLit sql.LiteralExpression
 	var leftGf, rightGf *expression.GetField
 	switch l := left.(type) {
 	case *expression.GetField:
 		leftGf = l
-	case *expression.Literal:
+	case sql.LiteralExpression:
 		leftLit = l
 	}
 	switch r := right.(type) {
 	case *expression.GetField:
 		rightGf = r
-	case *expression.Literal:
+	case sql.LiteralExpression:
 		rightLit = r
 	}
 
@@ -844,7 +844,7 @@ func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) 
 // Convert an integer, represented by the specified string in the specified
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
-func (b *Builder) convertInt(value string, base int) *expression.Literal {
+func (b *Builder) convertInt(value string, base int) sql.LiteralExpression {
 	if i8, err := strconv.ParseInt(value, base, 8); err == nil {
 		return expression.NewLiteral(int8(i8), types.Int8)
 	}

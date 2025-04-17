@@ -168,12 +168,12 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 		b.handleErr(fmt.Errorf("incorrect parameter count in the call to native function NAME_CONST"))
 	}
 	alias := b.selectExprToExpression(fromScope, f.Exprs[0])
-	aLit, ok := alias.(*expression.Literal)
+	aLit, ok := alias.(sql.LiteralExpression)
 	if !ok {
 		b.handleErr(fmt.Errorf("incorrect arguments to: NAME_CONST"))
 	}
 	value := b.selectExprToExpression(fromScope, f.Exprs[1])
-	vLit, ok := value.(*expression.Literal)
+	vLit, ok := value.(sql.LiteralExpression)
 	if !ok {
 		b.handleErr(fmt.Errorf("incorrect arguments to: NAME_CONST"))
 	}

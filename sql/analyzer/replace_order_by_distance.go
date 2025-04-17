@@ -69,7 +69,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		// depend on the row. Right now that can be a Literal or a UserVar.
 		isLiteral := func(expr sql.Expression) bool {
 			switch expr.(type) {
-			case *expression.Literal, *expression.UserVar:
+			case sql.LiteralExpression, *expression.UserVar:
 				return true
 			}
 			return false

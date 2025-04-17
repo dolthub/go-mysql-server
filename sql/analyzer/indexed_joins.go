@@ -436,7 +436,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 					if rightOutTables.Contains(int(e.TableId())) {
 						projectExpressions = append(projectExpressions, e)
 					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
+				case sql.LiteralExpression, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
 					if _, ok := e.(expression.Equality); !ok {
 						return true
@@ -528,7 +528,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 						projectExpressions = append(projectExpressions, e)
 						nullify = append(nullify, e)
 					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
+				case sql.LiteralExpression, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
 					if _, ok := e.(expression.Equality); !ok {
 						return true
@@ -642,7 +642,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 					if rightOutTables.Contains(int(e.TableId())) {
 						projectExpressions = append(projectExpressions, e)
 					}
-				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar:
+				case sql.LiteralExpression, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar:
 				default:
 					if _, ok := e.(expression.Equality); !ok {
 						return true
@@ -1294,14 +1294,14 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	var j int
 	for {
 		found := idx.Cols()[j] == matchedIdx
-		var lit *expression.Literal
+		var lit sql.LiteralExpression
 		for _, f := range filters {
 			if eq, ok := f.(expression.Equality); ok {
 				if l, ok := eq.Left().(*expression.GetField); ok && l.Id() == idx.Cols()[j] {
-					lit, _ = eq.Right().(*expression.Literal)
+					lit, _ = eq.Right().(sql.LiteralExpression)
 				}
 				if r, ok := eq.Right().(*expression.GetField); ok && r.Id() == idx.Cols()[j] {
-					lit, _ = eq.Left().(*expression.Literal)
+					lit, _ = eq.Left().(sql.LiteralExpression)
 				}
 				if lit != nil {
 					break
@@ -1398,7 +1398,7 @@ func isWeaklyMonotonic(e sql.Expression) bool {
 				return true
 			}
 			return false
-		case *expression.Equals, *expression.NullSafeEquals, *expression.Literal, *expression.GetField,
+		case *expression.Equals, *expression.NullSafeEquals, sql.LiteralExpression, *expression.GetField,
 			*expression.Tuple, *expression.IsNull, *expression.BindVar:
 			return false
 		default:

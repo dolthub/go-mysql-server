@@ -57,17 +57,17 @@ func (b *Builder) getInt64Value(inScope *scope, expr ast.Expr, errStr string) in
 
 // getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
 // given if the expression doesn't represent an integer literal.
-func (b *Builder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) *expression.Literal {
+func (b *Builder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) sql.LiteralExpression {
 	e := b.buildScalar(inScope, expr)
 
 	switch e := e.(type) {
-	case *expression.Literal:
+	case sql.LiteralExpression:
 		if !types.IsInteger(e.Type()) {
 			err := sql.ErrUnsupportedFeature.New(errStr)
 			b.handleErr(err)
 		}
 	}
-	nl, ok := e.(*expression.Literal)
+	nl, ok := e.(sql.LiteralExpression)
 	if !ok || !types.IsInteger(nl.Type()) {
 		err := sql.ErrUnsupportedFeature.New(errStr)
 		b.handleErr(err)

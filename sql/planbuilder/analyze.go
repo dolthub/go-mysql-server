@@ -22,7 +22,6 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/stats"
 )
@@ -128,7 +127,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, sch
 	outScope = inScope.push()
 	statisticJ := new(stats.StatisticJSON)
 	using := b.buildScalar(inScope, n.Using)
-	if l, ok := using.(*expression.Literal); ok {
+	if l, ok := using.(sql.LiteralExpression); ok {
 		if typ, ok := l.Type().(sql.StringType); ok {
 			val, _, err := typ.Convert(b.ctx, l.LiteralValue())
 			if err != nil {
