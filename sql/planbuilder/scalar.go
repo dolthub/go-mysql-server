@@ -385,12 +385,19 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		expr1 = b.buildScalar(inScope, v.Expr1)
 		expr2 = b.buildScalar(inScope, v.Expr2)
 
-		if v.Name == "timestampdiff" {
+		switch v.Name {
+		case "timestampadd":
+			dateAddFunc, err := function.NewDateAdd(expr2, expression.NewInterval(expr1, v.Unit))
+			if err != nil {
+				b.handleErr(err)
+			}
+			return dateAddFunc
+		case "timestampdiff":
 			return function.NewTimestampDiff(unit, expr1, expr2)
-		} else if v.Name == "timestampadd" {
+		default:
 			return nil
 		}
-		return nil
+
 	case *ast.ExtractFuncExpr:
 		var unit sql.Expression = expression.NewLiteral(strings.ToUpper(v.Unit), types.LongText)
 		expr := b.buildScalar(inScope, v.Expr)
