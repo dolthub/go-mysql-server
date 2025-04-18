@@ -715,6 +715,9 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 				c.SchemaName = ds.SchemaName()
 			}
 
+			if err := b.validateOnUpdateOnDeleteRefActions(c); err != nil {
+				b.handleErr(err)
+			}
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
 			outScope.node = alterFk
@@ -782,6 +785,9 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 		case *sql.ForeignKeyConstraint:
 			constraint.Database = tname.DbQualifier.String()
 			constraint.Table = tname.Name.String()
+			if err := b.validateOnUpdateOnDeleteRefActions(constraint); err != nil {
+				b.handleErr(err)
+			}
 			if constraint.Database == "" {
 				constraint.Database = b.ctx.GetCurrentDatabase()
 			}
@@ -1590,6 +1596,21 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 	}
 
 	return b.resolveSchemaDefaults(tableScope, schema)
+}
+
+// validateOnUpdateOnDeleteRefActions validates that the specified |constraint| is using referential actions
+// supported by the current dialect. For example, MySQL parses the syntax for the SET DEFAULT referential action,
+// but doesn't actually support it, so if the MySQL parser is in use, this method will return an error stating
+// that SET DEFAULT is not supported.
+func (b *Builder) validateOnUpdateOnDeleteRefActions(constraint *sql.ForeignKeyConstraint) error {
+	if _, ok := b.parser.(*sql.MysqlParser); ok {
+		if constraint.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault ||
+			constraint.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
+			return sql.ErrForeignKeySetDefault.New()
+		}
+	}
+
+	return nil
 }
 
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {

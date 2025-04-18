@@ -95,27 +95,6 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 	return n, transform.SameTree, err
 }
 
-// validateForeignKeyReferentialActions checks |n| for foreign keys being created and validates that
-// their referential actions are valid for MySQL. This currently only checks for use of SET DEFAULT,
-// which MySQL supports in SQL syntax, but does not actually support that referential action and will
-// always throw an error if it is specified.
-func validateForeignKeyReferentialActions(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, _ *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	span, ctx := ctx.Span("validate_fk_referential_actions")
-	defer span.End()
-
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.CreateForeignKey:
-			if n.FkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault ||
-				n.FkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
-				return n, transform.SameTree, sql.ErrForeignKeySetDefault.New()
-			}
-		}
-
-		return n, transform.SameTree, nil
-	})
-}
-
 func validateResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("validate_is_resolved")
 	defer span.End()

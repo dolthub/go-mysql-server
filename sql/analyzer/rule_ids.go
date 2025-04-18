@@ -68,18 +68,17 @@ const (
 	interpreterId                // interpreter
 
 	// validate
-	validateResolvedId                     // validateResolved
-	validateOrderById                      // validateOrderBy
-	validateGroupById                      // validateGroupBy
-	validateSchemaSourceId                 // validateSchemaSource
-	validateIndexCreationId                // validateIndexCreation
-	ValidateOperandsId                     // validateOperands
-	validateIntervalUsageId                // validateIntervalUsage
-	validateSubqueryColumnsId              // validateSubqueryColumns
-	validateUnionSchemasMatchId            // validateUnionSchemasMatch
-	validateAggregationsId                 // validateAggregations
-	validateDeleteFromId                   // validateDeleteFrom
-	ValidateForeignKeyReferentialActionsId // validateForeignKeyReferentialActions
+	validateResolvedId          // validateResolved
+	validateOrderById           // validateOrderBy
+	validateGroupById           // validateGroupBy
+	validateSchemaSourceId      // validateSchemaSource
+	validateIndexCreationId     // validateIndexCreation
+	ValidateOperandsId          // validateOperands
+	validateIntervalUsageId     // validateIntervalUsage
+	validateSubqueryColumnsId   // validateSubqueryColumns
+	validateUnionSchemasMatchId // validateUnionSchemasMatch
+	validateAggregationsId      // validateAggregations
+	validateDeleteFromId        // validateDeleteFrom
 
 	// after all
 	cacheSubqueryAliasesInJoinsId  // cacheSubqueryAliasesInJoins
