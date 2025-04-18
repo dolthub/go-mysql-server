@@ -36,7 +36,7 @@ const (
 // a number of referential actions, the majority of them are functionally ignored and default to RESTRICT.
 func (f ForeignKeyReferentialAction) IsEquivalentToRestrict() bool {
 	switch f {
-	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull:
+	case ForeignKeyReferentialAction_Cascade, ForeignKeyReferentialAction_SetNull, ForeignKeyReferentialAction_SetDefault:
 		return false
 	default:
 		return true
