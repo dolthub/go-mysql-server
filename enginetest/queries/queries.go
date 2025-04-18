@@ -6440,6 +6440,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{[]byte("bar")}},
 	},
 	{
+		Query:    "SELECT TIMESTAMPADD(DAY, 1, '2018-05-02')",
+		Expected: []sql.Row{{"2018-05-03"}},
+	},
+	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
 		Expected: []sql.Row{{"2018-05-03"}},
 	},

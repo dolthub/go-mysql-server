@@ -110,6 +110,7 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
+
 	return NewDeleteFrom(children[0], p.explicitTargets), nil
 }
 
