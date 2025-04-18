@@ -382,6 +382,14 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		if err != nil {
 			return nil, err
 		}
+
+		// TODO: Foreign key information is not fully added to the plan node until these FK rules in the analyzer,
+		//       but it should be added during the binding phase, in planbuilder. Because this information is added
+		//       late, we have to do extra work here to resolve the schema defaults, which normally would happen
+		//       during binding. This extra FK information also doesn't get its exec indexes fixed up, so we have to
+		//       manually do that here. Moving all the FK information into the binding, planbuilder, phase would
+		//       clean this up. We should also fix assignExecIndexes to find all these FK schema references and fix
+		//       their exec indexes.
 		childTblSch, err := resolveSchemaDefaults(ctx, a.Catalog, childTbl)
 		if err != nil {
 			return nil, err
