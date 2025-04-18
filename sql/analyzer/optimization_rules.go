@@ -178,10 +178,10 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 		case *expression.NullSafeEquals:
 			nullRejecting = false
 		case *expression.Equals:
-			if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
+			if lit, ok := e.Left().(sql.LiteralExpression); ok && lit.LiteralValue() == nil {
 				nullRejecting = false
 			}
-			if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
+			if lit, ok := e.Right().(sql.LiteralExpression); ok && lit.LiteralValue() == nil {
 				nullRejecting = false
 			}
 		case *plan.Subquery:
@@ -194,10 +194,10 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 				case *expression.NullSafeEquals:
 					nullRejecting = false
 				case *expression.Equals:
-					if lit, ok := e.Left().(*expression.Literal); ok && lit.Value() == nil {
+					if lit, ok := e.Left().(sql.LiteralExpression); ok && lit.LiteralValue() == nil {
 						nullRejecting = false
 					}
-					if lit, ok := e.Right().(*expression.Literal); ok && lit.Value() == nil {
+					if lit, ok := e.Right().(sql.LiteralExpression); ok && lit.LiteralValue() == nil {
 						nullRejecting = false
 					}
 				}
@@ -281,7 +281,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return e, transform.SameTree, nil
 				}
 				// TODO: maybe more cases to simplify
-				r, ok := e.RightChild.(*expression.Literal)
+				r, ok := e.RightChild.(sql.LiteralExpression)
 				if !ok {
 					return e, transform.SameTree, nil
 				}
@@ -289,7 +289,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				if e.Escape != nil {
 					return e, transform.SameTree, nil
 				}
-				val := r.Value()
+				val := r.LiteralValue()
 				valStr, ok := val.(string)
 				if !ok {
 					return e, transform.SameTree, nil
@@ -327,7 +327,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type())
 				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
 				return newExpr, transform.NewTree, nil
-			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
+			case sql.LiteralExpression, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
 				return e, transform.SameTree, nil
 			default:
 				if !isEvaluable(e) {
@@ -368,9 +368,9 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 }
 
 func isFalse(e sql.Expression) bool {
-	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
+	lit, ok := e.(sql.LiteralExpression)
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.LiteralValue() != nil {
+		switch v := lit.LiteralValue().(type) {
 		case bool:
 			return !v
 		case int8:
@@ -381,9 +381,9 @@ func isFalse(e sql.Expression) bool {
 }
 
 func isTrue(e sql.Expression) bool {
-	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
+	lit, ok := e.(sql.LiteralExpression)
+	if ok && lit != nil && lit.Type() == types.Boolean && lit.LiteralValue() != nil {
+		switch v := lit.LiteralValue().(type) {
 		case bool:
 			return v
 		case int8:

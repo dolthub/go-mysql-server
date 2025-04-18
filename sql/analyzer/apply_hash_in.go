@@ -58,7 +58,7 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 func hasSingleOutput(e sql.Expression) bool {
 	return !transform.InspectExpr(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
-		case expression.Tuple, *expression.Literal, *expression.GetField,
+		case expression.Tuple, sql.LiteralExpression, *expression.GetField,
 			expression.Comparer, *expression.Convert, sql.FunctionExpression,
 			*expression.IsTrue, *expression.IsNull, expression.ArithmeticOp:
 			return false
@@ -73,7 +73,7 @@ func hasSingleOutput(e sql.Expression) bool {
 func isStatic(e sql.Expression) bool {
 	return !transform.InspectExpr(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
-		case expression.Tuple, *expression.Literal:
+		case expression.Tuple, sql.LiteralExpression:
 			return false
 		default:
 			return true

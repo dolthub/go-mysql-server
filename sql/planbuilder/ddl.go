@@ -1264,7 +1264,7 @@ func validatePrec(expr sql.Expression, colPrec int) (bool, error) {
 	if len(children) == 0 {
 		return colPrec == 0, nil
 	}
-	lit, isLit := children[0].(*expression.Literal)
+	lit, isLit := children[0].(sql.LiteralExpression)
 	if !isLit {
 		return true, nil
 	}
@@ -1751,8 +1751,8 @@ func (b *Builder) convertDefaultExpression(inScope *scope, defaultExpr ast.Expr,
 
 	// TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
 	if unaryMinusExpr, ok := resExpr.(*expression.UnaryMinus); ok {
-		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
-			switch val := literalExpr.Value().(type) {
+		if literalExpr, ok := unaryMinusExpr.Child.(sql.LiteralExpression); ok {
+			switch val := literalExpr.LiteralValue().(type) {
 			case float32:
 				resExpr = expression.NewLiteral(-val, types.Float32)
 				isLiteral = true

@@ -912,8 +912,8 @@ func (i *indexSearchableTable) IndexWithPrefix(ctx *sql.Context, expressions []s
 func (i *indexSearchableTable) LookupForExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.IndexLookup, *sql.FuncDepSet, sql.Expression, bool, error) {
 	if eq, ok := exprs[0].(*expression.Equals); ok {
 		if gf, ok := eq.Left().(*expression.GetField); ok && strings.EqualFold(gf.Name(), "x") {
-			if lit, ok := eq.Right().(*expression.Literal); ok {
-				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.Value(), lit.Value(), lit.Type())}}
+			if lit, ok := eq.Right().(sql.LiteralExpression); ok {
+				ranges := sql.MySQLRangeCollection{{sql.ClosedRangeColumnExpr(lit.LiteralValue(), lit.LiteralValue(), lit.Type())}}
 				return sql.IndexLookup{Index: xIdx, Ranges: ranges}, nil, nil, true, nil
 			}
 		}

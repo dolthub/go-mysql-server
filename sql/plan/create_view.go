@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -167,7 +166,7 @@ func GetIsUpdatableFromCreateView(cv *CreateView) bool {
 			allLiteral := true
 			transform.InspectExpressions(nn, func(ne sql.Expression) bool {
 				switch ne.(type) {
-				case *expression.Literal:
+				case sql.LiteralExpression:
 
 				default:
 					allLiteral = false

@@ -650,7 +650,7 @@ func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([
 		if !ok {
 			return nil, fmt.Errorf("cannot get binding value")
 		}
-		args[i] = lit.Value()
+		args[i] = lit.LiteralValue()
 	}
 	return args, nil
 }

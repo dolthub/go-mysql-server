@@ -137,11 +137,11 @@ func Dispose(e sql.Expression) {
 
 // LiteralToInt extracts a non-negative integer from an expression.Literal, or errors
 func LiteralToInt(e sql.Expression) (int, error) {
-	lit, ok := e.(*Literal)
+	lit, ok := e.(sql.LiteralExpression)
 	if !ok {
 		return 0, ErrInvalidOffset.New(e)
 	}
-	val := lit.Value()
+	val := lit.LiteralValue()
 	var offset int
 	switch e := val.(type) {
 	case int:

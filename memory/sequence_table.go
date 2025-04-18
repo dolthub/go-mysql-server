@@ -37,7 +37,7 @@ func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []
 	if !ok {
 		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
 	}
-	name, ok := nameExp.Value().(string)
+	name, ok := nameExp.LiteralValue().(string)
 	if !ok {
 		return nil, fmt.Errorf("sequence table expects 1st argument to be column name")
 	}
@@ -45,7 +45,7 @@ func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []
 	if !ok {
 		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
 	}
-	length, _, err := types.Int64.Convert(ctx, lenExp.Value())
+	length, _, err := types.Int64.Convert(ctx, lenExp.LiteralValue())
 	if !ok {
 		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
 	}

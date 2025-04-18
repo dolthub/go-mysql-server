@@ -45,6 +45,13 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+// LiteralExpression is a marker interface to indicate that an expression is a literal expression
+type LiteralExpression interface {
+	Expression
+	// LiteralValue returns the literal value of the expression.
+	LiteralValue() interface{}
+}
+
 // ExpressionWithNodes is an expression that contains nodes as children.
 type ExpressionWithNodes interface {
 	Expression

@@ -90,7 +90,7 @@ func SplitDisjunction(expr sql.Expression) []sql.Expression {
 
 type LookupColumn struct {
 	Col string
-	Lit *Literal
+	Lit sql.LiteralExpression
 	Eq  *Equals
 }
 
@@ -106,7 +106,7 @@ func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, boo
 		if gf, ok := e.Left().(*GetField); ok {
 			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
 				switch r := e.Right().(type) {
-				case *Literal:
+				case sql.LiteralExpression:
 					return LookupColumn{strings.ToLower(gf.name), r, e}, true
 				}
 			}
@@ -114,7 +114,7 @@ func LookupEqualityColumn(db, table string, e sql.Expression) (LookupColumn, boo
 		if gf, ok := e.Right().(*GetField); ok {
 			if strings.EqualFold(gf.Table(), table) && strings.EqualFold(gf.Database(), db) {
 				switch l := e.Left().(type) {
-				case *Literal:
+				case sql.LiteralExpression:
 					return LookupColumn{strings.ToLower(gf.name), l, e}, true
 				}
 			}
