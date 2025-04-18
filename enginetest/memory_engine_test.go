@@ -205,14 +205,20 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "test script",
-			SetUpScript: []string{
-				"create table t (i int);",
-			},
+			Name:        "AS OF propagates to nested CALLs",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select 1 into @a",
-					Expected: []sql.Row{},
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
+				},
+				{
+					Query: "call create_proc()",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 			},
 		},
@@ -220,10 +226,14 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
+
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

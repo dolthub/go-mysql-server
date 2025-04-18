@@ -330,7 +330,10 @@ func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualC
 }
 
 func (b *BaseBuilder) buildProcedure(ctx *sql.Context, n *plan.Procedure, row sql.Row) (sql.RowIter, error) {
-	return b.buildNodeExec(ctx, n.Body, row)
+	if n.ExternalProc == nil {
+		return nil, nil
+	}
+	return b.buildNodeExec(ctx, n.ExternalProc, row)
 }
 
 func (b *BaseBuilder) buildRecursiveTable(ctx *sql.Context, n *plan.RecursiveTable, row sql.Row) (sql.RowIter, error) {
@@ -730,6 +733,10 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 			exprParam := n.Params[i]
 			funcParamVal := funcParams[i+1].Elem().Interface()
 			err := exprParam.Set(ctx, funcParamVal, exprParam.Type())
+			if err != nil {
+				return nil, err
+			}
+			err = ctx.Session.SetStoredProcParam(exprParam.Name(), funcParamVal)
 			if err != nil {
 				return nil, err
 			}

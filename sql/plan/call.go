@@ -17,11 +17,13 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+// TODO: we need different types of calls: one for external procedures one for stored procedures
 
 type Call struct {
 	db        sql.Database
@@ -32,15 +34,23 @@ type Call struct {
 	Pref      *expression.ProcedureReference
 	cat       sql.Catalog
 	Analyzed  bool
+
+	// this will have list of parsed operations to run
+	Runner sql.StatementRunner
+	Ops    []procedures.InterpreterOperation
+
+	// TODO: sure whatever
+	resSch sql.Schema
 }
 
 var _ sql.Node = (*Call)(nil)
 var _ sql.CollationCoercible = (*Call)(nil)
 var _ sql.Expressioner = (*Call)(nil)
+var _ procedures.InterpreterNode = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
 // NewCall returns a *Call node.
-func NewCall(db sql.Database, name string, params []sql.Expression, proc *Procedure, asOf sql.Expression, catalog sql.Catalog) *Call {
+func NewCall(db sql.Database, name string, params []sql.Expression, proc *Procedure, asOf sql.Expression, catalog sql.Catalog, ops []procedures.InterpreterOperation) *Call {
 	return &Call{
 		db:        db,
 		Name:      name,
@@ -48,6 +58,7 @@ func NewCall(db sql.Database, name string, params []sql.Expression, proc *Proced
 		Procedure: proc,
 		asOf:      asOf,
 		cat:       catalog,
+		Ops:       ops,
 	}
 }
 
@@ -76,6 +87,9 @@ func (c *Call) IsReadOnly() bool {
 
 // Schema implements the sql.Node interface.
 func (c *Call) Schema() sql.Schema {
+	if c.resSch != nil {
+		return c.resSch
+	}
 	if c.Procedure != nil {
 		return c.Procedure.Schema()
 	}
@@ -170,9 +184,6 @@ func (c *Call) DebugString() string {
 	} else {
 		tp.WriteNode("CALL %s.%s(%s)", c.db.Name(), c.Name, paramStr)
 	}
-	if c.Procedure != nil {
-		tp.WriteChildren(sql.DebugString(c.Procedure.Body))
-	}
 
 	return tp.String()
 }
@@ -196,4 +207,30 @@ func (c *Call) Dispose() {
 	if c.Procedure != nil {
 		disposeNode(c.Procedure)
 	}
+}
+
+// SetStatementRunner implements the sql.InterpreterNode interface.
+func (c *Call) SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node {
+	nc := *c
+	nc.Runner = runner
+	return &nc
+}
+
+// GetRunner implements the sql.InterpreterNode interface.
+func (c *Call) GetRunner() sql.StatementRunner {
+	return c.Runner
+}
+
+func (c *Call) GetAsOf() sql.Expression {
+	return c.asOf
+}
+
+// GetStatements implements the sql.InterpreterNode interface.
+func (c *Call) GetStatements() []*procedures.InterpreterOperation {
+	return c.Procedure.Ops
+}
+
+// SetSchema implements the sql.InterpreterNode interface.
+func (c *Call) SetSchema(sch sql.Schema) {
+	c.resSch = sch
 }
