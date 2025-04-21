@@ -630,8 +630,8 @@ func compareJSONArray(a JsonArray, b interface{}) (int, error) {
 func compareJSONObject(a JsonObject, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			JsonArray:
+		bool,
+		JsonArray:
 		// a is lower precedence
 		return -1, nil
 
@@ -662,9 +662,9 @@ func compareJSONObject(a JsonObject, b interface{}) (int, error) {
 func compareJSONString(a string, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			JsonArray,
-			JsonObject:
+		bool,
+		JsonArray,
+		JsonObject:
 		// a is lower precedence
 		return -1, nil
 
@@ -680,10 +680,10 @@ func compareJSONString(a string, b interface{}) (int, error) {
 func compareJSONNumber(a float64, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			JsonArray,
-			JsonObject,
-			string:
+		bool,
+		JsonArray,
+		JsonObject,
+		string:
 		// a is lower precedence
 		return -1, nil
 	case int:
