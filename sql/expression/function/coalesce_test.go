@@ -153,6 +153,16 @@ func TestCoalesce(t *testing.T) {
 			nullable: false,
 		},
 		{
+			name: "coalesce(json({'a': 'a \n b'}), '')",
+			input: []sql.Expression{
+				expression.NewLiteral("{\"a\": \"one \\n two\"}", types.JSON),
+				expression.NewLiteral("", types.LongText),
+			},
+			expected: "{\"a\": \"one \\n two\"}",
+			typ:      types.LongText,
+			nullable: false,
+		},
+		{
 			name: "coalesce(sysInt, sysInt)",
 			input: []sql.Expression{
 				expression.NewLiteral(1, types.NewSystemIntType("int1", 0, 10, false)),
