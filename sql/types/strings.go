@@ -415,11 +415,6 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		if err != nil {
 			return nil, err
 		}
-		// TODO: why do we do this?
-		//val, err = strings.UnquoteBytes(val)
-		if err != nil {
-			return nil, err
-		}
 		start = 0
 	case sql.Wrapper[string]:
 		unwrapped, err := s.Unwrap(ctx)
