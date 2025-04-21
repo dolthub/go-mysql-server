@@ -17,6 +17,7 @@ package procedures
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -205,6 +206,7 @@ func (is *InterpreterStack) NewVariableAlias(alias string, variable *Interpreter
 // GetVariable traverses the stack (starting from the top) to find a variable with a matching name. Returns nil if no
 // variable was found.
 func (is *InterpreterStack) GetVariable(name string) *InterpreterVariable {
+	name = strings.ToLower(name)
 	for i := 0; i < is.stack.Len(); i++ {
 		if iv, ok := is.stack.PeekDepth(i).variables[name]; ok {
 			return iv
@@ -248,6 +250,7 @@ func (is *InterpreterStack) NewCondition(name string, sqlState string, mysqlErrC
 // GetCondition traverses the stack (starting from the top) to find a condition with a matching name. Returns nil if no
 // variable was found.
 func (is *InterpreterStack) GetCondition(name string) *InterpreterCondition {
+	name = strings.ToLower(name)
 	for i := 0; i < is.stack.Len(); i++ {
 		if ic, ok := is.stack.PeekDepth(i).conditions[name]; ok {
 			return ic
@@ -266,6 +269,7 @@ func (is *InterpreterStack) NewCursor(name string, selStmt ast.SelectStatement) 
 // GetCursor traverses the stack (starting from the top) to find a condition with a matching name. Returns nil if no
 // variable was found.
 func (is *InterpreterStack) GetCursor(name string) *InterpreterCursor {
+	name = strings.ToLower(name)
 	for i := 0; i < is.stack.Len(); i++ {
 		if ic, ok := is.stack.PeekDepth(i).cursors[name]; ok {
 			return ic

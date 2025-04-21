@@ -138,6 +138,7 @@ func (p *Procedure) Resolved() bool {
 	return true
 }
 
+// IsReadOnly implements the sql.Node interface.
 func (p *Procedure) IsReadOnly() bool {
 	if p.ExternalProc != nil {
 		return p.ExternalProc.IsReadOnly()

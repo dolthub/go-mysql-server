@@ -880,6 +880,9 @@ func IncrementStatusVariable(ctx *Context, name string, val int) {
 	ctx.Session.IncrementStatusVariable(ctx, name, val)
 }
 
+// StoredProcParam is a Parameter for a Stored Procedure.
+// Stored Procedures Parameters can be referenced from within other Stored Procedures, so we need to store them
+// somewhere that is accessible between interpreter calls to the engine.
 type StoredProcParam struct {
 	Type       Type
 	Value      any
@@ -887,6 +890,7 @@ type StoredProcParam struct {
 	Reference  *StoredProcParam
 }
 
+// SetValue saves val to the StoredProcParam, and set HasBeenSet to true.
 func (s *StoredProcParam) SetValue(val any) {
 	s.Value = val
 	s.HasBeenSet = true

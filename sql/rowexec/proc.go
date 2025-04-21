@@ -262,11 +262,13 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 
 	// We might close transactions in the procedure, so we need to start a new one if we're not in one already
 	if sess, ok := ctx.Session.(sql.TransactionSession); ok {
-		tx, tErr := sess.StartTransaction(ctx, sql.ReadWrite)
-		if tErr != nil {
-			return nil, tErr
+		if tx := ctx.GetTransaction(); tx == nil {
+			tx, err = sess.StartTransaction(ctx, sql.ReadWrite)
+			if err != nil {
+				return nil, err
+			}
+			ctx.SetTransaction(tx)
 		}
-		ctx.SetTransaction(tx)
 	}
 
 	return &callIter{

@@ -23,8 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// TODO: we need different types of calls: one for external procedures one for stored procedures
-
 type Call struct {
 	db        sql.Database
 	Name      string
@@ -39,7 +37,7 @@ type Call struct {
 	Runner sql.StatementRunner
 	Ops    []procedures.InterpreterOperation
 
-	// TODO: sure whatever
+	// retain the result schema
 	resSch sql.Schema
 }
 

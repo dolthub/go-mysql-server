@@ -40,6 +40,8 @@ type InterpreterNode interface {
 	SetSchema(sch sql.Schema)
 }
 
+// replaceVariablesInExpr will search for every ast.Node and handle each one on a case by case basis.
+// If a new ast.Node is added to the vitess parser we may need to add a case for it here.
 func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.SQLNode, asOf *ast.AsOf) (ast.SQLNode, error) {
 	switch e := expr.(type) {
 	case *ast.ColName:
@@ -286,6 +288,9 @@ func query(ctx *sql.Context, runner sql.StatementRunner, stmt ast.Statement) (sq
 			if rErr == io.EOF {
 				break
 			}
+			if cErr := rowIter.Close(ctx); cErr != nil {
+				return nil, nil, cErr
+			}
 			return nil, nil, rErr
 		}
 		rows = append(rows, row)
@@ -402,6 +407,9 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			return 0, nil, nil, nil, err
 		}
 		if _, err = rowIter.Next(ctx); err != io.EOF {
+			if rErr := rowIter.Close(ctx); rErr != nil {
+				return 0, nil, nil, nil, rErr
+			}
 			return 0, nil, nil, nil, err
 		}
 		if err = rowIter.Close(ctx); err != nil {
@@ -507,7 +515,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 				return 0, nil, nil, nil, fmt.Errorf("warnings not yet implemented")
 			}
 		} else {
-			cond := stack.GetCondition(strings.ToLower(signalStmt.ConditionName))
+			cond := stack.GetCondition(signalStmt.ConditionName)
 			if cond == nil {
 				return 0, nil, nil, nil, sql.ErrDeclareConditionNotFound.New(signalStmt.ConditionName)
 			}
@@ -587,7 +595,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 	case OpCode_Open:
 		openCur := operation.PrimaryData.(*ast.OpenCursor)
-		cursor := stack.GetCursor(strings.ToLower(openCur.Name))
+		cursor := stack.GetCursor(openCur.Name)
 		if cursor == nil {
 			return 0, nil, nil, nil, sql.ErrCursorNotFound.New(openCur.Name)
 		}
@@ -607,7 +615,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 	case OpCode_Fetch:
 		fetchCur := operation.PrimaryData.(*ast.FetchCursor)
-		cursor := stack.GetCursor(strings.ToLower(fetchCur.Name))
+		cursor := stack.GetCursor(fetchCur.Name)
 		if cursor == nil {
 			return 0, nil, nil, nil, sql.ErrCursorNotFound.New(fetchCur.Name)
 		}
@@ -641,7 +649,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 
 	case OpCode_Close:
 		closeCur := operation.PrimaryData.(*ast.CloseCursor)
-		cursor := stack.GetCursor(strings.ToLower(closeCur.Name))
+		cursor := stack.GetCursor(closeCur.Name)
 		if cursor == nil {
 			return 0, nil, nil, nil, sql.ErrCursorNotFound.New(closeCur.Name)
 		}
@@ -680,7 +688,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			return 0, nil, nil, nil, err
 		}
 
-		err = stack.SetVariable(strings.ToLower(operation.Target), row[0])
+		err = stack.SetVariable(operation.Target, row[0])
 		if err != nil {
 			err = ctx.Session.SetStoredProcParam(operation.Target, row[0])
 			if err != nil {

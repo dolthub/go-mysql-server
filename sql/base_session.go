@@ -254,6 +254,7 @@ func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, 
 	return
 }
 
+// NewStoredProcParam creates a new Stored Procedure Parameter in the Session
 func (s *BaseSession) NewStoredProcParam(name string, param *StoredProcParam) {
 	if _, ok := s.storedProcParams[name]; ok {
 		return
@@ -261,6 +262,7 @@ func (s *BaseSession) NewStoredProcParam(name string, param *StoredProcParam) {
 	s.storedProcParams[name] = param
 }
 
+// GetStoredProcParam retrieves the named stored procedure parameter, from the Session, returning nil if not found.
 func (s *BaseSession) GetStoredProcParam(name string) *StoredProcParam {
 	if param, ok := s.storedProcParams[name]; ok {
 		return param
@@ -268,6 +270,8 @@ func (s *BaseSession) GetStoredProcParam(name string) *StoredProcParam {
 	return nil
 }
 
+// SetStoredProcParam sets the named Stored Procedure Parameter from the Session to val and marks it as HasSet.
+// If the Parameter has not been initialized, this will throw an error.
 func (s *BaseSession) SetStoredProcParam(name string, val any) error {
 	param := s.GetStoredProcParam(name)
 	if param == nil {
