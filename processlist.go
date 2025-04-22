@@ -113,6 +113,9 @@ func (pl *ProcessList) BeginQuery(
 	ctx *sql.Context,
 	query string,
 ) (*sql.Context, error) {
+	if ctx.IsInterpreted() {
+		return ctx, nil
+	}
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
@@ -144,6 +147,9 @@ func (pl *ProcessList) BeginQuery(
 }
 
 func (pl *ProcessList) EndQuery(ctx *sql.Context) {
+	if ctx.IsInterpreted() {
+		return
+	}
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	id := ctx.Session.ID()
@@ -177,6 +183,9 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 // bracketed with EndOperation(). Should certainly be used for any
 // Handler callbacks which may access the database, like Prepare.
 func (pl *ProcessList) BeginOperation(ctx *sql.Context) (*sql.Context, error) {
+	if ctx.IsInterpreted() {
+		return ctx, nil
+	}
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	id := ctx.Session.ID()
@@ -193,6 +202,9 @@ func (pl *ProcessList) BeginOperation(ctx *sql.Context) (*sql.Context, error) {
 }
 
 func (pl *ProcessList) EndOperation(ctx *sql.Context) {
+	if ctx.IsInterpreted() {
+		return
+	}
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	id := ctx.Session.ID()

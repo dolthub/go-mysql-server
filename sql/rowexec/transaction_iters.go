@@ -78,7 +78,7 @@ type TransactionCommittingIter struct {
 
 func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
-	if qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings) {
+	if (qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings)) || ctx.IsInterpreted() {
 		return iter, nil
 	}
 
