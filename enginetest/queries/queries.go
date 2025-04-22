@@ -9855,7 +9855,13 @@ from typestable`,
 		},
 	},
 	{
-		Query: `SELECT json_type(json_extract('{"a": null}', null));`,
+		Query: `SELECT json_type(json_extract('{"a": 123}', null));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": 123}', '$.a', null));`,
 		Expected: []sql.Row{
 			{"NULL"},
 		},
