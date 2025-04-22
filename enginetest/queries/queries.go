@@ -5413,6 +5413,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT COALESCE(CAST('{"a": "one \\n two"}' as json), '');`,
+		Expected: []sql.Row{
+			{"{\"a\": \"one \\n two\"}"},
+		},
+	},
+	{
 		Query: "SELECT concat(s, i) FROM mytable",
 		Expected: []sql.Row{
 			{string("first row1")},

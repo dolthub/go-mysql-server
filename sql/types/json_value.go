@@ -43,7 +43,7 @@ func JsonToMySqlString(jsonWrapper sql.JSONWrapper) (string, error) {
 	return marshalToMySqlString(val)
 }
 
-// JsonToMySqlString generates a byte slice representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
+// JsonToMySqlBytes generates a byte slice representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
 func JsonToMySqlBytes(jsonWrapper sql.JSONWrapper) ([]byte, error) {
 	val, err := jsonWrapper.ToInterface()
 	if err != nil {
