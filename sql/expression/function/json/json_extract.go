@@ -102,6 +102,10 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
+		if path == nil {
+			return nil, nil
+		}
+
 		results[i], err = types.LookupJSONValue(searchable, path.(string))
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract from expression '%s'; %s", j.JSON.String(), err.Error())
