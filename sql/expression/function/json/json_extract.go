@@ -101,7 +101,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		if path == nil {
 			continue
 		}
