@@ -9855,6 +9855,12 @@ from typestable`,
 		},
 	},
 	{
+		Query: `SELECT json_type(json_extract('{"a": null}', null));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
 		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as datetime) as json));",
 		Expected: []sql.Row{
 			{"DATETIME"},
