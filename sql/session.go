@@ -262,6 +262,7 @@ type Context struct {
 	queryTime   time.Time
 	tracer      trace.Tracer
 	rootSpan    trace.Span
+	interpreted bool
 	Version     AnalyzerVersion
 }
 
@@ -335,6 +336,17 @@ func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
 	return fn()
 }
 
+// RunInterpreted modifies the context such that all calls to Context.IsInterpreted will return `true`. It is safe to
+// recursively call this.
+func RunInterpreted[T any](ctx *Context, f func(ctx *Context) (T, error)) (T, error) {
+	current := ctx.interpreted
+	ctx.interpreted = true
+	defer func() {
+		ctx.interpreted = current
+	}()
+	return f(ctx)
+}
+
 func swapNowFunc(newNowFunc func() time.Time) func() time.Time {
 	ctxNowFuncMutex.Lock()
 	defer ctxNowFuncMutex.Unlock()
@@ -394,6 +406,13 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 
 // NewEmptyContext returns a default context with default values.
 func NewEmptyContext() *Context { return NewContext(context.TODO()) }
+
+// IsInterpreted returns `true` when this is being called from within RunInterpreted. In such cases, GMS will choose to
+// handle logic differently, as running from within an interpreted function requires different considerations than
+// running in a standard environment.
+func (c *Context) IsInterpreted() bool {
+	return c.interpreted
+}
 
 // Pid returns the process id associated with this context.
 func (c *Context) Pid() uint64 {

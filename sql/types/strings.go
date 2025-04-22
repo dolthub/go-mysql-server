@@ -29,7 +29,6 @@ import (
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/internal/strings"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
@@ -413,10 +412,6 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	case sql.JSONWrapper:
 		var err error
 		val, err = JsonToMySqlBytes(s)
-		if err != nil {
-			return nil, err
-		}
-		val, err = strings.UnquoteBytes(val)
 		if err != nil {
 			return nil, err
 		}

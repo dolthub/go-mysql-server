@@ -5413,6 +5413,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT COALESCE(CAST('{"a": "one \\n two"}' as json), '');`,
+		Expected: []sql.Row{
+			{"{\"a\": \"one \\n two\"}"},
+		},
+	},
+	{
 		Query: "SELECT concat(s, i) FROM mytable",
 		Expected: []sql.Row{
 			{string("first row1")},
@@ -9850,6 +9856,18 @@ from typestable`,
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": null}', '$.a'));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": 123}', null));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": 123}', '$.a', null));`,
 		Expected: []sql.Row{
 			{"NULL"},
 		},
