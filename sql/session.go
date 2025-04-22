@@ -92,13 +92,12 @@ type Session interface {
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)
-
+	// NewStoredProcParam creates a new Stored Procedure Parameter in the Session.
 	NewStoredProcParam(name string, param *StoredProcParam)
-
+	// GetStoredProcParam finds and returns the Stored Procedure Parameter by the given name.
 	GetStoredProcParam(name string) *StoredProcParam
-
+	// SetStoredProcParam sets the Stored Procedure Parameter of the given name to the given val.
 	SetStoredProcParam(name string, val any) error
-
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session

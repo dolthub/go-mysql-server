@@ -347,12 +347,15 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {
+		// While it is possible to detect a parameter count mismatch here and throw an error,
+		// there's some weirdness involving external procedures. The analyzer rule applyProceduresCall will
+		// catch this discrepancy.
 		if len(proc.Params) == len(c.Params) {
 			procParam := proc.Params[i]
 			rspp := &sql.StoredProcParam{Type: procParam.Type}
 			b.ctx.Session.NewStoredProcParam(procParam.Name, rspp)
 			if col, isCol := param.(*ast.ColName); isCol {
-				colName := col.Name.String() // TODO: to lower?
+				colName := col.Name.String()
 				if spp := b.ctx.Session.GetStoredProcParam(colName); spp != nil {
 					iv := &procedures.InterpreterVariable{
 						Type:  spp.Type,

@@ -12,8 +12,7 @@ package procedures
 
 import ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
-// OpCode states the operation to be performed. Most operations have a direct analogue to a Pl/pgSQL operation, however
-// some exist only in Doltgres (specific to our interpreter implementation).
+// OpCode is the internal representation queries run by Stored Procedures.
 type OpCode uint16
 
 const (
