@@ -610,9 +610,15 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 		return i.WithChildIter(childIter), sch
 	case *plan.TableEditorIter:
 		// If the TableEditorIter has RETURNING expressions, then we do NOT actually add the accumulatorIter
-		innerIter := i.InnerIter()
-		if insertIter, ok := innerIter.(*insertIter); ok && len(insertIter.returnExprs) > 0 {
-			return insertIter, insertIter.returnSchema
+		switch innerIter := i.InnerIter().(type) {
+		case *insertIter:
+			if len(innerIter.returnExprs) > 0 {
+				return innerIter, innerIter.returnSchema
+			}
+		case *updateIter:
+			if len(innerIter.returnExprs) > 0 {
+				return innerIter, innerIter.returnSchema
+			}
 		}
 
 		return defaultAccumulatorIter(ctx, iter)
