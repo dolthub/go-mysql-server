@@ -364,11 +364,6 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 			database, c.Table.Name.String(), c.IfNotExists, c.Temporary, tableSpec)
 	}
 
-	// Temporary tables do not cause implicit commits
-	if c.Temporary {
-		b.qFlags.Unset(sql.QFlagDDL)
-	}
-
 	return
 }
 
