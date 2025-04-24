@@ -23,6 +23,7 @@ const (
 	OpCode_Fetch
 	OpCode_Close
 	OpCode_Set
+	OpCode_Call
 	OpCode_If
 	OpCode_Goto
 	OpCode_Execute

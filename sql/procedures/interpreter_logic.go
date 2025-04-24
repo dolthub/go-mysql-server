@@ -718,6 +718,42 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			}
 		}
 
+	case OpCode_Call:
+		stmt, err := replaceVariablesInExpr(ctx, stack, operation.PrimaryData, asOf)
+		if err != nil {
+			return 0, nil, nil, nil, err
+		}
+		// put stack variables into session variables
+		callStmt := stmt.(*ast.Call)
+		stackToParam := make(map[*InterpreterVariable]*sql.StoredProcParam)
+		for _, param := range callStmt.Params {
+			colName, isColName := param.(*ast.ColName)
+			if !isColName {
+				continue
+			}
+			paramName := colName.Name.String()
+			iv := stack.GetVariable(paramName)
+			if iv == nil {
+				continue
+			}
+			spp := &sql.StoredProcParam{
+				Type:  iv.Type,
+				Value: iv.Value,
+			}
+			ctx.Session.NewStoredProcParam(paramName, spp)
+			stackToParam[iv] = spp
+		}
+		sch, rowIter, err := query(ctx, runner, callStmt)
+		if err != nil {
+			return 0, nil, nil, nil, err
+		}
+		// assign stored proc params to stack variables
+		for iv, spp := range stackToParam {
+			iv.Value = spp.Value
+		}
+
+		return counter, sch, nil, rowIter, err
+
 	case OpCode_If:
 		selectStmt := operation.PrimaryData.(*ast.Select)
 		if selectStmt.SelectExprs == nil {

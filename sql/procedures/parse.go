@@ -141,6 +141,13 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		}
 		*ops = append(*ops, setOp)
 
+	case *ast.Call:
+		callOp := &InterpreterOperation{
+			OpCode:      OpCode_Call,
+			PrimaryData: s,
+		}
+		*ops = append(*ops, callOp)
+
 	case *ast.IfStatement:
 		var ifElseGotoOps []*InterpreterOperation
 		for _, ifCond := range s.Conditions {
