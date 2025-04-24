@@ -32,12 +32,12 @@ func TestNewVersion(t *testing.T) {
 
 	val, err := f.Eval(ctx, nil)
 	require.NoError(err)
-	require.Equal("8.0.23-"+versionPostfix, val)
+	require.Equal("8.0.31-"+versionPostfix, val)
 
 	f, err = NewVersion("")()
 	require.NoError(err)
 
 	val, err = f.Eval(ctx, nil)
 	require.NoError(err)
-	require.Equal("8.0.23", val)
+	require.Equal("8.0.31", val)
 }

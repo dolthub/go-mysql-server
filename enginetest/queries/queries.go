@@ -5429,7 +5429,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "SELECT version()",
 		Expected: []sql.Row{
-			{"8.0.23"},
+			{"8.0.31"},
 		},
 	},
 	{
@@ -5825,7 +5825,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", "8.0.23"},
+			{"autocommit", 1}, {"version", "8.0.31"},
 		},
 	},
 	{
@@ -5865,7 +5865,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "SHOW VARIABLES LIKE 'VERSION'",
 		Expected: []sql.Row{
-			{"version", "8.0.23"},
+			{"version", "8.0.31"},
 		},
 	},
 	{
