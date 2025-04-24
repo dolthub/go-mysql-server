@@ -152,6 +152,9 @@ type InterpreterScopeDetails struct {
 
 	// labels mark the counter of the start of a loop or block.
 	labels map[string]int
+
+	// database is the current database for this scope.
+	database string
 }
 
 // InterpreterStack represents the working information that an interpreter will use during execution. It is not exactly
@@ -302,6 +305,21 @@ func (is *InterpreterStack) ListHandlers() []*InterpreterHandler {
 // NewLabel creates a new label in the current scope.
 func (is *InterpreterStack) NewLabel(name string, index int) {
 	is.stack.Peek().labels[name] = index
+}
+
+// GetDatabase returns the current database for this scope.
+func (is *InterpreterStack) GetDatabase() string {
+	for i := 0; i < is.stack.Len(); i++ {
+		if db := is.stack.PeekDepth(i).database; db != "" {
+			return db
+		}
+	}
+	return ""
+}
+
+// SetDatabase sets the current database for this scope.
+func (is *InterpreterStack) SetDatabase(db string) {
+	is.stack.Peek().database = db
 }
 
 // GetLabel traverses the stack (starting from the top) to find a label with a matching name. Returns -1 if no

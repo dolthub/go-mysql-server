@@ -147,6 +147,9 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 		if e.AsOf == nil && asOf != nil {
 			e.AsOf = asOf.Time
 		}
+		if len(e.ProcName.Qualifier.String()) == 0 {
+			e.ProcName.Qualifier = ast.NewTableIdent(stack.GetDatabase())
+		}
 	case *ast.Limit:
 		newOffset, err := replaceVariablesInExpr(ctx, stack, e.Offset, asOf)
 		if err != nil {
@@ -251,12 +254,18 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			e.Values[i] = newExpr.(ast.ValTuple)
 		}
 	case *ast.Insert:
+		if asOf != nil {
+			return nil, sql.ErrProcedureCallAsOfReadOnly.New()
+		}
 		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Rows, asOf)
 		if err != nil {
 			return nil, err
 		}
 		e.Rows = newExpr.(ast.InsertRows)
 	case *ast.Delete:
+		if asOf != nil {
+			return nil, sql.ErrProcedureCallAsOfReadOnly.New()
+		}
 		if e.Where != nil {
 			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Where.Expr, asOf)
 			if err != nil {
@@ -265,6 +274,9 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			e.Where.Expr = newExpr.(ast.Expr)
 		}
 	case *ast.Update:
+		if asOf != nil {
+			return nil, sql.ErrProcedureCallAsOfReadOnly.New()
+		}
 		if e.Where != nil {
 			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Where.Expr, asOf)
 			if err != nil {
@@ -706,6 +718,42 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			}
 		}
 
+	case OpCode_Call:
+		stmt, err := replaceVariablesInExpr(ctx, stack, operation.PrimaryData, asOf)
+		if err != nil {
+			return 0, nil, nil, nil, err
+		}
+		// put stack variables into session variables
+		callStmt := stmt.(*ast.Call)
+		stackToParam := make(map[*InterpreterVariable]*sql.StoredProcParam)
+		for _, param := range callStmt.Params {
+			colName, isColName := param.(*ast.ColName)
+			if !isColName {
+				continue
+			}
+			paramName := colName.Name.String()
+			iv := stack.GetVariable(paramName)
+			if iv == nil {
+				continue
+			}
+			spp := &sql.StoredProcParam{
+				Type:  iv.Type,
+				Value: iv.Value,
+			}
+			ctx.Session.NewStoredProcParam(paramName, spp)
+			stackToParam[iv] = spp
+		}
+		sch, rowIter, err := query(ctx, runner, callStmt)
+		if err != nil {
+			return 0, nil, nil, nil, err
+		}
+		// assign stored proc params to stack variables
+		for iv, spp := range stackToParam {
+			iv.Value = spp.Value
+		}
+
+		return counter, sch, nil, rowIter, err
+
 	case OpCode_If:
 		selectStmt := operation.PrimaryData.(*ast.Select)
 		if selectStmt.SelectExprs == nil {
@@ -828,6 +876,9 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 	var retSch sql.Schema
 	runner := iNode.GetRunner()
 	statements := iNode.GetStatements()
+	if dbNode, isDbNode := iNode.(sql.Databaser); isDbNode {
+		stack.SetDatabase(dbNode.Database().Name())
+	}
 	for {
 		counter++
 		if counter < 0 {
