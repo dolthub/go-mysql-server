@@ -122,6 +122,9 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
+	if !c.Temporary {
+		b.qFlags.Set(sql.QFlagDDL)
+	}
 
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
@@ -231,6 +234,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	if dbName == "" {
 		dbName = b.currentDb().Name()
 	}
+
 	for _, t := range c.FromTables {
 		if t.DbQualifier.String() != "" && t.DbQualifier.String() != dbName {
 			err := sql.ErrUnsupportedFeature.New("dropping tables on multiple databases in the same statement")
@@ -358,6 +362,11 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	} else {
 		outScope.node = plan.NewCreateTable(
 			database, c.Table.Name.String(), c.IfNotExists, c.Temporary, tableSpec)
+	}
+
+	// Temporary tables do not cause implicit commits
+	if c.Temporary {
+		b.qFlags.Unset(sql.QFlagDDL)
 	}
 
 	return

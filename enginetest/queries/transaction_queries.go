@@ -1118,6 +1118,86 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
+		Name: "create temporary table queries are not implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ create table t (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This should not appear for client b until a transaction is committed
+				Query:    "/* client a */ insert into t values (1), (2), (3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ create temporary table tmp1 (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ create temporary table tmp2 (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ insert into tmp1 values (1), (2), (3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ drop temporary table tmp1;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// Oddly, this does commit the transaction
+				Query:    "/* client a */ drop table tmp2;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "/* client b */ select * from t;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
 		Name: "alter table queries are implicitly committed",
 		Assertions: []ScriptTestAssertion{
 			{
