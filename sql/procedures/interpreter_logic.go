@@ -272,7 +272,14 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			}
 			e.Where.Expr = newExpr.(ast.Expr)
 		}
+	case *ast.ConvertExpr:
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
+		if err != nil {
+			return nil, err
+		}
+		e.Expr = newExpr.(ast.Expr)
 	}
+
 	return expr, nil
 }
 
@@ -679,6 +686,9 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		}
 		row, err := rowIter.Next(ctx)
 		if err != nil {
+			if cErr := rowIter.Close(ctx); cErr != nil {
+				return 0, nil, nil, nil, cErr
+			}
 			return 0, nil, nil, nil, err
 		}
 		if _, err = rowIter.Next(ctx); err != io.EOF {

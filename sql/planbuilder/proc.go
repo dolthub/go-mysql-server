@@ -314,14 +314,12 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	}
 	if esp != nil {
 		proc, err = resolveExternalStoredProcedure(*esp)
-		// TODO: return plan.NewExternalCall here
 	} else if spdb, ok := db.(sql.StoredProcedureDatabase); ok {
 		var procDetails sql.StoredProcedureDetails
 		procDetails, ok, err = spdb.GetStoredProcedure(b.ctx, procName)
 		if err == nil {
 			if ok {
 				proc, innerQFlags, err = BuildProcedureHelper(b.ctx, b.cat, false, inScope, db, asOf, procDetails)
-				// TODO: somewhat hacky way of preserving this flag
 				// This is necessary so that the resolveSubqueries analyzer rule
 				// will apply NodeExecBuilder to Subqueries in procedure body
 				if innerQFlags.IsSet(sql.QFlagScalarSubquery) {

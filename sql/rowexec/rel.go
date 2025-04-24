@@ -736,10 +736,7 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 			if err != nil {
 				return nil, err
 			}
-			err = ctx.Session.SetStoredProcParam(exprParam.Name(), funcParamVal)
-			if err != nil {
-				return nil, err
-			}
+			_ = ctx.Session.SetStoredProcParam(exprParam.Name(), funcParamVal)
 		}
 	}
 	// It's not invalid to return a nil RowIter, as having no rows to return is expected of many stored procedures.

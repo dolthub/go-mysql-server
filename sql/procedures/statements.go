@@ -14,7 +14,7 @@
 
 package procedures
 
-// Statement represents a PL/pgSQL statement.
+// Statement represents a Stored Procedure Statement.
 type Statement interface {
 	// OperationSize reports the number of operations that the statement will convert to.
 	OperationSize() int32
@@ -75,13 +75,6 @@ func (stmt Block) AppendOperations(ops *[]InterpreterOperation, stack *Interpret
 		OpCode: OpCode_ScopeBegin,
 	})
 	for _, variable := range stmt.Variable {
-		//if !variable.IsParameter {
-		//	*ops = append(*ops, InterpreterOperation{
-		//		OpCode:      OpCode_Declare,
-		//		PrimaryData: variable.Type,
-		//		Target:      variable.Name,
-		//	})
-		//}
 		stack.NewVariableWithValue(variable.Name, nil, nil)
 	}
 	for _, innerStmt := range stmt.Body {
