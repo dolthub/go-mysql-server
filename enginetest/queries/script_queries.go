@@ -8332,6 +8332,55 @@ where
 			},
 		},
 	},
+	{
+		Name:    "lookup join string test",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			`
+CREATE TABLE testA (
+	id int PRIMARY KEY,
+	supplierkey VARCHAR(100),
+	name VARCHAR(100),
+	product VARCHAR(100),
+	UNIQUE KEY unique_product_supplier_key (product, supplierKey)
+);`,
+			`
+CREATE TABLE testB (
+	id int PRIMARY KEY,
+	vendorkey VARCHAR(100),
+	name VARCHAR(100),
+	supplierkey VARCHAR(100),
+	product VARCHAR(100),
+	UNIQUE KEY unique_product_vendor_key (product,vendorKey)
+);`,
+			"INSERT INTO testA VALUES (1, 'texwin-post-frame', 'Texwin (Post Frame)', 'carports');",
+			"INSERT INTO testA VALUES (2, 'texwin', 'Texwin', 'carports');",
+			"INSERT INTO testB VALUES (1, 'advancebldg', 'Test', 'texwin', 'carports');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+SELECT /*+ LOOKUP_JOIN(v,s) */  
+    v.vendorkey AS vendor,
+    v.product,
+    v.supplierkey,
+    s.name      AS supplierName
+FROM   
+    testB AS v
+INNER JOIN 
+    testA AS s
+ON 
+    s.supplierkey = v.supplierkey AND 
+    s.product     = v.product
+WHERE 
+    v.vendorkey = 'advancebldg';
+`,
+				Expected: []sql.Row{
+					{"advancebldg", "carports", "texwin", "Texwin"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
