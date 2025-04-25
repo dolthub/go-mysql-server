@@ -16,8 +16,6 @@ package procedures
 
 // Statement represents a Stored Procedure Statement.
 type Statement interface {
-	// OperationSize reports the number of operations that the statement will convert to.
-	OperationSize() int32
 	// AppendOperations adds the statement to the operation slice.
 	AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error
 }
@@ -54,20 +52,6 @@ type Block struct {
 
 var _ Statement = Block{}
 
-// OperationSize implements the interface Statement.
-func (stmt Block) OperationSize() int32 {
-	total := int32(2) // We start with 2 since we'll have ScopeBegin and ScopeEnd
-	for _, variable := range stmt.Variable {
-		if !variable.IsParameter {
-			total++
-		}
-	}
-	for _, innerStmt := range stmt.Body {
-		total += innerStmt.OperationSize()
-	}
-	return total
-}
-
 // AppendOperations implements the interface Statement.
 func (stmt Block) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	stack.PushScope()
@@ -96,11 +80,6 @@ type ExecuteSQL struct {
 }
 
 var _ Statement = ExecuteSQL{}
-
-// OperationSize implements the interface Statement.
-func (ExecuteSQL) OperationSize() int32 {
-	return 1
-}
 
 // AppendOperations implements the interface Statement.
 func (stmt ExecuteSQL) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
@@ -200,13 +179,4 @@ type Variable struct {
 	Name        string
 	Type        string
 	IsParameter bool
-}
-
-// OperationSizeForStatements returns the sum of OperationSize for every statement.
-func OperationSizeForStatements(stmts []Statement) int32 {
-	total := int32(0)
-	for _, stmt := range stmts {
-		total += stmt.OperationSize()
-	}
-	return total
 }
