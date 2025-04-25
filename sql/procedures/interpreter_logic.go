@@ -740,7 +740,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 				Type:  iv.Type,
 				Value: iv.Value,
 			}
-			ctx.Session.NewStoredProcParam(paramName, spp)
+			spp = ctx.Session.NewStoredProcParam(paramName, spp)
 			stackToParam[iv] = spp
 		}
 		sch, rowIter, err := query(ctx, runner, callStmt)

@@ -255,12 +255,13 @@ func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, 
 }
 
 // NewStoredProcParam creates a new Stored Procedure Parameter in the Session
-func (s *BaseSession) NewStoredProcParam(name string, param *StoredProcParam) {
+func (s *BaseSession) NewStoredProcParam(name string, param *StoredProcParam) *StoredProcParam {
 	name = strings.ToLower(name)
-	if _, ok := s.storedProcParams[name]; ok {
-		return
+	if spp, ok := s.storedProcParams[name]; ok {
+		return spp
 	}
 	s.storedProcParams[name] = param
+	return param
 }
 
 // GetStoredProcParam retrieves the named stored procedure parameter, from the Session, returning nil if not found.

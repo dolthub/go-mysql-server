@@ -93,7 +93,7 @@ type Session interface {
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)
 	// NewStoredProcParam creates a new Stored Procedure Parameter in the Session.
-	NewStoredProcParam(name string, param *StoredProcParam)
+	NewStoredProcParam(name string, param *StoredProcParam) *StoredProcParam
 	// GetStoredProcParam finds and returns the Stored Procedure Parameter by the given name.
 	GetStoredProcParam(name string) *StoredProcParam
 	// SetStoredProcParam sets the Stored Procedure Parameter of the given name to the given val.

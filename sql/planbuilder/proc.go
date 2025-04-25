@@ -350,8 +350,8 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 		// catch this discrepancy.
 		if len(proc.Params) == len(c.Params) {
 			procParam := proc.Params[i]
-			rspp := &sql.StoredProcParam{Type: procParam.Type}
-			b.ctx.Session.NewStoredProcParam(procParam.Name, rspp)
+			rSpp := &sql.StoredProcParam{Type: procParam.Type}
+			rSpp = b.ctx.Session.NewStoredProcParam(procParam.Name, rSpp)
 			if col, isCol := param.(*ast.ColName); isCol {
 				colName := col.Name.String()
 				if spp := b.ctx.Session.GetStoredProcParam(colName); spp != nil {
@@ -360,7 +360,7 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 						Value: spp.Value,
 					}
 					param = iv.ToAST()
-					rspp.Reference = spp
+					rSpp.Reference = spp
 				}
 			}
 		}
