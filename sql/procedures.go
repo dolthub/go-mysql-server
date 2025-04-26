@@ -21,12 +21,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-// Interpreter is an interface that implements an interpreter. These are typically used for functions (which may be
-// implemented as a set of operations that are interpreted during runtime).
-type Interpreter interface {
-	SetStatementRunner(ctx *Context, runner StatementRunner) Expression
-}
-
 // StatementRunner is essentially an interface that the engine will implement. We cannot directly reference the engine
 // here as it will cause an import cycle, so this may be updated to suit any function changes that the engine
 // experiences.

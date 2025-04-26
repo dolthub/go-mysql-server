@@ -34,7 +34,7 @@ func interpreter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	}
 
 	newNode, sameExpr, err := transform.NodeExprs(newNode, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if interp, ok := expr.(sql.Interpreter); ok {
+		if interp, ok := expr.(procedures.InterpreterExpr); ok {
 			return interp.SetStatementRunner(ctx, a.Runner), transform.NewTree, nil
 		}
 		return expr, transform.SameTree, nil

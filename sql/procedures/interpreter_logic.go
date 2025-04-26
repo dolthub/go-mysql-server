@@ -30,6 +30,12 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
+// InterpreterExpr is an interface that implements an interpreter. These are typically used for functions (which may be
+// implemented as a set of operations that are interpreted during runtime).
+type InterpreterExpr interface {
+	SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Expression
+}
+
 // InterpreterNode is an interface that implements an interpreter. These are typically used for functions (which may be
 // implemented as a set of operations that are interpreted during runtime).
 type InterpreterNode interface {
