@@ -227,7 +227,6 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 		if s.Else == nil {
 			// throw an error if when there is no else block
 			// this is just an empty case statement that will always hit the else
-			// todo: alternatively, use an error opcode
 			errOp := &InterpreterOperation{
 				OpCode: OpCode_Exception,
 				Error:  mysql.NewSQLError(1339, "20000", "Case not found for CASE statement"),
@@ -362,8 +361,7 @@ func ConvertStmt(ops *[]*InterpreterOperation, stack *InterpreterStack, stmt ast
 	return nil
 }
 
-// Parse parses the given CREATE FUNCTION string (which must be the entire string, not just the body) into a Block
-// containing the contents of the body.
+// Parse takes the ast.Statement and converts it series of OpCodes.
 func Parse(stmt ast.Statement) ([]*InterpreterOperation, error) {
 	ops := make([]*InterpreterOperation, 0, 64)
 	stack := NewInterpreterStack()
