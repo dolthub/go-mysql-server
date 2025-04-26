@@ -346,6 +346,15 @@ func (is *InterpreterStack) PushScope() {
 }
 
 // PopScope removes the current scope.
-func (is *InterpreterStack) PopScope() {
-	is.stack.Pop()
+func (is *InterpreterStack) PopScope(ctx *sql.Context) {
+	scope := is.stack.Pop()
+	for _, cursor := range scope.cursors {
+		if cursor == nil {
+			continue
+		}
+		if cursor.RowIter == nil {
+			continue
+		}
+		cursor.RowIter.Close(ctx)
+	}
 }

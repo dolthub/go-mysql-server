@@ -14,10 +14,12 @@
 
 package procedures
 
+import "github.com/dolthub/go-mysql-server/sql"
+
 // Statement represents a Stored Procedure Statement.
 type Statement interface {
 	// AppendOperations adds the statement to the operation slice.
-	AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error
+	AppendOperations(ctx *sql.Context, ops *[]InterpreterOperation, stack *InterpreterStack) error
 }
 
 // Assignment represents an assignment statement.
@@ -35,7 +37,7 @@ func (Assignment) OperationSize() int32 {
 }
 
 // AppendOperations implements the interface Statement.
-func (stmt Assignment) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
+func (stmt Assignment) AppendOperations(ctx *sql.Context, ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	//*ops = append(*ops, InterpreterOperation{
 	//	OpCode: OpCode_Assign,
 	//	Target: stmt.VariableName,
@@ -53,7 +55,7 @@ type Block struct {
 var _ Statement = Block{}
 
 // AppendOperations implements the interface Statement.
-func (stmt Block) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
+func (stmt Block) AppendOperations(ctx *sql.Context, ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	stack.PushScope()
 	*ops = append(*ops, InterpreterOperation{
 		OpCode: OpCode_ScopeBegin,
@@ -62,14 +64,14 @@ func (stmt Block) AppendOperations(ops *[]InterpreterOperation, stack *Interpret
 		stack.NewVariableWithValue(variable.Name, nil, nil)
 	}
 	for _, innerStmt := range stmt.Body {
-		if err := innerStmt.AppendOperations(ops, stack); err != nil {
+		if err := innerStmt.AppendOperations(ctx, ops, stack); err != nil {
 			return err
 		}
 	}
 	*ops = append(*ops, InterpreterOperation{
 		OpCode: OpCode_ScopeEnd,
 	})
-	stack.PopScope()
+	stack.PopScope(ctx)
 	return nil
 }
 
@@ -82,7 +84,7 @@ type ExecuteSQL struct {
 var _ Statement = ExecuteSQL{}
 
 // AppendOperations implements the interface Statement.
-func (stmt ExecuteSQL) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
+func (stmt ExecuteSQL) AppendOperations(_ *sql.Context, ops *[]InterpreterOperation, stack *InterpreterStack) error {
 	*ops = append(*ops, InterpreterOperation{
 		OpCode: OpCode_Execute,
 		Target: stmt.Target,
@@ -103,7 +105,7 @@ func (Goto) OperationSize() int32 {
 }
 
 // AppendOperations implements the interface Statement.
-func (stmt Goto) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
+func (stmt Goto) AppendOperations(_ *sql.Context, ops *[]InterpreterOperation, _ *InterpreterStack) error {
 	*ops = append(*ops, InterpreterOperation{
 		OpCode: OpCode_Goto,
 		Index:  len(*ops) + int(stmt.Offset),
@@ -125,7 +127,7 @@ func (If) OperationSize() int32 {
 }
 
 // AppendOperations implements the interface Statement.
-func (stmt If) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
+func (stmt If) AppendOperations(_ *sql.Context, _ *[]InterpreterOperation, _ *InterpreterStack) error {
 	//*ops = append(*ops, InterpreterOperation{
 	//	OpCode:      OpCode_If,
 	//	PrimaryData: "SELECT ;",
@@ -147,7 +149,7 @@ func (Perform) OperationSize() int32 {
 }
 
 // AppendOperations implements the interface Statement.
-func (stmt Perform) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
+func (stmt Perform) AppendOperations(_ *sql.Context, _ *[]InterpreterOperation, _ *InterpreterStack) error {
 	//*ops = append(*ops, InterpreterOperation{
 	//	OpCode: OpCode_Perform,
 	//})
@@ -167,7 +169,7 @@ func (Return) OperationSize() int32 {
 }
 
 // AppendOperations implements the interface Statement.
-func (stmt Return) AppendOperations(ops *[]InterpreterOperation, stack *InterpreterStack) error {
+func (stmt Return) AppendOperations(_ *sql.Context, ops *[]InterpreterOperation, _ *InterpreterStack) error {
 	*ops = append(*ops, InterpreterOperation{
 		OpCode: OpCode_Return,
 	})

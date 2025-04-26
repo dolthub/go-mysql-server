@@ -804,7 +804,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 				case OpCode_ScopeBegin:
 					stack.PushScope()
 				case OpCode_ScopeEnd:
-					stack.PopScope()
+					stack.PopScope(ctx)
 				default:
 					// No-op
 				}
@@ -816,7 +816,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 				}
 				switch statements[counter].OpCode {
 				case OpCode_ScopeBegin:
-					stack.PopScope()
+					stack.PopScope(ctx)
 				case OpCode_ScopeEnd:
 					stack.PushScope()
 				default:
@@ -843,7 +843,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 		stack.PushScope()
 
 	case OpCode_ScopeEnd:
-		stack.PopScope()
+		stack.PopScope(ctx)
 
 	default:
 		panic("unimplemented opcode")
