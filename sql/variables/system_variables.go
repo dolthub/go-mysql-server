@@ -2951,7 +2951,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("version"),
-		Default:           "8.0.23",
+		Default:           "8.0.31",
 	},
 	"version_comment": &sql.MysqlSystemVariable{
 		Name:              "version_comment",

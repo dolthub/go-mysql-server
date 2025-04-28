@@ -627,7 +627,7 @@ var JsonScripts = []ScriptTest{
 		SetUpScript: []string{
 			"create table t (pk int primary key, col1 JSON, col2 JSON);",
 			`insert into t values (1, JSON_OBJECT('key1', 1, 'key2', '"abc"'), JSON_ARRAY(3,10,5,17,"z"));`,
-			`insert into t values (2, JSON_OBJECT('key1', 100, 'key2', '"ghi"'), JSON_ARRAY(3,10,5,17,JSON_ARRAY(22,"y",66)));`,
+			`insert into t values (2, JSON_OBJECT('key1', 100, 'key2', 'ghi'), JSON_ARRAY(3,10,5,17,JSON_ARRAY(22,"y",66)));`,
 			`CREATE TABLE t2 (i INT PRIMARY KEY, j JSON);`,
 			`INSERT INTO t2 VALUES (0, '{"a": "123", "outer": {"inner": 456}}');`,
 		},
@@ -637,15 +637,22 @@ var JsonScripts = []ScriptTest{
 				Expected: []sql.Row{{types.MustJSON("1")}, {types.MustJSON("100")}},
 			},
 			{
+				Query: `select col1->'$.key2' from t;`,
+				Expected: []sql.Row{
+					{types.JSONDocument{Val: "\"abc\""}},
+					{types.JSONDocument{Val: "ghi"}},
+				},
+			},
+			{
 				Query:    `select col1->>'$.key2' from t;`,
-				Expected: []sql.Row{{"abc"}, {"ghi"}},
+				Expected: []sql.Row{{"\"abc\""}, {"ghi"}},
 			},
 			{
 				Query:    `select pk, col1 from t where col1->'$.key1' = 1;`,
 				Expected: []sql.Row{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
 			},
 			{
-				Query:    `select pk, col1 from t where col1->>'$.key2' = 'abc';`,
+				Query:    `select pk, col1 from t where col1->>'$.key2' = '"abc"';`,
 				Expected: []sql.Row{{1, types.MustJSON(`{"key1":1, "key2":"\"abc\""}`)}},
 			},
 			{

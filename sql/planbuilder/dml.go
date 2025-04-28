@@ -581,6 +581,15 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 			return true
 		})
 	}
+
+	if len(u.Returning) > 0 {
+		returningExprs := make([]sql.Expression, len(u.Returning))
+		for i, selectExpr := range u.Returning {
+			returningExprs[i] = b.selectExprToExpression(outScope, selectExpr)
+		}
+		update.Returning = returningExprs
+	}
+
 	outScope.node = update.WithChecks(checks)
 	return
 }

@@ -5413,6 +5413,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT COALESCE(CAST('{"a": "one \\n two"}' as json), '');`,
+		Expected: []sql.Row{
+			{"{\"a\": \"one \\n two\"}"},
+		},
+	},
+	{
 		Query: "SELECT concat(s, i) FROM mytable",
 		Expected: []sql.Row{
 			{string("first row1")},
@@ -5423,7 +5429,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "SELECT version()",
 		Expected: []sql.Row{
-			{"8.0.23"},
+			{"8.0.31"},
 		},
 	},
 	{
@@ -5819,7 +5825,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", "8.0.23"},
+			{"autocommit", 1}, {"version", "8.0.31"},
 		},
 	},
 	{
@@ -5859,7 +5865,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "SHOW VARIABLES LIKE 'VERSION'",
 		Expected: []sql.Row{
-			{"version", "8.0.23"},
+			{"version", "8.0.31"},
 		},
 	},
 	{
@@ -9850,6 +9856,18 @@ from typestable`,
 	},
 	{
 		Query: `SELECT json_type(json_extract('{"a": null}', '$.a'));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": 123}', null));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": 123}', '$.a', null));`,
 		Expected: []sql.Row{
 			{"NULL"},
 		},
