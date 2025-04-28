@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -35,6 +36,7 @@ type Literal struct {
 var _ sql.Expression = &Literal{}
 var _ sql.Expression2 = &Literal{}
 var _ sql.CollationCoercible = &Literal{}
+var _ sqlparser.Injectable = &Literal{}
 
 // NewLiteral creates a new Literal expression.
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
@@ -149,4 +151,11 @@ func (lit *Literal) Type2() sql.Type2 {
 // Value returns the literal value.
 func (p *Literal) Value() interface{} {
 	return p.value
+}
+
+func (lit *Literal) WithResolvedChildren(children []any) (any, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(lit, len(children), 0)
+	}
+	return lit, nil
 }
