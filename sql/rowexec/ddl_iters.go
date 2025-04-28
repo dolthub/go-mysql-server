@@ -545,7 +545,6 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
-	newColIdx := newSch.IndexOf(newCol.Name, newCol.Source)
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
 	for {
 		r, err := rowIter.Next(ctx)
@@ -557,22 +556,25 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			return false, err
 		}
 
+		// remap old enum values to new enum values
+		if isOldEnum && isNewEnum && r[oldColIdx] != nil {
+			oldIdx := int(r[oldColIdx].(uint16))
+			// 0 values in enums are error values. They are preserved during remapping.
+			if oldIdx != 0 {
+				oldStr, _ := oldEnum.At(oldIdx)
+				newIdx := newEnum.IndexOf(oldStr)
+				if newIdx == -1 {
+					return false, types.ErrDataTruncatedForColumn.New(newCol.Name)
+				}
+				r[oldColIdx] = uint16(newIdx)
+			}
+		}
+
 		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
 			return false, err
-		}
-
-		// remap old enum values to new enum values
-		if isOldEnum && isNewEnum && newRow[newColIdx] != nil {
-			oldIdx := int(newRow[newColIdx].(uint16))
-			oldStr, _ := oldEnum.At(oldIdx)
-			newIdx := newEnum.IndexOf(oldStr)
-			if newIdx == -1 {
-				return false, types.ErrDataTruncatedForColumn.New(newCol.Name)
-			}
-			newRow[newColIdx] = uint16(newIdx)
 		}
 
 		err = i.validateNullability(ctx, newSch, newRow)
