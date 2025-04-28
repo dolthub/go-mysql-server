@@ -15,8 +15,7 @@
 package procedures
 
 import (
-	"context"
-	"errors"
+		"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -894,7 +893,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 			break
 		}
 
-		subCtx := sql.NewContext(context.Background())
+		subCtx := sql.NewContext(ctx.Context)
 		subCtx.Session = ctx.Session
 
 		operation := statements[counter]
