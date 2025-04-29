@@ -28,9 +28,9 @@ import (
 
 // Literal represents a literal expression (string, number, bool, ...).
 type Literal struct {
-	value     interface{}
-	val2      sql.Value
-	fieldType sql.Type
+	Val  interface{}
+	Typ  sql.Type
+	val2 sql.Value
 }
 
 var _ sql.Expression = &Literal{}
@@ -42,9 +42,9 @@ var _ sqlparser.Injectable = &Literal{}
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 	val2, _ := sql.ConvertToValue(value)
 	return &Literal{
-		value:     value,
-		val2:      val2,
-		fieldType: fieldType,
+		Val:  value,
+		val2: val2,
+		Typ:  fieldType,
 	}
 }
 
@@ -55,18 +55,18 @@ func (lit *Literal) Resolved() bool {
 
 // IsNullable implements the Expression interface.
 func (lit *Literal) IsNullable() bool {
-	return lit.value == nil
+	return lit.Val == nil
 }
 
 // Type implements the Expression interface.
 func (lit *Literal) Type() sql.Type {
-	return lit.fieldType
+	return lit.Typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (lit *Literal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	if types.IsText(lit.fieldType) {
-		collation, _ = lit.fieldType.CollationCoercibility(ctx)
+	if types.IsText(lit.Typ) {
+		collation, _ = lit.Typ.CollationCoercibility(ctx)
 		return collation, 4
 	}
 	return sql.Collation_binary, 5
@@ -74,15 +74,15 @@ func (lit *Literal) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 
 // Eval implements the Expression interface.
 func (lit *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return lit.value, nil
+	return lit.Val, nil
 }
 
 func (lit *Literal) String() string {
-	switch litVal := lit.value.(type) {
+	switch litVal := lit.Val.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", litVal)
 	case string:
-		switch lit.fieldType.Type() {
+		switch lit.Typ.Type() {
 		// utf8 charset cannot encode binary string
 		case query.Type_VARBINARY, query.Type_BINARY:
 			return fmt.Sprintf("'0x%X'", litVal)
@@ -104,8 +104,8 @@ func (lit *Literal) String() string {
 }
 
 func (lit *Literal) DebugString() string {
-	typeStr := lit.fieldType.String()
-	switch v := lit.value.(type) {
+	typeStr := lit.Typ.String()
+	switch v := lit.Val.(type) {
 	case string:
 		return fmt.Sprintf("%s (%s)", v, typeStr)
 	case []byte:
@@ -141,16 +141,16 @@ func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 }
 
 func (lit *Literal) Type2() sql.Type2 {
-	t2, ok := lit.fieldType.(sql.Type2)
+	t2, ok := lit.Typ.(sql.Type2)
 	if !ok {
-		panic(fmt.Errorf("expected Type2, but was %T", lit.fieldType))
+		panic(fmt.Errorf("expected Type2, but was %T", lit.Typ))
 	}
 	return t2
 }
 
 // Value returns the literal value.
 func (p *Literal) Value() interface{} {
-	return p.value
+	return p.Val
 }
 
 func (lit *Literal) WithResolvedChildren(children []any) (any, error) {
