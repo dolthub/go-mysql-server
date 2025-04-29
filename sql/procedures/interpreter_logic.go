@@ -112,6 +112,34 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 		}
 		e.Left = newLeftExpr.(ast.Expr)
 		e.Right = newRightExpr.(ast.Expr)
+	case *ast.AndExpr:
+		newLeftExpr, err := replaceVariablesInExpr(ctx, stack, e.Left, asOf)
+		if err != nil {
+			return nil, err
+		}
+		newRightExpr, err := replaceVariablesInExpr(ctx, stack, e.Right, asOf)
+		if err != nil {
+			return nil, err
+		}
+		e.Left = newLeftExpr.(ast.Expr)
+		e.Right = newRightExpr.(ast.Expr)
+	case *ast.OrExpr:
+		newLeftExpr, err := replaceVariablesInExpr(ctx, stack, e.Left, asOf)
+		if err != nil {
+			return nil, err
+		}
+		newRightExpr, err := replaceVariablesInExpr(ctx, stack, e.Right, asOf)
+		if err != nil {
+			return nil, err
+		}
+		e.Left = newLeftExpr.(ast.Expr)
+		e.Right = newRightExpr.(ast.Expr)
+	case *ast.NotExpr:
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
+		if err != nil {
+			return nil, err
+		}
+		e.Expr = newExpr.(ast.Expr)
 	case *ast.FuncExpr:
 		for i := range e.Exprs {
 			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Exprs[i], asOf)
@@ -120,12 +148,6 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			}
 			e.Exprs[i] = newExpr.(ast.SelectExpr)
 		}
-	case *ast.NotExpr:
-		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
-		if err != nil {
-			return nil, err
-		}
-		e.Expr = newExpr.(ast.Expr)
 	case *ast.Set:
 		for _, setExpr := range e.Exprs {
 			newExpr, err := replaceVariablesInExpr(ctx, stack, setExpr.Expr, asOf)
