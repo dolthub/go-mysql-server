@@ -330,7 +330,10 @@ func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualC
 }
 
 func (b *BaseBuilder) buildProcedure(ctx *sql.Context, n *plan.Procedure, row sql.Row) (sql.RowIter, error) {
-	return b.buildNodeExec(ctx, n.Body, row)
+	if n.ExternalProc == nil {
+		return nil, nil
+	}
+	return b.buildNodeExec(ctx, n.ExternalProc, row)
 }
 
 func (b *BaseBuilder) buildRecursiveTable(ctx *sql.Context, n *plan.RecursiveTable, row sql.Row) (sql.RowIter, error) {
@@ -733,6 +736,7 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 			if err != nil {
 				return nil, err
 			}
+			_ = ctx.Session.SetStoredProcParam(exprParam.Name(), funcParamVal)
 		}
 	}
 	// It's not invalid to return a nil RowIter, as having no rows to return is expected of many stored procedures.

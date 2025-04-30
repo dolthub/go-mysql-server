@@ -15,33 +15,33 @@
 package analyzer
 
 import (
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
-
-// Interpreter is an interface that implements an interpreter. These are typically used for functions (which may be
-// implemented as a set of operations that are interpreted during runtime).
-type Interpreter interface {
-	SetStatementRunner(ctx *sql.Context, runner StatementRunner) sql.Expression
-}
-
-// StatementRunner is essentially an interface that the engine will implement. We cannot directly reference the engine
-// here as it will cause an import cycle, so this may be updated to suit any function changes that the engine
-// experiences.
-type StatementRunner interface {
-	QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error)
-}
 
 // interpreter hands the engine to any interpreter expressions.
 func interpreter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return transform.NodeExprs(n, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if interp, ok := expr.(Interpreter); ok {
+	newNode, sameNode, err := transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if interp, ok := node.(procedures.InterpreterNode); ok {
+			return interp.SetStatementRunner(ctx, a.Runner), transform.NewTree, nil
+		}
+		return node, transform.SameTree, nil
+	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	newNode, sameExpr, err := transform.NodeExprs(newNode, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if interp, ok := expr.(procedures.InterpreterExpr); ok {
 			return interp.SetStatementRunner(ctx, a.Runner), transform.NewTree, nil
 		}
 		return expr, transform.SameTree, nil
 	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	return newNode, sameNode && sameExpr, err
 }
