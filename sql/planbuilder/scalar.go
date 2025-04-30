@@ -106,6 +106,18 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.NullVal:
 		return expression.NewLiteral(nil, types.Null)
 	case *ast.ColName:
+		if v.StoredProcVal != nil {
+			switch val := v.StoredProcVal.(type) {
+			case *ast.SQLVal:
+				resVal := b.ConvertVal(val)
+				if lit, isLit := resVal.(*expression.Literal); isLit && val.Type == ast.FloatVal {
+					return expression.NewLiteral(lit.Value(), types.Float64)
+				}
+				return resVal
+			case *ast.NullVal:
+				return expression.NewLiteral(nil, types.Null)
+			}
+		}
 		dbName := strings.ToLower(v.Qualifier.DbQualifier.String())
 		tblName := strings.ToLower(v.Qualifier.Name.String())
 		colName := strings.ToLower(v.Name.String())
