@@ -21,11 +21,10 @@
 package queries
 
 import (
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	regex "github.com/dolthub/go-icu-regex"
 	"gopkg.in/src-d/go-errors.v1"
 
-	regex "github.com/dolthub/go-icu-regex"
-
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
