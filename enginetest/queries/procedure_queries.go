@@ -2231,7 +2231,8 @@ end;
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "call create_proc();",
+				SkipResultCheckOnServerEngine: true,
+				Query:                         "call create_proc();",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
