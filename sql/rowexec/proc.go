@@ -223,6 +223,9 @@ func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sq
 		paramName := strings.ToLower(param.Name)
 		for spp := ctx.Session.GetStoredProcParam(paramName); spp != nil; {
 			spp.Value = paramVal
+			if spp.Reference == spp {
+				break
+			}
 			spp = spp.Reference
 		}
 	}

@@ -2192,6 +2192,52 @@ END;`,
 			},
 		},
 	},
+	{
+		Name: "recursive procedure",
+		SetUpScript: []string{
+			`
+create procedure recursive_proc(in counter int)
+begin
+  set counter := counter + 1;
+  if counter > 3 then
+    select concat('ended with value: ', counter) as result;
+  else
+    call recursive_proc(counter);
+  end if;
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call recursive_proc(1);",
+				Expected: []sql.Row{
+					{"ended with value: 4"},
+				},
+			},
+		},
+	},
+	{
+		Name: "multi recursive procedures",
+		SetUpScript: []string{
+			`
+create procedure recursive_proc(in counter int)
+begin
+  set counter := counter + 1;
+  if counter > 3 then
+    select concat('ended with value: ', counter) as result;
+  else
+    call recursive_proc(counter);
+  end if;
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call recursive_proc(1);",
+				Expected: []sql.Row{
+					{"ended with value: 4"},
+				},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{
