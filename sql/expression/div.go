@@ -577,7 +577,7 @@ func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt 
 
 	var fScale uint8
 	if lit, isLit := expr.(*Literal); isLit {
-		_, fScale = GetPrecisionAndScale(lit.value)
+		_, fScale = GetPrecisionAndScale(lit.Val)
 	}
 	typ := expr.Type()
 	if dt, dok := typ.(sql.DecimalType); dok {
