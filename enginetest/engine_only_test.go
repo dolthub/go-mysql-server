@@ -717,7 +717,8 @@ func TestCollationCoercion(t *testing.T) {
 
 func TestRegex(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.Setup(setup.SimpleSetup...)
+	setupsScripts := append(setup.SimpleSetup, queries.RegexSetup)
+	harness.Setup(setupsScripts...)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
 	defer engine.Close()

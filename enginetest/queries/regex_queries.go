@@ -21,6 +21,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"gopkg.in/src-d/go-errors.v1"
 
 	regex "github.com/dolthub/go-icu-regex"
@@ -32,6 +33,13 @@ type RegexTest struct {
 	Query       string
 	Expected    []sql.Row
 	ExpectedErr *errors.Kind
+}
+
+var RegexSetup = []setup.SetupScript{
+	{
+		"CREATE TABLE tests(pk int primary key, str text, pattern text, flags text);",
+		"INSERT INTO tests VALUES (1, 'testing', 'TESTING', 'ci');",
+	},
 }
 
 var RegexTests = []RegexTest{
@@ -54,6 +62,10 @@ var RegexTests = []RegexTest{
 	{
 		Query:    "SELECT REGEXP_LIKE('testing', 'TESTING', 'ic');",
 		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "SELECT REGEXP_LIKE(str, pattern, flags) from tests;",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT REGEXP_LIKE('testing', 'TESTING' COLLATE utf8mb4_0900_ai_ci);",

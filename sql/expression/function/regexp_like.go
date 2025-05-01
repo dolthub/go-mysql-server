@@ -179,8 +179,12 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	textStr, _, err := sql.Unwrap[string](ctx, text)
+	if err != nil {
+		return nil, err
+	}
 
-	err = r.re.SetMatchString(ctx, text.(string))
+	err = r.re.SetMatchString(ctx, textStr)
 	if err != nil {
 		return nil, err
 	}
@@ -220,9 +224,13 @@ func compileRegex(ctx *sql.Context, pattern, text, flags sql.Expression, funcNam
 	if err != nil {
 		return nil, err
 	}
+	patternValStr, _, err := sql.Unwrap[string](ctx, patternVal)
+	if err != nil {
+		return nil, err
+	}
 
 	// Empty regex, throw illegal argument
-	if len(patternVal.(string)) == 0 {
+	if len(patternValStr) == 0 {
 		return nil, errors.NewKind("Illegal argument to regular expression.").New()
 	}
 
@@ -250,7 +258,10 @@ func compileRegex(ctx *sql.Context, pattern, text, flags sql.Expression, funcNam
 			return nil, err
 		}
 
-		flagsStr = f.(string)
+		flagsStr, _, err = sql.Unwrap[string](ctx, f)
+		if err != nil {
+			return nil, err
+		}
 		flagsStr, err = consolidateRegexpFlags(flagsStr, funcName)
 		if err != nil {
 			return nil, err
@@ -279,7 +290,7 @@ func compileRegex(ctx *sql.Context, pattern, text, flags sql.Expression, funcNam
 		ctx.Warn(1193, `System variable for regular expressions "regexp_buffer_size" is missing`)
 	}
 	re := regex.CreateRegex(bufferSize)
-	if err = re.SetRegexString(ctx, patternVal.(string), regexFlags); err != nil {
+	if err = re.SetRegexString(ctx, patternValStr, regexFlags); err != nil {
 		_ = re.Close()
 		return nil, err
 	}

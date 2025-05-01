@@ -3251,7 +3251,7 @@ var SysbenchData = []SetupScript{{
 var TabletestData = []SetupScript{{
 	`create table tabletest (
     i int primary key,
-    s varchar(20) not null
+    s text not null
 )`,
 	`insert into tabletest values
     (1, 'first row'),
