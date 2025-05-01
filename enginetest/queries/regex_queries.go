@@ -24,7 +24,6 @@ import (
 	regex "github.com/dolthub/go-icu-regex"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
