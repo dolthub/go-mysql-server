@@ -7625,7 +7625,7 @@ where
 		Name: "preserve enums through alter statements",
 		SetUpScript: []string{
 			"create table t (i int primary key, e enum('a', 'b', 'c'));",
-			"insert into t values (0, 0);",
+			"insert ignore into t values (0, 'error');",
 			"insert into t values (1, 'a');",
 			"insert into t values (2, 'b');",
 			"insert into t values (3, 'c');",
