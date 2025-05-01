@@ -23,12 +23,14 @@ import (
 )
 
 type updateIter struct {
-	childIter sql.RowIter
-	schema    sql.Schema
-	updater   sql.RowUpdater
-	checks    sql.CheckConstraints
-	closed    bool
-	ignore    bool
+	childIter    sql.RowIter
+	schema       sql.Schema
+	updater      sql.RowUpdater
+	checks       sql.CheckConstraints
+	closed       bool
+	ignore       bool
+	returnExprs  []sql.Expression
+	returnSchema sql.Schema
 }
 
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -38,7 +40,7 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
-	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
+	if equals, err := oldRow.Equals(ctx, newRow, u.schema); err == nil {
 		if !equals {
 			// apply check constraints
 			for _, check := range u.checks {
@@ -65,6 +67,18 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, u.ignoreOrError(ctx, newRow, err)
 			}
+		}
+
+		if len(u.returnExprs) > 0 {
+			var retExprRow sql.Row
+			for _, returnExpr := range u.returnExprs {
+				result, err := returnExpr.Eval(ctx, newRow)
+				if err != nil {
+					return nil, err
+				}
+				retExprRow = append(retExprRow, result)
+			}
+			return retExprRow, nil
 		}
 	} else {
 		return nil, err
@@ -164,21 +178,27 @@ func newUpdateIter(
 	updater sql.RowUpdater,
 	checks sql.CheckConstraints,
 	ignore bool,
+	returnExprs []sql.Expression,
+	returnSchema sql.Schema,
 ) sql.RowIter {
 	if ignore {
 		return plan.NewCheckpointingTableEditorIter(&updateIter{
-			childIter: childIter,
-			updater:   updater,
-			schema:    schema,
-			checks:    checks,
-			ignore:    true,
+			childIter:    childIter,
+			updater:      updater,
+			schema:       schema,
+			checks:       checks,
+			ignore:       true,
+			returnExprs:  returnExprs,
+			returnSchema: returnSchema,
 		}, updater)
 	} else {
 		return plan.NewTableEditorIter(&updateIter{
-			childIter: childIter,
-			updater:   updater,
-			schema:    schema,
-			checks:    checks,
+			childIter:    childIter,
+			updater:      updater,
+			schema:       schema,
+			checks:       checks,
+			returnExprs:  returnExprs,
+			returnSchema: returnSchema,
 		}, updater)
 	}
 }
@@ -251,7 +271,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		newJoinRow = recreateRowFromMap(tableToNewRowMap, u.joinSchema)
-		equals, err := oldJoinRow.Equals(newJoinRow, u.joinSchema)
+		equals, err := oldJoinRow.Equals(ctx, newJoinRow, u.joinSchema)
 		if err != nil {
 			return nil, err
 		}

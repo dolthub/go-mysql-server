@@ -42,7 +42,7 @@ func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bo
 		return true, nil
 	}
 
-	v, _, err := types.Text.Convert(value)
+	v, _, err := types.Text.Convert(ctx, value)
 	if err != nil {
 		return false, err
 	}

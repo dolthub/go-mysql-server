@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")
@@ -35,6 +36,10 @@ type Update struct {
 	IsJoin       bool
 	HasSingleRel bool
 	IsProcNested bool
+
+	// Returning is a list of expressions to return after the update operation. This feature is not
+	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
+	Returning []sql.Expression
 }
 
 var _ sql.Node = (*Update)(nil)
@@ -112,6 +117,24 @@ func GetDatabase(node sql.Node) sql.Database {
 	return nil
 }
 
+// Schema implements the sql.Node interface.
+func (u *Update) Schema() sql.Schema {
+	// Postgres allows the returned values of the update statement to be controlled, so if returning
+	// expressions were specified, then we return a different schema.
+	if u.Returning != nil {
+		// We know that returning exprs are resolved here, because you can't call Schema()
+		// safely until Resolved() is true.
+		returningSchema := sql.Schema{}
+		for _, expr := range u.Returning {
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+		}
+
+		return returningSchema
+	}
+
+	return u.Child.Schema()
+}
+
 func (u *Update) Checks() sql.CheckConstraints {
 	return u.checks
 }
@@ -140,23 +163,31 @@ func (u *Update) Database() string {
 }
 
 func (u *Update) Expressions() []sql.Expression {
-	return u.checks.ToExpressions()
+	exprs := append([]sql.Expression{}, u.checks.ToExpressions()...)
+	exprs = append(exprs, u.Returning...)
+	return exprs
 }
 
 func (u *Update) Resolved() bool {
-	return u.Child.Resolved() && expression.ExpressionsResolved(u.checks.ToExpressions()...)
+	return u.Child.Resolved() &&
+		expression.ExpressionsResolved(u.checks.ToExpressions()...) &&
+		expression.ExpressionsResolved(u.Returning...)
+
 }
 
 func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(u.checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), len(u.checks))
+	expectedLength := len(u.checks) + len(u.Returning)
+	if len(newExprs) != expectedLength {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), expectedLength)
 	}
 
 	var err error
-	u.checks, err = u.checks.FromExpressions(newExprs)
+	u.checks, err = u.checks.FromExpressions(newExprs[:len(u.checks)])
 	if err != nil {
 		return nil, err
 	}
+
+	u.Returning = newExprs[len(u.checks):]
 
 	return &u, nil
 }

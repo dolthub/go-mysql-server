@@ -910,7 +910,7 @@ func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Exp
 	}
 
 	for i := range newRow {
-		converted, inRange, err := sch[i].Type.Convert(newRow[i])
+		converted, inRange, err := sch[i].Type.Convert(ctx, newRow[i])
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(sch[i].Name, err)
@@ -1350,7 +1350,7 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 	if columnDefaultExpr == nil && !tblSch[col].Nullable {
 		val := tblSch[col].Type.Zero()
 		var err error
-		newRow[col], _, err = tblSch[col].Type.Convert(val)
+		newRow[col], _, err = tblSch[col].Type.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}
@@ -1359,7 +1359,7 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 		if err != nil {
 			return nil, err
 		}
-		newRow[col], _, err = tblSch[col].Type.Convert(val)
+		newRow[col], _, err = tblSch[col].Type.Convert(ctx, val)
 		if err != nil {
 			return nil, err
 		}
@@ -1434,7 +1434,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		}
 
 		if autoIncColIdx != -1 {
-			v, _, err := i.a.Column().Type.Convert(val)
+			v, _, err := i.a.Column().Type.Convert(ctx, val)
 			if err != nil {
 				return false, err
 			}
@@ -1857,6 +1857,31 @@ func (b *BaseBuilder) executeDropCheck(ctx *sql.Context, n *plan.DropCheck) erro
 	chAlterable, err := getCheckAlterableTable(table)
 	if err != nil {
 		return err
+	}
+
+	checkTable, ok := chAlterable.(sql.CheckTable)
+	if !ok {
+		return plan.ErrNoCheckConstraintSupport.New(chAlterable.Name())
+	}
+
+	checks, err := checkTable.GetChecks(ctx)
+	if err != nil {
+		return err
+	}
+
+	exists := false
+	for _, check := range checks {
+		if strings.EqualFold(check.Name, n.Name) {
+			exists = true
+		}
+	}
+
+	if !exists {
+		if n.IfExists {
+			return nil
+		} else {
+			return fmt.Errorf("check '%s' was not found on the table", n.Name)
+		}
 	}
 
 	return chAlterable.DropCheck(ctx, n.Name)

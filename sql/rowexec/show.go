@@ -548,7 +548,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 			if err != nil {
 				return nil, err
 			}
-			res, _, err = types.Boolean.Convert(res)
+			res, _, err = types.Boolean.Convert(ctx, res)
 			if err != nil {
 				ctx.Warn(1292, err.Error())
 				continue
@@ -807,6 +807,11 @@ func (b *BaseBuilder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowRepli
 	lastIoErrorTimestamp := formatReplicaStatusTimestamp(status.LastIoErrorTimestamp)
 	lastSqlErrorTimestamp := formatReplicaStatusTimestamp(status.LastSqlErrorTimestamp)
 
+	sslAllowed := "No"
+	if status.SourceSsl {
+		sslAllowed = "Yes"
+	}
+
 	row = sql.Row{
 		"",                       // Replica_IO_State
 		status.SourceHost,        // Source_Host
@@ -834,7 +839,7 @@ func (b *BaseBuilder) buildShowReplicaStatus(ctx *sql.Context, n *plan.ShowRepli
 		"None",                   // Until_Condition
 		nil,                      // Until_Log_File
 		nil,                      // Until_Log_Pos
-		"Ignored",                // Source_SSL_Allowed
+		sslAllowed,               // Source_SSL_Allowed
 		nil,                      // Source_SSL_CA_File
 		nil,                      // Source_SSL_CA_Path
 		nil,                      // Source_SSL_Cert

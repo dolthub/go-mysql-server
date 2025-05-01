@@ -315,7 +315,7 @@ func quoteDefaultColumnValueNames(ctx *sql.Context, a *Analyzer, n sql.Node, _ *
 		switch node := n.(type) {
 		case *plan.AlterDefaultSet:
 			eWrapper := expression.WrapExpression(node.Default)
-			newExpr, same, err := quoteIdentifiers(a.Parser, eWrapper)
+			newExpr, same, err := quoteIdentifiers(a.SchemaFormatter, eWrapper)
 			if err != nil {
 				return node, transform.SameTree, err
 			}
@@ -335,7 +335,7 @@ func quoteDefaultColumnValueNames(ctx *sql.Context, a *Analyzer, n sql.Node, _ *
 					return e, transform.SameTree, nil
 				}
 
-				return quoteIdentifiers(a.Parser, eWrapper)
+				return quoteIdentifiers(a.SchemaFormatter, eWrapper)
 			})
 		case *plan.ResolvedTable:
 			ct, ok := node.Table.(*information_schema.ColumnsTable)
@@ -354,7 +354,7 @@ func quoteDefaultColumnValueNames(ctx *sql.Context, a *Analyzer, n sql.Node, _ *
 					return e, transform.SameTree, nil
 				}
 
-				return quoteIdentifiers(a.Parser, eWrapper)
+				return quoteIdentifiers(a.SchemaFormatter, eWrapper)
 			})
 
 			if err != nil {
@@ -376,7 +376,7 @@ func quoteDefaultColumnValueNames(ctx *sql.Context, a *Analyzer, n sql.Node, _ *
 	})
 }
 
-func quoteIdentifiers(parser sql.Parser, wrap *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
+func quoteIdentifiers(schemaFormatter sql.SchemaFormatter, wrap *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := wrap.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
 		return wrap, transform.SameTree, nil
@@ -388,7 +388,7 @@ func quoteIdentifiers(parser sql.Parser, wrap *expression.Wrapper) (sql.Expressi
 
 	newExpr, same, err := transform.Expr(newDefault.Expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if e, isGf := expr.(*expression.GetField); isGf {
-			return e.WithQuotedNames(parser, true), transform.NewTree, nil
+			return e.WithQuotedNames(schemaFormatter, true), transform.NewTree, nil
 		}
 		return expr, transform.SameTree, nil
 	})

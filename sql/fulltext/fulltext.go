@@ -15,6 +15,7 @@
 package fulltext
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -95,14 +96,14 @@ const (
 )
 
 // HashRow returns a 64 character lowercase hexadecimal hash of the given row. This is intended for use with keyless tables.
-func HashRow(row sql.Row) (string, error) {
+func HashRow(ctx context.Context, row sql.Row) (string, error) {
 	h := sha256.New()
 	// Since we can't represent a NULL value in binary, we instead append the NULL results to the end, which will
 	// give us a unique representation for representing NULL values.
 	valIsNull := make([]bool, len(row))
 	for i, val := range row {
 		var err error
-		valIsNull[i], err = writeHashedValue(h, val)
+		valIsNull[i], err = writeHashedValue(ctx, h, val)
 		if err != nil {
 			return "", err
 		}
@@ -117,7 +118,11 @@ func HashRow(row sql.Row) (string, error) {
 }
 
 // writeHashedValue writes the given value into the hash.
-func writeHashedValue(h hash.Hash, val interface{}) (valIsNull bool, err error) {
+func writeHashedValue(ctx context.Context, h hash.Hash, val interface{}) (valIsNull bool, err error) {
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return false, err
+	}
 	switch val := val.(type) {
 	case int:
 		if err := binary.Write(h, binary.LittleEndian, int64(val)); err != nil {
@@ -168,7 +173,7 @@ func writeHashedValue(h hash.Hash, val interface{}) (valIsNull bool, err error) 
 			return false, err
 		}
 	case sql.JSONWrapper:
-		str, err := types.StringifyJSON(val)
+		str, err := types.JsonToMySqlString(val)
 		if err != nil {
 			return false, err
 		}

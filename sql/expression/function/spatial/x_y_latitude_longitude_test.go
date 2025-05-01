@@ -25,6 +25,7 @@ import (
 )
 
 func TestSTX(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("select int x value", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSTX(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
@@ -96,7 +97,7 @@ func TestSTX(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -110,12 +111,13 @@ func TestSTX(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }
 
 func TestSTY(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("select int y value", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSTY(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
@@ -187,7 +189,7 @@ func TestSTY(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -204,6 +206,7 @@ func TestSTY(t *testing.T) {
 }
 
 func TestLongitude(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("select longitude value", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewLongitude(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
@@ -296,7 +299,7 @@ func TestLongitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -310,12 +313,13 @@ func TestLongitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }
 
 func TestLatitude(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("select latitude value", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewLatitude(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
@@ -408,7 +412,7 @@ func TestLatitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 
@@ -422,7 +426,7 @@ func TestLatitude(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, _, err = typ.Convert(v)
+		_, _, err = typ.Convert(ctx, v)
 		require.NoError(err)
 	})
 }

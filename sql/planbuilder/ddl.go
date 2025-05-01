@@ -122,6 +122,9 @@ func (b *Builder) buildDDL(inScope *scope, subQuery string, fullQuery string, c 
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, c.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
+	if !c.Temporary {
+		b.qFlags.Set(sql.QFlagDDL)
+	}
 
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
@@ -231,6 +234,7 @@ func (b *Builder) buildDropTable(inScope *scope, c *ast.DDL) (outScope *scope) {
 	if dbName == "" {
 		dbName = b.currentDb().Name()
 	}
+
 	for _, t := range c.FromTables {
 		if t.DbQualifier.String() != "" && t.DbQualifier.String() != dbName {
 			err := sql.ErrUnsupportedFeature.New("dropping tables on multiple databases in the same statement")
@@ -715,6 +719,9 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 				c.SchemaName = ds.SchemaName()
 			}
 
+			if err := b.validateOnUpdateOnDeleteRefActions(c); err != nil {
+				b.handleErr(err)
+			}
 			alterFk := plan.NewAlterAddForeignKey(c)
 			alterFk.DbProvider = b.cat
 			outScope.node = alterFk
@@ -737,6 +744,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 			outScope.node = &plan.DropConstraint{
 				UnaryNode: plan.UnaryNode{Child: table},
 				Name:      c.name,
+				IfExists:  ddl.ConstraintIfExists,
 			}
 		default:
 			err := sql.ErrUnsupportedFeature.New(ast.String(ddl))
@@ -781,6 +789,9 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 		case *sql.ForeignKeyConstraint:
 			constraint.Database = tname.DbQualifier.String()
 			constraint.Table = tname.Name.String()
+			if err := b.validateOnUpdateOnDeleteRefActions(constraint); err != nil {
+				b.handleErr(err)
+			}
 			if constraint.Database == "" {
 				constraint.Database = b.ctx.GetCurrentDatabase()
 			}
@@ -1570,6 +1581,40 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 		b.handleErr(err)
 	}
 	return ret
+}
+
+// ResolveSchemaDefaults resolves any column default value expressions for the specified |schema|, for the table
+// named |tableName| and returns the schema with the default value expressions resolved. Note that any GetField
+// expressions in the column default value expressions have not had their indexes corrected yet.
+func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) sql.Schema {
+	tableScope := b.newScope()
+	for _, c := range schema {
+		tableScope.newColumn(scopeColumn{
+			table:       strings.ToLower(tableName),
+			db:          strings.ToLower(db),
+			col:         strings.ToLower(c.Name),
+			originalCol: c.Name,
+			typ:         c.Type,
+			nullable:    c.Nullable,
+		})
+	}
+
+	return b.resolveSchemaDefaults(tableScope, schema)
+}
+
+// validateOnUpdateOnDeleteRefActions validates that the specified |constraint| is using referential actions
+// supported by the current dialect. For example, MySQL parses the syntax for the SET DEFAULT referential action,
+// but doesn't actually support it, so if the MySQL parser is in use, this method will return an error stating
+// that SET DEFAULT is not supported.
+func (b *Builder) validateOnUpdateOnDeleteRefActions(constraint *sql.ForeignKeyConstraint) error {
+	if _, ok := b.parser.(*sql.MysqlParser); ok {
+		if constraint.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault ||
+			constraint.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
+			return sql.ErrForeignKeySetDefault.New()
+		}
+	}
+
+	return nil
 }
 
 func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.Schema {

@@ -122,7 +122,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			if !ok {
 				b.handleErr(fmt.Errorf("expected integer order by literal"))
 			}
-			idx, _, err := types.Int64.Convert(v)
+			idx, _, err := types.Int64.Convert(b.ctx, v)
 			if err != nil {
 				b.handleErr(err)
 			}
@@ -131,7 +131,11 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 				b.handleErr(fmt.Errorf("expected integer order by literal"))
 			}
 			if intIdx < 1 {
+				// TODO: this actually works in MySQL
 				b.handleErr(fmt.Errorf("expected positive integer order by literal"))
+			}
+			if int(intIdx) > len(selects) {
+				b.handleErr(fmt.Errorf("column ordinal out of range: %d", intIdx))
 			}
 			col = projScope.cols[intIdx-1]
 		default:
@@ -500,7 +504,10 @@ func isWindowFunc(name string) bool {
 		"avg", "max", "min", "count_distinct", "json_arrayagg",
 		"row_number", "percent_rank", "lead", "lag",
 		"first_value", "last_value",
-		"rank", "dense_rank":
+		"rank", "dense_rank",
+		"ntile",
+		"std", "stddev", "stddev_pop", "stddev_samp",
+		"variance", "var_pop", "var_samp":
 		return true
 	default:
 		return false

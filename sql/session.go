@@ -92,6 +92,12 @@ type Session interface {
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)
+	// NewStoredProcParam creates a new Stored Procedure Parameter in the Session.
+	NewStoredProcParam(name string, param *StoredProcParam) *StoredProcParam
+	// GetStoredProcParam finds and returns the Stored Procedure Parameter by the given name.
+	GetStoredProcParam(name string) *StoredProcParam
+	// SetStoredProcParam sets the Stored Procedure Parameter of the given name to the given val.
+	SetStoredProcParam(name string, val any) error
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
 	// SetCurrentDatabase sets the current database for this session
@@ -177,7 +183,7 @@ type Session interface {
 type PersistableSession interface {
 	Session
 	// PersistGlobal writes to the persisted global system variables file
-	PersistGlobal(sysVarName string, value interface{}) error
+	PersistGlobal(ctx *Context, sysVarName string, value interface{}) error
 	// RemovePersistedGlobal deletes a variable from the persisted globals file
 	RemovePersistedGlobal(sysVarName string) error
 	// RemoveAllPersistedGlobals clears the contents of the persisted globals file
@@ -255,6 +261,7 @@ type Context struct {
 	queryTime   time.Time
 	tracer      trace.Tracer
 	rootSpan    trace.Span
+	interpreted bool
 	Version     AnalyzerVersion
 }
 
@@ -328,6 +335,17 @@ func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
 	return fn()
 }
 
+// RunInterpreted modifies the context such that all calls to Context.IsInterpreted will return `true`. It is safe to
+// recursively call this.
+func RunInterpreted[T any](ctx *Context, f func(ctx *Context) (T, error)) (T, error) {
+	current := ctx.interpreted
+	ctx.interpreted = true
+	defer func() {
+		ctx.interpreted = current
+	}()
+	return f(ctx)
+}
+
 func swapNowFunc(newNowFunc func() time.Time) func() time.Time {
 	ctxNowFuncMutex.Lock()
 	defer ctxNowFuncMutex.Unlock()
@@ -387,6 +405,13 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 
 // NewEmptyContext returns a default context with default values.
 func NewEmptyContext() *Context { return NewContext(context.TODO()) }
+
+// IsInterpreted returns `true` when this is being called from within RunInterpreted. In such cases, GMS will choose to
+// handle logic differently, as running from within an interpreted function requires different considerations than
+// running in a standard environment.
+func (c *Context) IsInterpreted() bool {
+	return c.interpreted
+}
 
 // Pid returns the process id associated with this context.
 func (c *Context) Pid() uint64 {

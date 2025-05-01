@@ -132,7 +132,7 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if posVal != nil {
-			posInt, _, err := types.Int32.Convert(posVal)
+			posInt, _, err := types.Int32.Convert(ctx, posVal)
 			if err != nil {
 				return nil, sql.ErrInvalidArgumentDetails.New("locate", "start must be an integer")
 			}

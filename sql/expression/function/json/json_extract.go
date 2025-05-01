@@ -97,9 +97,13 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		path, _, err = types.LongText.Convert(path)
+		path, _, err = types.LongText.Convert(ctx, path)
 		if err != nil {
 			return nil, err
+		}
+
+		if path == nil {
+			return nil, nil
 		}
 
 		results[i], err = types.LookupJSONValue(searchable, path.(string))

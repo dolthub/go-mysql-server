@@ -155,6 +155,9 @@ func (b *Builder) buildOffset(inScope *scope, limit *ast.Limit) sql.Expression {
 func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 	switch e := e.(type) {
 	case *ast.ColName:
+		if e.StoredProcVal != nil {
+			return b.buildLimitVal(inScope, e.StoredProcVal)
+		}
 		if inScope.procActive() {
 			if col, ok := inScope.proc.GetVar(e.String()); ok {
 				// proc param is OK
@@ -180,7 +183,7 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 	// todo this should be in a module that can generically coerce to a type or type class
 	switch e := e.(type) {
 	case *expression.Literal:
-		val, _, err := types.Int64.Convert(e.Value())
+		val, _, err := types.Int64.Convert(b.ctx, e.Value())
 		if err != nil {
 			err = fmt.Errorf("%s: %w", err.Error(), sql.ErrInvalidTypeForLimit.New(types.Int64, e.Type()))
 		}

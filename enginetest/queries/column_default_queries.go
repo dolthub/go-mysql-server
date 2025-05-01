@@ -30,7 +30,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t1 n inner join t2 m on n.name = m.name set n.cnt =m.cnt+1;",
-				Expected: []sql.Row{{newUpdateResult(2, 2)}},
+				Expected: []sql.Row{{NewUpdateResult(2, 2)}},
 			},
 			{
 				Query:    "select name, cnt from t1",
@@ -48,7 +48,7 @@ var ColumnDefaultTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "update t1 n inner join t2 m on n.y = m.y set n.x =n.y where n.x = 3;",
-				Expected: []sql.Row{{newUpdateResult(1, 1)}},
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
 				Query:    "select * from t1",

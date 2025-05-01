@@ -368,11 +368,6 @@ func (c *CreateTable) CreateForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 	}
 
 	for i, fkDef := range c.fkDefs {
-		if fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault ||
-			fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
-			return sql.ErrForeignKeySetDefault.New()
-		}
-
 		if fkChecks.(int8) == 1 {
 			fkParentTbl := c.fkParentTbls[i]
 			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist

@@ -169,6 +169,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 }
 
 func TestGroupByCollations(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tString := types.MustCreateString(query.Type_VARCHAR, 255, sql.Collation_utf8mb4_0900_ai_ci)
 	tEnum := types.MustCreateEnumType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
 	tSet := types.MustCreateSetType([]string{"col1_1", "col1_2"}, sql.Collation_utf8mb4_0900_ai_ci)
@@ -184,7 +185,7 @@ func TestGroupByCollations(t *testing.T) {
 		{
 			Type: tEnum,
 			Value: func(t *testing.T, v string) any {
-				conv, _, err := tEnum.Convert(v)
+				conv, _, err := tEnum.Convert(ctx, v)
 				require.NoError(t, err)
 				return conv
 			},
@@ -192,7 +193,7 @@ func TestGroupByCollations(t *testing.T) {
 		{
 			Type: tSet,
 			Value: func(t *testing.T, v string) any {
-				conv, _, err := tSet.Convert(v)
+				conv, _, err := tSet.Convert(ctx, v)
 				require.NoError(t, err)
 				return conv
 			},

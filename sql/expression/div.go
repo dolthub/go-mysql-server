@@ -184,13 +184,13 @@ func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interfa
 	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
+		left = convertToDecimalValue(ctx, left, lIsTimeType)
 	}
 
 	if types.IsFloat(typ) {
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		right = convertToDecimalValue(right, rIsTimeType)
+		right = convertToDecimalValue(ctx, right, rIsTimeType)
 	}
 
 	return left, right
@@ -392,7 +392,7 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 // If the value is invalid, it returns decimal 0. This function
 // is used for 'div' or 'mod' arithmetic operation, which requires
 // the result value to have precise precision and scale.
-func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
+func convertToDecimalValue(ctx *sql.Context, val interface{}, isTimeType bool) interface{} {
 	if isTimeType {
 		val = convertTimeTypeToString(val)
 	}
@@ -417,7 +417,7 @@ func convertToDecimalValue(val interface{}, isTimeType bool) interface{} {
 		if err != nil {
 			val = decimal.Zero
 		}
-		val, _, err = dtyp.Convert(val)
+		val, _, err = dtyp.Convert(ctx, val)
 		if err != nil {
 			val = decimal.Zero
 		}
@@ -577,7 +577,7 @@ func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt 
 
 	var fScale uint8
 	if lit, isLit := expr.(*Literal); isLit {
-		_, fScale = GetPrecisionAndScale(lit.value)
+		_, fScale = GetPrecisionAndScale(lit.Val)
 	}
 	typ := expr.Type()
 	if dt, dok := typ.(sql.DecimalType); dok {
@@ -744,8 +744,8 @@ func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right inte
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
 		right = convertValueToType(ctx, typ, right, rIsTimeType)
 	} else {
-		left = convertToDecimalValue(left, lIsTimeType)
-		right = convertToDecimalValue(right, rIsTimeType)
+		left = convertToDecimalValue(ctx, left, lIsTimeType)
+		right = convertToDecimalValue(ctx, right, rIsTimeType)
 	}
 
 	return left, right

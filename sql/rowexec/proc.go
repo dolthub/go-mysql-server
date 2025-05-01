@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
 )
 
 func (b *BaseBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement, row sql.Row) (sql.RowIter, error) {
@@ -36,7 +37,7 @@ func (b *BaseBuilder) buildCaseStatement(ctx *sql.Context, n *plan.CaseStatement
 		if err != nil {
 			return nil, err
 		}
-		comparison, err := n.Expr.Type().Compare(caseValue, whenValue)
+		comparison, err := n.Expr.Type().Compare(ctx, caseValue, whenValue)
 		if err != nil {
 			return nil, err
 		}
@@ -181,29 +182,92 @@ func (b *BaseBuilder) buildProcedureResolvedTable(ctx *sql.Context, n *plan.Proc
 }
 
 func (b *BaseBuilder) buildCall(ctx *sql.Context, n *plan.Call, row sql.Row) (sql.RowIter, error) {
-	for i, paramExpr := range n.Params {
-		val, err := paramExpr.Eval(ctx, row)
+	if n.Procedure.ExternalProc != nil {
+		for i, paramExpr := range n.Params {
+			val, err := paramExpr.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			paramName := n.Procedure.Params[i].Name
+			paramType := n.Procedure.Params[i].Type
+			err = n.Pref.InitializeVariable(ctx, paramName, paramType, val)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		n.Pref.PushScope()
+		defer n.Pref.PopScope(ctx)
+
+		innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
 		if err != nil {
 			return nil, err
 		}
-		paramName := n.Procedure.Params[i].Name
-		paramType := n.Procedure.Params[i].Type
-		err = n.Pref.InitializeVariable(paramName, paramType, val)
+		return &callIter{
+			call:      n,
+			innerIter: innerIter,
+		}, nil
+	}
+
+	// Initialize parameters
+	for i, paramExpr := range n.Params {
+		param := n.Procedure.Params[i]
+		paramVal, err := paramExpr.Eval(ctx, row)
 		if err != nil {
 			return nil, err
+		}
+		paramVal, _, err = param.Type.Convert(ctx, paramVal)
+		if err != nil {
+			return nil, err
+		}
+		paramName := strings.ToLower(param.Name)
+		for spp := ctx.Session.GetStoredProcParam(paramName); spp != nil; {
+			spp.Value = paramVal
+			spp = spp.Reference
 		}
 	}
 
-	n.Pref.PushScope()
-	defer n.Pref.PopScope(ctx)
+	// Preserve existing transaction
+	oldTx := ctx.GetTransaction()
+	defer ctx.SetTransaction(oldTx)
+	ctx.SetTransaction(nil)
 
-	innerIter, err := b.buildNodeExec(ctx, n.Procedure, row)
+	rowIter, _, err := procedures.Call(ctx, n)
 	if err != nil {
 		return nil, err
 	}
+
+	for i, param := range n.Params {
+		procParam := n.Procedure.Params[i]
+		if procParam.Direction == plan.ProcedureParamDirection_In {
+			continue
+		}
+		// Set all user and system variables from INOUT and OUT params
+		paramName := strings.ToLower(procParam.Name)
+		spp := ctx.Session.GetStoredProcParam(paramName)
+		if spp == nil {
+			return nil, fmt.Errorf("parameter `%s` not found", paramName)
+		}
+		switch p := param.(type) {
+		case *expression.ProcedureParam:
+			err = p.Set(ctx, spp.Value, spp.Type)
+		case *expression.UserVar:
+			val := spp.Value
+			if procParam.Direction == plan.ProcedureParamDirection_Out && !spp.HasBeenSet {
+				val = nil
+			}
+			err = ctx.SetUserVariable(ctx, p.Name, val, spp.Type)
+		case *expression.SystemVar:
+			err = fmt.Errorf("unable to set `%s` as it is a system variable", p.Name)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &callIter{
 		call:      n,
-		innerIter: innerIter,
+		innerIter: rowIter,
 	}, nil
 }
 

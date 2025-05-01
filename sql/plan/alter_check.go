@@ -41,8 +41,9 @@ var _ sql.CollationCoercible = (*CreateCheck)(nil)
 
 type DropCheck struct {
 	ddlNode
-	Table *ResolvedTable
-	Name  string
+	Table    *ResolvedTable
+	Name     string
+	IfExists bool
 }
 
 var _ sql.Node = (*DropCheck)(nil)
@@ -127,7 +128,10 @@ func (d *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewAlterDropCheck(children[0].(*ResolvedTable), d.Name), nil
+
+	newAlterDropCheck := NewAlterDropCheck(children[0].(*ResolvedTable), d.Name)
+	newAlterDropCheck.IfExists = d.IfExists
+	return newAlterDropCheck, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -172,7 +176,8 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 // not known, and is determined during analysis.
 type DropConstraint struct {
 	UnaryNode
-	Name string
+	Name     string
+	IfExists bool
 }
 
 var _ sql.Node = (*DropConstraint)(nil)

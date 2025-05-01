@@ -29,6 +29,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// WrapBehavior determines how the test engine will process sql.AnyWrapper values in query results before comparing them to expected results.
+type WrapBehavior int
+
+const (
+	// WrapBehavior_Unwrap causes the engine to return the unwrapped value. Use this for tests that verify the semantic meaning of the result. (Most tests)
+	WrapBehavior_Unwrap = iota
+	// WrapBehavior_Hash causes the engine to return the result of the wrapper's Hash() function. Use this for tests that verify the specific representation of the result.
+	WrapBehavior_Hash
+)
+
 type QueryTest struct {
 	// Query is the query string to execute
 	Query string
@@ -47,6 +57,10 @@ type QueryTest struct {
 	// Dialect is the supported dialect for this query, which must match the dialect of the harness if specified.
 	// The query is skipped if the dialect doesn't match.
 	Dialect string
+	// WrapBehavior indicates whether to normalize the select results via unwrapping wrapped values (the default),
+	// or replace wrapped values with their hash as determined by sql.AnyWrapped.Hash.
+	// Set this to WrapBehvior_Hash to test the exact encodings being returned by the query.
+	WrapBehavior WrapBehavior
 }
 
 type QueryPlanTest struct {
@@ -814,10 +828,10 @@ var QueryTests = []QueryTest{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
 		Expected: []sql.Row{{0}, {1}, {3}},
 	},
-	//{
+	// {
 	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
 	//	Expected: []sql.Row{{1}, {2}, {3}},
-	//},
+	// },
 	{
 		Query:    "SELECT * FROM mytable t0 INNER JOIN mytable t1 ON (t1.i IN (((true)%(''))));",
 		Expected: []sql.Row{},
@@ -2850,6 +2864,11 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "SELECT -i FROM mytable;",
 		Expected: []sql.Row{{int64(-1)}, {int64(-2)}, {int64(-3)}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9036
+		Query:    "SELECT -true, -false",
+		Expected: []sql.Row{{-1, 0}},
 	},
 	{
 		Query:    "SELECT +i FROM mytable;",
@@ -5188,6 +5207,17 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{-3.0}},
 	},
 	{
+		Query: "SELECT BINARY c, BINARY vc, BINARY t, BINARY b, BINARY vb, BINARY bl FROM niltexttable",
+		Expected: []sql.Row{
+			{nil, nil, nil, nil, nil, nil},
+			{[]byte("2"), nil, []byte("2"), nil, []byte("2"), nil},
+			{nil, []byte("3"), []byte("3"), nil, nil, []byte("3")},
+			{[]byte("4"), []byte("4"), nil, []byte("4\x00"), nil, nil},
+			{nil, nil, nil, []byte("5\x00"), []byte("5"), []byte("5")},
+			{[]byte("6"), []byte("6"), []byte("6"), []byte("6\x00"), []byte("6"), []byte("6")},
+		},
+	},
+	{
 		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
 		Expected: []sql.Row{{float32(-3.9876)}},
 	},
@@ -5383,6 +5413,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT COALESCE(CAST('{"a": "one \\n two"}' as json), '');`,
+		Expected: []sql.Row{
+			{"{\"a\": \"one \\n two\"}"},
+		},
+	},
+	{
 		Query: "SELECT concat(s, i) FROM mytable",
 		Expected: []sql.Row{
 			{string("first row1")},
@@ -5393,7 +5429,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "SELECT version()",
 		Expected: []sql.Row{
-			{"8.0.23"},
+			{"8.0.31"},
 		},
 	},
 	{
@@ -5789,7 +5825,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", "8.0.23"},
+			{"autocommit", 1}, {"version", "8.0.31"},
 		},
 	},
 	{
@@ -5829,7 +5865,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "SHOW VARIABLES LIKE 'VERSION'",
 		Expected: []sql.Row{
-			{"version", "8.0.23"},
+			{"version", "8.0.31"},
 		},
 	},
 	{
@@ -6410,6 +6446,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{[]byte("bar")}},
 	},
 	{
+		Query:    "SELECT TIMESTAMPADD(DAY, 1, '2018-05-02')",
+		Expected: []sql.Row{{"2018-05-03"}},
+	},
+	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
 		Expected: []sql.Row{{"2018-05-03"}},
 	},
@@ -6580,14 +6620,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{types.MustJSON(`1`)}},
 	},
 	// TODO(andy)
-	//{
+	// {
 	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
 	//	Expected: []sql.Row{{int32(3)}},
-	//},
-	//{
+	// },
+	// {
 	//	Query:    `SELECT JSON_LENGTH(JSON_EXTRACT('[{"i":0}, {"i":1, "y":"yyy"}, {"i":2, "x":"xxx"}]', '$.i'))`,
 	//	Expected: []sql.Row{{int32(3)}},
-	//},
+	// },
 	{
 		Query:    `SELECT GREATEST(@@back_log,@@auto_increment_offset)`,
 		Expected: []sql.Row{{1}},
@@ -9821,6 +9861,18 @@ from typestable`,
 		},
 	},
 	{
+		Query: `SELECT json_type(json_extract('{"a": 123}', null));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
+		Query: `SELECT json_type(json_extract('{"a": 123}', '$.a', null));`,
+		Expected: []sql.Row{
+			{"NULL"},
+		},
+	},
+	{
 		Query: "SELECT json_type(cast(cast('2001-01-01 12:34:56.123456' as datetime) as json));",
 		Expected: []sql.Row{
 			{"DATETIME"},
@@ -11382,6 +11434,10 @@ type WriteQueryTest struct {
 	// Dialect is the supported dialect for this test, which must match the dialect of the harness if specified.
 	// The script is skipped if the dialect doesn't match.
 	Dialect string
+	// WrapBehavior indicates whether to normalize the select results via unwrapping wrapped values (the default),
+	// or replace wrapped values with their hash as determined by sql.AnyWrapped.Hash.
+	// Set this to WrapBehvior_Hash to test the exact encodings being returned by the query.
+	WrapBehavior WrapBehavior
 }
 
 // GenericErrorQueryTest is a query test that is used to assert an error occurs for some query, without specifying what

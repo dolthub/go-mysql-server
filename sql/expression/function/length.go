@@ -119,7 +119,11 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	content, collation, err := types.ConvertToCollatedString(val, l.Child.Type())
+	if wrapper, isWrapper := val.(sql.AnyWrapper); isWrapper && wrapper.IsExactLength() {
+		return int32(wrapper.MaxByteLength()), nil
+	}
+
+	content, collation, err := types.ConvertToCollatedString(ctx, val, l.Child.Type())
 	if err != nil {
 		return nil, err
 	}

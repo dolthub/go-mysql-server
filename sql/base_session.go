@@ -53,6 +53,8 @@ type BaseSession struct {
 	// privilege set if our counter doesn't equal the database's counter.
 	privSetCounter uint64
 	privilegeSet   PrivilegeSet
+
+	storedProcParams map[string]*StoredProcParam
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
@@ -166,12 +168,12 @@ func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value inte
 	var svv SystemVarValue
 	var err error
 	if init {
-		svv, err = sysVar.InitValue(value, false)
+		svv, err = sysVar.InitValue(ctx, value, false)
 		if err != nil {
 			return err
 		}
 	} else {
-		svv, err = sysVar.SetValue(value, false)
+		svv, err = sysVar.SetValue(ctx, value, false)
 		if err != nil {
 			return err
 		}
@@ -250,6 +252,36 @@ func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, 
 		s.statusVars[statVarName].Increment((uint64(val)))
 	}
 	return
+}
+
+// NewStoredProcParam creates a new Stored Procedure Parameter in the Session
+func (s *BaseSession) NewStoredProcParam(name string, param *StoredProcParam) *StoredProcParam {
+	name = strings.ToLower(name)
+	if spp, ok := s.storedProcParams[name]; ok {
+		return spp
+	}
+	s.storedProcParams[name] = param
+	return param
+}
+
+// GetStoredProcParam retrieves the named stored procedure parameter, from the Session, returning nil if not found.
+func (s *BaseSession) GetStoredProcParam(name string) *StoredProcParam {
+	name = strings.ToLower(name)
+	if param, ok := s.storedProcParams[name]; ok {
+		return param
+	}
+	return nil
+}
+
+// SetStoredProcParam sets the named Stored Procedure Parameter from the Session to val and marks it as HasSet.
+// If the Parameter has not been initialized, this will throw an error.
+func (s *BaseSession) SetStoredProcParam(name string, val any) error {
+	param := s.GetStoredProcParam(name)
+	if param == nil {
+		return fmt.Errorf("variable `%s` could not be found", name)
+	}
+	param.SetValue(val)
+	return nil
 }
 
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
@@ -504,17 +536,18 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
-		addr:           server,
-		client:         client,
-		id:             id,
-		systemVars:     systemVars,
-		statusVars:     statusVars,
-		userVars:       NewUserVars(),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
+		addr:             server,
+		client:           client,
+		id:               id,
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
 	}
 }
 
@@ -534,14 +567,15 @@ func NewBaseSession() *BaseSession {
 		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
-		id:             atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:     systemVars,
-		statusVars:     statusVars,
-		userVars:       NewUserVars(),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
+		id:               atomic.AddUint32(&autoSessionIDs, 1),
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
 	}
 }

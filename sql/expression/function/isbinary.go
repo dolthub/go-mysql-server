@@ -60,7 +60,7 @@ func (ib *IsBinary) Eval(
 		return false, nil
 	}
 
-	blob, _, err := types.LongBlob.Convert(v)
+	blob, _, err := types.LongBlob.Convert(ctx, v)
 	if err != nil {
 		return nil, err
 	}

@@ -76,7 +76,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 				return n, transform.SameTree, err
 			}
 			if ok {
-				return indexSearchableLookup(n, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
+				return indexSearchableLookup(ctx, n, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
 			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
@@ -88,13 +88,13 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 	})
 }
 
-func indexSearchableLookup(n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if lookup.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
 	var ret sql.Node
 	var err error
-	ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+	ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
 	if err != nil {
 		return n, transform.SameTree, err
 	}
@@ -261,7 +261,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		}
 	}
 
-	if !idx.CanSupport(ranges.ToRanges()...) {
+	if !idx.CanSupport(ctx, ranges.ToRanges()...) {
 		return nil, nil, nil, err
 	}
 
@@ -290,7 +290,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 			Table:        rt,
 		})
 	} else {
-		ret, err = plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+		ret, err = plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -326,7 +326,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	return ret, bestStat, retFilters, nil
 }
 
-func addIndexScans(m *memo.Memo) error {
+func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		filter, ok := e.(*memo.Filter)
 		if !ok {
@@ -359,7 +359,7 @@ func addIndexScans(m *memo.Memo) error {
 				if lookup.IsEmpty() {
 					return nil
 				}
-				ret, err := plan.NewStaticIndexedAccessForTableNode(rt, lookup)
+				ret, err := plan.NewStaticIndexedAccessForTableNode(ctx, rt, lookup)
 				if err != nil {
 					m.HandleErr(err)
 				}
@@ -462,7 +462,7 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 
 	switch f := f.(type) {
 	case *iScanAnd:
-		newHist, newFds, filters, prefix, err = c.costIndexScanAnd(f, stat, stat.Histogram(), ordinals, idx)
+		newHist, newFds, filters, prefix, err = c.costIndexScanAnd(c.ctx, f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
 			return err
 		}
@@ -1199,7 +1199,7 @@ func ordinalsForStat(stat sql.Statistic) map[string]int {
 // updated statistic, the subset of applicable filters, the maximum prefix
 // key created by a subset of equality filters (from conjunction only),
 // or an error if applicable.
-func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, sql.FastIntSet, int, error) {
+func (c *indexCoster) costIndexScanAnd(ctx *sql.Context, filter *iScanAnd, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, sql.FastIntSet, int, error) {
 	// first step finds the conjunctions that match index prefix columns.
 	// we divide into eqFilters and rangeFilters
 
@@ -1214,7 +1214,7 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, bucket
 			}
 			// if valid, INTERSECT
 			if ok {
-				ret, err = stats.Intersect(ret, childStat, s.Types())
+				ret, err = stats.Intersect(c.ctx, ret, childStat, s.Types())
 				if err != nil {
 					return nil, nil, sql.FastIntSet{}, 0, err
 				}
@@ -1227,7 +1227,7 @@ func (c *indexCoster) costIndexScanAnd(filter *iScanAnd, s sql.Statistic, bucket
 	for _, c := range s.Columns() {
 		if colFilters, ok := filter.leafChildren[c]; ok {
 			for _, f := range colFilters {
-				conj.add(f)
+				conj.add(ctx, f)
 			}
 		}
 	}
@@ -1253,7 +1253,7 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets 
 	for _, child := range filter.children {
 		switch child := child.(type) {
 		case *iScanAnd:
-			childBuckets, _, ids, _, err := c.costIndexScanAnd(child, s, buckets, ordinals, idx)
+			childBuckets, _, ids, _, err := c.costIndexScanAnd(c.ctx, child, s, buckets, ordinals, idx)
 			if err != nil {
 				return nil, nil, false, err
 			}
@@ -1261,7 +1261,7 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets 
 				// scan option missed some filters
 				return nil, nil, false, nil
 			}
-			ret, err = stats.Union(buckets, childBuckets, s.Types())
+			ret, err = stats.Union(c.ctx, buckets, childBuckets, s.Types())
 			if err != nil {
 				return nil, nil, false, err
 			}
@@ -1275,7 +1275,7 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets 
 			if !ok {
 				return nil, nil, false, nil
 			}
-			ret, err = stats.Union(ret, childBuckets, s.Types())
+			ret, err = stats.Union(c.ctx, ret, childBuckets, s.Types())
 			if err != nil {
 				return nil, nil, false, err
 			}
@@ -1339,7 +1339,7 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buck
 		return buckets, stat.FuncDeps(), ok, 0, err
 	default:
 		conj := newConjCollector(s, buckets, ordinals)
-		conj.add(filter)
+		conj.add(c.ctx, filter)
 		var conjFDs *sql.FuncDepSet
 		if idx.IsUnique() {
 			conjFDs = conj.getFds()
@@ -1670,19 +1670,19 @@ type conjCollector struct {
 	isFalse       bool
 }
 
-func (c *conjCollector) add(f *iScanLeaf) error {
+func (c *conjCollector) add(ctx *sql.Context, f *iScanLeaf) error {
 	c.applied.Add(int(f.Id()))
 	var err error
 	switch f.Op() {
 	case IndexScanOpNullSafeEq:
-		err = c.addEq(f.gf.Name(), f.litValue, true)
+		err = c.addEq(ctx, f.gf.Name(), f.litValue, true)
 	case IndexScanOpEq:
-		err = c.addEq(f.gf.Name(), f.litValue, false)
+		err = c.addEq(ctx, f.gf.Name(), f.litValue, false)
 	case IndexScanOpInSet:
 		// TODO cost UNION of equals
-		err = c.addEq(f.gf.Name(), f.setValues[0], false)
+		err = c.addEq(ctx, f.gf.Name(), f.setValues[0], false)
 	default:
-		err = c.addIneq(f.Op(), f.gf.Name(), f.litValue)
+		err = c.addIneq(ctx, f.Op(), f.gf.Name(), f.litValue)
 	}
 	return err
 }
@@ -1695,7 +1695,7 @@ func (c *conjCollector) getFds() *sql.FuncDepSet {
 	return sql.NewLookupFDs(c.stat.FuncDeps(), c.stat.ColSet(), sql.ColSet{}, constCols, nil)
 }
 
-func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error {
+func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nullSafe bool) error {
 	// make constant
 	ord := c.ordinals[col]
 	if c.constant.Contains(ord + 1) {
@@ -1722,7 +1722,7 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 
 		// truncate buckets
 		var err error
-		c.hist, err = stats.PrefixKey(c.stat.Histogram(), c.stat.Types(), c.eqVals[:ord+1])
+		c.hist, err = stats.PrefixKey(ctx, c.stat.Histogram(), c.stat.Types(), c.eqVals[:ord+1])
 		if err != nil {
 			return err
 		}
@@ -1730,12 +1730,12 @@ func (c *conjCollector) addEq(col string, val interface{}, nullSafe bool) error 
 	return nil
 }
 
-func (c *conjCollector) addIneq(op IndexScanOp, col string, val interface{}) error {
+func (c *conjCollector) addIneq(ctx *sql.Context, op IndexScanOp, col string, val interface{}) error {
 	ord := c.ordinals[col]
 	if ord > 0 {
 		return nil
 	}
-	err := c.cmpFirstCol(op, val)
+	err := c.cmpFirstCol(ctx, op, val)
 	if err != nil {
 		return err
 	}
@@ -1744,7 +1744,7 @@ func (c *conjCollector) addIneq(op IndexScanOp, col string, val interface{}) err
 
 // cmpFirstCol checks whether we should try to range truncate the first
 // column in the index
-func (c *conjCollector) cmpFirstCol(op IndexScanOp, val interface{}) error {
+func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op IndexScanOp, val interface{}) error {
 	// check if first col already constant
 	// otherwise attempt to truncate histogram
 	var err error
@@ -1754,15 +1754,15 @@ func (c *conjCollector) cmpFirstCol(op IndexScanOp, val interface{}) error {
 	switch op {
 	case IndexScanOpNotEq:
 		// todo notEq
-		c.hist, err = stats.PrefixGt(c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
 	case IndexScanOpGt:
-		c.hist, err = stats.PrefixGt(c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
 	case IndexScanOpGte:
-		c.hist, err = stats.PrefixGte(c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), val)
 	case IndexScanOpLt:
-		c.hist, err = stats.PrefixLt(c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), val)
 	case IndexScanOpLte:
-		c.hist, err = stats.PrefixLte(c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), val)
 	case IndexScanOpIsNull:
 		c.hist, err = stats.PrefixIsNull(c.hist)
 	case IndexScanOpIsNotNull:

@@ -598,12 +598,15 @@ func (b *Builder) buildAsOfExpr(inScope *scope, time ast.Expr) sql.Expression {
 				return lit
 			}
 		}
-		ret, _, err := types.Text.Convert(v.Val)
+		ret, _, err := types.Text.Convert(b.ctx, v.Val)
 		if err != nil {
 			b.handleErr(err)
 		}
 		return expression.NewLiteral(ret.(string), types.LongText)
 	case *ast.ColName:
+		if v.StoredProcVal != nil {
+			return b.buildAsOfExpr(inScope, v.StoredProcVal)
+		}
 		sysVar, _, ok := b.buildSysVar(v, ast.SetScope_None)
 		if ok {
 			return sysVar

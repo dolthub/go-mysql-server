@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -131,7 +132,7 @@ func (t datetimeType) Precision() int {
 }
 
 // Compare implements Type interface.
-func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
+func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -141,7 +142,7 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 	var ok bool
 	var err error
 	if at, ok = a.(time.Time); !ok {
-		at, err = ConvertToTime(a, t)
+		at, err = ConvertToTime(ctx, a, t)
 		if err != nil {
 			return 0, err
 		}
@@ -149,7 +150,7 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 		at = at.Truncate(24 * time.Hour)
 	}
 	if bt, ok = b.(time.Time); !ok {
-		bt, err = ConvertToTime(b, t)
+		bt, err = ConvertToTime(ctx, b, t)
 		if err != nil {
 			return 0, err
 		}
@@ -167,11 +168,11 @@ func (t datetimeType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
-	res, err := ConvertToTime(v, t)
+	res, err := ConvertToTime(ctx, v, t)
 	if err != nil {
 		return nil, sql.OutOfRange, err
 	}
@@ -184,12 +185,12 @@ var precisionConversion = [7]int{
 	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
 }
 
-func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
+func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Time, error) {
 	if v == nil {
 		return time.Time{}, nil
 	}
 
-	res, err := t.ConvertWithoutRangeCheck(v)
+	res, err := t.ConvertWithoutRangeCheck(ctx, v)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -221,9 +222,14 @@ func ConvertToTime(v interface{}, t datetimeType) (time.Time, error) {
 }
 
 // ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
-func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error) {
+func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{}) (time.Time, error) {
 	var res time.Time
 
+	var err error
+	v, err = sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return time.Time{}, err
+	}
 	if bs, ok := v.([]byte); ok {
 		v = string(bs)
 	}
@@ -340,17 +346,12 @@ func parseDatetime(value string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-func (t datetimeType) MustConvert(v interface{}) interface{} {
-	value, _, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
-}
-
 // Equals implements the Type interface.
 func (t datetimeType) Equals(otherType sql.Type) bool {
-	return t.baseType == otherType.Type()
+	if dtType, isDtType := otherType.(sql.DatetimeType); isDtType {
+		return t.baseType == dtType.Type() && t.precision == dtType.Precision()
+	}
+	return false
 }
 
 // MaxTextResponseByteLength implements the Type interface
@@ -371,12 +372,12 @@ func (t datetimeType) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t datetimeType) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	vt, err := ConvertToTime(v, t)
+	vt, err := ConvertToTime(ctx, v, t)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}

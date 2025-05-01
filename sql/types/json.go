@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 
@@ -37,7 +38,7 @@ var _ sql.CollationCoercible = JsonType{}
 type JsonType struct{}
 
 // Compare implements Type interface.
-func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
+func (t JsonType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -45,7 +46,7 @@ func (t JsonType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t JsonType) Convert(v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
+func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
 	switch v := v.(type) {
 	case sql.JSONWrapper:
 		return v, sql.InRange, nil
@@ -143,13 +144,13 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		val = str
 	} else {
 		// Convert to jsonType
-		jsVal, _, err := t.Convert(v)
+		jsVal, _, err := t.Convert(ctx, v)
 		if err != nil {
 			return sqltypes.NULL, err
 		}
 		js := jsVal.(sql.JSONWrapper)
 
-		str, err := StringifyJSON(js)
+		str, err := JsonToMySqlString(js)
 		if err != nil {
 			return sqltypes.NULL, err
 		}

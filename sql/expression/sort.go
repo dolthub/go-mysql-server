@@ -69,7 +69,7 @@ func (s *Sorter) Less(i, j int) bool {
 			return sf.NullOrdering != sql.NullsFirst
 		}
 
-		cmp, err := typ.Compare(av, bv)
+		cmp, err := typ.Compare(s.Ctx, av, bv)
 		if err != nil {
 			s.LastError = err
 			return false

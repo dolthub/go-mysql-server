@@ -26,6 +26,8 @@ import (
 )
 
 func TestJSONContains(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+
 	// Quickly assert that an error is thrown with < 2 and > 3 arguments
 	_, err := NewJSONContains(
 		expression.NewGetField(0, types.JSON, "arg1", false),
@@ -53,17 +55,17 @@ func TestJSONContains(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	json, _, err := types.JSON.Convert(`{` +
-		`"a": [1, 2, 3, 4], ` +
-		`"b": {"c": "foo", "d": true}, ` +
-		`"e": [[1, 2], [3, 4]] ` +
+	json, _, err := types.JSON.Convert(ctx, `{`+
+		`"a": [1, 2, 3, 4], `+
+		`"b": {"c": "foo", "d": true}, `+
+		`"e": [[1, 2], [3, 4]] `+
 		`}`)
 	require.NoError(t, err)
 
-	badMap, _, err := types.JSON.Convert(`{"x": [[1, 2], [3, 4]]}`)
+	badMap, _, err := types.JSON.Convert(ctx, `{"x": [[1, 2], [3, 4]]}`)
 	require.NoError(t, err)
 
-	goodMap, _, err := types.JSON.Convert(`{"e": [[1, 2], [3, 4]]}`)
+	goodMap, _, err := types.JSON.Convert(ctx, `{"e": [[1, 2], [3, 4]]}`)
 	require.NoError(t, err)
 
 	testCases := []struct {

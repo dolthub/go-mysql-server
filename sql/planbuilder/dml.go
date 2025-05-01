@@ -581,6 +581,15 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 			return true
 		})
 	}
+
+	if len(u.Returning) > 0 {
+		returningExprs := make([]sql.Expression, len(u.Returning))
+		for i, selectExpr := range u.Returning {
+			returningExprs[i] = b.selectExprToExpression(outScope, selectExpr)
+		}
+		update.Returning = returningExprs
+	}
+
 	outScope.node = update.WithChecks(checks)
 	return
 }
@@ -742,6 +751,10 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 		if strings.HasPrefix(val.String(), "@") {
 			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
 		} else {
+			if inScope.proc == nil {
+				err := sql.ErrExternalProcedureMissingContextParam.New(val.String())
+				b.handleErr(err)
+			}
 			col, ok := inScope.proc.GetVar(val.String())
 			if !ok {
 				err := sql.ErrExternalProcedureMissingContextParam.New(val.String())

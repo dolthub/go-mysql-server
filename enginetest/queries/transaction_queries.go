@@ -1118,6 +1118,127 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
+		Name: "certain ddl queries on temporary tables are not implicitly committed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ create table t (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query:    "/* client a */ set @@autocommit = 0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This should not appear for client b until a transaction is committed
+				Query:    "/* client a */ insert into t values (1), (2), (3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ create temporary table tmp (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ insert into tmp values (1), (2), (3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ drop temporary table tmp;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ create temporary table tmp (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				// Oddly, this does implicitly commit the transaction
+				Query:    "/* client a */ drop table tmp;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query: "/* client b */ select * from t;",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query:    "/* client a */ delete from t where true;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+
+			{
+				// This should commit and reset table t
+				Query:    "/* client a */ start transaction;",
+				Expected: []sql.Row{},
+			},
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ insert into t values (1), (2), (3);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				// This should not implicitly commit the transaction
+				Query:    "/* client a */ create temporary table tmp (pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select * from t;",
+				Expected: []sql.Row{},
+			},
+			{
+				// TODO: turns out we can't alter temporary tables; unskip tests when that is fixed
+				// Oddly, this does implicitly commit the transaction
+				Skip:     true,
+				Query:    "/* client a */ alter table tmp add column j int;",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				// TODO: turns out we can't alter temporary tables; unskip tests when that is fixed
+				Query: "/* client b */ select * from t;",
+				Skip:  true,
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+		},
+	},
+	{
 		Name: "alter table queries are implicitly committed",
 		Assertions: []ScriptTestAssertion{
 			{

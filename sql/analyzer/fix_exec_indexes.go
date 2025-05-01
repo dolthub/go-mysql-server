@@ -312,6 +312,11 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 			// join subquery aliases continue to enjoy full visibility.
 			sqScope.parentScopes = sqScope.parentScopes[:0]
 			sqScope.lateralScopes = sqScope.lateralScopes[:0]
+			for _, p := range s.parentScopes {
+				if p.triggerScope {
+					sqScope.parentScopes = append(sqScope.parentScopes, p)
+				}
+			}
 		}
 		newC, cScope, err := assignIndexesHelper(n.Child, sqScope)
 		if err != nil {
@@ -509,6 +514,10 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newCheck.Expr = newE
 			s.checks = append(s.checks, &newCheck)
 		}
+		for _, r := range n.Returning {
+			newE := fixExprToScope(r, srcScope)
+			s.expressions = append(s.expressions, newE)
+		}
 	case *plan.LoadData:
 		scope := &idxScope{}
 		scope.addSchema(n.DestSch)
@@ -551,6 +560,10 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		nn.Returning = s.expressions[len(n.OnDupExprs):]
 		return nn.WithChecks(s.checks), nil
 	default:
+		if nn, ok := n.(*plan.Update); ok {
+			nn.Returning = s.expressions
+		}
+
 		s.ids = columnIdsForNode(n)
 
 		s.addSchema(n.Schema())

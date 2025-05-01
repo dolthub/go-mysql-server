@@ -130,7 +130,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, sch
 	using := b.buildScalar(inScope, n.Using)
 	if l, ok := using.(*expression.Literal); ok {
 		if typ, ok := l.Type().(sql.StringType); ok {
-			val, _, err := typ.Convert(l.Value())
+			val, _, err := typ.Convert(b.ctx, l.Value())
 			if err != nil {
 				b.handleErr(err)
 			}

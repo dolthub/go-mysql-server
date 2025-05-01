@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -358,7 +359,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			left = convertValueToType(ctx, typ, left, lIsTimeType)
 		} else {
-			left = convertToDecimalValue(left, lIsTimeType)
+			left = convertToDecimalValue(ctx, left, lIsTimeType)
 		}
 	}
 
@@ -369,7 +370,7 @@ func (a *Arithmetic) convertLeftRight(ctx *sql.Context, left interface{}, right 
 		if types.IsInteger(typ) || types.IsFloat(typ) || types.IsTime(typ) {
 			right = convertValueToType(ctx, typ, right, rIsTimeType)
 		} else {
-			right = convertToDecimalValue(right, rIsTimeType)
+			right = convertToDecimalValue(ctx, right, rIsTimeType)
 		}
 	}
 
@@ -433,7 +434,7 @@ func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}, isTimeT
 		val = convertTimeTypeToString(val)
 	}
 
-	cval, _, err := typ.Convert(val)
+	cval, _, err := typ.Convert(ctx, val)
 	if err != nil {
 		arithmeticWarning(ctx, mysql.ERTruncatedWrongValue, fmt.Sprintf("Truncated incorrect %s value: '%v'", typ.String(), val))
 		// the value is interpreted as 0, but we need to match the type of the other valid value
@@ -704,12 +705,24 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case int:
 		return -n, nil
 	case int8:
+		if n == math.MinInt8 {
+			return -int16(n), nil
+		}
 		return -n, nil
 	case int16:
+		if n == math.MinInt16 {
+			return -int32(n), nil
+		}
 		return -n, nil
 	case int32:
+		if n == math.MinInt32 {
+			return -int64(n), nil
+		}
 		return -n, nil
 	case int64:
+		if n == math.MinInt64 {
+			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
+		}
 		return -n, nil
 	case uint:
 		return -int(n), nil
@@ -730,6 +743,12 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 		}
 		return -i, nil
+	case bool:
+		if n {
+			return -1, nil
+		} else {
+			return 0, nil
+		}
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(n))
 	}
