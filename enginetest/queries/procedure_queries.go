@@ -2192,6 +2192,58 @@ END;`,
 			},
 		},
 	},
+	{
+		Name: "user variables are usable within stored procedures",
+		SetUpScript: []string{
+			`
+create procedure proc()
+begin
+  declare v int default 123;
+  set @v = v;
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "call proc();",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "select @v;",
+				Expected: []sql.Row{
+					{123},
+				},
+			},
+		},
+	},
+	{
+		Name: "prepare statement inside of stored procedures",
+		SetUpScript: []string{
+			`
+create procedure create_proc()
+begin
+  set @stmt = 'create table t (i int)';
+  prepare stmt from @stmt;
+  execute stmt;
+  deallocate prepare stmt;
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call create_proc();",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into t values (1), (2), (3);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{
