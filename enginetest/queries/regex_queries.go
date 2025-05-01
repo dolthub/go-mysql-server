@@ -34,13 +34,6 @@ type RegexTest struct {
 	ExpectedErr *errors.Kind
 }
 
-var RegexSetup = []setup.SetupScript{
-	{
-		"CREATE TABLE tests(pk int primary key, str text, pattern text, flags text);",
-		"INSERT INTO tests VALUES (1, 'testing', 'TESTING', 'ci');",
-	},
-}
-
 var RegexTests = []RegexTest{
 	{
 		Query:    "SELECT REGEXP_LIKE('testing', 'TESTING');",
