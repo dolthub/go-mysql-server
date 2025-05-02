@@ -1,7 +1,7 @@
 exec
 create table tabletest (
     i int primary key,
-    s text not null
+    s varchar(20) not null
 )
 ----
 
