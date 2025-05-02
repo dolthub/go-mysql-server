@@ -5575,9 +5575,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: "select from_unixtime(i) from mytable order by 1",
 		Expected: []sql.Row{
-			{time.Unix(1, 0)},
-			{time.Unix(2, 0)},
-			{time.Unix(3, 0)},
+			{UnixTimeInLocal(1, 0)},
+			{UnixTimeInLocal(2, 0)},
+			{UnixTimeInLocal(3, 0)},
 		},
 	},
 	// TODO: add additional tests for other functions. Every function needs an engine test to ensure it works correctly
@@ -11767,4 +11767,10 @@ func MustParseTime(layout, value string) time.Time {
 		panic(err)
 	}
 	return parsed
+}
+
+func UnixTimeInLocal(sec, nsec int64) time.Time {
+	t := time.Unix(sec, nsec)
+	_, offset := t.Zone()
+	return t.Add(time.Second * time.Duration(offset)).In(time.UTC)
 }

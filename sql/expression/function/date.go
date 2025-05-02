@@ -111,6 +111,7 @@ var _ sql.FunctionExpression = (*UnixTimestamp)(nil)
 var _ sql.CollationCoercible = (*UnixTimestamp)(nil)
 
 const MaxUnixTimeMicroSecs = 32536771199999999
+const MaxUnixTimeSecs = 32536771199
 
 // canEval returns if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
 func canEval(expr sql.Expression) bool {
@@ -354,14 +355,20 @@ func (ut *UnixTimestamp) String() string {
 
 // FromUnixtime converts the argument to a datetime.
 type FromUnixtime struct {
-	*UnaryFunc
+	expression.NaryExpression
 }
 
 var _ sql.FunctionExpression = (*FromUnixtime)(nil)
 var _ sql.CollationCoercible = (*FromUnixtime)(nil)
 
-func NewFromUnixtime(arg sql.Expression) sql.Expression {
-	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", types.DatetimeMaxPrecision)}
+// NewFromUnixtime https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_from-unixtime
+func NewFromUnixtime(args ...sql.Expression) (sql.Expression, error) {
+	switch len(args) {
+	case 1, 2:
+		return &FromUnixtime{expression.NaryExpression{ChildExpressions: args}}, nil
+	default:
+		return nil, sql.ErrInvalidArgumentNumber.New("FROM_UNIXTIME", 2, len(args))
+	}
 }
 
 // Description implements sql.FunctionExpression
@@ -375,28 +382,74 @@ func (*FromUnixtime) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := r.EvalChild(ctx, row)
+	vals := make([]interface{}, len(r.ChildExpressions))
+	for i, e := range r.ChildExpressions {
+		val, err := e.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		vals[i] = val
+	}
+
+	// TODO support decimal value in timestamp
+	n, _, err := types.Int64.Convert(ctx, vals[0])
 	if err != nil {
 		return nil, err
 	}
-
-	if val == nil {
+	if n == nil {
 		return nil, nil
 	}
-
-	n, _, err := types.Int64.Convert(ctx, val)
+	sec := n.(int64)
+	if sec > MaxUnixTimeSecs || sec < 0 {
+		return nil, nil
+	}
+	t := time.Unix(sec, 0).In(time.UTC)
+	tz, err := SessionTimeZone(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	return time.Unix(n.(int64), 0), nil
+	t, _ = gmstime.ConvertTimeZone(t, "UTC", tz)
+	if len(vals) == 1 {
+		return t, nil // If format is omitted, this function returns a DATETIME value.
+	}
+	format, _, err := types.Text.Convert(ctx, vals[1])
+	if err != nil {
+		return nil, err
+	}
+	if format == nil {
+		return nil, nil
+	}
+	return formatDate(format.(string), t)
 }
 
 func (r *FromUnixtime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
+	return NewFromUnixtime(children...)
+}
+
+func (r *FromUnixtime) FunctionName() string {
+	return "FROM_UNIXTIME"
+}
+
+func (r *FromUnixtime) String() string {
+	switch len(r.ChildExpressions) {
+	case 1:
+		return fmt.Sprintf("FROM_UNIXTIME(%s)", r.ChildExpressions[0])
+	case 2:
+		return fmt.Sprintf("FROM_UNIXTIME(%s, %s)", r.ChildExpressions[0], r.ChildExpressions[1])
+	default:
+		return "FROM_UNIXTIME(INVALID_NUMBER_OF_ARGUMENTS)"
 	}
-	return NewFromUnixtime(children[0]), nil
+}
+
+func (r *FromUnixtime) Type() sql.Type {
+	switch len(r.ChildExpressions) {
+	case 1:
+		return types.DatetimeMaxPrecision
+	case 2:
+		return types.Text
+	default:
+		return types.Null
+	}
 }
 
 type CurrDate struct {

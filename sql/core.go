@@ -894,7 +894,7 @@ type StoredProcParam struct {
 func (s *StoredProcParam) SetValue(val any) {
 	s.Value = val
 	s.HasBeenSet = true
-	if s.Reference != nil {
+	if s.Reference != nil && s != s.Reference {
 		s.Reference.SetValue(val)
 	}
 }

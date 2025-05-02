@@ -3056,6 +3056,64 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name:    "from_unixtime",
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			// null parameter
+			{
+				Query:    "select from_unixtime(null)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select from_unixtime(1, null)",
+				Expected: []sql.Row{{nil}},
+			},
+			// out of range
+			{
+				Query:    "select from_unixtime(-1)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select from_unixtime(32536771200)",
+				Expected: []sql.Row{{nil}},
+			},
+			// in +8:00
+			{
+				Query:    "set @@session.time_zone='+08:00'",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select from_unixtime(1)",
+				Expected: []sql.Row{{time.Unix(1, 0).Add(time.Hour * 8).In(time.UTC)}},
+			},
+			{
+				Query:    "select from_unixtime(32536771199)",
+				Expected: []sql.Row{{time.Unix(32536771199, 0).Add(time.Hour * 8).In(time.UTC)}},
+			},
+			{
+				Query:    "SELECT FROM_UNIXTIME(1,'%Y %D %M %H:%i:%s %x')",
+				Expected: []sql.Row{{"1970 1st January 08:00:01 1970"}},
+			},
+			// in utc
+			{
+				Query:    "set @@session.time_zone='UTC'",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select from_unixtime(1)",
+				Expected: []sql.Row{{time.Unix(1, 0).In(time.UTC)}},
+			},
+			{
+				Query:    "select from_unixtime(32536771199)",
+				Expected: []sql.Row{{time.Unix(32536771199, 0).In(time.UTC)}},
+			},
+			{
+				Query:    "SELECT FROM_UNIXTIME(1,'%Y %D %M %H:%i:%s %x')",
+				Expected: []sql.Row{{"1970 1st January 00:00:01 1970"}},
+			},
+		},
+	},
+	{
 		Name:    "unix_timestamp with non UTC timezone",
 		Dialect: "mysql",
 		SetUpScript: []string{
