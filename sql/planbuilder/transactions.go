@@ -70,7 +70,7 @@ func (b *Builder) buildPrepare(inScope *scope, n *ast.Prepare) (outScope *scope)
 	// test for query structure; bind variables will be discarded
 	b.bindCtx = &BindvarContext{resolveOnly: true}
 	childScope := b.build(inScope, childStmt, expr)
-	outScope.node = plan.NewPrepareQuery(n.Name, childScope.node)
+	outScope.node = plan.NewPrepareQuery(n.Name, childScope.node, n)
 	return outScope
 }
 

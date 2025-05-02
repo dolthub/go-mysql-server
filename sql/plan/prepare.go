@@ -19,20 +19,27 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // PrepareQuery is a node that prepares the query
 type PrepareQuery struct {
-	Name  string
-	Child sql.Node
+	Name     string
+	Child    sql.Node
+	PrepStmt *sqlparser.Prepare
 }
 
 var _ sql.Node = (*PrepareQuery)(nil)
 var _ sql.CollationCoercible = (*PrepareQuery)(nil)
 
 // NewPrepareQuery creates a new PrepareQuery node.
-func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
-	return &PrepareQuery{Name: name, Child: child}
+func NewPrepareQuery(name string, child sql.Node, prepStmt *sqlparser.Prepare) *PrepareQuery {
+	return &PrepareQuery{
+		Name:     name,
+		Child:    child,
+		PrepStmt: prepStmt,
+	}
 }
 
 // Schema implements the Node interface.
