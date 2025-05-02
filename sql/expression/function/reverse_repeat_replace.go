@@ -280,26 +280,9 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	{
-		str, _, err := sql.Unwrap[string](ctx, str)
-		if err != nil {
-			return nil, err
-		}
-
-		fromStr, _, err := sql.Unwrap[string](ctx, fromStr)
-		if err != nil {
-			return nil, err
-		}
-
-		toStr, _, err := sql.Unwrap[string](ctx, toStr)
-		if err != nil {
-			return nil, err
-		}
-
-		if fromStr == "" {
-			return str, nil
-		}
-
-		return strings.Replace(str, fromStr, toStr, -1), nil
+	if fromStr.(string) == "" {
+		return str, nil
 	}
+
+	return strings.Replace(str.(string), fromStr.(string), toStr.(string), -1), nil
 }
