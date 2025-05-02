@@ -6773,11 +6773,19 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
 	},
 	{
+		Query:    "select replace(s, 'row', '') from tabletest order by i",
+		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
+	},
+	{
 		Query:    "select rpad(s, 13, ' ') from mytable order by i",
 		Expected: []sql.Row{{"first row    "}, {"second row   "}, {"third row    "}},
 	},
 	{
 		Query:    "select lpad(s, 13, ' ') from mytable order by i",
+		Expected: []sql.Row{{"    first row"}, {"   second row"}, {"    third row"}},
+	},
+	{
+		Query:    "select lpad(s, 13, ' ') from tabletest order by i",
 		Expected: []sql.Row{{"    first row"}, {"   second row"}, {"    third row"}},
 	},
 	{

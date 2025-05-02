@@ -21,9 +21,8 @@
 package queries
 
 import (
-	"gopkg.in/src-d/go-errors.v1"
-
 	regex "github.com/dolthub/go-icu-regex"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -54,6 +53,10 @@ var RegexTests = []RegexTest{
 	{
 		Query:    "SELECT REGEXP_LIKE('testing', 'TESTING', 'ic');",
 		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "SELECT REGEXP_LIKE(str, pattern, flags) from tests;",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:    "SELECT REGEXP_LIKE('testing', 'TESTING' COLLATE utf8mb4_0900_ai_ci);",
