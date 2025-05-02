@@ -587,12 +587,6 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFl
 	switch n := bound.(type) {
 	case *plan.PrepareQuery:
 		sqlMode := sql.LoadSqlMode(ctx)
-
-		// we have to name-resolve to check for structural errors, but we do
-		// not to cache the name-bound query yet.
-		// todo(max): improve name resolution so we can cache post name-binding.
-		// this involves expression memoization, which currently screws up aggregation
-		// and order by aliases
 		prepare := n.PrepStmt
 		cacheStmt, _, err := e.Parser.ParseOneWithOptions(ctx, prepare.Expr, sqlMode.ParserOptions())
 		if err != nil && strings.HasPrefix(prepare.Expr, "@") {
