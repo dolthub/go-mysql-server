@@ -717,7 +717,14 @@ func TestCollationCoercion(t *testing.T) {
 
 func TestRegex(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
-	harness.Setup(setup.SimpleSetup...)
+	regexSetup := []setup.SetupScript{
+		{
+			"CREATE TABLE tests(pk int primary key, str text, pattern text, flags text);",
+			"INSERT INTO tests VALUES (1, 'testing', 'TESTING', 'ci');",
+		},
+	}
+	setupsScripts := append(setup.SimpleSetup, regexSetup)
+	harness.Setup(setupsScripts...)
 	engine, err := harness.NewEngine(t)
 	require.NoError(t, err)
 	defer engine.Close()

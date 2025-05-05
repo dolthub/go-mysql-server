@@ -56,6 +56,10 @@ var RegexTests = []RegexTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
+		Query:    "SELECT REGEXP_LIKE(str, pattern, flags) from tests;",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "SELECT REGEXP_LIKE('testing', 'TESTING' COLLATE utf8mb4_0900_ai_ci);",
 		Expected: []sql.Row{{1}},
 	},
