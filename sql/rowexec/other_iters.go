@@ -334,7 +334,7 @@ func (ci *concatIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		hash, err := sql.HashOf(res)
+		hash, err := sql.HashOf(ctx, res)
 		if err != nil {
 			return nil, err
 		}

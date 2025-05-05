@@ -946,6 +946,32 @@ where u in (select * from rec);`,
 		},
 	},
 	{
+		name: "join varchar and text columns",
+		setup: []string{
+			"CREATE table varchartable (pk int primary key, s varchar(20));",
+			"CREATE table texttable (pk int primary key, t text);",
+			"insert into varchartable values (1,'first'), (2,'second'), (3,'third');",
+			"insert into texttable values (1,'first'), (2,'second'), (3,'third');",
+		},
+		// write a bunch of left joins and make sure they are converted to anti joins
+		tests: []JoinPlanTest{
+			{
+				q:     "select /*+ HASH_JOIN(varchartable,texttable) */ * from varchartable where s in (select t from texttable) order by pk",
+				types: []plan.JoinType{plan.JoinTypeHash},
+				exp: []sql.Row{
+					{1, "first"},
+					{2, "second"},
+					{3, "third"},
+				},
+			},
+			{
+				q:     "select /*+ HASH_JOIN(varchartable,texttable) */ * from varchartable where s not in (select t from texttable) order by pk",
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
+				exp:   []sql.Row{},
+			},
+		},
+	},
+	{
 		name: "join concat tests",
 		setup: []string{
 			"CREATE table xy (x int primary key, y int);",

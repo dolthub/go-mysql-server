@@ -1971,7 +1971,7 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 	return fmt.Errorf("check '%s' was not found on the table", chName)
 }
 
-func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
+func (t *Table) createIndex(ctx *sql.Context, data *TableData, name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
 	if name == "" {
 		for _, column := range columns {
 			name += column.Name + "_"
@@ -2005,7 +2005,7 @@ func (t *Table) createIndex(data *TableData, name string, columns []sql.IndexCol
 	}
 
 	if constraint == sql.IndexConstraint_Unique {
-		err := data.errIfDuplicateEntryExist(colNames, name)
+		err := data.errIfDuplicateEntryExist(ctx, colNames, name)
 		if err != nil {
 			return nil, err
 		}
@@ -2041,7 +2041,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
 	if err != nil {
 		return err
 	}
@@ -2107,7 +2107,7 @@ func (t *Table) CreateFulltextIndex(ctx *sql.Context, indexDef sql.IndexDef, key
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(data, indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment)
+	index, err := t.createIndex(ctx, data, indexDef.Name, indexDef.Columns, indexDef.Constraint, indexDef.Comment)
 	if err != nil {
 		return err
 	}
@@ -2138,7 +2138,7 @@ func (t *Table) CreateVectorIndex(ctx *sql.Context, idx sql.IndexDef, distanceTy
 		data.indexes = make(map[string]sql.Index)
 	}
 
-	index, err := t.createIndex(data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
+	index, err := t.createIndex(ctx, data, idx.Name, idx.Columns, idx.Constraint, idx.Comment)
 	if err != nil {
 		return err
 	}
