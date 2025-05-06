@@ -11791,6 +11791,6 @@ func MustParseTime(layout, value string) time.Time {
 
 func UnixTimeInLocal(sec, nsec int64) time.Time {
 	t := time.Unix(sec, nsec)
-	_, offset := t.Zone()
+	_, offset := time.Now().Zone()
 	return t.Add(time.Second * time.Duration(offset)).In(time.UTC)
 }
