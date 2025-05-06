@@ -5666,6 +5666,18 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query:    "select * from mytable intersect select * from tabletest",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
+	},
+	{
+		Query:    "select * from mytable union distinct select * from tabletest",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
+	},
+	{
+		Query:    "select * from mytable except select * from tabletest",
+		Expected: []sql.Row{},
+	},
+	{
 		SkipPrepared: true,
 		Query:        "",
 		Expected:     []sql.Row{},
@@ -6773,11 +6785,19 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
 	},
 	{
+		Query:    "select replace(s, 'row', '') from tabletest order by i",
+		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
+	},
+	{
 		Query:    "select rpad(s, 13, ' ') from mytable order by i",
 		Expected: []sql.Row{{"first row    "}, {"second row   "}, {"third row    "}},
 	},
 	{
 		Query:    "select lpad(s, 13, ' ') from mytable order by i",
+		Expected: []sql.Row{{"    first row"}, {"   second row"}, {"    third row"}},
+	},
+	{
+		Query:    "select lpad(s, 13, ' ') from tabletest order by i",
 		Expected: []sql.Row{{"    first row"}, {"   second row"}, {"    third row"}},
 	},
 	{

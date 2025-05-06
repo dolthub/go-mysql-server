@@ -15,6 +15,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -274,7 +275,7 @@ func (td *TableData) numRows(ctx *sql.Context) (uint64, error) {
 }
 
 // throws an error if any two or more rows share the same |cols| values.
-func (td *TableData) errIfDuplicateEntryExist(cols []string, idxName string) error {
+func (td *TableData) errIfDuplicateEntryExist(ctx context.Context, cols []string, idxName string) error {
 	columnMapping, err := td.columnIndexes(cols)
 
 	// We currently skip validating duplicates on unique virtual columns.
@@ -296,7 +297,7 @@ func (td *TableData) errIfDuplicateEntryExist(cols []string, idxName string) err
 			if hasNulls(idxPrefixKey) {
 				continue
 			}
-			h, err := sql.HashOf(idxPrefixKey)
+			h, err := sql.HashOf(ctx, idxPrefixKey)
 			if err != nil {
 				return err
 			}

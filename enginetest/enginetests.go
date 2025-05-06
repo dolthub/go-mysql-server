@@ -3046,7 +3046,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.tabletest RENAME COLUMN s TO i1", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.tabletest", []sql.Row{
 			{"i", "int", nil, "NO", "PRI", nil, "", "", ""},
-			{"i1", "varchar(20)", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
+			{"i1", "text", "utf8mb4_0900_bin", "NO", "", nil, "", "", ""},
 		}, nil, nil, nil)
 	})
 }

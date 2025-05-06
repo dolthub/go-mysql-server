@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -179,10 +180,11 @@ func TestRowsCache(t *testing.T) {
 }
 
 func BenchmarkHashOf(b *testing.B) {
+	ctx := context.Background()
 	row := NewRow(1, "1")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		sum, err := HashOf(row)
+		sum, err := HashOf(ctx, row)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -193,11 +195,12 @@ func BenchmarkHashOf(b *testing.B) {
 }
 
 func BenchmarkParallelHashOf(b *testing.B) {
+	ctx := context.Background()
 	row := NewRow(1, "1")
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			sum, err := HashOf(row)
+			sum, err := HashOf(ctx, row)
 			if err != nil {
 				b.Fatal(err)
 			}

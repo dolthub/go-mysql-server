@@ -462,7 +462,7 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		rightRow, err := i.r.Next(ctx)
 		if err == io.EOF {
-			key, err := sql.HashOf(i.leftRow)
+			key, err := sql.HashOf(ctx, i.leftRow)
 			if err != nil {
 				return nil, err
 			}
@@ -485,12 +485,12 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if !sql.IsTrue(matches) {
 			continue
 		}
-		rkey, err := sql.HashOf(rightRow)
+		rkey, err := sql.HashOf(ctx, rightRow)
 		if err != nil {
 			return nil, err
 		}
 		i.seenRight[rkey] = struct{}{}
-		lKey, err := sql.HashOf(i.leftRow)
+		lKey, err := sql.HashOf(ctx, i.leftRow)
 		if err != nil {
 			return nil, err
 		}
@@ -517,7 +517,7 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, io.EOF
 		}
 
-		key, err := sql.HashOf(rightRow)
+		key, err := sql.HashOf(ctx, rightRow)
 		if err != nil {
 			return nil, err
 		}
