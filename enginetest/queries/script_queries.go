@@ -181,7 +181,7 @@ CREATE TABLE teams (
 			},
 			{
 				Query:       "alter table xy modify y enum('a')",
-				ExpectedErr: types.ErrConvertingToEnum,
+				ExpectedErr: types.ErrDataTruncatedForColumn,
 			},
 		},
 	},
@@ -7706,6 +7706,7 @@ where
 		Name: "preserve enums through alter statements",
 		SetUpScript: []string{
 			"create table t (i int primary key, e enum('a', 'b', 'c'));",
+			"insert ignore into t values (0, 'error');",
 			"insert into t values (1, 'a');",
 			"insert into t values (2, 'b');",
 			"insert into t values (3, 'c');",
@@ -7714,6 +7715,7 @@ where
 			{
 				Query: "select i, e, e + 0 from t;",
 				Expected: []sql.Row{
+					{0, "", float64(0)},
 					{1, "a", float64(1)},
 					{2, "b", float64(2)},
 					{3, "c", float64(3)},
@@ -7728,6 +7730,7 @@ where
 			{
 				Query: "select i, e, e + 0 from t;",
 				Expected: []sql.Row{
+					{0, "", float64(0)},
 					{1, "a", float64(2)},
 					{2, "b", float64(3)},
 					{3, "c", float64(1)},
@@ -7742,6 +7745,7 @@ where
 			{
 				Query: "select i, e, e + 0 from t;",
 				Expected: []sql.Row{
+					{0, "", float64(0)},
 					{1, "a", float64(2)},
 					{2, "b", float64(3)},
 					{3, "c", float64(4)},
@@ -7756,14 +7760,30 @@ where
 			{
 				Query: "select i, e, e + 0 from t;",
 				Expected: []sql.Row{
+					{0, "", float64(0)},
 					{1, "a", float64(2)},
 					{2, "b", float64(3)},
 					{3, "c", float64(4)},
 				},
 			},
 			{
+				Query: "alter table t modify column e enum('a', 'b', 'c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(1)},
+					{2, "b", float64(2)},
+					{3, "c", float64(3)},
+				},
+			},
+			{
 				Query:       "alter table t modify column e enum('abc');",
-				ExpectedErr: types.ErrConvertingToEnum,
+				ExpectedErr: types.ErrDataTruncatedForColumn,
 			},
 		},
 	},
