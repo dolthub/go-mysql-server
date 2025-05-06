@@ -969,7 +969,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		} else if v < float32(math.MinInt64) {
 			return math.MinInt64, sql.OutOfRange, nil
 		}
-		return int64(math.Round(float64(v))), sql.OutOfRange, nil
+		return int64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v > float64(math.MaxInt64) {
 			return math.MaxInt64, sql.OutOfRange, nil
