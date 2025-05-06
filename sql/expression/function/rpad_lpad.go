@@ -169,7 +169,19 @@ func (p *Pad) Eval(
 		return nil, err
 	}
 
-	return padString(str.(string), length.(int64), padStr.(string), p.padType)
+	{
+		str, _, err := sql.Unwrap[string](ctx, str)
+		if err != nil {
+			return nil, err
+		}
+
+		padStr, _, err := sql.Unwrap[string](ctx, padStr)
+		if err != nil {
+			return nil, err
+		}
+
+		return padString(str, length.(int64), padStr, p.padType)
+	}
 }
 
 func padString(str string, length int64, padStr string, padType padType) (string, error) {
