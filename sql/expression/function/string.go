@@ -15,6 +15,7 @@
 package function
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -632,19 +633,32 @@ func (q *Quote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	val, _, err := types.Text.Convert(ctx, arg)
+	val, _, err := types.Blob.Convert(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
 	if val == nil {
 		return nil, nil
 	}
-	valStr := val.(string)
-	valStr = strings.Replace(valStr, "\\", "\\\\", -1)
-	valStr = strings.Replace(valStr, "'", "\\'", -1)
-	valStr = strings.Replace(valStr, "\000", "\\0", -1)
-	valStr = strings.Replace(valStr, "\032", "\\\032", -1) // CTRL+Z character
-	return fmt.Sprintf("'%s'", valStr), nil
+	valBytes := val.([]byte)
+
+	ret := new(bytes.Buffer)
+	ret.WriteByte('\'')
+	for _, c := range valBytes {
+		switch c {
+		// '\032' is CTRL+Z character
+		case '\\', '\'', '\032':
+			ret.WriteByte('\\')
+			ret.WriteByte(c)
+		case '\000':
+			ret.WriteByte('\\')
+			ret.WriteByte('0')
+		default:
+			ret.WriteByte(c)
+		}
+	}
+	ret.WriteByte('\'')
+	return ret.String(), nil
 }
 
 func (q *Quote) WithChildren(children ...sql.Expression) (sql.Expression, error) {
