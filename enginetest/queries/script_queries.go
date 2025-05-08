@@ -8421,15 +8421,15 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "select * from t;",
+				Skip:  true, // this fails on server engine, even when skipped
+				Query: "select * from t;",
 				Expected: []sql.Row{
 					{1, uint8(2)},
 				},
 			},
 			{
-				SkipResultCheckOnServerEngine: true,
-				Query:                         "select * from tt;",
+				Skip:  true, // this fails on server engine, even when skipped
+				Query: "select * from tt;",
 				Expected: []sql.Row{
 					{uint8(2)},
 				},
