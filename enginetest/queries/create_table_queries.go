@@ -270,6 +270,12 @@ var CreateTableQueries = []WriteQueryTest{
 		SelectQuery:         `SHOW CREATE TABLE t1`,
 		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `pk` varbinary(10) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
+	{
+		WriteQuery:          `create table t1 (pk bit(2) default 2)`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `pk` bit(2) DEFAULT b'10'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
 }
 
 var CreateTableScriptTests = []ScriptTest{
