@@ -8410,6 +8410,30 @@ where
 			},
 		},
 	},
+	{
+		Name:    "bit default value",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, b bit(2) default 2);",
+			"insert into t(i) values (1);",
+			"create table tt (b bit(2) default 2 primary key);",
+			"insert into tt values ();",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, uint8(2)},
+				},
+			},
+			{
+				Query: "select * from tt;",
+				Expected: []sql.Row{
+					{uint8(2)},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
