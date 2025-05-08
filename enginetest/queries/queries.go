@@ -10295,6 +10295,12 @@ from typestable`,
 			{"'3'", "'third row'"},
 		},
 	},
+	{
+		Query: "select i, s from mytable where quote(i) = quote(2)",
+		Expected: []sql.Row{
+			{2, "second row"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
