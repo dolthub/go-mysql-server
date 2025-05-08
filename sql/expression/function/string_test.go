@@ -163,3 +163,15 @@ func TestBitLength(t *testing.T) {
 	tf.AddSucceeding(128, time.Now())
 	tf.Test(t, nil, nil)
 }
+
+func TestQuote(t *testing.T) {
+	f := sql.Function1{Name: "quote", Fn: NewQuote}
+	tf := NewTestFactory(f.Fn)
+	tf.AddSucceeding(nil, nil)
+	tf.AddSucceeding("'test'", "test")
+	tf.AddSucceeding("'0'", false)
+	tf.AddSucceeding("'1'", true)
+	tf.AddSucceeding("'12345'", 12345)
+	tf.AddSucceeding("'\\\\, \\', \\0, \\\032'", "\\, ', \000, \032")
+	tf.Test(t, nil, nil)
+}

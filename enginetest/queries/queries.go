@@ -10146,7 +10146,6 @@ from typestable`,
 			{uint32(1000)},
 		},
 	},
-
 	{
 		Query: `select distinct pk1 from two_pk order by pk1`,
 		Expected: []sql.Row{
@@ -10255,14 +10254,12 @@ from typestable`,
 			{""},
 		},
 	},
-
 	{
 		Query: "select @@sql_mode = 1",
 		Expected: []sql.Row{
 			{false},
 		},
 	},
-
 	{
 		Query:            "explain select 1",
 		SkipServerEngine: true,
@@ -10288,6 +10285,14 @@ from typestable`,
 			{" ├─ columns: [1]"},
 			{" └─ Table"},
 			{"     └─ name: "},
+		},
+	},
+	{
+		Query: "select quote(i), quote(s) from mytable",
+		Expected: []sql.Row{
+			{"'1'", "'first row'"},
+			{"'2'", "'second row'"},
+			{"'3'", "'third row'"},
 		},
 	},
 }
